@@ -27,7 +27,7 @@ Built with safety, speed, and modern UX in mind using **Tauri v2, Rust, SvelteKi
 * **📊 Real-Time Visual Schematics:** Automatic rendering of RF path diagrams and topology graphs via embedded Mermaid.js.
 * **📻 ADIF Log Management:** Interactive visual rendering and structuring of amateur radio contact logs.
 * **📂 Native File System Access:** Secure, direct file operations on your local machine.
-* **🌐 True Cross-Platform:** Desktop support for Windows, macOS, and Linux, plus mobile support for Android and iOS.
+* **🌐 True Cross-Platform:** Desktop support for Windows, macOS, and Linux, plus mobile support for Android (pre-built) and iOS (from source / sign-ready).
 
 ---
 
@@ -44,7 +44,7 @@ Entwickelt mit Fokus auf Sicherheit, Geschwindigkeit und moderne UX unter Verwen
 * **📊 Echtzeit-Schaltpläne:** Automatische Generierung von Signalflussdiagrammen und Topologien mittels Mermaid.js.
 * **📻 ADIF-Log-Verwaltung:** Interaktive visuelle Aufbereitung von Funkkontakt-Protokollen.
 * **📂 Nativer Dateisystem-Zugriff:** Sicheres und direktes Lesen und Schreiben lokaler Dateien.
-* **🌐 Vollständig Plattformübergreifend:** Desktop (Windows, macOS, Linux) und Mobilgeräte (Android, iOS).
+* **🌐 Vollständig Plattformübergreifend:** Desktop (Windows, macOS, Linux) sowie Mobilgeräte (Android direkt verfügbar, iOS bereit für Signing).
 
 ---
 
@@ -61,7 +61,7 @@ Entwickelt mit Fokus auf Sicherheit, Geschwindigkeit und moderne UX unter Verwen
 * **📊 Візуалізація радіотрактів у реальному часі:** Автоматичний рендеринг структурних схем та графів зв'язків через Mermaid.js.
 * **📻 Робота з ADIF-логами:** Візуальне відображення журналів радіозв'язку у вигляді інтерактивних карток.
 * **📂 Нативна робота з файлами:** Пряме читання та збереження локальних файлів на диску пристрою.
-* **🌐 Повна кросплатформенність:** Робочий стіл (Windows, macOS, Linux) та мобільні ОС (Android, iOS).
+* **🌐 Повна кросплатформенність:** Робочий стіл (Windows, macOS, Linux) та мобільні ОС (готовий APK для Android; підготовка до збірки під iOS).
 
 ---
 
@@ -78,13 +78,13 @@ Entwickelt mit Fokus auf Sicherheit, Geschwindigkeit und moderne UX unter Verwen
 
 ## 📦 Downloads / Збірки
 
-Pre-compiled binaries for all supported platforms are available under **[Releases](https://github.com/juv4uk/my-ide/releases)**:
+Pre-compiled binaries for supported platforms are automatically built via CI/CD and available under **[Releases](https://github.com/juv4uk/my-ide/releases)**:
 
 * 🪟 **Windows:** `.exe`, `.msi`
 * 🐧 **Linux:** `.deb`, `.AppImage`
 * 🍎 **macOS:** `.dmg`
 * 🤖 **Android:** `.apk`
-* 📱 **iOS:** `.ipa` / `.app`
+* 📱 **iOS:** *Available by compiling from source via Xcode with Apple Developer Provisioning.*
 
 ---
 
