@@ -28,7 +28,7 @@
 | 🪟 **Windows** | `.exe`, `.msi` | 🟢 **Automated in Releases** |
 | 🐧 **Linux** | `.deb`, `.AppImage`, `.rpm` | 🟢 **Automated in Releases** |
 | 🍏 **macOS** | `.dmg` *(Universal: M-Series & Intel)* | 🟢 **Automated in Releases** |
-| 🤖 **Android** | Project source ready | 🟡 **Builds locally / NDK ready** |
+| 🤖 **Android** | `.apk` *(AArch64)* | 🟢 **Automated in GitHub Actions** |
 | 📱 **iOS** | Xcode project structure | ⚪ **Ready to build via Xcode** |
 
 ---
@@ -46,7 +46,8 @@ Built with safety, speed, and modern UX in mind using **Tauri v2, Rust, SvelteKi
 * **📊 Real-Time Visual Schematics:** Automatic rendering of RF path diagrams and topology graphs via embedded Mermaid.js.
 * **📻 ADIF Log Management:** Interactive visual rendering and structuring of amateur radio contact logs.
 * **📂 Native File System Access:** Secure, direct file operations on your local machine.
-* **🌐 True Cross-Platform:** Automated multiplatform releases for Desktop (Windows, macOS, Linux).
+* **🌐 True Cross-Platform:** Automated multiplatform releases for Desktop (Windows, macOS, Linux) and Android APK builds via GitHub Actions.
+* **📱 Android Release Automation:** Hardened CI flow for `tauri android build` with SDK/NDK provisioning and artifact upload. On Windows, Developer Mode must be enabled for local symlink-based Android packaging.
 
 ---
 
@@ -105,4 +106,4 @@ Pre-compiled binaries for supported platforms are automatically built via CI/CD 
 
 This project is open-source software licensed under the **[MIT License](LICENSE)**.
 
-Copyright (c) 2026 **Volodymyr Sydiy**
+Copyright (c) 2026 **Waldemar Sydiy M**
