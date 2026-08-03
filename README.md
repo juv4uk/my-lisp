@@ -1,7 +1,7 @@
 # ⚡ Signal & Radio IDE
 
 <p align="center">
-  <img src="docs/demo.png" alt="Signal & Radio IDE Screenshot" width="800">
+  <img src="docs/hero.svg" alt="Signal & Radio IDE Banner" width="100%">
 </p>
 
 <p align="center">
