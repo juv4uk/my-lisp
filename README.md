@@ -14,7 +14,7 @@
 
 ---
 
-## Radio Logbook MVP / MVP журналу радіоаматора
+## Radio Logbook MVP / MVP журналу радіоаматора / Amateurfunk-Logbuch MVP
 
 The current product focus is a fast, offline-first amateur radio logbook. A QSO can be saved with
 minimal typing: enter a callsign, choose a band and mode, confirm RST, and save. Contacts are stored
@@ -24,15 +24,19 @@ locally as structured data with standards-based ADIF 3.1.7 import and export.
 ввести позивний, вибрати діапазон і режим, підтвердити RST та натиснути «Зберегти». Контакти
 структуровано зберігаються локально з підтримкою імпорту й експорту ADIF 3.1.7.
 
+Der aktuelle Produktschwerpunkt ist ein schnelles, offlinefähiges Amateurfunk-Logbuch. Für ein QSO
+genügen Rufzeichen, Band, Betriebsart und RST. Kontakte werden strukturiert lokal gespeichert;
+Import und Export entsprechen ADIF 3.1.7.
+
 ### Included / Реалізовано
 
-- Mobile-first quick QSO entry / Швидке додавання QSO на мобільному пристрої
-- English and Ukrainian UI / Англійський та український інтерфейс
-- Search, edit, and delete / Пошук, редагування та видалення контактів
-- Station profile and reusable defaults / Профіль станції та типові значення
-- ADIF import/export with unknown-field preservation / ADIF імпорт/експорт зі збереженням невідомих полів
-- Auto-saved Markdown notes and strict Mermaid diagrams / Автозбереження Markdown-нотаток і безпечні Mermaid-схеми
-- Repository abstraction ready for a future SQLite adapter / Шар сховища, готовий до майбутнього SQLite-адаптера
+- Mobile-first quick QSO entry / Швидке додавання QSO / Mobile QSO-Schnelleingabe
+- English, Ukrainian, and German UI / Англійський, український і німецький інтерфейс / Englische, ukrainische und deutsche Oberfläche
+- Search, edit, and delete / Пошук, редагування та видалення / Suchen, bearbeiten und löschen
+- Station profile and reusable defaults / Профіль станції та типові значення / Stationsprofil und Standardwerte
+- ADIF import/export with unknown-field preservation / ADIF імпорт/експорт зі збереженням невідомих полів / ADIF-Import und -Export mit Erhalt unbekannter Felder
+- Auto-saved Markdown notes and strict Mermaid diagrams / Автозбереження Markdown-нотаток і безпечні Mermaid-схеми / Automatisch gespeicherte Markdown-Notizen und sichere Mermaid-Diagramme
+- Repository abstraction ready for SQLite / Шар сховища, готовий до SQLite / Für SQLite vorbereitete Repository-Abstraktion
 
 ### Development / Розробка
 
