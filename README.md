@@ -1,169 +1,182 @@
-# ⚡ Signal & Radio IDE
+# Signal & Radio Log
 
 <p align="center">
-  <img src="docs/hero.svg" alt="Signal & Radio IDE Banner" width="100%">
+  <img src="docs/hero.svg" alt="Signal & Radio Log" width="100%">
 </p>
 
 <p align="center">
-  <a href="https://github.com/juv4uk/my-ide/releases"><img src="https://img.shields.io/github/v/release/juv4uk/my-ide?color=blue&label=Latest%20Release" alt="Release"></a>
-  <a href="https://github.com/juv4uk/my-ide/releases"><img src="https://img.shields.io/github/downloads/juv4uk/my-ide/total?color=brightgreen&label=Downloads" alt="Downloads"></a>
-  <a href="https://v2.tauri.app/"><img src="https://img.shields.io/badge/Tauri-v2-blue.svg" alt="Tauri v2"></a>
-  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.75+-orange.svg" alt="Rust"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <strong>Менше писати. Більше працювати в ефірі.</strong><br>
+  <em>Type less. Spend more time on air. · Weniger tippen. Mehr Zeit auf Sendung.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/juv4uk/my-ide/releases"><img src="https://img.shields.io/github/v/release/juv4uk/my-ide?color=7c3aed&label=release" alt="Latest release"></a>
+  <a href="https://github.com/juv4uk/my-ide/actions"><img src="https://github.com/juv4uk/my-ide/actions/workflows/publish-release.yml/badge.svg" alt="Build status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f59e0b" alt="MIT License"></a>
 </p>
 
 ---
 
-## Radio Logbook MVP / MVP журналу радіоаматора / Amateurfunk-Logbuch MVP
+## Що це?
 
-The current product focus is a fast, offline-first amateur radio logbook. A QSO can be saved with
-minimal typing: enter a callsign, choose a band and mode, confirm RST, and save. Contacts are stored
-locally as structured data with standards-based ADIF 3.1.7 import and export.
+**Signal & Radio Log** — простий офлайн-журнал для радіоаматора. Він допомагає швидко записати QSO, не відволікаючись від ефіру: введіть позивний, торкніться діапазону й режиму, перевірте RST — готово.
 
-Поточний фокус продукту — швидкий offline-first журнал радіоаматора. Для збереження QSO достатньо
-ввести позивний, вибрати діапазон і режим, підтвердити RST та натиснути «Зберегти». Контакти
-структуровано зберігаються локально з підтримкою імпорту й експорту ADIF 3.1.7.
+Застосунок особливо любить **QRPp**: зв’язки на 500, 100 або навіть 50 мВт. Але це не обмеження — журнал чесно збереже будь-яку потужність.
 
-Der aktuelle Produktschwerpunkt ist ein schnelles, offlinefähiges Amateurfunk-Logbuch. Für ein QSO
-genügen Rufzeichen, Band, Betriebsart und RST. Kontakte werden strukturiert lokal gespeichert;
-Import und Export entsprechen ADIF 3.1.7.
+Ваші записи залишаються на вашому пристрої. Обліковий запис та інтернет для роботи не потрібні.
 
-### Included / Реалізовано
+### Для кого
 
-- Mobile-first quick QSO entry / Швидке додавання QSO / Mobile QSO-Schnelleingabe
-- English, Ukrainian, and German UI / Англійський, український і німецький інтерфейс / Englische, ukrainische und deutsche Oberfläche
-- Search, edit, and delete / Пошук, редагування та видалення / Suchen, bearbeiten und löschen
-- Station profile and reusable defaults / Профіль станції та типові значення / Stationsprofil und Standardwerte
-- ADIF import/export with unknown-field preservation / ADIF імпорт/експорт зі збереженням невідомих полів / ADIF-Import und -Export mit Erhalt unbekannter Felder
-- Auto-saved Markdown notes and strict Mermaid diagrams / Автозбереження Markdown-нотаток і безпечні Mermaid-схеми / Automatisch gespeicherte Markdown-Notizen und sichere Mermaid-Diagramme
-- Repository abstraction ready for SQLite / Шар сховища, готовий до SQLite / Für SQLite vorbereitete Repository-Abstraktion
+- для першого QSO і першого власного журналу;
+- для роботи в полі, SOTA/POTA та портативної станції;
+- для QRP/QRPp-експериментів;
+- для тих, хто хоче поступово освоїти Markdown, таблиці та Mermaid;
+- для операторів, яким потрібен простий ADIF без перевантаженого інтерфейсу.
 
-### Development / Розробка
+## Що вже вміє
+
+### Швидкий журнал
+
+- великі кнопки для діапазону, режиму й потужності;
+- автоматичні UTC-дата і час;
+- зручна робота одним пальцем;
+- портретна й альбомна орієнтації;
+- пошук, редагування та видалення QSO;
+- кольорові позначки QRPp і QRP.
+
+### ADIF без пасток
+
+- імпорт `.adi` та `.adif`;
+- експорт ADIF 3.1.7;
+- підтримка `TX_PWR`, локаторів, RST та основних полів QSO;
+- невідомі ADIF-поля зберігаються під час імпорту й повторного експорту.
+
+### Нотатки, які навчають
+
+Пишіть звичайний Markdown і одразу бачте результат. Готові шаблони допоможуть створити:
+
+- звіт про QSO;
+- таблицю контактів або антен;
+- QRPp-експеримент;
+- сходинки потужності;
+- Mermaid-схему станції.
+
+### Три мови
+
+Українська, English і Deutsch перемикаються одним торканням. Це не лише локалізація: знайомі слова трьома мовами поступово запам’ятовуються просто під час роботи.
+
+## Спробувати
+
+Завантажте останню версію на сторінці **[Releases](https://github.com/juv4uk/my-ide/releases)**.
+
+Збірки готуються для:
+
+| Платформа | Формат |
+|---|---|
+| Windows | `.msi`, `.exe` |
+| Linux | `.deb`, `.rpm`, `.AppImage`, `.flatpak` |
+| macOS | `.dmg` |
+| Android | `.apk` |
+| iOS | `.app` для Simulator |
+| Raspberry Pi / ARM64 | Linux-пакети |
+| Web | статична збірка |
+
+> Доступність окремого файла залежить від успішної збірки відповідної платформи в GitHub Actions.
+
+## Що далі
+
+Ми готуємо **QSO Connect** — спосіб продовжити знайомство після ефірного QSO через приватний код. Основа протоколу вже підтримує зашифровані повідомлення та змінні канали зв’язку:
+
+```mermaid
+flowchart LR
+  radio["QSO в ефірі"] --> code["Приватний код"]
+  code --> relay["Internet Relay"]
+  code --> p2p["WebRTC P2P"]
+  code --> lora["LoRa в майбутньому"]
+```
+
+Це поки фундамент, а не готовий чат у застосунку. Головний принцип незмінний: журнал має повноцінно працювати офлайн.
+
+<details>
+<summary><strong>English</strong></summary>
+
+## What is it?
+
+**Signal & Radio Log** is a small offline-first logbook for amateur-radio operators. It keeps QSO entry out of your way: enter a callsign, tap the band and mode, check the RST, and save.
+
+The app has a special place for **QRPp** experiments at 500, 100, or even 50 mW, while still recording contacts at any power. Your log remains on your device; no account or internet connection is required.
+
+### Highlights
+
+- thumb-friendly mobile QSO entry;
+- portrait, landscape, tablet, and desktop layouts;
+- ADIF 3.1.7 import and export with unknown-field preservation;
+- QRPp/QRP power badges and milliwatt presets;
+- searchable and editable logbook;
+- Markdown notes with live preview;
+- learning templates for tables, QRPp experiments, power ladders, and Mermaid station diagrams;
+- Ukrainian, English, and German with one-tap switching;
+- builds for Windows, Linux, macOS, Android, iOS Simulator, ARM64, and the web.
+
+Download the latest build from **[Releases](https://github.com/juv4uk/my-ide/releases)**.
+
+### Coming later
+
+The project includes the encrypted protocol foundation for **QSO Connect**. Internet relay comes first; WebRTC P2P and LoRa can later use the same transport-independent message format. The chat UI and public relay service are not available yet.
+
+</details>
+
+<details>
+<summary><strong>Deutsch</strong></summary>
+
+## Was ist das?
+
+**Signal & Radio Log** ist ein kleines Offline-Logbuch für Funkamateure. Ein QSO lässt sich schnell erfassen: Rufzeichen eingeben, Band und Betriebsart antippen, RST prüfen und speichern.
+
+Die App eignet sich besonders für **QRPp**-Experimente mit 500, 100 oder sogar 50 mW, speichert aber selbstverständlich Verbindungen mit jeder Leistung. Das Logbuch bleibt auf dem eigenen Gerät; Konto und Internetverbindung sind nicht erforderlich.
+
+### Funktionen
+
+- mobilfreundliche QSO-Eingabe mit großen Schaltflächen;
+- Hochformat, Querformat, Tablet und Desktop;
+- ADIF-3.1.7-Import und -Export mit Erhalt unbekannter Felder;
+- QRPp/QRP-Kennzeichnung und Milliwatt-Schnellauswahl;
+- durchsuchbares und bearbeitbares Logbuch;
+- Markdown-Notizen mit Live-Vorschau;
+- Lernvorlagen für Tabellen, QRPp-Experimente, Leistungsleitern und Mermaid-Stationsdiagramme;
+- Ukrainisch, Englisch und Deutsch mit Umschaltung durch einmaliges Antippen;
+- Builds für Windows, Linux, macOS, Android, iOS Simulator, ARM64 und Web.
+
+Die aktuelle Version steht unter **[Releases](https://github.com/juv4uk/my-ide/releases)** bereit.
+
+### Später geplant
+
+Das Projekt enthält bereits die verschlüsselte Protokollgrundlage für **QSO Connect**. Zuerst ist ein Internet-Relay vorgesehen; später können WebRTC P2P und LoRa dasselbe transportunabhängige Nachrichtenformat verwenden. Chat-Oberfläche und öffentlicher Relay-Dienst sind noch nicht verfügbar.
+
+</details>
+
+---
+
+## Для розробників · For developers · Für Entwickler
 
 ```bash
-npm ci
+npm install
 npm run dev
+```
+
+Перевірки · Checks · Prüfungen:
+
+```bash
 npm test
 npm run check
 npm run build
+cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
----
+Основний стек: [Tauri 2](https://v2.tauri.app/), [SvelteKit](https://svelte.dev/docs/kit), TypeScript і Rust.
 
-## 🌍 Languages / Мови / Sprachen
-* [English](#-english)
-* [Українська](#-українська)
-* [Deutsch](#-deutsch)
+Внески, перевірка на різних пристроях, переклади та радіоаматорський досвід вітаються. Якщо знайшли проблему або маєте просту корисну ідею — відкрийте **[Issue](https://github.com/juv4uk/my-ide/issues)**.
 
----
+## Ліцензія · License · Lizenz
 
-## 📊 Platform Build Status / Стан збірки платформ
-
-| Platform / Платформа | Target / Формат | Status / Статус |
-|---|---|---|
-| 🪟 **Windows** | `.exe`, `.msi` | 🟢 **Automated in Releases** |
-| 🐧 **Linux x86_64** | `.deb`, `.AppImage`, `.rpm` | 🟢 **Automated in Releases** |
-| 🍏 **macOS** | `.dmg` *(Universal: M-Series & Intel)* | 🟢 **Automated in Releases** |
-| 🤖 **Android** | `.apk` *(AArch64)* | 🟢 **Automated in Releases** |
-| 📱 **iOS** | `.app` *(Simulator, Xcode)* | 🟢 **Automated in Releases** |
-| 🥧 **ARM Linux** | `.deb`, `.AppImage`, `.rpm` *(AArch64, Raspberry Pi)* | 🟢 **Automated in Releases** |
-| 📦 **Flatpak** | `.flatpak` | 🟡 **Automated in Releases** |
-| 🌐 **Web / WASM** | `.zip` *(static hosting)* | 🟢 **Automated in Releases** |
-
----
-
-## 🇬🇧 English
-
-### Overview
-**Signal & Radio IDE** is a high-performance, lightweight, cross-platform Integrated Development Environment designed for custom DSL parsing, radio signal path visualization, RF circuit schematic rendering, and amateur radio ADIF log management.
-
-Built with safety, speed, and modern UX in mind using **Tauri v2, Rust, SvelteKit, CodeMirror 6, and Mermaid.js**. Runs natively on Windows, Linux, macOS, Android, iOS, and Raspberry Pi (ARM64).
-
-### Key Features
-* **⚡ Rust-Powered Core:** Blazing fast parsing for custom `#graph` and `#adif` domain-specific languages.
-* **📝 Advanced Code Editor:** Modern editing experience using CodeMirror 6 with dynamic syntax highlighting and line management.
-* **📊 Real-Time Visual Schematics:** Automatic rendering of RF path diagrams, circuit topology graphs, and signal flowcharts via embedded Mermaid.js.
-* **📻 ADIF Log Management:** Interactive visual rendering and structuring of amateur radio contact logs (QSOs).
-* **📂 Native File System Access:** Secure, direct file operations on your local machine.
-* **🌐 True Cross-Platform:** Automated multiplatform releases for Desktop (Windows, macOS, Linux), Android APK, iOS Simulator, ARM64 Linux (Raspberry Pi), Flatpak, and static Web builds via GitHub Actions CI/CD.
-* **📱 Mobile & Embedded:** Native Android builds with SDK/NDK provisioning. ARM64 Linux packages for embedded and SBC devices.
-
----
-
-## 🇺🇦 Українська
-
-### Опис
-**Signal & Radio IDE** — це потужне, легке та кросплатформенне середовище розробки (IDE) для парсингу кастомних DSL, візуалізації структурних схем радіотрактів, рендерингу електричних схем та зручної роботи з ADIF-логами аматорського радіозв'язку.
-
-Створено на базі **Tauri v2, Rust, SvelteKit, CodeMirror 6 та Mermaid.js**. Працює нативно на Windows, Linux, macOS, Android, iOS та Raspberry Pi (ARM64).
-
-### Основні можливості
-* **⚡ Високопродуктивне ядро на Rust:** Миттєвий та безпечний розбір синтаксичних блоків `#graph` та `#adif`.
-* **📝 Сучасний редактор коду:** Підсвітка синтаксису, керування рядками та висока швидкість роботи завдяки CodeMirror 6.
-* **📊 Візуалізація радіотрактів у реальному часі:** Автоматичний рендеринг структурних схем, графів зв'язків та сигнальних діаграм через Mermaid.js.
-* **📻 Робота з ADIF-логами:** Візуальне відображення журналів радіозв'язку у вигляді інтерактивних карток (QSO).
-* **📂 Нативна робота з файлами:** Пряме читання та збереження локальних файлів на диску пристрою.
-* **🌐 Повна кросплатформенність:** Автоматичні релізи для робочого столу (Windows, macOS Universal, Linux), Android APK, iOS Simulator, ARM64 Linux (Raspberry Pi), Flatpak та статичної Web-версії через GitHub Actions CI/CD.
-* **📱 Мобільні та вбудовані системи:** Нативні збірки Android з SDK/NDK. Пакети ARM64 Linux для вбудованих пристроїв та одноплатникових комп'ютерів.
-
----
-
-## 🇩🇪 Deutsch
-
-### Übersicht
-**Signal & Radio IDE** ist eine hochleistungsfähige, leichtgewichtige und plattformübergreifende Entwicklungsumgebung (IDE), die speziell für das Parsen benutzerdefinierter DSLs, die Visualisierung von Funksignalpfaden, das Rendern von HF-Schaltplänen und das Verwalten von Amateurfunk-ADIF-Logs entwickelt wurde.
-
-Erstellt mit **Tauri v2, Rust, SvelteKit, CodeMirror 6 und Mermaid.js**. Läuft nativ auf Windows, Linux, macOS, Android, iOS und Raspberry Pi (ARM64).
-
-### Hauptmerkmale
-* **⚡ Rust-Kernel:** Extrem schnelles Parsen von domänenspezifischen Sprachen (`#graph`, `#adif`).
-* **📝 Moderner Code-Editor:** Integrierter CodeMirror 6 Editor mit dynamischem Syntax-Highlighting.
-* **📊 Echtzeit-Schaltpläne:** Automatische Generierung von Signalflussdiagrammen und HF-Topologie-Graphen mittels Mermaid.js.
-* **📻 ADIF-Log-Verwaltung:** Interaktive visuelle Aufbereitung von Funkkontakt-Protokollen (QSOs).
-* **📂 Nativer Dateisystemzugriff:** Sichere, direkte Dateioperationen auf dem lokalen Rechner.
-* **🌐 Echte Plattformübergreifung:** Automatisierte Multiplattform-Releases für Desktop (Windows, macOS, Linux), Android APK, iOS Simulator, ARM64 Linux (Raspberry Pi), Flatpak und statische Web-Builds via GitHub Actions CI/CD.
-* **📱 Mobil & Embedded:** Native Android-Builds mit SDK/NDK. ARM64 Linux-Pakete für eingebettete Systeme und Single-Board-Computer.
-
----
-
-## 🛠️ Tech Stack / Стек технологій
-
-| Layer | Technology |
-|---|---|
-| **Core & Native API** | [Rust](https://www.rust-lang.org/) + [Tauri v2](https://v2.tauri.app/) |
-| **Frontend Framework** | [SvelteKit](https://kit.svelte.dev/) + [TypeScript](https://www.typescriptlang.org/) |
-| **Code Editor** | [CodeMirror 6](https://codemirror.net/) |
-| **Diagram Engine** | [Mermaid.js](https://mermaid.js.org/) |
-| **CI/CD** | GitHub Actions |
-| **Package Formats** | `.deb`, `.rpm`, `.AppImage`, `.flatpak`, `.apk`, `.dmg`, `.msi`, `.exe` |
-
----
-
-## 📦 Downloads / Збірки
-
-Pre-compiled binaries for supported platforms are automatically built via CI/CD and available under **[Releases](https://github.com/juv4uk/my-ide/releases)**:
-
-* 🪟 **Windows:** `.exe`, `.msi`
-* 🐧 **Linux x86_64:** `.deb`, `.AppImage`, `.rpm`
-* 🍎 **macOS:** `.dmg` *(Universal: Apple Silicon & Intel)*
-* 🤖 **Android:** `.apk` *(AArch64)*
-* 📱 **iOS:** `.app` *(Simulator)*
-* 🥧 **ARM Linux:** `.deb`, `.AppImage`, `.rpm` *(Raspberry Pi, ARM64 SBCs)*
-* 📦 **Flatpak:** `.flatpak`
-* 🌐 **Web:** `.zip` *(static files for hosting)*
-
----
-
-## 🏷️ GitHub Topics / Теги
-
-`tauri-v2` `rust` `sveltekit` `typescript` `codemirror` `mermaid-js` `dsl-parser` `adif` `ham-radio` `amateur-radio` `rf-engineering` `signal-visualization` `cross-platform` `desktop-app` `android` `ios` `arm64` `raspberry-pi` `flatpak` `webassembly`
-
-> 💡 **Tip:** Click the gear icon next to "About" on the repo main page to add these topics and improve discoverability.
-
----
-
-## 📄 License
-
-This project is open-source software licensed under the **[MIT License](LICENSE)**.
-
-Copyright (c) 2026 **Waldemar Sydiy M**
+[MIT](LICENSE) — користуйтеся, вивчайте й покращуйте.
