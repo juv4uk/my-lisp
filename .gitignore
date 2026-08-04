@@ -31,6 +31,9 @@ keystore_base64.txt
 .vscode/
 .idea/
 
+# Local release-script backup / Локальна резервна копія / Lokale Sicherung
+scripts/release1.ps1
+
 # Generated Android resources (icons, mipmap)
 src-tauri/gen/android/app/src/main/res/mipmap-*/
 src-tauri/gen/android/app/src/main/res/mipmap-anydpi-v26/
