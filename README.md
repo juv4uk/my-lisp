@@ -8,6 +8,7 @@
   <a href="#english"><img src="https://img.shields.io/badge/English-2563EB?style=for-the-badge" alt="English"></a>
   <a href="#українська"><img src="https://img.shields.io/badge/Українська-172554?style=for-the-badge" alt="Українська"></a>
   <a href="#deutsch"><img src="https://img.shields.io/badge/Deutsch-172554?style=for-the-badge" alt="Deutsch"></a>
+  <a href="#help-wanted"><img src="https://img.shields.io/badge/Help_wanted-F59E0B?style=for-the-badge" alt="Help wanted"></a>
   <a href="#about-the-author"><img src="https://img.shields.io/badge/About_me-172554?style=for-the-badge" alt="About me"></a>
   <a href="#license"><img src="https://img.shields.io/badge/License-172554?style=for-the-badge" alt="License"></a>
 </p>
@@ -63,6 +64,21 @@ Get the latest build from **[Releases](https://github.com/juv4uk/my-ide/releases
 
 **QSO Connect** is the planned bridge between an on-air contact and private online communication. Its encrypted, transport-independent foundation is already being built. Internet relay comes first; WebRTC P2P and LoRa may follow later. The journal itself will remain fully useful offline.
 
+### This project is looking for experienced friends
+
+Signal & Radio Log is a serious open-source project, but it is still maintained by one creator—not a company or a large team. It has reached the point where thoughtful review and mentorship can make a real difference.
+
+The Apple builds especially need someone willing to take them under their wing. GitHub Actions currently produces a universal macOS package and an iOS Simulator app, but proper distribution still needs:
+
+- macOS code signing and notarization;
+- iOS provisioning and builds for real devices;
+- testing on actual Macs, iPhones, and iPads;
+- patient review of the Tauri/Swift/Xcode release process.
+
+Help with Rust, Svelte, accessibility, security, radio workflows, documentation, and release engineering is equally welcome. You do not have to take over the project. Reviewing one workflow, explaining one Apple requirement, or mentoring one architectural decision is already valuable.
+
+If you are an experienced developer, radio amateur, teacher, or maintainer and this small independent project speaks to you, please **[open an Issue and say hello](https://github.com/juv4uk/my-ide/issues/new)**. We would be glad to build it with you.
+
 ---
 
 <a id="українська"></a>
@@ -91,6 +107,21 @@ Get the latest build from **[Releases](https://github.com/juv4uk/my-ide/releases
 ### Що буде далі
 
 **QSO Connect** має стати мостом між знайомством в ефірі та приватним спілкуванням через інтернет. Основа зашифрованого протоколу вже закладається. Спочатку планується Internet Relay, згодом — WebRTC P2P і, можливо, LoRa. Сам журнал і надалі повноцінно працюватиме офлайн.
+
+### Проєкт шукає досвідчених друзів
+
+Signal & Radio Log — уже серйозний open-source проєкт, але його розвиває одна людина, а не компанія чи велика команда. Ми дійшли до моменту, коли уважний review і добре наставництво можуть справді змінити майбутнє проєкту.
+
+Особливо потрібна людина, готова взяти під опіку Apple-напрям. GitHub Actions уже створює універсальну збірку macOS та застосунок для iOS Simulator, але для нормального розповсюдження ще потрібні:
+
+- підпис коду й notarization для macOS;
+- provisioning і збірки iOS для реальних пристроїв;
+- перевірка на справжніх Mac, iPhone та iPad;
+- терплячий review процесу релізу Tauri/Swift/Xcode.
+
+Так само цінною буде допомога з Rust, Svelte, доступністю, безпекою, радіоаматорськими сценаріями, документацією та release engineering. Не обов’язково брати на себе весь проєкт. Перевірити один workflow, пояснити одну вимогу Apple або допомогти з одним архітектурним рішенням — це вже багато.
+
+Якщо ви досвідчений розробник, радіоаматор, викладач або мейнтейнер і вам близький цей маленький незалежний проєкт — **[відкрийте Issue й просто привітайтеся](https://github.com/juv4uk/my-ide/issues/new)**. Ми будемо раді будувати його разом.
 
 ---
 
@@ -121,7 +152,34 @@ Die aktuelle Version steht unter **[Releases](https://github.com/juv4uk/my-ide/r
 
 **QSO Connect** soll eine Brücke zwischen dem Funkkontakt und privater Online-Kommunikation bilden. Die verschlüsselte Protokollbasis wird bereits vorbereitet. Zuerst ist ein Internet-Relay geplant; später können WebRTC P2P und möglicherweise LoRa folgen. Das Logbuch selbst bleibt vollständig offline nutzbar.
 
+### Das Projekt sucht erfahrene Freunde
+
+Signal & Radio Log ist bereits ein ernsthaftes Open-Source-Projekt, wird aber von einer einzelnen Person entwickelt und nicht von einem Unternehmen oder einem großen Team. Es ist an einem Punkt angekommen, an dem sorgfältiges Review und gute Begleitung wirklich etwas bewirken können.
+
+Besonders gesucht wird jemand, der den Apple-Bereich unter seine Fittiche nimmt. GitHub Actions erstellt bereits ein universelles macOS-Paket und eine App für den iOS Simulator. Für eine reguläre Veröffentlichung fehlen jedoch noch:
+
+- Code-Signierung und Notarisierung für macOS;
+- iOS-Provisioning und Builds für echte Geräte;
+- Tests auf realen Macs, iPhones und iPads;
+- geduldiges Review des Tauri/Swift/Xcode-Release-Prozesses.
+
+Auch Hilfe bei Rust, Svelte, Barrierefreiheit, Sicherheit, Amateurfunk-Abläufen, Dokumentation und Release Engineering ist sehr willkommen. Niemand muss gleich das ganze Projekt übernehmen. Ein Workflow-Review, die Erklärung einer Apple-Anforderung oder Begleitung bei einer Architekturentscheidung ist bereits wertvoll.
+
+Wenn Sie erfahrener Entwickler, Funkamateur, Lehrer oder Maintainer sind und dieses kleine unabhängige Projekt Sie anspricht, **[öffnen Sie bitte ein Issue und sagen Sie einfach Hallo](https://github.com/juv4uk/my-ide/issues/new)**. Wir würden uns freuen, es gemeinsam mit Ihnen weiterzuentwickeln.
+
 ---
+
+<a id="help-wanted"></a>
+
+## Help wanted · Потрібна допомога · Hilfe gesucht
+
+The project is ready for contributors and mentors, especially around signed Apple releases and testing on real devices. Small, patient contributions are welcome—there is no expectation to take on everything.
+
+Проєкт відкритий для помічників і наставників, особливо щодо підписаних Apple-релізів та перевірки на реальних пристроях. Навіть невелика спокійна допомога важлива — ніхто не очікує, що одна людина візьме на себе все.
+
+Das Projekt freut sich über Mitwirkende und Mentoren, besonders bei signierten Apple-Releases und Tests auf echten Geräten. Auch kleine, geduldige Beiträge helfen—niemand soll alles allein übernehmen.
+
+**[Introduce yourself in a GitHub Issue · Напишіть про себе в Issue · Stellen Sie sich in einem Issue vor](https://github.com/juv4uk/my-ide/issues/new)**
 
 ## About the author
 
