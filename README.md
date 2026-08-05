@@ -23,6 +23,14 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f59e0b" alt="MIT License"></a>
 </p>
 
+## Quick try · Швидко спробувати · Schnell ausprobieren
+
+No installation and no account: **[download the standalone Web app](https://github.com/juv4uk/my-ide/releases/latest/download/my-ide_0.5.3_web.html)** and open the downloaded `.html` file in your browser. Everything needed by the interface is inside that one file, and your log stays on your device.
+
+Без встановлення та облікового запису: **[завантажте автономну Web-версію](https://github.com/juv4uk/my-ide/releases/latest/download/my-ide_0.5.3_web.html)** і відкрийте отриманий файл `.html` у браузері. Усе потрібне для інтерфейсу міститься в одному файлі, а журнал залишається на вашому пристрої.
+
+Ohne Installation und Benutzerkonto: **[die eigenständige Web-App herunterladen](https://github.com/juv4uk/my-ide/releases/latest/download/my-ide_0.5.3_web.html)** und die geladene `.html`-Datei im Browser öffnen. Die gesamte Oberfläche steckt in dieser einen Datei; das Logbuch bleibt auf Ihrem Gerät.
+
 ## See it in action · Подивіться в роботі · In Aktion
 
 <p align="center">
@@ -82,7 +90,7 @@ Get the latest build from **[Releases](https://github.com/juv4uk/my-ide/releases
 | Android | `.apk` |
 | iOS | `.app` for Simulator |
 | Raspberry Pi / ARM64 | Linux packages |
-| Web | Static build |
+| Web | One standalone `.html` file |
 
 > The exact files available depend on successful builds in GitHub Actions.
 
