@@ -23,6 +23,21 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f59e0b" alt="MIT License"></a>
 </p>
 
+## See it in action · Подивіться в роботі · In Aktion
+
+<p align="center">
+  <img src="docs/screenshots/desktop-new-qso.png" alt="Desktop QSO entry with thumb-friendly band and mode controls" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/mobile-portrait-qso.png" alt="Mobile portrait QSO entry in Ukrainian" width="32%">
+  <img src="docs/screenshots/mobile-landscape-notes.png" alt="Mobile landscape Markdown editor with live QRPp table preview" width="66%">
+</p>
+
+<p align="center">
+  Desktop entry · Мобільний журнал · Markdown preview in landscape
+</p>
+
 <a id="english"></a>
 
 ## English
