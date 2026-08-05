@@ -31,11 +31,15 @@
 
 <p align="center">
   <img src="docs/screenshots/mobile-portrait-qso.png" alt="Mobile portrait QSO entry in Ukrainian" width="32%">
+  <img src="docs/screenshots/mobile-landscape-station.png" alt="Mobile landscape Station profile in Ukrainian" width="66%">
+</p>
+
+<p align="center">
   <img src="docs/screenshots/mobile-landscape-notes.png" alt="Mobile landscape Markdown editor with live QRPp table preview" width="66%">
 </p>
 
 <p align="center">
-  Desktop entry · Мобільний журнал · Markdown preview in landscape
+  Desktop entry · Мобільний журнал · Station profile · Markdown preview
 </p>
 
 <a id="english"></a>
