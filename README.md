@@ -30,8 +30,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/mobile-portrait-qso.png" alt="Mobile portrait QSO entry in Ukrainian" width="32%">
-  <img src="docs/screenshots/mobile-landscape-station.png" alt="Mobile landscape Station profile in Ukrainian" width="66%">
+  <img src="docs/screenshots/mobile-portrait-qso.png" alt="Mobile portrait QSO entry in Ukrainian" width="32%" align="top">
+  <img src="docs/screenshots/mobile-landscape-station.png" alt="Mobile landscape Station profile in Ukrainian" width="66%" align="top">
 </p>
 
 <p align="center">
