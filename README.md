@@ -29,14 +29,21 @@
   <img src="docs/screenshots/desktop-new-qso.png" alt="Desktop QSO entry with thumb-friendly band and mode controls" width="100%">
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/mobile-portrait-qso.png" alt="Mobile portrait QSO entry in Ukrainian" width="32%" align="top">
-  <img src="docs/screenshots/mobile-landscape-station.png" alt="Mobile landscape Station profile in Ukrainian" width="66%" align="top">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/mobile-landscape-notes.png" alt="Mobile landscape Markdown editor with live QRPp table preview" width="66%">
-</p>
+<table>
+  <tr>
+    <td rowspan="2" width="33%" valign="top">
+      <img src="docs/screenshots/mobile-portrait-qso.png" alt="Mobile portrait QSO entry in Ukrainian" width="100%">
+    </td>
+    <td width="67%" valign="top">
+      <img src="docs/screenshots/mobile-landscape-station.png" alt="Mobile landscape Station profile in Ukrainian" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="67%" valign="top">
+      <img src="docs/screenshots/mobile-landscape-notes.png" alt="Mobile landscape Markdown editor with live QRPp table preview" width="100%">
+    </td>
+  </tr>
+</table>
 
 <p align="center">
   Desktop entry · Мобільний журнал · Station profile · Markdown preview
