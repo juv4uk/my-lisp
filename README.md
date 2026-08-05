@@ -223,6 +223,8 @@ GitHub: **[@juv4uk](https://github.com/juv4uk)**
 
 ## Development
 
+Complete user and technical documentation is available in **[docs/README.md](docs/README.md)** · Повна користувацька й технічна документація: **[docs/README.md](docs/README.md)** · Vollständige Benutzer- und Technikdokumentation: **[docs/README.md](docs/README.md)**.
+
 ```bash
 npm install
 npm run dev
