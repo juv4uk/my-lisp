@@ -6,6 +6,7 @@
 //! Крейт навмисно нічого не знає про Tauri, файли, мережу чи інтерфейс.
 //! Das Crate kennt bewusst weder Tauri noch Dateien, Netzwerk oder Benutzeroberfläche.
 
+mod bignum;
 mod environment;
 mod error;
 mod eval;

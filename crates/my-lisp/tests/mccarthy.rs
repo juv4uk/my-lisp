@@ -17,17 +17,42 @@ fn division_is_an_exact_reduced_rational() {
     );
 }
 
-/// `Rational`'s numerator/denominator are `i64`, not bignum — a real,
-/// current implementation ceiling on "exact" (see docs/language-core.md).
-/// Deliberately *not* in tests/fixtures/conformance.json: whether a future
-/// bignum-capable implementation (Rust or otherwise — see PLAN.md) still
-/// overflows here is exactly the open scope question that doc raises, so
-/// baking today's i64 ceiling into the shared, append-only contract would
-/// make this test itself the thing blocking that future decision.
+/// `Rational` used to be `i64`-bounded and this exact expression overflowed
+/// (`ErrorKind::InvalidForm`) — deliberately kept *out* of
+/// tests/fixtures/conformance.json at the time (see that file's README)
+/// because whether a future bignum-capable implementation should still
+/// overflow here was an open scope question, not yet a decided contract.
+/// `crates/my-lisp/src/bignum.rs` answered it: `Rational` is now backed by
+/// a hand-rolled arbitrary-precision integer (no crate dependency — see
+/// its header comment for why), so this now computes the exact product
+/// instead of erroring. Kept as a Rust-only regression test, still not
+/// promoted to the shared contract, since a future C or HDL implementation
+/// might reasonably choose a different (or still bounded) representation.
 #[test]
-fn exact_arithmetic_overflow_fails_loudly_not_silently() {
-    let error = eval_program("(* 3037000500 3037000500)", &mut Session::default()).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::InvalidForm);
+fn exact_arithmetic_handles_products_beyond_i64_range() {
+    let result = eval_program("(* 3037000500 3037000500)", &mut Session::default()).unwrap();
+    assert_eq!(result.value.to_string(), "9223372037000250000");
+}
+
+/// The case that actually matters, more than any single large literal:
+/// results *computed* via repeated exact arithmetic growing past the old
+/// i64 ceiling. `(/ 1 1)` forces the exact path from the start (a bare
+/// integer literal this large would itself parse as inexact f64 — see
+/// docs/language-core.md — a separate, still-open question from whether
+/// *arithmetic* stays exact past i64, which this answers: yes). Verified
+/// against Python's `math.factorial(30)` by hand before writing this.
+#[test]
+fn exact_arithmetic_computes_factorials_past_i64_range() {
+    let source = r#"
+        (def fact
+          (lambda (n acc)
+            (cond
+              ((eq n 0) acc)
+              (t (fact (- n 1) (* acc n))))))
+        (fact 30 (/ 1 1))
+    "#;
+    let result = eval_program(source, &mut Session::default()).unwrap();
+    assert_eq!(result.value.to_string(), "265252859812191058636308480000000");
 }
 
 #[test]

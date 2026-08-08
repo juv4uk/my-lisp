@@ -1,0 +1,508 @@
+//! A small, hand-rolled arbitrary-precision signed integer, used only by
+//! `Rational` (see `value.rs`). Deliberately not a crate dependency: this
+//! crate stays at zero dependencies (see docs/language-core.md's
+//! capability-free contract), and "Rust doing the low-level numeric
+//! algorithm it's exceptionally good at" doesn't require pulling in a
+//! third-party implementation of it — schoolbook algorithms, kept simple
+//! and correct, not optimized for cryptographic-scale numbers this
+//! language has no use for.
+//! Маленьке, написане вручну ціле число довільної точності зі знаком,
+//! використовується лише `Rational` (див. `value.rs`). Навмисно не
+//! crate-залежність: цей крейт лишається на нульовій кількості
+//! залежностей (див. capability-free контракт у docs/language-core.md), а
+//! "Rust, що робить низькорівневий числовий алгоритм, у якому він
+//! особливо сильний" не вимагає підтягування стороньої реалізації —
+//! шкільні алгоритми, прості й коректні, не оптимізовані під числа
+//! криптографічного масштабу, яким ця мова не знаходить застосування.
+//! Eine kleine, von Hand geschriebene Ganzzahl beliebiger Genauigkeit mit
+//! Vorzeichen, nur von `Rational` verwendet (siehe `value.rs`). Bewusst
+//! keine Crate-Abhängigkeit: dieses Crate bleibt bei null Abhängigkeiten
+//! (siehe den capability-freien Vertrag in docs/language-core.md), und
+//! "Rust macht den Low-Level-Zahlenalgorithmus, in dem es besonders stark
+//! ist" erfordert nicht, eine Drittanbieter-Implementierung davon
+//! einzubinden — Schulbuch-Algorithmen, einfach und korrekt gehalten,
+//! nicht für kryptografisch große Zahlen optimiert, für die diese Sprache
+//! keine Verwendung hat.
+
+use std::cmp::Ordering;
+use std::fmt;
+use std::str::FromStr;
+
+/// Unsigned magnitude: little-endian base-2^32 limbs, no trailing zero limbs
+/// (an empty vec is the canonical representation of zero).
+/// Беззнакова величина: little-endian лімби бази 2^32, без кінцевих
+/// нульових ліmбів (порожній vec — канонічне представлення нуля).
+/// Vorzeichenlose Größe: Little-Endian-Limbs zur Basis 2^32, keine
+/// abschließenden Null-Limbs (ein leerer Vec ist die kanonische
+/// Darstellung von Null).
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Magnitude(Vec<u32>);
+
+impl Magnitude {
+    const ZERO: Magnitude = Magnitude(Vec::new());
+
+    fn from_u64(mut value: u64) -> Self {
+        let mut limbs = Vec::new();
+        while value != 0 {
+            limbs.push((value & 0xFFFF_FFFF) as u32);
+            value >>= 32;
+        }
+        Magnitude(limbs)
+    }
+
+    fn is_zero(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    fn trim(mut self) -> Self {
+        while self.0.last() == Some(&0) {
+            self.0.pop();
+        }
+        self
+    }
+
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0
+            .len()
+            .cmp(&other.0.len())
+            .then_with(|| self.0.iter().rev().cmp(other.0.iter().rev()))
+    }
+
+    fn add(&self, other: &Self) -> Self {
+        let mut result = Vec::with_capacity(self.0.len().max(other.0.len()) + 1);
+        let mut carry = 0u64;
+        for i in 0..self.0.len().max(other.0.len()) {
+            let sum = carry
+                + u64::from(self.0.get(i).copied().unwrap_or(0))
+                + u64::from(other.0.get(i).copied().unwrap_or(0));
+            result.push((sum & 0xFFFF_FFFF) as u32);
+            carry = sum >> 32;
+        }
+        if carry != 0 {
+            result.push(carry as u32);
+        }
+        Magnitude(result).trim()
+    }
+
+    /// Assumes `self >= other`; panics otherwise (only called that way from `BigInt`).
+    fn sub(&self, other: &Self) -> Self {
+        let mut result = Vec::with_capacity(self.0.len());
+        let mut borrow = 0i64;
+        for i in 0..self.0.len() {
+            let diff = i64::from(self.0[i]) - i64::from(other.0.get(i).copied().unwrap_or(0)) - borrow;
+            if diff < 0 {
+                result.push((diff + (1i64 << 32)) as u32);
+                borrow = 1;
+            } else {
+                result.push(diff as u32);
+                borrow = 0;
+            }
+        }
+        debug_assert_eq!(borrow, 0, "sub called with self < other");
+        Magnitude(result).trim()
+    }
+
+    fn mul(&self, other: &Self) -> Self {
+        if self.is_zero() || other.is_zero() {
+            return Magnitude::ZERO;
+        }
+        let mut result = vec![0u32; self.0.len() + other.0.len()];
+        for (i, &a) in self.0.iter().enumerate() {
+            let mut carry = 0u64;
+            for (j, &b) in other.0.iter().enumerate() {
+                let product = u64::from(a) * u64::from(b) + u64::from(result[i + j]) + carry;
+                result[i + j] = (product & 0xFFFF_FFFF) as u32;
+                carry = product >> 32;
+            }
+            let mut k = i + other.0.len();
+            while carry != 0 {
+                let sum = u64::from(result[k]) + carry;
+                result[k] = (sum & 0xFFFF_FFFF) as u32;
+                carry = sum >> 32;
+                k += 1;
+            }
+        }
+        Magnitude(result).trim()
+    }
+
+    fn bit_len(&self) -> u32 {
+        match self.0.last() {
+            None => 0,
+            Some(&top) => (self.0.len() as u32 - 1) * 32 + (32 - top.leading_zeros()),
+        }
+    }
+
+    fn get_bit(&self, index: u32) -> bool {
+        let limb = (index / 32) as usize;
+        let bit = index % 32;
+        self.0.get(limb).is_some_and(|&value| (value >> bit) & 1 == 1)
+    }
+
+    fn shl1(&self) -> Self {
+        let mut result = Vec::with_capacity(self.0.len() + 1);
+        let mut carry = 0u32;
+        for &limb in &self.0 {
+            result.push((limb << 1) | carry);
+            carry = limb >> 31;
+        }
+        if carry != 0 {
+            result.push(carry);
+        }
+        Magnitude(result).trim()
+    }
+
+    fn set_bit(&mut self, index: u32) {
+        let limb = (index / 32) as usize;
+        let bit = index % 32;
+        if self.0.len() <= limb {
+            self.0.resize(limb + 1, 0);
+        }
+        self.0[limb] |= 1 << bit;
+    }
+
+    /// Schoolbook binary long division — O(bit_len^2), not the fastest
+    /// algorithm that exists, but correct regardless of quotient size (unlike
+    /// repeated subtraction) and simple enough to read and trust. This
+    /// language has no performance requirement that would justify anything
+    /// more sophisticated (see the header comment).
+    /// Шкільне бінарне довге ділення — O(bit_len^2), не найшвидший
+    /// алгоритм, що існує, але коректний незалежно від розміру частки (на
+    /// відміну від повторного віднімання) і достатньо простий, щоб читати
+    /// й довіряти. Ця мова не має вимоги швидкодії, яка виправдала б щось
+    /// складніше (див. header-коментар).
+    /// Schulbuch-Binärlangdivision — O(bit_len^2), nicht der schnellste
+    /// existierende Algorithmus, aber korrekt unabhängig von der Größe des
+    /// Quotienten (anders als wiederholte Subtraktion) und einfach genug,
+    /// um sie zu lesen und ihr zu vertrauen. Diese Sprache hat keine
+    /// Performance-Anforderung, die etwas Ausgefeilteres rechtfertigen
+    /// würde (siehe Header-Kommentar).
+    fn divmod(&self, divisor: &Self) -> Option<(Self, Self)> {
+        if divisor.is_zero() {
+            return None;
+        }
+        if self.cmp(divisor) == Ordering::Less {
+            return Some((Magnitude::ZERO, self.clone()));
+        }
+        let mut quotient = Magnitude::ZERO;
+        let mut remainder = Magnitude::ZERO;
+        for i in (0..self.bit_len()).rev() {
+            remainder = remainder.shl1();
+            if self.get_bit(i) {
+                remainder = remainder.add(&Magnitude::from_u64(1));
+            }
+            if remainder.cmp(divisor) != Ordering::Less {
+                remainder = remainder.sub(divisor);
+                quotient.set_bit(i);
+            }
+        }
+        Some((quotient.trim(), remainder))
+    }
+
+    fn to_f64(&self) -> f64 {
+        self.0
+            .iter()
+            .rev()
+            .fold(0.0, |acc, &limb| acc * 4294967296.0 + f64::from(limb))
+    }
+
+    fn to_u64(&self) -> Option<u64> {
+        match self.0.len() {
+            0 => Some(0),
+            1 => Some(u64::from(self.0[0])),
+            2 => Some(u64::from(self.0[0]) | (u64::from(self.0[1]) << 32)),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for Magnitude {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_zero() {
+            return write!(formatter, "0");
+        }
+        // Repeatedly divide by 10^9 so each step peels off up to nine decimal
+        // digits at once instead of one, keeping this from being needlessly
+        // slow for large numbers despite the O(n^2) division underneath.
+        let mut chunks = Vec::new();
+        let mut remaining = self.clone();
+        let ten_to_nine = Magnitude::from_u64(1_000_000_000);
+        while !remaining.is_zero() {
+            let (quotient, remainder) = remaining.divmod(&ten_to_nine).expect("divisor is nonzero");
+            chunks.push(remainder.to_u64().expect("< 10^9 fits in u64") as u32);
+            remaining = quotient;
+        }
+        write!(formatter, "{}", chunks.pop().unwrap_or(0))?;
+        for chunk in chunks.into_iter().rev() {
+            write!(formatter, "{chunk:09}")?;
+        }
+        Ok(())
+    }
+}
+
+/// An arbitrary-precision signed integer: sign plus magnitude. Zero is
+/// always represented with `negative: false` so that `PartialEq`/`Eq` (both
+/// derived) and `Magnitude`'s empty-vec zero stay a single canonical form —
+/// there's no separate "negative zero" this type could accidentally produce.
+/// Ціле число довільної точності зі знаком: знак плюс величина. Нуль
+/// завжди представлений з `negative: false`, тож `PartialEq`/`Eq` (обидва
+/// derived) і порожній-vec нуль `Magnitude` лишаються єдиною канонічною
+/// формою — немає окремого "від'ємного нуля", який цей тип міг би
+/// випадково виробити.
+/// Eine Ganzzahl beliebiger Genauigkeit mit Vorzeichen: Vorzeichen plus
+/// Größe. Null wird immer mit `negative: false` dargestellt, sodass
+/// `PartialEq`/`Eq` (beide derived) und `Magnitude`s leerer-Vec-Null eine
+/// einzige kanonische Form bleiben — es gibt keine separate "negative
+/// Null", die dieser Typ versehentlich erzeugen könnte.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BigInt {
+    negative: bool,
+    magnitude: Magnitude,
+}
+
+impl BigInt {
+    pub fn from_i64(value: i64) -> Self {
+        BigInt {
+            negative: value < 0,
+            magnitude: Magnitude::from_u64(value.unsigned_abs()),
+        }
+    }
+
+    pub fn zero() -> Self {
+        BigInt {
+            negative: false,
+            magnitude: Magnitude::ZERO,
+        }
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.magnitude.is_zero()
+    }
+
+    pub fn is_negative(&self) -> bool {
+        self.negative
+    }
+
+    fn normalized(negative: bool, magnitude: Magnitude) -> Self {
+        let is_zero = magnitude.is_zero();
+        BigInt {
+            negative: negative && !is_zero,
+            magnitude,
+        }
+    }
+
+    pub fn neg(&self) -> Self {
+        Self::normalized(!self.negative, self.magnitude.clone())
+    }
+
+    pub fn abs(&self) -> Self {
+        Self::normalized(false, self.magnitude.clone())
+    }
+
+    pub fn add(&self, other: &Self) -> Self {
+        if self.negative == other.negative {
+            Self::normalized(self.negative, self.magnitude.add(&other.magnitude))
+        } else {
+            match self.magnitude.cmp(&other.magnitude) {
+                Ordering::Equal => Self::zero(),
+                Ordering::Greater => {
+                    Self::normalized(self.negative, self.magnitude.sub(&other.magnitude))
+                }
+                Ordering::Less => {
+                    Self::normalized(other.negative, other.magnitude.sub(&self.magnitude))
+                }
+            }
+        }
+    }
+
+    pub fn sub(&self, other: &Self) -> Self {
+        self.add(&other.neg())
+    }
+
+    pub fn mul(&self, other: &Self) -> Self {
+        Self::normalized(self.negative != other.negative, self.magnitude.mul(&other.magnitude))
+    }
+
+    /// Truncating division (remainder takes the dividend's sign, same as
+    /// Rust's own `//%` on integers) — the only caller, `Rational`'s GCD
+    /// reduction and exact-division-by-gcd, always works with either
+    /// non-negative operands or a remainder it discards, so the rounding
+    /// direction on negative operands is never actually observed.
+    /// Ділення з відкиданням (залишок бере знак діленого, так само як
+    /// вбудовані `/`/`%` Rust для цілих) — єдиний виклик, скорочення GCD і
+    /// точне ділення на gcd у `Rational`, завжди працює або з невід'ємними
+    /// операндами, або з залишком, який відкидається, тож напрям
+    /// округлення для від'ємних операндів насправді ніколи не
+    /// спостерігається.
+    /// Abschneidende Division (Rest übernimmt das Vorzeichen des
+    /// Dividenden, genau wie Rusts eigene `/`/`%` bei Ganzzahlen) — der
+    /// einzige Aufrufer, die GGT-Reduktion und exakte Division durch den
+    /// GGT in `Rational`, arbeitet immer entweder mit nichtnegativen
+    /// Operanden oder einem verworfenen Rest, daher wird die
+    /// Rundungsrichtung bei negativen Operanden nie tatsächlich
+    /// beobachtet.
+    pub fn div_rem(&self, other: &Self) -> Option<(Self, Self)> {
+        let (quotient, remainder) = self.magnitude.divmod(&other.magnitude)?;
+        Some((
+            Self::normalized(self.negative != other.negative, quotient),
+            Self::normalized(self.negative, remainder),
+        ))
+    }
+
+    pub fn cmp(&self, other: &Self) -> Ordering {
+        match (self.negative, other.negative) {
+            (false, true) => Ordering::Greater,
+            (true, false) => Ordering::Less,
+            (false, false) => self.magnitude.cmp(&other.magnitude),
+            (true, true) => other.magnitude.cmp(&self.magnitude),
+        }
+    }
+
+    pub fn to_f64(&self) -> f64 {
+        let value = self.magnitude.to_f64();
+        if self.negative {
+            -value
+        } else {
+            value
+        }
+    }
+
+    pub fn to_i64(&self) -> Option<i64> {
+        let magnitude = self.magnitude.to_u64()?;
+        if self.negative {
+            (magnitude <= i64::MAX as u64 + 1).then(|| {
+                if magnitude == i64::MAX as u64 + 1 {
+                    i64::MIN
+                } else {
+                    -(magnitude as i64)
+                }
+            })
+        } else {
+            i64::try_from(magnitude).ok()
+        }
+    }
+
+    /// Euclidean algorithm via `div_rem`; both inputs are used through
+    /// their absolute value, so the result is always non-negative,
+    /// matching the convention `Rational`'s reduction step expects.
+    /// Алгоритм Евкліда через `div_rem`; обидва входи використовуються
+    /// через свій модуль, тож результат завжди невід'ємний, відповідно до
+    /// конвенції, якої очікує крок скорочення `Rational`.
+    /// Euklidischer Algorithmus über `div_rem`; beide Eingaben werden über
+    /// ihren Absolutwert verwendet, daher ist das Ergebnis immer
+    /// nichtnegativ, passend zur Konvention, die der Reduktionsschritt von
+    /// `Rational` erwartet.
+    pub fn gcd(&self, other: &Self) -> Self {
+        let mut a = self.abs();
+        let mut b = other.abs();
+        while !b.is_zero() {
+            let (_, remainder) = a.div_rem(&b).expect("b is checked nonzero by the loop condition");
+            a = b;
+            b = remainder;
+        }
+        a
+    }
+}
+
+impl FromStr for BigInt {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let (negative, digits) = match text.strip_prefix('-') {
+            Some(rest) => (true, rest),
+            None => (false, text.strip_prefix('+').unwrap_or(text)),
+        };
+        if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+            return Err(());
+        }
+        let mut magnitude = Magnitude::ZERO;
+        let ten = Magnitude::from_u64(10);
+        for byte in digits.bytes() {
+            magnitude = magnitude.mul(&ten).add(&Magnitude::from_u64(u64::from(byte - b'0')));
+        }
+        Ok(BigInt::normalized(negative, magnitude))
+    }
+}
+
+impl fmt::Display for BigInt {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.negative {
+            write!(formatter, "-")?;
+        }
+        write!(formatter, "{}", self.magnitude)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_sub_mul_match_i64_for_small_values() {
+        let a = BigInt::from_i64(123_456_789);
+        let b = BigInt::from_i64(-987_654_321);
+        assert_eq!(a.add(&b).to_i64(), Some(123_456_789 - 987_654_321));
+        assert_eq!(a.sub(&b).to_i64(), Some(123_456_789 + 987_654_321));
+        assert_eq!(a.mul(&b).to_i64(), Some(123_456_789i64 * -987_654_321));
+    }
+
+    #[test]
+    fn multiplication_exceeds_i64_without_overflowing() {
+        let big = BigInt::from_i64(i64::MAX).mul(&BigInt::from_i64(i64::MAX));
+        assert_eq!(big.to_i64(), None);
+        assert_eq!(big.to_string(), "85070591730234615847396907784232501249");
+    }
+
+    #[test]
+    fn division_and_remainder_match_i64_semantics() {
+        let a = BigInt::from_i64(1_000_000_007);
+        let b = BigInt::from_i64(97);
+        let (q, r) = a.div_rem(&b).unwrap();
+        assert_eq!(q.to_i64(), Some(1_000_000_007 / 97));
+        assert_eq!(r.to_i64(), Some(1_000_000_007 % 97));
+    }
+
+    #[test]
+    fn division_by_zero_returns_none() {
+        assert!(BigInt::from_i64(5).div_rem(&BigInt::zero()).is_none());
+    }
+
+    #[test]
+    fn gcd_matches_known_values() {
+        assert_eq!(
+            BigInt::from_i64(48).gcd(&BigInt::from_i64(18)).to_i64(),
+            Some(6)
+        );
+        assert_eq!(
+            BigInt::from_i64(0).gcd(&BigInt::from_i64(5)).to_i64(),
+            Some(5)
+        );
+    }
+
+    #[test]
+    fn from_str_round_trips_through_display() {
+        let huge = "123456789012345678901234567890";
+        assert_eq!(BigInt::from_str(huge).unwrap().to_string(), huge);
+        let negative = "-42";
+        assert_eq!(BigInt::from_str(negative).unwrap().to_string(), negative);
+        assert!(BigInt::from_str("").is_err());
+        assert!(BigInt::from_str("12a").is_err());
+    }
+
+    #[test]
+    fn zero_is_never_represented_as_negative() {
+        let a = BigInt::from_i64(5);
+        let b = BigInt::from_i64(5);
+        assert_eq!(a.sub(&b), BigInt::zero());
+        assert!(!a.sub(&b).is_negative());
+    }
+
+    #[test]
+    fn ordering_accounts_for_sign_and_magnitude() {
+        assert_eq!(BigInt::from_i64(-5).cmp(&BigInt::from_i64(3)), Ordering::Less);
+        assert_eq!(BigInt::from_i64(5).cmp(&BigInt::from_i64(3)), Ordering::Greater);
+        assert_eq!(
+            BigInt::from_i64(-5).cmp(&BigInt::from_i64(-3)),
+            Ordering::Less
+        );
+    }
+}

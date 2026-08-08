@@ -174,7 +174,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
         Value::Bool(true) => ExprKind::Symbol("t".into()),
         Value::Bool(false) => ExprKind::List(Rc::new([])),
         Value::Number(number) => ExprKind::Number(*number),
-        Value::Rational(rational) => ExprKind::Rational(*rational),
+        Value::Rational(rational) => ExprKind::Rational(rational.clone()),
         Value::String(val) => ExprKind::String(val.clone()),
         Value::Symbol(symbol) => ExprKind::Symbol(symbol.clone()),
         Value::Pair(_, _) => {

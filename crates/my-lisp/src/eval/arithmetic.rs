@@ -47,7 +47,7 @@ pub(super) fn evaluate_arithmetic(
     }
 
     let exact = values
-        .into_iter()
+        .iter()
         .map(Numeric::into_exact)
         .collect::<Vec<_>>();
     let result = match operator {
@@ -57,47 +57,72 @@ pub(super) fn evaluate_arithmetic(
         "*" => exact
             .into_iter()
             .try_fold(Rational::integer(1), Rational::checked_mul),
-        "-" if exact.len() == 1 => exact[0].checked_neg(),
+        "-" if exact.len() == 1 => exact[0].clone().checked_neg(),
         "-" => exact[1..]
             .iter()
-            .try_fold(exact[0], |result, value| result.checked_sub(*value)),
+            .try_fold(exact[0].clone(), |result, value| result.checked_sub(value.clone())),
         _ => unreachable!("known arithmetic operator"),
     }
     .ok_or_else(|| arithmetic_overflow(span))?;
     Ok(exact_value(result))
 }
 
-#[derive(Clone, Copy)]
+// `Rational` wraps a heap-allocated `BigRational` (arbitrary precision), so
+// it isn't `Copy` — neither is `Numeric` anymore. Both accessor methods
+// below take `&self` and clone on the way out where an owned `Rational` is
+// needed, rather than moving out of borrowed slice/vec elements.
+// `Rational` огортає heap-allocated `BigRational` (довільна точність), тож
+// не `Copy` — так само й `Numeric`. Обидва методи-акцесори нижче беруть
+// `&self` і клонують на виході там, де потрібен власний `Rational`, замість
+// переміщення з позичених елементів slice/vec.
+// `Rational` umschließt ein heap-allokiertes `BigRational` (beliebige
+// Genauigkeit), daher ist es nicht `Copy` — `Numeric` auch nicht mehr.
+// Beide Zugriffsmethoden unten nehmen `&self` und klonen beim Herausgeben,
+// wo ein eigener `Rational` gebraucht wird, statt aus geliehenen
+// Slice-/Vec-Elementen herauszubewegen.
+#[derive(Clone)]
 enum Numeric {
     Exact(Rational),
     Inexact(f64),
 }
 
 impl Numeric {
-    fn as_f64(self) -> f64 {
+    fn as_f64(&self) -> f64 {
         match self {
             Self::Exact(value) => value.as_f64(),
-            Self::Inexact(value) => value,
+            Self::Inexact(value) => *value,
         }
     }
 
-    fn into_exact(self) -> Rational {
+    fn into_exact(&self) -> Rational {
         match self {
-            Self::Exact(value) => value,
+            Self::Exact(value) => value.clone(),
             Self::Inexact(_) => unreachable!("inexact operands handled before exact arithmetic"),
         }
     }
 }
 
 fn numeric_value(value: Value, span: Span) -> Result<Numeric, LanguageError> {
-    match value {
-        Value::Rational(value) => Ok(Numeric::Exact(value)),
-        Value::Number(value)
-            if value.fract() == 0.0 && value >= i64::MIN as f64 && value <= i64::MAX as f64 =>
+    // Matches on `&value`, not `value`, and clones the `Rational` out:
+    // `Value` has a custom `Drop` impl (iterative, for stack-safe deep-list
+    // drop — see `value.rs`), which forbids partially moving a field out of
+    // a match on it by value.
+    // Матчить на `&value`, не `value`, і клонує `Rational`: `Value` має
+    // власний `Drop` (ітеративний, для stack-safe drop глибоких списків —
+    // див. `value.rs`), який забороняє частково переміщувати поле з
+    // `match` за значенням.
+    // Matcht auf `&value`, nicht `value`, und klont das `Rational` heraus:
+    // `Value` hat einen eigenen `Drop`-Impl (iterativ, für stack-sicheres
+    // Droppen tiefer Listen — siehe `value.rs`), der ein teilweises
+    // Herausbewegen eines Feldes aus einem `match` nach Wert verbietet.
+    match &value {
+        Value::Rational(rational) => Ok(Numeric::Exact(rational.clone())),
+        Value::Number(number)
+            if number.fract() == 0.0 && *number >= i64::MIN as f64 && *number <= i64::MAX as f64 =>
         {
-            Ok(Numeric::Exact(Rational::integer(value as i64)))
+            Ok(Numeric::Exact(Rational::integer(*number as i64)))
         }
-        Value::Number(value) => Ok(Numeric::Inexact(value)),
+        Value::Number(number) => Ok(Numeric::Inexact(*number)),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
             "arithmetic expects numbers · арифметика очікує числа · Arithmetik erwartet Zahlen",
@@ -107,10 +132,9 @@ fn numeric_value(value: Value, span: Span) -> Result<Numeric, LanguageError> {
 }
 
 fn exact_value(value: Rational) -> Value {
-    if value.denominator == 1 {
-        Value::Number(value.numerator as f64)
-    } else {
-        Value::Rational(value)
+    match value.as_precise_i64() {
+        Some(n) => Value::Number(n as f64),
+        None => Value::Rational(value),
     }
 }
 
@@ -136,10 +160,12 @@ pub(super) fn evaluate_division(
     }
     let mut values = arguments.iter().map(|argument| {
         let value = evaluate(argument, environment)?;
-        match value {
-            Value::Rational(value) => Ok(value),
-            Value::Number(value) if value.fract() == 0.0 && value >= i64::MIN as f64 && value <= i64::MAX as f64 => {
-                Ok(Rational::integer(value as i64))
+        // Matches on `&value`: see the comment on the same pattern in
+        // `numeric_value` above.
+        match &value {
+            Value::Rational(rational) => Ok(rational.clone()),
+            Value::Number(number) if number.fract() == 0.0 && *number >= i64::MIN as f64 && *number <= i64::MAX as f64 => {
+                Ok(Rational::integer(*number as i64))
             }
             _ => Err(LanguageError::new(
                 ErrorKind::Type,

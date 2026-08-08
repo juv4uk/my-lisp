@@ -6,17 +6,17 @@ This repository has one test layer: the four Rust crates under `crates/`, run wi
 
 | Crate | Suite | Tests | Covers | Result (last run) |
 |---|---|---:|---|---|
-| `my-lisp` | unit tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`, `src/error.rs`) | 27 | reader/parser edge cases, lexical-scope isolation, single-pass evaluation, macro expansion, char-based line/column and caret rendering for structured errors | ok |
-| `my-lisp` | `tests/mccarthy.rs` | 26 | the seven McCarthy primitives, exact/inexact arithmetic, `<`/`>`/`=` comparison chaining, `print`'s session-wide output transcript (including through closures), `read`/`eval` closing the read-eval loop by hand, lambda semantics, structured errors, `lib/core.my` list utilities (`length`, `reverse`, `append`, `map`, `filter`, `reduce`), `let`/`let*`, `equal?` | ok |
+| `my-lisp` | unit tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`, `src/error.rs`, `src/bignum.rs`) | 35 | reader/parser edge cases, lexical-scope isolation, single-pass evaluation, macro expansion, char-based line/column and caret rendering for structured errors, the hand-rolled arbitrary-precision `BigInt` (add/sub/mul/div/gcd/ordering/decimal parsing and formatting) backing `Rational` | ok |
+| `my-lisp` | `tests/mccarthy.rs` | 27 | the seven McCarthy primitives, exact/inexact arithmetic, `<`/`>`/`=` comparison chaining, `print`'s session-wide output transcript (including through closures), `read`/`eval` closing the read-eval loop by hand, lambda semantics, structured errors, `lib/core.my` list utilities (`length`, `reverse`, `append`, `map`, `filter`, `reduce`), `let`/`let*`, `equal?`, exact arithmetic past `i64` range (factorial of 30, computed exactly) | ok |
 | `my-lisp` | `tests/stack_safety.rs` | 5 | tail recursion and deep list clone/drop use constant Rust stack, `lib/core.my`'s `append`/`filter`/`map`/`length` stay stack-safe on a 100,000-element list | ok |
 | `my-lisp-cli` | `tests/cli.rs` | 10 | the compiled binary end-to-end: `--version`/`--help`, file execution, parse/eval error exit codes, missing-file handling, `lib/core.my` preloading, REPL history persisting to `~/.my-lisp-history` across separate sessions, `(read)` reading one line from real piped stdin in file mode | ok |
 | `my-lisp` | `tests/meta_eval.rs` | 9 | `lib/meta-eval.my`, the metacircular evaluator: self-evaluation, `quote`, arithmetic/list-primitive dispatch, `cond`, lambda application (single- and multi-expression bodies), closures capturing free variables from a passed-in env, higher-order functions | ok |
 | `my-lisp` | `tests/unify.rs` | 9 | `lib/unify.my`, the unification primitive: atom matching, variable binding/resolution, structural (compound-term) unification, mismatch failure, transitive chained-variable resolution, same-variable unification creating no binding, full-query `apply-subst` | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | literate-Markdown source-offset mapping | ok |
 | `my-lisp-wasm` | unit test (`src/lib.rs`) | 1 | the WASM adapter produces the same exact/single-pass evaluation struct as the native core | ok |
-| **Total** | | **91** | | **91 passed, 0 failed, 0 ignored** |
+| **Total** | | **100** | | **100 passed, 0 failed, 0 ignored** |
 
-The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 26 tests, not counted separately.
+The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 27 tests, not counted separately.
 
 ```bash
 cargo test --workspace
@@ -30,17 +30,17 @@ Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignor
 
 | Крейт | Набір | Тестів | Покриває | Результат (останній запуск) |
 |---|---|---:|---|---|
-| `my-lisp` | unit-тести (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`, `src/error.rs`) | 27 | межові випадки reader/parser, ізоляцію лексичного скоупу, однопрохідне обчислення, розкриття макросів, char-based рядок/стовпець і рендер "^" для структурованих помилок | ok |
-| `my-lisp` | `tests/mccarthy.rs` | 26 | сім примітивів Маккарті, точну/неточну арифметику, ланцюгове порівняння `<`/`>`/`=`, транскрипт виводу `print`, спільний на сесію (включно через замикання), `read`/`eval`, що замикають read-eval цикл вручну, семантику lambda, структуровані помилки, list-утиліти `lib/core.my` (`length`, `reverse`, `append`, `map`, `filter`, `reduce`), `let`/`let*`, `equal?` | ok |
+| `my-lisp` | unit-тести (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`, `src/error.rs`, `src/bignum.rs`) | 35 | межові випадки reader/parser, ізоляцію лексичного скоупу, однопрохідне обчислення, розкриття макросів, char-based рядок/стовпець і рендер "^" для структурованих помилок, власноруч написаний `BigInt` довільної точності (add/sub/mul/div/gcd/порівняння/парсинг і форматування десяткового рядка), що лежить під `Rational` | ok |
+| `my-lisp` | `tests/mccarthy.rs` | 27 | сім примітивів Маккарті, точну/неточну арифметику, ланцюгове порівняння `<`/`>`/`=`, транскрипт виводу `print`, спільний на сесію (включно через замикання), `read`/`eval`, що замикають read-eval цикл вручну, семантику lambda, структуровані помилки, list-утиліти `lib/core.my` (`length`, `reverse`, `append`, `map`, `filter`, `reduce`), `let`/`let*`, `equal?`, точну арифметику за межею `i64` (факторіал 30, обчислений точно) | ok |
 | `my-lisp` | `tests/stack_safety.rs` | 5 | хвостову рекурсію та clone/drop глибоких списків зі сталим Rust-стеком, `append`/`filter`/`map`/`length` з `lib/core.my` лишаються stack-safe на списку зі 100 000 елементів | ok |
 | `my-lisp-cli` | `tests/cli.rs` | 10 | скомпільований бінарник наскрізно: `--version`/`--help`, виконання файлу, коди виходу при помилках парсингу/обчислення, відсутній файл, попереднє завантаження `lib/core.my`, збереження історії REPL у `~/.my-lisp-history` між окремими сесіями, `(read)` читає один рядок зі справжнього переданого через pipe stdin у файловому режимі | ok |
 | `my-lisp` | `tests/meta_eval.rs` | 9 | `lib/meta-eval.my`, метациркулярний evaluator: self-evaluation, `quote`, диспетчеризацію арифметики/list-примітивів, `cond`, застосування lambda (одно- й багатовиразові тіла), замикання, що захоплюють вільні змінні з переданого env, функції вищого порядку | ok |
 | `my-lisp` | `tests/unify.rs` | 9 | `lib/unify.my`, примітив unification: зіставлення атомів, зв'язування/розв'язування змінних, структурну (composite-term) унікацію, провал при невідповідності, транзитивне розв'язування ланцюжка змінних, унікацію змінної з собою без зв'язку, повний `apply-subst` запиту | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | зіставлення зміщень початкового коду literate-Markdown | ok |
 | `my-lisp-wasm` | unit-тест (`src/lib.rs`) | 1 | WASM-адаптер видає ту саму точну/однопрохідну структуру обчислення, що й нативне ядро | ok |
-| **Разом** | | **91** | | **91 пройдено, 0 провалів, 0 пропущено** |
+| **Разом** | | **100** | | **100 пройдено, 0 провалів, 0 пропущено** |
 
-Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 26 тестів набору, окремо не рахується.
+Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 27 тестів набору, окремо не рахується.
 
 ```bash
 cargo test --workspace
@@ -54,17 +54,17 @@ Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausg
 
 | Crate | Suite | Tests | Deckt ab | Ergebnis (letzter Lauf) |
 |---|---|---:|---|---|
-| `my-lisp` | Unit-Tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`, `src/error.rs`) | 27 | Reader-/Parser-Grenzfälle, Isolation des lexikalischen Scopes, Single-Pass-Auswertung, Makro-Expansion, zeichenbasierte Zeile/Spalte und "^"-Rendering für strukturierte Fehler | ok |
-| `my-lisp` | `tests/mccarthy.rs` | 26 | die sieben McCarthy-Primitive, exakte/inexakte Arithmetik, verkettete Vergleiche `<`/`>`/`=`, `print`s sitzungsweites Ausgabetranskript (auch durch Closures hindurch), `read`/`eval`, die die Read-Eval-Schleife von Hand schließen, Lambda-Semantik, strukturierte Fehler, `lib/core.my`-Listenwerkzeuge (`length`, `reverse`, `append`, `map`, `filter`, `reduce`), `let`/`let*`, `equal?` | ok |
+| `my-lisp` | Unit-Tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`, `src/error.rs`, `src/bignum.rs`) | 35 | Reader-/Parser-Grenzfälle, Isolation des lexikalischen Scopes, Single-Pass-Auswertung, Makro-Expansion, zeichenbasierte Zeile/Spalte und "^"-Rendering für strukturierte Fehler, das von Hand geschriebene beliebig genaue `BigInt` (add/sub/mul/div/ggT/Ordnung/Dezimal-Parsing und -Formatierung) hinter `Rational` | ok |
+| `my-lisp` | `tests/mccarthy.rs` | 27 | die sieben McCarthy-Primitive, exakte/inexakte Arithmetik, verkettete Vergleiche `<`/`>`/`=`, `print`s sitzungsweites Ausgabetranskript (auch durch Closures hindurch), `read`/`eval`, die die Read-Eval-Schleife von Hand schließen, Lambda-Semantik, strukturierte Fehler, `lib/core.my`-Listenwerkzeuge (`length`, `reverse`, `append`, `map`, `filter`, `reduce`), `let`/`let*`, `equal?`, exakte Arithmetik jenseits von `i64` (Fakultät von 30, exakt berechnet) | ok |
 | `my-lisp` | `tests/stack_safety.rs` | 5 | Tail-Rekursion und Clone/Drop tiefer Listen mit konstantem Rust-Stack, `append`/`filter`/`map`/`length` aus `lib/core.my` bleiben stack-sicher bei einer 100.000-Elemente-Liste | ok |
 | `my-lisp-cli` | `tests/cli.rs` | 10 | die kompilierte Binärdatei durchgängig: `--version`/`--help`, Dateiausführung, Exit-Codes bei Parse-/Eval-Fehlern, fehlende Datei, Vorladen von `lib/core.my`, REPL-Verlauf, der über getrennte Sitzungen in `~/.my-lisp-history` erhalten bleibt, `(read)`, das im Dateimodus eine Zeile aus echtem, per Pipe übergebenem stdin liest | ok |
 | `my-lisp` | `tests/meta_eval.rs` | 9 | `lib/meta-eval.my`, der metazirkuläre Evaluator: Selbstauswertung, `quote`, Dispatch von Arithmetik-/Listen-Primitiven, `cond`, Lambda-Anwendung (ein- und mehrausdrucksweise Rümpfe), Closures, die freie Variablen aus einer übergebenen env erfassen, Funktionen höherer Ordnung | ok |
 | `my-lisp` | `tests/unify.rs` | 9 | `lib/unify.my`, das Unifikations-Primitiv: Atom-Abgleich, Variablenbindung/-auflösung, strukturelle (zusammengesetzte) Unifikation, Fehlschlag bei Nichtübereinstimmung, transitive Auflösung verketteter Variablen, Unifikation einer Variable mit sich selbst ohne Bindung, vollständiges `apply-subst` einer Anfrage | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | Offset-Zuordnung von literate-Markdown-Quellcode | ok |
 | `my-lisp-wasm` | Unit-Test (`src/lib.rs`) | 1 | der WASM-Adapter liefert dieselbe exakte/Single-Pass-Auswertungsstruktur wie der native Kern | ok |
-| **Gesamt** | | **91** | | **91 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
+| **Gesamt** | | **100** | | **100 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
 
-Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 26 Tests dieser Suite geprüft, nicht separat gezählt.
+Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 27 Tests dieser Suite geprüft, nicht separat gezählt.
 
 ```bash
 cargo test --workspace

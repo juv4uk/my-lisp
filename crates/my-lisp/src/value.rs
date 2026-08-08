@@ -1,51 +1,94 @@
+use crate::bignum::BigInt;
 use crate::{Environment, Expr};
-use std::{fmt, rc::Rc};
+use std::{cmp::Ordering, fmt, rc::Rc, str::FromStr};
 
-/// A reduced exact fraction owned by the language runtime.
-/// Скорочений точний дріб, яким володіє runtime мови.
-/// Ein gekürzter exakter Bruch im Besitz der Sprachlaufzeit.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A reduced exact fraction owned by the language runtime, backed by the
+/// hand-rolled `BigInt` in `bignum.rs` — "exact" has no numeric ceiling
+/// short of available memory. Rust does this low-level numeric algorithm,
+/// the same way it already did the bounded `i64` version this replaced;
+/// my-lisp itself never grows an arithmetic primitive (see
+/// docs/language-core.md). `denominator` is always positive and the
+/// fraction always reduced — the invariant `from_big` maintains on every
+/// construction path.
+/// Скорочений точний дріб, яким володіє runtime мови, на основі власноруч
+/// написаного `BigInt` у `bignum.rs` — "точний" не має числової стелі,
+/// окрім доступної пам'яті. Rust робить цей низькорівневий числовий
+/// алгоритм так само, як уже робив обмежену `i64`-версію, яку це замінило;
+/// сама my-lisp ніколи не розширює арифметичний примітив (див.
+/// docs/language-core.md). `denominator` завжди додатний, а дріб завжди
+/// скорочений — інваріант, який `from_big` підтримує на кожному шляху
+/// побудови.
+/// Ein gekürzter exakter Bruch im Besitz der Sprachlaufzeit, basierend auf
+/// dem von Hand geschriebenen `BigInt` in `bignum.rs` — "exakt" hat keine
+/// numerische Obergrenze außer dem verfügbaren Speicher. Rust erledigt
+/// diesen Low-Level-Zahlenalgorithmus, genauso wie es bereits die
+/// begrenzte `i64`-Version tat, die dies ersetzt; my-lisp selbst erweitert
+/// nie ein arithmetisches Primitiv (siehe docs/language-core.md).
+/// `denominator` ist immer positiv und der Bruch immer gekürzt — die
+/// Invariante, die `from_big` bei jedem Konstruktionspfad aufrechterhält.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rational {
-    pub numerator: i64,
-    pub denominator: i64,
+    numerator: BigInt,
+    denominator: BigInt,
 }
 
-/// Denominators are always positive (see `from_i128`), so comparing two
-/// fractions by cross-multiplying is exact — no float involved, no rounding.
-/// Знаменники завжди додатні (див. `from_i128`), тож порівняння двох дробів
-/// хрест-навхрест — точне: без float, без округлення.
-/// Nenner sind immer positiv (siehe `from_i128`), daher ist der Vergleich
-/// zweier Brüche per Kreuzmultiplikation exakt — kein Float, keine Rundung.
 impl PartialOrd for Rational {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for Rational {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        let left = i128::from(self.numerator) * i128::from(other.denominator);
-        let right = i128::from(other.numerator) * i128::from(self.denominator);
-        left.cmp(&right)
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Denominators are always positive (see `from_big`), so comparing by
+        // cross-multiplication is exact — no float involved, no rounding.
+        // Знаменники завжди додатні (див. `from_big`), тож порівняння
+        // хрест-навхрест точне — без float, без округлення.
+        // Nenner sind immer positiv (siehe `from_big`), daher ist der
+        // Vergleich per Kreuzmultiplikation exakt — kein Float, keine Rundung.
+        self.numerator
+            .mul(&other.denominator)
+            .cmp(&other.numerator.mul(&self.denominator))
     }
 }
 
 impl Rational {
     pub fn new(numerator: i64, denominator: i64) -> Option<Self> {
-        Self::from_i128(i128::from(numerator), i128::from(denominator))
+        Self::from_big(BigInt::from_i64(numerator), BigInt::from_i64(denominator))
     }
 
-    fn from_i128(mut numerator: i128, mut denominator: i128) -> Option<Self> {
-        if denominator == 0 {
+    /// Parses a `numerator/denominator` literal directly as arbitrary-precision
+    /// integers, for source tokens too large for `i64` (see `parser.rs`).
+    /// Парсить літерал `чисельник/знаменник` напряму як цілі довільної
+    /// точності, для токенів коду, завеликих для `i64` (див. `parser.rs`).
+    /// Parst ein `Zähler/Nenner`-Literal direkt als beliebig genaue Ganzzahlen,
+    /// für Quelltoken, die zu groß für `i64` sind (siehe `parser.rs`).
+    pub fn from_literal(numerator: &str, denominator: &str) -> Option<Self> {
+        let numerator = BigInt::from_str(numerator).ok()?;
+        let denominator = BigInt::from_str(denominator).ok()?;
+        Self::from_big(numerator, denominator)
+    }
+
+    fn from_big(numerator: BigInt, denominator: BigInt) -> Option<Self> {
+        if denominator.is_zero() {
             return None;
         }
-        if denominator < 0 {
-            numerator = -numerator;
-            denominator = -denominator;
+        let (numerator, denominator) = if denominator.is_negative() {
+            (numerator.neg(), denominator.neg())
+        } else {
+            (numerator, denominator)
+        };
+        let divisor = numerator.gcd(&denominator);
+        if divisor.is_zero() {
+            // Only when numerator is also zero (gcd(0, d) = d otherwise);
+            // 0/d reduces to the canonical 0/1 without a division step.
+            return Some(Self {
+                numerator: BigInt::zero(),
+                denominator: BigInt::from_i64(1),
+            });
         }
-        let divisor = gcd(numerator.unsigned_abs(), denominator as u128) as i128;
-        let numerator = i64::try_from(numerator / divisor).ok()?;
-        let denominator = i64::try_from(denominator / divisor).ok()?;
+        let (numerator, _) = numerator.div_rem(&divisor)?;
+        let (denominator, _) = denominator.div_rem(&divisor)?;
         Some(Self {
             numerator,
             denominator,
@@ -54,54 +97,99 @@ impl Rational {
 
     pub fn integer(value: i64) -> Self {
         Self {
-            numerator: value,
-            denominator: 1,
+            numerator: BigInt::from_i64(value),
+            denominator: BigInt::from_i64(1),
         }
     }
 
     pub fn checked_div(self, divisor: Self) -> Option<Self> {
-        if divisor.numerator == 0 {
+        if divisor.numerator.is_zero() {
             return None;
         }
-        let numerator = i128::from(self.numerator) * i128::from(divisor.denominator);
-        let denominator = i128::from(self.denominator) * i128::from(divisor.numerator);
-        Self::from_i128(numerator, denominator)
+        Self::from_big(
+            self.numerator.mul(&divisor.denominator),
+            self.denominator.mul(&divisor.numerator),
+        )
     }
 
     pub fn checked_add(self, other: Self) -> Option<Self> {
-        let numerator = i128::from(self.numerator) * i128::from(other.denominator)
-            + i128::from(other.numerator) * i128::from(self.denominator);
-        let denominator = i128::from(self.denominator) * i128::from(other.denominator);
-        Self::from_i128(numerator, denominator)
+        let numerator = self
+            .numerator
+            .mul(&other.denominator)
+            .add(&other.numerator.mul(&self.denominator));
+        Self::from_big(numerator, self.denominator.mul(&other.denominator))
     }
 
     pub fn checked_sub(self, other: Self) -> Option<Self> {
-        let numerator = i128::from(self.numerator) * i128::from(other.denominator)
-            - i128::from(other.numerator) * i128::from(self.denominator);
-        let denominator = i128::from(self.denominator) * i128::from(other.denominator);
-        Self::from_i128(numerator, denominator)
+        let numerator = self
+            .numerator
+            .mul(&other.denominator)
+            .sub(&other.numerator.mul(&self.denominator));
+        Self::from_big(numerator, self.denominator.mul(&other.denominator))
     }
 
     pub fn checked_mul(self, other: Self) -> Option<Self> {
-        let numerator = i128::from(self.numerator) * i128::from(other.numerator);
-        let denominator = i128::from(self.denominator) * i128::from(other.denominator);
-        Self::from_i128(numerator, denominator)
+        Self::from_big(
+            self.numerator.mul(&other.numerator),
+            self.denominator.mul(&other.denominator),
+        )
     }
 
     pub fn checked_neg(self) -> Option<Self> {
-        Self::from_i128(-i128::from(self.numerator), i128::from(self.denominator))
+        Some(Self {
+            numerator: self.numerator.neg(),
+            denominator: self.denominator,
+        })
     }
 
-    pub fn as_f64(self) -> f64 {
-        self.numerator as f64 / self.denominator as f64
+    pub fn as_f64(&self) -> f64 {
+        self.numerator.to_f64() / self.denominator.to_f64()
+    }
+
+    pub fn is_integer(&self) -> bool {
+        self.denominator.to_i64() == Some(1)
+    }
+
+    /// `Some(n)` only if this exact value is a whole number *and* representable
+    /// as an `i64` within `f64`'s 2^53 exact-integer range — the one case
+    /// `crates/my-lisp/src/eval/arithmetic.rs`'s `exact_value` may cosmetically
+    /// print through `Value::Number` instead of `Value::Rational` without ever
+    /// losing precision doing so. Anything bigger stays `Value::Rational` (see
+    /// `Display`, which omits `/1` for whole numbers) rather than risk exactly
+    /// the silent-approximation the exact-number principle forbids.
+    /// `Some(n)`, лише якщо це ціле значення *і* влазить в `i64` в межах
+    /// 2^53-діапазону точних цілих `f64` — єдиний випадок, коли `exact_value`
+    /// у `crates/my-lisp/src/eval/arithmetic.rs` може косметично друкувати
+    /// через `Value::Number` замість `Value::Rational`, не втрачаючи точність.
+    /// Усе більше лишається `Value::Rational` (див. `Display`, що пропускає
+    /// `/1` для цілих чисел), а не ризикує саме тим тихим наближенням, яке
+    /// забороняє принцип точних чисел.
+    /// `Some(n)` nur, wenn dieser exakte Wert eine ganze Zahl ist *und* als
+    /// `i64` innerhalb von `f64`s 2^53-Bereich exakter Ganzzahlen darstellbar
+    /// — der eine Fall, in dem `exact_value` in
+    /// `crates/my-lisp/src/eval/arithmetic.rs` kosmetisch über `Value::Number`
+    /// statt `Value::Rational` drucken darf, ohne dabei Genauigkeit zu
+    /// verlieren. Alles Größere bleibt `Value::Rational` (siehe `Display`,
+    /// das `/1` bei Ganzzahlen weglässt), statt genau die stille Approximation
+    /// zu riskieren, die das Prinzip exakter Zahlen verbietet.
+    pub fn as_precise_i64(&self) -> Option<i64> {
+        if !self.is_integer() {
+            return None;
+        }
+        const MAX_EXACT: i64 = 1 << 53;
+        let value = self.numerator.to_i64()?;
+        (-MAX_EXACT..=MAX_EXACT).contains(&value).then_some(value)
     }
 }
 
-fn gcd(mut left: u128, mut right: u128) -> u128 {
-    while right != 0 {
-        (left, right) = (right, left % right);
+impl fmt::Display for Rational {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_integer() {
+            write!(formatter, "{}", self.numerator)
+        } else {
+            write!(formatter, "{}/{}", self.numerator, self.denominator)
+        }
     }
-    left
 }
 
 /// A closure keeps executable forms together with their lexical environment.
@@ -180,9 +268,7 @@ impl fmt::Display for Value {
             Value::Bool(true) => write!(formatter, "t"),
             Value::Bool(false) => write!(formatter, "()"),
             Value::Number(number) => write!(formatter, "{number}"),
-            Value::Rational(number) => {
-                write!(formatter, "{}/{}", number.numerator, number.denominator)
-            }
+            Value::Rational(number) => write!(formatter, "{number}"),
             Value::String(value) => write!(formatter, "\"{value}\""),
             Value::Symbol(symbol) => write!(formatter, "{symbol}"),
             Value::Pair(_, _) => write_pair(formatter, self),

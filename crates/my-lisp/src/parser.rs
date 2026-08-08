@@ -134,13 +134,19 @@ impl Parser<'_> {
             self.bump();
         }
         let token = &self.source[start..self.cursor];
+        // `Rational::from_literal` parses arbitrary-precision numerator/denominator
+        // text directly (see bignum.rs) — a token like `123456789012345678901/2`,
+        // far too big for `i64`, is still an exact rational literal, not a symbol.
+        // `Rational::from_literal` парсить текст чисельника/знаменника довільної
+        // точності напряму (див. bignum.rs) — токен на кшталт
+        // `123456789012345678901/2`, завеликий для `i64`, усе одно точний
+        // раціональний літерал, не символ.
+        // `Rational::from_literal` parst Zähler-/Nenner-Text beliebiger Genauigkeit
+        // direkt (siehe bignum.rs) — ein Token wie `123456789012345678901/2`, viel
+        // zu groß für `i64`, ist weiterhin ein exaktes rationales Literal, kein Symbol.
         let kind = if let Some((num, den)) = token.split_once('/') {
-            if let (Ok(n), Ok(d)) = (num.parse::<i64>(), den.parse::<i64>()) {
-                if let Some(r) = crate::value::Rational::new(n, d) {
-                    ExprKind::Rational(r)
-                } else {
-                    ExprKind::Symbol(token.into())
-                }
+            if let Some(r) = crate::value::Rational::from_literal(num, den) {
+                ExprKind::Rational(r)
             } else {
                 token.parse::<f64>().map(ExprKind::Number).unwrap_or_else(|_| ExprKind::Symbol(token.into()))
             }
@@ -206,7 +212,7 @@ mod tests {
         let ExprKind::Rational(rational) = parse_one("5/336").kind else {
             panic!("expected a rational literal");
         };
-        assert_eq!((rational.numerator, rational.denominator), (5, 336));
+        assert_eq!(rational, crate::value::Rational::new(5, 336).unwrap());
     }
 
     #[test]
