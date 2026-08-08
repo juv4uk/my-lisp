@@ -45,12 +45,12 @@ fn clips_deffacts_becomes_zero_condition_clauses() {
 
 #[test]
 fn clips_import_skips_unsupported_forms_without_erroring() {
-    // deftemplate isn't supported (no step covers it) — a mixed file
+    // deffunction isn't supported (no step covers it) — a mixed file
     // still imports whatever it can, rather than failing the whole import.
     let source = r#"
         (clips-import '(
             (deffacts initial-facts (planet earth))
-            (deftemplate planet (slot name))
+            (deffunction square (?x) (* ?x ?x))
         ))
     "#;
     assert_eq!(eval_import(source), "(((planet earth)))");
@@ -163,6 +163,61 @@ fn clips_defrule_with_a_not_condition_imports_and_runs_correctly() {
     assert_eq!(
         eval_import(source),
         "((bird tweety) (penguin pingu) (animal pingu) (animal tweety))"
+    );
+}
+
+#[test]
+fn clips_deftemplate_converts_named_slots_to_positional_order() {
+    let source = r#"
+        (clips-import '(
+            (deftemplate reading (slot sensor) (slot value))
+            (deffacts init (reading (value 98) (sensor probe1)))
+        ))
+    "#;
+    assert_eq!(eval_import(source), "(((reading probe1 98)))");
+}
+
+#[test]
+fn clips_deftemplate_slot_order_holds_regardless_of_slot_order_in_the_fact() {
+    let source = r#"
+        (clips-import '(
+            (deftemplate reading (slot sensor) (slot value))
+            (deffacts init (reading (sensor probe1) (value 98)))
+        ))
+    "#;
+    assert_eq!(eval_import(source), "(((reading probe1 98)))");
+}
+
+#[test]
+fn clips_deftemplate_applies_inside_defrule_conditions_and_conclusions() {
+    let source = r#"
+        (clips-import '(
+            (deftemplate reading (slot sensor) (slot value))
+            (defrule hot-rule (reading (sensor ?s) (value 98))
+                => (assert (alert (sensor ?s))))
+            (deftemplate alert (slot sensor))
+        ))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((alert (var s)) (reading (var s) 98)))"
+    );
+}
+
+#[test]
+fn clips_deftemplate_works_end_to_end_through_forward_in() {
+    let source = r#"
+        (def imported (clips-import '(
+            (deftemplate reading (slot sensor) (slot value))
+            (deffacts init (reading (sensor probe1) (value 98)))
+            (defrule hot-rule (reading (sensor ?s) (value 98)) => (assert (alert ?s)))
+        )))
+        (defmodule sensors imported)
+        (forward-in 'sensors)
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "((alert probe1) (reading probe1 98))"
     );
 }
 

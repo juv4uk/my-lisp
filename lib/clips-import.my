@@ -61,20 +61,174 @@
 (def cddr
   (lambda (lst) (cdr (cdr lst))))
 
+; --- Step 8: deftemplate, CLIPS's named-slot facts -----------------------
+; Ordinary CLIPS facts are positional, the same shape my-lisp facts always
+; were: `(planet earth)`. A `deftemplate` changes that for facts of its
+; name: `(deftemplate reading (slot sensor) (slot value))` means every
+; `reading` fact from then on is written by slot name, in any order —
+; `(reading (value 98) (sensor probe1))`, not `(reading probe1 98)`.
+; my-lisp facts stay purely positional (no reason to grow that
+; representation just to mirror CLIPS) — so a template's declared slot
+; order becomes the fixed positional order its facts get converted to on
+; import: the example above becomes `(reading probe1 98)`, matching
+; `(slot sensor)` then `(slot value)`.
+;
+; Deliberately a two-pass, pure-functional approach, not a running mutable
+; registry: `clips-templates-from-forms` scans the *whole* form list once
+; up front and builds a plain `(name . (slot1 slot2 ...))` alist, which
+; every fact/condition/conclusion conversion then just looks up — no
+; `def`-based global state needed (see `lib/knowledge.my`'s
+; `*knowledge-base*` for why that would need the same top-level-only-def
+; care this project keeps avoiding when a pure function already works).
+; A term whose head isn't a known template name passes through unchanged.
+;
+; Крок 8: deftemplate, іменовані слоти CLIPS. Звичайні CLIPS-факти —
+; позиційні, та сама форма, що й факти my-lisp завжди мали: `(planet
+; earth)`. `deftemplate` змінює це для фактів своєї назви: `(deftemplate
+; reading (slot sensor) (slot value))` означає, що відтепер кожен факт
+; `reading` записується за іменем слота, у будь-якому порядку — `(reading
+; (value 98) (sensor probe1))`, не `(reading probe1 98)`. Факти my-lisp
+; лишаються чисто позиційними (нема причини розширювати це представлення
+; лише щоб віддзеркалити CLIPS) — тож оголошений порядок слотів шаблону
+; стає фіксованим позиційним порядком, у який його факти конвертуються при
+; імпорті: приклад вище стає `(reading probe1 98)`, відповідно до `(slot
+; sensor)`, тоді `(slot value)`.
+;
+; Свідомо дво-прохідний, чисто функціональний підхід, не робочий
+; мутабельний реєстр: `clips-templates-from-forms` сканує *весь* список
+; форм наперед один раз і будує звичайний alist `(назва . (слот1 слот2
+; ...))`, який потім просто шукає кожна конвертація факту/умови/висновку —
+; жодного `def`-based глобального стану не потрібно. Терм, чия голова не є
+; відомою назвою шаблону, проходить незмінним.
+;
+; Schritt 8: deftemplate, CLIPS' benannte Slots. Gewöhnliche CLIPS-Fakten
+; sind positional, dieselbe Form, die my-lisp-Fakten immer hatten:
+; `(planet earth)`. Ein `deftemplate` ändert das für Fakten seines Namens:
+; `(deftemplate reading (slot sensor) (slot value))` bedeutet, dass jeder
+; `reading`-Fakt fortan per Slot-Name geschrieben wird, in beliebiger
+; Reihenfolge — `(reading (value 98) (sensor probe1))`, nicht `(reading
+; probe1 98)`. my-lisp-Fakten bleiben rein positional (kein Grund, diese
+; Darstellung nur zu erweitern, um CLIPS zu spiegeln) — die deklarierte
+; Slot-Reihenfolge eines Templates wird also zur festen positionalen
+; Reihenfolge, in die seine Fakten beim Import umgewandelt werden: das
+; obige Beispiel wird zu `(reading probe1 98)`, entsprechend `(slot
+; sensor)`, dann `(slot value)`.
+;
+; Bewusst ein zweistufiger, rein funktionaler Ansatz, keine laufende
+; mutable Registry: `clips-templates-from-forms` durchsucht die *ganze*
+; Formliste einmal im Voraus und baut eine gewöhnliche Alist `(name .
+; (slot1 slot2 ...))`, die jede Fakt-/Bedingungs-/Schlussfolgerungs-
+; Konvertierung dann einfach nachschlägt — kein `def`-basierter globaler
+; Zustand nötig. Ein Term, dessen Kopf kein bekannter Template-Name ist,
+; bleibt unverändert.
+(def clips-deftemplate-form?
+  (lambda (form)
+    (cond
+      ((atom form) '())
+      ((atom (car form)) (eq (car form) 'deftemplate))
+      (t '()))))
+
+(def clips-deftemplate-name (lambda (form) (second form)))
+
+(def clips-slot-name (lambda (slot-form) (second slot-form)))
+
+(def clips-slot-names
+  (lambda (slot-forms)
+    (cond
+      ((atom slot-forms) '())
+      (t (cons (clips-slot-name (car slot-forms)) (clips-slot-names (cdr slot-forms)))))))
+
+(def clips-deftemplate-slots
+  (lambda (form)
+    (clips-slot-names (cddr form))))
+
+(def clips-templates-from-forms
+  (lambda (forms)
+    (cond
+      ((atom forms) '())
+      ((clips-deftemplate-form? (car forms))
+       (cons (cons (clips-deftemplate-name (car forms)) (clips-deftemplate-slots (car forms)))
+             (clips-templates-from-forms (cdr forms))))
+      (t (clips-templates-from-forms (cdr forms))))))
+
+; `eq`-based, same shape as lib/knowledge.my's `assoc` — kept local rather
+; than depending on that file loading first, since clips-import.my has
+; otherwise only ever needed lib/core.my.
+(def clips-assoc
+  (lambda (key alist)
+    (cond
+      ((atom alist) '())
+      ((eq key (car (car alist))) (car alist))
+      (t (clips-assoc key (cdr alist))))))
+
+(def clips-template-slot-order
+  (lambda (name templates)
+    (let ((entry (clips-assoc name templates)))
+      (cond
+        ((atom entry) '())
+        (t (cdr entry))))))
+
+(def clips-slot-value-of (lambda (slot-form) (second slot-form)))
+
+; Guards with `(atom (car slot-forms))` before comparing: a well-formed
+; slot entry is `(slotname value)`, a compound list, but a positional fact
+; whose head happens to collide with an unrelated template's name (a
+; contradictory, malformed CLIPS input — a name can't be both positional
+; and slot-based) would hand this bare atoms instead. Degrading to "no
+; value found" here keeps the same "skip, don't crash" policy the rest of
+; this file follows, rather than letting `car` error on a non-pair.
+(def clips-lookup-slot-value
+  (lambda (slot-name slot-forms)
+    (cond
+      ((atom slot-forms) '())
+      ((atom (car slot-forms)) (clips-lookup-slot-value slot-name (cdr slot-forms)))
+      ((equal? slot-name (car (car slot-forms))) (clips-slot-value-of (car slot-forms)))
+      (t (clips-lookup-slot-value slot-name (cdr slot-forms))))))
+
+(def clips-positional-args
+  (lambda (slot-order slot-forms)
+    (cond
+      ((atom slot-order) '())
+      (t (cons (clips-lookup-slot-value (car slot-order) slot-forms)
+                (clips-positional-args (cdr slot-order) slot-forms))))))
+
+; Converts one fact/condition/conclusion term: `not`-wrapped terms recurse
+; into their inner pattern (so `(not (reading (value 98) (sensor
+; probe1)))` converts the same way a bare `reading` fact would); anything
+; else is rewritten to positional form only if its head is a known
+; template name, otherwise passed through unchanged.
+(def clips-convert-template
+  (lambda (term templates)
+    (cond
+      ((atom term) term)
+      ((eq (car term) 'not) (list 'not (clips-convert-template (second term) templates)))
+      (t (let ((slot-order (clips-template-slot-order (car term) templates)))
+           (cond
+             ((atom slot-order) term)
+             (t (cons (car term) (clips-positional-args slot-order (cdr term))))))))))
+
+(def clips-convert-template-list
+  (lambda (terms templates)
+    (cond
+      ((atom terms) '())
+      (t (cons (clips-convert-template (car terms) templates)
+                (clips-convert-template-list (cdr terms) templates))))))
+
 (def clips-fact-clause
   (lambda (fact) (list fact)))
 
 (def clips-facts->clauses
-  (lambda (facts)
+  (lambda (facts templates)
     (cond
       ((atom facts) '())
-      (t (cons (clips-fact-clause (car facts)) (clips-facts->clauses (cdr facts)))))))
+      (t (cons (clips-fact-clause (clips-convert-template (car facts) templates))
+                (clips-facts->clauses (cdr facts) templates))))))
 
 ; `(cddr form)` drops `deffacts` and the deffacts block's own name,
 ; leaving just the fact list.
 (def clips-deffacts->clauses
-  (lambda (form)
-    (clips-facts->clauses (cddr form))))
+  (lambda (form templates)
+    (clips-facts->clauses (cddr form) templates)))
 
 ; --- Step 2: defrule, with CLIPS's `?x` variable syntax ------------------
 ; CLIPS variables are ordinary symbols to my-lisp's reader (`?x` parses as
@@ -263,33 +417,46 @@
 ; nun korrekt importiert werden und funktionieren — der Guard, der sie
 ; übersprang, wurde entfernt statt als toter, irreführend benannter No-op
 ; zurückzubleiben.
+; Template conversion runs *before* `?x`-variable conversion: slot lookup
+; matches on slot names and reorders values, and a value can just as
+; easily be `?x` as `earth` at this point — either way it's carried
+; through positionally unchanged, then `clips-convert-vars` turns any
+; `?x`-shaped value into `(var x)` afterward.
 (def clips-defrule->clauses
-  (lambda (form)
+  (lambda (form templates)
     (let ((split (clips-split-at-arrow (cddr form))))
-      (let ((conditions (clips-convert-vars (car split)))
+      (let ((conditions (clips-convert-vars (clips-convert-template-list (car split) templates)))
             (conclusion-forms (second split)))
         (cond
           ((atom conclusion-forms) '())
           ((clips-all-asserts? conclusion-forms)
-           (clips-clauses-for-conclusions (clips-assert-conclusions conclusion-forms) conditions))
+           (clips-clauses-for-conclusions
+             (clips-convert-template-list (clips-assert-conclusions conclusion-forms) templates)
+             conditions))
           (t '()))))))
 
 ; Dispatches on one top-level CLIPS form's leading symbol. Unknown or
 ; not-yet-supported forms produce no clauses rather than erroring — a
 ; partial import of a mixed file still returns whatever it *could*
-; translate.
+; translate. `deftemplate` itself produces no clauses (it only feeds the
+; `templates` lookup `clips-import` builds once, up front).
 (def clips-form->clauses
-  (lambda (form)
+  (lambda (form templates)
     (cond
-      ((eq (car form) 'deffacts) (clips-deffacts->clauses form))
-      ((eq (car form) 'defrule) (clips-defrule->clauses form))
+      ((eq (car form) 'deffacts) (clips-deffacts->clauses form templates))
+      ((eq (car form) 'defrule) (clips-defrule->clauses form templates))
       (t '()))))
+
+(def clips-import-forms
+  (lambda (forms templates)
+    (cond
+      ((atom forms) '())
+      (t (append (clips-form->clauses (car forms) templates)
+                  (clips-import-forms (cdr forms) templates))))))
 
 (def clips-import
   (lambda (forms)
-    (cond
-      ((atom forms) '())
-      (t (append (clips-form->clauses (car forms)) (clips-import (cdr forms)))))))
+    (clips-import-forms forms (clips-templates-from-forms forms))))
 
 ; Step 4: read a real CLIPS source file off disk and import it — the tool
 ; this whole file exists to build. `read-file` (new Rust primitive, see
