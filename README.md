@@ -31,6 +31,12 @@ Rust provides only what it does exceptionally well — safe values, parsing, lex
 
 That instinct is tested, not just stated: [`lib/meta-eval.my`](lib/meta-eval.my) is a metacircular evaluator — `eval`/`apply` written in my-lisp itself, the same relationship McCarthy's own 1960 paper had to its primitives, dispatching to `car`/`cdr`/`cons`/`atom`/`eq` rather than reimplementing them. [`lib/unify.my`](lib/unify.my) and [`lib/reason.my`](lib/reason.my) provide a small unification and backward-chaining reasoning engine in the spirit of McCarthy's 1958 "Advice Taker" proposal — an inference machine capable of symbolic logic, not statistics. Both are proof that "a small language that grows itself" is a working claim about this codebase, not a slogan.
 
+### Advice Taker: both directions of inference, and both directions of language
+
+[`lib/forward.my`](lib/forward.my) is the other classic half of symbolic AI: a CLIPS-style forward-chaining engine (working memory, fixpoint derivation, `not`/`or`/`and`/`test` conditions) sharing `lib/reason.my`'s exact `(head cond1 cond2 ...)` rule shape — the same rule literal runs backward or forward unmodified. Both engines carry real truth maintenance: single- and multi-justification JTMS, where retracting a fact cascades only to what actually depended on it. [`lib/knowledge.my`](lib/knowledge.my) groups rules into named, queryable modules; [`lib/clips-import.my`](lib/clips-import.my) reads genuine CLIPS `.clp` source files off disk — `deffacts`, `defrule`, `deftemplate`'s named slots, `?x` variables — and imports them as ordinary my-lisp knowledge, proving old symbolic-AI systems can be reused, not just studied.
+
+Explainability runs through all of it, not bolted on after: `explain-proof`/`reason-explain`/`provenance` turn a proof tree into a human-readable "why," and [`lib/understand.my`](lib/understand.my)/[`lib/narrate.my`](lib/narrate.my) bridge controlled natural language to and from knowledge structures — text in, structure out, and back again.
+
 [`tests/fixtures/conformance.json`](tests/fixtures/conformance.json) exists because Lisp's history is also a history of dialects drifting apart — MacLisp, InterLisp, a dozen Scheme variants, Common Lisp's attempt to reunify them. This file is the one thing a future C core or HDL Lisp-machine core must agree with, so a second implementation never becomes "just another dialect."
 
 This repository is the canonical Rust implementation:
@@ -40,7 +46,11 @@ This repository is the canonical Rust implementation:
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly bindings powering the browser REPL above.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — literate-Markdown source-offset mapping.
 - [`lib/core.my`](lib/core.my) — the bootstrapped standard library.
-- [`lib/reason.my`](lib/reason.my) — the backward-chaining logic inference engine.
+- [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — unification and backward-chaining inference.
+- [`lib/forward.my`](lib/forward.my) — forward-chaining inference with truth maintenance.
+- [`lib/knowledge.my`](lib/knowledge.my) — named, queryable knowledge modules.
+- [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — controlled natural language, both directions.
+- [`lib/clips-import.my`](lib/clips-import.my) — imports real CLIPS `.clp` source files.
 
 ### Build and test
 
@@ -72,7 +82,13 @@ cargo test --workspace
 
 Rust надає лише те, що робить особливо добре — безпечні значення, парсинг, лексичні замикання, детерміноване обчислення, контроль стека, діагностику — і на цьому зупиняється. Кожна похідна форма, кожна stdlib-функція росте самою my-lisp, а не в Rust-поверхні, щоразу, коли наявне ядро вже може це виразити: `<=`/`>=` були двома рядками до наявної таблиці диспетчеризації, не новою машинерією; `eval` перевикористав те саме перетворення дані→код, яке вже було потрібне для розгортання макросів, замість дублювання. Це той самий інстинкт, що не дав Джону Маккарті добудувати M-expressions, коли S-вирази виявились достатніми.
 
-Цей інстинкт перевірений, не лише задекларований: [`lib/meta-eval.my`](lib/meta-eval.my) — метациркулярний evaluator: `eval`/`apply`, написані самою my-lisp, те саме відношення, яке власна стаття Маккарті 1960 року мала до своїх примітивів — диспетчеризує до `car`/`cdr`/`cons`/`atom`/`eq`, а не переписує їх заново. [`lib/unify.my`](lib/unify.my) — маленький механізм унікації в дусі пропозиції "Advice Taker" Маккарті 1958 року — символьне зіставлення з шаблоном, не статистика. Обидва — доказ того, що "маленька мова, що вирощує себе" — робоче твердження про цей код, не гасло.
+Цей інстинкт перевірений, не лише задекларований: [`lib/meta-eval.my`](lib/meta-eval.my) — метациркулярний evaluator: `eval`/`apply`, написані самою my-lisp, те саме відношення, яке власна стаття Маккарті 1960 року мала до своїх примітивів — диспетчеризує до `car`/`cdr`/`cons`/`atom`/`eq`, а не переписує їх заново. [`lib/unify.my`](lib/unify.my) і [`lib/reason.my`](lib/reason.my) — маленький механізм унікації й backward-chaining рушій міркування в дусі пропозиції "Advice Taker" Маккарті 1958 року — символьне зіставлення з шаблоном, не статистика. Обидва — доказ того, що "маленька мова, що вирощує себе" — робоче твердження про цей код, не гасло.
+
+### Advice Taker: обидва напрямки висновування, і обидва напрямки мови
+
+[`lib/forward.my`](lib/forward.my) — інша класична половина символьного AI: forward-chaining рушій у стилі CLIPS (working memory, виведення до fixpoint, умови `not`/`or`/`and`/`test`), що ділить із `lib/reason.my` точно ту саму форму правил `(head cond1 cond2 ...)` — той самий літерал правила спрацьовує і назад, і вперед без жодної зміни. Обидва рушії мають справжню truth maintenance: JTMS з одним і з множинними обґрунтуваннями, де видалення факту каскадує лише на те, що справді від нього залежало. [`lib/knowledge.my`](lib/knowledge.my) групує правила в іменовані, запитувані модулі; [`lib/clips-import.my`](lib/clips-import.my) читає справжні CLIPS `.clp`-файли з диска — `deffacts`, `defrule`, іменовані слоти `deftemplate`, змінні `?x` — і імпортує їх як звичайне знання my-lisp, доводячи, що старі символьні AI-системи можна перевикористати, не лише вивчати.
+
+Пояснюваність проходить крізь усе це, не приліплена окремо: `explain-proof`/`reason-explain`/`provenance` перетворюють дерево доведення на людське "чому", а [`lib/understand.my`](lib/understand.my)/[`lib/narrate.my`](lib/narrate.my) з'єднують контрольовану природну мову зі структурами знань в обидва боки — текст на вхід, структура на вихід, і назад.
 
 [`tests/fixtures/conformance.json`](tests/fixtures/conformance.json) існує, бо історія Lisp — це також історія діалектів, що розбігались — MacLisp, InterLisp, десяток варіантів Scheme, спроба Common Lisp їх возз'єднати. Цей файл — те єдине, з чим має погоджуватись майбутнє C-ядро чи HDL-ядро Lisp-машини, щоб друга реалізація ніколи не стала "ще одним діалектом".
 
@@ -83,6 +99,11 @@ Rust надає лише те, що робить особливо добре —
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-біндінги для браузерного REPL вище.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — зіставлення зміщень початкового коду literate-Markdown.
 - [`lib/core.my`](lib/core.my) — bootstrapped стандартна бібліотека.
+- [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — унікація й backward-chaining висновування.
+- [`lib/forward.my`](lib/forward.my) — forward-chaining висновування з truth maintenance.
+- [`lib/knowledge.my`](lib/knowledge.my) — іменовані, запитувані модулі знань.
+- [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — контрольована природна мова в обидва боки.
+- [`lib/clips-import.my`](lib/clips-import.my) — імпортує справжні CLIPS `.clp`-файли.
 
 ### Збірка та тести
 
@@ -113,7 +134,13 @@ Exakte rationale Arithmetik ist ein Kernziel, kein Extra: `/` bleibt bei Ganzzah
 
 Rust stellt nur das bereit, was es besonders gut kann — sichere Werte, Parsing, lexikalische Closures, deterministische Auswertung, Stack-Kontrolle, Diagnosen — und hört dort auf. Jede abgeleitete Form, jede Stdlib-Funktion wächst in my-lisp selbst statt in der Rust-Oberfläche, sobald der vorhandene Kern sie bereits ausdrücken kann: `<=`/`>=` waren eine Zwei-Zeilen-Ergänzung einer bestehenden Dispatch-Tabelle, keine neue Maschinerie; `eval` nutzte dieselbe Daten→Code-Umwandlung wieder, die die Makro-Expansion bereits brauchte, statt sie zu duplizieren. Es ist derselbe Instinkt, der John McCarthy davon abhielt, M-expressions fertigzustellen, als sich S-expressions als ausreichend erwiesen.
 
-Dieser Instinkt ist geprüft, nicht nur behauptet: [`lib/meta-eval.my`](lib/meta-eval.my) ist ein metazirkulärer Evaluator — `eval`/`apply`, geschrieben in my-lisp selbst, dieselbe Beziehung, die McCarthys eigenes Paper von 1960 zu seinen Primitiven hatte — dispatcht an `car`/`cdr`/`cons`/`atom`/`eq`, statt sie neu zu implementieren. [`lib/unify.my`](lib/unify.my) ist eine kleine Unifikations-Engine im Geiste von McCarthys "Advice Taker"-Vorschlag von 1958 — symbolischer Mustervergleich, keine Statistik. Beide sind der Beweis, dass "eine kleine Sprache, die sich selbst wachsen lässt" eine arbeitende Aussage über diese Codebasis ist, kein Slogan.
+Dieser Instinkt ist geprüft, nicht nur behauptet: [`lib/meta-eval.my`](lib/meta-eval.my) ist ein metazirkulärer Evaluator — `eval`/`apply`, geschrieben in my-lisp selbst, dieselbe Beziehung, die McCarthys eigenes Paper von 1960 zu seinen Primitiven hatte — dispatcht an `car`/`cdr`/`cons`/`atom`/`eq`, statt sie neu zu implementieren. [`lib/unify.my`](lib/unify.my) und [`lib/reason.my`](lib/reason.my) sind eine kleine Unifikations- und Backward-Chaining-Inferenz-Engine im Geiste von McCarthys "Advice Taker"-Vorschlag von 1958 — symbolischer Mustervergleich, keine Statistik. Beide sind der Beweis, dass "eine kleine Sprache, die sich selbst wachsen lässt" eine arbeitende Aussage über diese Codebasis ist, kein Slogan.
+
+### Advice Taker: beide Inferenzrichtungen, und beide Sprachrichtungen
+
+[`lib/forward.my`](lib/forward.my) ist die andere klassische Hälfte symbolischer KI: eine CLIPS-artige Forward-Chaining-Engine (Working Memory, Ableitung bis zum Fixpunkt, `not`/`or`/`and`/`test`-Bedingungen), die sich mit `lib/reason.my` exakt dieselbe Regelform `(head cond1 cond2 ...)` teilt — dasselbe Regelliteral läuft unverändert rückwärts oder vorwärts. Beide Engines tragen echtes Truth Maintenance: JTMS mit einer und mit mehreren Begründungen, bei dem das Entfernen eines Fakts nur auf das kaskadiert, was wirklich von ihm abhing. [`lib/knowledge.my`](lib/knowledge.my) gruppiert Regeln in benannte, abfragbare Module; [`lib/clips-import.my`](lib/clips-import.my) liest echte CLIPS-`.clp`-Quelldateien von der Festplatte — `deffacts`, `defrule`, `deftemplate`s benannte Slots, `?x`-Variablen — und importiert sie als gewöhnliches my-lisp-Wissen, ein Beweis, dass alte symbolische KI-Systeme wiederverwendbar sind, nicht nur studierbar.
+
+Erklärbarkeit zieht sich durch alles, nicht nachträglich angeflanscht: `explain-proof`/`reason-explain`/`provenance` verwandeln einen Beweisbaum in ein menschenlesbares "Warum", und [`lib/understand.my`](lib/understand.my)/[`lib/narrate.my`](lib/narrate.my) verbinden kontrollierte natürliche Sprache mit Wissensstrukturen in beide Richtungen — Text rein, Struktur raus, und zurück.
 
 [`tests/fixtures/conformance.json`](tests/fixtures/conformance.json) existiert, weil Lisps Geschichte auch eine Geschichte auseinanderdriftender Dialekte ist — MacLisp, InterLisp, ein Dutzend Scheme-Varianten, Common Lisps Versuch, sie wiederzuvereinen. Diese Datei ist das eine, dem ein künftiger C-Kern oder HDL-Lisp-Maschinen-Kern entsprechen muss, damit eine zweite Implementierung nie "nur ein weiterer Dialekt" wird.
 
@@ -124,6 +151,11 @@ Dieses Repository ist die kanonische Rust-Implementierung:
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-Bindings für den Browser-REPL oben.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — Offset-Zuordnung von literate-Markdown-Quellcode.
 - [`lib/core.my`](lib/core.my) — die gebootstrappte Standardbibliothek.
+- [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — Unifikation und Backward-Chaining-Inferenz.
+- [`lib/forward.my`](lib/forward.my) — Forward-Chaining-Inferenz mit Truth Maintenance.
+- [`lib/knowledge.my`](lib/knowledge.my) — benannte, abfragbare Wissensmodule.
+- [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — kontrollierte natürliche Sprache, beide Richtungen.
+- [`lib/clips-import.my`](lib/clips-import.my) — importiert echte CLIPS-`.clp`-Quelldateien.
 
 ### Bauen und testen
 
