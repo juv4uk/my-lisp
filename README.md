@@ -1,84 +1,116 @@
-# my-idea
+# my-lisp
 
-**A lightweight programming IDE · Легка IDE для програмування · Eine leichtgewichtige Programmier-IDE**
+**A small language that grows itself · Маленька мова, що вирощує себе · Eine kleine Sprache, die sich selbst wachsen lässt**
 
 [English](#english) · [Українська](#українська) · [Deutsch](#deutsch)
 
-`my-idea` is a new programming IDE forked from [`my-ide`](https://github.com/juv4uk/my-ide). The editor is built around **CodeMirror 6**, the interface is written in **ClojureScript**, and **Tauri v2 + Rust** provide a small cross-platform desktop and mobile shell.
-
-The main goal is comfortable everyday programming. Our own language experiments are a special built-in **Language Lab**, not a limitation of the IDE.
-
-**my-lisp** is the small independent language developed with the IDE: *a small language that grows itself · маленька мова, що вирощує себе · eine kleine Sprache, die sich selbst wachsen lässt*. Rust supplies the minimal safe semantic machinery; higher-level forms and libraries grow inside my-lisp itself.
-
 ## Quick try · Швидко спробувати · Schnell ausprobieren
 
-No installation and no account: **[download the standalone Web IDE](https://github.com/juv4uk/my-idea/releases/latest/download/my-idea-web.html)** and open the downloaded `.html` file in your browser. The editor, themes, programming-language switcher, and my-lisp Language Lab are contained in that one portable file and run locally.
+No installation, no account: **[download the standalone web REPL](https://github.com/juv4uk/my-lisp/releases/latest/download/my-lisp-cli-web.html)** — a single portable `.html` file with a terminal-style REPL for the my-lisp core, running entirely in your browser. See [`docs/quote-tutorial.md`](docs/quote-tutorial.md) for a first walkthrough.
 
-Без встановлення та облікового запису: **[завантажте автономну Web IDE](https://github.com/juv4uk/my-idea/releases/latest/download/my-idea-web.html)** і відкрийте отриманий файл `.html` у браузері. Редактор, теми, перемикач мов програмування та my-lisp Language Lab містяться в одному portable-файлі й працюють локально.
+Без встановлення й облікового запису: **[завантажте автономний web-REPL](https://github.com/juv4uk/my-lisp/releases/latest/download/my-lisp-cli-web.html)** — один portable-файл `.html` з термінальним REPL для ядра my-lisp, що працює повністю в браузері. Перший огляд — у [`docs/quote-tutorial.md`](docs/quote-tutorial.md).
 
-Ohne Installation und Benutzerkonto: **[die eigenständige Web-IDE herunterladen](https://github.com/juv4uk/my-idea/releases/latest/download/my-idea-web.html)** und die geladene `.html`-Datei im Browser öffnen. Editor, Themes, Programmiersprachenumschalter und my-lisp Language Lab befinden sich in dieser einen portablen Datei und laufen lokal.
+Ohne Installation und Benutzerkonto: **[den eigenständigen Web-REPL herunterladen](https://github.com/juv4uk/my-lisp/releases/latest/download/my-lisp-cli-web.html)** — eine einzelne portable `.html`-Datei mit einem terminalartigen REPL für den my-lisp-Kern, die vollständig im Browser läuft. Ein erster Rundgang steht in [`docs/quote-tutorial.md`](docs/quote-tutorial.md).
 
-Just the language, no editor: **[download the standalone my-lisp CLI REPL](https://github.com/juv4uk/my-idea/releases/latest/download/my-lisp-cli-web.html)** — a single portable `.html` file with a terminal-style REPL for the my-lisp core, running entirely in your browser. See [`docs/quote-tutorial.md`](docs/quote-tutorial.md) for a first walkthrough.
+Or build the native CLI from source:
 
-Лише мова, без редактора: **[завантажте автономний my-lisp CLI REPL](https://github.com/juv4uk/my-idea/releases/latest/download/my-lisp-cli-web.html)** — один portable-файл `.html` з термінальним REPL для ядра my-lisp, що працює повністю в браузері. Перший огляд — у [`docs/quote-tutorial.md`](docs/quote-tutorial.md).
-
-Nur die Sprache, ohne Editor: **[den eigenständigen my-lisp-CLI-REPL herunterladen](https://github.com/juv4uk/my-idea/releases/latest/download/my-lisp-cli-web.html)** — eine einzelne portable `.html`-Datei mit einem terminalartigen REPL für den my-lisp-Kern, die vollständig im Browser läuft. Ein erster Rundgang steht in [`docs/quote-tutorial.md`](docs/quote-tutorial.md).
-
-## Repository history · Історія репозиторію · Repository-Verlauf
-
-`my-idea` preserves the Git history inherited from earlier development and from its `my-ide` origin. Some old commits and release tags therefore refer to earlier project stages. We keep them intentionally for traceability and never rewrite an existing release tag; when a version number is already occupied, the next free patch version is used. The first Rust-language-core release of `my-idea` is **v0.3.2**.
-
-`my-idea` зберігає Git-історію, успадковану від ранніх етапів розробки та проєкту `my-ide`. Тому частина старих комітів і релізних тегів стосується попередніх етапів проєкту. Ми навмисно залишаємо їх для простежуваності й ніколи не переписуємо наявний релізний тег; якщо номер версії вже зайнятий, використовуємо наступну вільну patch-версію. Перший реліз `my-idea` з Rust-ядром мови — **v0.3.2**.
-
-`my-idea` bewahrt die Git-Historie aus früheren Entwicklungsphasen und aus seinem Ursprung `my-ide`. Deshalb beziehen sich einige ältere Commits und Release-Tags auf frühere Projektstände. Zur Nachvollziehbarkeit bleiben sie bewusst erhalten; ein vorhandenes Release-Tag wird niemals überschrieben. Ist eine Versionsnummer bereits belegt, verwenden wir die nächste freie Patch-Version. Das erste `my-idea`-Release mit Rust-Sprachkern ist **v0.3.2**.
-
-Details: [`docs/versioning.md`](docs/versioning.md)
-
-my-lisp source files use the canonical `.my` extension; see the [trilingual source-file contract](docs/source-files.md).
+```bash
+cargo run -p my-lisp-cli
+cargo run -p my-lisp-cli -- path/to/file.my
+```
 
 ## English
 
-### What already works
+`my-lisp` is a Lisp built around McCarthy's seven primitives — `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond` — plus the minimal semantic kernel needed to bootstrap everything else: `lambda`, `def`, `defmacro`. Everything derivable from that kernel is written in my-lisp itself ([`lib/core.my`](lib/core.my)), not added as Rust built-ins. Full rationale: [`docs/language-core.md`](docs/language-core.md).
 
-- CodeMirror 6 editor with Clojure highlighting, line numbers, history, bracket matching, folding, completion and diagnostics;
-- local source persistence and a responsive desktop/mobile workspace;
-- embedded safe Lisp evaluator (powered by Rust and WebAssembly) with console and parsed-form view;
-- English, Ukrainian and German interface;
-- installable offline PWA plus the Tauri foundation for Windows, Linux, macOS and mobile.
+Exact rational arithmetic is a core purpose, not a nice-to-have: `/` on integers/rationals stays exact (`5/336`, not `0.0148...`), following Racket's exact/inexact distinction. `.my` is the canonical source extension; `.lisp` is a compatible alias.
 
-### Direction
+This repository is the canonical Rust implementation:
 
-Normal file/project editing comes first. Language Lab will grow alongside it: the embedded evaluator works everywhere, while optional desktop runtimes such as **GNU Guile** can later provide a full Scheme REPL through a narrow Tauri adapter. A runtime never receives silent file or network access.
+- [`crates/my-lisp`](crates/my-lisp) — the core: parser, evaluator, environments, exact-rational arithmetic.
+- [`crates/my-lisp-cli`](crates/my-lisp-cli) — the `my-lisp` binary (REPL + file runner).
+- [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly bindings powering the browser REPL above.
+- [`crates/my-lisp-literate`](crates/my-lisp-literate) — literate-Markdown source-offset mapping.
+- [`lib/core.my`](lib/core.my) — the bootstrapped standard library.
+
+### Build and test
+
+```bash
+cargo build --workspace
+cargo test --workspace
+```
+
+### Docs
+
+- [`docs/language-core.md`](docs/language-core.md) — the language contract: primitives, bootstrap boundary, exact arithmetic.
+- [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — a beginner walkthrough of homoiconicity.
+- [`docs/testing.md`](docs/testing.md) — current test inventory.
+- [`docs/benchmarks.md`](docs/benchmarks.md) — benchmark methodology and a local baseline.
+- [`docs/versioning.md`](docs/versioning.md) — why this repo's version history looks the way it does.
+
+`my-lisp` began inside a broader IDE project, [`my-idea`](https://github.com/juv4uk/my-idea), and was extracted here to stand on its own. Future implementations of the same language — a C core for embedded targets, and a from-scratch Lisp-machine HDL core — are planned as separate, parallel repositories; see [`CLAUDE.md`](CLAUDE.md).
 
 ## Українська
 
-`my-idea` — легка IDE для звичайного програмування. CodeMirror 6 відповідає за редактор, ClojureScript — за інтерфейс, а Tauri v2 і Rust — за кросплатформну оболонку.
+`my-lisp` — це Lisp, побудований навколо семи примітивів Маккарті — `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond` — плюс мінімальне семантичне ядро, потрібне для розгортання всього іншого: `lambda`, `def`, `defmacro`. Усе, що можна вивести з цього ядра, написане самою my-lisp ([`lib/core.my`](lib/core.my)), а не додане як Rust built-in. Повне обґрунтування — [`docs/language-core.md`](docs/language-core.md).
 
-Розробка власних Lisp-подібних мов — наша особлива вбудована лабораторія, але не обмеження програми. Спочатку розвиваємо файли, проєкти, пошук, команди й комфортний редактор. Вбудований безпечний інтерпретатор працюватиме всюди; Guile планується як необов’язковий локальний Scheme-бекенд для настільних систем.
+Точна раціональна арифметика — базова мета, а не бонус: `/` над цілими/раціональними лишається точним (`5/336`, а не `0.0148...`), за зразком розрізнення exact/inexact у Racket. `.my` — канонічне розширення початкового коду; `.lisp` — сумісний псевдонім.
+
+Цей репозиторій — канонічна реалізація на Rust:
+
+- [`crates/my-lisp`](crates/my-lisp) — ядро: парсер, обчислювач, середовища, точна раціональна арифметика.
+- [`crates/my-lisp-cli`](crates/my-lisp-cli) — бінарник `my-lisp` (REPL + запуск файлів).
+- [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-біндінги для браузерного REPL вище.
+- [`crates/my-lisp-literate`](crates/my-lisp-literate) — зіставлення зміщень початкового коду literate-Markdown.
+- [`lib/core.my`](lib/core.my) — bootstrapped стандартна бібліотека.
+
+### Збірка та тести
+
+```bash
+cargo build --workspace
+cargo test --workspace
+```
+
+### Документація
+
+- [`docs/language-core.md`](docs/language-core.md) — контракт мови: примітиви, межа bootstrap, точна арифметика.
+- [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — вступний огляд гомоіконічності.
+- [`docs/testing.md`](docs/testing.md) — поточний перелік тестів.
+- [`docs/benchmarks.md`](docs/benchmarks.md) — методологія бенчмарків і локальний baseline.
+- [`docs/versioning.md`](docs/versioning.md) — чому історія версій цього репо саме така.
+
+`my-lisp` починалась усередині ширшого IDE-проєкту [`my-idea`](https://github.com/juv4uk/my-idea) й була виділена сюди, щоб існувати самостійно. Майбутні реалізації тієї ж мови — C-ядро для embedded-цілей і власне HDL-ядро Lisp-машини з нуля — плануються як окремі, паралельні репозиторії; див. [`CLAUDE.md`](CLAUDE.md).
 
 ## Deutsch
 
-`my-idea` ist eine leichtgewichtige IDE für die alltägliche Programmierung. CodeMirror 6 bildet den Editor, ClojureScript die Oberfläche und Tauri v2 mit Rust die plattformübergreifende Hülle.
+`my-lisp` ist ein Lisp, aufgebaut um McCarthys sieben Primitive — `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond` — plus den minimalen semantischen Kern, der zum Bootstrap von allem anderen nötig ist: `lambda`, `def`, `defmacro`. Alles, was aus diesem Kern ableitbar ist, ist in my-lisp selbst geschrieben ([`lib/core.my`](lib/core.my)), nicht als Rust-Built-in hinzugefügt. Vollständige Begründung: [`docs/language-core.md`](docs/language-core.md).
 
-Die Entwicklung eigener Lisp-artiger Sprachen ist unser besonderes eingebautes Sprachlabor, schränkt die IDE aber nicht ein. Dateien, Projekte, Suche, Befehle und ein komfortabler Editor stehen zuerst. Der sichere eingebettete Interpreter läuft überall; Guile ist als optionales lokales Scheme-Backend für Desktop-Systeme vorgesehen.
+Exakte rationale Arithmetik ist ein Kernziel, kein Extra: `/` bleibt bei Ganzzahlen/rationalen Zahlen exakt (`5/336`, nicht `0.0148...`), nach Rackets exakt/inexakt-Unterscheidung. `.my` ist die kanonische Quellcodedateiendung; `.lisp` bleibt ein kompatibler Alias.
 
-## Development · Розробка · Entwicklung
+Dieses Repository ist die kanonische Rust-Implementierung:
 
-Requirements: Node.js 20+, Java 17+ (for Shadow CLJS), and the platform requirements for Tauri.
+- [`crates/my-lisp`](crates/my-lisp) — der Kern: Parser, Evaluator, Umgebungen, exakte rationale Arithmetik.
+- [`crates/my-lisp-cli`](crates/my-lisp-cli) — die `my-lisp`-Binärdatei (REPL + Dateiausführung).
+- [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-Bindings für den Browser-REPL oben.
+- [`crates/my-lisp-literate`](crates/my-lisp-literate) — Offset-Zuordnung von literate-Markdown-Quellcode.
+- [`lib/core.my`](lib/core.my) — die gebootstrappte Standardbibliothek.
+
+### Bauen und testen
 
 ```bash
-npm install
-npm run dev
+cargo build --workspace
+cargo test --workspace
 ```
 
-```bash
-npm test
-npm run check
-npm run build
-npm run tauri dev
-```
+### Dokumentation
 
-Architecture notes and the platform roadmap live in [`docs/README.md`](docs/README.md). Contributions and practical ideas are welcome.
+- [`docs/language-core.md`](docs/language-core.md) — der Sprachvertrag: Primitive, Bootstrap-Grenze, exakte Arithmetik.
+- [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — ein Einsteiger-Rundgang durch Homoikonizität.
+- [`docs/testing.md`](docs/testing.md) — aktuelles Testinventar.
+- [`docs/benchmarks.md`](docs/benchmarks.md) — Benchmark-Methodik und eine lokale Ausgangsmessung.
+- [`docs/versioning.md`](docs/versioning.md) — warum die Versionshistorie dieses Repos so aussieht.
+
+`my-lisp` begann innerhalb eines größeren IDE-Projekts, [`my-idea`](https://github.com/juv4uk/my-idea), und wurde hierher ausgelagert, um eigenständig zu bestehen. Künftige Implementierungen derselben Sprache — ein C-Kern für Embedded-Ziele und ein von Grund auf neuer HDL-Kern für eine Lisp-Maschine — sind als separate, parallele Repositories geplant; siehe [`CLAUDE.md`](CLAUDE.md).
 
 ## License · Ліцензія · Lizenz
 
