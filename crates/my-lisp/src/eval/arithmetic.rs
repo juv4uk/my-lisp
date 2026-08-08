@@ -176,23 +176,23 @@ pub(super) fn evaluate_division(
     Ok(exact_value(result))
 }
 
-/// `<`, `>`, and `=` follow the same exact/inexact promotion rule as `+`/`-`/`*`:
-/// if every operand is exact, comparison is exact (`Rational`'s `Ord`, no
-/// float involved); one inexact operand makes the whole comparison inexact.
-/// Chained like `(< 1 2 3)`: true iff each operand compares against the next
-/// in order, same as Scheme/Racket's variadic comparisons.
-/// `<`, `>` і `=` дотримуються того самого правила exact/inexact, що й
-/// `+`/`-`/`*`: якщо всі операнди точні, порівняння точне (`Ord` для
+/// `<`, `>`, `=`, `<=`, `>=` follow the same exact/inexact promotion rule as
+/// `+`/`-`/`*`: if every operand is exact, comparison is exact (`Rational`'s
+/// `Ord`, no float involved); one inexact operand makes the whole comparison
+/// inexact. Chained like `(< 1 2 3)`: true iff each operand compares against
+/// the next in order, same as Scheme/Racket's variadic comparisons.
+/// `<`, `>`, `=`, `<=`, `>=` дотримуються того самого правила exact/inexact,
+/// що й `+`/`-`/`*`: якщо всі операнди точні, порівняння точне (`Ord` для
 /// `Rational`, без float); один неточний операнд робить усе порівняння
 /// неточним. Ланцюгове, як `(< 1 2 3)`: істина, якщо кожен операнд
 /// порівнюється з наступним по порядку — як варіативні порівняння в
 /// Scheme/Racket.
-/// `<`, `>` und `=` folgen derselben exakt/inexakt-Promotionsregel wie
-/// `+`/`-`/`*`: sind alle Operanden exakt, ist der Vergleich exakt (`Ord`
-/// für `Rational`, kein Float); ein inexakter Operand macht den gesamten
-/// Vergleich inexakt. Verkettet wie `(< 1 2 3)`: wahr, wenn jeder Operand im
-/// Vergleich zum nächsten in Ordnung ist — wie variadische Vergleiche in
-/// Scheme/Racket.
+/// `<`, `>`, `=`, `<=`, `>=` folgen derselben exakt/inexakt-Promotionsregel
+/// wie `+`/`-`/`*`: sind alle Operanden exakt, ist der Vergleich exakt
+/// (`Ord` für `Rational`, kein Float); ein inexakter Operand macht den
+/// gesamten Vergleich inexakt. Verkettet wie `(< 1 2 3)`: wahr, wenn jeder
+/// Operand im Vergleich zum nächsten in Ordnung ist — wie variadische
+/// Vergleiche in Scheme/Racket.
 pub(super) fn evaluate_comparison(
     operator: &str,
     arguments: &[Expr],
@@ -231,6 +231,8 @@ fn compare<T: PartialOrd>(operator: &str, left: T, right: T) -> bool {
         "<" => left < right,
         ">" => left > right,
         "=" => left == right,
+        "<=" => left <= right,
+        ">=" => left >= right,
         _ => unreachable!("known comparison operator"),
     }
 }

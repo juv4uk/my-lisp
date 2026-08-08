@@ -35,6 +35,8 @@
   { "expr": "(> 3 2 1)", "expected": "t" },
   { "expr": "(= 1 1 1)", "expected": "t" },
   { "expr": "(= 1/2 0.5)", "expected": "t" },
+  { "expr": "(<= 1 1 2)", "expected": "t" },
+  { "expr": "(>= 2 2 1)", "expected": "t" },
   { "expr": "(print 42)", "expected": "42" },
   { "expr": "(read \"(+ 1 2)\")", "expected": "(+ 1 2)" },
   { "expr": "(eval (read \"(+ 1 2)\"))", "expected": "3" },

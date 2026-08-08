@@ -54,6 +54,11 @@ fn comparisons_chain_and_promote_exact_inexact_like_arithmetic() {
     assert_eq!(eval("(< (/ 1 3) (/ 1 2))"), Value::Bool(true));
     // A single argument is vacuously ordered/equal.
     assert_eq!(eval("(< 5)"), Value::Bool(true));
+    assert_eq!(eval("(<= 1 1 2)"), Value::Bool(true));
+    assert_eq!(eval("(<= 1 2 1)"), Value::Bool(false));
+    assert_eq!(eval("(>= 3 3 2)"), Value::Bool(true));
+    assert_eq!(eval("(>= 2 3)"), Value::Bool(false));
+    assert_eq!(eval("(<= 1/2 0.5)"), Value::Bool(true));
 }
 
 #[test]
