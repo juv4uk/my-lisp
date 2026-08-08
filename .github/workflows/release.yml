@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ['l*']
 
 permissions:
   contents: write
@@ -58,7 +58,7 @@ jobs:
       - name: Rename binary
         shell: bash
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
+          VERSION=${GITHUB_REF_NAME#l}
           SRC="target/${{ matrix.target }}/release/${{ matrix.artifact_name }}"
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             DST="my-lisp-cli_${VERSION}_${{ matrix.asset_suffix }}.exe"
