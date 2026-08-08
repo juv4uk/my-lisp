@@ -145,6 +145,32 @@ fn clips_import_file_reads_and_imports_a_real_clp_file() {
 }
 
 #[test]
+fn clips_defrule_with_a_not_condition_is_skipped_not_silently_broken() {
+    // Regression: lib/forward.my's match-conditions unifies conditions
+    // literally against the fact list, so a naively-converted `(not
+    // (penguin ?x))` never matches anything and would silently make the
+    // whole rule dead weight instead of failing loudly or working
+    // correctly. Skipping the rule (empty clause list) is safer than
+    // importing a knowledge base that looks fine but derives nothing.
+    let source = r#"
+        (clips-import '((defrule bird-rule (animal ?x) (not (penguin ?x)) => (assert (bird ?x)))))
+    "#;
+    assert_eq!(eval_import(source), "()");
+}
+
+#[test]
+fn clips_defrule_without_a_not_condition_still_imports_normally() {
+    // Confirms the not-detection doesn't over-trigger on ordinary rules.
+    let source = r#"
+        (clips-import '((defrule mass-rule (planet ?x) => (assert (has-mass ?x)))))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((has-mass (var x)) (planet (var x))))"
+    );
+}
+
+#[test]
 fn clips_import_result_feeds_straight_into_defmodule() {
     // The whole point: no hand-editing step between import and use.
     let source = r#"

@@ -234,12 +234,78 @@
       (t (cons (cons (clips-convert-vars (car conclusions)) conditions)
                 (clips-clauses-for-conclusions (cdr conclusions) conditions))))))
 
+; Step 5: detect CLIPS's `(not (pattern))` conditions and skip the whole
+; rule rather than silently importing a broken one. Verified before
+; writing any fix (not guessed): importing `(defrule bird-rule (animal ?x)
+; (not (penguin ?x)) => (assert (bird ?x)))` unchanged produced a rule that
+; *never* fires — `lib/forward.my`'s `match-conditions` unifies every
+; condition literally against the fact list, and no fact's head is ever
+; the symbol `not`, so a converted `(not (penguin (var x)))` condition
+; always fails to match, silently dropping every animal instead of only
+; the penguins. Backward-chaining (`lib/reason.my`'s `prove-goals`) *does*
+; handle `not` correctly (negation as failure), but the shared `run-multi`
+; rule format `lib/forward.my` uses has no such handling yet — extending
+; it is a separate, larger step (changing the forward engine itself, not
+; just the importer), not assumed here. Skipping is the honest choice: an
+; empty import is visible and safe; a rule that quietly always fails to
+; match is a corrupted knowledge base that looks like it imported fine.
+;
+; Крок 5: виявляти CLIPS-умови `(not (шаблон))` і пропускати все правило
+; замість того, щоб мовчки імпортувати зламане. Перевірено перед
+; написанням будь-якого фіксу (не здогадка): імпорт `(defrule bird-rule
+; (animal ?x) (not (penguin ?x)) => (assert (bird ?x)))` без змін
+; породжував правило, яке *ніколи* не спрацьовує — `match-conditions` у
+; `lib/forward.my` унікує кожну умову буквально проти списку фактів, а
+; жоден факт ніколи не має головою символ `not`, тож конвертована `(not
+; (penguin (var x)))` завжди провалюється, мовчки відкидаючи кожну
+; тварину замість лише пінгвінів. Backward-chaining (`prove-goals` у
+; `lib/reason.my`) коректно обробляє `not` (negation as failure), але
+; спільна форма правил `run-multi`, якою користується `lib/forward.my`,
+; ще не має такої обробки — розширити її — окремий, більший крок (зміна
+; самого forward-рушія, не лише імпортера), тут не мається на увазі.
+; Пропуск — чесний вибір: порожній імпорт видимий і безпечний; правило,
+; що тихо ніколи не спрацьовує, — це пошкоджена база знань, яка виглядає
+; так, ніби імпортувалась нормально.
+;
+; Schritt 5: CLIPS' `(not (muster))`-Bedingungen erkennen und die ganze
+; Regel überspringen, statt stillschweigend eine kaputte zu importieren.
+; Vor jedem Fix verifiziert (nicht geraten): der unveränderte Import von
+; `(defrule bird-rule (animal ?x) (not (penguin ?x)) => (assert (bird
+; ?x)))` erzeugte eine Regel, die *nie* feuert — `match-conditions` in
+; `lib/forward.my` unifiziert jede Bedingung wörtlich gegen die
+; Faktenliste, und kein Fakt hat je das Symbol `not` als Kopf, sodass eine
+; konvertierte `(not (penguin (var x)))`-Bedingung immer fehlschlägt und
+; stillschweigend jedes Tier statt nur die Pinguine verwirft.
+; Backward-Chaining (`prove-goals` in `lib/reason.my`) behandelt `not`
+; korrekt (Negation als Fehlschlag), aber das gemeinsame Regelformat von
+; `run-multi`, das `lib/forward.my` nutzt, hat noch keine solche
+; Behandlung — das zu erweitern ist ein separater, größerer Schritt
+; (Änderung der Forward-Engine selbst, nicht nur des Importers), hier
+; nicht unterstellt. Überspringen ist die ehrliche Wahl: ein leerer Import
+; ist sichtbar und sicher; eine Regel, die still nie zündet, ist eine
+; beschädigte Wissensbasis, die so aussieht, als wäre sie fehlerfrei
+; importiert worden.
+(def clips-condition-is-not?
+  (lambda (condition)
+    (cond
+      ((atom condition) '())
+      ((atom (car condition)) (eq (car condition) 'not))
+      (t '()))))
+
+(def clips-any-not-condition?
+  (lambda (conditions)
+    (cond
+      ((atom conditions) '())
+      ((clips-condition-is-not? (car conditions)) t)
+      (t (clips-any-not-condition? (cdr conditions))))))
+
 (def clips-defrule->clauses
   (lambda (form)
     (let ((split (clips-split-at-arrow (cddr form))))
       (let ((conditions (clips-convert-vars (car split)))
             (conclusion-forms (second split)))
         (cond
+          ((clips-any-not-condition? conditions) '())
           ((atom conclusion-forms) '())
           ((clips-all-asserts? conclusion-forms)
            (clips-clauses-for-conclusions (clips-assert-conclusions conclusion-forms) conditions))
