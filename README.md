@@ -44,6 +44,7 @@ cargo test --workspace
 
 - [`docs/language-core.md`](docs/language-core.md) — the language contract: primitives, bootstrap boundary, exact arithmetic.
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — a beginner walkthrough of homoiconicity.
+- [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — a small symbolic-AI example: unification, written in my-lisp itself.
 - [`docs/testing.md`](docs/testing.md) — current test inventory.
 - [`docs/benchmarks.md`](docs/benchmarks.md) — benchmark methodology and a local baseline.
 - [`docs/versioning.md`](docs/versioning.md) — why this repo's version history looks the way it does.
@@ -75,6 +76,7 @@ cargo test --workspace
 
 - [`docs/language-core.md`](docs/language-core.md) — контракт мови: примітиви, межа bootstrap, точна арифметика.
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — вступний огляд гомоіконічності.
+- [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — маленький приклад символьного AI: унікація, написана самою my-lisp.
 - [`docs/testing.md`](docs/testing.md) — поточний перелік тестів.
 - [`docs/benchmarks.md`](docs/benchmarks.md) — методологія бенчмарків і локальний baseline.
 - [`docs/versioning.md`](docs/versioning.md) — чому історія версій цього репо саме така.
@@ -106,6 +108,7 @@ cargo test --workspace
 
 - [`docs/language-core.md`](docs/language-core.md) — der Sprachvertrag: Primitive, Bootstrap-Grenze, exakte Arithmetik.
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — ein Einsteiger-Rundgang durch Homoikonizität.
+- [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — ein kleines symbolisches KI-Beispiel: Unifikation, geschrieben in my-lisp selbst.
 - [`docs/testing.md`](docs/testing.md) — aktuelles Testinventar.
 - [`docs/benchmarks.md`](docs/benchmarks.md) — Benchmark-Methodik und eine lokale Ausgangsmessung.
 - [`docs/versioning.md`](docs/versioning.md) — warum die Versionshistorie dieses Repos so aussieht.
