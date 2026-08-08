@@ -1,0 +1,181 @@
+; A small symbolic-AI primitive: unification, the pattern-matching engine
+; underneath backward-chaining/Prolog-style reasoning — the kind of symbolic
+; inference McCarthy's 1958 "Advice Taker" proposal was written for, before
+; Lisp itself even existed to build it in.
+;
+; Logic variables are represented as `(var name)` — a two-element list, not
+; a bare symbol — because `eq` only accepts atoms, and there is no
+; symbol?/numberp? primitive to ask "is this atom a variable by naming
+; convention" (see lib/meta-eval.my's header comment for the same
+; constraint solved a different way). `(var name)` sidesteps it: `var?`
+; checks `(eq (car term) 'var)`, always atom-safe; two variables compare by
+; `(eq (second a) (second b))`, comparing their bare-symbol names, also
+; always atom-safe. Construct one with `(logic-var 'x)`.
+;
+; No occurs-check: unifying `?x` with a term containing `?x` (e.g. `(f ?x)`)
+; produces a substitution that can't be fully resolved (infinite structure).
+; This is a standard simplification in small/teaching unifiers, not an
+; oversight — a real occurs-check is a straightforward but non-trivial
+; addition (walk the term for the variable before binding), left out here
+; to keep this genuinely small.
+;
+; Невеликий примітив символьного AI: unification — механізм зіставлення з
+; шаблоном, що лежить під backward-chaining/Prolog-подібними міркуваннями —
+; той самий вид символьного висновування, для якого писалась пропозиція
+; "Advice Taker" Маккарті 1958 року, ще до появи самого Lisp, яким її можна
+; було б побудувати.
+;
+; Логічні змінні представлені як `(var name)` — список із двох елементів,
+; не голий символ — бо `eq` приймає лише атоми, а примітиву
+; symbol?/numberp?, щоб спитати "чи цей атом — змінна за угодою
+; іменування", немає (див. header-коментар lib/meta-eval.my — те саме
+; обмеження, вирішене інакше). `(var name)` обходить це: `var?` перевіряє
+; `(eq (car term) 'var)`, завжди безпечно для атомів; дві змінні
+; порівнюються через `(eq (second a) (second b))` — порівняння їхніх
+; голих символьних імен, теж завжди безпечно. Створюється через
+; `(logic-var 'x)`.
+;
+; Без occurs-check: унікація `?x` з термом, що містить `?x` (напр. `(f
+; ?x)`), дає підстановку, яку неможливо повністю розв'язати (нескінченна
+; структура). Це стандартне спрощення в маленьких/навчальних unifier'ах,
+; не недогляд — справжній occurs-check — проста, але нетривіальна
+; добавка (обійти терм на предмет змінної перед зв'язуванням), тут
+; свідомо пропущена, щоб лишатись справді маленьким.
+;
+; Ein kleines symbolisches KI-Primitiv: Unifikation — die
+; Mustervergleichs-Engine hinter Backward-Chaining-/Prolog-artigem
+; Schließen — genau die Art symbolischer Inferenz, für die McCarthys
+; "Advice Taker"-Vorschlag von 1958 geschrieben wurde, bevor Lisp selbst
+; existierte, um sie zu bauen.
+;
+; Logikvariablen werden als `(var name)` dargestellt — eine zweielementige
+; Liste, kein bloßes Symbol — weil `eq` nur Atome akzeptiert und es kein
+; symbol?/numberp?-Primitiv gibt, um zu fragen "ist dieses Atom nach
+; Namenskonvention eine Variable" (siehe den Header-Kommentar von
+; lib/meta-eval.my — dieselbe Einschränkung, anders gelöst). `(var name)`
+; umgeht das: `var?` prüft `(eq (car term) 'var)`, immer atomsicher; zwei
+; Variablen werden über `(eq (second a) (second b))` verglichen, dem
+; Vergleich ihrer bloßen Symbolnamen, ebenfalls immer atomsicher. Erzeugt
+; wird eine mit `(logic-var 'x)`.
+;
+; Kein Occurs-Check: Das Unifizieren von `?x` mit einem Term, der `?x`
+; enthält (z. B. `(f ?x)`), erzeugt eine Substitution, die sich nicht
+; vollständig auflösen lässt (unendliche Struktur). Dies ist eine
+; Standardvereinfachung in kleinen/lehrenden Unifiern, kein Versehen — ein
+; echter Occurs-Check ist eine unkomplizierte, aber nicht triviale Ergänzung
+; (den Term vor dem Binden nach der Variable durchsuchen), hier bewusst
+; weggelassen, um wirklich klein zu bleiben.
+
+(def logic-var
+  (lambda (name)
+    (list 'var name)))
+
+; Guards the `eq` with `(atom (car term))` first: `term` reaching the final
+; branch is already known non-atom, but its `car` can itself be a compound
+; list (e.g. unifying nested structures recurses into pieces like
+; `((var x) bob)`, whose `car` is `(var x)` — a list, not a symbol) — `eq`
+; would error on that instead of just correctly answering "not a variable".
+; Захищає `eq` спершу через `(atom (car term))`: `term`, що дійшов до
+; останньої гілки, вже точно не атом, але його `car` сам може бути
+; складеним списком (напр. унікація вкладених структур рекурсує в шматки
+; на кшталт `((var x) bob)`, чий `car` — `(var x)`, список, не символ) —
+; `eq` впав би на цьому замість просто коректно відповісти "не змінна".
+; Sichert das `eq` zuerst mit `(atom (car term))` ab: `term`, das den
+; letzten Zweig erreicht, ist bereits bekanntermaßen kein Atom, aber sein
+; `car` kann selbst eine zusammengesetzte Liste sein (z. B. rekursiert die
+; Unifikation verschachtelter Strukturen in Teile wie `((var x) bob)`,
+; dessen `car` `(var x)` ist — eine Liste, kein Symbol) — `eq` würde dabei
+; einen Fehler werfen statt einfach korrekt "keine Variable" zu antworten.
+(def var?
+  (lambda (term)
+    (cond
+      ((atom term) '())
+      ((atom (car term)) (eq (car term) 'var))
+      (t '()))))
+
+; subst is an alist of (name . term) pairs, keyed by the variable's bare
+; name symbol (always an atom, always eq-safe) — never by the `(var name)`
+; pair itself.
+(def lookup-subst
+  (lambda (variable subst)
+    (cond
+      ((atom subst) variable)
+      ((eq (car (car subst)) (second variable)) (cdr (car subst)))
+      (t (lookup-subst variable (cdr subst))))))
+
+(def extend-subst
+  (lambda (variable term subst)
+    (cons (cons (second variable) term) subst)))
+
+; One-level dereference: if `term` is a bound variable, follow exactly one
+; binding; anything else (including a still-unbound variable, or a
+; compound term) is returned as-is. `unify` and `apply-subst` each do their
+; own recursion into compound terms, so `walk` doesn't need to go deeper.
+(def walk
+  (lambda (term subst)
+    (cond
+      ((var? term) (walk-resolved term (lookup-subst term subst) subst))
+      (t term))))
+
+(def walk-resolved
+  (lambda (term resolved subst)
+    (cond
+      ((var? resolved)
+       (cond
+         ((eq (second resolved) (second term)) term)
+         (t (walk resolved subst))))
+      (t resolved))))
+
+; Same guard shape as `var?`: once `subst` gains bindings it's a non-empty
+; alist — a list, not an atom — so `(eq subst 'fail)` would itself error
+; instead of just correctly answering "no, it's not the fail atom".
+; Той самий патерн захисту, що й у `var?`: щойно `subst` отримує зв'язки,
+; він стає непорожнім alist — списком, не атомом — тож `(eq subst 'fail)`
+; сам би впав замість просто коректно відповісти "ні, це не атом fail".
+; Dieselbe Schutzform wie bei `var?`: sobald `subst` Bindungen erhält, ist
+; es eine nichtleere Alist — eine Liste, kein Atom — daher würde
+; `(eq subst 'fail)` selbst einen Fehler werfen statt einfach korrekt
+; "nein, es ist nicht das fail-Atom" zu antworten.
+(def unify
+  (lambda (a b subst)
+    (cond
+      ((failed-subst? subst) 'fail)
+      (t (unify-walked (walk a subst) (walk b subst) subst)))))
+
+(def failed-subst?
+  (lambda (subst)
+    (cond
+      ((atom subst) (eq subst 'fail))
+      (t '()))))
+
+(def unify-walked
+  (lambda (a b subst)
+    (cond
+      ((var? a) (unify-var a b subst))
+      ((var? b) (unify-var b a subst))
+      ((atom a) (cond ((atom b) (cond ((eq a b) subst) (t 'fail))) (t 'fail)))
+      ((atom b) 'fail)
+      (t (unify (cdr a) (cdr b) (unify (car a) (car b) subst))))))
+
+(def unify-var
+  (lambda (variable term subst)
+    (cond
+      ((var? term)
+       (cond
+         ((eq (second variable) (second term)) subst)
+         (t (extend-subst variable term subst))))
+      (t (extend-subst variable term subst)))))
+
+; Fully resolves every variable in `term` (recursively, through chained
+; bindings and into nested lists) against `subst` — what you call once
+; unification succeeds, to read out a readable answer instead of raw
+; `(var ...)` markers and substitution internals.
+(def apply-subst
+  (lambda (term subst)
+    (apply-subst-walked (walk term subst) subst)))
+
+(def apply-subst-walked
+  (lambda (term subst)
+    (cond
+      ((atom term) term)
+      (t (cons (apply-subst (car term) subst) (apply-subst (cdr term) subst))))))
