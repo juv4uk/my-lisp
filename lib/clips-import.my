@@ -368,6 +368,79 @@
       ((atom (car form)) (eq (car form) 'assert))
       (t '()))))
 
+; Step 9: `printout` alongside `assert` no longer disqualifies a whole
+; rule. Verified before writing this (not guessed): a rule shaped
+; `(defrule mass-rule (planet ?x) => (printout t "found planet " ?x crlf)
+; (assert (has-mass ?x)))` — an extremely ordinary CLIPS pattern, debug
+; output next to the actual assertion — previously imported as *no
+; clauses at all*, silently dropping a perfectly representable `assert`
+; just because a harmless side-effecting `printout` sat next to it.
+; `printout` writes to a stream and asserts nothing; my-lisp has no
+; matching capability to run it in, but running nothing is exactly the
+; same as CLIPS not having anything meaningful to assert from it — safe
+; to drop, not to treat as disqualifying.
+;
+; Still no such leniency for `retract`/`modify`: both refer to a specific
+; already-asserted fact by its CLIPS fact-address, a concept this
+; project's set-of-facts model has no equivalent for (my-lisp facts are
+; compared structurally via `equal?`, not addressed by identity) — a rule
+; containing either still imports as no clauses rather than guessing at
+; semantics it cannot faithfully represent.
+;
+; Крок 9: `printout` поряд з `assert` більше не дискваліфікує все
+; правило. Перевірено перед написанням (не здогадано): правило форми
+; `(defrule mass-rule (planet ?x) => (printout t "found planet " ?x crlf)
+; (assert (has-mass ?x)))` — надзвичайно звичайний CLIPS-патерн,
+; debug-вивід поряд із самим твердженням — раніше імпортувалось як
+; *взагалі відсутність clause*, мовчки відкидаючи цілком представний
+; `assert` лише тому, що поруч сидів нешкідливий `printout` з побічним
+; ефектом. `printout` пише в потік і нічого не стверджує; my-lisp не має
+; відповідної можливості його виконати, але виконати нічого — точно те
+; саме, що й CLIPS без нічого осмисленого для ствердження звідти —
+; безпечно відкинути, не трактувати як дискваліфікуючу.
+;
+; Досі без такої поблажки для `retract`/`modify`: обидва посилаються на
+; конкретний уже ствердений факт за його CLIPS fact-address, поняття, для
+; якого модель множини фактів цього проєкту не має відповідника (факти
+; my-lisp порівнюються структурно через `equal?`, не адресуються за
+; ідентичністю) — правило з будь-яким із них і далі імпортується як
+; відсутність clause замість здогадки про семантику, яку не можна чесно
+; представити.
+;
+; Schritt 9: `printout` neben `assert` disqualifiziert eine Regel nicht
+; mehr vollständig. Vor dem Schreiben verifiziert (nicht geraten): eine
+; Regel der Form `(defrule mass-rule (planet ?x) => (printout t "found
+; planet " ?x crlf) (assert (has-mass ?x)))` — ein äußerst gewöhnliches
+; CLIPS-Muster, Debug-Ausgabe neben der eigentlichen Behauptung — wurde
+; zuvor als *überhaupt keine Clauses* importiert und verwarf
+; stillschweigend eine perfekt darstellbare `assert`-Anweisung nur, weil
+; ein harmloser `printout`-Seiteneffekt daneben stand. `printout` schreibt
+; in einen Stream und behauptet nichts; my-lisp hat keine passende
+; Fähigkeit, es auszuführen, aber nichts auszuführen ist genau dasselbe,
+; wie wenn CLIPS nichts Sinnvolles daraus zu behaupten hätte — sicher zu
+; verwerfen, nicht als disqualifizierend zu behandeln.
+;
+; Weiterhin keine solche Nachsicht für `retract`/`modify`: beide beziehen
+; sich auf einen bestimmten, bereits behaupteten Fakt über seine
+; CLIPS-Fakt-Adresse, ein Konzept, für das das Mengen-von-Fakten-Modell
+; dieses Projekts kein Äquivalent hat (my-lisp-Fakten werden strukturell
+; über `equal?` verglichen, nicht über Identität adressiert) — eine Regel
+; mit einem von beiden importiert weiterhin als keine Clauses, statt eine
+; Semantik zu erraten, die nicht treu dargestellt werden kann.
+(def clips-printout-form?
+  (lambda (form)
+    (cond
+      ((atom form) '())
+      ((atom (car form)) (eq (car form) 'printout))
+      (t '()))))
+
+(def clips-drop-printouts
+  (lambda (forms)
+    (cond
+      ((atom forms) '())
+      ((clips-printout-form? (car forms)) (clips-drop-printouts (cdr forms)))
+      (t (cons (car forms) (clips-drop-printouts (cdr forms)))))))
+
 (def clips-all-asserts?
   (lambda (forms)
     (cond
@@ -426,12 +499,11 @@
   (lambda (form templates)
     (let ((split (clips-split-at-arrow (cddr form))))
       (let ((conditions (clips-convert-vars (clips-convert-template-list (car split) templates)))
-            (conclusion-forms (second split)))
+            (relevant (clips-drop-printouts (second split))))
         (cond
-          ((atom conclusion-forms) '())
-          ((clips-all-asserts? conclusion-forms)
+          ((clips-all-asserts? relevant)
            (clips-clauses-for-conclusions
-             (clips-convert-template-list (clips-assert-conclusions conclusion-forms) templates)
+             (clips-convert-template-list (clips-assert-conclusions relevant) templates)
              conditions))
           (t '()))))))
 

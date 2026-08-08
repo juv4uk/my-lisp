@@ -167,6 +167,32 @@ fn clips_defrule_with_a_not_condition_imports_and_runs_correctly() {
 }
 
 #[test]
+fn clips_defrule_with_printout_alongside_assert_still_imports_the_assert() {
+    // Regression: a rule mixing printout (debug output) with assert used
+    // to import as no clauses at all, silently dropping a perfectly
+    // representable assertion just because printout sat next to it.
+    let source = r#"
+        (clips-import '((defrule mass-rule (planet ?x)
+            => (printout t "found planet " ?x crlf) (assert (has-mass ?x)))))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((has-mass (var x)) (planet (var x))))"
+    );
+}
+
+#[test]
+fn clips_defrule_with_retract_still_imports_as_no_clauses() {
+    // retract refers to a fact by CLIPS fact-address, a concept this
+    // project's set-of-facts model has no equivalent for — still
+    // disqualifying, unlike the harmless printout above.
+    let source = r#"
+        (clips-import '((defrule broken (planet ?x) => (retract ?x) (assert (has-mass ?x)))))
+    "#;
+    assert_eq!(eval_import(source), "()");
+}
+
+#[test]
 fn clips_deftemplate_converts_named_slots_to_positional_order() {
     let source = r#"
         (clips-import '(
