@@ -202,3 +202,35 @@ fn count_usage_sums_repeated_use_of_the_same_fact() {
         "(((parent alice charlie) . 1) ((parent alice bob) . 1) ((sibling (var (x . 0)) (var (y . 0))) . 1))"
     );
 }
+
+#[test]
+fn provenance_marks_a_bare_fact_as_source_fact_with_no_derivation() {
+    let source = r#"
+        (let ((rules '(((parent alice bob)))))
+             (let* ((results (reason '(parent alice bob) rules))
+                    (proof (second (car results))))
+               (provenance proof)))
+    "#;
+    assert_eq!(
+        eval_reason(source),
+        "(statement (parent alice bob) (source fact) (rule (parent alice bob)) (derived-from ()))"
+    );
+}
+
+#[test]
+fn provenance_marks_a_rule_application_as_source_rule_with_its_derivation() {
+    let source = r#"
+        (let ((rules '(
+                 ((grandparent (var x) (var y)) (parent (var x) (var z)) (parent (var z) (var y)))
+                 ((parent alice bob))
+                 ((parent bob charlie))
+               )))
+             (let* ((results (reason (list 'grandparent (logic-var 'a) (logic-var 'b)) rules))
+                    (proof (second (car results))))
+               (provenance proof)))
+    "#;
+    assert_eq!(
+        eval_reason(source),
+        "(statement (grandparent (var a) (var b)) (source rule) (rule (grandparent (var (x . 0)) (var (y . 0)))) (derived-from ((statement (parent (var (x . 0)) (var (z . 0))) (source fact) (rule (parent alice bob)) (derived-from ())) (statement (parent (var (z . 0)) (var (y . 0))) (source fact) (rule (parent bob charlie)) (derived-from ())))))"
+    );
+}

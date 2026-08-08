@@ -242,3 +242,53 @@
     (cond
       ((atom nodes) '())
       (t (merge-usage (count-usage (car nodes)) (count-usage-list (cdr nodes)))))))
+
+; --- statement provenance ------------------------------------------------
+; `reason-explain` already separates "proved" from "cannot prove"; `provenance`
+; goes one level deeper and turns a proof-tree node into an explicit
+; `(statement goal (source fact|rule) (rule rule-head) (derived-from ...))`
+; record — private/lisp-to-knowledge.md §12's "X, because A and B, by rule C"
+; instead of a bare "X". Deliberately no `(confidence ...)` or `(time ...)`
+; field: this engine is exact and deterministic (see the exact-number
+; principle elsewhere in this project) — every proof is either found or not,
+; so a numeric confidence would be invented precision, not a measured one.
+;
+; `reason-explain` вже розрізняє "доведено" від "не можу довести"; `provenance`
+; йде на рівень глибше й перетворює вузол дерева доведення на явний запис
+; `(statement ціль (source fact|rule) (rule голова-правила) (derived-from ...))`
+; — "X, тому що A і B, за правилом C" з private/lisp-to-knowledge.md §12
+; замість голого "X". Свідомо без полів `(confidence ...)`/`(time ...)`: цей
+; рушій точний і детермінований (див. принцип точних чисел деінде в проєкті) —
+; кожне доведення або знайдено, або ні, тож числова впевненість була б
+; вигаданою точністю, не виміряною.
+;
+; `reason-explain` unterscheidet bereits "bewiesen" von "kann nicht beweisen";
+; `provenance` geht eine Ebene tiefer und wandelt einen Beweisbaum-Knoten in
+; einen expliziten Datensatz `(statement ziel (source fact|rule) (rule
+; regelkopf) (derived-from ...))` um — "X, weil A und B, nach Regel C" statt
+; nacktem "X" aus private/lisp-to-knowledge.md §12. Bewusst ohne Felder
+; `(confidence ...)`/`(time ...)`: diese Engine ist exakt und deterministisch
+; (siehe das Prinzip exakter Zahlen an anderer Stelle im Projekt) — jeder
+; Beweis ist entweder gefunden oder nicht, eine numerische Konfidenz wäre
+; erfundene statt gemessener Präzision.
+(def source-of
+  (lambda (node)
+    (cond
+      ((atom (cadddr node)) 'fact)
+      (t 'rule))))
+
+(def provenance
+  (lambda (node)
+    (cond
+      ((eq (car node) 'proved)
+       (list 'statement (second node)
+             (list 'source (source-of node))
+             (list 'rule (third node))
+             (list 'derived-from (provenance-list (cadddr node)))))
+      (t (list 'statement (second node) (list 'source 'not-proved))))))
+
+(def provenance-list
+  (lambda (nodes)
+    (cond
+      ((atom nodes) '())
+      (t (cons (provenance (car nodes)) (provenance-list (cdr nodes)))))))
