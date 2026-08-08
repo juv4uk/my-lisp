@@ -102,6 +102,9 @@ fn read_rejects_non_string_arguments_and_multi_expression_input() {
 
     let two_expressions = eval_program(r#"(read "1 2")"#, &mut Session::default()).unwrap_err();
     assert_eq!(two_expressions.kind, ErrorKind::InvalidForm);
+
+    let too_many_args = eval_program(r#"(read "1" "2")"#, &mut Session::default()).unwrap_err();
+    assert_eq!(too_many_args.kind, ErrorKind::Arity);
 }
 
 #[test]

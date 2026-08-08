@@ -42,48 +42,67 @@ pub(super) fn evaluate_print(
 /// `read` is McCarthy's original reader primitive: it turns text into one
 /// s-expression of *data*, the same way `'expr` does, without evaluating it —
 /// `(eval (read "(+ 1 2)"))` is the read/eval loop written out by hand, in
-/// the language itself. Taking a string (not stdin) keeps this
-/// capability-free like the rest of the crate; interactive input, if it's
-/// ever added, is a separate host-boundary primitive, not this one.
+/// the language itself. `(read "...")` (one argument) stays capability-free,
+/// same as the rest of the crate — it parses the given string. `(read)`
+/// (zero arguments) is the deliberate, explicit exception: it blocks on one
+/// line of real stdin via `read_stdin_line`, which is `#[cfg]`-gated to a
+/// clear `InvalidForm` error instead of a panic on `wasm32` — the browser
+/// REPL (`crates/my-lisp-wasm`) has no console to block on.
 /// `read` — оригінальний reader-примітив Маккарті: перетворює текст на одну
 /// s-expression *даних*, так само як `'expr`, без обчислення — `(eval (read
-/// "(+ 1 2)"))` це вручну виписаний read/eval цикл самою мовою. Читання з
-/// рядка (не stdin) лишає це без host-можливостей, як і решту крейта;
-/// інтерактивний ввід, якщо колись з'явиться, — окремий host-межовий
-/// примітив, не цей.
+/// "(+ 1 2)"))` це вручну виписаний read/eval цикл самою мовою. `(read
+/// "...")` (один аргумент) лишається без host-можливостей, як і решта
+/// крейта — парсить переданий рядок. `(read)` (без аргументів) — навмисний,
+/// явний виняток: блокується на одному рядку справжнього stdin через
+/// `read_stdin_line`, який через `#[cfg]` дає чітку помилку `InvalidForm`
+/// замість паніки на `wasm32` — у браузерного REPL (`crates/my-lisp-wasm`)
+/// немає консолі, на якій можна блокуватись.
 /// `read` ist McCarthys ursprüngliches Reader-Primitiv: es macht aus Text
 /// eine s-Expression aus *Daten*, genau wie `'expr`, ohne sie auszuwerten —
 /// `(eval (read "(+ 1 2)"))` ist die Read/Eval-Schleife von Hand
-/// ausgeschrieben, in der Sprache selbst. Eine Zeichenkette (nicht stdin)
-/// entgegenzunehmen hält dies ohne Host-Fähigkeiten wie den Rest des
-/// Crates; interaktive Eingabe, falls je hinzugefügt, ist ein separates
-/// Host-Grenz-Primitiv, nicht dieses.
+/// ausgeschrieben, in der Sprache selbst. `(read "...")` (ein Argument)
+/// bleibt ohne Host-Fähigkeiten wie der Rest des Crates — es parst die
+/// übergebene Zeichenkette. `(read)` (ohne Argumente) ist die bewusste,
+/// explizite Ausnahme: es blockiert auf einer Zeile echtem stdin über
+/// `read_stdin_line`, das per `#[cfg]` auf `wasm32` einen klaren
+/// `InvalidForm`-Fehler statt eines Panics liefert — der Browser-REPL
+/// (`crates/my-lisp-wasm`) hat keine Konsole, auf der blockiert werden kann.
 pub(super) fn evaluate_read(
     arguments: &[Expr],
     environment: &Environment,
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("read", arguments, 1, span)?;
-    // `Value` has a custom `Drop` impl (iterative, for stack-safe deep-list
-    // drop), which forbids partially moving a field out of a match on it by
-    // value — hence matching on a reference and cloning the cheap `Rc<str>`.
-    // `Value` має власний `Drop` (ітеративний, для stack-safe drop глибоких
-    // списків), який забороняє частково переміщувати поле з `match` за
-    // значенням — тому матчимо через посилання й клонуємо дешевий `Rc<str>`.
-    // `Value` hat einen eigenen `Drop`-Impl (iterativ, für stack-sicheres
-    // Droppen tiefer Listen), der ein teilweises Herausbewegen eines Feldes
-    // aus einem `match` nach Wert verbietet — daher wird über eine Referenz
-    // gematcht und der billige `Rc<str>` geklont.
-    let evaluated = evaluate(&arguments[0], environment)?;
-    let source = match &evaluated {
-        Value::String(text) => text.clone(),
-        _ => {
-            return Err(LanguageError::new(
-                ErrorKind::Type,
-                "read expects a string · read очікує рядок · read erwartet eine Zeichenkette",
-                arguments[0].span,
-            ))
+    if arguments.len() > 1 {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            "read expects zero or one arguments · read очікує нуль або один аргумент · read erwartet null oder ein Argument",
+            span,
+        ));
+    }
+    let source = if let Some(argument) = arguments.first() {
+        // `Value` has a custom `Drop` impl (iterative, for stack-safe deep-list
+        // drop), which forbids partially moving a field out of a match on it by
+        // value — hence matching on a reference and cloning the cheap `Rc<str>`.
+        // `Value` має власний `Drop` (ітеративний, для stack-safe drop глибоких
+        // списків), який забороняє частково переміщувати поле з `match` за
+        // значенням — тому матчимо через посилання й клонуємо дешевий `Rc<str>`.
+        // `Value` hat einen eigenen `Drop`-Impl (iterativ, für stack-sicheres
+        // Droppen tiefer Listen), der ein teilweises Herausbewegen eines Feldes
+        // aus einem `match` nach Wert verbietet — daher wird über eine Referenz
+        // gematcht und der billige `Rc<str>` geklont.
+        let evaluated = evaluate(argument, environment)?;
+        match &evaluated {
+            Value::String(text) => text.to_string(),
+            _ => {
+                return Err(LanguageError::new(
+                    ErrorKind::Type,
+                    "read expects a string · read очікує рядок · read erwartet eine Zeichenkette",
+                    argument.span,
+                ))
+            }
         }
+    } else {
+        read_stdin_line(span)?
     };
     let expressions = crate::parse(&source).map_err(|mut error| {
         error.span = span;
@@ -100,6 +119,57 @@ pub(super) fn evaluate_read(
             span,
         )),
     }
+}
+
+/// Blocks on one line of real stdin. This is the one place in the crate that
+/// touches an actual host I/O stream — see `evaluate_read`'s doc comment for
+/// why this exception exists and how it's scoped away from `wasm32`.
+/// Блокується на одному рядку справжнього stdin. Це єдине місце в крейті,
+/// що торкається реального host I/O-потоку — чому цей виняток існує і як
+/// він відгороджений від `wasm32`, див. doc-коментар `evaluate_read`.
+/// Blockiert auf einer Zeile echtem stdin. Dies ist die einzige Stelle im
+/// Crate, die einen echten Host-I/O-Stream berührt — warum diese Ausnahme
+/// existiert und wie sie von `wasm32` abgegrenzt ist, siehe den
+/// Doc-Kommentar von `evaluate_read`.
+// Reliable when `my-lisp-cli` runs a *file* (verified: `(eval (read))` in a
+// file, piped stdin data, evaluates correctly end to end). Inside the
+// interactive REPL, this competes with rustyline for the same stdin — with
+// piped/redirected (non-TTY) input, rustyline's own line reading can buffer
+// ahead of what it hands back, so a later `(read)` call sees less than a
+// real terminal session would. A genuine TTY reads line-by-line in raw mode
+// without that over-buffering, so typed-at-a-terminal REPL use is expected
+// to behave; piped REPL input is the documented edge case, not a silent gap.
+// Надійно, коли `my-lisp-cli` виконує *файл* (перевірено: `(eval (read))` у
+// файлі з переданим через pipe stdin коректно обчислюється наскрізно).
+// Усередині інтерактивного REPL це конкурує з rustyline за той самий
+// stdin — з переданим через pipe/перенаправленим (не-TTY) вводом власне
+// читання рядків rustyline може буферизувати наперед більше, ніж віддає
+// назад, тож пізніший виклик `(read)` бачить менше, ніж у справжній
+// термінальній сесії. Справжній TTY читає рядок за рядком у raw-режимі
+// без такого зайвого буферування, тож використання REPL з набором тексту
+// в терміналі має працювати; REPL з переданим через pipe вводом —
+// задокументований крайовий випадок, не тихо прихована прогалина.
+#[cfg(not(target_arch = "wasm32"))]
+fn read_stdin_line(span: Span) -> Result<String, LanguageError> {
+    use std::io::BufRead;
+    let mut line = String::new();
+    std::io::stdin().lock().read_line(&mut line).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("read: failed to read from stdin · read: не вдалось прочитати stdin · read: Lesen von stdin fehlgeschlagen: {error}"),
+            span,
+        )
+    })?;
+    Ok(line.trim_end_matches(['\n', '\r']).to_string())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn read_stdin_line(span: Span) -> Result<String, LanguageError> {
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        "read: interactive stdin is not available in this build · read: інтерактивний stdin недоступний у цій збірці · read: interaktives stdin ist in diesem Build nicht verfügbar",
+        span,
+    ))
 }
 
 /// `eval` closes the read/eval loop McCarthy's Lisp is built around:

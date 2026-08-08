@@ -9,10 +9,10 @@ This repository has one test layer: the four Rust crates under `crates/`, run wi
 | `my-lisp` | unit tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`, `src/error.rs`) | 27 | reader/parser edge cases, lexical-scope isolation, single-pass evaluation, macro expansion, char-based line/column and caret rendering for structured errors | ok |
 | `my-lisp` | `tests/mccarthy.rs` | 23 | the seven McCarthy primitives, exact/inexact arithmetic, `<`/`>`/`=` comparison chaining, `print`'s session-wide output transcript (including through closures), `read`/`eval` closing the read-eval loop by hand, lambda semantics, structured errors, `lib/core.my` list utilities (`length`, `reverse`, `append`, `map`, `filter`, `reduce`) | ok |
 | `my-lisp` | `tests/stack_safety.rs` | 4 | tail recursion and deep list clone/drop use constant Rust stack | ok |
-| `my-lisp-cli` | `tests/cli.rs` | 9 | the compiled binary end-to-end: `--version`/`--help`, file execution, parse/eval error exit codes, missing-file handling, `lib/core.my` preloading, REPL history persisting to `~/.my-lisp-history` across separate sessions | ok |
+| `my-lisp-cli` | `tests/cli.rs` | 10 | the compiled binary end-to-end: `--version`/`--help`, file execution, parse/eval error exit codes, missing-file handling, `lib/core.my` preloading, REPL history persisting to `~/.my-lisp-history` across separate sessions, `(read)` reading one line from real piped stdin in file mode | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | literate-Markdown source-offset mapping | ok |
 | `my-lisp-wasm` | unit test (`src/lib.rs`) | 1 | the WASM adapter produces the same exact/single-pass evaluation struct as the native core | ok |
-| **Total** | | **68** | | **68 passed, 0 failed, 0 ignored** |
+| **Total** | | **69** | | **69 passed, 0 failed, 0 ignored** |
 
 The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 13 tests, not counted separately.
 
@@ -31,10 +31,10 @@ Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignor
 | `my-lisp` | unit-тести (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`, `src/error.rs`) | 27 | межові випадки reader/parser, ізоляцію лексичного скоупу, однопрохідне обчислення, розкриття макросів, char-based рядок/стовпець і рендер "^" для структурованих помилок | ok |
 | `my-lisp` | `tests/mccarthy.rs` | 23 | сім примітивів Маккарті, точну/неточну арифметику, ланцюгове порівняння `<`/`>`/`=`, транскрипт виводу `print`, спільний на сесію (включно через замикання), `read`/`eval`, що замикають read-eval цикл вручну, семантику lambda, структуровані помилки, list-утиліти `lib/core.my` (`length`, `reverse`, `append`, `map`, `filter`, `reduce`) | ok |
 | `my-lisp` | `tests/stack_safety.rs` | 4 | хвостову рекурсію та clone/drop глибоких списків зі сталим Rust-стеком | ok |
-| `my-lisp-cli` | `tests/cli.rs` | 9 | скомпільований бінарник наскрізно: `--version`/`--help`, виконання файлу, коди виходу при помилках парсингу/обчислення, відсутній файл, попереднє завантаження `lib/core.my`, збереження історії REPL у `~/.my-lisp-history` між окремими сесіями | ok |
+| `my-lisp-cli` | `tests/cli.rs` | 10 | скомпільований бінарник наскрізно: `--version`/`--help`, виконання файлу, коди виходу при помилках парсингу/обчислення, відсутній файл, попереднє завантаження `lib/core.my`, збереження історії REPL у `~/.my-lisp-history` між окремими сесіями, `(read)` читає один рядок зі справжнього переданого через pipe stdin у файловому режимі | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | зіставлення зміщень початкового коду literate-Markdown | ok |
 | `my-lisp-wasm` | unit-тест (`src/lib.rs`) | 1 | WASM-адаптер видає ту саму точну/однопрохідну структуру обчислення, що й нативне ядро | ok |
-| **Разом** | | **68** | | **68 пройдено, 0 провалів, 0 пропущено** |
+| **Разом** | | **69** | | **69 пройдено, 0 провалів, 0 пропущено** |
 
 Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 13 тестів набору, окремо не рахується.
 
@@ -53,10 +53,10 @@ Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausg
 | `my-lisp` | Unit-Tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`, `src/error.rs`) | 27 | Reader-/Parser-Grenzfälle, Isolation des lexikalischen Scopes, Single-Pass-Auswertung, Makro-Expansion, zeichenbasierte Zeile/Spalte und "^"-Rendering für strukturierte Fehler | ok |
 | `my-lisp` | `tests/mccarthy.rs` | 23 | die sieben McCarthy-Primitive, exakte/inexakte Arithmetik, verkettete Vergleiche `<`/`>`/`=`, `print`s sitzungsweites Ausgabetranskript (auch durch Closures hindurch), `read`/`eval`, die die Read-Eval-Schleife von Hand schließen, Lambda-Semantik, strukturierte Fehler, `lib/core.my`-Listenwerkzeuge (`length`, `reverse`, `append`, `map`, `filter`, `reduce`) | ok |
 | `my-lisp` | `tests/stack_safety.rs` | 4 | Tail-Rekursion und Clone/Drop tiefer Listen mit konstantem Rust-Stack | ok |
-| `my-lisp-cli` | `tests/cli.rs` | 9 | die kompilierte Binärdatei durchgängig: `--version`/`--help`, Dateiausführung, Exit-Codes bei Parse-/Eval-Fehlern, fehlende Datei, Vorladen von `lib/core.my`, REPL-Verlauf, der über getrennte Sitzungen in `~/.my-lisp-history` erhalten bleibt | ok |
+| `my-lisp-cli` | `tests/cli.rs` | 10 | die kompilierte Binärdatei durchgängig: `--version`/`--help`, Dateiausführung, Exit-Codes bei Parse-/Eval-Fehlern, fehlende Datei, Vorladen von `lib/core.my`, REPL-Verlauf, der über getrennte Sitzungen in `~/.my-lisp-history` erhalten bleibt, `(read)`, das im Dateimodus eine Zeile aus echtem, per Pipe übergebenem stdin liest | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | Offset-Zuordnung von literate-Markdown-Quellcode | ok |
 | `my-lisp-wasm` | Unit-Test (`src/lib.rs`) | 1 | der WASM-Adapter liefert dieselbe exakte/Single-Pass-Auswertungsstruktur wie der native Kern | ok |
-| **Gesamt** | | **68** | | **68 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
+| **Gesamt** | | **69** | | **69 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
 
 Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 13 Tests dieser Suite geprüft, nicht separat gezählt.
 

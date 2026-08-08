@@ -148,6 +148,39 @@ fn repl_history_persists_across_separate_sessions() {
 }
 
 #[test]
+fn read_with_no_arguments_reads_one_line_from_real_stdin() {
+    // Reliable in file mode, where the CLI's own stdin isn't also owned by
+    // rustyline's line editor (see the caveat on read_stdin_line in
+    // crates/my-lisp/src/eval/special_forms.rs for the interactive-REPL case).
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let dir = std::env::temp_dir();
+    let path = dir.join("my-lisp-cli-test-read-stdin.my");
+    std::fs::write(&path, "(eval (read))").expect("should write temp file");
+
+    let mut child = my_lisp()
+        .arg(&path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("binary should spawn");
+    child
+        .stdin
+        .take()
+        .expect("stdin should be piped")
+        .write_all(b"(+ 1 2)\n")
+        .expect("should write to stdin");
+    let output = child.wait_with_output().expect("binary should run");
+    let _ = std::fs::remove_file(&path);
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout.trim(), "3");
+}
+
+#[test]
 fn core_lib_is_preloaded_before_running_a_file() {
     // lib/core.my defines `identity`; if the CLI stopped injecting core.my this
     // would fail with an "unknown symbol" evaluation error instead of returning 5.
