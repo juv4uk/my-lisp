@@ -101,6 +101,53 @@ fn running_a_missing_file_reports_a_read_error() {
 }
 
 #[test]
+fn repl_history_persists_across_separate_sessions() {
+    // Isolate HOME/USERPROFILE per test run so this doesn't read or write the
+    // real user's ~/.my-lisp-history, and so parallel test runs don't collide.
+    // Ізолюємо HOME/USERPROFILE для кожного запуску тесту, щоб не читати й не
+    // писати в реальний ~/.my-lisp-history користувача, і щоб паралельні
+    // запуски тестів не конфліктували.
+    // Isoliert HOME/USERPROFILE pro Testlauf, damit weder das echte
+    // ~/.my-lisp-history des Nutzers gelesen/geschrieben wird noch parallele
+    // Testläufe kollidieren.
+    let dir = std::env::temp_dir().join(format!(
+        "my-lisp-cli-test-history-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).expect("should create temp home dir");
+
+    let run = |input: &str| {
+        use std::io::Write;
+        use std::process::Stdio;
+        let mut child = my_lisp()
+            .env("HOME", &dir)
+            .env("USERPROFILE", &dir)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("binary should spawn");
+        child
+            .stdin
+            .take()
+            .expect("stdin should be piped")
+            .write_all(input.as_bytes())
+            .expect("should write to stdin");
+        child.wait_with_output().expect("binary should run")
+    };
+
+    run("(+ 1 2)\n");
+    run("(+ 3 4)\n");
+
+    let history = std::fs::read_to_string(dir.join(".my-lisp-history"))
+        .expect("second session should find history left by the first");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    assert!(history.contains("(+ 1 2)"));
+    assert!(history.contains("(+ 3 4)"));
+}
+
+#[test]
 fn core_lib_is_preloaded_before_running_a_file() {
     // lib/core.my defines `identity`; if the CLI stopped injecting core.my this
     // would fail with an "unknown symbol" evaluation error instead of returning 5.

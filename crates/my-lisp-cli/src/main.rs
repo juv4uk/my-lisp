@@ -3,7 +3,26 @@ use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 use std::process;
+
+/// `~/.my-lisp-history`, if a home directory can be found. REPL history
+/// persistence is best-effort: without a home directory (or if writing
+/// fails) the REPL still works, it just starts each session with no
+/// remembered history.
+/// `~/.my-lisp-history`, якщо домашню теку вдалось знайти. Збереження
+/// історії REPL — best-effort: без домашньої теки (або якщо запис
+/// падає) REPL все одно працює, просто кожна сесія стартує без
+/// запам'ятованої історії.
+/// `~/.my-lisp-history`, sofern ein Home-Verzeichnis gefunden werden
+/// kann. Die REPL-Verlaufspersistenz ist Best-Effort: ohne
+/// Home-Verzeichnis (oder wenn das Schreiben fehlschlägt) funktioniert
+/// die REPL weiterhin, sie startet nur jede Sitzung ohne gespeicherten
+/// Verlauf.
+fn history_path() -> Option<PathBuf> {
+    let home = env::var_os("HOME").or_else(|| env::var_os("USERPROFILE"))?;
+    Some(PathBuf::from(home).join(".my-lisp-history"))
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -81,6 +100,11 @@ fn main() {
             }
         };
 
+        let history_path = history_path();
+        if let Some(path) = &history_path {
+            let _ = rl.load_history(path);
+        }
+
         loop {
             let readline = rl.readline("my-lisp> ");
             match readline {
@@ -91,7 +115,10 @@ fn main() {
                     }
                     
                     let _ = rl.add_history_entry(line);
-                    
+                    if let Some(path) = &history_path {
+                        let _ = rl.append_history(path);
+                    }
+
                     match parse(line) {
                         Ok(ast) => {
                             match eval_parsed_expressions(&ast, &mut session) {
