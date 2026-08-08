@@ -17,6 +17,19 @@ fn division_is_an_exact_reduced_rational() {
     );
 }
 
+/// `Rational`'s numerator/denominator are `i64`, not bignum — a real,
+/// current implementation ceiling on "exact" (see docs/language-core.md).
+/// Deliberately *not* in tests/fixtures/conformance.json: whether a future
+/// bignum-capable implementation (Rust or otherwise — see PLAN.md) still
+/// overflows here is exactly the open scope question that doc raises, so
+/// baking today's i64 ceiling into the shared, append-only contract would
+/// make this test itself the thing blocking that future decision.
+#[test]
+fn exact_arithmetic_overflow_fails_loudly_not_silently() {
+    let error = eval_program("(* 3037000500 3037000500)", &mut Session::default()).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+}
+
 #[test]
 fn arithmetic_promotes_exact_integers_and_preserves_inexact_numbers() {
     assert_eq!(

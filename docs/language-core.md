@@ -42,13 +42,19 @@ The crate contains its own UTF-8 parser, value model, lexical environment frames
 
 Exact rational arithmetic is a kernel mechanism: `/` accepts exact integers and rational values, reduces every fraction, and prints results such as `5/336` without floating-point rounding.
 
+`Rational`'s numerator and denominator are each `i64`, not arbitrary-precision — a real, current ceiling on "exact," not a hypothetical one. Crucially, hitting it fails loudly (`ErrorKind::InvalidForm`, "exact arithmetic overflow") rather than silently rounding: `(* 3037000500 3037000500)` errors instead of returning a wrong number, upholding the never-silently-approximate principle even though the *range* of exactness is bounded. Bignum-capable exact rationals are already an explicitly planned requirement for the future C core (see `PLAN.md`); whether the Rust core also grows arbitrary-precision arithmetic, or stays `i64`-bounded and documents that as a deliberate implementation-specific limit outside the shared `tests/fixtures/conformance.json` contract, is an open scope decision, not yet made.
+
 Крейт має власний UTF-8-парсер, модель значень, фрейми лексичного середовища, діапазони початкового коду та структуровані помилки. Він не залежить від Tauri й не має прямого доступу до файлів, мережі чи можливостей інтерфейсу.
 
 Точна раціональна арифметика є механізмом ядра: `/` приймає точні цілі та раціональні значення, скорочує кожен дріб і виводить результати на кшталт `5/336` без floating-point округлення.
 
+Чисельник і знаменник `Rational` — кожен `i64`, не довільної точності — реальна, поточна стеля "точності", не гіпотетична. Критично важливо, що досягнення цієї стелі падає гучно (`ErrorKind::InvalidForm`, "exact arithmetic overflow"), а не тихо округлює: `(* 3037000500 3037000500)` падає замість повернення неправильного числа, дотримуючись принципу "ніколи не наближай мовчки", навіть якщо *діапазон* точності обмежений. Bignum-спроможна точна раціональна арифметика вже явно запланована вимога для майбутнього C-ядра (див. `PLAN.md`); чи Rust-ядро теж відростить довільну точність, чи лишиться обмеженим `i64` і задокументує це як свідому реалізаційно-специфічну межу поза спільним контрактом `tests/fixtures/conformance.json` — відкрите рішення про обсяг, ще не ухвалене.
+
 Das Crate besitzt einen eigenen UTF-8-Parser, ein Wertmodell, lexikalische Umgebungsframes, Quellbereiche und strukturierte Fehler. Es hängt nicht von Tauri ab und hat keinen direkten Zugriff auf Dateien, Netzwerk oder UI-Funktionen.
 
 Exakte rationale Arithmetik ist ein Kernmechanismus: `/` akzeptiert exakte Ganzzahlen und rationale Werte, kürzt jeden Bruch und gibt Ergebnisse wie `5/336` ohne Gleitkommarundung aus.
+
+Zähler und Nenner von `Rational` sind jeweils `i64`, nicht beliebig genau — eine reale, aktuelle Obergrenze für "exakt", keine hypothetische. Entscheidend ist, dass das Erreichen dieser Grenze laut fehlschlägt (`ErrorKind::InvalidForm`, "exact arithmetic overflow"), statt still zu runden: `(* 3037000500 3037000500)` löst einen Fehler aus, statt eine falsche Zahl zurückzugeben, und hält damit das Nie-still-approximieren-Prinzip aufrecht, selbst wenn der *Bereich* der Exaktheit begrenzt ist. Bignum-fähige exakte rationale Zahlen sind bereits eine explizit geplante Anforderung für den künftigen C-Kern (siehe `PLAN.md`); ob auch der Rust-Kern beliebige Genauigkeit erhält oder `i64`-begrenzt bleibt und dies als bewusste, implementierungsspezifische Grenze außerhalb des gemeinsamen `tests/fixtures/conformance.json`-Vertrags dokumentiert, ist eine noch nicht getroffene, offene Scope-Entscheidung.
 
 ## Bootstrap boundary · Межа саморозгортання · Bootstrap-Grenze
 
