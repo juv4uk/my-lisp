@@ -327,10 +327,26 @@ fn conformance_tests_from_json() {
 
     for fixture in fixtures {
         let expr = fixture["expr"].as_str().expect("fixture needs an \"expr\" string");
+        let is_markdown = fixture.get("mode").and_then(Json::as_str) == Some("markdown");
+
+        if let Some(expected_error) = fixture.get("error").and_then(Json::as_str) {
+            assert!(
+                !is_markdown,
+                "error fixtures aren't supported in markdown mode: {expr}"
+            );
+            let error = eval_program(expr, &mut session)
+                .expect_err(&format!("expected an error but evaluation succeeded: {expr}"));
+            assert_eq!(
+                format!("{:?}", error.kind),
+                expected_error,
+                "wrong error kind for expression: {expr}"
+            );
+            continue;
+        }
+
         let expected = fixture["expected"]
             .as_str()
-            .expect("fixture needs an \"expected\" string");
-        let is_markdown = fixture.get("mode").and_then(Json::as_str) == Some("markdown");
+            .expect("fixture needs an \"expected\" string (or an \"error\" string)");
 
         let actual = if is_markdown {
             eval_literate(expr, SourceMode::Literate, &mut session)

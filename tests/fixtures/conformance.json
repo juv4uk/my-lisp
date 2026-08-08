@@ -40,5 +40,13 @@
   { "expr": "(print 42)", "expected": "42" },
   { "expr": "(read \"(+ 1 2)\")", "expected": "(+ 1 2)" },
   { "expr": "(eval (read \"(+ 1 2)\"))", "expected": "3" },
-  { "expr": "# Literate Lisp\n\nThis is a literate program.\n\n```my-lisp\n(def x 10)\n(* x 2)\n```\n\nIt ignores non-code blocks.", "expected": "20", "mode": "markdown" }
+  { "expr": "# Literate Lisp\n\nThis is a literate program.\n\n```my-lisp\n(def x 10)\n(* x 2)\n```\n\nIt ignores non-code blocks.", "expected": "20", "mode": "markdown" },
+  { "expr": "(car 5)", "error": "Type" },
+  { "expr": "(car '())", "error": "Type" },
+  { "expr": "(eq '(1) '(2))", "error": "Type" },
+  { "expr": "(undefined-symbol)", "error": "UnknownSymbol" },
+  { "expr": "(lambda (x))", "error": "Arity" },
+  { "expr": "(quote a b)", "error": "Arity" },
+  { "expr": "(cons 1)", "error": "Arity" },
+  { "expr": "(/ 1 0)", "error": "InvalidForm" }
 ]
