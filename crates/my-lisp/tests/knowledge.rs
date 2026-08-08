@@ -5,6 +5,7 @@ fn eval_knowledge(source: &str) -> String {
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
     let result = eval_program(source, &mut session);
     match result {
@@ -41,6 +42,38 @@ fn test_reason_in_unknown_module() {
         (reason-in 'biology '(is-alive cell))
     "#;
     assert_eq!(eval_knowledge(source), "Module-not-found");
+}
+
+#[test]
+fn test_forward_in_materializes_every_derivable_fact_in_a_module() {
+    let source = r#"
+        (load-knowledge "../../knowledge/astronomy.my")
+        (forward-in 'astronomy)
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((orbits earth sun) (orbits mars sun) (star sun) (planet mars) (planet earth))"
+    );
+}
+
+#[test]
+fn test_forward_in_unknown_module() {
+    let source = r#"
+        (forward-in 'biology)
+    "#;
+    assert_eq!(eval_knowledge(source), "Module-not-found");
+}
+
+#[test]
+fn test_forward_in_chains_multiple_rules_in_one_module() {
+    let source = r#"
+        (load-knowledge "../../knowledge/physics.my")
+        (forward-in 'physics)
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((attracted-by-gravity apple) (has-mass apple))"
+    );
 }
 
 #[test]

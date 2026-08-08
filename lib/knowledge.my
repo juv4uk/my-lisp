@@ -31,6 +31,49 @@
         ((atom module) 'Module-not-found)
         ('t (reason goal (car (cdr module))))))))
 
+;; --- forward-chaining integration (lib/forward.my) ----------------------
+;; `reason-in` asks a targeted question of a module (backward-chaining:
+;; goal in, one proof out). `forward-in` asks a module to materialize
+;; everything it can derive (forward-chaining: run-multi to a fixpoint).
+;; No new clause format needed — a module's flat clause list from
+;; `defmodule` (facts as zero-condition clauses, rules as `(head cond1
+;; cond2 ...)`) is already exactly what `run-multi` expects: a fact is just
+;; a "rule" whose empty condition list is trivially satisfied, firing it
+;; unconditionally, which is a harmless no-op re-derivation of the fact
+;; itself. That's why `forward-in` starts `run-multi` from an empty fact
+;; list — the module's own facts bootstrap the fixpoint.
+;;
+;; forward-chaining інтеграція (lib/forward.my) — `reason-in` ставить
+;; модулю конкретне питання (backward-chaining: ціль на вхід, одне
+;; доведення на вихід). `forward-in` просить модуль матеріалізувати все,
+;; що можна вивести (forward-chaining: run-multi до fixpoint). Новий
+;; формат clause не потрібен — плаский список clause модуля з `defmodule`
+;; (факти як clause без умов, правила як `(head cond1 cond2 ...)`) уже
+;; точно те, чого чекає `run-multi`: факт — просто "правило" з порожнім
+;; списком умов, який тривіально задоволений, тож застосовується
+;; безумовно — нешкідливе повторне виведення самого факту. Тому
+;; `forward-in` стартує `run-multi` з порожнього списку фактів — власні
+;; факти модуля запускають fixpoint.
+;;
+;; Forward-Chaining-Integration (lib/forward.my) — `reason-in` stellt
+;; einem Modul eine gezielte Frage (Backward-Chaining: Ziel rein, ein
+;; Beweis raus). `forward-in` bittet ein Modul, alles zu materialisieren,
+;; was es ableiten kann (Forward-Chaining: run-multi bis zum Fixpunkt).
+;; Kein neues Clause-Format nötig — die flache Clause-Liste eines Moduls
+;; aus `defmodule` (Fakten als Clauses ohne Bedingungen, Regeln als `(head
+;; cond1 cond2 ...)`) ist bereits genau das, was `run-multi` erwartet: ein
+;; Fakt ist einfach eine "Regel" mit leerer, trivial erfüllter
+;; Bedingungsliste, die bedingungslos feuert — eine harmlose erneute
+;; Ableitung des Fakts selbst. Deshalb startet `forward-in` `run-multi` mit
+;; einer leeren Faktenliste — die eigenen Fakten des Moduls starten den
+;; Fixpunkt.
+(def forward-in
+  (lambda (module-name)
+    (let ((module (assoc module-name *knowledge-base*)))
+      (cond
+        ((atom module) 'Module-not-found)
+        (t (run-multi (car (cdr module)) '()))))))
+
 ;; check-conflict checks if the negation of the first rule's head is provable
 (def check-conflict
   (lambda (module-name rules)
