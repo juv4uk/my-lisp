@@ -75,3 +75,49 @@
         (cond
           ((failed-subst? subst) 'no-match)
           (t (apply-subst template subst)))))))
+
+; Step 2: apply one rule to every fact in a list, collecting the new facts
+; it produces. Still just one rule (not the whole rule set) and still no
+; assertion back into `*working-memory*` or fixpoint looping — this stays a
+; pure function over an explicit fact list, same shape as `count-usage-list`
+; in `lib/reason.my`. `no-match` results are silently dropped, same as a
+; failed match dropping out of `prove-goal`'s search in the backward-chaining
+; engine.
+;
+; Крок 2: застосувати одне правило до кожного факту в списку, зібравши нові
+; факти, які воно породжує. Досі лише одне правило (не весь набір правил) і
+; досі без запису назад у `*working-memory*` чи fixpoint-циклу — це чиста
+; функція над явним списком фактів, той самий підхід, що й `count-usage-list`
+; у `lib/reason.my`. Результати `no-match` мовчки відкидаються, так само як
+; невдале зіставлення випадає з пошуку `prove-goal` у backward-chaining рушії.
+;
+; Schritt 2: eine Regel auf jeden Fakt einer Liste anwenden und die dabei
+; erzeugten neuen Fakten sammeln. Immer noch nur eine Regel (nicht das ganze
+; Regelwerk) und immer noch keine Rückschreibung in `*working-memory*` oder
+; Fixpunkt-Schleife — dies bleibt eine reine Funktion über eine explizite
+; Faktenliste, dieselbe Form wie `count-usage-list` in `lib/reason.my`.
+; `no-match`-Ergebnisse werden stillschweigend verworfen, genau wie ein
+; fehlgeschlagener Abgleich aus der Suche von `prove-goal` in der
+; Backward-Chaining-Engine herausfällt.
+; Guards the `eq` with `(atom result)` first, same pattern as `var?` in
+; lib/unify.my: `result` is `'no-match` (an atom) on failure, but on success
+; it's whatever `template` was — which may itself be a compound list (e.g.
+; `(has-mass earth)`) — and `eq` errors on non-atom arguments instead of
+; just correctly answering "not the no-match atom".
+(def fire-rule-on-facts
+  (lambda (rule facts)
+    (cond
+      ((atom facts) '())
+      (t (let ((result (fire-rule rule (car facts))))
+           (cond
+             ((atom result)
+              (cond
+                ((eq result 'no-match) (fire-rule-on-facts rule (cdr facts)))
+                (t (cons result (fire-rule-on-facts rule (cdr facts))))))
+             (t (cons result (fire-rule-on-facts rule (cdr facts))))))))))
+
+; Convenience wrapper reading the current global working memory rather than
+; requiring the caller to pass it explicitly.
+(def fire-rule-on-working-memory
+  (lambda (rule)
+    (fire-rule-on-facts rule *working-memory*)))

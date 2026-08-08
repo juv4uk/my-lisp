@@ -38,6 +38,35 @@ fn fire_rule_returns_no_match_when_the_pattern_fails() {
 }
 
 #[test]
+fn fire_rule_on_facts_collects_new_facts_and_drops_non_matches() {
+    let source = r#"
+        (fire-rule-on-facts (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
+                             (list '(planet earth) '(star sun) '(planet mars)))
+    "#;
+    assert_eq!(eval_forward(source), "((has-mass earth) (has-mass mars))");
+}
+
+#[test]
+fn fire_rule_on_facts_returns_empty_list_when_nothing_matches() {
+    let source = r#"
+        (fire-rule-on-facts (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
+                             (list '(star sun) '(moon luna)))
+    "#;
+    assert_eq!(eval_forward(source), "()");
+}
+
+#[test]
+fn fire_rule_on_working_memory_reads_the_global_fact_list() {
+    let source = r#"
+        (assert-fact! '(planet earth))
+        (assert-fact! '(star sun))
+        (assert-fact! '(planet mars))
+        (fire-rule-on-working-memory (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x))))
+    "#;
+    assert_eq!(eval_forward(source), "((has-mass mars) (has-mass earth))");
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))
