@@ -30,7 +30,7 @@ cargo test --manifest-path crates/my-lisp-literate/Cargo.toml
 | `tests/my-lisp-cli-web.test.mjs` | 5 | Playwright end-to-end checks on `public/my-lisp-cli-web.html`: plain arithmetic, definitions persisting across REPL lines, `lib/core.my` preloading, exact rational arithmetic, and an error not corrupting the session |
 | **Web/JS total** | **39** | |
 
-`npm test` additionally runs `shadow-cljs compile test`, a ClojureScript test-compilation step that currently contains 0 assertions (reserved for future CLJS-level unit tests; the Node suite above is where actual coverage lives today).
+`npm test` additionally runs `shadow-cljs compile test`, a legacy ClojureScript test-compilation step from before the CLJS prototype was replaced (see `docs/language-core.md`); it currently contains 0 assertions. It is not an active coverage path — the Node suite above is where actual coverage lives today.
 
 ```powershell
 npm test
@@ -70,7 +70,7 @@ cargo test --manifest-path crates/my-lisp-literate/Cargo.toml
 | `tests/my-lisp-cli-web.test.mjs` | 5 | Playwright end-to-end перевірки `public/my-lisp-cli-web.html`: звичайна арифметика, збереження визначень між рядками REPL, попереднє завантаження `lib/core.my`, точна раціональна арифметика, і що помилка не псує сесію |
 | **Разом Web/JS** | **39** | |
 
-`npm test` додатково запускає `shadow-cljs compile test` — крок компіляції ClojureScript-тестів, що наразі містить 0 тверджень (зарезервовано під майбутні CLJS-unit-тести; реальне покриття сьогодні живе в Node-наборі вище).
+`npm test` додатково запускає `shadow-cljs compile test` — застарілий крок компіляції ClojureScript-тестів, що лишився від часів до заміни CLJS-прототипу (див. `docs/language-core.md`); наразі містить 0 тверджень. Це не активний шлях покриття — реальне покриття сьогодні живе в Node-наборі вище.
 
 ```powershell
 npm test
@@ -110,7 +110,7 @@ cargo test --manifest-path crates/my-lisp-literate/Cargo.toml
 | `tests/my-lisp-cli-web.test.mjs` | 5 | Playwright-End-to-End-Prüfungen von `public/my-lisp-cli-web.html`: einfache Arithmetik, über REPL-Zeilen persistente Definitionen, Vorladen von `lib/core.my`, exakte rationale Arithmetik und dass ein Fehler die Sitzung nicht beschädigt |
 | **Web/JS gesamt** | **39** | |
 
-`npm test` führt zusätzlich `shadow-cljs compile test` aus, einen ClojureScript-Testkompilierungsschritt, der derzeit 0 Assertions enthält (reserviert für künftige CLJS-Unit-Tests; die tatsächliche Abdeckung liegt heute in der obigen Node-Suite).
+`npm test` führt zusätzlich `shadow-cljs compile test` aus, einen veralteten ClojureScript-Testkompilierungsschritt aus der Zeit vor dem Ersatz des CLJS-Prototyps (siehe `docs/language-core.md`); er enthält derzeit 0 Assertions. Es ist kein aktiver Abdeckungspfad — die tatsächliche Abdeckung liegt heute in der obigen Node-Suite.
 
 ```powershell
 npm test
