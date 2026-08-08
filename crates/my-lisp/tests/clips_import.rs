@@ -514,3 +514,29 @@ fn clips_import_file_imports_a_fifth_real_external_clp_file_with_mostly_disquali
         "(((path (var id) (var n1) (var s)) (context make_path) (seating () () () () (var id) (var pid) no) (path (var pid) (var n1) (var s)) (not (path (var id) (var n1) ()))))"
     );
 }
+
+#[test]
+fn clips_import_file_imports_a_sixth_real_external_clp_file_with_duplicate_and_embedded_constraints()
+{
+    // dilemma1.clp ("Farmer's Dilemma", CLIPS's own cannibals-and-goat
+    // search example) is another clean confirmation, not a new bug.
+    // Every one of its defrules uses `duplicate` (a CLIPS action this
+    // importer has never seen before — an unrecognized non-assert action,
+    // same "not an assert form" bucket as `halt`), `retract`, or `modify`
+    // on its right-hand side, so all of them correctly import as no
+    // clauses. One condition even writes an embedded test constraint
+    // directly against a symbol with no separating whitespace —
+    // `(search-depth ?sd2&:(< ?sd1 ?sd2))` — which the reader splits into
+    // a stray extra list item rather than one token; harmless here since
+    // that whole rule (`circular-path`) is disqualified by its own
+    // `retract` anyway. Only the two `deffacts` blocks (module-qualified
+    // `MAIN::status`/`MAIN::opposites`, exercising the Step 17 prefix fix
+    // again) survive.
+    let source = r#"
+        (clips-import-file "../../tests/fixtures/dilemma1-external.clp")
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((status 1 no-parent shore-1 shore-1 shore-1 shore-1 no-move)) ((opposite-of shore-1 shore-2)) ((opposite-of shore-2 shore-1)))"
+    );
+}
