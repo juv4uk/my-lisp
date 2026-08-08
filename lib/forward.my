@@ -1,0 +1,77 @@
+; A forward-chaining rule engine (CLIPS-style: working memory of facts +
+; pattern/action rules), the other half of classic symbolic AI from
+; `lib/reason.my`'s backward-chaining (Prolog-style) engine. Grown natively
+; in my-lisp instead of embedding the actual CLIPS C library, the same
+; choice this project makes everywhere: reuse the existing kernel
+; (`unify`/`apply-subst` from `lib/unify.my`) rather than adding a new
+; dependency or a new Rust primitive.
+;
+; Step 1 (deliberately small, by explicit agreement before writing this):
+; one working-memory list, and firing exactly *one* rule against exactly
+; *one* fact. No agenda, no fixpoint loop over the whole working memory, no
+; retract, no truth maintenance — those are later steps, each to be agreed
+; on before starting, same as every other step in this project.
+;
+; A rule is `(pattern template)`: `pattern` may contain `(var name)` logic
+; variables (see `lib/unify.my`); `template` is the new fact to produce,
+; typically reusing those same variables so `fire-rule` can substitute in
+; whatever `pattern` bound them to.
+;
+; Рушій forward-chaining (у стилі CLIPS: working memory фактів + правила
+; шаблон/дія) — інша половина класичного символьного AI, ніж
+; backward-chaining (Prolog-подібний) рушій у `lib/reason.my`. Вирощений
+; нативно в my-lisp замість вбудовування самої C-бібліотеки CLIPS — той
+; самий вибір, що й скрізь у проєкті: перевикористати наявне ядро
+; (`unify`/`apply-subst` з `lib/unify.my`), а не додавати нову залежність чи
+; новий Rust-примітив.
+;
+; Крок 1 (свідомо маленький, за явною домовленістю перед написанням): один
+; список working memory, і застосування рівно *одного* правила до рівно
+; *одного* факту. Без agenda, без fixpoint-циклу по всій working memory,
+; без retract, без truth maintenance — це пізніші кроки, кожен узгоджується
+; окремо перед стартом, як і решта кроків цього проєкту.
+;
+; Правило — це `(pattern template)`: `pattern` може містити логічні змінні
+; `(var name)` (див. `lib/unify.my`); `template` — новий факт, зазвичай з
+; тими самими змінними, щоб `fire-rule` міг підставити те, що `pattern`
+; зв'язав.
+;
+; Eine Forward-Chaining-Regel-Engine (im CLIPS-Stil: Working Memory aus
+; Fakten + Muster-/Aktionsregeln) — die andere Hälfte klassischer
+; symbolischer KI neben der Backward-Chaining-Engine (Prolog-artig) in
+; `lib/reason.my`. Nativ in my-lisp gewachsen statt die eigentliche
+; CLIPS-C-Bibliothek einzubetten — dieselbe Wahl, die dieses Projekt überall
+; trifft: den vorhandenen Kern wiederverwenden (`unify`/`apply-subst` aus
+; `lib/unify.my`) statt eine neue Abhängigkeit oder ein neues Rust-Primitiv
+; hinzuzufügen.
+;
+; Schritt 1 (bewusst klein, nach ausdrücklicher Absprache vor dem
+; Schreiben): eine Working-Memory-Liste, und genau *eine* Regel auf genau
+; *einen* Fakt angewendet. Keine Agenda, keine Fixpunkt-Schleife über die
+; gesamte Working Memory, kein Retract, keine Truth Maintenance — das sind
+; spätere Schritte, jeder einzeln vor Beginn abzustimmen, wie jeder andere
+; Schritt in diesem Projekt.
+;
+; Eine Regel ist `(pattern template)`: `pattern` kann Logikvariablen
+; `(var name)` enthalten (siehe `lib/unify.my`); `template` ist der neue zu
+; erzeugende Fakt, typischerweise mit denselben Variablen, damit
+; `fire-rule` einsetzen kann, woran `pattern` sie gebunden hat.
+
+(def *working-memory* '())
+
+(defmacro assert-fact! (fact)
+  (list 'def '*working-memory* (list 'cons fact '*working-memory*)))
+
+; Tries to unify a rule's pattern against a single fact. On success,
+; returns the rule's template with the resulting bindings substituted in
+; — the new fact this rule application would produce. On failure, returns
+; `'no-match` rather than `'()` — an empty list would be ambiguous with a
+; template that legitimately evaluates to `()`.
+(def fire-rule
+  (lambda (rule fact)
+    (let ((pattern (car rule))
+          (template (second rule)))
+      (let ((subst (unify pattern fact '())))
+        (cond
+          ((failed-subst? subst) 'no-match)
+          (t (apply-subst template subst)))))))
