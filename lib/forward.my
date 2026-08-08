@@ -213,3 +213,43 @@
 
 (defmacro assert-facts! (facts)
   (list 'def '*working-memory* (list 'append-new facts '*working-memory*)))
+
+; Step 5a: plain `retract-fact` — removes one matching fact (compared via
+; `equal?`, same as everywhere else facts are compared) from a fact list.
+; Deliberately *not* truth maintenance yet: if some other fact was derived
+; only from the one being retracted, that derived fact stays behind,
+; unsupported and undetected — `run` currently returns a flat fact list
+; with no memory of which facts justified which. A real TMS needs facts
+; paired with their support set (`(fact . supporting-facts)`), so retracting
+; a support can cascade; that's Step 5b, a separate agreed-on step, not
+; assumed here.
+;
+; Крок 5a: простий `retract-fact` — видаляє один відповідний факт
+; (порівняння через `equal?`, як і скрізь для фактів) зі списку фактів.
+; Свідомо *ще без* truth maintenance: якщо якийсь інший факт був виведений
+; лише з того, що зараз видаляється, цей похідний факт лишається — без
+; підтримки й непоміченим — `run` зараз повертає плаский список фактів без
+; пам'яті про те, які факти обґрунтовували які. Справжній TMS потребує
+; фактів у парі з їхнім набором підтримки (`(факт . факти-підтримки)`), щоб
+; видалення підтримки могло каскадно поширюватись; це Крок 5b, окремо
+; узгоджений крок, тут не мається на увазі.
+;
+; Schritt 5a: einfaches `retract-fact` — entfernt einen passenden Fakt
+; (Vergleich über `equal?`, wie überall sonst bei Fakten) aus einer
+; Faktenliste. Bewusst *noch keine* Truth Maintenance: Wurde ein anderer
+; Fakt nur aus dem gerade entfernten abgeleitet, bleibt dieser abgeleitete
+; Fakt unbemerkt und ohne Unterstützung zurück — `run` liefert derzeit eine
+; flache Faktenliste ohne Gedächtnis darüber, welche Fakten welche
+; begründet haben. Ein echtes TMS braucht Fakten gepaart mit ihrer
+; Unterstützungsmenge (`(fakt . unterstützende-fakten)`), damit das
+; Entfernen einer Unterstützung kaskadieren kann; das ist Schritt 5b, ein
+; separat abgestimmter Schritt, hier nicht unterstellt.
+(def retract-fact
+  (lambda (fact facts)
+    (cond
+      ((atom facts) '())
+      ((equal? fact (car facts)) (cdr facts))
+      (t (cons (car facts) (retract-fact fact (cdr facts)))))))
+
+(defmacro retract-fact! (fact)
+  (list 'def '*working-memory* (list 'retract-fact fact '*working-memory*)))

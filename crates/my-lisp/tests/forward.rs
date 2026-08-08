@@ -130,6 +130,49 @@ fn assert_facts_merges_run_results_into_the_global_working_memory() {
 }
 
 #[test]
+fn retract_fact_removes_a_matching_fact_from_a_list() {
+    let source = r#"
+        (retract-fact '(star sun) (list '(planet earth) '(star sun) '(planet mars)))
+    "#;
+    assert_eq!(eval_forward(source), "((planet earth) (planet mars))");
+}
+
+#[test]
+fn retract_fact_leaves_the_list_unchanged_when_nothing_matches() {
+    let source = r#"
+        (retract-fact '(moon luna) (list '(planet earth) '(star sun)))
+    "#;
+    assert_eq!(eval_forward(source), "((planet earth) (star sun))");
+}
+
+#[test]
+fn retract_fact_bang_removes_from_the_global_working_memory() {
+    let source = r#"
+        (assert-fact! '(planet earth))
+        (assert-fact! '(star sun))
+        (retract-fact! '(star sun))
+        *working-memory*
+    "#;
+    assert_eq!(eval_forward(source), "((planet earth))");
+}
+
+#[test]
+fn retract_fact_bang_does_not_undo_facts_it_already_helped_derive() {
+    // Deliberately demonstrates the Step 5a limitation: retracting the
+    // source fact leaves the already-derived fact behind untouched, since
+    // there is no support tracking yet (that's Step 5b).
+    let source = r#"
+        (assert-fact! '(orbits earth sun))
+        (assert-facts!
+          (run (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x))))
+                *working-memory*))
+        (retract-fact! '(orbits earth sun))
+        *working-memory*
+    "#;
+    assert_eq!(eval_forward(source), "((has-mass earth))");
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))
