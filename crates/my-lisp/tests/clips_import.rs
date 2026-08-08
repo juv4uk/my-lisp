@@ -99,6 +99,40 @@ fn clips_defrule_with_no_asserts_imports_as_no_clauses() {
 }
 
 #[test]
+fn clips_defrule_with_a_multi_fact_assert_produces_one_clause_per_fact() {
+    // Real CLIPS assert can take multiple facts in one call:
+    // (assert (number 0) (number 1) (number 2)) is one assert, three
+    // facts — found on a genuine external .clp file, not guessed.
+    let source = r#"
+        (clips-import '((defrule init (foo) => (assert (number 0) (number 1) (number 2)))))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((number 0) (foo)) ((number 1) (foo)) ((number 2) (foo)))"
+    );
+}
+
+#[test]
+fn clips_import_file_imports_a_real_external_clp_file_from_the_official_clips_examples() {
+    // tests/fixtures/wordgame-external.clp is CLIPS's own GERALD+DONALD=
+    // ROBERT word-puzzle example, downloaded verbatim — the actual
+    // interoperability test: does our importer handle a file we didn't
+    // write, not tailored to our importer's coverage?
+    let source = r#"
+        (clips-import-file "../../tests/fixtures/wordgame-external.clp")
+    "#;
+    // All twenty facts from startup's single multi-fact assert import
+    // correctly, plus generate-combinations' single-fact rule; find-solution
+    // has no assert at all (printout only) so contributes nothing — none
+    // of that is a bug, that's this rule genuinely having nothing to
+    // assert.
+    assert_eq!(
+        eval_import(source),
+        "(((number 0)) ((number 1)) ((number 2)) ((number 3)) ((number 4)) ((number 5)) ((number 6)) ((number 7)) ((number 8)) ((number 9)) ((letter G)) ((letter E)) ((letter R)) ((letter A)) ((letter L)) ((letter D)) ((letter O)) ((letter N)) ((letter B)) ((letter T)) ((combination (var a) (var x)) (number (var x)) (letter (var a))))"
+    );
+}
+
+#[test]
 fn clips_defrule_with_multiple_asserts_produces_one_clause_per_assert() {
     // N assertions sharing one LHS become N clauses, each with the same
     // (converted) condition list — logically equivalent to CLIPS firing

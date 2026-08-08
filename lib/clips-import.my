@@ -481,11 +481,50 @@
       ((clips-assert-form? (car forms)) (clips-all-asserts? (cdr forms)))
       (t '()))))
 
+; Step 15: real CLIPS `assert` accepts *multiple* facts in one call —
+; `(assert (number 0) (number 1) (number 2) ...)`, not just one. Verified
+; against a genuine external `.clp` file, not a hand-written example:
+; importing the classic GERALD+DONALD=ROBERT word-puzzle from CLIPS's own
+; distributed examples (see tests/fixtures/wordgame-external.clp), its
+; `startup` rule's single `(assert (number 0) (number 1) ... (letter T))`
+; call — twenty facts — only ever produced `(number 0)`; the other
+; nineteen silently vanished, because `(second (car forms))` only ever
+; read the *first* fact argument out of each `assert` form. `(cdr (car
+; forms))` reads *every* fact argument instead, `append`-ed across every
+; `assert` form in the RHS (a rule can still have more than one `assert`
+; call, each itself multi-fact).
+;
+; Крок 15: справжній CLIPS `assert` приймає **кілька** фактів за один
+; виклик — `(assert (number 0) (number 1) (number 2) ...)`, не лише один.
+; Перевірено на справжньому зовнішньому `.clp`-файлі, не вигаданому
+; прикладі: імпортуючи класичну задачу GERALD+DONALD=ROBERT з офіційних
+; прикладів CLIPS (див. tests/fixtures/wordgame-external.clp), її правило
+; `startup` з одним викликом `(assert (number 0) (number 1) ... (letter
+; T))` — двадцять фактів — давало лише `(number 0)`; решта дев'ятнадцять
+; мовчки зникали, бо `(second (car forms))` читав лише *перший* аргумент-
+; факт з кожної форми `assert`. `(cdr (car forms))` читає *кожен*
+; аргумент-факт, `append`-нуто через усі форми `assert` у RHS (правило
+; й далі може мати кілька викликів `assert`, кожен сам по собі
+; багатофактовий).
+;
+; Schritt 15: echtes CLIPS-`assert` akzeptiert **mehrere** Fakten in einem
+; Aufruf — `(assert (number 0) (number 1) (number 2) ...)`, nicht nur
+; einen. Verifiziert gegen eine echte externe `.clp`-Datei, kein
+; handgeschriebenes Beispiel: beim Import des klassischen
+; GERALD+DONALD=ROBERT-Worträtsels aus CLIPS' eigenen mitgelieferten
+; Beispielen (siehe tests/fixtures/wordgame-external.clp) lieferte der
+; einzelne `(assert (number 0) (number 1) ... (letter T))`-Aufruf der
+; `startup`-Regel — zwanzig Fakten — nur `(number 0)`; die anderen
+; neunzehn verschwanden stillschweigend, weil `(second (car forms))` nur
+; das *erste* Fakt-Argument jeder `assert`-Form las. `(cdr (car forms))`
+; liest *jedes* Fakt-Argument, über alle `assert`-Formen der RHS
+; `append`-t (eine Regel kann weiterhin mehrere `assert`-Aufrufe haben,
+; jeder selbst mehrfaktig).
 (def clips-assert-conclusions
   (lambda (forms)
     (cond
       ((atom forms) '())
-      (t (cons (second (car forms)) (clips-assert-conclusions (cdr forms)))))))
+      (t (append (cdr (car forms)) (clips-assert-conclusions (cdr forms)))))))
 
 (def clips-clauses-for-conclusions
   (lambda (conclusions conditions)
