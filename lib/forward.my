@@ -416,3 +416,188 @@
 
 (defmacro retract-fact-tms! (fact)
   (list 'def '*justified-memory* (list 'retract-fact-tms fact '*justified-memory*)))
+
+; Step 5c: multiple justifications per fact — the limitation Step 5b
+; documented and deliberately left open. An entry is now `(fact
+; justification-1 justification-2 ...)`: each `justification-N` is its own
+; support set (a list of facts), one entry per *independent* way the fact
+; has been derived (or asserted as an axiom, with justification `()`).
+; Retracting a fact now only removes derivations that actually depended on
+; it: pruning drops any justification-set naming the retracted fact from
+; every other entry, and only when an entry's justification list becomes
+; fully empty does *that* fact cascade-retract too. A fact with a surviving
+; independent justification (e.g. also asserted directly, or derivable
+; another way) stays.
+;
+; Separate global (`*jtms-memory*`) from both `*working-memory*` (Step
+; 1-5a) and `*justified-memory*` (Step 5b, single-justification) — neither
+; earlier layer is touched or replaced.
+;
+; Крок 5c: множинні обґрунтування на факт — обмеження, задокументоване й
+; свідомо залишене відкритим у Кроці 5b. Запис тепер — `(факт
+; обґрунтування-1 обґрунтування-2 ...)`: кожне `обґрунтування-N` — власний
+; набір підтримки (список фактів), один запис на кожен *незалежний* спосіб
+; виведення факту (або аксіому, з обґрунтуванням `()`). Видалення факту
+; тепер прибирає лише ті виведення, що справді залежали від нього:
+; обрізання відкидає будь-який набір підтримки, що називає видалений факт,
+; з кожного іншого запису, і лише коли список обґрунтувань запису стає
+; повністю порожнім, *цей* факт теж каскадно видаляється. Факт із живим
+; незалежним обґрунтуванням (напр. також заявлений напряму, або виведений
+; іншим шляхом) лишається.
+;
+; Окрема глобальна (`*jtms-memory*`) від `*working-memory*` (Крок 1-5a) і
+; `*justified-memory*` (Крок 5b, одне обґрунтування) — жоден з попередніх
+; шарів не чіпається й не замінюється.
+;
+; Schritt 5c: mehrere Begründungen pro Fakt — die in Schritt 5b dokumentierte
+; und bewusst offen gelassene Einschränkung. Ein Eintrag ist nun `(fakt
+; begründung-1 begründung-2 ...)`: jede `begründung-N` ist eine eigene
+; Unterstützungsmenge (eine Faktenliste), ein Eintrag pro *unabhängigem* Weg,
+; auf dem der Fakt abgeleitet wurde (oder als Axiom mit Begründung `()`).
+; Das Entfernen eines Fakts entfernt nun nur Ableitungen, die tatsächlich
+; von ihm abhingen: das Beschneiden verwirft jede Unterstützungsmenge, die
+; den entfernten Fakt nennt, aus jedem anderen Eintrag, und nur wenn die
+; Begründungsliste eines Eintrags vollständig leer wird, wird *dieser* Fakt
+; ebenfalls kaskadierend entfernt. Ein Fakt mit einer überlebenden
+; unabhängigen Begründung (z. B. auch direkt behauptet oder anders
+; ableitbar) bleibt erhalten.
+;
+; Separate globale Variable (`*jtms-memory*`) sowohl von `*working-memory*`
+; (Schritt 1-5a) als auch von `*justified-memory*` (Schritt 5b, eine
+; Begründung) — keine frühere Schicht wird berührt oder ersetzt.
+(def justifications-of (lambda (entry) (cdr entry)))
+
+(def fire-rule-jtms
+  (lambda (rule fact)
+    (let ((result (fire-rule rule fact)))
+      (cond
+        ((atom result)
+         (cond
+           ((eq result 'no-match) 'no-match)
+           (t (list result (list fact)))))
+        (t (list result (list fact)))))))
+
+(def fire-rule-on-facts-jtms
+  (lambda (rule facts)
+    (cond
+      ((atom facts) '())
+      (t (let ((result (fire-rule-jtms rule (car facts))))
+           (cond
+             ((atom result) (fire-rule-on-facts-jtms rule (cdr facts)))
+             (t (cons result (fire-rule-on-facts-jtms rule (cdr facts))))))))))
+
+(def fire-rules-on-facts-jtms
+  (lambda (rules facts)
+    (cond
+      ((atom rules) '())
+      (t (append (fire-rule-on-facts-jtms (car rules) facts)
+                  (fire-rules-on-facts-jtms (cdr rules) facts))))))
+
+(def find-entry
+  (lambda (fact entries)
+    (cond
+      ((atom entries) '())
+      ((equal? fact (fact-of (car entries))) (car entries))
+      (t (find-entry fact (cdr entries))))))
+
+(def remove-entry-jtms
+  (lambda (fact entries)
+    (cond
+      ((atom entries) '())
+      ((equal? fact (fact-of (car entries))) (remove-entry-jtms fact (cdr entries)))
+      (t (cons (car entries) (remove-entry-jtms fact (cdr entries)))))))
+
+; Folds one new `(fact justification)` pair into `entries`: a brand-new
+; fact gets a fresh entry; a fact already present gets `justification`
+; added to its list only if not already there (so re-deriving the same way
+; twice is a no-op, needed for `run-jtms`'s fixpoint check to terminate).
+(def add-justification
+  (lambda (fact justification entries)
+    (let ((existing (find-entry fact entries)))
+      (cond
+        ((atom existing) (cons (list fact justification) entries))
+        ((member? justification (justifications-of existing)) entries)
+        (t (cons (cons fact (cons justification (justifications-of existing)))
+                 (remove-entry-jtms fact entries)))))))
+
+(def add-new-entries-jtms
+  (lambda (new-entries entries)
+    (cond
+      ((atom new-entries) entries)
+      (t (add-new-entries-jtms
+           (cdr new-entries)
+           (add-justification (fact-of (car new-entries)) (second (car new-entries)) entries))))))
+
+; The fixpoint loop. Compares the merged result to the input with `equal?`
+; rather than a length/count check (Step 4's `run` compares lengths) —
+; `add-justification` can grow an *existing* entry's justification list
+; without changing the entry count, so counting entries alone would miss
+; real progress and stop too early.
+(def run-jtms
+  (lambda (rules entries)
+    (let ((merged (add-new-entries-jtms (fire-rules-on-facts-jtms rules (map-fact-of entries)) entries)))
+      (cond
+        ((equal? merged entries) entries)
+        (t (run-jtms rules merged))))))
+
+(def *jtms-memory* '())
+
+(defmacro assert-fact-jtms! (fact)
+  (list 'def '*jtms-memory* (list 'add-justification fact (list 'quote '()) '*jtms-memory*)))
+
+(defmacro run-jtms! (rules)
+  (list 'def '*jtms-memory* (list 'run-jtms rules '*jtms-memory*)))
+
+(def prune-justifications
+  (lambda (fact justifications)
+    (cond
+      ((atom justifications) '())
+      ((member? fact (car justifications)) (prune-justifications fact (cdr justifications)))
+      (t (cons (car justifications) (prune-justifications fact (cdr justifications)))))))
+
+(def prune-entry
+  (lambda (fact entry)
+    (cons (fact-of entry) (prune-justifications fact (justifications-of entry)))))
+
+(def prune-all-entries
+  (lambda (fact entries)
+    (cond
+      ((atom entries) '())
+      (t (cons (prune-entry fact (car entries)) (prune-all-entries fact (cdr entries)))))))
+
+(def unsupported-facts
+  (lambda (entries)
+    (cond
+      ((atom entries) '())
+      ((atom (justifications-of (car entries))) (cons (fact-of (car entries)) (unsupported-facts (cdr entries))))
+      (t (unsupported-facts (cdr entries))))))
+
+(def drop-unsupported
+  (lambda (entries)
+    (cond
+      ((atom entries) '())
+      ((atom (justifications-of (car entries))) (drop-unsupported (cdr entries)))
+      (t (cons (car entries) (drop-unsupported (cdr entries)))))))
+
+; Removes `fact`'s own entry outright, then prunes every justification-set
+; elsewhere that named it. Any entry left with zero justification-sets has
+; lost all support and cascade-retracts in turn — recursively, the same way
+; Step 5b's single-justification cascade works, just checking "any
+; justification left" instead of "any support left".
+(def retract-fact-jtms
+  (lambda (fact entries)
+    (let ((pruned (prune-all-entries fact (remove-entry-jtms fact entries))))
+      (let ((newly-unsupported (unsupported-facts pruned))
+            (remaining (drop-unsupported pruned)))
+        (cond
+          ((atom newly-unsupported) remaining)
+          (t (retract-facts-jtms newly-unsupported remaining)))))))
+
+(def retract-facts-jtms
+  (lambda (facts entries)
+    (cond
+      ((atom facts) entries)
+      (t (retract-facts-jtms (cdr facts) (retract-fact-jtms (car facts) entries))))))
+
+(defmacro retract-fact-jtms! (fact)
+  (list 'def '*jtms-memory* (list 'retract-fact-jtms fact '*jtms-memory*)))

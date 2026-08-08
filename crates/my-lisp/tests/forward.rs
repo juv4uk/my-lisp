@@ -225,6 +225,55 @@ fn retract_fact_tms_bang_leaves_independently_supported_facts_alone() {
 }
 
 #[test]
+fn assert_fact_jtms_stores_an_axiom_with_an_empty_justification() {
+    let source = r#"
+        (assert-fact-jtms! '(orbits earth sun))
+        *jtms-memory*
+    "#;
+    assert_eq!(eval_forward(source), "(((orbits earth sun) ()))");
+}
+
+#[test]
+fn run_jtms_bang_records_the_derivation_as_a_justification() {
+    let source = r#"
+        (assert-fact-jtms! '(orbits earth sun))
+        (run-jtms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
+        *jtms-memory*
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "(((has-mass earth) ((orbits earth sun))) ((orbits earth sun) ()))"
+    );
+}
+
+#[test]
+fn retract_fact_jtms_bang_cascades_when_the_only_justification_is_gone() {
+    let source = r#"
+        (assert-fact-jtms! '(orbits earth sun))
+        (run-jtms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
+        (retract-fact-jtms! '(orbits earth sun))
+        *jtms-memory*
+    "#;
+    assert_eq!(eval_forward(source), "()");
+}
+
+#[test]
+fn retract_fact_jtms_bang_keeps_a_fact_with_a_surviving_independent_justification() {
+    // has-mass(earth) is derivable two independent ways here: from
+    // orbits(earth, sun) *and* asserted directly as its own axiom.
+    // Retracting the orbits fact should not remove it, since the axiom
+    // justification survives untouched.
+    let source = r#"
+        (assert-fact-jtms! '(orbits earth sun))
+        (assert-fact-jtms! '(has-mass earth))
+        (run-jtms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
+        (retract-fact-jtms! '(orbits earth sun))
+        *jtms-memory*
+    "#;
+    assert_eq!(eval_forward(source), "(((has-mass earth) ()))");
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))
