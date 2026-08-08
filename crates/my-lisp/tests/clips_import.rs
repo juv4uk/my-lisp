@@ -378,3 +378,67 @@ fn clips_import_result_feeds_straight_into_defmodule() {
         "((() (proved (planet earth) (planet earth) ())))"
     );
 }
+
+#[test]
+fn clips_deftemplate_name_is_matched_regardless_of_a_defmodule_qualifier() {
+    // Regression: real CLIPS files namespace deftemplate names with a
+    // `defmodule` prefix (`QUESTIONS::question`), then assert plain
+    // `(question ...)` facts elsewhere — CLIPS resolves that against
+    // whichever module is current. This importer models no modules at
+    // all, so both the template's own registered name and any fact head
+    // referring to it must be compared with the `defmodule::` prefix
+    // stripped, or the named-slot conversion silently never fires.
+    let source = r#"
+        (clips-import '(
+            (deftemplate QUESTIONS::question (slot attribute) (slot text))
+            (deffacts init (question (attribute color) (text "what color?")))
+        ))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((question color \"what color?\")))"
+    );
+}
+
+#[test]
+fn clips_condition_slot_with_no_value_does_not_crash_the_importer() {
+    // Regression: a CLIPS condition can name a multislot with no value at
+    // all, e.g. `(precursors)`, meaning "match regardless of what's in
+    // this slot". clips-slot-value-of used to assume every slot form has
+    // a value part and called `second` unconditionally, crashing with
+    // "car expects a non-empty list" the first time a real file used this
+    // shorthand.
+    let source = r#"
+        (clips-import '(
+            (deftemplate question (slot attribute) (multislot precursors))
+            (defrule ask (question (attribute ?a) (precursors)) => (assert (asked ?a)))
+        ))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((asked (var a)) (question (var a) ())))"
+    );
+}
+
+#[test]
+fn clips_import_file_imports_a_third_real_external_clp_file_with_module_qualified_templates() {
+    // wine.clp (CLIPS's own "Wine Expert Sample Problem") is the first
+    // real external example to combine defmodule-qualified deftemplate
+    // names with deffacts entries that reference them by bare name, and
+    // to use CLIPS's valueless-multislot condition shorthand — both bugs
+    // above were found through this exact file.
+    let source = r#"
+        (clips-import-file "../../tests/fixtures/wine-external.clp")
+    "#;
+    let imported = eval_import(source);
+    assert!(
+        imported.contains(
+            "(question main-component \"Is the main component of the meal meat, fish, or poultry? \" meat () ())"
+        ),
+        "expected the main-component question fact to be converted to positional form, got: {imported}"
+    );
+    assert!(
+        imported.contains("(wine Gamay red medium medium)"),
+        "expected a wine fact to be converted to positional form, got: {imported}"
+    );
+}

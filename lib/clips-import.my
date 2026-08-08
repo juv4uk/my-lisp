@@ -128,7 +128,66 @@
       ((atom (car form)) (eq (car form) 'deftemplate))
       (t '()))))
 
-(def clips-deftemplate-name (lambda (form) (second form)))
+; Real CLIPS files namespace their deftemplate/deffacts names with a
+; `defmodule` prefix, e.g. `QUESTIONS::question`. `wine-external.clp`
+; (fetched from CLIPS's own examples) declares `(deftemplate QUESTIONS::question ...)`
+; but then asserts plain `(question ...)` facts inside `deffacts` — CLIPS
+; resolves the bare name against whichever module is current, but this
+; importer has no notion of modules at all. Stripping every name down to
+; whatever follows the last `::` (or the whole name, if there is none)
+; before it ever reaches the template alist lets bare and qualified names
+; match each other, without needing to model `defmodule` for real.
+; Реальні CLIPS-файли простороюють імена deftemplate/deffacts префіксом
+; `defmodule`, напр. `QUESTIONS::question`. `wine-external.clp` (зі
+; справжніх прикладів CLIPS) оголошує `(deftemplate QUESTIONS::question ...)`,
+; але потім у `deffacts` асертує прості факти `(question ...)` — CLIPS сам
+; резолвить голе ім'я відносно поточного модуля, а цей імпортер модулів
+; узагалі не знає. Обрізання кожного імені до частини після останнього
+; `::` (або всього імені, якщо `::` немає) ще до потрапляння в реєстр
+; шаблонів дозволяє голим і кваліфікованим іменам збігатися одне з одним,
+; без реальної підтримки `defmodule`.
+; Echte CLIPS-Dateien versehen deftemplate/deffacts-Namen mit einem
+; `defmodule`-Präfix, z.B. `QUESTIONS::question`. `wine-external.clp` (aus
+; den echten CLIPS-Beispielen) deklariert `(deftemplate QUESTIONS::question ...)`,
+; asserted dann aber schlichte `(question ...)`-Fakten in `deffacts` — CLIPS
+; löst den nackten Namen selbst gegen das aktuelle Modul auf, dieser
+; Importer kennt Module überhaupt nicht. Jeden Namen schon vor der
+; Aufnahme in die Vorlagen-Registry auf den Teil nach dem letzten `::`
+; zu kürzen (oder den ganzen Namen, falls kein `::` vorkommt) lässt nackte
+; und qualifizierte Namen einander finden, ohne `defmodule` wirklich
+; abzubilden.
+(def clips-string-empty? (lambda (s) (eq s "")))
+
+(def clips-string-starts-with-double-colon?
+  (lambda (s)
+    (cond
+      ((clips-string-empty? s) '())
+      ((clips-string-empty? (string-rest s)) '())
+      ((eq (string-first s) ":") (eq (string-first (string-rest s)) ":"))
+      (t '()))))
+
+(def clips-string-after-last-double-colon
+  (lambda (s)
+    (cond
+      ((clips-string-empty? s) '())
+      ((clips-string-starts-with-double-colon? s)
+       (let ((after (clips-string-after-last-double-colon (string-rest (string-rest s)))))
+         (cond
+           ((eq after '()) (string-rest (string-rest s)))
+           (t after))))
+      (t (clips-string-after-last-double-colon (string-rest s))))))
+
+(def clips-strip-module-prefix
+  (lambda (sym)
+    (cond
+      ((symbol? sym)
+       (let ((after (clips-string-after-last-double-colon (symbol->string sym))))
+         (cond
+           ((eq after '()) sym)
+           (t (string->symbol after)))))
+      (t sym))))
+
+(def clips-deftemplate-name (lambda (form) (clips-strip-module-prefix (second form))))
 
 (def clips-slot-name (lambda (slot-form) (second slot-form)))
 
@@ -168,7 +227,37 @@
         ((atom entry) '())
         (t (cdr entry))))))
 
-(def clips-slot-value-of (lambda (slot-form) (second slot-form)))
+; A CLIPS condition can name a multislot with no value at all, e.g.
+; `(precursors)` in wine-external.clp's `ask-a-question` rule — CLIPS reads
+; that as "match regardless of what's in this slot, including empty". A
+; well-formed slot form otherwise always has a value part (`(slotname
+; value)`), so `(cdr slot-form)` being empty is exactly this valueless
+; case; degrading to '() (no constraint) here follows the same "skip,
+; don't crash" policy as clips-lookup-slot-value's own atom guard below,
+; instead of letting `second` fail on a list with no cdr.
+; CLIPS-умова може називати мультислот зовсім без значення, напр.
+; `(precursors)` у правилі `ask-a-question` з wine-external.clp — CLIPS
+; читає це як "збігається незалежно від вмісту цього слота, навіть
+; порожнього". Добре сформована форма слота завжди має частину значення
+; (`(slotname value)`), тож порожній `(cdr slot-form)` — це саме цей
+; безвартісний випадок; деградація до '() (без обмеження) тут іде тим
+; самим шляхом "пропустити, не впасти", що й власна atom-перевірка
+; clips-lookup-slot-value нижче, замість падіння `second` на списку без
+; cdr.
+; Eine CLIPS-Bedingung kann einen Multislot ganz ohne Wert benennen, z.B.
+; `(precursors)` in der Regel `ask-a-question` aus wine-external.clp —
+; CLIPS liest das als "passt unabhängig vom Inhalt dieses Slots, auch
+; leer". Eine wohlgeformte Slot-Form hat sonst immer einen Wertteil
+; (`(slotname value)`), also ist ein leeres `(cdr slot-form)` genau dieser
+; wertlose Fall; die Degradierung zu '() (keine Einschränkung) folgt hier
+; derselben "überspringen statt abstürzen"-Politik wie die eigene
+; atom-Prüfung von clips-lookup-slot-value weiter unten, statt `second`
+; auf einer Liste ohne cdr abstürzen zu lassen.
+(def clips-slot-value-of
+  (lambda (slot-form)
+    (cond
+      ((atom (cdr slot-form)) '())
+      (t (second slot-form)))))
 
 ; Guards with `(atom (car slot-forms))` before comparing: a well-formed
 ; slot entry is `(slotname value)`, a compound list, but a positional fact
@@ -234,7 +323,7 @@
          ((eq (car term) 'not) (list 'not (clips-convert-template (second term) templates)))
          ((eq (car term) 'or) (cons 'or (clips-convert-template-list (cdr term) templates)))
          ((eq (car term) 'and) (cons 'and (clips-convert-template-list (cdr term) templates)))
-         (t (let ((slot-order (clips-template-slot-order (car term) templates)))
+         (t (let ((slot-order (clips-template-slot-order (clips-strip-module-prefix (car term)) templates)))
               (cond
                 ((atom slot-order) term)
                 (t (cons (car term) (clips-positional-args slot-order (cdr term)))))))))
