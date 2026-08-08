@@ -548,6 +548,151 @@
 (defmacro run-jtms! (rules)
   (list 'def '*jtms-memory* (list 'run-jtms rules '*jtms-memory*)))
 
+; Step 14: JTMS grows a multi-condition twin, the same way Step 6 grew
+; `fire-rule-multi`/`run-multi` alongside the Step 1-5 single-condition
+; layer. Verified before writing this (not guessed): `run-jtms!` with the
+; exact `grandparent`/`parent` rule literal used throughout this project
+; derived nothing at all — `fire-rule-jtms` was still built on Step 1's
+; `fire-rule`, matching exactly one `(pattern template)` condition against
+; one fact, with no path to a `(head cond1 cond2 ...)` rule at all, let
+; alone one containing `not`/`or`/`and`/`test`.
+;
+; `match-conditions-jtms` is `thread-conjunction` again, threading a
+; richer state — `(subst . used-facts)` instead of a bare substitution —
+; the exact same shape shift `lib/reason.my`'s `prove-goal-state` makes
+; for `(subst proofs)`. A plain condition's match adds the one fact it
+; matched to `used-facts`; `not`/`test` add nothing (no positive fact
+; supports a negative check or an arbitrary expression); `or` unions each
+; alternative's own `used-facts`; `and`/nested nested nested — is just
+; `match-conditions-jtms` again, over the sub-conditions, same reuse
+; `match-and-condition` already does non-JTMS.
+;
+; Deliberately additive, not a replacement: `fire-rule-jtms` and the
+; single-condition `run-jtms`/`run-jtms!` above are untouched, still valid
+; for the Step 1-5 `(pattern template)` rule shape. `run-jtms-multi!` is
+; the JTMS entry point for the shared `(head cond1 cond2 ...)` format.
+;
+; Крок 14: JTMS отримує багатоумовного близнюка, тим самим шляхом, яким
+; Крок 6 виростив `fire-rule-multi`/`run-multi` поряд із однофактовим
+; шаром Кроків 1-5. Перевірено перед написанням (не здогадано): `run-jtms!`
+; із точно тим самим літералом правила `grandparent`/`parent`, який
+; використовується по всьому проєкту, не виводив нічого — `fire-rule-jtms`
+; досі був побудований на `fire-rule` з Кроку 1, що зіставляє рівно одну
+; умову `(pattern template)` з одним фактом, без жодного шляху до правила
+; `(head cond1 cond2 ...)`, тим паче з `not`/`or`/`and`/`test`.
+;
+; `match-conditions-jtms` — знову `thread-conjunction`, що протягує
+; багатший стан — `(підстановка . використані-факти)` замість голої
+; підстановки — та сама зміна форми, яку `prove-goal-state` у
+; `lib/reason.my` робить для `(підстановка доведення)`. Зіставлення
+; звичайної умови додає той один факт, з яким зіставилось, до
+; `використані-факти`; `not`/`test` не додають нічого (жоден позитивний
+; факт не підтримує заперечну перевірку чи довільний вираз); `or` об'єднує
+; власні `використані-факти` кожної альтернативи; `and` — знову просто
+; `match-conditions-jtms` над під-умовами, те саме перевикористання, що
+; вже робить не-JTMS `match-and-condition`.
+;
+; Свідомо адитивно, не заміна: `fire-rule-jtms` і однофактові `run-jtms`/
+; `run-jtms!` вище не чіпаються, досі чинні для форми правила `(pattern
+; template)` Кроків 1-5. `run-jtms-multi!` — точка входу JTMS для спільного
+; формату `(head cond1 cond2 ...)`.
+;
+; Schritt 14: JTMS erhält einen Mehrbedingungs-Zwilling, genau wie Schritt
+; 6 `fire-rule-multi`/`run-multi` neben der Einzelbedingungs-Schicht aus
+; Schritt 1-5 wachsen ließ. Vor dem Schreiben verifiziert (nicht geraten):
+; `run-jtms!` mit genau demselben `grandparent`/`parent`-Regelliteral, das
+; im ganzen Projekt verwendet wird, leitete überhaupt nichts ab —
+; `fire-rule-jtms` war noch auf `fire-rule` aus Schritt 1 aufgebaut, das
+; genau eine `(pattern template)`-Bedingung gegen einen Fakt abgleicht,
+; ganz ohne Weg zu einer `(head cond1 cond2 ...)`-Regel, geschweige denn
+; mit `not`/`or`/`and`/`test`.
+;
+; `match-conditions-jtms` ist wieder `thread-conjunction`, das einen
+; reicheren Zustand fädelt — `(substitution . genutzte-fakten)` statt einer
+; bloßen Substitution — derselbe Formwechsel, den `prove-goal-state` in
+; `lib/reason.my` für `(substitution beweise)` macht. Der Abgleich einer
+; gewöhnlichen Bedingung fügt den einen gefundenen Fakt zu
+; `genutzte-fakten` hinzu; `not`/`test` fügen nichts hinzu; `or` vereinigt
+; die eigenen `genutzte-fakten` jeder Alternative; `and` ist wieder einfach
+; `match-conditions-jtms` über die Unterbedingungen, dieselbe
+; Wiederverwendung, die `match-and-condition` außerhalb von JTMS bereits
+; tut.
+;
+; Bewusst additiv, kein Ersatz: `fire-rule-jtms` und die
+; Einzelbedingungs-`run-jtms`/`run-jtms!` oben bleiben unberührt, weiterhin
+; gültig für die `(pattern template)`-Regelform aus Schritt 1-5.
+; `run-jtms-multi!` ist der JTMS-Einstiegspunkt für das gemeinsame Format
+; `(head cond1 cond2 ...)`.
+(def jtms-state-subst (lambda (state) (car state)))
+(def jtms-state-used (lambda (state) (cdr state)))
+(def jtms-make-state (lambda (subst used) (cons subst used)))
+
+(def match-plain-condition-jtms
+  (lambda (condition facts state)
+    (cond
+      ((atom facts) '())
+      (t (let ((s (unify condition (car facts) (jtms-state-subst state))))
+           (cond
+             ((failed-subst? s) (match-plain-condition-jtms condition (cdr facts) state))
+             (t (cons (jtms-make-state s (cons (car facts) (jtms-state-used state)))
+                       (match-plain-condition-jtms condition (cdr facts) state)))))))))
+
+(def match-or-condition-jtms
+  (lambda (alternatives facts state)
+    (cond
+      ((atom alternatives) '())
+      (t (append (match-one-condition-jtms (car alternatives) facts state)
+                  (match-or-condition-jtms (cdr alternatives) facts state))))))
+
+(def match-one-condition-jtms
+  (lambda (condition facts state)
+    (cond
+      ((condition-is-not? condition)
+       (cond
+         ((atom (match-condition-against-facts (second condition) facts (jtms-state-subst state)))
+          (list state))
+         (t '())))
+      ((condition-is-or? condition) (match-or-condition-jtms (cdr condition) facts state))
+      ((condition-is-and? condition) (match-conditions-jtms (cdr condition) facts state))
+      ((condition-is-test? condition)
+       (cond
+         ((eval (apply-subst (second condition) (jtms-state-subst state))) (list state))
+         (t '())))
+      (t (match-plain-condition-jtms condition facts state)))))
+
+(def match-conditions-jtms
+  (lambda (conditions facts state)
+    (thread-conjunction conditions state
+      (lambda (condition s) (match-one-condition-jtms condition facts s)))))
+
+(def map-apply-head-jtms
+  (lambda (head states)
+    (cond
+      ((atom states) '())
+      (t (cons (list (apply-subst head (jtms-state-subst (car states))) (jtms-state-used (car states)))
+                (map-apply-head-jtms head (cdr states)))))))
+
+(def fire-rule-jtms-multi
+  (lambda (rule facts)
+    (map-apply-head-jtms (car rule) (match-conditions-jtms (cdr rule) facts (jtms-make-state '() '())))))
+
+(def fire-rules-jtms-multi
+  (lambda (rules facts)
+    (cond
+      ((atom rules) '())
+      (t (append (fire-rule-jtms-multi (car rules) facts)
+                  (fire-rules-jtms-multi (cdr rules) facts))))))
+
+(def run-jtms-multi
+  (lambda (rules entries)
+    (let ((merged (add-new-entries-jtms (fire-rules-jtms-multi rules (map-fact-of entries)) entries)))
+      (cond
+        ((equal? merged entries) entries)
+        (t (run-jtms-multi rules merged))))))
+
+(defmacro run-jtms-multi! (rules)
+  (list 'def '*jtms-memory* (list 'run-jtms-multi rules '*jtms-memory*)))
+
 (def prune-justifications
   (lambda (fact justifications)
     (cond

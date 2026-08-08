@@ -447,6 +447,36 @@ fn match_test_condition_fails_when_the_expression_is_falsy() {
 }
 
 #[test]
+fn run_jtms_multi_derives_a_multi_condition_grandparent_fact() {
+    let source = r#"
+        (assert-fact-jtms! '(parent alice bob))
+        (assert-fact-jtms! '(parent bob charlie))
+        (run-jtms-multi! (list (list (list 'grandparent (logic-var 'x) (logic-var 'y))
+                                      (list 'parent (logic-var 'x) (logic-var 'z))
+                                      (list 'parent (logic-var 'z) (logic-var 'y)))))
+        *jtms-memory*
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "(((grandparent alice charlie) ((parent bob charlie) (parent alice bob))) ((parent bob charlie) ()) ((parent alice bob) ()))"
+    );
+}
+
+#[test]
+fn retract_fact_jtms_bang_cascades_through_a_multi_condition_derivation() {
+    let source = r#"
+        (assert-fact-jtms! '(parent alice bob))
+        (assert-fact-jtms! '(parent bob charlie))
+        (run-jtms-multi! (list (list (list 'grandparent (logic-var 'x) (logic-var 'y))
+                                      (list 'parent (logic-var 'x) (logic-var 'z))
+                                      (list 'parent (logic-var 'z) (logic-var 'y)))))
+        (retract-fact-jtms! '(parent alice bob))
+        *jtms-memory*
+    "#;
+    assert_eq!(eval_forward(source), "(((parent bob charlie) ()))");
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))
