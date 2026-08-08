@@ -10,6 +10,26 @@ pub struct Rational {
     pub denominator: i64,
 }
 
+/// Denominators are always positive (see `from_i128`), so comparing two
+/// fractions by cross-multiplying is exact — no float involved, no rounding.
+/// Знаменники завжди додатні (див. `from_i128`), тож порівняння двох дробів
+/// хрест-навхрест — точне: без float, без округлення.
+/// Nenner sind immer positiv (siehe `from_i128`), daher ist der Vergleich
+/// zweier Brüche per Kreuzmultiplikation exakt — kein Float, keine Rundung.
+impl PartialOrd for Rational {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Rational {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let left = i128::from(self.numerator) * i128::from(other.denominator);
+        let right = i128::from(other.numerator) * i128::from(self.denominator);
+        left.cmp(&right)
+    }
+}
+
 impl Rational {
     pub fn new(numerator: i64, denominator: i64) -> Option<Self> {
         Self::from_i128(i128::from(numerator), i128::from(denominator))

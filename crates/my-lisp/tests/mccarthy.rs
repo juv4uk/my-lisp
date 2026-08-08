@@ -40,6 +40,29 @@ fn arithmetic_promotes_exact_integers_and_preserves_inexact_numbers() {
 }
 
 #[test]
+fn comparisons_chain_and_promote_exact_inexact_like_arithmetic() {
+    assert_eq!(eval("(< 1 2 3)"), Value::Bool(true));
+    assert_eq!(eval("(< 1 3 2)"), Value::Bool(false));
+    assert_eq!(eval("(> 3 2 1)"), Value::Bool(true));
+    assert_eq!(eval("(> 3 1 2)"), Value::Bool(false));
+    assert_eq!(eval("(= 1 1 1)"), Value::Bool(true));
+    assert_eq!(eval("(= 1 2)"), Value::Bool(false));
+    // One inexact operand makes the whole comparison inexact, same rule as +/-/*.
+    assert_eq!(eval("(= 1 1.0)"), Value::Bool(true));
+    // Cross-multiplication compares exact fractions without ever going through f64.
+    assert_eq!(eval("(= 1/2 0.5)"), Value::Bool(true));
+    assert_eq!(eval("(< (/ 1 3) (/ 1 2))"), Value::Bool(true));
+    // A single argument is vacuously ordered/equal.
+    assert_eq!(eval("(< 5)"), Value::Bool(true));
+}
+
+#[test]
+fn comparison_with_no_arguments_is_an_arity_error() {
+    let error = eval_program("(<)", &mut Session::default()).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
+
+#[test]
 fn tail_recursion_uses_constant_rust_stack() {
     let depth = 5_000;
     let mut definitions = (0..depth - 1)

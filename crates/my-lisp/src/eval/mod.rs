@@ -148,6 +148,9 @@ fn evaluate_list(
         Some(operator @ ("+" | "-" | "*")) => {
             arithmetic::evaluate_arithmetic(operator, arguments, environment, span).map(EvalStep::Value)
         }
+        Some(operator @ ("<" | ">" | "=")) => {
+            arithmetic::evaluate_comparison(operator, arguments, environment, span).map(EvalStep::Value)
+        }
         _ => {
             let function = evaluate(&items[0], environment)?;
             match &function {
