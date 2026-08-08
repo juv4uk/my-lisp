@@ -489,3 +489,28 @@ fn clips_import_file_imports_a_fourth_real_external_clp_file_with_a_large_deffac
         "expected a converted deftemplate fact to survive the import, got: {imported}"
     );
 }
+
+#[test]
+fn clips_import_file_imports_a_fifth_real_external_clp_file_with_mostly_disqualified_rules() {
+    // manners.clp (the classic OPS5-derived "Manners Benchmark", also
+    // distributed with CLIPS) didn't surface a new bug — every one of its
+    // 8 rules already exercises policy this importer already has right:
+    // `defglobal` is ignored (not a deffacts/defrule, produces no
+    // clauses), 6 of the 8 rules use `modify`/`retract`/`(halt)` on their
+    // right-hand side and correctly import as no clauses, and one
+    // condition even uses CLIPS's `~?var` connective-constraint syntax
+    // (documented as unsupported — read as an oddly-named ordinary
+    // variable) inside a rule that's disqualified anyway. Only
+    // `make_path`, whose RHS is a single plain `assert`, survives. Worth
+    // locking in as a regression precisely because it's a differently-
+    // shaped real file (no deffacts at all — this benchmark loads its
+    // guest data separately) that exercises almost every disqualification
+    // rule at once without crashing or importing anything incorrect.
+    let source = r#"
+        (clips-import-file "../../tests/fixtures/manners-external.clp")
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((path (var id) (var n1) (var s)) (context make_path) (seating () () () () (var id) (var pid) no) (path (var pid) (var n1) (var s)) (not (path (var id) (var n1) ()))))"
+    );
+}
