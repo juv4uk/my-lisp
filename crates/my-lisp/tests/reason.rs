@@ -68,3 +68,23 @@ fn multiple_valid_paths() {
     // Should find a path via parent 'alice'.
     assert_eq!(eval_reason(source), "1");
 }
+
+#[test]
+fn recursive_rule_standardizing_apart() {
+    // Tests that variable names don't collide across recursive rule invocations.
+    // Without standardizing apart, the `z` in the first invocation of the recursive rule
+    // would collide with the `x`, `y`, or `z` in the inner invocations.
+    let source = r#"
+        (let ((rules '(
+                 ((ancestor (var x) (var y)) (parent (var x) (var y)))
+                 ((ancestor (var x) (var y)) (parent (var x) (var z)) (ancestor (var z) (var y)))
+                 
+                 ((parent alice bob))
+                 ((parent bob charlie))
+                 ((parent charlie dave))
+               )))
+             (length (reason (list 'ancestor 'alice 'dave) rules)))
+    "#;
+    // alice -> bob -> charlie -> dave = 1 valid path
+    assert_eq!(eval_reason(source), "1");
+}

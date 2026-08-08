@@ -8,8 +8,11 @@
 ; 
 ; `reason` takes a `goal` and a list of `rules`, and returns a list of valid 
 ; substitutions (bindings) that satisfy the goal, or an empty list if none.
-; Note: Variable renaming (standardizing apart) is omitted here for minimalism,
-; matching `unify`'s lack of occurs-check.
+;
+; Variable renaming (standardizing apart) is handled by attaching a depth 
+; counter to variable names during rule instantiation. For example, `(var x)`
+; at depth 3 becomes `(var (x . 3))`. This isolates variables between rules
+; and allows for recursive logic!
 ;
 ; Мінімальний рушій логічного висновку (micro-Prolog), що втілює бачення
 ; "Advice Taker": виведення нових фактів з відомих правил та фактів.
@@ -21,8 +24,11 @@
 ;
 ; `reason` приймає `goal` (запит) та список `rules` (правил), і повертає список 
 ; валідних підстановок, що задовольняють запит, або порожній список.
-; Примітка: Перейменування змінних (standardizing apart) тут пропущено заради
-; мінімалізму, подібно до відсутності occurs-check в `unify`.
+;
+; Перейменування змінних (standardizing apart) виконується шляхом додавання 
+; лічильника глибини до імен змінних під час інстанціювання правила. Наприклад, 
+; `(var x)` на глибині 3 стає `(var (x . 3))`. Це ізолює змінні між правилами 
+; і дозволяє рекурсивну логіку!
 ;
 ; Eine minimale Inferenz-Engine (Micro-Prolog), die die "Advice Taker"-Vision
 ; erfüllt: Ableitung neuer Fakten aus bekannten Regeln und Fakten.
@@ -34,42 +40,54 @@
 ;
 ; `reason` nimmt ein `goal` (Ziel) und eine Liste von `rules` (Regeln) und gibt 
 ; eine Liste gültiger Substitutionen zurück, die das Ziel erfüllen, oder eine leere Liste.
-; Hinweis: Variablenumbenennung (standardizing apart) wurde hier der Einfachheit halber 
-; weggelassen, passend zum fehlenden Occurs-Check in `unify`.
+;
+; Variablenumbenennung (standardizing apart) wird behandelt, indem bei der
+; Instanziierung der Regel ein Tiefenzähler an die Variablennamen angehängt wird.
+; Beispielsweise wird `(var x)` in Tiefe 3 zu `(var (x . 3))`. Dies isoliert Variablen
+; zwischen Regeln und ermöglicht rekursive Logik!
 
 (def reason
   (lambda (goal rules)
-    (prove-goal goal rules '() rules)))
+    (prove-goal goal rules '() rules 0)))
 
 ; Proves a single goal against a list of rules, accumulating successful substitutions.
 (def prove-goal
-  (lambda (goal rules subst all-rules)
+  (lambda (goal rules subst all-rules depth)
     (cond
       ((atom rules) '())
       (t (append 
-           (prove-rule goal (car rules) subst all-rules)
-           (prove-goal goal (cdr rules) subst all-rules))))))
+           (prove-rule goal (car rules) subst all-rules depth)
+           (prove-goal goal (cdr rules) subst all-rules depth))))))
+
+; Recursively rename variables in a term to include the depth counter
+(def rename-vars
+  (lambda (term depth)
+    (cond
+      ((atom term) term)
+      ((var? term) (list 'var (cons (second term) depth)))
+      (t (cons (rename-vars (car term) depth) (rename-vars (cdr term) depth))))))
 
 ; Tries to unify the goal with the head of a single rule, then proves its body.
 (def prove-rule
-  (lambda (goal rule subst all-rules)
-    (let ((new-subst (unify goal (car rule) subst)))
-      (cond
-        ((failed-subst? new-subst) '())
-        (t (prove-goals (cdr rule) new-subst all-rules))))))
+  (lambda (goal rule subst all-rules depth)
+    (let ((renamed-rule (rename-vars rule depth)))
+      (let ((new-subst (unify goal (car renamed-rule) subst)))
+        (cond
+          ((failed-subst? new-subst) '())
+          (t (prove-goals (cdr renamed-rule) new-subst all-rules (+ depth 1))))))))
 
 ; Proves a conjunction (list) of goals sequentially, threading substitutions.
 (def prove-goals
-  (lambda (goals subst all-rules)
+  (lambda (goals subst all-rules depth)
     (cond
       ((atom goals) (list subst))
-      (t (flatmap-prove-goals (cdr goals) all-rules (prove-goal (car goals) all-rules subst all-rules))))))
+      (t (flatmap-prove-goals (cdr goals) all-rules depth (prove-goal (car goals) all-rules subst all-rules depth))))))
 
 ; Helper to flatmap the proof of remaining goals over a list of current substitutions.
 (def flatmap-prove-goals
-  (lambda (remaining-goals all-rules substs)
+  (lambda (remaining-goals all-rules depth substs)
     (cond
       ((atom substs) '())
       (t (append
-           (prove-goals remaining-goals (car substs) all-rules)
-           (flatmap-prove-goals remaining-goals all-rules (cdr substs)))))))
+           (prove-goals remaining-goals (car substs) all-rules depth)
+           (flatmap-prove-goals remaining-goals all-rules depth (cdr substs)))))))

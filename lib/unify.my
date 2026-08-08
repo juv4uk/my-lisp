@@ -9,8 +9,9 @@
 ; convention" (see lib/meta-eval.my's header comment for the same
 ; constraint solved a different way). `(var name)` sidesteps it: `var?`
 ; checks `(eq (car term) 'var)`, always atom-safe; two variables compare by
-; `(eq (second a) (second b))`, comparing their bare-symbol names, also
-; always atom-safe. Construct one with `(logic-var 'x)`.
+; `(equal? (second a) (second b))`, comparing their names, which might be
+; symbols or structured pairs (like `(x . 3)` when standardizing apart). 
+; Construct one with `(logic-var 'x)`.
 ;
 ; No occurs-check: unifying `?x` with a term containing `?x` (e.g. `(f ?x)`)
 ; produces a substitution that can't be fully resolved (infinite structure).
@@ -31,9 +32,9 @@
 ; іменування", немає (див. header-коментар lib/meta-eval.my — те саме
 ; обмеження, вирішене інакше). `(var name)` обходить це: `var?` перевіряє
 ; `(eq (car term) 'var)`, завжди безпечно для атомів; дві змінні
-; порівнюються через `(eq (second a) (second b))` — порівняння їхніх
-; голих символьних імен, теж завжди безпечно. Створюється через
-; `(logic-var 'x)`.
+; порівнюються через `(equal? (second a) (second b))` — порівняння їхніх
+; імен, які можуть бути символами або структурованими парами (як `(x . 3)` 
+; при standardizing apart). Створюється через `(logic-var 'x)`.
 ;
 ; Без occurs-check: унікація `?x` з термом, що містить `?x` (напр. `(f
 ; ?x)`), дає підстановку, яку неможливо повністю розв'язати (нескінченна
@@ -54,9 +55,9 @@
 ; Namenskonvention eine Variable" (siehe den Header-Kommentar von
 ; lib/meta-eval.my — dieselbe Einschränkung, anders gelöst). `(var name)`
 ; umgeht das: `var?` prüft `(eq (car term) 'var)`, immer atomsicher; zwei
-; Variablen werden über `(eq (second a) (second b))` verglichen, dem
-; Vergleich ihrer bloßen Symbolnamen, ebenfalls immer atomsicher. Erzeugt
-; wird eine mit `(logic-var 'x)`.
+; Variablen werden über `(equal? (second a) (second b))` verglichen, dem
+; Vergleich ihrer Namen, die Symbole oder strukturierte Paare sein können
+; (wie `(x . 3)` beim standardizing apart). Erzeugt wird eine mit `(logic-var 'x)`.
 ;
 ; Kein Occurs-Check: Das Unifizieren von `?x` mit einem Term, der `?x`
 ; enthält (z. B. `(f ?x)`), erzeugt eine Substitution, die sich nicht
@@ -93,14 +94,14 @@
       ((atom (car term)) (eq (car term) 'var))
       (t '()))))
 
-; subst is an alist of (name . term) pairs, keyed by the variable's bare
-; name symbol (always an atom, always eq-safe) — never by the `(var name)`
-; pair itself.
+; subst is an alist of (name . term) pairs, keyed by the variable's
+; name — never by the `(var name)` pair itself. We use `equal?` instead
+; of `eq` because names can be structures like `(x . 3)` from renaming.
 (def lookup-subst
   (lambda (variable subst)
     (cond
       ((atom subst) variable)
-      ((eq (car (car subst)) (second variable)) (cdr (car subst)))
+      ((equal? (car (car subst)) (second variable)) (cdr (car subst)))
       (t (lookup-subst variable (cdr subst))))))
 
 (def extend-subst
@@ -122,7 +123,7 @@
     (cond
       ((var? resolved)
        (cond
-         ((eq (second resolved) (second term)) term)
+         ((equal? (second resolved) (second term)) term)
          (t (walk resolved subst))))
       (t resolved))))
 
@@ -162,7 +163,7 @@
     (cond
       ((var? term)
        (cond
-         ((eq (second variable) (second term)) subst)
+         ((equal? (second variable) (second term)) subst)
          (t (extend-subst variable term subst))))
       (t (extend-subst variable term subst)))))
 
