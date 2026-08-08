@@ -120,6 +120,15 @@ fn main() {
                         let _ = rl.append_history(path);
                     }
 
+                    // `:tell`/`:ask` are the NLP bridge (see `llm.rs` and `docs/vision.md`):
+                    // the LLM only proposes Lisp syntax, `tell-knowledge`/`reason-in` still
+                    // do the real symbolic verification.
+                    // `:tell`/`:ask` — NLP-міст (див. `llm.rs` і `docs/vision.md`): LLM лише
+                    // пропонує синтаксис Lisp, а справжню символьну верифікацію виконують
+                    // `tell-knowledge`/`reason-in`.
+                    // `:tell`/`:ask` sind die NLP-Brücke (siehe `llm.rs` und `docs/vision.md`):
+                    // das LLM schlägt nur Lisp-Syntax vor, die eigentliche symbolische
+                    // Verifikation übernehmen weiterhin `tell-knowledge`/`reason-in`.
                     if line.starts_with(":tell ") {
                         let text = &line[6..];
                         match llm::generate_rule(text) {

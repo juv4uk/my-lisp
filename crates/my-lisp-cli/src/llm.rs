@@ -1,3 +1,25 @@
+//! Experimental NLP bridge: translates natural-language text into `my-lisp`
+//! rules/queries via the OpenAI chat API, for the REPL's `:tell`/`:ask` commands.
+//! This is deliberately confined to `my-lisp-cli` — the network dependency
+//! (`reqwest`) and API key never touch the capability-free `my-lisp` core.
+//! The LLM only proposes syntax; `lib/reason.my`'s conflict check still
+//! verifies every translated fact before it is accepted (see `docs/vision.md`).
+//!
+//! Експериментальний NLP-міст: перекладає природномовний текст у правила/запити
+//! `my-lisp` через chat API OpenAI, для команд REPL `:tell`/`:ask`.
+//! Свідомо ізольований в `my-lisp-cli` — мережева залежність (`reqwest`) і
+//! ключ API ніколи не торкаються capability-free ядра `my-lisp`. LLM лише
+//! пропонує синтаксис; перевірка конфліктів у `lib/reason.my` все одно
+//! верифікує кожен перекладений факт перед прийняттям (див. `docs/vision.md`).
+//!
+//! Experimentelle NLP-Brücke: übersetzt natürlichsprachlichen Text in
+//! `my-lisp`-Regeln/Anfragen über die OpenAI-Chat-API, für die REPL-Befehle
+//! `:tell`/`:ask`. Bewusst auf `my-lisp-cli` beschränkt — die Netzwerkabhängigkeit
+//! (`reqwest`) und der API-Schlüssel berühren nie den capability-freien
+//! `my-lisp`-Kern. Das LLM schlägt nur Syntax vor; die Konfliktprüfung in
+//! `lib/reason.my` verifiziert weiterhin jede übersetzte Tatsache vor der
+//! Annahme (siehe `docs/vision.md`).
+
 use serde::{Deserialize, Serialize};
 use std::env;
 
