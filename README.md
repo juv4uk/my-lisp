@@ -29,7 +29,7 @@ Exact rational arithmetic is a core purpose, not a nice-to-have: `/` on integers
 
 Rust provides only what it does exceptionally well — safe values, parsing, lexical closures, deterministic evaluation, stack control, diagnostics — and stops there. Every derived form, every stdlib function, grows in my-lisp itself instead of the Rust surface, whenever the existing kernel can already express it: `<=`/`>=` were a two-line addition to an existing dispatch table, not new machinery; `eval` reused the same data→code conversion macro expansion already needed, instead of duplicating it. This is the same instinct that kept John McCarthy from finishing M-expressions once S-expressions turned out to be enough.
 
-That instinct is tested, not just stated: [`lib/meta-eval.my`](lib/meta-eval.my) is a metacircular evaluator — `eval`/`apply` written in my-lisp itself, the same relationship McCarthy's own 1960 paper had to its primitives, dispatching to `car`/`cdr`/`cons`/`atom`/`eq` rather than reimplementing them. [`lib/unify.my`](lib/unify.my) is a small unification engine in the spirit of McCarthy's 1958 "Advice Taker" proposal — symbolic pattern-matching, not statistics. Both are proof that "a small language that grows itself" is a working claim about this codebase, not a slogan.
+That instinct is tested, not just stated: [`lib/meta-eval.my`](lib/meta-eval.my) is a metacircular evaluator — `eval`/`apply` written in my-lisp itself, the same relationship McCarthy's own 1960 paper had to its primitives, dispatching to `car`/`cdr`/`cons`/`atom`/`eq` rather than reimplementing them. [`lib/unify.my`](lib/unify.my) and [`lib/reason.my`](lib/reason.my) provide a small unification and backward-chaining reasoning engine in the spirit of McCarthy's 1958 "Advice Taker" proposal — an inference machine capable of symbolic logic, not statistics. Both are proof that "a small language that grows itself" is a working claim about this codebase, not a slogan.
 
 [`tests/fixtures/conformance.json`](tests/fixtures/conformance.json) exists because Lisp's history is also a history of dialects drifting apart — MacLisp, InterLisp, a dozen Scheme variants, Common Lisp's attempt to reunify them. This file is the one thing a future C core or HDL Lisp-machine core must agree with, so a second implementation never becomes "just another dialect."
 
@@ -40,6 +40,7 @@ This repository is the canonical Rust implementation:
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly bindings powering the browser REPL above.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — literate-Markdown source-offset mapping.
 - [`lib/core.my`](lib/core.my) — the bootstrapped standard library.
+- [`lib/reason.my`](lib/reason.my) — the backward-chaining logic inference engine.
 
 ### Build and test
 
@@ -52,6 +53,7 @@ cargo test --workspace
 
 - [`docs/language-core.md`](docs/language-core.md) — the language contract: primitives, bootstrap boundary, exact arithmetic.
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — a beginner walkthrough of homoiconicity.
+- [`docs/advice-taker.md`](docs/advice-taker.md) — a tutorial on building and using the Advice Taker backward-chaining engine.
 - [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — a small symbolic-AI example: unification, written in my-lisp itself.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — how John McCarthy himself described Lisp's origin and evolution, from 1958 to his death in 2011, and where this project follows or departs from that account.
 - [`docs/testing.md`](docs/testing.md) — current test inventory.
