@@ -160,3 +160,36 @@
       ((eq level 0) '())
       (t (let ((_ (print '..)))
            (print-indent (- level 1)))))))
+
+; `reason` returning an empty list is ambiguous by itself: it could mean "known
+; to be false" or just "not derivable from what's currently known" — the system
+; has no way to say so out loud. `reason-explain` makes that distinction explicit:
+; on success it explains the first proof (as `explain-proof` does); on failure it
+; says so instead of silently returning nothing. This is the "I know X" vs "I
+; could not prove X from what I know" distinction from private/lisp-to-knowledge.md §12.
+;
+; Порожній список від `reason` сам собою неоднозначний: він може означати "відомо,
+; що хибне" або просто "не виводиться з поточних знань" — система не має способу
+; сказати це вголос. `reason-explain` робить цю різницю явною: при успіху пояснює
+; перше доведення (як `explain-proof`), при невдачі — прямо каже про це замість
+; мовчазного порожнього списку. Це різниця "я знаю X" проти "я не зміг довести X
+; з наявних знань" з private/lisp-to-knowledge.md §12.
+;
+; `reason` gibt bei Misserfolg eine leere Liste zurück, die für sich genommen
+; mehrdeutig ist: sie könnte "bekanntermaßen falsch" oder einfach "aus dem
+; aktuellen Wissen nicht ableitbar" bedeuten — das System kann das nicht laut
+; sagen. `reason-explain` macht diesen Unterschied explizit: bei Erfolg erklärt
+; es den ersten Beweis (wie `explain-proof`), bei Misserfolg sagt es das statt
+; stillschweigend nichts zurückzugeben. Das ist der Unterschied zwischen "ich
+; weiß X" und "ich konnte X aus meinem Wissen nicht beweisen" aus
+; private/lisp-to-knowledge.md §12.
+(def reason-explain
+  (lambda (goal rules)
+    (let ((results (reason goal rules)))
+      (cond
+        ((atom results)
+         (let* ((_1 (print 'Cannot))
+                (_2 (print 'prove:))
+                (_3 (print goal)))
+           '()))
+        (t (explain-proof (second (car results))))))))

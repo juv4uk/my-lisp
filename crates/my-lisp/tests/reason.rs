@@ -137,3 +137,28 @@ fn test_explain_proof() {
         ]
     );
 }
+
+#[test]
+fn reason_explain_explains_a_provable_goal() {
+    let source = r#"
+        (let ((rules '(((parent alice bob)))))
+             (reason-explain '(parent alice bob) rules))
+    "#;
+    let output = eval_reason_with_output(source);
+    assert_eq!(
+        output,
+        vec!["Proved:", "(parent alice bob)", "using", "rule:", "(parent alice bob)"]
+    );
+}
+
+#[test]
+fn reason_explain_says_so_when_a_goal_cannot_be_proved() {
+    let source = r#"
+        (let ((rules '(((parent alice bob)))))
+             (reason-explain '(parent bob alice) rules))
+    "#;
+    // Distinct from a silent empty list: the engine states outright that it
+    // could not derive the goal from what it knows.
+    let output = eval_reason_with_output(source);
+    assert_eq!(output, vec!["Cannot", "prove:", "(parent bob alice)"]);
+}
