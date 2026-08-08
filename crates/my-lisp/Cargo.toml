@@ -9,3 +9,16 @@ description = "Independent my-lisp core · Незалежне ядро my-lisp �
 path = "src/lib.rs"
 
 [dependencies]
+
+[dev-dependencies]
+# Test-only: the shipped library stays capability-free (see docs/language-core.md).
+# A dev-dependency cycle with my-lisp-literate (which depends on my-lisp) is fine —
+# Cargo only needs the *library* target acyclic, and tests aren't the library target.
+# Лише для тестів: сама бібліотека лишається без залежностей (див. docs/language-core.md).
+# Циклічна dev-залежність від my-lisp-literate (яка залежить від my-lisp) не проблема —
+# Cargo вимагає ациклічності лише для цілі *бібліотеки*, а тести нею не є.
+# Nur für Tests: Die ausgelieferte Bibliothek bleibt ohne Abhängigkeiten (siehe docs/language-core.md).
+# Ein Dev-Abhängigkeitszyklus mit my-lisp-literate (das von my-lisp abhängt) ist unproblematisch —
+# Cargo verlangt Azyklizität nur für das *Bibliotheks*-Ziel, und Tests sind dieses Ziel nicht.
+serde_json = "1"
+my-lisp-literate = { path = "../my-lisp-literate" }

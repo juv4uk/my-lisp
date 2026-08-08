@@ -191,25 +191,59 @@ fn lambda_reports_invalid_parameters_and_arity() {
     assert_eq!(arity.kind, ErrorKind::Arity);
 }
 
+/// tests/fixtures/conformance.json is the implementation-independent contract
+/// (see CLAUDE.md): any future my-lisp implementation — C, HDL, whatever —
+/// should reproduce these results once it gets the seven primitives and
+/// lambda/def/defmacro right, since everything above that (lib/core.my
+/// included) is plain my-lisp source, not Rust. Preloading core.my here lets
+/// fixtures exercise it directly instead of duplicating stdlib coverage.
+/// tests/fixtures/conformance.json — незалежний від реалізації контракт
+/// (див. CLAUDE.md): будь-яка майбутня реалізація my-lisp — C, HDL, що
+/// завгодно — має відтворювати ці результати, щойно правильно реалізує сім
+/// примітивів і lambda/def/defmacro, бо все, що над ними (включно з
+/// lib/core.my), — звичайний my-lisp-код, не Rust. Попереднє завантаження
+/// core.my тут дозволяє фікстурам напряму його використовувати замість
+/// дублювання покриття stdlib.
+/// tests/fixtures/conformance.json ist der implementierungsunabhängige
+/// Vertrag (siehe CLAUDE.md): jede künftige my-lisp-Implementierung — C,
+/// HDL, was auch immer — sollte diese Ergebnisse reproduzieren, sobald sie
+/// die sieben Primitive und lambda/def/defmacro korrekt umsetzt, da alles
+/// darüber (inklusive lib/core.my) gewöhnlicher my-lisp-Quellcode ist, kein
+/// Rust. Das Vorladen von core.my erlaubt es Fixtures, es direkt zu nutzen,
+/// statt Stdlib-Abdeckung zu duplizieren.
 #[test]
 fn conformance_tests_from_json() {
-    let json = include_str!("../../../tests/fixtures/conformance.json");
+    use my_lisp_literate::{eval_literate, SourceMode};
+    use serde_json::Value as Json;
+
+    let json: Json =
+        serde_json::from_str(include_str!("../../../tests/fixtures/conformance.json"))
+            .expect("conformance.json should be valid JSON");
+    let fixtures = json.as_array().expect("conformance.json should be an array");
+
     let mut session = Session::default();
-    
-    for line in json.lines() {
-        let line = line.trim();
-        if !line.starts_with("{") { continue; }
-        if line.contains("\"mode\": \"markdown\"") { continue; }
-        
-        let expr_start = line.find("\"expr\": \"").unwrap() + 9;
-        let expr_end = line[expr_start..].find("\", \"").unwrap() + expr_start;
-        let expr = &line[expr_start..expr_end];
-        
-        let exp_start = line.find("\"expected\": \"").unwrap() + 13;
-        let exp_end = line[exp_start..].find("\"").unwrap() + exp_start;
-        let expected = &line[exp_start..exp_end];
-        
-        let actual = eval_program(expr, &mut session).unwrap().value.to_string();
+    eval_program(include_str!("../../../lib/core.my"), &mut session)
+        .expect("lib/core.my should load before conformance fixtures run");
+
+    for fixture in fixtures {
+        let expr = fixture["expr"].as_str().expect("fixture needs an \"expr\" string");
+        let expected = fixture["expected"]
+            .as_str()
+            .expect("fixture needs an \"expected\" string");
+        let is_markdown = fixture.get("mode").and_then(Json::as_str) == Some("markdown");
+
+        let actual = if is_markdown {
+            eval_literate(expr, SourceMode::Literate, &mut session)
+                .unwrap_or_else(|e| panic!("markdown fixture failed: {e}\nexpr: {expr}"))
+                .0
+                .value
+                .to_string()
+        } else {
+            eval_program(expr, &mut session)
+                .unwrap_or_else(|e| panic!("fixture failed: {e}\nexpr: {expr}"))
+                .value
+                .to_string()
+        };
         assert_eq!(actual, expected, "Failed on expression: {}", expr);
     }
 }
