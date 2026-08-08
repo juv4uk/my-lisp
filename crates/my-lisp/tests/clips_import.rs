@@ -585,3 +585,42 @@ fn clips_import_file_imports_a_seventh_real_external_clp_file_at_scale() {
         "expected 25 clauses from find-solution's 25 asserts plus 25 from startup's 25 asserts"
     );
 }
+
+#[test]
+fn clips_import_file_imports_an_eighth_real_external_clp_file_with_bare_tilde_constraints() {
+    // mab.clp ("Monkees and Bananas", CLIPS's own planning-problem
+    // example) is another clean confirmation, not a new bug, but the
+    // first real file to use a *bare* `~var`/`~symbol` connective
+    // constraint as a whole slot value on its own — e.g. `(monkey
+    // (holding ~?chest))` and `(thing (on-top-of ~floor) ...)` — rather
+    // than only ever appearing as the tail of an `&`-chain like
+    // `?x&~?y`. Same known limitation (read as one oddly-shaped symbol,
+    // not evaluated), confirmed harmless in this new shape too. It's
+    // also the first file with 33 defrules at once, most combining
+    // fact-address bindings (`?monkey <-`) with both `not` conditions and
+    // `modify` on the right-hand side — every `modify`-bearing rule
+    // correctly disqualifies, every pure-assert rule (all with an empty
+    // `""` docstring, per Step 16) correctly survives.
+    let source = r#"
+        (clips-import-file "../../tests/fixtures/mab-external.clp")
+    "#;
+    let imported = eval_import(source);
+    assert!(
+        imported.contains("(monkey () () ~?chest)"),
+        "expected a bare ~?var connective constraint to survive as an odd symbol, got: {imported}"
+    );
+    assert!(
+        imported.contains("(thing (var chest) () ~floor light)"),
+        "expected a bare ~symbol connective constraint to survive as an odd symbol, got: {imported}"
+    );
+    assert!(
+        imported.contains("(monkey t5-7 green-couch blank)"),
+        "expected startup's zero-condition rule to survive and produce a clause, got: {imported}"
+    );
+    let source_count = format!("(length {source})");
+    assert_eq!(
+        eval_import(&source_count),
+        "30",
+        "expected 17 goal-directed rules plus startup's 13 asserted facts to survive"
+    );
+}
