@@ -2,11 +2,11 @@
 
 > **A small language that grows itself. · Маленька мова, що вирощує себе. · Eine kleine Sprache, die sich selbst wachsen lässt.**
 
-An independent, capability-free Rust library for **my-lisp**, the small Lisp developed alongside the my-idea IDE. The first milestone implements McCarthy's seven primitives and keeps parser, runtime values, environments, diagnostics, and tests outside the IDE shell.
+An independent, capability-free Rust library for **my-lisp**, a small Lisp that originated alongside the my-idea IDE and now lives in its own repository. The first milestone implements McCarthy's seven primitives and keeps parser, runtime values, environments, diagnostics, and tests free of any host-application dependency.
 
-Незалежна Rust-бібліотека без доступу до системних можливостей для **my-lisp** — маленького Lisp, який розвивається поруч з IDE my-idea. Перший етап реалізує сім примітивів Маккарті та тримає парсер, значення виконання, середовища, діагностику й тести поза оболонкою IDE.
+Незалежна Rust-бібліотека без доступу до системних можливостей для **my-lisp** — маленького Lisp, який зародився поруч з IDE my-idea, а тепер живе у власному репозиторії. Перший етап реалізує сім примітивів Маккарті та тримає парсер, значення виконання, середовища, діагностику й тести без залежності від будь-якого хост-застосунку.
 
-Eine unabhängige Rust-Bibliothek ohne Systemzugriffe für **my-lisp**, den kleinen Lisp, der zusammen mit der my-idea-IDE entwickelt wird. Der erste Meilenstein implementiert McCarthys sieben Primitive und hält Parser, Laufzeitwerte, Umgebungen, Diagnosen und Tests außerhalb der IDE-Hülle.
+Eine unabhängige Rust-Bibliothek ohne Systemzugriffe für **my-lisp**, einen kleinen Lisp, der ursprünglich zusammen mit der my-idea-IDE entstand und nun in seinem eigenen Repository lebt. Der erste Meilenstein implementiert McCarthys sieben Primitive und hält Parser, Laufzeitwerte, Umgebungen, Diagnosen und Tests frei von jeder Host-Anwendungsabhängigkeit.
 
 Source files use `.my`; `.lisp` remains compatible. · Файли коду використовують `.my`; `.lisp` залишається сумісним. · Quellcodedateien verwenden `.my`; `.lisp` bleibt kompatibel.
 
