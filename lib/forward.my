@@ -687,22 +687,15 @@
              ((failed-subst? s) (match-condition-against-facts condition (cdr facts) subst))
              (t (cons s (match-condition-against-facts condition (cdr facts) subst)))))))))
 
+; Built directly on `thread-conjunction` (lib/unify.my) — the same
+; conjunction-walking kernel `lib/reason.my`'s `prove-goals` threads a
+; richer `(subst proofs)` state through. Here `try-one` is
+; `match-condition-against-facts`: for one condition, try every fact in the
+; explicit list rather than recursively searching further rules.
 (def match-conditions
   (lambda (conditions facts subst)
-    (cond
-      ((atom conditions) (list subst))
-      (t (flatmap-conditions (car conditions) (cdr conditions) facts subst)))))
-
-(def flatmap-conditions
-  (lambda (condition remaining facts subst)
-    (flatmap-rest-conditions remaining facts (match-condition-against-facts condition facts subst))))
-
-(def flatmap-rest-conditions
-  (lambda (remaining facts substs)
-    (cond
-      ((atom substs) '())
-      (t (append (match-conditions remaining facts (car substs))
-                  (flatmap-rest-conditions remaining facts (cdr substs)))))))
+    (thread-conjunction conditions subst
+      (lambda (condition s) (match-condition-against-facts condition facts s)))))
 
 (def map-apply-head
   (lambda (head substs)

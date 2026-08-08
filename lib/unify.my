@@ -182,3 +182,67 @@
     (cond
       ((atom term) term)
       (t (cons (apply-subst (car term) subst) (apply-subst (cdr term) subst))))))
+
+; The shared kernel behind proving/matching a *conjunction* of conditions:
+; process one condition at a time, threading a `state` value (usually a
+; substitution, or something built around one) through the rest via
+; `try-one` — a caller-supplied strategy for "how do I satisfy a single
+; condition from this state". Every combination `try-one` returns for the
+; first condition branches into its own attempt at the remaining ones,
+; collecting every fully-successful final state.
+;
+; Both `lib/reason.my`'s backward-chaining (proving each condition by
+; recursively searching rules, threading `(subst . proof-so-far)`) and
+; `lib/forward.my`'s forward-chaining (matching each condition against an
+; explicit fact list, threading a bare substitution) do exactly this shape
+; of search — one written from goals outward, the other from facts inward.
+; `thread-conjunction` is the piece they share; `try-one` is the only part
+; that differs, kept as a plain function argument rather than duplicated
+; conjunction-walking logic in each file.
+;
+; Спільне ядро доведення/зіставлення *кон'юнкції* умов: обробляє одну умову
+; за раз, протягуючи значення `state` (зазвичай підстановку, або щось
+; побудоване навколо неї) крізь решту через `try-one` — надану викликачем
+; стратегію "як задовольнити одну умову з цього стану". Кожна комбінація,
+; яку `try-one` повертає для першої умови, розгалужується у власну спробу
+; для решти, збираючи всі повністю успішні фінальні стани.
+;
+; І backward-chaining `lib/reason.my` (доведення кожної умови рекурсивним
+; пошуком по правилах, протягування `(підстановка . доведення-досі)`), і
+; forward-chaining `lib/forward.my` (зіставлення кожної умови з явним
+; списком фактів, протягування голої підстановки) роблять точно таку саму
+; форму пошуку — один написаний від цілей назовні, інший від фактів
+; усередину. `thread-conjunction` — та частина, яку вони ділять; `try-one`
+; — єдине, що відрізняється, передане звичайним аргументом-функцією, а не
+; продубльоване як логіка обходу кон'юнкції в кожному файлі.
+;
+; Der gemeinsame Kern hinter dem Beweisen/Abgleichen einer *Konjunktion*
+; von Bedingungen: verarbeitet eine Bedingung nach der anderen und fädelt
+; einen `state`-Wert (meist eine Substitution oder etwas darum Gebautes)
+; durch die restlichen mittels `try-one` — einer vom Aufrufer bereitgestellten
+; Strategie für "wie erfülle ich eine einzelne Bedingung aus diesem Zustand".
+; Jede Kombination, die `try-one` für die erste Bedingung liefert, verzweigt
+; in einen eigenen Versuch für die restlichen und sammelt alle vollständig
+; erfolgreichen Endzustände.
+;
+; Sowohl das Backward-Chaining von `lib/reason.my` (Beweisen jeder Bedingung
+; durch rekursive Regelsuche, Fädeln von `(substitution . beweis-bisher)`)
+; als auch das Forward-Chaining von `lib/forward.my` (Abgleich jeder
+; Bedingung gegen eine explizite Faktenliste, Fädeln einer bloßen
+; Substitution) folgen genau dieser Suchform — eine von Zielen nach außen
+; geschrieben, die andere von Fakten nach innen. `thread-conjunction` ist
+; der Teil, den sie teilen; `try-one` ist das Einzige, das sich
+; unterscheidet, als gewöhnliches Funktionsargument übergeben statt als
+; duplizierte Konjunktions-Durchlauflogik in jeder Datei.
+(def thread-conjunction
+  (lambda (conditions state try-one)
+    (cond
+      ((atom conditions) (list state))
+      (t (thread-conjunction-branches (cdr conditions) try-one (try-one (car conditions) state))))))
+
+(def thread-conjunction-branches
+  (lambda (remaining try-one states)
+    (cond
+      ((atom states) '())
+      (t (append (thread-conjunction remaining (car states) try-one)
+                  (thread-conjunction-branches remaining try-one (cdr states)))))))

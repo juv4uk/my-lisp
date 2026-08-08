@@ -117,3 +117,40 @@ fn occurs_check_prevents_infinite_structures() {
     "#;
     assert_eq!(eval_unify(source), "fail");
 }
+
+#[test]
+fn thread_conjunction_finds_every_combination_satisfying_all_conditions() {
+    // The shared kernel lib/reason.my and lib/forward.my both build their
+    // conjunctive matching on. Here `try-one` unifies each condition
+    // against a fixed candidate list, threading bindings across — the same
+    // shape lib/forward.my's match-conditions uses, tested directly rather
+    // than only indirectly through its two consumers.
+    let source = r#"
+        (thread-conjunction
+          (list (logic-var 'x) (logic-var 'y))
+          '()
+          (lambda (condition subst)
+            (map (lambda (candidate) (unify condition candidate subst)) '(a b))))
+    "#;
+    // Two conditions, two candidates each, no shared variables between
+    // them: 2 * 2 = 4 independent combinations, each binding x and y.
+    assert_eq!(
+        eval_unify(source),
+        "(((y . a) (x . a)) ((y . b) (x . a)) ((y . a) (x . b)) ((y . b) (x . b)))"
+    );
+}
+
+#[test]
+fn thread_conjunction_returns_no_results_when_a_condition_cannot_be_satisfied() {
+    let source = r#"
+        (thread-conjunction
+          (list 'a 'z)
+          '()
+          (lambda (condition subst)
+            (filter (lambda (result) (eq (failed-subst? result) '()))
+                    (map (lambda (candidate) (unify condition candidate subst)) '(a b)))))
+    "#;
+    // The second condition ('z) never unifies with 'a or 'b, so every
+    // branch started by the first condition dead-ends.
+    assert_eq!(eval_unify(source), "()");
+}

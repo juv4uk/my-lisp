@@ -87,35 +87,69 @@
                                    (list 'proved goal (car renamed-rule) (cadr res)))) 
                            body-results))))))))
 
-; Proves a conjunction (list) of goals sequentially, threading substitutions.
-; Returns a list of `(final-subst list-of-proofs)` pairs.
+; Proves a conjunction (list) of goals sequentially, threading substitutions
+; and accumulated proofs together as one `(subst proofs)` state through
+; `thread-conjunction` (lib/unify.my) — the same conjunction-walking kernel
+; `lib/forward.my`'s `match-conditions` threads a bare substitution through.
+; `try-one` here is `prove-goal-state`: given one goal and the current
+; `(subst proofs)`, it either handles `not` specially (negation as failure
+; has no positive proof of its own — success means the inner goal could
+; *not* be proved) or recursively searches `all-rules` for the goal like
+; any other, in both cases appending exactly one new proof node to `proofs`.
+; Returns a list of `(final-subst list-of-proofs)` pairs, byte-identical in
+; shape and order to what this function returned before this refactor.
+;
+; Доводить кон'юнкцію (список) цілей послідовно, протягуючи підстановку й
+; накопичені доведення разом як один стан `(підстановка доведення)` через
+; `thread-conjunction` (lib/unify.my) — те саме ядро обходу кон'юнкції, крізь
+; яке `match-conditions` у `lib/forward.my` протягує голу підстановку.
+; `try-one` тут — `prove-goal-state`: для однієї цілі й поточного стану
+; `(підстановка доведення)` вона або обробляє `not` окремо (заперечення
+; через невдачу не має власного позитивного доведення — успіх означає, що
+; внутрішню ціль *не вдалось* довести), або рекурсивно шукає ціль у
+; `all-rules`, як і будь-яку іншу, в обох випадках дописуючи рівно один
+; новий вузол доведення до `proofs`. Повертає список пар `(фінальна-підстановка
+; список-доведень)`, побайтово ідентичний за формою й порядком тому, що ця
+; функція повертала до цього рефакторингу.
+;
+; Beweist eine Konjunktion (Liste) von Zielen sequentiell und fädelt
+; Substitution und angesammelte Beweise gemeinsam als einen Zustand
+; `(substitution beweise)` durch `thread-conjunction` (lib/unify.my) — denselben
+; Konjunktions-Durchlaufkern, durch den `match-conditions` in
+; `lib/forward.my` eine bloße Substitution fädelt. `try-one` ist hier
+; `prove-goal-state`: für ein Ziel und den aktuellen Zustand `(substitution
+; beweise)` behandelt es entweder `not` gesondert (Negation als Fehlschlag
+; hat keinen eigenen positiven Beweis — Erfolg bedeutet, dass das innere
+; Ziel *nicht* bewiesen werden konnte) oder durchsucht rekursiv `all-rules`
+; nach dem Ziel wie jedes andere, in beiden Fällen genau einen neuen
+; Beweisknoten an `proofs` anhängend. Liefert eine Liste von
+; `(end-substitution beweisliste)`-Paaren, byte-identisch in Form und
+; Reihenfolge zu dem, was diese Funktion vor diesem Refactoring lieferte.
 (def prove-goals
   (lambda (goals subst all-rules depth)
-    (cond
-      ((atom goals) (list (list subst '())))
-      ((eq (caar goals) 'not)
-        (let ((not-result (prove-goal (cadr (car goals)) all-rules subst all-rules depth)))
-          (cond
-            ((atom not-result)
-              ; The inner goal failed, so `not` succeeds!
-              (let ((first-results (list (list subst (list 'proved-not (cadr (car goals)))))))
-                (flatmap-prove-goals (cdr goals) all-rules depth first-results)))
-            (t '()))))
-      (t (let ((first-results (prove-goal (car goals) all-rules subst all-rules depth)))
-           (flatmap-prove-goals (cdr goals) all-rules depth first-results))))))
+    (thread-conjunction goals (list subst '())
+      (lambda (goal state) (prove-goal-state goal state all-rules depth)))))
 
-; Helper to flatmap the proof of remaining goals over a list of current (subst proof) pairs.
-(def flatmap-prove-goals
-  (lambda (remaining-goals all-rules depth results)
+(def prove-goal-state
+  (lambda (goal state all-rules depth)
+    (let ((subst (car state))
+          (proofs (second state)))
+      (cond
+        ((eq (car goal) 'not)
+         (let ((not-result (prove-goal (second goal) all-rules subst all-rules depth)))
+           (cond
+             ((atom not-result)
+              ; The inner goal failed, so `not` succeeds!
+              (list (list subst (append proofs (list (list 'proved-not (second goal)))))))
+             (t '()))))
+        (t (map-goal-results (prove-goal goal all-rules subst all-rules depth) proofs))))))
+
+(def map-goal-results
+  (lambda (results proofs)
     (cond
       ((atom results) '())
-      (t (let ((first-res (car results)))
-           (let ((rest-results (prove-goals remaining-goals (car first-res) all-rules depth)))
-             (append
-               (map-proofs (lambda (rest-res)
-                             (list (car rest-res) (cons (cadr first-res) (cadr rest-res))))
-                           rest-results)
-               (flatmap-prove-goals remaining-goals all-rules depth (cdr results)))))))))
+      (t (cons (list (car (car results)) (append proofs (list (second (car results)))))
+                (map-goal-results (cdr results) proofs))))))
 
 ; Translates a proof tree into a readable trace via side-effecting `print`.
 (def explain-proof
