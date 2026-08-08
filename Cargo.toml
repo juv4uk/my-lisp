@@ -6,7 +6,6 @@ members = [
     "crates/my-lisp", "crates/my-lisp-cli",
     "crates/my-lisp-literate",
     "crates/my-lisp-wasm",
-    "src-tauri",
 ]
 
 # Use a single shared lock-file at the workspace root.

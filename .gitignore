@@ -1,55 +1,21 @@
-# ClojureScript and frontend dependencies
-.DS_Store
-node_modules
-/dist
-/.shadow-cljs
-/.m2-cache
-/.clj-kondo
-/.lsp
-/public/js
-/public/wasm
+# Rust build artifacts
 /target
 **/target/
-.env
-.env.*
-!.env.example
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
 
-# Rust / Tauri build artifacts
-src-tauri/target/
-src-tauri/Cargo.lock
-src-tauri/gen/
-src-tauri/release/
+# Node (benchmark/build scripts)
+node_modules
 
-# Android build output & signing
-*.apk
-*.aab
-*.apks
-*.jks
-*.keystore
-keystore.properties
-keystore_base64.txt
-*.log
-
-# IDE settings
+# Local editor/OS files
+.DS_Store
 .vscode/
 .idea/
 
-# Local release-script backup / Локальна резервна копія / Lokale Sicherung
-scripts/release1.ps1
-
-# Private local files: project memory, personal profile, Android signing key
-# Приватні локальні файли: пам'ять проєкту, особистий профіль, ключ підпису Android
-# Private lokale Dateien: Projektgedächtnis, persönliches Profil, Android-Signaturschlüssel
+# Private local files (not part of the language repo)
+# Приватні локальні файли (не частина репозиторію мови)
+# Private lokale Dateien (kein Teil des Sprach-Repos)
 /private/
-
-# Generated Android resources (icons, mipmap)
-src-tauri/gen/android/app/src/main/res/mipmap-*/
-src-tauri/gen/android/app/src/main/res/mipmap-anydpi-v26/
 
 # Standalone Web HTML (generated artifact)
 # Standalone Web HTML (згенерований артефакт)
 # Standalone Web HTML (generiertes Artefakt)
-/my-idea-web.html
 /my-lisp-cli-web.html
