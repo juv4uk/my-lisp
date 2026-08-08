@@ -81,3 +81,38 @@ fn test_describe_symbol_with_no_facts() {
     "#;
     assert_eq!(eval_knowledge(source), "()");
 }
+
+#[test]
+fn test_record_usage_accumulates_across_separate_queries() {
+    // `record-usage!` must run directly at the top level (the global frame),
+    // not nested inside a `let` — `let` desugars to an immediately-invoked
+    // lambda, and `def` only ever mutates the frame it runs in, so a
+    // `record-usage!` wrapped in `let` would quietly define a throwaway local
+    // instead of updating the global `*usage-counts*`.
+    //
+    // The renamed rule head `(orbits (var (p . 0)) (var (s . 0)))` is built
+    // with `cons`/`list` rather than a quoted `'(p . 0)` literal: the reader
+    // has no dotted-pair syntax (a literal `.` parses as an ordinary symbol),
+    // even though the printer renders real dotted pairs that way — so a
+    // quoted `(p . 0)` and an actual `(cons 'p 0)` are not `equal?`.
+    let source = r#"
+        (load-knowledge "../../knowledge/astronomy.my")
+        (def rule-key (list 'orbits (list 'var (cons 'p 0)) (list 'var (cons 's 0))))
+        (def results-1 (reason-in 'astronomy '(orbits earth sun)))
+        (record-usage! (second (car results-1)))
+        (def results-2 (reason-in 'astronomy '(orbits mars sun)))
+        (record-usage! (second (car results-2)))
+        (usage-of rule-key)
+    "#;
+    // The `orbits` rule fired once per query, on two separate top-level
+    // `record-usage!` calls; usage-of reports the running total.
+    assert_eq!(eval_knowledge(source), "2");
+}
+
+#[test]
+fn test_usage_of_unrecorded_rule_is_zero() {
+    let source = r#"
+        (usage-of (list 'orbits (list 'var (cons 'p 0)) (list 'var (cons 's 0))))
+    "#;
+    assert_eq!(eval_knowledge(source), "0");
+}

@@ -12,11 +12,11 @@ This repository has one test layer: the four Rust crates under `crates/`, run wi
 | `my-lisp-cli` | `tests/cli.rs` | 10 | the compiled binary end-to-end: `--version`/`--help`, file execution, parse/eval error exit codes, missing-file handling, `lib/core.my` preloading, REPL history persisting to `~/.my-lisp-history` across separate sessions, `(read)` reading one line from real piped stdin in file mode | ok |
 | `my-lisp` | `tests/meta_eval.rs` | 9 | `lib/meta-eval.my`, the metacircular evaluator: self-evaluation, `quote`, arithmetic/list-primitive dispatch, `cond`, lambda application (single- and multi-expression bodies), closures capturing free variables from a passed-in env, higher-order functions | ok |
 | `my-lisp` | `tests/unify.rs` | 10 | `lib/unify.my`, the unification primitive: atom matching, variable binding/resolution, structural (compound-term) unification, mismatch failure, transitive chained-variable resolution, same-variable unification creating no binding, full-query `apply-subst`, occurs-check | ok |
-| `my-lisp` | `tests/reason.rs` | 9 | `lib/reason.my`, the backward-chaining engine: simple facts, recursive rules, standardizing apart, negation as failure, proof trees and `explain-proof` trace output, `reason-explain`'s "provable" vs "cannot prove" distinction | ok |
-| `my-lisp` | `tests/knowledge.rs` | 6 | `lib/knowledge.my`, modular knowledge packages: `defmodule`, isolated per-module queries via `reason-in`, conflict detection in `tell-knowledge`, `describe` collecting every known fact about a symbol (the "atom as concept entry point" idea) | ok |
+| `my-lisp` | `tests/reason.rs` | 11 | `lib/reason.my`, the backward-chaining engine: simple facts, recursive rules, standardizing apart, negation as failure, proof trees and `explain-proof` trace output, `reason-explain`'s "provable" vs "cannot prove" distinction, `count-usage` walking a proof tree into a `(rule-head . times-used)` tally | ok |
+| `my-lisp` | `tests/knowledge.rs` | 8 | `lib/knowledge.my`, modular knowledge packages: `defmodule`, isolated per-module queries via `reason-in`, conflict detection in `tell-knowledge`, `describe` collecting every known fact about a symbol (the "atom as concept entry point" idea), `record-usage!`/`usage-of` accumulating rule-usage counts across separate top-level queries | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | literate-Markdown source-offset mapping | ok |
 | `my-lisp-wasm` | unit test (`src/lib.rs`) | 1 | the WASM adapter produces the same exact/single-pass evaluation struct as the native core | ok |
-| **Total** | | **116** | | **116 passed, 0 failed, 0 ignored** |
+| **Total** | | **120** | | **120 passed, 0 failed, 0 ignored** |
 
 The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 27 tests, not counted separately.
 
@@ -25,6 +25,8 @@ cargo test --workspace
 ```
 
 Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignored.
+
+**Reader caveat surfaced while writing the usage-count tests**: the reader has no dotted-pair literal syntax — `'(p . 0)` parses `.` as an ordinary symbol, producing a 3-element proper list rather than a real dotted pair, even though the printer renders true dotted pairs exactly that way (`(x . alice)` in [`tests/reason.rs`](../crates/my-lisp/tests/reason.rs)'s `variable_binding_from_fact`, for instance). So a quoted `'(p . 0)` and an actual `(cons 'p 0)` are not `equal?`. Not fixed here — noted so the next person doesn't lose an hour to it the way this session did.
 
 ## Українська
 
@@ -38,11 +40,11 @@ Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignor
 | `my-lisp-cli` | `tests/cli.rs` | 10 | скомпільований бінарник наскрізно: `--version`/`--help`, виконання файлу, коди виходу при помилках парсингу/обчислення, відсутній файл, попереднє завантаження `lib/core.my`, збереження історії REPL у `~/.my-lisp-history` між окремими сесіями, `(read)` читає один рядок зі справжнього переданого через pipe stdin у файловому режимі | ok |
 | `my-lisp` | `tests/meta_eval.rs` | 9 | `lib/meta-eval.my`, метациркулярний evaluator: self-evaluation, `quote`, диспетчеризацію арифметики/list-примітивів, `cond`, застосування lambda (одно- й багатовиразові тіла), замикання, що захоплюють вільні змінні з переданого env, функції вищого порядку | ok |
 | `my-lisp` | `tests/unify.rs` | 10 | `lib/unify.my`, примітив unification: зіставлення атомів, зв'язування/розв'язування змінних, структурну (composite-term) унікацію, провал при невідповідності, транзитивне розв'язування ланцюжка змінних, унікацію змінної з собою без зв'язку, повний `apply-subst` запиту, occurs-check | ok |
-| `my-lisp` | `tests/reason.rs` | 9 | `lib/reason.my`, рушій логічного висновування: прості факти, рекурсивні правила, standardizing apart, negation as failure, дерева доведень і трасування `explain-proof`, розрізнення "доведено"/"не можу довести" в `reason-explain` | ok |
-| `my-lisp` | `tests/knowledge.rs` | 6 | `lib/knowledge.my`, модульні пакети знань: `defmodule`, ізольовані запити по модулю через `reason-in`, виявлення конфліктів у `tell-knowledge`, `describe` — збір усіх відомих фактів про символ (ідея "атом як вхід у поняття") | ok |
+| `my-lisp` | `tests/reason.rs` | 11 | `lib/reason.my`, рушій логічного висновування: прості факти, рекурсивні правила, standardizing apart, negation as failure, дерева доведень і трасування `explain-proof`, розрізнення "доведено"/"не можу довести" в `reason-explain`, `count-usage` — обхід дерева доведення в таблицю `(голова-правила . скільки-разів-використано)` | ok |
+| `my-lisp` | `tests/knowledge.rs` | 8 | `lib/knowledge.my`, модульні пакети знань: `defmodule`, ізольовані запити по модулю через `reason-in`, виявлення конфліктів у `tell-knowledge`, `describe` — збір усіх відомих фактів про символ (ідея "атом як вхід у поняття"), `record-usage!`/`usage-of` — накопичення лічильників використання правил між окремими запитами верхнього рівня | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | зіставлення зміщень початкового коду literate-Markdown | ok |
 | `my-lisp-wasm` | unit-тест (`src/lib.rs`) | 1 | WASM-адаптер видає ту саму точну/однопрохідну структуру обчислення, що й нативне ядро | ok |
-| **Разом** | | **116** | | **116 пройдено, 0 провалів, 0 пропущено** |
+| **Разом** | | **120** | | **120 пройдено, 0 провалів, 0 пропущено** |
 
 Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 27 тестів набору, окремо не рахується.
 
@@ -51,6 +53,8 @@ cargo test --workspace
 ```
 
 Останній зафіксований запуск: 2026-08-08, Windows x86_64 — усі проходять, 0 провалів, 0 пропущено.
+
+**Застереження щодо reader, знайдене під час написання тестів для лічильника використання**: reader не має синтаксису dotted-pair-літералів — `'(p . 0)` парсить `.` як звичайний символ, даючи 3-елементний власний список замість справжньої dotted pair, хоча printer саме так друкує справжні dotted pairs (наприклад `(x . alice)` у `variable_binding_from_fact` в [`tests/reason.rs`](../crates/my-lisp/tests/reason.rs)). Тож quoted `'(p . 0)` і реальний `(cons 'p 0)` не є `equal?`. Не виправлено тут — лишено як нотатка, щоб наступна людина не втратила на цьому годину, як ця сесія.
 
 ## Deutsch
 
@@ -64,11 +68,11 @@ Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausg
 | `my-lisp-cli` | `tests/cli.rs` | 10 | die kompilierte Binärdatei durchgängig: `--version`/`--help`, Dateiausführung, Exit-Codes bei Parse-/Eval-Fehlern, fehlende Datei, Vorladen von `lib/core.my`, REPL-Verlauf, der über getrennte Sitzungen in `~/.my-lisp-history` erhalten bleibt, `(read)`, das im Dateimodus eine Zeile aus echtem, per Pipe übergebenem stdin liest | ok |
 | `my-lisp` | `tests/meta_eval.rs` | 9 | `lib/meta-eval.my`, der metazirkuläre Evaluator: Selbstauswertung, `quote`, Dispatch von Arithmetik-/Listen-Primitiven, `cond`, Lambda-Anwendung (ein- und mehrausdrucksweise Rümpfe), Closures, die freie Variablen aus einer übergebenen env erfassen, Funktionen höherer Ordnung | ok |
 | `my-lisp` | `tests/unify.rs` | 10 | `lib/unify.my`, das Unifikations-Primitiv: Atom-Abgleich, Variablenbindung/-auflösung, strukturelle (zusammengesetzte) Unifikation, Fehlschlag bei Nichtübereinstimmung, transitive Auflösung verketteter Variablen, Unifikation einer Variable mit sich selbst ohne Bindung, vollständiges `apply-subst` einer Anfrage, occurs-check | ok |
-| `my-lisp` | `tests/reason.rs` | 9 | `lib/reason.my`, die Inferenz-Engine: einfache Fakten, rekursive Regeln, Standardizing apart, negation as failure, Beweisbäume und `explain-proof`-Trace-Ausgabe, die Unterscheidung "beweisbar" vs. "nicht beweisbar" in `reason-explain` | ok |
-| `my-lisp` | `tests/knowledge.rs` | 6 | `lib/knowledge.my`, modulare Wissenspakete: `defmodule`, isolierte Anfragen pro Modul über `reason-in`, Konflikterkennung in `tell-knowledge`, `describe` sammelt alle bekannten Fakten über ein Symbol (die Idee "Atom als Konzept-Einstiegspunkt") | ok |
+| `my-lisp` | `tests/reason.rs` | 11 | `lib/reason.my`, die Inferenz-Engine: einfache Fakten, rekursive Regeln, Standardizing apart, negation as failure, Beweisbäume und `explain-proof`-Trace-Ausgabe, die Unterscheidung "beweisbar" vs. "nicht beweisbar" in `reason-explain`, `count-usage` — Durchlauf eines Beweisbaums zu einer `(regelkopf . anzahl-verwendungen)`-Tabelle | ok |
+| `my-lisp` | `tests/knowledge.rs` | 8 | `lib/knowledge.my`, modulare Wissenspakete: `defmodule`, isolierte Anfragen pro Modul über `reason-in`, Konflikterkennung in `tell-knowledge`, `describe` sammelt alle bekannten Fakten über ein Symbol (die Idee "Atom als Konzept-Einstiegspunkt"), `record-usage!`/`usage-of` akkumulieren Regel-Nutzungszähler über getrennte Top-Level-Anfragen hinweg | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | Offset-Zuordnung von literate-Markdown-Quellcode | ok |
 | `my-lisp-wasm` | Unit-Test (`src/lib.rs`) | 1 | der WASM-Adapter liefert dieselbe exakte/Single-Pass-Auswertungsstruktur wie der native Kern | ok |
-| **Gesamt** | | **116** | | **116 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
+| **Gesamt** | | **120** | | **120 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
 
 Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 27 Tests dieser Suite geprüft, nicht separat gezählt.
 
@@ -77,3 +81,5 @@ cargo test --workspace
 ```
 
 Letzter erfasster Lauf: 08.08.2026, Windows x86_64 — alle bestanden, 0 fehlgeschlagen, 0 übersprungen.
+
+**Reader-Falle, entdeckt beim Schreiben der Nutzungszähler-Tests**: Der Reader kennt keine Syntax für Dotted-Pair-Literale — `'(p . 0)` parst `.` als gewöhnliches Symbol und erzeugt eine dreielementige echte Liste statt eines echten Dotted Pair, obwohl der Printer echte Dotted Pairs genau so ausgibt (z. B. `(x . alice)` in `variable_binding_from_fact` in [`tests/reason.rs`](../crates/my-lisp/tests/reason.rs)). Ein quotiertes `'(p . 0)` und ein tatsächliches `(cons 'p 0)` sind daher nicht `equal?`. Hier nicht behoben — als Hinweis festgehalten, damit die nächste Person nicht dieselbe Stunde verliert wie diese Sitzung.

@@ -107,3 +107,54 @@
       (cond
         ((atom module) 'Module-not-found)
         (t (collect-facts-about item (car (cdr module))))))))
+
+;; --- usage tracking (which knowledge is actually alive) ----------------
+;; A per-fact/per-rule usage counter, cheap enough to make "is this module
+;; still being reasoned over, or has it gone Cyc-style dead" a measurable
+;; question instead of a guess. `*usage-counts*` follows the same top-level
+;; `def`-rebinding pattern as `*knowledge-base*` above — `def` only mutates
+;; the frame it runs in, so accumulation has to happen at the call site
+;; (top level), not inside a nested lambda call like `prove-rule`. That's
+;; why `record-usage!` is a macro: it expands to a `(def *usage-counts* ...)`
+;; form in the caller's own frame, the same trick `tell-knowledge` uses.
+;;
+;; Лічильник використання на факт/правило, достатньо дешевий, щоб "чи це
+;; знання ще живе, чи вже стало мертвим у стилі Cyc" стало вимірюваним
+;; питанням, а не здогадкою. `*usage-counts*` слідує тому самому
+;; top-level `def`-паттерну перезапису, що й `*knowledge-base*` вище —
+;; `def` мутує лише той фрейм, у якому виконується, тож накопичення має
+;; відбуватись у місці виклику (на верхньому рівні), а не всередині
+;; вкладеного виклику lambda типу `prove-rule`. Тому `record-usage!` —
+;; макрос: він розгортається у форму `(def *usage-counts* ...)` у фреймі
+;; викликача, той самий прийом, що й `tell-knowledge`.
+;;
+;; Ein Nutzungszähler pro Fakt/Regel, billig genug, um "lebt dieses Wissen
+;; noch, oder ist es im Cyc-Stil tot" zu einer messbaren Frage statt einer
+;; Vermutung zu machen. `*usage-counts*` folgt demselben Top-Level
+;; `def`-Umbindungsmuster wie `*knowledge-base*` oben — `def` mutiert nur
+;; den Frame, in dem es läuft, daher muss die Akkumulation am Aufrufort
+;; (Top-Level) stattfinden, nicht innerhalb eines verschachtelten
+;; Lambda-Aufrufs wie `prove-rule`. Deshalb ist `record-usage!` ein Makro:
+;; es entfaltet sich zu einer `(def *usage-counts* ...)`-Form im Frame des
+;; Aufrufers, derselbe Trick wie bei `tell-knowledge`.
+(def *usage-counts* '())
+
+(defmacro record-usage! (proof)
+  (list 'def '*usage-counts*
+        (list 'merge-usage (list 'count-usage proof) '*usage-counts*)))
+
+;; assoc uses `eq`, which rejects the compound rule-head terms stored as
+;; usage-count keys — assoc-equal is the same lookup built on `equal?`.
+(def assoc-equal
+  (lambda (key alist)
+    (cond
+      ((atom alist) '())
+      ((equal? key (car (car alist))) (car alist))
+      (t (assoc-equal key (cdr alist))))))
+
+(def usage-of
+  (lambda (rule-head)
+    (let ((entry (assoc-equal rule-head *usage-counts*)))
+      (cond
+        ((atom entry) 0)
+        (t (cdr entry))))))

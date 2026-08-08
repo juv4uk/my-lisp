@@ -193,3 +193,52 @@
                 (_3 (print goal)))
            '()))
         (t (explain-proof (second (car results))))))))
+
+; A growing knowledge tree can silently become "dead" (Cyc-style write-only
+; archive) if nothing ever measures whether its facts and rules are actually
+; being reasoned over. `count-usage` walks a proof tree and turns that into a
+; concrete number: an alist of `(rule-head . times-used)`, one entry per rule
+; that contributed to the proof. `equal?` (not `eq`) compares rule heads
+; because they're compound terms, not atoms.
+;
+; Дерево знань, що росте, може непомітно "померти" (write-only архів у стилі
+; Cyc), якщо ніщо не вимірює, чи факти та правила справді використовуються в
+; міркуваннях. `count-usage` обходить дерево доведення й перетворює це на
+; конкретне число: alist `(голова-правила . скільки-разів-використано)`, по
+; запису на кожне правило, що взяло участь у доведенні. `equal?` (не `eq`),
+; бо голови правил — складені терми, не атоми.
+;
+; Ein wachsender Wissensbaum kann still "tot" werden (write-only Archiv im
+; Cyc-Stil), wenn nichts misst, ob seine Fakten und Regeln tatsächlich
+; verwendet werden. `count-usage` durchläuft einen Beweisbaum und macht daraus
+; eine konkrete Zahl: eine Alist `(regelkopf . anzahl-verwendungen)`, ein
+; Eintrag pro Regel, die zum Beweis beigetragen hat. `equal?` (nicht `eq`),
+; weil Regelköpfe zusammengesetzte Terme sind, keine Atome.
+(def add-usage
+  (lambda (entry alist)
+    (cond
+      ((atom alist) (list entry))
+      ((equal? (car (car alist)) (car entry))
+       (cons (cons (car entry) (+ (cdr entry) (cdr (car alist)))) (cdr alist)))
+      (t (cons (car alist) (add-usage entry (cdr alist)))))))
+
+(def merge-usage
+  (lambda (a b)
+    (cond
+      ((atom a) b)
+      (t (merge-usage (cdr a) (add-usage (car a) b))))))
+
+; `proved-not` nodes (from negation-as-failure) have no rule head of their
+; own, so they contribute nothing here — only positive rule applications count.
+(def count-usage
+  (lambda (node)
+    (cond
+      ((eq (car node) 'proved)
+       (add-usage (cons (third node) 1) (count-usage-list (cadddr node))))
+      (t '()))))
+
+(def count-usage-list
+  (lambda (nodes)
+    (cond
+      ((atom nodes) '())
+      (t (merge-usage (count-usage (car nodes)) (count-usage-list (cdr nodes)))))))

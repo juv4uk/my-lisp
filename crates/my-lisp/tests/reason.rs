@@ -162,3 +162,43 @@ fn reason_explain_says_so_when_a_goal_cannot_be_proved() {
     let output = eval_reason_with_output(source);
     assert_eq!(output, vec!["Cannot", "prove:", "(parent bob alice)"]);
 }
+
+#[test]
+fn count_usage_counts_each_rule_head_that_contributed_to_a_proof() {
+    let source = r#"
+        (let ((rules '(
+                 ((grandparent (var x) (var y)) (parent (var x) (var z)) (parent (var z) (var y)))
+                 ((parent alice bob))
+                 ((parent bob charlie))
+               )))
+             (let* ((results (reason (list 'grandparent (logic-var 'a) (logic-var 'b)) rules))
+                    (proof (second (car results))))
+               (count-usage proof)))
+    "#;
+    // The grandparent rule fired once, and each `parent` fact it leaned on
+    // fired once too — three distinct rule heads, each used once.
+    assert_eq!(
+        eval_reason(source),
+        "(((parent bob charlie) . 1) ((parent alice bob) . 1) ((grandparent (var (x . 0)) (var (y . 0))) . 1))"
+    );
+}
+
+#[test]
+fn count_usage_sums_repeated_use_of_the_same_fact() {
+    let source = r#"
+        (let ((rules '(
+                 ((sibling (var x) (var y)) (parent (var z) (var x)) (parent (var z) (var y)))
+                 ((parent alice bob))
+                 ((parent alice charlie))
+               )))
+             (let* ((results (reason (list 'sibling 'bob 'charlie) rules))
+                    (proof (second (car results))))
+               (count-usage proof)))
+    "#;
+    // Two distinct `parent` facts fire once each within the same proof
+    // (bob's and charlie's), alongside the `sibling` rule that used both.
+    assert_eq!(
+        eval_reason(source),
+        "(((parent alice charlie) . 1) ((parent alice bob) . 1) ((sibling (var (x . 0)) (var (y . 0))) . 1))"
+    );
+}
