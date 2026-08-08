@@ -351,6 +351,36 @@ fn match_negated_condition_succeeds_when_the_inner_pattern_does_not_match() {
 }
 
 #[test]
+fn run_multi_supports_or_conditions() {
+    let source = r#"
+        (run-multi
+          (list (list (list 'pet (logic-var 'x))
+                      (list 'or (list 'cat (logic-var 'x)) (list 'dog (logic-var 'x)))))
+          (list '(cat tom) '(dog rex) '(fish nemo)))
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "((pet rex) (pet tom) (cat tom) (dog rex) (fish nemo))"
+    );
+}
+
+#[test]
+fn match_or_condition_unions_matches_from_every_alternative() {
+    let source = r#"
+        (match-or-condition (list '(cat tom) '(dog rex)) (list '(cat tom) '(dog rex) '(fish nemo)) '())
+    "#;
+    assert_eq!(eval_forward(source), "(() ())");
+}
+
+#[test]
+fn match_or_condition_returns_nothing_when_no_alternative_matches() {
+    let source = r#"
+        (match-or-condition (list '(cat tom) '(dog rex)) (list '(fish nemo)) '())
+    "#;
+    assert_eq!(eval_forward(source), "()");
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))

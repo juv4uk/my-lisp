@@ -727,10 +727,58 @@
       ((atom (match-condition-against-facts inner-pattern facts subst)) (list subst))
       (t '()))))
 
+; Step 10: `(or (pattern1) (pattern2) ...)` conditions — verified missing
+; before fixing (not guessed), the same way Step 7's `not` gap was found:
+; a rule with `(or (cat ?x) (dog ?x))` derived nothing at all, because no
+; fact's head is ever the symbol `or`, so `match-condition-against-facts`
+; unified the whole `or`-condition literally and always failed — the same
+; silent-dead-rule shape `not` had. `or` succeeds with the *union* of
+; every alternative's own matches: try each alternative as its own
+; condition (recursing through `match-one-condition`, so an alternative
+; can itself be a `not` or nested `or`), collecting every substitution any
+; of them produce.
+;
+; Крок 10: умови `(or (шаблон1) (шаблон2) ...)` — перевірено як
+; відсутню можливість перед виправленням (не здогадано), так само, як
+; знайдено прогалину `not` у Кроці 7: правило з `(or (cat ?x) (dog ?x))`
+; не виводило нічого, бо жоден факт ніколи не має головою символ `or`,
+; тож `match-condition-against-facts` унікувала всю `or`-умову буквально
+; й завжди провалювалась — та сама форма мовчки мертвого правила, що й у
+; `not`. `or` успішний з *об'єднанням* збігів кожної альтернативи: кожна
+; альтернатива пробується як власна умова (рекурсія через
+; `match-one-condition`, тож альтернатива сама може бути `not` чи
+; вкладеним `or`), збираючи всі підстановки, які видає будь-яка з них.
+;
+; Schritt 10: `(or (muster1) (muster2) ...)`-Bedingungen — vor dem Fix
+; verifiziert (nicht geraten), genauso wie die `not`-Lücke in Schritt 7
+; gefunden wurde: eine Regel mit `(or (cat ?x) (dog ?x))` leitete
+; überhaupt nichts ab, weil kein Fakt je das Symbol `or` als Kopf hat,
+; sodass `match-condition-against-facts` die ganze `or`-Bedingung wörtlich
+; unifizierte und immer fehlschlug — dieselbe Form einer still toten Regel
+; wie bei `not`. `or` gelingt mit der *Vereinigung* der Treffer jeder
+; Alternative: jede Alternative wird als eigene Bedingung versucht
+; (Rekursion über `match-one-condition`, sodass eine Alternative selbst
+; ein `not` oder verschachteltes `or` sein kann), gesammelt werden alle
+; Substitutionen, die irgendeine davon liefert.
+(def condition-is-or?
+  (lambda (condition)
+    (cond
+      ((atom condition) '())
+      ((atom (car condition)) (eq (car condition) 'or))
+      (t '()))))
+
+(def match-or-condition
+  (lambda (alternatives facts subst)
+    (cond
+      ((atom alternatives) '())
+      (t (append (match-one-condition (car alternatives) facts subst)
+                  (match-or-condition (cdr alternatives) facts subst))))))
+
 (def match-one-condition
   (lambda (condition facts subst)
     (cond
       ((condition-is-not? condition) (match-negated-condition (second condition) facts subst))
+      ((condition-is-or? condition) (match-or-condition (cdr condition) facts subst))
       (t (match-condition-against-facts condition facts subst)))))
 
 ; Built directly on `thread-conjunction` (lib/unify.my) — the same
