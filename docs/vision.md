@@ -12,7 +12,7 @@
 Головна мета "Advice Taker" — можливість сказати машині факт природною мовою, щоб вона його зрозуміла і використовувала.
 Зараз знання записуються у Lisp-синтаксисі. Наступний крок — створення **NLP Bridge** (Містка Природної Мови).
 
-Перша, експериментальна версія цього мосту вже є в коді: `crates/my-lisp-cli/src/llm.rs` і команди REPL `:tell`/`:ask`. Вона свідомо ізольована в `my-lisp-cli` — мережева залежність і ключ API не торкаються capability-free ядра `my-lisp` (див. `docs/testing.md`).
+Перша, експериментальна версія цього мосту (`crates/my-lisp-cli/src/llm.rs`, команди REPL `:tell`/`:ask`) була реалізована й далі видалена — вона додала мережеву залежність і зовнішній API-ключ без тестів і без trilingual-конвенції проєкту. Якщо цей крок повертається, він має заслуговувати того ж рівня строгості, що `reason.my`/`unify.my`, а не лишатись REPL-хаком.
 
 #### Як це працюватиме:
 1. **Інтерфейс**: Користувач вводить текст: "Всі планети мають масу. Земля - планета."
@@ -43,7 +43,7 @@ We have successfully implemented McCarthy's core "Advice Taker" vision (1958):
 The core goal of "Advice Taker" is being able to tell the machine a fact in natural language and have it understand and use it.
 Right now knowledge is written in Lisp syntax. The next step is building an **NLP bridge**.
 
-A first, experimental version of this bridge already exists in the code: `crates/my-lisp-cli/src/llm.rs` and the REPL's `:tell`/`:ask` commands. It is deliberately confined to `my-lisp-cli` — the network dependency and API key never touch the capability-free `my-lisp` core (see `docs/testing.md`).
+A first, experimental version of this bridge (`crates/my-lisp-cli/src/llm.rs`, the REPL's `:tell`/`:ask` commands) was built and then removed — it added a network dependency and an external API key with no tests and no trilingual convention. If this step returns, it should earn the same rigor as `reason.my`/`unify.my`, not stay a REPL hack.
 
 #### How it will work:
 1. **Interface**: the user types text: "All planets have mass. Earth is a planet."
@@ -74,7 +74,7 @@ Wir haben McCarthys Kernvision des "Advice Taker" (1958) erfolgreich umgesetzt:
 Das Kernziel des "Advice Taker" ist es, der Maschine eine Tatsache in natürlicher Sprache mitteilen zu können, sodass sie diese versteht und nutzt.
 Derzeit wird Wissen in Lisp-Syntax geschrieben. Der nächste Schritt ist der Bau einer **NLP-Brücke**.
 
-Eine erste, experimentelle Version dieser Brücke existiert bereits im Code: `crates/my-lisp-cli/src/llm.rs` und die REPL-Befehle `:tell`/`:ask`. Sie ist bewusst auf `my-lisp-cli` beschränkt — die Netzwerkabhängigkeit und der API-Schlüssel berühren nie den capability-freien `my-lisp`-Kern (siehe `docs/testing.md`).
+Eine erste, experimentelle Version dieser Brücke (`crates/my-lisp-cli/src/llm.rs`, die REPL-Befehle `:tell`/`:ask`) wurde gebaut und dann wieder entfernt — sie brachte eine Netzwerkabhängigkeit und einen externen API-Schlüssel ohne Tests und ohne trilinguale Konvention mit sich. Kehrt dieser Schritt zurück, sollte er sich dieselbe Sorgfalt wie `reason.my`/`unify.my` verdienen, statt ein REPL-Hack zu bleiben.
 
 #### Wie es funktionieren wird:
 1. **Schnittstelle**: der Nutzer gibt Text ein: "Alle Planeten haben Masse. Die Erde ist ein Planet."

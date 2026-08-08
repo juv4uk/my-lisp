@@ -20,8 +20,6 @@ This repository has one test layer: the four Rust crates under `crates/`, run wi
 
 The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 27 tests, not counted separately.
 
-The NLP bridge (`crates/my-lisp-cli/src/llm.rs`, the REPL's `:tell`/`:ask` commands) is not covered here: it calls a live external API and has no automated tests. See its doc comment and [`docs/vision.md`](vision.md).
-
 ```bash
 cargo test --workspace
 ```
@@ -48,8 +46,6 @@ Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignor
 
 Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 27 тестів набору, окремо не рахується.
 
-NLP-міст (`crates/my-lisp-cli/src/llm.rs`, команди REPL `:tell`/`:ask`) тут не покритий: він викликає живий зовнішній API і не має автоматизованих тестів. Див. його doc-коментар і [`docs/vision.md`](vision.md).
-
 ```bash
 cargo test --workspace
 ```
@@ -75,8 +71,6 @@ Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausg
 | **Gesamt** | | **116** | | **116 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
 
 Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 27 Tests dieser Suite geprüft, nicht separat gezählt.
-
-Die NLP-Brücke (`crates/my-lisp-cli/src/llm.rs`, die REPL-Befehle `:tell`/`:ask`) ist hier nicht erfasst: sie ruft eine externe Live-API auf und hat keine automatisierten Tests. Siehe deren Doc-Kommentar und [`docs/vision.md`](vision.md).
 
 ```bash
 cargo test --workspace
