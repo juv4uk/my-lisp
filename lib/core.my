@@ -29,3 +29,44 @@
 (def cadr
   (lambda (values)
     (car (cdr values))))
+
+(def length
+  (lambda (values)
+    (cond
+      ((atom values) 0)
+      (t (+ 1 (length (cdr values)))))))
+
+(def reverse-onto
+  (lambda (values acc)
+    (cond
+      ((atom values) acc)
+      (t (reverse-onto (cdr values) (cons (car values) acc))))))
+
+(def reverse
+  (lambda (values)
+    (reverse-onto values '())))
+
+(def append
+  (lambda (left right)
+    (cond
+      ((atom left) right)
+      (t (cons (car left) (append (cdr left) right))))))
+
+(def map
+  (lambda (f values)
+    (cond
+      ((atom values) '())
+      (t (cons (f (car values)) (map f (cdr values)))))))
+
+(def filter
+  (lambda (predicate values)
+    (cond
+      ((atom values) '())
+      ((predicate (car values)) (cons (car values) (filter predicate (cdr values))))
+      (t (filter predicate (cdr values))))))
+
+(def reduce
+  (lambda (f acc values)
+    (cond
+      ((atom values) acc)
+      (t (reduce f (f acc (car values)) (cdr values))))))

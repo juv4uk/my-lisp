@@ -67,6 +67,31 @@ fn bootstrap_library_is_written_and_executed_in_my_lisp() {
 }
 
 #[test]
+fn bootstrap_library_provides_list_utilities() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    let run = |source: &str, session: &mut Session| {
+        eval_program(source, session).unwrap().value.to_string()
+    };
+    assert_eq!(run("(length '(radio antenna signal))", &mut session), "3");
+    assert_eq!(run("(length '())", &mut session), "0");
+    assert_eq!(run("(reverse '(1 2 3))", &mut session), "(3 2 1)");
+    assert_eq!(run("(append '(1 2) '(3 4))", &mut session), "(1 2 3 4)");
+    assert_eq!(
+        run("(map (lambda (x) (+ x 1)) '(1 2 3))", &mut session),
+        "(2 3 4)"
+    );
+    assert_eq!(
+        run("(filter (lambda (x) (eq x 2)) '(1 2 3 2))", &mut session),
+        "(2 2)"
+    );
+    assert_eq!(
+        run("(reduce (lambda (acc x) (+ acc x)) 0 '(1 2 3 4))", &mut session),
+        "10"
+    );
+}
+
+#[test]
 fn reader_supports_unicode_comments_and_quote_sugar() {
     let expressions = parse("; коментар\n'радіо").unwrap();
     assert_eq!(expressions.len(), 1);
