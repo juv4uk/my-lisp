@@ -504,6 +504,13 @@ fn read_all_rejects_a_non_string() {
 }
 
 #[test]
+fn string_predicate_distinguishes_strings_from_other_atoms() {
+    assert_eq!(eval("(string? \"hello\")").to_string(), "t");
+    assert_eq!(eval("(string? 'hello)").to_string(), "()");
+    assert_eq!(eval("(string? 5)").to_string(), "()");
+}
+
+#[test]
 fn symbol_to_string_rejects_a_non_symbol() {
     let error = eval_program("(symbol->string \"already a string\")", &mut Session::default())
         .expect_err("expected a Type error");

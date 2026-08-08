@@ -494,6 +494,24 @@ pub(super) fn evaluate_symbol_predicate(
     )))
 }
 
+/// The `string?` counterpart to `symbol?` — found necessary by importing
+/// a second genuine external CLIPS file: CLIPS conventionally allows an
+/// optional docstring (a bare string literal) right after a `defrule`'s
+/// name, before its conditions, and `lib/clips-import.my` needs to
+/// recognize and skip it rather than treating it as a stray condition
+/// that will never match any fact.
+pub(super) fn evaluate_string_predicate(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string?", arguments, 1, span)?;
+    Ok(Value::Bool(matches!(
+        evaluate(&arguments[0], environment)?,
+        Value::String(_)
+    )))
+}
+
 pub(super) fn evaluate_symbol_to_string(
     arguments: &[Expr],
     environment: &Environment,

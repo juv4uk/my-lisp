@@ -567,9 +567,84 @@
 ; easily be `?x` as `earth` at this point — either way it's carried
 ; through positionally unchanged, then `clips-convert-vars` turns any
 ; `?x`-shaped value into `(var x)` afterward.
+; Step 16: strip a `defrule`'s optional preamble — a docstring (a bare
+; string literal) and/or a `(declare (salience N))` property, both of
+; which CLIPS allows directly after the rule name and before its
+; conditions. Verified against a second genuine external `.clp` file (not
+; guessed): CLIPS's own "Automotive Expert System" example
+; (tests/fixtures/auto-external.clp) gives every single one of its 21
+; rules an empty docstring `""`, and several a `(declare (salience N))` —
+; without stripping them, both landed in the condition list as if they
+; were patterns to match against facts. Neither a bare string nor a
+; `declare` form is ever a fact's head, so every affected rule silently
+; never fired — the entire file was dead on arrival, not just one rule.
+; `string?` (crates/my-lisp/src/eval/special_forms.rs) was added
+; specifically to tell a docstring apart from an ordinary condition term.
+;
+; Salience itself (CLIPS's rule-firing priority) has no equivalent here:
+; `run-multi`/`run-jtms-multi` materialize every derivable fact to a
+; fixpoint regardless of order, so which rule "goes first" never changes
+; the final result — dropping `declare` loses information CLIPS would use
+; to order *when* things fire, never *whether* they do.
+;
+; Крок 16: обрізає необов'язковий преамбул `defrule` — докстрінг (голий
+; рядковий літерал) і/або властивість `(declare (salience N))`, обидва
+; CLIPS дозволяє одразу після імені правила, перед умовами. Перевірено на
+; другому справжньому зовнішньому `.clp`-файлі (не здогадано): власний
+; приклад CLIPS "Automotive Expert System"
+; (tests/fixtures/auto-external.clp) дає кожному зі своїх 21 правил
+; порожній докстрінг `""`, а кільком — `(declare (salience N))` — без
+; обрізання обидва потрапляли у список умов, ніби були шаблонами для
+; зіставлення з фактами. Ні голий рядок, ні форма `declare` ніколи не є
+; головою факту, тож кожне зачеплене правило мовчки ніколи не
+; спрацьовувало — весь файл був мертвий одразу, не одне правило. `string?`
+; додано саме для того, щоб відрізнити докстрінг від звичайного терму умови.
+;
+; Сама salience (пріоритет спрацювання правил CLIPS) не має тут
+; відповідника: `run-multi`/`run-jtms-multi` матеріалізують кожен
+; виводимий факт до fixpoint незалежно від порядку, тож яке правило
+; "спрацьовує першим" ніколи не змінює фінальний результат — відкидання
+; `declare` втрачає інформацію, яку CLIPS використав би, щоб впорядкувати
+; *коли* щось спрацьовує, ніколи не *чи* спрацьовує.
+;
+; Schritt 16: entfernt die optionale Präambel einer `defrule` — einen
+; Docstring (ein bloßes String-Literal) und/oder eine `(declare (salience
+; N))`-Eigenschaft, beide erlaubt CLIPS direkt nach dem Regelnamen, vor den
+; Bedingungen. Verifiziert gegen eine zweite echte externe `.clp`-Datei
+; (nicht geraten): CLIPS' eigenes Beispiel "Automotive Expert System"
+; (tests/fixtures/auto-external.clp) gibt jeder seiner 21 Regeln einen
+; leeren Docstring `""`, mehreren ein `(declare (salience N))` — ohne
+; Entfernung landeten beide in der Bedingungsliste, als wären sie Muster
+; zum Abgleich gegen Fakten. Weder ein bloßer String noch eine
+; `declare`-Form ist je der Kopf eines Fakts, also feuerte jede betroffene
+; Regel still nie — die ganze Datei war von Anfang an tot, nicht nur eine
+; Regel. `string?` wurde genau dafür hinzugefügt, einen Docstring von
+; einem gewöhnlichen Bedingungsterm zu unterscheiden.
+;
+; Salience selbst (CLIPS' Feuerpriorität für Regeln) hat hier kein
+; Äquivalent: `run-multi`/`run-jtms-multi` materialisieren jeden
+; ableitbaren Fakt bis zum Fixpunkt, unabhängig von der Reihenfolge, also
+; ändert es nie das Endergebnis, welche Regel "zuerst dran ist" — das
+; Verwerfen von `declare` verliert Information, die CLIPS nutzen würde, um
+; zu ordnen, *wann* etwas feuert, nie *ob*.
+(def clips-rule-preamble-form?
+  (lambda (form)
+    (cond
+      ((string? form) t)
+      ((atom form) '())
+      ((atom (car form)) (eq (car form) 'declare))
+      (t '()))))
+
+(def clips-strip-rule-preamble
+  (lambda (body)
+    (cond
+      ((atom body) body)
+      ((clips-rule-preamble-form? (car body)) (clips-strip-rule-preamble (cdr body)))
+      (t body))))
+
 (def clips-defrule->clauses
   (lambda (form templates)
-    (let ((split (clips-split-at-arrow (cddr form))))
+    (let ((split (clips-split-at-arrow (clips-strip-rule-preamble (cddr form)))))
       (let ((conditions (clips-convert-vars (clips-convert-template-list (car split) templates)))
             (relevant (clips-drop-printouts (second split))))
         (cond

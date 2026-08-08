@@ -99,6 +99,68 @@ fn clips_defrule_with_no_asserts_imports_as_no_clauses() {
 }
 
 #[test]
+fn clips_defrule_strips_a_docstring_before_its_conditions() {
+    // Regression: an empty docstring "" right after the rule name used to
+    // land in the condition list as a stray, never-matching pattern,
+    // silently killing the whole rule.
+    let source = r#"
+        (clips-import '((defrule mass-rule "explains why planets have mass"
+                           (planet ?x) => (assert (has-mass ?x)))))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((has-mass (var x)) (planet (var x))))"
+    );
+}
+
+#[test]
+fn clips_defrule_strips_a_declare_salience_before_its_conditions() {
+    let source = r#"
+        (clips-import '((defrule mass-rule (declare (salience 10))
+                           (planet ?x) => (assert (has-mass ?x)))))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((has-mass (var x)) (planet (var x))))"
+    );
+}
+
+#[test]
+fn clips_defrule_strips_both_docstring_and_declare_together() {
+    let source = r#"
+        (clips-import '((defrule mass-rule "docstring" (declare (salience 10))
+                           (planet ?x) => (assert (has-mass ?x)))))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((has-mass (var x)) (planet (var x))))"
+    );
+}
+
+#[test]
+fn clips_import_file_imports_a_second_real_external_clp_file_correctly() {
+    // tests/fixtures/auto-external.clp is CLIPS's own "Automotive Expert
+    // System" example — every one of its 21 rules has an empty docstring,
+    // several also a (declare (salience N)); before Step 16 every single
+    // one silently never fired. Checking a handful of representative
+    // rules imported with clean condition lists (no stray "" or declare)
+    // is enough to prove the fix, without pinning all 21 verbatim.
+    let source = r#"
+        (clips-import-file "../../tests/fixtures/auto-external.clp")
+    "#;
+    let imported = eval_import(source);
+    assert!(
+        !imported.contains("declare"),
+        "a stray (declare ...) leaked into a condition list: {imported}"
+    );
+    // The very first clause: no leading "" docstring before its conditions.
+    assert!(
+        imported.starts_with("(((engine-starts"),
+        "expected the first clause to start cleanly with the engine-starts fact, got: {imported}"
+    );
+}
+
+#[test]
 fn clips_defrule_with_a_multi_fact_assert_produces_one_clause_per_fact() {
     // Real CLIPS assert can take multiple facts in one call:
     // (assert (number 0) (number 1) (number 2)) is one assert, three

@@ -159,6 +159,9 @@ fn evaluate_list(
         Some("symbol?") => {
             special_forms::evaluate_symbol_predicate(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("string?") => {
+            special_forms::evaluate_string_predicate(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("symbol->string") => {
             special_forms::evaluate_symbol_to_string(arguments, environment, span).map(EvalStep::Value)
         }
