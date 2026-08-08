@@ -65,13 +65,48 @@ fn narrate_provenance_explains_a_derived_fact_with_because_and_and() {
                (narrate-provenance (provenance proof))))
     "#;
     let output = eval_narrate(source);
-    // Both sub-facts are ground (parent alice bob / parent bob charlie),
-    // so this reads as an actual sentence, joined by "because"/"and" — the
-    // limitation about unresolved (var ...) placeholders only bites when a
-    // rule's own head isn't fully grounded, which isn't the case here.
+    // The two sub-facts are ground (parent alice bob / parent bob
+    // charlie), joined by "because"/"and" — but the derived head itself
+    // already shows the documented limitation: `(var (x . 0))` and
+    // `(var (y . 0))`, not `alice`/`charlie`. See the dedicated test below
+    // for why, rather than leaving it as an unlabeled surprise here.
     assert_eq!(
         output,
         "((var (x . 0)) grandparent (var (y . 0)) because alice parent bob and bob parent charlie)"
+    );
+}
+
+#[test]
+fn narrate_provenance_surfaces_unresolved_variables_in_a_derived_rule_head() {
+    // lib/narrate.my's own header comment documents this limitation:
+    // `provenance` doesn't carry the query's final substitution, only the
+    // proof tree — so a rule's own head, as stored in that tree, keeps
+    // whatever `(var name)` placeholders `prove-rule` renamed it to,
+    // even though `reason`'s top-level result *does* know grandparent is
+    // really (alice, charlie) once its substitution is applied elsewhere.
+    // This test exists so that limitation can't silently regress into
+    // "actually resolved after all" without a test noticing — or silently
+    // get worse without anyone deciding that on purpose.
+    let source = r#"
+        (let ((rules '(
+                 ((grandparent (var x) (var y)) (parent (var x) (var z)) (parent (var z) (var y)))
+                 ((parent alice bob))
+                 ((parent bob charlie))
+               )))
+             (let* ((results (reason (list 'grandparent (logic-var 'a) (logic-var 'b)) rules))
+                    (proof (second (car results)))
+                    (narration (narrate-provenance (provenance proof))))
+               ; First three words = the narrated head. If this limitation
+               ; were ever fixed (provenance starting to carry/apply the
+               ; final substitution), these would read `(alice grandparent
+               ; charlie)` instead — this test would then fail loudly,
+               ; which is the point: a real fix should update this test on
+               ; purpose, not slide past it unnoticed.
+               (list (car narration) (second narration) (third narration))))
+    "#;
+    assert_eq!(
+        eval_narrate(source),
+        "((var (x . 0)) grandparent (var (y . 0)))"
     );
 }
 
