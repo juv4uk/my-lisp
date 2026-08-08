@@ -339,12 +339,35 @@
 (def clips-fact-clause
   (lambda (fact) (list fact)))
 
+; `(cons ... (clips-facts->clauses ...))` is not a tail call — for a real
+; CLIPS file with a big `deffacts` block (`animal-external.clp`'s own
+; knowledge base is 128 facts in one block) the Rust call stack grew one
+; frame per fact and overflowed. `-onto` accumulator + `reverse`, the same
+; stack-safe shape `lib/core.my`'s own `map`/`filter` use, keeps every
+; recursive call here in tail position.
+; `(cons ... (clips-facts->clauses ...))` — не хвостовий виклик: на
+; справжньому CLIPS-файлі з великим блоком `deffacts` (`animal-external.clp`'s
+; власна база знань — 128 фактів в одному блоці) стек Rust ріс на один
+; фрейм на факт і переповнювався. Акумулятор `-onto` + `reverse`, та сама
+; стек-безпечна форма, яку використовують власні `map`/`filter` з
+; `lib/core.my`, тримає кожен рекурсивний виклик тут у хвостовій позиції.
+; `(cons ... (clips-facts->clauses ...))` ist kein Tail-Call — bei einer
+; echten CLIPS-Datei mit einem großen `deffacts`-Block (`animal-external.clp`s
+; eigene Wissensbasis hat 128 Fakten in einem Block) wuchs der Rust-Stack
+; um einen Frame pro Fakt und lief über. Akkumulator `-onto` + `reverse`,
+; dieselbe stack-sichere Form, die `lib/core.my`s eigene `map`/`filter`
+; verwenden, hält jeden rekursiven Aufruf hier in Tail-Position.
+(def clips-facts->clauses-onto
+  (lambda (facts templates acc)
+    (cond
+      ((atom facts) (reverse acc))
+      (t (clips-facts->clauses-onto
+           (cdr facts) templates
+           (cons (clips-fact-clause (clips-convert-template (car facts) templates)) acc))))))
+
 (def clips-facts->clauses
   (lambda (facts templates)
-    (cond
-      ((atom facts) '())
-      (t (cons (clips-fact-clause (clips-convert-template (car facts) templates))
-                (clips-facts->clauses (cdr facts) templates))))))
+    (clips-facts->clauses-onto facts templates '())))
 
 ; `(cddr form)` drops `deffacts` and the deffacts block's own name,
 ; leaving just the fact list.
@@ -755,12 +778,55 @@
       ((eq (car form) 'defrule) (clips-defrule->clauses form templates))
       (t '()))))
 
+; Same non-tail-call problem as `clips-facts->clauses` above, one level up:
+; `(append (clips-form->clauses ...) (clips-import-forms ...))` nests one
+; Rust stack frame per top-level form. `animal-external.clp` (37 forms,
+; one deffacts block of 128 facts) is exactly the file that first grew
+; this deep enough to crash the process outright with a real stack
+; overflow rather than a graceful error — found the same "verify with a
+; throwaway debug test" way as every other importer bug this file
+; documents. `clips-cons-each-onto` flattens one form's own clause list
+; onto the running accumulator tail-recursively, so neither loop — across
+; forms, or across one form's clauses — grows the native stack.
+; Та сама проблема нехвостового виклику, що й у `clips-facts->clauses`
+; вище, лише рівнем вище: `(append (clips-form->clauses ...)
+; (clips-import-forms ...))` вкладає один Rust-стек-фрейм на кожну
+; верхньорівневу форму. `animal-external.clp` (37 форм, один блок
+; deffacts зі 128 фактів) — саме той файл, що вперше виріс достатньо
+; глибоко, щоб реально впасти зі stack overflow замість коректної
+; помилки — знайдено тим самим способом "спершу тимчасовий debug-тест",
+; що й усі інші баги імпортера в цьому файлі. `clips-cons-each-onto`
+; сплющує список clause однієї форми на робочий акумулятор хвостово-
+; рекурсивно, тож жоден із циклів — ні по формах, ні по clause однієї
+; форми — не росте нативний стек.
+; Dasselbe Nicht-Tail-Call-Problem wie bei `clips-facts->clauses` oben,
+; nur eine Ebene höher: `(append (clips-form->clauses ...)
+; (clips-import-forms ...))` verschachtelt einen Rust-Stack-Frame pro
+; Top-Level-Form. `animal-external.clp` (37 Formen, ein deffacts-Block
+; mit 128 Fakten) ist genau die Datei, die das erstmals tief genug wachsen
+; ließ, um mit einem echten Stack-Overflow abzustürzen statt einen
+; ordentlichen Fehler zu liefern — gefunden auf demselben Weg "erst ein
+; Wegwerf-Debug-Test" wie jeder andere Importer-Bug in dieser Datei.
+; `clips-cons-each-onto` glättet die Clause-Liste einer Form tail-rekursiv
+; auf den laufenden Akkumulator, sodass weder die Schleife über die Formen
+; noch die über die Clauses einer Form den nativen Stack wachsen lässt.
+(def clips-cons-each-onto
+  (lambda (items acc)
+    (cond
+      ((atom items) acc)
+      (t (clips-cons-each-onto (cdr items) (cons (car items) acc))))))
+
+(def clips-import-forms-onto
+  (lambda (forms templates acc)
+    (cond
+      ((atom forms) (reverse acc))
+      (t (clips-import-forms-onto
+           (cdr forms) templates
+           (clips-cons-each-onto (clips-form->clauses (car forms) templates) acc))))))
+
 (def clips-import-forms
   (lambda (forms templates)
-    (cond
-      ((atom forms) '())
-      (t (append (clips-form->clauses (car forms) templates)
-                  (clips-import-forms (cdr forms) templates))))))
+    (clips-import-forms-onto forms templates '())))
 
 (def clips-import
   (lambda (forms)

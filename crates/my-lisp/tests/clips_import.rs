@@ -442,3 +442,50 @@ fn clips_import_file_imports_a_third_real_external_clp_file_with_module_qualifie
         "expected a wine fact to be converted to positional form, got: {imported}"
     );
 }
+
+#[test]
+fn clips_import_stays_stack_safe_on_a_deffacts_block_with_many_facts() {
+    // Regression: clips-facts->clauses/clips-import-forms used to build
+    // their result with `(cons ... (recurse ...))`/`(append ... (recurse
+    // ...))`, neither a tail call, so the Rust stack grew one frame per
+    // fact/form. A synthetic 5,000-fact deffacts reproduces the same
+    // shape as the real external file that first hit this (a 128-fact
+    // block in animal-external.clp) without depending on that fixture or
+    // network access — mirrors how tests/stack_safety.rs regression-tests
+    // lib/core.my's own tail-recursive list utilities on a 100,000-element
+    // list.
+    let mut facts = String::new();
+    for i in 0..5000 {
+        facts.push_str(&format!("(number {i})"));
+    }
+    let source = format!(
+        r#"(clips-import '((deffacts many (goal x)) (deffacts nums {facts})))"#
+    );
+    let imported = eval_import(&source);
+    assert!(
+        imported.contains("(number 0)") && imported.contains("(number 4999)"),
+        "expected every fact to survive the import, got a result of length {}",
+        imported.len()
+    );
+}
+
+#[test]
+fn clips_import_file_imports_a_fourth_real_external_clp_file_with_a_large_deffacts_block() {
+    // animal.clp ("Animal Identification Expert System") is the real file
+    // that first crashed the process outright with a Rust stack overflow
+    // (not a graceful LanguageError) — its knowledge-base deffacts has 128
+    // facts, enough non-tail recursion depth (compounded across all 37 of
+    // the file's top-level forms) to blow the stack before the fix above.
+    let source = r#"
+        (clips-import-file "../../tests/fixtures/animal-external.clp")
+    "#;
+    let imported = eval_import(source);
+    assert!(
+        imported.contains("(goal type.animal)"),
+        "expected the initial goal fact to survive the import, got: {imported}"
+    );
+    assert!(
+        imported.contains("(legalanswers yes)"),
+        "expected a converted deftemplate fact to survive the import, got: {imported}"
+    );
+}
