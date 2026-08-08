@@ -73,6 +73,15 @@ A `defmacro` receives its arguments as data (unevaluated, like `quote` does) and
 ```
 Prints `different`. `unless` did not exist in the language a moment ago; you just grew it, out of the same quote/no-quote trick as stages 1–4.
 
+### Stage 6 — the trick taken all the way
+
+`quote` treats code as data; `defmacro` builds new code from data. The next step is a program that *runs* code passed to it as data — an evaluator. [`lib/meta-eval.my`](../lib/meta-eval.my) is one, written entirely in my-lisp, using `read` to turn text into data (see stage 1) and its own `car`/`cdr`/`cons`/`atom`/`eq`/`cond`/`lambda` to interpret it — the same primitives this tutorial has used throughout, now dispatching to themselves:
+
+```lisp
+(my-eval (read "((lambda (x) (* x x)) 6)") '())
+```
+Prints `36`. Load it alongside `lib/core.my` and read the file's own header comment for what it deliberately leaves out and why.
+
 ## Українська
 
 **my-lisp** гомоіконічна: код і дані записуються однаково. Провідний `'` (синтаксичний цукор для `quote`, див. `docs/language-core.md`) каже evaluator'у "став до цього як до інертних даних, не виконуй". Приберіть цей один символ — і той самий текст стає програмою, що виконується. Цей туторіал — `.my`-файл із п'яти етапів: запустіть кожен блок з `'`, подивіться на надрукований результат, потім приберіть `'` і запустіть знову.
@@ -146,6 +155,15 @@ cargo run --manifest-path crates/my-lisp-cli/Cargo.toml -- your-file.my
 ```
 Друкує `different`. Секунду тому `unless` не існувало в мові — ви щойно виростили його з того самого прийому quote/без-quote, що й у етапах 1–4.
 
+### Етап 6 — прийом, доведений до кінця
+
+`quote` ставиться до коду як до даних; `defmacro` будує новий код із даних. Наступний крок — програма, що *виконує* код, переданий їй як дані — evaluator. [`lib/meta-eval.my`](../lib/meta-eval.my) — саме такий, написаний повністю самою my-lisp, через `read`, що перетворює текст на дані (див. етап 1), і власні `car`/`cdr`/`cons`/`atom`/`eq`/`cond`/`lambda` для інтерпретації — ті самі примітиви, що й у цьому туторіалі, тепер диспетчеризовані самі на себе:
+
+```lisp
+(my-eval (read "((lambda (x) (* x x)) 6)") '())
+```
+Друкує `36`. Завантажте його поряд з `lib/core.my` і прочитайте власний header-коментар файлу — що він навмисно лишає поза межами і чому.
+
 ## Deutsch
 
 **my-lisp** ist homoikonisch: Code und Daten teilen sich eine Notation. Ein führendes `'` (der Reader-Zucker für `quote`, siehe `docs/language-core.md`) sagt dem Evaluator "behandle dies als reglose Daten, führe es nicht aus". Entfernen Sie dieses eine Zeichen, und derselbe Text wird zu einem laufenden Programm. Dieses Tutorial ist eine fünfstufige `.my`-Datei: Führen Sie jeden Block mit `'` aus, lesen Sie das ausgegebene Ergebnis, entfernen Sie dann das `'` und führen Sie ihn erneut aus.
@@ -218,3 +236,12 @@ Ein `defmacro` erhält seine Argumente als Daten (unausgewertet, wie bei `quote`
 (unless (eq 1 2) 'different)
 ```
 Gibt `different` aus. Einen Moment zuvor existierte `unless` noch nicht in der Sprache — Sie haben es gerade aus demselben Quote/Ohne-Quote-Trick wie in den Stufen 1–4 wachsen lassen.
+
+### Stufe 6 — der Trick zu Ende gedacht
+
+`quote` behandelt Code als Daten; `defmacro` baut neuen Code aus Daten. Der nächste Schritt ist ein Programm, das als Daten übergebenen Code *ausführt* — ein Evaluator. [`lib/meta-eval.my`](../lib/meta-eval.my) ist genau das, vollständig in my-lisp geschrieben, mit `read`, das Text in Daten verwandelt (siehe Stufe 1), und den eigenen Primitiven `car`/`cdr`/`cons`/`atom`/`eq`/`cond`/`lambda` zur Interpretation — dieselben Primitive, die dieses Tutorial durchgehend benutzt hat, jetzt auf sich selbst angewendet:
+
+```lisp
+(my-eval (read "((lambda (x) (* x x)) 6)") '())
+```
+Gibt `36` aus. Zusammen mit `lib/core.my` laden und den eigenen Header-Kommentar der Datei lesen — was sie bewusst auslässt und warum.
