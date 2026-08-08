@@ -67,6 +67,29 @@ fn fire_rule_on_working_memory_reads_the_global_fact_list() {
 }
 
 #[test]
+fn fire_rules_on_facts_applies_every_rule_and_collects_all_results() {
+    let source = r#"
+        (fire-rules-on-facts
+          (list (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
+                (list (list 'star (logic-var 'x)) (list 'has-mass (logic-var 'x))))
+          (list '(planet earth) '(star sun) '(moon luna)))
+    "#;
+    assert_eq!(eval_forward(source), "((has-mass earth) (has-mass sun))");
+}
+
+#[test]
+fn fire_rules_on_working_memory_reads_the_global_fact_list() {
+    let source = r#"
+        (assert-fact! '(planet earth))
+        (assert-fact! '(star sun))
+        (fire-rules-on-working-memory
+          (list (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
+                (list (list 'star (logic-var 'x)) (list 'has-mass (logic-var 'x)))))
+    "#;
+    assert_eq!(eval_forward(source), "((has-mass earth) (has-mass sun))");
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))

@@ -121,3 +121,32 @@
 (def fire-rule-on-working-memory
   (lambda (rule)
     (fire-rule-on-facts rule *working-memory*)))
+
+; Step 3: apply every rule in a rule set to a fact list (still a single
+; pass — no fixpoint loop yet, so a fact produced by one rule isn't itself
+; matched against other rules within this same call). `append`-based, the
+; same fan-out shape `prove-goal` in lib/reason.my uses to try every rule
+; against a goal.
+;
+; Крок 3: застосувати кожне правило з набору правил до списку фактів (досі
+; один прохід — без fixpoint-циклу, тож факт, породжений одним правилом, у
+; межах цього ж виклику не зіставляється з іншими правилами). Побудовано
+; через `append`, той самий розгалужувальний паттерн, що й `prove-goal` у
+; lib/reason.my для перебору всіх правил проти цілі.
+;
+; Schritt 3: jede Regel eines Regelwerks auf eine Faktenliste anwenden
+; (immer noch ein einzelner Durchlauf — noch keine Fixpunkt-Schleife, ein
+; von einer Regel erzeugter Fakt wird innerhalb desselben Aufrufs also nicht
+; selbst mit anderen Regeln abgeglichen). Auf `append` aufgebaut, dieselbe
+; Fan-out-Form, die `prove-goal` in lib/reason.my nutzt, um jede Regel gegen
+; ein Ziel zu versuchen.
+(def fire-rules-on-facts
+  (lambda (rules facts)
+    (cond
+      ((atom rules) '())
+      (t (append (fire-rule-on-facts (car rules) facts)
+                  (fire-rules-on-facts (cdr rules) facts))))))
+
+(def fire-rules-on-working-memory
+  (lambda (rules)
+    (fire-rules-on-facts rules *working-memory*)))
