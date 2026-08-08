@@ -50,5 +50,7 @@
   { "expr": "(cons 1)", "error": "Arity" },
   { "expr": "(/ 1 0)", "error": "InvalidForm" },
   { "expr": "(let ((x 1) (y 2)) (+ x y))", "expected": "3" },
-  { "expr": "(let* ((x 1) (y (+ x 1))) y)", "expected": "2" }
+  { "expr": "(let* ((x 1) (y (+ x 1))) y)", "expected": "2" },
+  { "expr": "(equal? '(1 (2 3) 4) '(1 (2 3) 4))", "expected": "t" },
+  { "expr": "(equal? '(1 2) '(1 2 3))", "expected": "()" }
 ]

@@ -189,6 +189,44 @@
 ; Makro-Expansionsmechanismus, den `unless` und `let` bereits nutzen —
 ; `let*`, das `let*` aufruft, ist gewöhnliche Rekursion, kein Sonderfall,
 ; von dem der Evaluator wissen müsste.
+; `eq` is deliberately atom-only per McCarthy's original primitive (see
+; docs/language-core.md) — `(eq '(1 2) '(1 2))` errors rather than comparing
+; structurally. `equal?` is the structural/deep-equality counterpart, built
+; on top of `eq` and `atom` rather than replacing them: two atoms compare
+; via `eq` (always safe — both sides are already known atoms in that
+; branch); two pairs compare by recursing into `car`/`cdr`; an atom against
+; a pair is unconditionally false, checked before ever reaching `eq` so it
+; can't be handed a non-atom the way `var?` and `unify` in lib/unify.my
+; originally were (see that file's header comment for the bug that caught).
+; `eq` навмисно приймає лише атоми, за оригінальним примітивом Маккарті
+; (див. docs/language-core.md) — `(eq '(1 2) '(1 2))` падає замість
+; структурного порівняння. `equal?` — структурний/глибокий відповідник,
+; побудований поверх `eq` і `atom`, не замість них: два атоми порівнюються
+; через `eq` (завжди безпечно — обидві сторони вже точно атоми в цій
+; гілці); дві пари порівнюються рекурсією в `car`/`cdr`; атом проти пари —
+; безумовно хиба, перевіряється до того, як дійде до `eq`, тож йому не
+; можна підсунути не-атом так, як спершу можна було `var?` і `unify` в
+; lib/unify.my (баг, який це зловив, описано в header-коментарі того файлу).
+; `eq` akzeptiert nach McCarthys ursprünglichem Primitiv bewusst nur Atome
+; (siehe docs/language-core.md) — `(eq '(1 2) '(1 2))` löst einen Fehler
+; aus statt strukturell zu vergleichen. `equal?` ist das
+; strukturelle/tiefe Gegenstück, aufgebaut auf `eq` und `atom`, statt sie
+; zu ersetzen: zwei Atome vergleichen sich über `eq` (immer sicher — beide
+; Seiten sind in diesem Zweig bereits bekanntermaßen Atome); zwei Paare
+; vergleichen sich durch Rekursion in `car`/`cdr`; ein Atom gegen ein Paar
+; ist unbedingt falsch, geprüft bevor es je zu `eq` kommt, sodass ihm nie
+; ein Nicht-Atom untergeschoben werden kann, wie es `var?` und `unify` in
+; lib/unify.my anfangs passieren konnte (der dabei gefangene Bug steht im
+; Header-Kommentar dieser Datei).
+(def equal?
+  (lambda (a b)
+    (cond
+      ((atom a) (cond ((atom b) (eq a b)) (t '())))
+      ((atom b) '())
+      (t (cond
+           ((equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
+           (t '()))))))
+
 (defmacro let* (bindings body)
   (cond
     ((atom bindings) body)

@@ -98,6 +98,7 @@ Die erste Bootstrap-Bibliothek ist `lib/core.my`. Ihre Definitionen (`identity`,
 - `third` — Returns the third element of a list · Повертає третій елемент списку · Gibt das dritte Element einer Liste zurück
 - `caar` — `(car (car x))`
 - `cadr` — `(car (cdr x))`
+- `equal?` — Deep/structural equality, unlike `eq`'s atom-only comparison — two atoms compare via `eq`, two pairs recurse into `car`/`cdr`, an atom against a pair is unconditionally false. · Глибока/структурна рівність, на відміну від `eq`, що порівнює лише атоми — два атоми порівнюються через `eq`, дві пари рекурсують у `car`/`cdr`, атом проти пари — безумовно хиба. · Tiefe/strukturelle Gleichheit, im Unterschied zu `eq`s reinem Atomvergleich — zwei Atome vergleichen über `eq`, zwei Paare rekursieren in `car`/`cdr`, ein Atom gegen ein Paar ist unbedingt falsch.
 - `length` — Counts the elements of a list · Рахує елементи списку · Zählt die Elemente einer Liste
 - `reverse` — Reverses a list (tail-recursive via a `reverse-onto` accumulator) · Розвертає список (хвостово-рекурсивно, через акумулятор `reverse-onto`) · Kehrt eine Liste um (endrekursiv über einen `reverse-onto`-Akkumulator)
 - `append` — Concatenates two lists · З'єднує два списки · Verkettet zwei Listen

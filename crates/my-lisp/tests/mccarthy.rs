@@ -219,6 +219,28 @@ fn bootstrap_library_provides_let_and_let_star() {
 }
 
 #[test]
+fn bootstrap_library_provides_deep_structural_equality() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    let run = |source: &str, session: &mut Session| {
+        eval_program(source, session).unwrap().value.to_string()
+    };
+    assert_eq!(run("(equal? '(1 2 3) '(1 2 3))", &mut session), "t");
+    assert_eq!(run("(equal? '(1 2 3) '(1 2 4))", &mut session), "()");
+    assert_eq!(
+        run("(equal? '(1 (2 3) 4) '(1 (2 3) 4))", &mut session),
+        "t"
+    );
+    assert_eq!(run("(equal? '() '())", &mut session), "t");
+    assert_eq!(run("(equal? 'radio 'radio)", &mut session), "t");
+    // Different lengths, and an atom compared against a compound term —
+    // neither should ever reach `eq` with a non-atom operand.
+    assert_eq!(run("(equal? '(1 2) '(1 2 3))", &mut session), "()");
+    assert_eq!(run("(equal? 5 '(5))", &mut session), "()");
+    assert_eq!(run("(equal? '(1 2) 5)", &mut session), "()");
+}
+
+#[test]
 fn reader_supports_unicode_comments_and_quote_sugar() {
     let expressions = parse("; коментар\n'радіо").unwrap();
     assert_eq!(expressions.len(), 1);
