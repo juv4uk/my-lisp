@@ -150,3 +150,66 @@
 (def fire-rules-on-working-memory
   (lambda (rules)
     (fire-rules-on-facts rules *working-memory*)))
+
+; Step 4: `run` — the fixpoint loop. Repeatedly fires the whole rule set
+; against the current fact list, folding newly produced facts (deduplicated
+; via `equal?`, since facts are compound terms) into that list, until a pass
+; adds nothing new.
+;
+; `run` is a *pure function* returning the final fact list — it does not
+; itself assert into `*working-memory*`. Same reason `count-usage` accumulates
+; instead of mutating in lib/reason.my: `run` is a `lambda`, and `def` (the
+; only mutation my-lisp has) only ever mutates the frame it runs in, so a
+; loop body cannot durably update a global one iteration at a time. To sync
+; the result back, call `assert-facts!` yourself at the top level:
+; `(assert-facts! (run rules *working-memory*))`.
+;
+; Крок 4: `run` — fixpoint-цикл. Повторно застосовує весь набір правил до
+; поточного списку фактів, вкладаючи новоутворені факти (дедуплікація через
+; `equal?`, бо факти — складені терми) у цей список, поки прохід не додає
+; нічого нового.
+;
+; `run` — *чиста функція*, що повертає фінальний список фактів — сама вона
+; не записує в `*working-memory*`. Та сама причина, що й акумуляція в
+; `count-usage` у lib/reason.my замість мутації: `run` — це `lambda`, а
+; `def` (єдина мутація в my-lisp) мутує лише той фрейм, у якому виконується,
+; тож тіло циклу не може стійко оновлювати глобальний стан по одній
+; ітерації. Щоб синхронізувати результат назад, виклич `assert-facts!` сам
+; на верхньому рівні: `(assert-facts! (run rules *working-memory*))`.
+;
+; Schritt 4: `run` — die Fixpunkt-Schleife. Wendet wiederholt das ganze
+; Regelwerk auf die aktuelle Faktenliste an und faltet neu erzeugte Fakten
+; (dedupliziert über `equal?`, da Fakten zusammengesetzte Terme sind) in
+; diese Liste ein, bis ein Durchlauf nichts Neues mehr hinzufügt.
+;
+; `run` ist eine *reine Funktion*, die die endgültige Faktenliste
+; zurückgibt — sie schreibt selbst nicht in `*working-memory*`. Derselbe
+; Grund wie die Akkumulation in `count-usage` in lib/reason.my statt
+; Mutation: `run` ist eine `lambda`, und `def` (die einzige Mutation in
+; my-lisp) mutiert nur den Frame, in dem es läuft, daher kann der
+; Schleifenkörper nicht Schritt für Schritt dauerhaft einen globalen Zustand
+; aktualisieren. Um das Ergebnis zurückzusynchronisieren, ruf `assert-facts!`
+; selbst auf oberster Ebene auf: `(assert-facts! (run rules *working-memory*))`.
+(def member?
+  (lambda (item lst)
+    (cond
+      ((atom lst) '())
+      ((equal? item (car lst)) t)
+      (t (member? item (cdr lst))))))
+
+(def append-new
+  (lambda (facts wm)
+    (cond
+      ((atom facts) wm)
+      ((member? (car facts) wm) (append-new (cdr facts) wm))
+      (t (append-new (cdr facts) (cons (car facts) wm))))))
+
+(def run
+  (lambda (rules facts)
+    (let ((merged (append-new (fire-rules-on-facts rules facts) facts)))
+      (cond
+        ((= (length merged) (length facts)) facts)
+        (t (run rules merged))))))
+
+(defmacro assert-facts! (facts)
+  (list 'def '*working-memory* (list 'append-new facts '*working-memory*)))

@@ -90,6 +90,46 @@ fn fire_rules_on_working_memory_reads_the_global_fact_list() {
 }
 
 #[test]
+fn run_reaches_a_fixpoint_by_chaining_rules_across_passes() {
+    // orbits(x, sun) -> has-mass(x); has-mass(x) -> heavy(x). Earth's
+    // "heavy" fact only appears two passes after the initial orbits fact,
+    // so this only passes if `run` actually loops to a fixpoint.
+    let source = r#"
+        (run (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))
+                    (list (list 'has-mass (logic-var 'x)) (list 'heavy (logic-var 'x))))
+              (list '(orbits earth sun)))
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "((heavy earth) (has-mass earth) (orbits earth sun))"
+    );
+}
+
+#[test]
+fn run_does_not_loop_forever_when_a_rule_reproduces_an_existing_fact() {
+    let source = r#"
+        (run (list (list (list 'planet (logic-var 'x)) (list 'planet (logic-var 'x))))
+              (list '(planet earth)))
+    "#;
+    assert_eq!(eval_forward(source), "((planet earth))");
+}
+
+#[test]
+fn assert_facts_merges_run_results_into_the_global_working_memory() {
+    let source = r#"
+        (assert-fact! '(orbits earth sun))
+        (assert-facts!
+          (run (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x))))
+                *working-memory*))
+        *working-memory*
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "((has-mass earth) (orbits earth sun))"
+    );
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))
