@@ -208,6 +208,55 @@ pub(super) fn evaluate_eval(
     evaluate(&expression, environment)
 }
 
+pub(super) fn evaluate_load(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("load", arguments, 1, span)?;
+    let evaluated = evaluate(&arguments[0], environment)?;
+    let Value::String(ref path) = evaluated else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "load expects a string path · load очікує рядок-шлях · load erwartet einen String-Pfad",
+            span,
+        ));
+    };
+    
+    let source = read_file(&path, span)?;
+    let expressions = crate::parse(&source).map_err(|mut error| {
+        error.span = span;
+        error
+    })?;
+    
+    let mut last_value = Value::Nil;
+    for expr in expressions {
+        last_value = evaluate(&expr, environment)?;
+    }
+    
+    Ok(last_value)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn read_file(path: &str, span: Span) -> Result<String, LanguageError> {
+    std::fs::read_to_string(path).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("load: failed to read file {path}: {error}"),
+            span,
+        )
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn read_file(_path: &str, span: Span) -> Result<String, LanguageError> {
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        "load: file system access is not available in this build",
+        span,
+    ))
+}
+
 pub(super) fn evaluate_definition(
     arguments: &[Expr],
     environment: &Environment,

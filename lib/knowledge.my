@@ -1,0 +1,57 @@
+;; knowledge.my - A module system for the Lisp Knowledge Representation
+
+;; assoc looks up a key in an association list, returning the key-value pair or '()
+(def assoc
+  (lambda (key alist)
+    (cond
+      ((atom alist) '())
+      ((eq key (car (car alist))) (car alist))
+      ('t (assoc key (cdr alist))))))
+
+;; Define a global registry for modules (an association list mapping module names to rules)
+;; Using def var to store a global state that can be updated
+(def *knowledge-base* '())
+
+;; defmodule registers a list of rules under a specific module name
+(defmacro defmodule (name rules)
+  (list 'def '*knowledge-base*
+        (list 'cons
+              (list 'list (list 'quote name) rules)
+              '*knowledge-base*)))
+
+;; load-knowledge reads a file and loads its module definition
+(defmacro load-knowledge (module-name)
+  (list 'load module-name))
+
+;; reason-in queries a specific module by name
+(def reason-in
+  (lambda (module-name goal)
+    (let ((module (assoc module-name *knowledge-base*)))
+      (cond
+        ((atom module) 'Module-not-found)
+        ('t (reason goal (car (cdr module))))))))
+
+;; check-conflict checks if the negation of the first rule's head is provable
+(def check-conflict
+  (lambda (module-name rules)
+    (let ((existing (assoc module-name *knowledge-base*)))
+      (cond
+        ((atom existing) '())
+        ('t (let ((head (car (car rules))))
+              (let ((proofs (reason-in module-name (list 'not head))))
+                (cond
+                  ((atom proofs) '())
+                  (t t)))))))))
+
+;; tell-knowledge adds new rules to a module, creating it if it doesn't exist
+;; Uses macro expansion to modify the global *knowledge-base*
+(defmacro tell-knowledge (module-name rules)
+  (list 'cond
+        (list (list 'check-conflict (list 'quote module-name) rules)
+              (list 'quote 'Conflict-detected))
+        (list 't
+              (list 'def '*knowledge-base*
+                    (list 'cons
+                          (list 'list (list 'quote module-name)
+                                (list 'append rules (list 'car (list 'cdr (list 'assoc (list 'quote module-name) '*knowledge-base*)))))
+                          '*knowledge-base*)))))

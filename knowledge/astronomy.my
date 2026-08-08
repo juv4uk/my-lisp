@@ -1,0 +1,10 @@
+;; knowledge/astronomy.my
+(defmodule astronomy '(
+  ;; Facts
+  ((planet earth))
+  ((planet mars))
+  ((star sun))
+
+  ;; Rules
+  ((orbits (var p) (var s)) (planet (var p)) (star (var s)))
+))

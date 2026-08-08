@@ -1,3 +1,4 @@
+mod llm;
 use my_lisp::{eval_parsed_expressions, parse, Session};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -117,6 +118,59 @@ fn main() {
                     let _ = rl.add_history_entry(line);
                     if let Some(path) = &history_path {
                         let _ = rl.append_history(path);
+                    }
+
+                    if line.starts_with(":tell ") {
+                        let text = &line[6..];
+                        match llm::generate_rule(text) {
+                            Ok(rules_str) => {
+                                println!("🤖 LLM Translation:\n{}", rules_str);
+                                // Here we evaluate it by wrapping in a (tell-knowledge ...) call
+                                // which we will implement in Lisp
+                                let lisp_cmd = format!("(tell-knowledge 'nlp '{})", rules_str);
+                                match parse(&lisp_cmd) {
+                                    Ok(ast) => {
+                                        match eval_parsed_expressions(&ast, &mut session) {
+                                            Ok(res) => {
+                                                if res.value.to_string() == "Conflict-detected" {
+                                                    eprintln!("⚠️ Conflict detected! The rule contradicts existing knowledge.");
+                                                } else {
+                                                    println!("✅ Knowledge added to 'nlp' module.");
+                                                }
+                                            }
+                                            Err(e) => eprintln!("Verification Error: {}", e.render(&lisp_cmd)),
+                                        }
+                                    }
+                                    Err(e) => eprintln!("Parse error on LLM output: {}", e.render(&rules_str)),
+                                }
+                            }
+                            Err(e) => eprintln!("LLM Error: {}", e),
+                        }
+                        continue;
+                    }
+
+                    if line.starts_with(":ask ") {
+                        let text = &line[5..];
+                        match llm::generate_query(text) {
+                            Ok(query_str) => {
+                                println!("🤖 LLM Translation:\n{}", query_str);
+                                let lisp_cmd = format!("(reason-in 'nlp '{})", query_str);
+                                match parse(&lisp_cmd) {
+                                    Ok(ast) => {
+                                        match eval_parsed_expressions(&ast, &mut session) {
+                                            Ok(result) => {
+                                                for out in result.output { println!("{}", out); }
+                                                println!("{}", result.value);
+                                            }
+                                            Err(e) => eprintln!("Error: {}", e.render(&lisp_cmd)),
+                                        }
+                                    }
+                                    Err(e) => eprintln!("Parse error on LLM output: {}", e.render(&query_str)),
+                                }
+                            }
+                            Err(e) => eprintln!("LLM Error: {}", e),
+                        }
+                        continue;
                     }
 
                     match parse(line) {
