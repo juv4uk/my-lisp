@@ -17,9 +17,46 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
 
+  create-release:
+    name: Create the GitHub release
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Creates the release once, before any asset-uploading job runs. Without
+      # this, build-cli's 4 matrix jobs and build-web all raced to create the
+      # same tag_name concurrently — softprops/action-gh-release only upserts
+      # cleanly against a release that already exists; several simultaneous
+      # "does it exist yet" checks can all say no and all try to create it,
+      # and only the first one to land succeeds (l0.11.0's build-cli and
+      # build-web jobs all failed with "already_exists" this way).
+      # Створює реліз один раз, до того, як запуститься будь-яка джоба
+      # заливання asset'ів. Без цього 4 матричні джоби build-cli і build-web
+      # усі одночасно змагались створити той самий tag_name —
+      # softprops/action-gh-release чисто апсертить лише в реліз, що вже
+      # існує; кілька одночасних перевірок "чи він уже є" можуть усі
+      # відповісти "ні" й усі спробувати створити, і успішною буде лише
+      # перша, що доїде (саме так усі джоби build-cli й build-web для
+      # l0.11.0 впали з "already_exists").
+      # Erstellt das Release einmal, bevor irgendein Asset-Upload-Job läuft.
+      # Ohne dies liefen sich die 4 Matrix-Jobs von build-cli und build-web
+      # gegenseitig ins Rennen, um denselben tag_name zu erstellen —
+      # softprops/action-gh-release upsertet nur sauber gegen ein bereits
+      # existierendes Release; mehrere gleichzeitige "existiert es schon"
+      # Prüfungen können alle Nein sagen und alle versuchen zu erstellen,
+      # und nur die erste, die ankommt, gewinnt (genau so scheiterten
+      # l0.11.0s build-cli- und build-web-Jobs mit "already_exists").
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-cli:
     name: my-lisp-cli · ${{ matrix.os }}
-    needs: test
+    needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -79,7 +116,7 @@ jobs:
 
   build-web:
     name: Portable web REPL · single HTML
-    needs: test
+    needs: create-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
