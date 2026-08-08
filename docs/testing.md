@@ -1,121 +1,67 @@
-# my-idea test results · Результати тестів my-idea · my-idea-Testergebnisse
+# my-lisp test results · Результати тестів my-lisp · my-lisp-Testergebnisse
 
 ## English
 
-The project has two independent test layers: the Rust crates under `crates/` (run with `cargo test`), and the Node/Playwright suite that exercises the ClojureScript frontend, the WASM engine, and the standalone web artifacts (run with `npm test`). There is no cross-suite coverage tool configured yet; this table is the current source of truth and should be refreshed whenever a suite gains or loses tests.
+This repository has one test layer: the four Rust crates under `crates/`, run with `cargo test --workspace`. There is no separate JS/web test suite here — the standalone web REPL (`public/my-lisp-cli-web.html`) is built from the same WASM crate covered below, and the previous Node/Playwright suite stayed behind in the `my-idea` IDE repo this crate set was extracted from (see [`docs/versioning.md`](versioning.md)). This table is the current source of truth and should be refreshed whenever a suite gains or loses tests.
 
-### Rust crates — `cargo test`
+| Crate | Suite | Tests | Covers | Result (last run) |
+|---|---|---:|---|---|
+| `my-lisp` | unit tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`) | 24 | reader/parser edge cases, lexical-scope isolation, single-pass evaluation, macro expansion | ok |
+| `my-lisp` | `tests/mccarthy.rs` | 12 | the seven McCarthy primitives, exact/inexact arithmetic, lambda semantics, structured errors | ok |
+| `my-lisp` | `tests/stack_safety.rs` | 4 | tail recursion and deep list clone/drop use constant Rust stack | ok |
+| `my-lisp-cli` | `tests/cli.rs` | 8 | the compiled binary end-to-end: `--version`/`--help`, file execution, parse/eval error exit codes, missing-file handling, `lib/core.my` preloading | ok |
+| `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | literate-Markdown source-offset mapping | ok |
+| `my-lisp-wasm` | unit test (`src/lib.rs`) | 1 | the WASM adapter produces the same exact/single-pass evaluation struct as the native core | ok |
+| **Total** | | **53** | | **53 passed, 0 failed, 0 ignored** |
 
-| Crate | Suite | Tests | Covers |
-|---|---|---:|---|
-| `my-lisp` | unit tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`) | 24 | reader/parser edge cases, lexical-scope isolation, single-pass evaluation, macro expansion |
-| `my-lisp` | `tests/mccarthy.rs` | 12 | the seven McCarthy primitives, exact/inexact arithmetic, lambda semantics, structured errors |
-| `my-lisp` | `tests/stack_safety.rs` | 4 | tail recursion and deep list clone/drop use constant Rust stack |
-| `my-lisp-cli` | `tests/cli.rs` | 8 | the compiled binary end-to-end: `--version`/`--help`, file execution, parse/eval error exit codes, missing-file handling, `lib/core.my` preloading |
-| `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | literate-Markdown source-offset mapping |
-| **Rust total** | | **52** | |
+The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 12 tests, not counted separately.
 
-```powershell
-cargo test --manifest-path crates/my-lisp/Cargo.toml
-cargo test --manifest-path crates/my-lisp-cli/Cargo.toml
-cargo test --manifest-path crates/my-lisp-literate/Cargo.toml
+```bash
+cargo test --workspace
 ```
 
-### Web/JS suite — `npm test` (`node --test tests/*.test.mjs`)
-
-| File | Tests | Covers |
-|---|---:|---|
-| `tests/conformance.test.mjs` | 19 | implementation-independent fixture cases (`tests/fixtures/conformance.json`) run against the WASM engine directly in Node, plus a 100k-list stack-safety check on the raw WASM adapter |
-| `tests/smoke.test.mjs` | 15 | static wiring checks (trilingual UI, PWA manifest/service worker, Tauri commands, WASM/CLJS bindings, release workflow asset names) plus a Playwright check that `my-idea-web.html` doesn't stack-overflow on a 100k-element list |
-| `tests/my-lisp-cli-web.test.mjs` | 5 | Playwright end-to-end checks on `public/my-lisp-cli-web.html`: plain arithmetic, definitions persisting across REPL lines, `lib/core.my` preloading, exact rational arithmetic, and an error not corrupting the session |
-| **Web/JS total** | **39** | |
-
-`npm test` additionally runs `shadow-cljs compile test`, a legacy ClojureScript test-compilation step from before the CLJS prototype was replaced (see `docs/language-core.md`); it currently contains 0 assertions. It is not an active coverage path — the Node suite above is where actual coverage lives today.
-
-```powershell
-npm test
-```
-
-### Grand total
-
-**91 automated tests** (52 Rust + 39 Web/JS) across the project, last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignored.
+Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignored.
 
 ## Українська
 
-Проєкт має два незалежні шари тестів: Rust-крейти в `crates/` (запуск через `cargo test`) і Node/Playwright-набір, що перевіряє ClojureScript-фронтенд, WASM-рушій і standalone web-артефакти (запуск через `npm test`). Інструмент для наскрізного покриття між шарами поки не налаштовано; ця таблиця є поточним джерелом правди й має оновлюватися щоразу, коли набір отримує або втрачає тести.
+Цей репозиторій має один шар тестів: чотири Rust-крейти в `crates/`, що запускаються через `cargo test --workspace`. Окремого JS/web тест-набору тут немає — автономний web-REPL (`public/my-lisp-cli-web.html`) збирається з того самого WASM-крейта, покритого нижче, а попередній Node/Playwright-набір лишився в репозиторії IDE `my-idea`, з якого виділено цей набір крейтів (див. [`docs/versioning.md`](versioning.md)). Ця таблиця є поточним джерелом правди й має оновлюватися щоразу, коли набір отримує або втрачає тести.
 
-### Rust-крейти — `cargo test`
+| Крейт | Набір | Тестів | Покриває | Результат (останній запуск) |
+|---|---|---:|---|---|
+| `my-lisp` | unit-тести (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`) | 24 | межові випадки reader/parser, ізоляцію лексичного скоупу, однопрохідне обчислення, розкриття макросів | ok |
+| `my-lisp` | `tests/mccarthy.rs` | 12 | сім примітивів Маккарті, точну/неточну арифметику, семантику lambda, структуровані помилки | ok |
+| `my-lisp` | `tests/stack_safety.rs` | 4 | хвостову рекурсію та clone/drop глибоких списків зі сталим Rust-стеком | ok |
+| `my-lisp-cli` | `tests/cli.rs` | 8 | скомпільований бінарник наскрізно: `--version`/`--help`, виконання файлу, коди виходу при помилках парсингу/обчислення, відсутній файл, попереднє завантаження `lib/core.my` | ok |
+| `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | зіставлення зміщень початкового коду literate-Markdown | ok |
+| `my-lisp-wasm` | unit-тест (`src/lib.rs`) | 1 | WASM-адаптер видає ту саму точну/однопрохідну структуру обчислення, що й нативне ядро | ok |
+| **Разом** | | **53** | | **53 пройдено, 0 провалів, 0 пропущено** |
 
-| Крейт | Набір | Тестів | Покриває |
-|---|---|---:|---|
-| `my-lisp` | unit-тести (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`) | 24 | межові випадки reader/parser, ізоляцію лексичного скоупу, однопрохідне обчислення, розкриття макросів |
-| `my-lisp` | `tests/mccarthy.rs` | 12 | сім примітивів Маккарті, точну/неточну арифметику, семантику lambda, структуровані помилки |
-| `my-lisp` | `tests/stack_safety.rs` | 4 | хвостову рекурсію та clone/drop глибоких списків зі сталим Rust-стеком |
-| `my-lisp-cli` | `tests/cli.rs` | 8 | скомпільований бінарник наскрізно: `--version`/`--help`, виконання файлу, коди виходу при помилках парсингу/обчислення, відсутній файл, попереднє завантаження `lib/core.my` |
-| `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | зіставлення зміщень початкового коду literate-Markdown |
-| **Разом Rust** | | **52** | |
+Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 12 тестів набору, окремо не рахується.
 
-```powershell
-cargo test --manifest-path crates/my-lisp/Cargo.toml
-cargo test --manifest-path crates/my-lisp-cli/Cargo.toml
-cargo test --manifest-path crates/my-lisp-literate/Cargo.toml
+```bash
+cargo test --workspace
 ```
 
-### Web/JS-набір — `npm test` (`node --test tests/*.test.mjs`)
-
-| Файл | Тестів | Покриває |
-|---|---:|---|
-| `tests/conformance.test.mjs` | 19 | незалежні від реалізації fixture-кейси (`tests/fixtures/conformance.json`), що запускаються проти WASM-рушія напряму в Node, плюс перевірка stack-safety на 100k-списку для сирого WASM-адаптера |
-| `tests/smoke.test.mjs` | 15 | статичні перевірки підключення (трилінгвальний UI, PWA manifest/service worker, Tauri-команди, WASM/CLJS-прив'язки, назви release-asset у workflow) плюс Playwright-перевірка, що `my-idea-web.html` не переповнює стек на 100k-елементному списку |
-| `tests/my-lisp-cli-web.test.mjs` | 5 | Playwright end-to-end перевірки `public/my-lisp-cli-web.html`: звичайна арифметика, збереження визначень між рядками REPL, попереднє завантаження `lib/core.my`, точна раціональна арифметика, і що помилка не псує сесію |
-| **Разом Web/JS** | **39** | |
-
-`npm test` додатково запускає `shadow-cljs compile test` — застарілий крок компіляції ClojureScript-тестів, що лишився від часів до заміни CLJS-прототипу (див. `docs/language-core.md`); наразі містить 0 тверджень. Це не активний шлях покриття — реальне покриття сьогодні живе в Node-наборі вище.
-
-```powershell
-npm test
-```
-
-### Загальний підсумок
-
-**91 автотест** (52 Rust + 39 Web/JS) у проєкті, останній зафіксований запуск: 2026-08-08, Windows x86_64 — усі проходять, 0 провалів, 0 пропущено.
+Останній зафіксований запуск: 2026-08-08, Windows x86_64 — усі проходять, 0 провалів, 0 пропущено.
 
 ## Deutsch
 
-Das Projekt hat zwei unabhängige Testebenen: die Rust-Crates unter `crates/` (ausgeführt mit `cargo test`) und die Node/Playwright-Suite, die das ClojureScript-Frontend, die WASM-Engine und die eigenständigen Web-Artefakte prüft (ausgeführt mit `npm test`). Ein ebenenübergreifendes Coverage-Werkzeug ist noch nicht eingerichtet; diese Tabelle ist die aktuelle Quelle der Wahrheit und sollte aktualisiert werden, sobald eine Suite Tests gewinnt oder verliert.
+Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausgeführt mit `cargo test --workspace`. Eine separate JS/Web-Testsuite gibt es hier nicht — der eigenständige Web-REPL (`public/my-lisp-cli-web.html`) wird aus demselben WASM-Crate gebaut, das unten abgedeckt ist, und die frühere Node/Playwright-Suite blieb im `my-idea`-IDE-Repository zurück, aus dem dieser Crate-Satz extrahiert wurde (siehe [`docs/versioning.md`](versioning.md)). Diese Tabelle ist die aktuelle Quelle der Wahrheit und sollte aktualisiert werden, sobald eine Suite Tests gewinnt oder verliert.
 
-### Rust-Crates — `cargo test`
+| Crate | Suite | Tests | Deckt ab | Ergebnis (letzter Lauf) |
+|---|---|---:|---|---|
+| `my-lisp` | Unit-Tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`) | 24 | Reader-/Parser-Grenzfälle, Isolation des lexikalischen Scopes, Single-Pass-Auswertung, Makro-Expansion | ok |
+| `my-lisp` | `tests/mccarthy.rs` | 12 | die sieben McCarthy-Primitive, exakte/inexakte Arithmetik, Lambda-Semantik, strukturierte Fehler | ok |
+| `my-lisp` | `tests/stack_safety.rs` | 4 | Tail-Rekursion und Clone/Drop tiefer Listen mit konstantem Rust-Stack | ok |
+| `my-lisp-cli` | `tests/cli.rs` | 8 | die kompilierte Binärdatei durchgängig: `--version`/`--help`, Dateiausführung, Exit-Codes bei Parse-/Eval-Fehlern, fehlende Datei, Vorladen von `lib/core.my` | ok |
+| `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | Offset-Zuordnung von literate-Markdown-Quellcode | ok |
+| `my-lisp-wasm` | Unit-Test (`src/lib.rs`) | 1 | der WASM-Adapter liefert dieselbe exakte/Single-Pass-Auswertungsstruktur wie der native Kern | ok |
+| **Gesamt** | | **53** | | **53 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
 
-| Crate | Suite | Tests | Deckt ab |
-|---|---|---:|---|
-| `my-lisp` | Unit-Tests (`src/parser.rs`, `src/environment.rs`, `src/eval/mod.rs`) | 24 | Reader-/Parser-Grenzfälle, Isolation des lexikalischen Scopes, Single-Pass-Auswertung, Makro-Expansion |
-| `my-lisp` | `tests/mccarthy.rs` | 12 | die sieben McCarthy-Primitive, exakte/inexakte Arithmetik, Lambda-Semantik, strukturierte Fehler |
-| `my-lisp` | `tests/stack_safety.rs` | 4 | Tail-Rekursion und Clone/Drop tiefer Listen mit konstantem Rust-Stack |
-| `my-lisp-cli` | `tests/cli.rs` | 8 | die kompilierte Binärdatei durchgängig: `--version`/`--help`, Dateiausführung, Exit-Codes bei Parse-/Eval-Fehlern, fehlende Datei, Vorladen von `lib/core.my` |
-| `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | Offset-Zuordnung von literate-Markdown-Quellcode |
-| **Rust gesamt** | | **52** | |
+Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 12 Tests dieser Suite geprüft, nicht separat gezählt.
 
-```powershell
-cargo test --manifest-path crates/my-lisp/Cargo.toml
-cargo test --manifest-path crates/my-lisp-cli/Cargo.toml
-cargo test --manifest-path crates/my-lisp-literate/Cargo.toml
+```bash
+cargo test --workspace
 ```
 
-### Web/JS-Suite — `npm test` (`node --test tests/*.test.mjs`)
-
-| Datei | Tests | Deckt ab |
-|---|---:|---|
-| `tests/conformance.test.mjs` | 19 | implementierungsunabhängige Fixture-Fälle (`tests/fixtures/conformance.json`), direkt gegen die WASM-Engine in Node ausgeführt, plus eine Stack-Safety-Prüfung mit 100k-Liste am rohen WASM-Adapter |
-| `tests/smoke.test.mjs` | 15 | statische Verdrahtungsprüfungen (dreisprachige UI, PWA-Manifest/Service-Worker, Tauri-Befehle, WASM/CLJS-Bindungen, Release-Workflow-Asset-Namen) plus eine Playwright-Prüfung, dass `my-idea-web.html` bei einer 100k-Elemente-Liste nicht überläuft |
-| `tests/my-lisp-cli-web.test.mjs` | 5 | Playwright-End-to-End-Prüfungen von `public/my-lisp-cli-web.html`: einfache Arithmetik, über REPL-Zeilen persistente Definitionen, Vorladen von `lib/core.my`, exakte rationale Arithmetik und dass ein Fehler die Sitzung nicht beschädigt |
-| **Web/JS gesamt** | **39** | |
-
-`npm test` führt zusätzlich `shadow-cljs compile test` aus, einen veralteten ClojureScript-Testkompilierungsschritt aus der Zeit vor dem Ersatz des CLJS-Prototyps (siehe `docs/language-core.md`); er enthält derzeit 0 Assertions. Es ist kein aktiver Abdeckungspfad — die tatsächliche Abdeckung liegt heute in der obigen Node-Suite.
-
-```powershell
-npm test
-```
-
-### Gesamtsumme
-
-**91 automatisierte Tests** (52 Rust + 39 Web/JS) im Projekt, letzter erfasster Lauf: 08.08.2026, Windows x86_64 — alle bestanden, 0 fehlgeschlagen, 0 übersprungen.
+Letzter erfasster Lauf: 08.08.2026, Windows x86_64 — alle bestanden, 0 fehlgeschlagen, 0 übersprungen.
