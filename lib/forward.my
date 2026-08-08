@@ -253,3 +253,166 @@
 
 (defmacro retract-fact! (fact)
   (list 'def '*working-memory* (list 'retract-fact fact '*working-memory*)))
+
+; Step 5b: a real (if minimal) truth maintenance system. A *justified fact*
+; is `(fact . supports)`: `supports` is the list of facts a rule consumed to
+; derive `fact`, or `()` for a fact asserted as an axiom (nothing backs it
+; but the assertion itself). Retracting a fact now cascades: everything
+; whose support set names the retracted fact loses its justification and
+; gets retracted too, recursively.
+;
+; Deliberately single-justification: each fact is tracked with the *one*
+; support set that first derived it, not every possible way it could be
+; derived. If a fact is independently derivable two different ways,
+; retracting the tracked support still retracts it, even though another
+; justification might have kept it alive in a full JTMS. Documented as a
+; known limitation, not hidden — extending to multiple justifications per
+; fact is a further step, not assumed here.
+;
+; Lives alongside the Step 1-5a plain-fact functions rather than replacing
+; them: `*justified-memory*` is a separate global from `*working-memory*`,
+; so existing callers of `run`/`assert-fact!`/`retract-fact!` are unaffected.
+;
+; Крок 5b: справжня (хоч і мінімальна) система підтримки істинності. *Факт з
+; обґрунтуванням* — це `(факт . підтримка)`: `підтримка` — список фактів,
+; які правило спожило, щоб вивести `факт`, або `()` для факту-аксіоми
+; (нічого, крім самого твердження). Видалення факту тепер каскадує: усе, у
+; чиєму наборі підтримки згадується видалений факт, втрачає обґрунтування й
+; теж видаляється, рекурсивно.
+;
+; Свідомо одне обґрунтування на факт: кожен факт відстежується з *одним*
+; набором підтримки, який вивів його першим, не з усіма можливими шляхами
+; виведення. Якщо факт можна незалежно вивести двома різними шляхами,
+; видалення відстеженої підтримки все одно видалить факт, навіть якщо інше
+; обґрунтування могло б зберегти його живим у повному JTMS. Задокументовано
+; як відоме обмеження, не приховано — розширення до кількох обґрунтувань на
+; факт — окремий подальший крок, тут не мається на увазі.
+;
+; Існує поряд із функціями Кроку 1-5a для простих фактів, не замінюючи їх:
+; `*justified-memory*` — окрема глобальна змінна від `*working-memory*`, тож
+; наявні виклики `run`/`assert-fact!`/`retract-fact!` не зачіпаються.
+;
+; Schritt 5b: ein echtes (wenn auch minimales) Truth-Maintenance-System. Ein
+; *begründeter Fakt* ist `(fakt . unterstützung)`: `unterstützung` ist die
+; Liste der Fakten, die eine Regel verbraucht hat, um `fakt` abzuleiten,
+; oder `()` für einen als Axiom behaupteten Fakt (nichts stützt ihn außer
+; der Behauptung selbst). Das Entfernen eines Fakts kaskadiert nun: alles,
+; dessen Unterstützungsmenge den entfernten Fakt nennt, verliert seine
+; Begründung und wird ebenfalls rekursiv entfernt.
+;
+; Bewusst nur eine Begründung pro Fakt: jeder Fakt wird mit der *einen*
+; Unterstützungsmenge verfolgt, die ihn zuerst abgeleitet hat, nicht mit
+; jedem möglichen Ableitungsweg. Lässt sich ein Fakt unabhängig auf zwei
+; verschiedenen Wegen ableiten, entfernt das Retract der verfolgten
+; Unterstützung ihn trotzdem, selbst wenn eine andere Begründung ihn in
+; einem vollständigen JTMS am Leben erhalten hätte. Als bekannte
+; Einschränkung dokumentiert, nicht versteckt — die Erweiterung auf mehrere
+; Begründungen pro Fakt ist ein weiterer, hier nicht unterstellter Schritt.
+;
+; Existiert neben den Funktionen für einfache Fakten aus Schritt 1-5a, ohne
+; sie zu ersetzen: `*justified-memory*` ist eine von `*working-memory*`
+; getrennte globale Variable, sodass bestehende Aufrufer von
+; `run`/`assert-fact!`/`retract-fact!` unberührt bleiben.
+(def make-justified
+  (lambda (fact supports)
+    (cons fact supports)))
+
+(def fact-of (lambda (entry) (car entry)))
+(def supports-of (lambda (entry) (cdr entry)))
+(def axiom (lambda (fact) (make-justified fact '())))
+
+(def map-fact-of
+  (lambda (entries)
+    (cond
+      ((atom entries) '())
+      (t (cons (fact-of (car entries)) (map-fact-of (cdr entries)))))))
+
+; Same `fire-rule` as Step 1, but wraps a successful result with the
+; single supporting fact that produced it.
+(def fire-rule-tms
+  (lambda (rule fact)
+    (let ((result (fire-rule rule fact)))
+      (cond
+        ((atom result)
+         (cond
+           ((eq result 'no-match) 'no-match)
+           (t (make-justified result (list fact)))))
+        (t (make-justified result (list fact)))))))
+
+(def fire-rule-on-facts-tms
+  (lambda (rule facts)
+    (cond
+      ((atom facts) '())
+      (t (let ((result (fire-rule-tms rule (car facts))))
+           (cond
+             ((atom result) (fire-rule-on-facts-tms rule (cdr facts)))
+             (t (cons result (fire-rule-on-facts-tms rule (cdr facts))))))))))
+
+(def fire-rules-on-facts-tms
+  (lambda (rules facts)
+    (cond
+      ((atom rules) '())
+      (t (append (fire-rule-on-facts-tms (car rules) facts)
+                  (fire-rules-on-facts-tms (cdr rules) facts))))))
+
+(def justified-member?
+  (lambda (fact entries)
+    (cond
+      ((atom entries) '())
+      ((equal? fact (fact-of (car entries))) t)
+      (t (justified-member? fact (cdr entries))))))
+
+(def add-new-justified
+  (lambda (new-entries entries)
+    (cond
+      ((atom new-entries) entries)
+      ((justified-member? (fact-of (car new-entries)) entries)
+       (add-new-justified (cdr new-entries) entries))
+      (t (add-new-justified (cdr new-entries) (cons (car new-entries) entries))))))
+
+; The fixpoint loop over justified facts, mirroring `run` from Step 4.
+(def run-tms
+  (lambda (rules entries)
+    (let ((new-entries (fire-rules-on-facts-tms rules (map-fact-of entries))))
+      (let ((merged (add-new-justified new-entries entries)))
+        (cond
+          ((= (length merged) (length entries)) entries)
+          (t (run-tms rules merged)))))))
+
+(def *justified-memory* '())
+
+(defmacro assert-fact-tms! (fact)
+  (list 'def '*justified-memory* (list 'add-new-justified (list 'list (list 'axiom fact)) '*justified-memory*)))
+
+(defmacro run-tms! (rules)
+  (list 'def '*justified-memory* (list 'run-tms rules '*justified-memory*)))
+
+(def remove-justified
+  (lambda (fact entries)
+    (cond
+      ((atom entries) '())
+      ((equal? fact (fact-of (car entries))) (remove-justified fact (cdr entries)))
+      (t (cons (car entries) (remove-justified fact (cdr entries)))))))
+
+(def dependents-of
+  (lambda (fact entries)
+    (cond
+      ((atom entries) '())
+      ((member? fact (supports-of (car entries)))
+       (cons (fact-of (car entries)) (dependents-of fact (cdr entries))))
+      (t (dependents-of fact (cdr entries))))))
+
+; Retracts `fact`, then recursively retracts everything that named it in
+; their support set — the cascade truth maintenance is for.
+(def retract-fact-tms
+  (lambda (fact entries)
+    (retract-facts-tms (dependents-of fact entries) (remove-justified fact entries))))
+
+(def retract-facts-tms
+  (lambda (facts entries)
+    (cond
+      ((atom facts) entries)
+      (t (retract-facts-tms (cdr facts) (retract-fact-tms (car facts) entries))))))
+
+(defmacro retract-fact-tms! (fact)
+  (list 'def '*justified-memory* (list 'retract-fact-tms fact '*justified-memory*)))

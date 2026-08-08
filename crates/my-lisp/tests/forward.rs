@@ -173,6 +173,58 @@ fn retract_fact_bang_does_not_undo_facts_it_already_helped_derive() {
 }
 
 #[test]
+fn assert_fact_tms_stores_an_axiom_with_no_support() {
+    let source = r#"
+        (assert-fact-tms! '(orbits earth sun))
+        *justified-memory*
+    "#;
+    assert_eq!(eval_forward(source), "(((orbits earth sun)))");
+}
+
+#[test]
+fn run_tms_bang_derives_a_fact_with_its_support_recorded() {
+    let source = r#"
+        (assert-fact-tms! '(orbits earth sun))
+        (run-tms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
+        *justified-memory*
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "(((has-mass earth) (orbits earth sun)) ((orbits earth sun)))"
+    );
+}
+
+#[test]
+fn retract_fact_tms_bang_cascades_to_everything_it_supported() {
+    let source = r#"
+        (assert-fact-tms! '(orbits earth sun))
+        (run-tms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))
+                         (list (list 'has-mass (logic-var 'x)) (list 'heavy (logic-var 'x)))))
+        (retract-fact-tms! '(orbits earth sun))
+        *justified-memory*
+    "#;
+    // orbits(earth,sun) was retracted, which was the sole support for
+    // has-mass(earth), which was in turn the sole support for
+    // heavy(earth) — both should cascade away, leaving nothing.
+    assert_eq!(eval_forward(source), "()");
+}
+
+#[test]
+fn retract_fact_tms_bang_leaves_independently_supported_facts_alone() {
+    let source = r#"
+        (assert-fact-tms! '(orbits earth sun))
+        (assert-fact-tms! '(orbits mars sun))
+        (run-tms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
+        (retract-fact-tms! '(orbits earth sun))
+        *justified-memory*
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "(((has-mass mars) (orbits mars sun)) ((orbits mars sun)))"
+    );
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))
