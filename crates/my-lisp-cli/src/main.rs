@@ -46,13 +46,13 @@ fn main() {
                                 println!("{}", result.value);
                             }
                             Err(e) => {
-                                eprintln!("Error: {}", e);
+                                eprintln!("Error: {}", e.render(&source));
                                 process::exit(1);
                             }
                         }
                     }
                     Err(e) => {
-                        eprintln!("Parse error: {}", e);
+                        eprintln!("Parse error: {}", e.render(&source));
                         process::exit(1);
                     }
                 }
@@ -102,12 +102,12 @@ fn main() {
                                     println!("{}", result.value);
                                 }
                                 Err(e) => {
-                                    eprintln!("Error: {}", e);
+                                    eprintln!("Error: {}", e.render(line));
                                 }
                             }
                         }
                         Err(e) => {
-                            eprintln!("Parse error: {}", e);
+                            eprintln!("Parse error: {}", e.render(line));
                         }
                     }
                 }
