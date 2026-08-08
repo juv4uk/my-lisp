@@ -14,9 +14,10 @@ This repository has one test layer: the four Rust crates under `crates/`, run wi
 | `my-lisp` | `tests/unify.rs` | 10 | `lib/unify.my`, the unification primitive: atom matching, variable binding/resolution, structural (compound-term) unification, mismatch failure, transitive chained-variable resolution, same-variable unification creating no binding, full-query `apply-subst`, occurs-check | ok |
 | `my-lisp` | `tests/reason.rs` | 13 | `lib/reason.my`, the backward-chaining engine: simple facts, recursive rules, standardizing apart, negation as failure, proof trees and `explain-proof` trace output, `reason-explain`'s "provable" vs "cannot prove" distinction, `count-usage` walking a proof tree into a `(rule-head . times-used)` tally, `provenance` turning a proof node into a `(statement goal (source fact\|rule) (rule ...) (derived-from ...))` record | ok |
 | `my-lisp` | `tests/knowledge.rs` | 8 | `lib/knowledge.my`, modular knowledge packages: `defmodule`, isolated per-module queries via `reason-in`, conflict detection in `tell-knowledge`, `describe` collecting every known fact about a symbol (the "atom as concept entry point" idea), `record-usage!`/`usage-of` accumulating rule-usage counts across separate top-level queries | ok |
+| `my-lisp` | `tests/understand.rs` | 5 | `lib/understand.my`, the controlled-natural-language bridge: fixed word-list shapes (`X is a Y`, `X V Y`, `all X have Y`) mapped to knowledge clauses, and the result fed straight into `reason` with no hand-editing step | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | literate-Markdown source-offset mapping | ok |
 | `my-lisp-wasm` | unit test (`src/lib.rs`) | 1 | the WASM adapter produces the same exact/single-pass evaluation struct as the native core | ok |
-| **Total** | | **122** | | **122 passed, 0 failed, 0 ignored** |
+| **Total** | | **127** | | **127 passed, 0 failed, 0 ignored** |
 
 The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 27 tests, not counted separately.
 
@@ -42,9 +43,10 @@ Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignor
 | `my-lisp` | `tests/unify.rs` | 10 | `lib/unify.my`, примітив unification: зіставлення атомів, зв'язування/розв'язування змінних, структурну (composite-term) унікацію, провал при невідповідності, транзитивне розв'язування ланцюжка змінних, унікацію змінної з собою без зв'язку, повний `apply-subst` запиту, occurs-check | ok |
 | `my-lisp` | `tests/reason.rs` | 13 | `lib/reason.my`, рушій логічного висновування: прості факти, рекурсивні правила, standardizing apart, negation as failure, дерева доведень і трасування `explain-proof`, розрізнення "доведено"/"не можу довести" в `reason-explain`, `count-usage` — обхід дерева доведення в таблицю `(голова-правила . скільки-разів-використано)`, `provenance` — перетворення вузла дерева доведення на запис `(statement ціль (source fact\|rule) (rule ...) (derived-from ...))` | ok |
 | `my-lisp` | `tests/knowledge.rs` | 8 | `lib/knowledge.my`, модульні пакети знань: `defmodule`, ізольовані запити по модулю через `reason-in`, виявлення конфліктів у `tell-knowledge`, `describe` — збір усіх відомих фактів про символ (ідея "атом як вхід у поняття"), `record-usage!`/`usage-of` — накопичення лічильників використання правил між окремими запитами верхнього рівня | ok |
+| `my-lisp` | `tests/understand.rs` | 5 | `lib/understand.my`, місток контрольованої природної мови: фіксовані форми списку слів (`X is a Y`, `X V Y`, `all X have Y`), зіставлені зі знаннєвими clause, і результат, що напряму йде в `reason` без ручного редагування | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | зіставлення зміщень початкового коду literate-Markdown | ok |
 | `my-lisp-wasm` | unit-тест (`src/lib.rs`) | 1 | WASM-адаптер видає ту саму точну/однопрохідну структуру обчислення, що й нативне ядро | ok |
-| **Разом** | | **122** | | **122 пройдено, 0 провалів, 0 пропущено** |
+| **Разом** | | **127** | | **127 пройдено, 0 провалів, 0 пропущено** |
 
 Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 27 тестів набору, окремо не рахується.
 
@@ -70,9 +72,10 @@ Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausg
 | `my-lisp` | `tests/unify.rs` | 10 | `lib/unify.my`, das Unifikations-Primitiv: Atom-Abgleich, Variablenbindung/-auflösung, strukturelle (zusammengesetzte) Unifikation, Fehlschlag bei Nichtübereinstimmung, transitive Auflösung verketteter Variablen, Unifikation einer Variable mit sich selbst ohne Bindung, vollständiges `apply-subst` einer Anfrage, occurs-check | ok |
 | `my-lisp` | `tests/reason.rs` | 13 | `lib/reason.my`, die Inferenz-Engine: einfache Fakten, rekursive Regeln, Standardizing apart, negation as failure, Beweisbäume und `explain-proof`-Trace-Ausgabe, die Unterscheidung "beweisbar" vs. "nicht beweisbar" in `reason-explain`, `count-usage` — Durchlauf eines Beweisbaums zu einer `(regelkopf . anzahl-verwendungen)`-Tabelle, `provenance` — wandelt einen Beweisbaum-Knoten in einen Datensatz `(statement ziel (source fact\|rule) (rule ...) (derived-from ...))` um | ok |
 | `my-lisp` | `tests/knowledge.rs` | 8 | `lib/knowledge.my`, modulare Wissenspakete: `defmodule`, isolierte Anfragen pro Modul über `reason-in`, Konflikterkennung in `tell-knowledge`, `describe` sammelt alle bekannten Fakten über ein Symbol (die Idee "Atom als Konzept-Einstiegspunkt"), `record-usage!`/`usage-of` akkumulieren Regel-Nutzungszähler über getrennte Top-Level-Anfragen hinweg | ok |
+| `my-lisp` | `tests/understand.rs` | 5 | `lib/understand.my`, die Brücke kontrollierter natürlicher Sprache: feste Wortlisten-Formen (`X is a Y`, `X V Y`, `all X have Y`), abgebildet auf Wissens-Clauses, deren Ergebnis direkt ohne manuelle Bearbeitung in `reason` einfließt | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | Offset-Zuordnung von literate-Markdown-Quellcode | ok |
 | `my-lisp-wasm` | Unit-Test (`src/lib.rs`) | 1 | der WASM-Adapter liefert dieselbe exakte/Single-Pass-Auswertungsstruktur wie der native Kern | ok |
-| **Gesamt** | | **122** | | **122 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
+| **Gesamt** | | **127** | | **127 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
 
 Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 27 Tests dieser Suite geprüft, nicht separat gezählt.
 
