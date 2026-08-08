@@ -1,0 +1,91 @@
+# План: виділення Rust+Lisp в окремий репозиторій
+
+Робочий план для нової чат-сесії Claude Code, запущеної в `C:\Users\juv4u\Documents\my-lisp` (git worktree гілки `my-lisp`, вже запушений як публічний [github.com/juv4uk/my-lisp](https://github.com/juv4uk/my-lisp)). Прочитай спершу `CLAUDE.md` — там принципи мови й підтверджені рішення. Цей файл — конкретні кроки, не філософія.
+
+**Поточний стан:** репозиторій — повний знімок `my-idea` (IDE + мова разом), лише з доданим `CLAUDE.md`. Історія комітів поки що спільна з `my-idea`, не обрізана під сам my-lisp.
+
+## Крок 0 — узгодити з користувачем перед стартом
+
+Не виконувати нижче нічого без явного підтвердження користувача на кожен великий крок (видалення файлів, переписування історії, публічний push). План — не мандат діяти автономно.
+
+## Крок 1 — інструментарій для чистої історії
+
+- Перевірити `git filter-repo --version`. Якщо відсутній — треба Python 3 (зараз недоступний у PATH, `python3`/`python` не знайдено) + `pip install git-filter-repo`, або `scoop install git-filter-repo` (у користувача вже є scoop у PATH).
+- Без `git-filter-repo` можна зробити грубіше: залишити тільки потрібні файли одним великим комітом (втратити per-file історію для решти), або спробувати `git filter-branch` (повільний, вбудований, але офіційно deprecated).
+- **Рекомендація:** дочекатись `git-filter-repo`, не робити "грубе" видалення, якщо користувач хоче зберегти історію crates/my-lisp.
+
+## Крок 2 — визначити periметр (що лишається)
+
+Ймовірний список того, що належить Rust+Lisp репо:
+- `crates/my-lisp/` — ядро
+- `crates/my-lisp-cli/` — CLI/REPL бінарник
+- `crates/my-lisp-wasm/` — WASM-біндінги
+- `crates/my-lisp-literate/` — literate-Markdown підтримка
+- `lib/core.my` — bootstrap-бібліотека
+- `Cargo.toml` / `Cargo.lock` (workspace root) — **потребує переписування**: зараз описує весь my-idea workspace (включно з `src-tauri`), треба звузити до чотирьох my-lisp-крейтів
+- `docs/language-core.md`, `docs/quote-tutorial.md`, `docs/testing.md` (тільки Rust-частина), `docs/versioning.md` (адаптувати — версіонування тут своє, не успадковане від my-ide)
+- `crates/my-lisp/tests/fixtures/conformance.json` (якщо є — перевірити шлях) і сам `crates/my-lisp/tests/mccarthy.rs`
+- `benchmarks/*.my` + `scripts/benchmark.mjs` + `crates/my-lisp/examples/benchmark.rs` (якщо бенчмарки залишаються тут)
+- `public/my-lisp-cli-web.html` + `scripts/make-portable-web.mjs` (якщо хочемо тримати веб-REPL демо в цьому репо, а не в my-idea)
+- `LICENSE` (MIT, скопіювати як є)
+- Корінний `README.md` — **переписати з нуля** під мову, не під IDE (поточний README — про my-idea)
+- `CLAUDE.md` — вже є, оновлювати по ходу
+- Новий/адаптований `.gitignore` (звузити з my-idea-версії — прибрати Android/Tauri/CLJS-специфічні рядки)
+
+**Явно НЕ лишається:** `src-cljs/`, `src-tauri/`, `public/` (крім вищезгаданого HTML), `package.json`/`package-lock.json`/npm-тулінг, `shadow-cljs.edn`, `app-icon.svg`, `.github/workflows/*` (крім, можливо, адаптованого CI для Rust-тестів), `docs/android-release.md`, `docs/platform-roadmap.md`, `docs/release-assets.md`, `docs/windows-arm64.md`, `docs/source-files.md` (IDE-специфічний), `docs/benchmarks.md` (якщо бенчмарки не переносяться), `scripts/release.ps1`/`release.sh` (IDE-релізний процес), `scripts/setup-android-signing.ps1`, `scripts/configure-android-signing.mjs`, `scripts/verify-windows-architecture.ps1`, `test_parse.rs` (старий debug-скрипт для перевірки `pulldown_cmark`-парсингу literate-блоків, закомічений у `8c16ea1`; не частина жодного крейта — ймовірно можна викинути, а не переносити).
+
+**Обговорити з користувачем окремо:** чи `crates/my-lisp-wasm` і веб-REPL демо лишаються тут, чи в my-idea (там вони теж використовуються для Language Lab — можливе дублювання коду між двома репо, якщо не виділити спільний крейт).
+
+## Крок 3 — виконати вирізання історії
+
+Коли периметр узгоджено і `git-filter-repo` встановлено:
+
+```bash
+git filter-repo --path crates/my-lisp --path crates/my-lisp-cli \
+  --path crates/my-lisp-wasm --path crates/my-lisp-literate \
+  --path lib/core.my --path LICENSE \
+  --path docs/language-core.md --path docs/quote-tutorial.md \
+  --path docs/testing.md --path CLAUDE.md \
+  ... # інші шляхи з Кроку 2
+```
+
+Робити це **в самій `C:\Users\juv4u\Documents\my-lisp` папці** (вона вже ізольований worktree/клон гілки, не основний `my-idea`), щоб не зачепити `my-idea`. `git-filter-repo` за замовчуванням переписує весь локальний репозиторій, тому перед запуском варто ще раз перевірити, що `git remote -v` тут показує тільки `my-lisp`/`origin` на `github.com/juv4uk/my-lisp`, а не залежить від `my-idea`.
+
+## Крок 4 — новий Cargo workspace root
+
+Переписати корінний `Cargo.toml`:
+```toml
+[workspace]
+members = ["crates/my-lisp", "crates/my-lisp-cli", "crates/my-lisp-wasm", "crates/my-lisp-literate"]
+resolver = "2"
+```
+Прибрати `src-tauri` з членів workspace. Перевірити, чи є root-level release-профіль (`opt-level = "z"`, `lto = true` — згадувалось у `crates/my-lisp-wasm/Cargo.toml` як "визначено в корені workspace") — перенести його сюди без змін.
+
+## Крок 5 — новий README
+
+Написати з нуля, трилінгвально (EN/UA/DE, конвенція проєкту), на основі змісту `crates/my-lisp/README.md` і `docs/language-core.md`, але як головний вхідний документ репо:
+- "A small language that grows itself"
+- Швидкий старт: `cargo run -p my-lisp-cli`, або скачати `my-lisp-cli-web.html` без встановлення
+- Посилання на `docs/quote-tutorial.md`
+- McCarthy-контракт, точна раціональна арифметика — коротко, з посиланням на `docs/language-core.md`
+- Тести: `cargo test --workspace`
+
+## Крок 6 — CI
+
+Новий/адаптований `.github/workflows/ci.yml`: `cargo test` для чотирьох крейтів (як зараз у my-idea, тільки без npm/CLJS кроків). Окремо подумати, чи потрібен release-workflow тут (публікація `my-lisp-cli` бінарників для кількох ОС — уже є робочий приклад у `my-idea`'s `cli-release.yml`, можна адаптувати).
+
+## Крок 7 — версіонування
+
+`crates/my-lisp` вже має власну версію `0.1.0` (незалежну від my-idea `0.x.x`, за `docs/versioning.md`). Вирішити з користувачем: чи цей репо стартує тегами з `v0.1.0`, чи з чогось іншого — не вигадувати самому.
+
+## Крок 8 — зв'язок з my-idea
+
+Після того як новий репо стабілізується, повернутись до `my-idea` і вирішити (окреме обговорення з користувачем, не автоматично):
+- чи `my-idea` тепер тягне my-lisp як git submodule / залежність з crates.io / просто копіює на реліз,
+- чи `crates/my-lisp*` в `my-idea` видаляються повністю,
+- як синхронізувати виправлення (баг в evaluator має чинитись в одному місці, не в двох копіях).
+
+## Нотатки
+
+- Гілка `my-lisp` у `my-idea`-репозиторії (origin) зараз ще існує (і локально, і на GitHub) — користувач раніше питав, чи прибрати її, раз є окремий репо. Рішення не ухвалене — уточнити на початку нової сесії.
+- `private/` папка (PROJECT_MEMORY.md, PROFILE.md) з `my-idea` **не повинна** потрапити в новий репо — вона й так у `.gitignore`, але перевірити після filter-repo, що жоден слід не потрапив у git-історію.
