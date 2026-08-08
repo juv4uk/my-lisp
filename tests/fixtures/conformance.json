@@ -35,5 +35,6 @@
   { "expr": "(> 3 2 1)", "expected": "t" },
   { "expr": "(= 1 1 1)", "expected": "t" },
   { "expr": "(= 1/2 0.5)", "expected": "t" },
+  { "expr": "(print 42)", "expected": "42" },
   { "expr": "# Literate Lisp\n\nThis is a literate program.\n\n```my-lisp\n(def x 10)\n(* x 2)\n```\n\nIt ignores non-code blocks.", "expected": "20", "mode": "markdown" }
 ]

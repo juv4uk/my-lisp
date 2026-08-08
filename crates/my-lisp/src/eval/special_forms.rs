@@ -9,6 +9,36 @@ use super::{closures, evaluate, evaluate_step, EvalStep};
 use crate::{Environment, ErrorKind, Expr, ExprKind, LanguageError, Span, Value};
 use std::rc::Rc;
 
+/// `print` evaluates its one argument and appends its `Display` text to the
+/// session-wide output transcript (`Environment::print`) rather than writing
+/// to stdout/stderr directly — the crate stays capability-free, and it's the
+/// host (`my-lisp-cli`, `my-lisp-wasm`) that decides where `EvalResult.output`
+/// actually goes. Returns the evaluated value, so `(print x)` composes like
+/// Common Lisp's `print` instead of being a dead end in an expression.
+/// `print` обчислює свій єдиний аргумент і додає його `Display`-текст до
+/// транскрипту виводу, спільного на сесію (`Environment::print`), а не пише
+/// напряму в stdout/stderr — крейт лишається без host-можливостей, і саме
+/// host (`my-lisp-cli`, `my-lisp-wasm`) вирішує, куди насправді йде
+/// `EvalResult.output`. Повертає обчислене значення, тож `(print x)`
+/// компонується, як `print` у Common Lisp, а не є глухим кутом виразу.
+/// `print` wertet sein einziges Argument aus und hängt dessen `Display`-Text
+/// an das sitzungsweite Ausgabetranskript an (`Environment::print`), statt
+/// direkt nach stdout/stderr zu schreiben — das Crate bleibt ohne
+/// Host-Fähigkeiten, und der Host (`my-lisp-cli`, `my-lisp-wasm`)
+/// entscheidet, wohin `EvalResult.output` tatsächlich geht. Gibt den
+/// ausgewerteten Wert zurück, sodass sich `(print x)` wie Common Lisps
+/// `print` verketten lässt statt eine Sackgasse im Ausdruck zu sein.
+pub(super) fn evaluate_print(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("print", arguments, 1, span)?;
+    let value = evaluate(&arguments[0], environment)?;
+    environment.print(value.to_string());
+    Ok(value)
+}
+
 pub(super) fn evaluate_definition(
     arguments: &[Expr],
     environment: &Environment,

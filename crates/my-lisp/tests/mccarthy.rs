@@ -63,6 +63,31 @@ fn comparison_with_no_arguments_is_an_arity_error() {
 }
 
 #[test]
+fn print_appends_to_output_and_returns_its_argument() {
+    let result = eval_program("(print \"radio\")", &mut Session::default()).unwrap();
+    assert_eq!(result.value, Value::String("radio".into()));
+    assert_eq!(result.output, vec!["\"radio\"".to_string()]);
+}
+
+#[test]
+fn print_composes_inside_expressions_and_accumulates_in_order() {
+    let result = eval_program("(+ (print 1) (print 2))", &mut Session::default()).unwrap();
+    assert_eq!(result.value, Value::Number(3.0));
+    assert_eq!(result.output, vec!["1".to_string(), "2".to_string()]);
+}
+
+#[test]
+fn print_inside_a_closure_shares_the_root_sessions_output() {
+    // Environment::child() must share the parent's output sink (not start a
+    // fresh one per call frame), or `print` inside a lambda body would be
+    // invisible to the caller's EvalResult.output.
+    let source = "((lambda () (print 'inside) 'done))";
+    let result = eval_program(source, &mut Session::default()).unwrap();
+    assert_eq!(result.value, Value::Symbol("done".into()));
+    assert_eq!(result.output, vec!["inside".to_string()]);
+}
+
+#[test]
 fn tail_recursion_uses_constant_rust_stack() {
     let depth = 5_000;
     let mut definitions = (0..depth - 1)

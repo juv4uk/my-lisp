@@ -37,7 +37,7 @@ pub fn eval_parsed_expressions(
     }
     Ok(EvalResult {
         value,
-        output: session.output.clone(),
+        output: session.environment.output_snapshot(),
     })
 }
 
@@ -137,6 +137,9 @@ fn evaluate_list(
         Some("cdr") => special_forms::evaluate_cdr(arguments, environment, span).map(EvalStep::Value),
         Some("cons") => {
             special_forms::evaluate_cons(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("print") => {
+            special_forms::evaluate_print(arguments, environment, span).map(EvalStep::Value)
         }
         Some("/") => arithmetic::evaluate_division(arguments, environment, span).map(EvalStep::Value),
         // Binding the operator symbol in the pattern avoids re-deriving it with

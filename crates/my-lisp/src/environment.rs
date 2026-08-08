@@ -6,7 +6,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 /// This is not currently an issue since we only have one child level from root in most usage,
 /// but it could appear if deep nesting of `let` or currying patterns emerges.
 #[derive(Clone, Debug)]
-pub struct Environment(Rc<RefCell<Frame>>);
+pub struct Environment(Rc<RefCell<Frame>>, Rc<RefCell<Vec<String>>>);
 
 #[derive(Debug)]
 struct Frame {
@@ -16,22 +16,55 @@ struct Frame {
 
 impl Environment {
     pub fn root() -> Self {
-        let environment = Self(Rc::new(RefCell::new(Frame {
-            values: HashMap::new(),
-            parent: None,
-        })));
+        let environment = Self(
+            Rc::new(RefCell::new(Frame {
+                values: HashMap::new(),
+                parent: None,
+            })),
+            Rc::new(RefCell::new(Vec::new())),
+        );
         environment.define("t", Value::Bool(true));
         environment
     }
 
     /// A child frame is the future lexical boundary captured by a closure.
-    /// Дочірній фрейм стане майбутньою лексичною межею, яку зберігатиме замикання.
-    /// Ein untergeordneter Frame ist die künftige lexikalische Grenze einer Closure.
+    /// It shares the parent's output sink (the second field, cloned as the
+    /// same `Rc`, not reinitialized) so `print` inside a closure body still
+    /// lands in the one session-wide transcript rather than a per-call one.
+    /// Дочірній фрейм стане майбутньою лексичною межею, яку зберігатиме
+    /// замикання. Він ділить sink виводу батька (друге поле, клонується як
+    /// той самий `Rc`, не переініціалізується), тож `print` усередині тіла
+    /// замикання все одно потрапляє в один спільний на сесію транскрипт.
+    /// Ein untergeordneter Frame ist die künftige lexikalische Grenze einer
+    /// Closure. Er teilt sich die Ausgabesenke des Elternteils (das zweite
+    /// Feld, als derselbe `Rc` geklont, nicht neu initialisiert), sodass
+    /// `print` im Rumpf einer Closure weiterhin im einen sitzungsweiten
+    /// Transkript landet statt in einem pro Aufruf.
     pub fn child(&self) -> Self {
-        Self(Rc::new(RefCell::new(Frame {
-            values: HashMap::new(),
-            parent: Some(self.clone()),
-        })))
+        Self(
+            Rc::new(RefCell::new(Frame {
+                values: HashMap::new(),
+                parent: Some(self.clone()),
+            })),
+            self.1.clone(),
+        )
+    }
+
+    /// Appends a line to the session-wide output transcript, shared by every
+    /// `Environment` in this session's lexical tree (root and all closures).
+    /// Додає рядок до транскрипту виводу, спільного на всю сесію — його
+    /// поділяють усі `Environment` у лексичному дереві цієї сесії.
+    /// Hängt eine Zeile an das sitzungsweite Ausgabetranskript an, das sich
+    /// jede `Environment` im lexikalischen Baum dieser Sitzung teilt.
+    pub fn print(&self, line: String) {
+        self.1.borrow_mut().push(line);
+    }
+
+    /// A snapshot of everything `print` has produced so far in this session.
+    /// Знімок усього, що `print` уже вивів у цій сесії.
+    /// Ein Schnappschuss von allem, was `print` in dieser Sitzung bisher ausgegeben hat.
+    pub fn output_snapshot(&self) -> Vec<String> {
+        self.1.borrow().clone()
     }
 
     pub fn define(&self, name: impl Into<Rc<str>>, value: Value) {
@@ -53,14 +86,12 @@ impl Environment {
 #[derive(Clone, Debug)]
 pub struct Session {
     pub environment: Environment,
-    pub output: Vec<String>,
 }
 
 impl Default for Session {
     fn default() -> Self {
         Self {
             environment: Environment::root(),
-            output: Vec::new(),
         }
     }
 }
