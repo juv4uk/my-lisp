@@ -48,7 +48,7 @@ cargo test --workspace
 - [`docs/benchmarks.md`](docs/benchmarks.md) — benchmark methodology and a local baseline.
 - [`docs/versioning.md`](docs/versioning.md) — why this repo's version history looks the way it does.
 
-`my-lisp` began inside a broader IDE project, [`my-idea`](https://github.com/juv4uk/my-idea), and was extracted here to stand on its own. Future implementations of the same language — a C core for embedded targets, and a from-scratch Lisp-machine HDL core — are planned as separate, parallel repositories; see [`CLAUDE.md`](CLAUDE.md).
+`my-lisp` began inside a broader IDE project, [`my-idea`](https://github.com/juv4uk/my-idea), and was extracted here to stand on its own. Future implementations of the same language — a C core for embedded targets, and a from-scratch Lisp-machine HDL core — are planned as separate, parallel repositories.
 
 ## Українська
 
@@ -79,7 +79,7 @@ cargo test --workspace
 - [`docs/benchmarks.md`](docs/benchmarks.md) — методологія бенчмарків і локальний baseline.
 - [`docs/versioning.md`](docs/versioning.md) — чому історія версій цього репо саме така.
 
-`my-lisp` починалась усередині ширшого IDE-проєкту [`my-idea`](https://github.com/juv4uk/my-idea) й була виділена сюди, щоб існувати самостійно. Майбутні реалізації тієї ж мови — C-ядро для embedded-цілей і власне HDL-ядро Lisp-машини з нуля — плануються як окремі, паралельні репозиторії; див. [`CLAUDE.md`](CLAUDE.md).
+`my-lisp` починалась усередині ширшого IDE-проєкту [`my-idea`](https://github.com/juv4uk/my-idea) й була виділена сюди, щоб існувати самостійно. Майбутні реалізації тієї ж мови — C-ядро для embedded-цілей і власне HDL-ядро Lisp-машини з нуля — плануються як окремі, паралельні репозиторії.
 
 ## Deutsch
 
@@ -110,7 +110,7 @@ cargo test --workspace
 - [`docs/benchmarks.md`](docs/benchmarks.md) — Benchmark-Methodik und eine lokale Ausgangsmessung.
 - [`docs/versioning.md`](docs/versioning.md) — warum die Versionshistorie dieses Repos so aussieht.
 
-`my-lisp` begann innerhalb eines größeren IDE-Projekts, [`my-idea`](https://github.com/juv4uk/my-idea), und wurde hierher ausgelagert, um eigenständig zu bestehen. Künftige Implementierungen derselben Sprache — ein C-Kern für Embedded-Ziele und ein von Grund auf neuer HDL-Kern für eine Lisp-Maschine — sind als separate, parallele Repositories geplant; siehe [`CLAUDE.md`](CLAUDE.md).
+`my-lisp` begann innerhalb eines größeren IDE-Projekts, [`my-idea`](https://github.com/juv4uk/my-idea), und wurde hierher ausgelagert, um eigenständig zu bestehen. Künftige Implementierungen derselben Sprache — ein C-Kern für Embedded-Ziele und ein von Grund auf neuer HDL-Kern für eine Lisp-Maschine — sind als separate, parallele Repositories geplant.
 
 ## License · Ліцензія · Lizenz
 
