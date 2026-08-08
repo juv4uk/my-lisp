@@ -59,7 +59,7 @@
   { "expr": "(unify '(var x) '(var x) '())", "expected": "()" },
   { "expr": "(unify '(1 (var x) 3) '(1 2 3) '())", "expected": "((x . 2))" },
   { "expr": "(unify '(1 (var x) 3) '(1 2 4) '())", "expected": "fail" },
-  { "expr": "(let ((rules '(((parent alice bob))))) (reason '(parent alice bob) rules))", "expected": "(())" },
-  { "expr": "(let ((rules '(((parent alice bob))))) (reason (list 'parent (logic-var 'x) 'bob) rules))", "expected": "(((x . alice)))" },
-  { "expr": "(let ((rules '(((bird (var x)) (animal (var x)) (not (penguin (var x)))) ((animal tweety)) ((animal pingu)) ((penguin pingu))))) (reason (list 'bird (logic-var 'x)) rules))", "expected": "((((x . 0) . tweety) (x var (x . 0))))" }
+  { "expr": "(let ((rules '(((parent alice bob))))) (reason '(parent alice bob) rules))", "expected": "((() (proved (parent alice bob) (parent alice bob) ())))" },
+  { "expr": "(let ((rules '(((parent alice bob))))) (reason (list 'parent (logic-var 'x) 'bob) rules))", "expected": "((((x . alice)) (proved (parent (var x) bob) (parent alice bob) ())))" },
+  { "expr": "(let ((rules '(((bird (var x)) (animal (var x)) (not (penguin (var x)))) ((animal tweety)) ((animal pingu)) ((penguin pingu))))) (reason (list 'bird (logic-var 'x)) rules))", "expected": "(((((x . 0) . tweety) (x var (x . 0))) (proved (bird (var x)) (bird (var (x . 0))) ((proved (animal (var (x . 0))) (animal tweety) ()) (proved-not (penguin (var (x . 0))))))))" }
 ]

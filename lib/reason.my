@@ -50,7 +50,8 @@
   (lambda (goal rules)
     (prove-goal goal rules '() rules 0)))
 
-; Proves a single goal against a list of rules, accumulating successful substitutions.
+; Proves a single goal against a list of rules, accumulating successful substitutions and proof trees.
+; Returns a list of `(subst proof)` pairs.
 (def prove-goal
   (lambda (goal rules subst all-rules depth)
     (cond
@@ -67,6 +68,12 @@
       ((var? term) (list 'var (cons (second term) depth)))
       (t (cons (rename-vars (car term) depth) (rename-vars (cdr term) depth))))))
 
+(def map-proofs
+  (lambda (f lst)
+    (cond
+      ((atom lst) '())
+      (t (cons (f (car lst)) (map-proofs f (cdr lst)))))))
+
 ; Tries to unify the goal with the head of a single rule, then proves its body.
 (def prove-rule
   (lambda (goal rule subst all-rules depth)
@@ -74,30 +81,82 @@
       (let ((new-subst (unify goal (car renamed-rule) subst)))
         (cond
           ((failed-subst? new-subst) '())
-          (t (prove-goals (cdr renamed-rule) new-subst all-rules (+ depth 1))))))))
+          (t (let ((body-results (prove-goals (cdr renamed-rule) new-subst all-rules (+ depth 1))))
+               (map-proofs (lambda (res) 
+                             (list (car res) 
+                                   (list 'proved goal (car renamed-rule) (cadr res)))) 
+                           body-results))))))))
 
 ; Proves a conjunction (list) of goals sequentially, threading substitutions.
-; Supports Negation as Failure via `(not <goal>)`.
+; Returns a list of `(final-subst list-of-proofs)` pairs.
 (def prove-goals
   (lambda (goals subst all-rules depth)
     (cond
-      ((atom goals) (list subst))
+      ((atom goals) (list (list subst '())))
       ((eq (caar goals) 'not)
         (let ((not-result (prove-goal (cadr (car goals)) all-rules subst all-rules depth)))
           (cond
             ((atom not-result)
               ; The inner goal failed, so `not` succeeds!
-              (flatmap-prove-goals (cdr goals) all-rules depth (list subst)))
-            (t
-              ; The inner goal succeeded, so `not` fails.
-              '()))))
-      (t (flatmap-prove-goals (cdr goals) all-rules depth (prove-goal (car goals) all-rules subst all-rules depth))))))
+              (let ((first-results (list (list subst (list 'proved-not (cadr (car goals)))))))
+                (flatmap-prove-goals (cdr goals) all-rules depth first-results)))
+            (t '()))))
+      (t (let ((first-results (prove-goal (car goals) all-rules subst all-rules depth)))
+           (flatmap-prove-goals (cdr goals) all-rules depth first-results))))))
 
-; Helper to flatmap the proof of remaining goals over a list of current substitutions.
+; Helper to flatmap the proof of remaining goals over a list of current (subst proof) pairs.
 (def flatmap-prove-goals
-  (lambda (remaining-goals all-rules depth substs)
+  (lambda (remaining-goals all-rules depth results)
     (cond
-      ((atom substs) '())
-      (t (append
-           (prove-goals remaining-goals (car substs) all-rules depth)
-           (flatmap-prove-goals remaining-goals all-rules depth (cdr substs)))))))
+      ((atom results) '())
+      (t (let ((first-res (car results)))
+           (let ((rest-results (prove-goals remaining-goals (car first-res) all-rules depth)))
+             (append
+               (map-proofs (lambda (rest-res)
+                             (list (car rest-res) (cons (cadr first-res) (cadr rest-res))))
+                           rest-results)
+               (flatmap-prove-goals remaining-goals all-rules depth (cdr results)))))))))
+
+; Translates a proof tree into a readable trace via side-effecting `print`.
+(def explain-proof
+  (lambda (proof)
+    (explain-proof-node proof 0)))
+
+(def explain-proof-node
+  (lambda (node level)
+    (cond
+      ((eq (car node) 'proved)
+       (let* ((_2 (print 'Proved:))
+              (_3 (print (second node)))
+              (_4 (print 'using))
+              (_5 (print 'rule:))
+              (_6 (print (third node))))
+         (explain-proof-list (cadddr node) (+ level 1))))
+      ((eq (car node) 'proved-not)
+       (let* ((_2 (print 'Proved))
+              (_3 (print 'by))
+              (_4 (print 'failure:))
+              (_5 (print 'not))
+              (_6 (print (second node))))
+         '()))
+      (t '()))))
+
+(def cadddr
+  (lambda (lst)
+    (car (cdr (cdr (cdr lst))))))
+
+(def explain-proof-list
+  (lambda (nodes level)
+    (cond
+      ((atom nodes) '())
+      (t (let* ((_1 (print-indent level))
+                (_2 (print '|-))
+                (_3 (explain-proof-node (car nodes) level)))
+           (explain-proof-list (cdr nodes) level))))))
+
+(def print-indent
+  (lambda (level)
+    (cond
+      ((eq level 0) '())
+      (t (let ((_ (print '..)))
+           (print-indent (- level 1)))))))

@@ -21,14 +21,24 @@ fn eval_reason(source: &str) -> String {
         .to_string()
 }
 
+fn eval_reason_with_output(source: &str) -> Vec<String> {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(source, &mut session)
+        .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
+        .output
+}
+
 #[test]
 fn simple_fact_retrieval() {
     let source = r#"
         (let ((rules '(((parent alice bob)))))
              (reason '(parent alice bob) rules))
     "#;
-    // Returns a list containing one empty substitution (meaning it succeeded with no variables bound)
-    assert_eq!(eval_reason(source), "(())");
+    // Returns a list containing one empty substitution and its proof tree
+    assert_eq!(eval_reason(source), "((() (proved (parent alice bob) (parent alice bob) ())))");
 }
 
 #[test]
@@ -37,8 +47,8 @@ fn variable_binding_from_fact() {
         (let ((rules '(((parent alice bob)))))
              (reason (list 'parent (logic-var 'x) 'bob) rules))
     "#;
-    // Returns a list of substitutions. One successful path binding x to alice.
-    assert_eq!(eval_reason(source), "(((x . alice)))");
+    // Returns a list of substitutions and proof trees. One successful path binding x to alice.
+    assert_eq!(eval_reason(source), "((((x . alice)) (proved (parent (var x) bob) (parent alice bob) ())))");
 }
 
 #[test]
@@ -101,5 +111,29 @@ fn negation_as_failure() {
              (reason (list 'bird (logic-var 'x)) rules))
     "#;
     // Only tweety is a bird because pingu is a penguin, so the 'not' fails for pingu.
-    assert_eq!(eval_reason(source), "((((x . 0) . tweety) (x var (x . 0))))");
+    assert_eq!(eval_reason(source), "(((((x . 0) . tweety) (x var (x . 0))) (proved (bird (var x)) (bird (var (x . 0))) ((proved (animal (var (x . 0))) (animal tweety) ()) (proved-not (penguin (var (x . 0))))))))");
+}
+
+#[test]
+fn test_explain_proof() {
+    let source = r#"
+        (let ((rules '(
+                 ((bird (var x)) (animal (var x)) (not (penguin (var x))))
+                 ((animal tweety))
+                 ((animal pingu))
+                 ((penguin pingu))
+               )))
+             (let* ((results (reason (list 'bird (logic-var 'x)) rules))
+                    (proof (second (car results))))
+               (explain-proof proof)))
+    "#;
+    let output = eval_reason_with_output(source);
+    assert_eq!(
+        output,
+        vec![
+            "Proved:", "(bird (var x))", "using", "rule:", "(bird (var (x . 0)))",
+            "..", "|-", "Proved:", "(animal (var (x . 0)))", "using", "rule:", "(animal tweety)",
+            "..", "|-", "Proved", "by", "failure:", "not", "(penguin (var (x . 0)))"
+        ]
+    );
 }
