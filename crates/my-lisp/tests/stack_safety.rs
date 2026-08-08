@@ -1,4 +1,4 @@
-use my_lisp::Value;
+use my_lisp::{eval_program, Session, Value};
 use std::rc::Rc;
 
 fn build_long_list(count: usize) -> Value {
@@ -31,6 +31,25 @@ fn shared_tails_do_not_overflow_stack() {
     
     drop(list1); // Drops list1's head and its Rc to tail. tail's refcount goes from 2 to 1. No iterative drop for tail.
     drop(list2); // Drops list2's head and its Rc to tail. tail's refcount goes from 1 to 0. Iterative drop handles tail.
+}
+
+/// `length`/`map`/`filter`/`append` in lib/core.my build their result via a
+/// tail-recursive `-onto` accumulator specifically so a deep list doesn't
+/// grow the Rust call stack — this exercises that on a 100,000-element list
+/// through the real evaluator (not the Rust-side Value construction the
+/// tests above use), so a future non-tail-recursive rewrite of any of them
+/// would fail here instead of only in production on a large enough list.
+#[test]
+fn core_lib_list_utilities_stay_stack_safe_on_a_long_list() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    let source = r#"
+        (def build (lambda (n acc) (cond ((eq n 0) acc) (t (build (- n 1) (cons n acc))))))
+        (def big (build 100000 '()))
+        (length (map (lambda (x) (+ x 1)) (filter (lambda (x) (> x 50000)) (append big '()))))
+    "#;
+    let result = eval_program(source, &mut session).unwrap();
+    assert_eq!(result.value, Value::Number(50000.0));
 }
 
 #[test]

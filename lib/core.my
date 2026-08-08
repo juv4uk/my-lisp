@@ -30,11 +30,43 @@
   (lambda (values)
     (car (cdr values))))
 
+; length/map/filter build their result via a tail-recursive `-onto`
+; accumulator, same shape as reverse/reverse-onto below, instead of consing
+; after the recursive call returns (the way append naively would if it
+; didn't reuse reverse/reverse-onto) — that non-tail shape grows the Rust
+; call stack one frame per element, same risk `crates/my-lisp/tests/stack_safety.rs`
+; exists to catch for the language's own tail calls. map/filter accumulate
+; in reverse order, so they call `reverse` once at the end to undo that;
+; length doesn't build a list at all, so it just returns its accumulator.
+; length/map/filter будують результат через хвостово-рекурсивний
+; `-onto`-акумулятор, тієї самої форми, що й reverse/reverse-onto нижче,
+; замість консити після повернення з рекурсивного виклику (як append робив
+; би наївно, якби не перевикористовував reverse/reverse-onto) — та
+; не-хвостова форма ростить Rust call stack на один фрейм на елемент, той
+; самий ризик, який `crates/my-lisp/tests/stack_safety.rs` існує, щоб
+; ловити для власних хвостових викликів мови. map/filter накопичують у
+; зворотному порядку, тож викликають `reverse` раз наприкінці, щоб це
+; скасувати; length взагалі не будує список, тож просто повертає свій
+; акумулятор.
+; length/map/filter bauen ihr Ergebnis über einen endrekursiven
+; `-onto`-Akkumulator auf, derselben Form wie reverse/reverse-onto unten,
+; statt nach der Rückkehr des rekursiven Aufrufs zu konsen (wie append es
+; naiv täte, würde es nicht reverse/reverse-onto wiederverwenden) — diese
+; Nicht-Tail-Form lässt den Rust-Call-Stack um einen Frame pro Element
+; wachsen, dasselbe Risiko, das `crates/my-lisp/tests/stack_safety.rs` für
+; die eigenen Tail Calls der Sprache abfängt. map/filter akkumulieren in
+; umgekehrter Reihenfolge und rufen daher am Ende einmal `reverse` auf, um
+; das rückgängig zu machen; length baut gar keine Liste, sondern gibt
+; einfach seinen Akkumulator zurück.
+(def length-onto
+  (lambda (values acc)
+    (cond
+      ((atom values) acc)
+      (t (length-onto (cdr values) (+ acc 1))))))
+
 (def length
   (lambda (values)
-    (cond
-      ((atom values) 0)
-      (t (+ 1 (length (cdr values)))))))
+    (length-onto values 0)))
 
 (def reverse-onto
   (lambda (values acc)
@@ -46,24 +78,44 @@
   (lambda (values)
     (reverse-onto values '())))
 
+; (reverse-onto (reverse left) right): reversing left first and then
+; consing it back onto right, one element at a time, rebuilds
+; left ++ right in the correct order — two tail-recursive passes instead
+; of one non-tail pass, trading a little work for a Rust-stack-safe append.
+; (reverse-onto (reverse left) right): спершу розвертаємо left, а тоді
+; консимо його назад на right по елементу — відбудовує left ++ right у
+; правильному порядку — два хвостово-рекурсивні проходи замість одного
+; не-хвостового, невелика доплата роботою заради append, безпечного для
+; Rust-стека.
+; (reverse-onto (reverse left) right): left zuerst umkehren und dann
+; Element für Element wieder auf right konsen, baut left ++ right in
+; korrekter Reihenfolge wieder auf — zwei endrekursive Durchläufe statt
+; eines Nicht-Tail-Durchlaufs, ein kleiner Mehraufwand für ein
+; Rust-Stack-sicheres append.
 (def append
   (lambda (left right)
+    (reverse-onto (reverse left) right)))
+
+(def map-onto
+  (lambda (f values acc)
     (cond
-      ((atom left) right)
-      (t (cons (car left) (append (cdr left) right))))))
+      ((atom values) (reverse acc))
+      (t (map-onto f (cdr values) (cons (f (car values)) acc))))))
 
 (def map
   (lambda (f values)
+    (map-onto f values '())))
+
+(def filter-onto
+  (lambda (predicate values acc)
     (cond
-      ((atom values) '())
-      (t (cons (f (car values)) (map f (cdr values)))))))
+      ((atom values) (reverse acc))
+      ((predicate (car values)) (filter-onto predicate (cdr values) (cons (car values) acc)))
+      (t (filter-onto predicate (cdr values) acc)))))
 
 (def filter
   (lambda (predicate values)
-    (cond
-      ((atom values) '())
-      ((predicate (car values)) (cons (car values) (filter predicate (cdr values))))
-      (t (filter predicate (cdr values))))))
+    (filter-onto predicate values '())))
 
 (def reduce
   (lambda (f acc values)
