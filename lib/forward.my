@@ -774,11 +774,61 @@
       (t (append (match-one-condition (car alternatives) facts subst)
                   (match-or-condition (cdr alternatives) facts subst))))))
 
+; Step 11: `(and (pattern1) (pattern2) ...)` conditions — the same bug
+; class again, found the same way: `(or (and (cat ?x) (small ?x)) (dog
+; ?x))` never matched the `and`-branch at all, silently missing every
+; animal that was both a cat and small, because no fact's head is ever
+; the symbol `and` either. Nested explicitly because top-level conditions
+; are already an implicit conjunction (that's what `thread-conjunction`
+; already does one level up) — an inner `and` is exactly the same
+; operation, just written explicitly, most often to group a compound
+; condition inside an `or`. `match-and-condition` is `match-conditions`
+; itself, threading the sub-conditions the identical way; not
+; reimplemented, just reused under the name the condition-position
+; dispatch expects.
+;
+; Крок 11: умови `(and (шаблон1) (шаблон2) ...)` — той самий клас бага,
+; знайдений тим самим методом: `(or (and (cat ?x) (small ?x)) (dog ?x))`
+; узагалі не зіставляла гілку `and`, мовчки пропускаючи кожну тварину, що
+; одночасно кіт і маленька, бо жоден факт теж ніколи не має головою символ
+; `and`. Вкладено явно, бо умови верхнього рівня вже й так неявна
+; кон'юнкція (те саме, що `thread-conjunction` уже робить на рівень вище)
+; — внутрішній `and` — точно та сама операція, лише записана явно,
+; найчастіше щоб згрупувати складену умову всередині `or`.
+; `match-and-condition` — це сам `match-conditions`, що протягує
+; під-умови так само; не переписано заново, лише перевикористано під
+; іменем, якого чекає диспетчеризація за позицією умови.
+;
+; Schritt 11: `(and (muster1) (muster2) ...)`-Bedingungen — dieselbe
+; Bugklasse, gefunden auf demselben Weg: `(or (and (cat ?x) (small ?x))
+; (dog ?x))` glich den `and`-Zweig überhaupt nie ab und verwarf
+; stillschweigend jedes Tier, das zugleich Katze und klein war, weil auch
+; kein Fakt je das Symbol `and` als Kopf hat. Explizit verschachtelt, weil
+; Bedingungen der obersten Ebene bereits eine implizite Konjunktion sind
+; (genau das, was `thread-conjunction` eine Ebene höher schon tut) — ein
+; inneres `and` ist genau dieselbe Operation, nur explizit geschrieben,
+; meist um eine zusammengesetzte Bedingung innerhalb eines `or` zu
+; gruppieren. `match-and-condition` ist `match-conditions` selbst, das die
+; Unterbedingungen identisch fädelt; nicht neu implementiert, nur unter
+; dem Namen wiederverwendet, den die Dispatch nach Bedingungsposition
+; erwartet.
+(def condition-is-and?
+  (lambda (condition)
+    (cond
+      ((atom condition) '())
+      ((atom (car condition)) (eq (car condition) 'and))
+      (t '()))))
+
+(def match-and-condition
+  (lambda (sub-conditions facts subst)
+    (match-conditions sub-conditions facts subst)))
+
 (def match-one-condition
   (lambda (condition facts subst)
     (cond
       ((condition-is-not? condition) (match-negated-condition (second condition) facts subst))
       ((condition-is-or? condition) (match-or-condition (cdr condition) facts subst))
+      ((condition-is-and? condition) (match-and-condition (cdr condition) facts subst))
       (t (match-condition-against-facts condition facts subst)))))
 
 ; Built directly on `thread-conjunction` (lib/unify.my) — the same
