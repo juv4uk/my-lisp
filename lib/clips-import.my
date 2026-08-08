@@ -1,0 +1,93 @@
+; A universal(-ish) importer for old symbolic-AI systems, starting with
+; CLIPS (see NASA's Johnson Space Center, 1985 — the same forward-chaining
+; lineage lib/forward.my grew independently). "Universal" here means: this
+; project reads *whatever S-expression syntax the old system used* as raw
+; data via my-lisp's own `read`/`quote` — no dedicated tokenizer, no string
+; primitives, no new Rust code. CLIPS forms like `(defrule foo (bar ?x) =>
+; (assert (baz ?x)))` parse cleanly as ordinary my-lisp data (`?x`, `=>`,
+; `defrule` are all just symbols to the reader) even though none of them
+; are meaningful my-lisp forms to *evaluate* — homoiconicity used exactly
+; as McCarthy's own S-expression choice intended: code (or someone else's
+; code) is data first.
+;
+; Step 1 (deliberately small, by explicit agreement before writing this):
+; `deffacts` only — CLIPS's variable-free fact declarations. A CLIPS form
+; `(deffacts name (fact1 ...) (fact2 ...) ...)` becomes the same
+; `(head . body)` clause list `defmodule` already expects, one
+; zero-condition clause per fact. `defrule` (rules, and CLIPS's `?x`
+; variable syntax needing conversion to `(var x)`) is a separate, later
+; step — not assumed here.
+;
+; Універсальний(-уватий) імпортер зі старих символьних AI-систем, починаючи
+; з CLIPS (NASA Johnson Space Center, 1985 рік — та сама forward-chaining
+; лінія, яку lib/forward.my виростив незалежно). "Універсальний" тут
+; означає: цей проєкт читає *будь-який S-вираз старої системи* як сирі дані
+; через власні `read`/`quote` my-lisp — без окремого токенізатора, без
+; рядкових примітивів, без нового Rust-коду. CLIPS-форми на кшталт
+; `(defrule foo (bar ?x) => (assert (baz ?x)))` парсяться як звичайні
+; my-lisp дані (`?x`, `=>`, `defrule` — просто символи для reader'а), хоча
+; жоден з них не є осмисленою my-lisp-формою для *виконання* —
+; гомоіконічність, використана саме так, як і задумував вибір S-виразів
+; Маккарті: код (навіть чужий) — спершу дані.
+;
+; Крок 1 (свідомо маленький, за явною домовленістю перед написанням):
+; лише `deffacts` — CLIPS-декларації фактів без змінних. CLIPS-форма
+; `(deffacts name (факт1 ...) (факт2 ...) ...)` стає тим самим списком
+; clause `(head . body)`, якого вже чекає `defmodule`, по одному
+; clause-факту без умов на кожен факт. `defrule` (правила, і CLIPS-синтаксис
+; змінних `?x`, який треба конвертувати в `(var x)`) — окремий, пізніший
+; крок, тут не мається на увазі.
+;
+; Ein universeller(-ähnlicher) Importer für alte symbolische KI-Systeme,
+; beginnend mit CLIPS (NASA Johnson Space Center, 1985 — dieselbe
+; Forward-Chaining-Linie, die lib/forward.my unabhängig entwickelt hat).
+; "Universell" bedeutet hier: dieses Projekt liest *jede S-Ausdruck-Syntax
+; des alten Systems* als Rohdaten über my-lisps eigenes `read`/`quote` —
+; kein eigener Tokenizer, keine String-Primitive, kein neuer Rust-Code.
+; CLIPS-Formen wie `(defrule foo (bar ?x) => (assert (baz ?x)))` parsen
+; sauber als gewöhnliche my-lisp-Daten (`?x`, `=>`, `defrule` sind für den
+; Reader nur Symbole), obwohl keine davon eine sinnvolle my-lisp-Form zum
+; *Auswerten* ist — Homoikonizität genau so eingesetzt, wie McCarthys
+; eigene Wahl der S-Ausdrücke es beabsichtigte: Code (auch fremder) ist
+; zuerst Daten.
+;
+; Schritt 1 (bewusst klein, nach ausdrücklicher Absprache vor dem
+; Schreiben): nur `deffacts` — CLIPS' variablenfreie Faktendeklarationen.
+; Eine CLIPS-Form `(deffacts name (fakt1 ...) (fakt2 ...) ...)` wird zur
+; selben `(head . body)`-Clause-Liste, die `defmodule` bereits erwartet,
+; eine bedingungslose Clause pro Fakt. `defrule` (Regeln, und CLIPS'
+; `?x`-Variablensyntax, die zu `(var x)` konvertiert werden muss) ist ein
+; separater, späterer Schritt, hier nicht unterstellt.
+(def cddr
+  (lambda (lst) (cdr (cdr lst))))
+
+(def clips-fact-clause
+  (lambda (fact) (list fact)))
+
+(def clips-facts->clauses
+  (lambda (facts)
+    (cond
+      ((atom facts) '())
+      (t (cons (clips-fact-clause (car facts)) (clips-facts->clauses (cdr facts)))))))
+
+; `(cddr form)` drops `deffacts` and the deffacts block's own name,
+; leaving just the fact list.
+(def clips-deffacts->clauses
+  (lambda (form)
+    (clips-facts->clauses (cddr form))))
+
+; Dispatches on one top-level CLIPS form's leading symbol. Unknown or
+; not-yet-supported forms (like `defrule`, Step 2) produce no clauses
+; rather than erroring — a partial import of a mixed file still returns
+; whatever it *could* translate.
+(def clips-form->clauses
+  (lambda (form)
+    (cond
+      ((eq (car form) 'deffacts) (clips-deffacts->clauses form))
+      (t '()))))
+
+(def clips-import
+  (lambda (forms)
+    (cond
+      ((atom forms) '())
+      (t (append (clips-form->clauses (car forms)) (clips-import (cdr forms)))))))
