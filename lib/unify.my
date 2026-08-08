@@ -13,12 +13,9 @@
 ; symbols or structured pairs (like `(x . 3)` when standardizing apart). 
 ; Construct one with `(logic-var 'x)`.
 ;
-; No occurs-check: unifying `?x` with a term containing `?x` (e.g. `(f ?x)`)
-; produces a substitution that can't be fully resolved (infinite structure).
-; This is a standard simplification in small/teaching unifiers, not an
-; oversight — a real occurs-check is a straightforward but non-trivial
-; addition (walk the term for the variable before binding), left out here
-; to keep this genuinely small.
+; With occurs-check: unifying `?x` with a term containing `?x` (e.g. `(f ?x)`)
+; correctly fails, preventing infinite structures from being generated and
+; preserving the engine's stability during complex logic inference.
 ;
 ; Невеликий примітив символьного AI: unification — механізм зіставлення з
 ; шаблоном, що лежить під backward-chaining/Prolog-подібними міркуваннями —
@@ -36,12 +33,9 @@
 ; імен, які можуть бути символами або структурованими парами (як `(x . 3)` 
 ; при standardizing apart). Створюється через `(logic-var 'x)`.
 ;
-; Без occurs-check: унікація `?x` з термом, що містить `?x` (напр. `(f
-; ?x)`), дає підстановку, яку неможливо повністю розв'язати (нескінченна
-; структура). Це стандартне спрощення в маленьких/навчальних unifier'ах,
-; не недогляд — справжній occurs-check — проста, але нетривіальна
-; добавка (обійти терм на предмет змінної перед зв'язуванням), тут
-; свідомо пропущена, щоб лишатись справді маленьким.
+; З occurs-check: унікація `?x` з термом, що містить `?x` (напр. `(f ?x)`)
+; коректно відхиляється, що запобігає створенню нескінченних структур і
+; зберігає стабільність рушія під час складного логічного висновування.
 ;
 ; Ein kleines symbolisches KI-Primitiv: Unifikation — die
 ; Mustervergleichs-Engine hinter Backward-Chaining-/Prolog-artigem
@@ -59,13 +53,10 @@
 ; Vergleich ihrer Namen, die Symbole oder strukturierte Paare sein können
 ; (wie `(x . 3)` beim standardizing apart). Erzeugt wird eine mit `(logic-var 'x)`.
 ;
-; Kein Occurs-Check: Das Unifizieren von `?x` mit einem Term, der `?x`
-; enthält (z. B. `(f ?x)`), erzeugt eine Substitution, die sich nicht
-; vollständig auflösen lässt (unendliche Struktur). Dies ist eine
-; Standardvereinfachung in kleinen/lehrenden Unifiern, kein Versehen — ein
-; echter Occurs-Check ist eine unkomplizierte, aber nicht triviale Ergänzung
-; (den Term vor dem Binden nach der Variable durchsuchen), hier bewusst
-; weggelassen, um wirklich klein zu bleiben.
+; Mit Occurs-Check: Das Unifizieren von `?x` mit einem Term, der `?x`
+; enthält (z. B. `(f ?x)`), schlägt korrekt fehl, verhindert die Erzeugung
+; unendlicher Strukturen und erhält die Stabilität der Engine bei komplexer
+; logischer Inferenz.
 
 (def logic-var
   (lambda (name)
@@ -158,6 +149,16 @@
       ((atom b) 'fail)
       (t (unify (cdr a) (cdr b) (unify (car a) (car b) subst))))))
 
+(def occurs-check
+  (lambda (variable term subst)
+    (let ((resolved (walk term subst)))
+      (cond
+        ((var? resolved) (equal? (second variable) (second resolved)))
+        ((atom resolved) '())
+        (t (cond
+             ((occurs-check variable (car resolved) subst) t)
+             (t (occurs-check variable (cdr resolved) subst))))))))
+
 (def unify-var
   (lambda (variable term subst)
     (cond
@@ -165,6 +166,7 @@
        (cond
          ((equal? (second variable) (second term)) subst)
          (t (extend-subst variable term subst))))
+      ((occurs-check variable term subst) 'fail)
       (t (extend-subst variable term subst)))))
 
 ; Fully resolves every variable in `term` (recursively, through chained

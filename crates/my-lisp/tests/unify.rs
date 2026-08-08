@@ -108,3 +108,12 @@ fn var_predicate_does_not_crash_on_a_nested_compound_subterm() {
         "()"
     );
 }
+
+#[test]
+fn occurs_check_prevents_infinite_structures() {
+    let source = r#"
+        (let ((subst (unify (logic-var 'x) (list 'f (logic-var 'x)) '())))
+             subst)
+    "#;
+    assert_eq!(eval_unify(source), "fail");
+}
