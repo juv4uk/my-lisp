@@ -248,6 +248,28 @@ fn clips_deftemplate_works_end_to_end_through_forward_in() {
 }
 
 #[test]
+fn clips_deftemplate_converts_facts_nested_inside_or() {
+    // Regression: clips-convert-template used to recurse through a `not`
+    // wrapper only, so a template fact inside `or`/`and` never got its
+    // named slots converted to positional form, silently never matching
+    // anything.
+    let source = r#"
+        (def imported (clips-import '(
+            (deftemplate cat (slot name))
+            (deftemplate dog (slot name))
+            (deffacts init (cat (name tom)) (dog (name rex)))
+            (defrule pet-rule (or (cat (name ?x)) (dog (name ?x))) => (assert (pet ?x)))
+        )))
+        (defmodule zoo imported)
+        (forward-in 'zoo)
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "((pet rex) (pet tom) (dog rex) (cat tom))"
+    );
+}
+
+#[test]
 fn clips_import_result_feeds_straight_into_defmodule() {
     // The whole point: no hand-editing step between import and use.
     let source = r#"

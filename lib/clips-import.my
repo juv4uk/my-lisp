@@ -192,20 +192,53 @@
       (t (cons (clips-lookup-slot-value (car slot-order) slot-forms)
                 (clips-positional-args (cdr slot-order) slot-forms))))))
 
-; Converts one fact/condition/conclusion term: `not`-wrapped terms recurse
-; into their inner pattern (so `(not (reading (value 98) (sensor
-; probe1)))` converts the same way a bare `reading` fact would); anything
-; else is rewritten to positional form only if its head is a known
-; template name, otherwise passed through unchanged.
+; Step 13 (fold-in fix, verified before writing — same discipline as
+; lib/forward.my's Steps 10-12): originally recursed through a `not`
+; wrapper only. A template fact nested inside `or`/`and` — e.g. `(or (cat
+; (name ?x)) (dog (name ?x)))` — silently never had its named slots
+; converted to positional form at all, since neither `or` nor `and` was
+; special-cased; the whole condition passed through unchanged (`(cat
+; (name ?x))` never became `(cat ?x)`), so it could never unify against a
+; positional `(cat tom)` fact — a rule that quietly derived nothing. Same
+; underlying lesson `lib/forward.my`'s Steps 10-12 kept re-learning:
+; `not`, `or`, and `and` all need explicit recursion, not just `not`.
+;
+; Крок 13 (виправлення вбудовано, перевірено перед написанням — та сама
+; дисципліна, що й Кроки 10-12 `lib/forward.my`): раніше рекурсував лише
+; крізь обгортку `not`. Факт-шаблон, вкладений в `or`/`and` — напр. `(or
+; (cat (name ?x)) (dog (name ?x)))` — мовчки взагалі не мав своїх
+; іменованих слотів конвертованих у позиційну форму, бо ні `or`, ні `and`
+; не були окремо оброблені; уся умова проходила незмінною (`(cat (name
+; ?x))` ніколи не ставала `(cat ?x)`), тож ніколи не могла унікуватись з
+; позиційним фактом `(cat tom)` — правило, що мовчки нічого не виводило.
+; Той самий урок, який Кроки 10-12 `lib/forward.my` повторювали: `not`,
+; `or` і `and` усі потребують явної рекурсії, не лише `not`.
+;
+; Schritt 13 (eingearbeiteter Fix, vor dem Schreiben verifiziert —
+; dieselbe Disziplin wie Schritte 10-12 in `lib/forward.my`): rekursierte
+; ursprünglich nur durch einen `not`-Wrapper. Ein Template-Fakt,
+; verschachtelt in `or`/`and` — z. B. `(or (cat (name ?x)) (dog (name
+; ?x)))` — hatte seine benannten Slots stillschweigend nie in positionale
+; Form umgewandelt, da weder `or` noch `and` gesondert behandelt wurden;
+; die ganze Bedingung blieb unverändert (`(cat (name ?x))` wurde nie zu
+; `(cat ?x)`), sodass sie nie gegen einen positionalen Fakt `(cat tom)`
+; unifizieren konnte — eine Regel, die still nichts ableitete. Dieselbe
+; Lehre, die Schritte 10-12 in `lib/forward.my` wiederholt lernten: `not`,
+; `or` und `and` brauchen alle explizite Rekursion, nicht nur `not`.
 (def clips-convert-template
   (lambda (term templates)
     (cond
       ((atom term) term)
-      ((eq (car term) 'not) (list 'not (clips-convert-template (second term) templates)))
-      (t (let ((slot-order (clips-template-slot-order (car term) templates)))
-           (cond
-             ((atom slot-order) term)
-             (t (cons (car term) (clips-positional-args slot-order (cdr term))))))))))
+      ((atom (car term))
+       (cond
+         ((eq (car term) 'not) (list 'not (clips-convert-template (second term) templates)))
+         ((eq (car term) 'or) (cons 'or (clips-convert-template-list (cdr term) templates)))
+         ((eq (car term) 'and) (cons 'and (clips-convert-template-list (cdr term) templates)))
+         (t (let ((slot-order (clips-template-slot-order (car term) templates)))
+              (cond
+                ((atom slot-order) term)
+                (t (cons (car term) (clips-positional-args slot-order (cdr term)))))))))
+      (t term))))
 
 (def clips-convert-template-list
   (lambda (terms templates)
