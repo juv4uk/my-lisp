@@ -77,6 +77,50 @@ fn print_composes_inside_expressions_and_accumulates_in_order() {
 }
 
 #[test]
+fn read_parses_text_into_data_without_evaluating_it() {
+    assert_eq!(
+        eval(r#"(read "(+ 1 2)")"#),
+        Value::list([
+            Value::Symbol("+".into()),
+            Value::Number(1.0),
+            Value::Number(2.0),
+        ])
+    );
+    assert_eq!(eval(r#"(read "radio")"#), Value::Symbol("radio".into()));
+    assert_eq!(eval(r#"(read "42")"#), Value::Number(42.0));
+}
+
+#[test]
+fn read_rejects_non_string_arguments_and_multi_expression_input() {
+    let non_string = eval_program("(read 42)", &mut Session::default()).unwrap_err();
+    assert_eq!(non_string.kind, ErrorKind::Type);
+
+    let two_expressions = eval_program(r#"(read "1 2")"#, &mut Session::default()).unwrap_err();
+    assert_eq!(two_expressions.kind, ErrorKind::InvalidForm);
+}
+
+#[test]
+fn eval_closes_the_read_eval_loop_by_hand() {
+    assert_eq!(eval(r#"(eval (read "(+ 1 2)"))"#), Value::Number(3.0));
+    assert_eq!(eval("(eval (quote (+ 1 2)))"), Value::Number(3.0));
+}
+
+#[test]
+fn eval_looks_up_a_quoted_symbol_in_the_calling_environment() {
+    let mut session = Session::default();
+    eval_program("(def x 5)", &mut session).unwrap();
+    let result = eval_program("(eval 'x)", &mut session).unwrap();
+    assert_eq!(result.value, Value::Number(5.0));
+}
+
+#[test]
+fn eval_treats_closures_and_macros_as_self_evaluating() {
+    let mut session = Session::default();
+    let closure = eval_program("(eval (lambda (x) x))", &mut session).unwrap();
+    assert!(matches!(closure.value, Value::Closure(_)));
+}
+
+#[test]
 fn print_inside_a_closure_shares_the_root_sessions_output() {
     // Environment::child() must share the parent's output sink (not start a
     // fresh one per call frame), or `print` inside a lambda body would be

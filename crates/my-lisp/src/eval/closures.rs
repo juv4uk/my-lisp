@@ -159,7 +159,16 @@ pub(super) fn apply_macro(
     })
 }
 
-fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageError> {
+// `pub(super)`, not private: `special_forms::evaluate_eval` reuses this same
+// data->code conversion for `eval`, rather than duplicating the cons-cell
+// walk that macro expansion already needed.
+// `pub(super)`, не приватна: `special_forms::evaluate_eval` перевикористовує
+// це саме перетворення дані->код для `eval`, замість дублювання обходу
+// cons-комірок, який уже був потрібен для розгортання макросів.
+// `pub(super)`, nicht privat: `special_forms::evaluate_eval` nutzt dieselbe
+// Daten->Code-Umwandlung für `eval` wieder, statt den Cons-Zellen-Durchlauf
+// zu duplizieren, den die Makro-Expansion bereits brauchte.
+pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageError> {
     let kind = match &value {
         Value::Nil => ExprKind::List(Rc::new([])),
         Value::Bool(true) => ExprKind::Symbol("t".into()),
