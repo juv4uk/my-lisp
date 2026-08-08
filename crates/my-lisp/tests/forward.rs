@@ -416,6 +416,37 @@ fn match_and_condition_fails_when_one_sub_condition_has_no_match() {
 }
 
 #[test]
+fn run_multi_supports_test_conditions() {
+    let source = r#"
+        (run-multi
+          (list (list (list 'big (logic-var 'x))
+                      (list 'num (logic-var 'x))
+                      (list 'test (list '> (logic-var 'x) 5))))
+          (list '(num 3) '(num 10)))
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "((big 10) (num 3) (num 10))"
+    );
+}
+
+#[test]
+fn match_test_condition_succeeds_when_the_expression_is_truthy() {
+    let source = r#"
+        (match-test-condition (list '> 10 5) '())
+    "#;
+    assert_eq!(eval_forward(source), "(())");
+}
+
+#[test]
+fn match_test_condition_fails_when_the_expression_is_falsy() {
+    let source = r#"
+        (match-test-condition (list '> 3 5) '())
+    "#;
+    assert_eq!(eval_forward(source), "()");
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))

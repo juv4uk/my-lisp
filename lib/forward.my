@@ -823,12 +823,69 @@
   (lambda (sub-conditions facts subst)
     (match-conditions sub-conditions facts subst)))
 
+; Step 12: `(test <expression>)` conditions — the fourth time this same
+; bug class turned up (verified before fixing, same as `not`/`or`/`and`):
+; `(test (> ?x 5))` matched nothing at all, because — once again — no
+; fact's head is ever the symbol `test`. Unlike `not`/`or`/`and`, `test`
+; isn't a matching combinator at all: it doesn't compare a pattern against
+; facts, it evaluates an arbitrary expression (typically a comparison like
+; `>`, already a my-lisp primitive) after substituting in whatever the
+; preceding conditions already bound. `apply-subst` (lib/unify.my) resolves
+; every `(var name)` in the expression against the current `subst`; `eval`
+; (the same read/eval-closing primitive `(eval (read ...))` uses
+; throughout this project, see lib/reason.my's header for the pattern)
+; then runs the now-fully-resolved expression as ordinary my-lisp code. A
+; truthy result succeeds with `subst` unchanged (no new bindings, same as
+; `not`); anything else fails.
+;
+; Крок 12: умови `(test <вираз>)` — четвертий раз той самий клас бага
+; (перевірено перед виправленням, як і `not`/`or`/`and`): `(test (> ?x
+; 5))` не зіставляла нічого, бо — знову — жоден факт не має головою символ
+; `test`. На відміну від `not`/`or`/`and`, `test` — узагалі не комбінатор
+; зіставлення: він не порівнює шаблон з фактами, а обчислює довільний
+; вираз (зазвичай порівняння на кшталт `>`, уже наявний примітив my-lisp)
+; після підстановки того, що вже зв'язали попередні умови. `apply-subst`
+; (lib/unify.my) розв'язує кожен `(var name)` у виразі проти поточної
+; `subst`; `eval` (той самий примітив, що замикає read/eval цикл, який
+; `(eval (read ...))` використовує по всьому проєкту) тоді виконує вже
+; повністю розв'язаний вираз як звичайний код my-lisp. Правдивий результат
+; успішний з незмінною `subst` (без нових зв'язувань, як і `not`); усе
+; інше — провал.
+;
+; Schritt 12: `(test <ausdruck>)`-Bedingungen — das vierte Mal, dass diese
+; Bugklasse auftauchte (vor dem Fix verifiziert, wie bei `not`/`or`/`and`):
+; `(test (> ?x 5))` glich überhaupt nichts ab, weil — wieder einmal — kein
+; Fakt je das Symbol `test` als Kopf hat. Anders als `not`/`or`/`and` ist
+; `test` überhaupt kein Abgleichs-Kombinator: es vergleicht kein Muster
+; mit Fakten, sondern wertet einen beliebigen Ausdruck aus (typischerweise
+; einen Vergleich wie `>`, bereits ein my-lisp-Primitiv), nachdem
+; eingesetzt wurde, was vorherige Bedingungen bereits gebunden haben.
+; `apply-subst` (lib/unify.my) löst jedes `(var name)` im Ausdruck gegen
+; die aktuelle `subst` auf; `eval` (dasselbe Primitiv, das die
+; Read/Eval-Schleife schließt) führt dann den nun vollständig aufgelösten
+; Ausdruck als gewöhnlichen my-lisp-Code aus. Ein wahrer Wert gelingt mit
+; unveränderter `subst` (keine neuen Bindungen, wie bei `not`); alles
+; andere schlägt fehl.
+(def condition-is-test?
+  (lambda (condition)
+    (cond
+      ((atom condition) '())
+      ((atom (car condition)) (eq (car condition) 'test))
+      (t '()))))
+
+(def match-test-condition
+  (lambda (expression subst)
+    (cond
+      ((eval (apply-subst expression subst)) (list subst))
+      (t '()))))
+
 (def match-one-condition
   (lambda (condition facts subst)
     (cond
       ((condition-is-not? condition) (match-negated-condition (second condition) facts subst))
       ((condition-is-or? condition) (match-or-condition (cdr condition) facts subst))
       ((condition-is-and? condition) (match-and-condition (cdr condition) facts subst))
+      ((condition-is-test? condition) (match-test-condition (second condition) subst))
       (t (match-condition-against-facts condition facts subst)))))
 
 ; Built directly on `thread-conjunction` (lib/unify.my) — the same
