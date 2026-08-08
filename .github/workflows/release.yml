@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: cargo test --workspace before release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+
+  build-cli:
+    name: my-lisp-cli · ${{ matrix.os }}
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: my-lisp
+            asset_suffix: linux_amd64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: my-lisp.exe
+            asset_suffix: windows_x64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: my-lisp
+            asset_suffix: macos_x64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: my-lisp
+            asset_suffix: macos_arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: cli-${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release -p my-lisp-cli --target ${{ matrix.target }}
+
+      - name: Rename binary
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          SRC="target/${{ matrix.target }}/release/${{ matrix.artifact_name }}"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            DST="my-lisp-cli_${VERSION}_${{ matrix.asset_suffix }}.exe"
+          else
+            DST="my-lisp-cli_${VERSION}_${{ matrix.asset_suffix }}"
+          fi
+          mv "$SRC" "$DST"
+          echo "ASSET_PATH=$DST" >> "$GITHUB_ENV"
+
+      - name: Upload
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ env.ASSET_PATH }}
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-web:
+    name: Portable web REPL · single HTML
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: wasm
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: 'v0.15.0'
+
+      - name: Build the WASM bindings
+        run: wasm-pack build crates/my-lisp-wasm --target web --out-dir ../../public/wasm
+
+      - name: Bundle the standalone HTML
+        run: |
+          node scripts/make-portable-web.mjs public/my-lisp-cli-web.html my-lisp-cli-web.html
+          test -s my-lisp-cli-web.html
+
+      - name: Upload
+        uses: softprops/action-gh-release@v1
+        with:
+          files: my-lisp-cli-web.html
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
