@@ -171,28 +171,79 @@
       (t (let ((rest (clips-split-at-arrow (cdr body))))
            (list (cons (car body) (car rest)) (second rest)))))))
 
-; Step 2 supports exactly one `(assert (...))` after `=>` — CLIPS's most
-; common shape. A `defrule` with more than one assertion, or none, imports
-; as no clauses (same "skip, don't error" policy as an unsupported form) —
-; multi-conclusion rules are a further step, not assumed here.
-(def clips-single-assert
-  (lambda (conclusion-forms)
+; Step 3: any number of `(assert (...))` forms after `=>`, not just one.
+; my-lisp's rule format only ever has one head per clause, so N assertions
+; sharing one LHS become N separate clauses, one per assertion, all with
+; the *same* condition list — logically equivalent to CLIPS firing all N
+; assertions together whenever the shared conditions hold.
+;
+; Still scoped to `assert` only: a `defrule` whose `=>` side contains any
+; other CLIPS action (`printout`, `retract`, `modify`, ...) imports as no
+; clauses rather than guessing at an action this project doesn't model —
+; same "skip, don't error" policy as an unsupported top-level form.
+;
+; Крок 3: будь-яка кількість форм `(assert (...))` після `=>`, не лише
+; одна. Формат правил my-lisp має рівно одну голову на clause, тож N
+; тверджень з однією LHS стають N окремими clause, по одному на кожне
+; твердження, усі з тим самим списком умов — логічно еквівалентно тому, як
+; CLIPS застосовує всі N тверджень разом, коли спільні умови виконані.
+;
+; Досі обмежено лише `assert`: `defrule`, чия сторона `=>` містить будь-яку
+; іншу CLIPS-дію (`printout`, `retract`, `modify`, ...), імпортується як
+; відсутність clause замість здогадки про дію, яку цей проєкт не моделює —
+; та сама політика "пропустити, не впасти", що й для непідтримуваної
+; форми верхнього рівня.
+;
+; Schritt 3: beliebig viele `(assert (...))`-Formen nach `=>`, nicht nur
+; eine. Das Regelformat von my-lisp hat immer nur einen Kopf pro Clause,
+; also werden N Behauptungen mit einer gemeinsamen LHS zu N separaten
+; Clauses, eine pro Behauptung, alle mit derselben Bedingungsliste —
+; logisch äquivalent dazu, dass CLIPS alle N Behauptungen zusammen auslöst,
+; sobald die gemeinsamen Bedingungen erfüllt sind.
+;
+; Weiterhin nur auf `assert` beschränkt: eine `defrule`, deren `=>`-Seite
+; irgendeine andere CLIPS-Aktion enthält (`printout`, `retract`, `modify`,
+; ...), importiert als keine Clauses, statt eine Aktion zu erraten, die
+; dieses Projekt nicht modelliert — dieselbe "überspringen statt
+; fehlschlagen"-Politik wie bei einer nicht unterstützten Form der obersten
+; Ebene.
+(def clips-assert-form?
+  (lambda (form)
     (cond
-      ((atom conclusion-forms) 'none)
-      ((atom (cdr conclusion-forms)) (second (car conclusion-forms)))
-      (t 'none))))
+      ((atom form) '())
+      ((atom (car form)) (eq (car form) 'assert))
+      (t '()))))
 
-; Guards the `'none` check with `(atom conclusion)` first: a real
-; conclusion (like `(has-mass ?x)`) is a compound list, and `eq` errors on
-; non-atom arguments instead of just correctly answering "not `'none`".
+(def clips-all-asserts?
+  (lambda (forms)
+    (cond
+      ((atom forms) t)
+      ((clips-assert-form? (car forms)) (clips-all-asserts? (cdr forms)))
+      (t '()))))
+
+(def clips-assert-conclusions
+  (lambda (forms)
+    (cond
+      ((atom forms) '())
+      (t (cons (second (car forms)) (clips-assert-conclusions (cdr forms)))))))
+
+(def clips-clauses-for-conclusions
+  (lambda (conclusions conditions)
+    (cond
+      ((atom conclusions) '())
+      (t (cons (cons (clips-convert-vars (car conclusions)) conditions)
+                (clips-clauses-for-conclusions (cdr conclusions) conditions))))))
+
 (def clips-defrule->clauses
   (lambda (form)
     (let ((split (clips-split-at-arrow (cddr form))))
       (let ((conditions (clips-convert-vars (car split)))
-            (conclusion (clips-single-assert (second split))))
+            (conclusion-forms (second split)))
         (cond
-          ((atom conclusion) '())
-          (t (list (cons (clips-convert-vars conclusion) conditions))))))))
+          ((atom conclusion-forms) '())
+          ((clips-all-asserts? conclusion-forms)
+           (clips-clauses-for-conclusions (clips-assert-conclusions conclusion-forms) conditions))
+          (t '()))))))
 
 ; Dispatches on one top-level CLIPS form's leading symbol. Unknown or
 ; not-yet-supported forms produce no clauses rather than erroring — a

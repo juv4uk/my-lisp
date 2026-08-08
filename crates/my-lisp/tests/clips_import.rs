@@ -91,11 +91,25 @@ fn clips_defrule_with_multiple_conditions_converts_all_of_them() {
 }
 
 #[test]
-fn clips_defrule_with_no_or_multiple_asserts_imports_as_no_clauses() {
+fn clips_defrule_with_no_asserts_imports_as_no_clauses() {
     let source = r#"
-        (clips-import '((defrule broken (planet ?x) => (assert (a ?x)) (assert (b ?x)))))
+        (clips-import '((defrule broken (planet ?x) => (printout t "hello"))))
     "#;
     assert_eq!(eval_import(source), "()");
+}
+
+#[test]
+fn clips_defrule_with_multiple_asserts_produces_one_clause_per_assert() {
+    // N assertions sharing one LHS become N clauses, each with the same
+    // (converted) condition list — logically equivalent to CLIPS firing
+    // all N assertions together whenever the shared conditions hold.
+    let source = r#"
+        (clips-import '((defrule two-asserts (planet ?x) => (assert (a ?x)) (assert (b ?x)))))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((a (var x)) (planet (var x))) ((b (var x)) (planet (var x))))"
+    );
 }
 
 #[test]
