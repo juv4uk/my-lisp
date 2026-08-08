@@ -76,14 +76,133 @@
   (lambda (form)
     (clips-facts->clauses (cddr form))))
 
+; --- Step 2: defrule, with CLIPS's `?x` variable syntax ------------------
+; CLIPS variables are ordinary symbols to my-lisp's reader (`?x` parses as
+; one atomic symbol, not reader-macro syntax) — but my-lisp has no way to
+; inspect a symbol's characters on its own. `symbol->string`/`string->symbol`/
+; `string-first`/`string-rest` (crates/my-lisp/src/eval/special_forms.rs)
+; were added specifically for this: peeling the `?` off `?x` to build the
+; logic-variable term `(var x)` `lib/unify.my` expects. Added deliberately,
+; not casually — per this project's own "don't grow the Rust surface"
+; principle (CLAUDE.md), only once a real wall was hit doing this purely in
+; my-lisp.
+;
+; A CLIPS variable's own name becomes the `(var name)` term's name (`?x` ->
+; `(var x)`, dropping only the `?`) — not renamed or namespaced, so the
+; same `?x` used twice in one rule still refers to the same logic variable
+; after conversion, exactly as CLIPS (and `lib/unify.my`) both expect.
+;
+; Крок 2: defrule, з CLIPS-синтаксисом змінних `?x` — CLIPS-змінні для
+; reader'а my-lisp — звичайні символи (`?x` парситься як один атомарний
+; символ, не reader-macro синтаксис), але my-lisp не мала способу
+; перевірити символи символу сама. `symbol->string`/`string->symbol`/
+; `string-first`/`string-rest` додані саме для цього: відрізати `?` від
+; `?x`, щоб побудувати терм логічної змінної `(var x)`, якого чекає
+; `lib/unify.my`. Додано свідомо, не за звичкою — за власним принципом
+; проєкту "не розширювати поверхню Rust" (CLAUDE.md), лише коли впёрлись у
+; реальну стіну, роблячи це чистою my-lisp.
+;
+; Власне ім'я CLIPS-змінної стає ім'ям терму `(var name)` (`?x` -> `(var
+; x)`, відрізається лише `?`) — не перейменовується й не намespace-иться,
+; тож той самий `?x`, використаний двічі в одному правилі, після конвертації
+; й далі посилається на ту саму логічну змінну, точно як і CLIPS (і
+; `lib/unify.my`) обидва очікують.
+;
+; Schritt 2: defrule, mit CLIPS' `?x`-Variablensyntax — CLIPS-Variablen
+; sind für den my-lisp-Reader gewöhnliche Symbole (`?x` parst als ein
+; atomares Symbol, keine Reader-Makro-Syntax), aber my-lisp konnte die
+; Zeichen eines Symbols nicht selbst inspizieren.
+; `symbol->string`/`string->symbol`/`string-first`/`string-rest` wurden
+; genau dafür hinzugefügt: das `?` von `?x` abzuschälen, um den
+; Logikvariablen-Term `(var x)` zu bauen, den `lib/unify.my` erwartet.
+; Bewusst hinzugefügt, nicht beiläufig — nach dem eigenen Prinzip des
+; Projekts, die Rust-Oberfläche nicht wachsen zu lassen (CLAUDE.md), erst
+; als eine echte Grenze beim rein-my-lisp-Ansatz erreicht wurde.
+;
+; Der eigene Name einer CLIPS-Variable wird zum Namen des `(var
+; name)`-Terms (`?x` -> `(var x)`, nur das `?` wird entfernt) — nicht
+; umbenannt oder mit Namensraum versehen, sodass dasselbe `?x`, zweimal in
+; einer Regel verwendet, nach der Konvertierung weiterhin dieselbe
+; Logikvariable bezeichnet, genau wie CLIPS (und `lib/unify.my`) es beide
+; erwarten.
+; Guards on `symbol?` first: `term` may be any atom (a CLIPS fact's
+; argument can just as easily be a number, e.g. `(temperature 98)`), and
+; `symbol->string` (called by `clips-symbol-starts-with-?`) errors on
+; anything that isn't actually a symbol.
+(def clips-var?
+  (lambda (term)
+    (cond
+      ((atom term)
+       (cond
+         ((symbol? term) (clips-symbol-starts-with-? term))
+         (t '())))
+      (t '()))))
+
+(def clips-symbol-starts-with-?
+  (lambda (symbol)
+    (equal? (string-first (symbol->string symbol)) (string-first "?_"))))
+
+(def clips-var-term
+  (lambda (symbol)
+    (list 'var (string->symbol (string-rest (symbol->string symbol))))))
+
+; Walks an arbitrary CLIPS term, replacing every `?x`-shaped symbol with
+; `(var x)` and leaving everything else untouched.
+(def clips-convert-vars
+  (lambda (term)
+    (cond
+      ((clips-var? term) (clips-var-term term))
+      ((atom term) term)
+      (t (cons (clips-convert-vars (car term)) (clips-convert-vars (cdr term)))))))
+
+; Splits a defrule's body at `=>` into (conditions . conclusion-forms).
+; Guards the `=>`-check with `(atom (car body))` first: a condition like
+; `(planet ?x)` is itself a compound list, and `eq` errors on non-atom
+; arguments instead of just correctly answering "not the `=>` marker".
+(def clips-split-at-arrow
+  (lambda (body)
+    (cond
+      ((atom body) (list '() '()))
+      ((atom (car body))
+       (cond
+         ((eq (car body) '=>) (list '() (cdr body)))
+         (t (let ((rest (clips-split-at-arrow (cdr body))))
+              (list (cons (car body) (car rest)) (second rest))))))
+      (t (let ((rest (clips-split-at-arrow (cdr body))))
+           (list (cons (car body) (car rest)) (second rest)))))))
+
+; Step 2 supports exactly one `(assert (...))` after `=>` — CLIPS's most
+; common shape. A `defrule` with more than one assertion, or none, imports
+; as no clauses (same "skip, don't error" policy as an unsupported form) —
+; multi-conclusion rules are a further step, not assumed here.
+(def clips-single-assert
+  (lambda (conclusion-forms)
+    (cond
+      ((atom conclusion-forms) 'none)
+      ((atom (cdr conclusion-forms)) (second (car conclusion-forms)))
+      (t 'none))))
+
+; Guards the `'none` check with `(atom conclusion)` first: a real
+; conclusion (like `(has-mass ?x)`) is a compound list, and `eq` errors on
+; non-atom arguments instead of just correctly answering "not `'none`".
+(def clips-defrule->clauses
+  (lambda (form)
+    (let ((split (clips-split-at-arrow (cddr form))))
+      (let ((conditions (clips-convert-vars (car split)))
+            (conclusion (clips-single-assert (second split))))
+        (cond
+          ((atom conclusion) '())
+          (t (list (cons (clips-convert-vars conclusion) conditions))))))))
+
 ; Dispatches on one top-level CLIPS form's leading symbol. Unknown or
-; not-yet-supported forms (like `defrule`, Step 2) produce no clauses
-; rather than erroring — a partial import of a mixed file still returns
-; whatever it *could* translate.
+; not-yet-supported forms produce no clauses rather than erroring — a
+; partial import of a mixed file still returns whatever it *could*
+; translate.
 (def clips-form->clauses
   (lambda (form)
     (cond
       ((eq (car form) 'deffacts) (clips-deffacts->clauses form))
+      ((eq (car form) 'defrule) (clips-defrule->clauses form))
       (t '()))))
 
 (def clips-import

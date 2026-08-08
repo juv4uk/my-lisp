@@ -150,6 +150,21 @@ fn evaluate_list(
         Some("load") => {
             special_forms::evaluate_load(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("symbol?") => {
+            special_forms::evaluate_symbol_predicate(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("symbol->string") => {
+            special_forms::evaluate_symbol_to_string(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("string->symbol") => {
+            special_forms::evaluate_string_to_symbol(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("string-first") => {
+            special_forms::evaluate_string_first(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("string-rest") => {
+            special_forms::evaluate_string_rest(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("/") => arithmetic::evaluate_division(arguments, environment, span).map(EvalStep::Value),
         // Binding the operator symbol in the pattern avoids re-deriving it with
         // an `.expect()`, so a future refactor of `as_symbol` cannot turn this into a panic.

@@ -379,6 +379,136 @@ pub(super) fn evaluate_cons(
     Ok(Value::Pair(Rc::new(head), Rc::new(tail)))
 }
 
+/// The minimal symbol/string introspection this project held off on for a
+/// long time (per CLAUDE.md's "don't grow the Rust surface" principle) —
+/// added deliberately, not by default, when `lib/clips-import.my`'s Step 2
+/// hit a real wall: converting CLIPS's `?x` variable syntax into `(var x)`
+/// needs to peel the leading `?` off a symbol's name, and there is no way
+/// to inspect a symbol's characters from within my-lisp itself. Three
+/// small, general primitives (not one ad-hoc "strip-question-mark"
+/// helper) so the capability is reusable, not single-purpose.
+/// Мінімальна інтроспекція символів/рядків, яку цей проєкт довго
+/// відкладав (за принципом CLAUDE.md "не розширювати поверхню Rust") —
+/// додана свідомо, не за замовчуванням, коли Крок 2 `lib/clips-import.my`
+/// вперся у реальну стіну: конвертація CLIPS-синтаксису змінних `?x` у
+/// `(var x)` потребує відрізати провідний `?` від імені символу, а
+/// перевірити символи самої my-lisp неможливо. Три невеликі, загальні
+/// примітиви (не один ad-hoc хелпер "strip-question-mark"), щоб
+/// можливість була придатна для повторного використання, не одноразовою.
+/// Die minimale Symbol-/String-Introspektion, die dieses Projekt lange
+/// zurückgehalten hat (nach dem Prinzip von CLAUDE.md, die Rust-Oberfläche
+/// nicht wachsen zu lassen) — bewusst hinzugefügt, nicht standardmäßig,
+/// als Schritt 2 von `lib/clips-import.my` an eine echte Grenze stieß: die
+/// Umwandlung von CLIPS' `?x`-Variablensyntax in `(var x)` erfordert das
+/// Abschälen des führenden `?` vom Namen eines Symbols, und es gibt keine
+/// Möglichkeit, die Zeichen eines Symbols aus my-lisp selbst zu
+/// inspizieren. Drei kleine, allgemeine Primitive (kein einzelner
+/// Ad-hoc-Helfer "strip-question-mark"), damit die Fähigkeit
+/// wiederverwendbar bleibt, nicht einmalig.
+/// `symbol->string` needs a way to answer "is this actually a symbol"
+/// before being called on an arbitrary atom — a CLIPS fact's arguments can
+/// just as easily be numbers (`(temperature 98)`) as symbols, and there
+/// was no existing predicate to tell them apart (see lib/unify.my's own
+/// header comment: "no symbol?/numberp? primitive"). One small, general
+/// predicate, not a special case baked into `symbol->string` itself.
+pub(super) fn evaluate_symbol_predicate(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("symbol?", arguments, 1, span)?;
+    Ok(Value::Bool(matches!(
+        evaluate(&arguments[0], environment)?,
+        Value::Symbol(_)
+    )))
+}
+
+pub(super) fn evaluate_symbol_to_string(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("symbol->string", arguments, 1, span)?;
+    match evaluate(&arguments[0], environment)? {
+        Value::Symbol(ref symbol) => Ok(Value::String(symbol.clone())),
+        _ => Err(LanguageError::new(
+            ErrorKind::Type,
+            "symbol->string expects a symbol · symbol->string очікує символ · symbol->string erwartet ein Symbol",
+            span,
+        )),
+    }
+}
+
+pub(super) fn evaluate_string_to_symbol(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string->symbol", arguments, 1, span)?;
+    match evaluate(&arguments[0], environment)? {
+        Value::String(ref text) => Ok(Value::Symbol(text.clone())),
+        _ => Err(LanguageError::new(
+            ErrorKind::Type,
+            "string->symbol expects a string · string->symbol очікує рядок · string->symbol erwartet eine Zeichenkette",
+            span,
+        )),
+    }
+}
+
+/// The first character, as a one-character string — the string analogue
+/// of `car`. Errors on an empty string, same as `car` on an empty list.
+pub(super) fn evaluate_string_first(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string-first", arguments, 1, span)?;
+    match evaluate(&arguments[0], environment)? {
+        Value::String(ref text) => match text.chars().next() {
+            Some(character) => Ok(Value::String(Rc::from(character.to_string().as_str()))),
+            None => Err(LanguageError::new(
+                ErrorKind::Type,
+                "string-first expects a non-empty string · string-first очікує непорожній рядок · string-first erwartet eine nicht leere Zeichenkette",
+                span,
+            )),
+        },
+        _ => Err(LanguageError::new(
+            ErrorKind::Type,
+            "string-first expects a string · string-first очікує рядок · string-first erwartet eine Zeichenkette",
+            span,
+        )),
+    }
+}
+
+/// All but the first character — the string analogue of `cdr`. Errors on
+/// an empty string rather than silently returning one, the same way `car`
+/// errors on an empty list instead of returning `()`.
+pub(super) fn evaluate_string_rest(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string-rest", arguments, 1, span)?;
+    match evaluate(&arguments[0], environment)? {
+        Value::String(ref text) => {
+            let mut characters = text.chars();
+            if characters.next().is_none() {
+                return Err(LanguageError::new(
+                    ErrorKind::Type,
+                    "string-rest expects a non-empty string · string-rest очікує непорожній рядок · string-rest erwartet eine nicht leere Zeichenkette",
+                    span,
+                ));
+            }
+            Ok(Value::String(Rc::from(characters.as_str())))
+        }
+        _ => Err(LanguageError::new(
+            ErrorKind::Type,
+            "string-rest expects a string · string-rest очікує рядок · string-rest erwartet eine Zeichenkette",
+            span,
+        )),
+    }
+}
+
 pub(super) fn evaluate_cond(
     clauses: &[Expr],
     environment: &Environment,

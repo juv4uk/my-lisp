@@ -454,3 +454,51 @@ fn conformance_tests_from_json() {
         assert_eq!(actual, expected, "Failed on expression: {}", expr);
     }
 }
+
+// Minimal symbol/string introspection this project held off on for a long
+// time (CLAUDE.md: don't grow the Rust surface) — added deliberately when
+// lib/clips-import.my's Step 2 needed to strip CLIPS's `?` prefix off a
+// variable symbol, which is impossible from within my-lisp itself without
+// some way to look at a symbol's characters.
+
+#[test]
+fn symbol_to_string_and_back_round_trips() {
+    assert_eq!(eval("(symbol->string 'planet)").to_string(), "\"planet\"");
+    assert_eq!(
+        eval("(string->symbol (symbol->string 'planet))").to_string(),
+        "planet"
+    );
+}
+
+#[test]
+fn string_first_returns_a_one_character_string() {
+    assert_eq!(
+        eval("(string-first (symbol->string '?x))").to_string(),
+        "\"?\""
+    );
+}
+
+#[test]
+fn string_rest_drops_exactly_the_first_character() {
+    assert_eq!(
+        eval("(string-rest (symbol->string '?x))").to_string(),
+        "\"x\""
+    );
+}
+
+#[test]
+fn symbol_to_string_rejects_a_non_symbol() {
+    let error = eval_program("(symbol->string \"already a string\")", &mut Session::default())
+        .expect_err("expected a Type error");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn string_rest_rejects_an_empty_string() {
+    let error = eval_program(
+        r#"(string-rest (symbol->string (string->symbol "")))"#,
+        &mut Session::default(),
+    )
+    .expect_err("expected a Type error on an empty string");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
