@@ -601,3 +601,134 @@
 
 (defmacro retract-fact-jtms! (fact)
   (list 'def '*jtms-memory* (list 'retract-fact-jtms fact '*jtms-memory*)))
+
+; Step 6: a shared rule language with `lib/reason.my`. Steps 1-5c used a
+; forward-only `(pattern template)` shape, matched against exactly one
+; fact — different from `reason.my`'s `(head cond1 cond2 ...)` rules, which
+; already read naturally as "conclusion :- conditions" either direction:
+; backward-chaining proves `head` by proving every `cond`; forward-chaining
+; can just as well fire `head` once every `cond` is already a known fact.
+; A rule like `((grandparent (var x) (var y)) (parent (var x) (var z))
+; (parent (var z) (var y)))` — the exact literal `reason.rs`'s own tests
+; use — now runs unmodified through `run-multi` too.
+;
+; This needed real matching logic, not just a relabeling: firing a
+; multi-condition rule forward means finding a substitution that satisfies
+; *every* condition against *some* facts simultaneously (a conjunctive
+; join), not matching one pattern against one fact. `match-conditions`
+; threads a substitution across the condition list exactly the way
+; `prove-goals` in lib/reason.my threads one through a rule body — same
+; idea, just matching against an explicit fact list instead of recursing
+; into further rules.
+;
+; Deliberately additive: a third plain-fact-list layer (`fire-rule-multi`,
+; `fire-rules-multi`, `run-multi`), reusing `member?`/`append-new` from Step
+; 4. Doesn't touch or replace the Step 1-5a 2-element-rule layer, nor wire
+; into the Step 5b/5c truth-maintenance layers — those stay exactly as they
+; were.
+;
+; Крок 6: спільна мова правил із `lib/reason.my`. Кроки 1-5c
+; використовували форму `(pattern template)` лише для forward, зіставлену
+; рівно з одним фактом — інакше, ніж правила `reason.my` `(head cond1
+; cond2 ...)`, які й так природно читаються як "висновок :- умови" в обидва
+; боки: backward-chaining доводить `head`, доводячи кожен `cond`;
+; forward-chaining так само може застосувати `head`, щойно кожен `cond` уже
+; відомий факт. Правило на кшталт `((grandparent (var x) (var y)) (parent
+; (var x) (var z)) (parent (var z) (var y)))` — точно той самий літерал, що
+; й у тестах `reason.rs` — тепер незмінно працює й через `run-multi`.
+;
+; Це вимагало справжньої логіки зіставлення, не просто перейменування:
+; застосувати багатоумовне правило вперед означає знайти підстановку, що
+; задовольняє *кожну* умову проти *якихось* фактів одночасно (кон'юнктивне
+; з'єднання), не зіставлення одного шаблону з одним фактом.
+; `match-conditions` протягує підстановку через список умов так само, як
+; `prove-goals` у lib/reason.my протягує її через тіло правила — та сама
+; ідея, лише зіставлення з явним списком фактів замість рекурсії в подальші
+; правила.
+;
+; Свідомо адитивно: третій шар для плаского списку фактів
+; (`fire-rule-multi`, `fire-rules-multi`, `run-multi`), перевикористовує
+; `member?`/`append-new` з Кроку 4. Не чіпає й не замінює шар Кроку 1-5a з
+; 2-елементними правилами, і не підключається до шарів truth maintenance
+; Кроку 5b/5c — вони лишаються точно такими, як були.
+;
+; Schritt 6: eine gemeinsame Regelsprache mit `lib/reason.my`. Schritte
+; 1-5c verwendeten eine reine Forward-Form `(pattern template)`, gegen
+; genau einen Fakt abgeglichen — anders als `reason.my`s Regeln `(head
+; cond1 cond2 ...)`, die sich ohnehin natürlich als "Schlussfolgerung :-
+; Bedingungen" in beide Richtungen lesen: Backward-Chaining beweist `head`,
+; indem es jede `cond` beweist; Forward-Chaining kann `head` ebenso
+; auslösen, sobald jede `cond` bereits ein bekannter Fakt ist. Eine Regel
+; wie `((grandparent (var x) (var y)) (parent (var x) (var z)) (parent
+; (var z) (var y)))` — genau das Literal, das `reason.rs`s eigene Tests
+; verwenden — läuft nun unverändert auch durch `run-multi`.
+;
+; Das erforderte echte Abgleichslogik, keine bloße Umbenennung: eine
+; mehrbedingte Regel vorwärts auszulösen bedeutet, eine Substitution zu
+; finden, die *jede* Bedingung gleichzeitig gegen *irgendwelche* Fakten
+; erfüllt (ein konjunktiver Join), nicht ein Muster gegen einen Fakt
+; abzugleichen. `match-conditions` fädelt eine Substitution durch die
+; Bedingungsliste genauso, wie `prove-goals` in lib/reason.my sie durch
+; einen Regelrumpf fädelt — dieselbe Idee, nur gegen eine explizite
+; Faktenliste statt Rekursion in weitere Regeln.
+;
+; Bewusst additiv: eine dritte Schicht für flache Faktenlisten
+; (`fire-rule-multi`, `fire-rules-multi`, `run-multi`), die
+; `member?`/`append-new` aus Schritt 4 wiederverwendet. Berührt oder
+; ersetzt weder die 2-Element-Regel-Schicht aus Schritt 1-5a noch bindet
+; sie sich in die Truth-Maintenance-Schichten aus Schritt 5b/5c ein — die
+; bleiben genau, wie sie waren.
+(def match-condition-against-facts
+  (lambda (condition facts subst)
+    (cond
+      ((atom facts) '())
+      (t (let ((s (unify condition (car facts) subst)))
+           (cond
+             ((failed-subst? s) (match-condition-against-facts condition (cdr facts) subst))
+             (t (cons s (match-condition-against-facts condition (cdr facts) subst)))))))))
+
+(def match-conditions
+  (lambda (conditions facts subst)
+    (cond
+      ((atom conditions) (list subst))
+      (t (flatmap-conditions (car conditions) (cdr conditions) facts subst)))))
+
+(def flatmap-conditions
+  (lambda (condition remaining facts subst)
+    (flatmap-rest-conditions remaining facts (match-condition-against-facts condition facts subst))))
+
+(def flatmap-rest-conditions
+  (lambda (remaining facts substs)
+    (cond
+      ((atom substs) '())
+      (t (append (match-conditions remaining facts (car substs))
+                  (flatmap-rest-conditions remaining facts (cdr substs)))))))
+
+(def map-apply-head
+  (lambda (head substs)
+    (cond
+      ((atom substs) '())
+      (t (cons (apply-subst head (car substs)) (map-apply-head head (cdr substs)))))))
+
+; Fires a `(head cond1 cond2 ...)` rule against a fact list: finds every
+; substitution satisfying the whole condition conjunction, and returns one
+; derived `head` per substitution found (possibly the same fact more than
+; once, if several substitutions produce it — downstream dedup via
+; `append-new`/`member?` already handles that, same as Steps 1-5).
+(def fire-rule-multi
+  (lambda (rule facts)
+    (map-apply-head (car rule) (match-conditions (cdr rule) facts '()))))
+
+(def fire-rules-multi
+  (lambda (rules facts)
+    (cond
+      ((atom rules) '())
+      (t (append (fire-rule-multi (car rules) facts)
+                  (fire-rules-multi (cdr rules) facts))))))
+
+(def run-multi
+  (lambda (rules facts)
+    (let ((merged (append-new (fire-rules-multi rules facts) facts)))
+      (cond
+        ((= (length merged) (length facts)) facts)
+        (t (run-multi rules merged))))))

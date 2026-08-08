@@ -274,6 +274,49 @@ fn retract_fact_jtms_bang_keeps_a_fact_with_a_surviving_independent_justificatio
 }
 
 #[test]
+fn fire_rule_multi_requires_every_condition_to_match_before_firing() {
+    let source = r#"
+        (fire-rule-multi
+          (list (list 'grandparent (logic-var 'x) (logic-var 'y))
+                (list 'parent (logic-var 'x) (logic-var 'z))
+                (list 'parent (logic-var 'z) (logic-var 'y)))
+          (list '(parent alice bob) '(parent bob charlie)))
+    "#;
+    assert_eq!(eval_forward(source), "((grandparent alice charlie))");
+}
+
+#[test]
+fn fire_rule_multi_produces_nothing_when_one_condition_has_no_supporting_fact() {
+    let source = r#"
+        (fire-rule-multi
+          (list (list 'grandparent (logic-var 'x) (logic-var 'y))
+                (list 'parent (logic-var 'x) (logic-var 'z))
+                (list 'parent (logic-var 'z) (logic-var 'y)))
+          (list '(parent alice bob)))
+    "#;
+    assert_eq!(eval_forward(source), "()");
+}
+
+#[test]
+fn run_multi_derives_the_same_conclusion_reason_would_from_the_same_rule_literal() {
+    // The exact rule/fact literals crates/my-lisp/tests/reason.rs's
+    // rule_with_condition_backward_chaining uses for backward-chaining —
+    // proof that the two engines now genuinely share one rule language,
+    // not just similar-looking syntax.
+    let source = r#"
+        (run-multi
+          (list (list (list 'grandparent (logic-var 'x) (logic-var 'y))
+                      (list 'parent (logic-var 'x) (logic-var 'z))
+                      (list 'parent (logic-var 'z) (logic-var 'y))))
+          (list '(parent alice bob) '(parent bob charlie)))
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "((grandparent alice charlie) (parent alice bob) (parent bob charlie))"
+    );
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))
