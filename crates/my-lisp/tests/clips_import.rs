@@ -540,3 +540,48 @@ fn clips_import_file_imports_a_sixth_real_external_clp_file_with_duplicate_and_e
         "(((status 1 no-parent shore-1 shore-1 shore-1 shore-1 no-move)) ((opposite-of shore-1 shore-2)) ((opposite-of shore-2 shore-1)))"
     );
 }
+
+#[test]
+fn clips_import_file_imports_a_seventh_real_external_clp_file_at_scale() {
+    // zebra.clp (the classic "Who owns the Zebra?" logic puzzle) is
+    // another clean confirmation, not a new bug — but it's the first real
+    // file to exercise the importer at real scale and hit two genuinely
+    // new-in-combination edge cases without crashing:
+    //
+    // - `find-solution` has 25 conditions, all against the same
+    //   `(deftemplate avh (field a) (field v) (field h))` template (note
+    //   `field`, not `slot` — irrelevant to this importer, which only
+    //   ever reads the slot *name*, never the keyword in front of it),
+    //   most wrapped in CLIPS connective-constraint syntax (`~?n1`,
+    //   `&=(+ ?c2 1)`, `&:(or ...)`) already known to be read as odd
+    //   variable names or stray extra list elements rather than
+    //   evaluated — confirmed harmless at 25-conditions-on-one-template
+    //   scale, not just in isolation.
+    // - `startup` is the first *surviving* rule (RHS is `printout` +
+    //   `assert`, no retract/modify) whose left-hand side has zero
+    //   conditions at all — straight from the rule name to `=>`. Earlier
+    //   zero-condition rules (wine.clp's `start`, dilemma2.clp's
+    //   `start-it`) were always disqualified for an unrelated reason
+    //   before this path mattered.
+    //
+    // `print-solution` and `generate-combinations` both use `retract` and
+    // correctly contribute no clauses.
+    let source = r#"
+        (clips-import-file "../../tests/fixtures/zebra-external.clp")
+    "#;
+    let imported = eval_import(source);
+    assert!(
+        imported.contains("(value color red)"),
+        "expected startup's zero-condition rule to survive and produce a clause, got: {imported}"
+    );
+    assert!(
+        imported.contains("(solution pet zebra (var p5)) (avh nationality englishman (var n1))"),
+        "expected find-solution's 25-condition body to convert correctly, got: {imported}"
+    );
+    let source_count = format!("(length {source})");
+    assert_eq!(
+        eval_import(&source_count),
+        "50",
+        "expected 25 clauses from find-solution's 25 asserts plus 25 from startup's 25 asserts"
+    );
+}
