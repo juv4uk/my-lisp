@@ -687,15 +687,62 @@
              ((failed-subst? s) (match-condition-against-facts condition (cdr facts) subst))
              (t (cons s (match-condition-against-facts condition (cdr facts) subst)))))))))
 
+; Step 7: negation as failure — `(not (pattern))` conditions. This is the
+; capability `lib/clips-import.my`'s Step 5 flagged as missing and worked
+; around by *skipping* any CLIPS rule containing `not` rather than
+; importing a rule that would silently never fire. Same idea
+; `lib/reason.my`'s `prove-goal-state` already uses for backward-chaining:
+; a `not` succeeds exactly when its inner pattern *cannot* be matched
+; against the current facts (with the current substitution) — no new
+; bindings, `subst` passes through unchanged.
+;
+; Крок 7: negation as failure — умови `(not (шаблон))`. Це та можливість,
+; якої не вистачало Кроку 5 `lib/clips-import.my`, і яку обходили
+; *пропуском* будь-якого CLIPS-правила з `not`, замість імпорту правила,
+; що мовчки ніколи б не спрацювало. Та сама ідея, яку `prove-goal-state` у
+; `lib/reason.my` уже використовує для backward-chaining: `not` успішний
+; точно тоді, коли внутрішній шаблон *не вдається* зіставити з поточними
+; фактами (з поточною підстановкою) — жодних нових зв'язувань, `subst`
+; проходить незмінним.
+;
+; Schritt 7: Negation als Fehlschlag — `(not (muster))`-Bedingungen. Genau
+; die Fähigkeit, die Schritt 5 von `lib/clips-import.my` als fehlend
+; markierte und durch *Überspringen* jeder CLIPS-Regel mit `not` umging,
+; statt eine Regel zu importieren, die still nie feuern würde. Dieselbe
+; Idee, die `prove-goal-state` in `lib/reason.my` bereits für
+; Backward-Chaining nutzt: ein `not` gelingt genau dann, wenn sein inneres
+; Muster *nicht* gegen die aktuellen Fakten (mit der aktuellen
+; Substitution) abgeglichen werden kann — keine neuen Bindungen, `subst`
+; läuft unverändert durch.
+(def condition-is-not?
+  (lambda (condition)
+    (cond
+      ((atom condition) '())
+      ((atom (car condition)) (eq (car condition) 'not))
+      (t '()))))
+
+(def match-negated-condition
+  (lambda (inner-pattern facts subst)
+    (cond
+      ((atom (match-condition-against-facts inner-pattern facts subst)) (list subst))
+      (t '()))))
+
+(def match-one-condition
+  (lambda (condition facts subst)
+    (cond
+      ((condition-is-not? condition) (match-negated-condition (second condition) facts subst))
+      (t (match-condition-against-facts condition facts subst)))))
+
 ; Built directly on `thread-conjunction` (lib/unify.my) — the same
 ; conjunction-walking kernel `lib/reason.my`'s `prove-goals` threads a
 ; richer `(subst proofs)` state through. Here `try-one` is
-; `match-condition-against-facts`: for one condition, try every fact in the
-; explicit list rather than recursively searching further rules.
+; `match-one-condition`: for one condition, either match it against every
+; fact in the explicit list, or (for `not`) check that its inner pattern
+; matches none of them — rather than recursively searching further rules.
 (def match-conditions
   (lambda (conditions facts subst)
     (thread-conjunction conditions subst
-      (lambda (condition s) (match-condition-against-facts condition facts s)))))
+      (lambda (condition s) (match-one-condition condition facts s)))))
 
 (def map-apply-head
   (lambda (head substs)

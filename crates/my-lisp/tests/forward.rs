@@ -317,6 +317,40 @@ fn run_multi_derives_the_same_conclusion_reason_would_from_the_same_rule_literal
 }
 
 #[test]
+fn run_multi_supports_negation_as_failure() {
+    // Same bird/penguin example lib/reason.my's negation_as_failure test
+    // uses for backward-chaining — now proven forward too. tweety (an
+    // animal, not a penguin) becomes a bird; pingu (a penguin) does not.
+    let source = r#"
+        (run-multi
+          (list (list (list 'bird (logic-var 'x))
+                      (list 'animal (logic-var 'x))
+                      (list 'not (list 'penguin (logic-var 'x)))))
+          (list '(animal tweety) '(animal pingu) '(penguin pingu)))
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "((bird tweety) (animal tweety) (animal pingu) (penguin pingu))"
+    );
+}
+
+#[test]
+fn match_negated_condition_fails_when_the_inner_pattern_matches() {
+    let source = r#"
+        (match-negated-condition '(penguin pingu) (list '(penguin pingu)) '())
+    "#;
+    assert_eq!(eval_forward(source), "()");
+}
+
+#[test]
+fn match_negated_condition_succeeds_when_the_inner_pattern_does_not_match() {
+    let source = r#"
+        (match-negated-condition '(penguin tweety) (list '(penguin pingu)) '())
+    "#;
+    assert_eq!(eval_forward(source), "(())");
+}
+
+#[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
         (assert-fact! '(planet earth))
