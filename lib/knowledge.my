@@ -55,3 +55,55 @@
                           (list 'list (list 'quote module-name)
                                 (list 'append rules (list 'car (list 'cdr (list 'assoc (list 'quote module-name) '*knowledge-base*)))))
                           '*knowledge-base*)))))
+
+;; --- "atom as concept entry point" ------------------------------------
+;; A bare symbol like `earth` doesn't mean anything by itself — its meaning
+;; comes from the facts we've recorded around it. `describe` turns a symbol
+;; into an entry point into everything currently known about it: every fact
+;; in a module that mentions the symbol, collected as-is. Not a new kind of
+;; storage — the same flat facts already stored by `defmodule`/`tell-knowledge`,
+;; just queried from a symbol outward instead of from a goal downward.
+
+;; contains-atom? checks whether `item` occurs among the elements of a fact's
+;; argument list, e.g. `apple` in `(has-mass apple)`. `eq` only accepts atoms,
+;; so non-atom elements (like a `(var x)` term inside a rule head) are simply
+;; skipped rather than compared — `describe` only ever looks at facts, but
+;; this keeps the helper safe to reuse against rule heads too.
+(def contains-atom?
+  (lambda (item lst)
+    (cond
+      ((atom lst) '())
+      ((atom (car lst))
+       (cond
+         ((eq (car lst) item) t)
+         (t (contains-atom? item (cdr lst)))))
+      (t (contains-atom? item (cdr lst))))))
+
+;; is-fact? — a clause with an empty body, i.e. a fact rather than a rule
+;; with conditions. Facts are what `describe` reports; rules describe how
+;; new facts get derived, not what's directly known about one symbol.
+(def is-fact?
+  (lambda (clause)
+    (atom (cdr clause))))
+
+;; collect-facts-about walks a module's clause list, keeping every fact
+;; (not rule) whose head mentions `item`.
+(def collect-facts-about
+  (lambda (item clauses)
+    (cond
+      ((atom clauses) '())
+      (t (let ((clause (car clauses)))
+           (let ((head (car clause)))
+             (cond
+               ((eq (is-fact? clause) '()) (collect-facts-about item (cdr clauses)))
+               ((eq (contains-atom? item head) '()) (collect-facts-about item (cdr clauses)))
+               (t (cons head (collect-facts-about item (cdr clauses)))))))))))
+
+;; describe returns every known fact about `item` within `module-name`,
+;; or `Module-not-found` for consistency with `reason-in`.
+(def describe
+  (lambda (item module-name)
+    (let ((module (assoc module-name *knowledge-base*)))
+      (cond
+        ((atom module) 'Module-not-found)
+        (t (collect-facts-about item (car (cdr module))))))))

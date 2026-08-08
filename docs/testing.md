@@ -13,10 +13,10 @@ This repository has one test layer: the four Rust crates under `crates/`, run wi
 | `my-lisp` | `tests/meta_eval.rs` | 9 | `lib/meta-eval.my`, the metacircular evaluator: self-evaluation, `quote`, arithmetic/list-primitive dispatch, `cond`, lambda application (single- and multi-expression bodies), closures capturing free variables from a passed-in env, higher-order functions | ok |
 | `my-lisp` | `tests/unify.rs` | 10 | `lib/unify.my`, the unification primitive: atom matching, variable binding/resolution, structural (compound-term) unification, mismatch failure, transitive chained-variable resolution, same-variable unification creating no binding, full-query `apply-subst`, occurs-check | ok |
 | `my-lisp` | `tests/reason.rs` | 9 | `lib/reason.my`, the backward-chaining engine: simple facts, recursive rules, standardizing apart, negation as failure, proof trees and `explain-proof` trace output, `reason-explain`'s "provable" vs "cannot prove" distinction | ok |
-| `my-lisp` | `tests/knowledge.rs` | 3 | `lib/knowledge.my`, modular knowledge packages: `defmodule`, isolated per-module queries via `reason-in`, conflict detection in `tell-knowledge` | ok |
+| `my-lisp` | `tests/knowledge.rs` | 6 | `lib/knowledge.my`, modular knowledge packages: `defmodule`, isolated per-module queries via `reason-in`, conflict detection in `tell-knowledge`, `describe` collecting every known fact about a symbol (the "atom as concept entry point" idea) | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | literate-Markdown source-offset mapping | ok |
 | `my-lisp-wasm` | unit test (`src/lib.rs`) | 1 | the WASM adapter produces the same exact/single-pass evaluation struct as the native core | ok |
-| **Total** | | **113** | | **113 passed, 0 failed, 0 ignored** |
+| **Total** | | **116** | | **116 passed, 0 failed, 0 ignored** |
 
 The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 27 tests, not counted separately.
 
@@ -41,10 +41,10 @@ Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignor
 | `my-lisp` | `tests/meta_eval.rs` | 9 | `lib/meta-eval.my`, метациркулярний evaluator: self-evaluation, `quote`, диспетчеризацію арифметики/list-примітивів, `cond`, застосування lambda (одно- й багатовиразові тіла), замикання, що захоплюють вільні змінні з переданого env, функції вищого порядку | ok |
 | `my-lisp` | `tests/unify.rs` | 10 | `lib/unify.my`, примітив unification: зіставлення атомів, зв'язування/розв'язування змінних, структурну (composite-term) унікацію, провал при невідповідності, транзитивне розв'язування ланцюжка змінних, унікацію змінної з собою без зв'язку, повний `apply-subst` запиту, occurs-check | ok |
 | `my-lisp` | `tests/reason.rs` | 9 | `lib/reason.my`, рушій логічного висновування: прості факти, рекурсивні правила, standardizing apart, negation as failure, дерева доведень і трасування `explain-proof`, розрізнення "доведено"/"не можу довести" в `reason-explain` | ok |
-| `my-lisp` | `tests/knowledge.rs` | 3 | `lib/knowledge.my`, модульні пакети знань: `defmodule`, ізольовані запити по модулю через `reason-in`, виявлення конфліктів у `tell-knowledge` | ok |
+| `my-lisp` | `tests/knowledge.rs` | 6 | `lib/knowledge.my`, модульні пакети знань: `defmodule`, ізольовані запити по модулю через `reason-in`, виявлення конфліктів у `tell-knowledge`, `describe` — збір усіх відомих фактів про символ (ідея "атом як вхід у поняття") | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | зіставлення зміщень початкового коду literate-Markdown | ok |
 | `my-lisp-wasm` | unit-тест (`src/lib.rs`) | 1 | WASM-адаптер видає ту саму точну/однопрохідну структуру обчислення, що й нативне ядро | ok |
-| **Разом** | | **113** | | **113 пройдено, 0 провалів, 0 пропущено** |
+| **Разом** | | **116** | | **116 пройдено, 0 провалів, 0 пропущено** |
 
 Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 27 тестів набору, окремо не рахується.
 
@@ -69,10 +69,10 @@ Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausg
 | `my-lisp` | `tests/meta_eval.rs` | 9 | `lib/meta-eval.my`, der metazirkuläre Evaluator: Selbstauswertung, `quote`, Dispatch von Arithmetik-/Listen-Primitiven, `cond`, Lambda-Anwendung (ein- und mehrausdrucksweise Rümpfe), Closures, die freie Variablen aus einer übergebenen env erfassen, Funktionen höherer Ordnung | ok |
 | `my-lisp` | `tests/unify.rs` | 10 | `lib/unify.my`, das Unifikations-Primitiv: Atom-Abgleich, Variablenbindung/-auflösung, strukturelle (zusammengesetzte) Unifikation, Fehlschlag bei Nichtübereinstimmung, transitive Auflösung verketteter Variablen, Unifikation einer Variable mit sich selbst ohne Bindung, vollständiges `apply-subst` einer Anfrage, occurs-check | ok |
 | `my-lisp` | `tests/reason.rs` | 9 | `lib/reason.my`, die Inferenz-Engine: einfache Fakten, rekursive Regeln, Standardizing apart, negation as failure, Beweisbäume und `explain-proof`-Trace-Ausgabe, die Unterscheidung "beweisbar" vs. "nicht beweisbar" in `reason-explain` | ok |
-| `my-lisp` | `tests/knowledge.rs` | 3 | `lib/knowledge.my`, modulare Wissenspakete: `defmodule`, isolierte Anfragen pro Modul über `reason-in`, Konflikterkennung in `tell-knowledge` | ok |
+| `my-lisp` | `tests/knowledge.rs` | 6 | `lib/knowledge.my`, modulare Wissenspakete: `defmodule`, isolierte Anfragen pro Modul über `reason-in`, Konflikterkennung in `tell-knowledge`, `describe` sammelt alle bekannten Fakten über ein Symbol (die Idee "Atom als Konzept-Einstiegspunkt") | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | Offset-Zuordnung von literate-Markdown-Quellcode | ok |
 | `my-lisp-wasm` | Unit-Test (`src/lib.rs`) | 1 | der WASM-Adapter liefert dieselbe exakte/Single-Pass-Auswertungsstruktur wie der native Kern | ok |
-| **Gesamt** | | **113** | | **113 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
+| **Gesamt** | | **116** | | **116 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
 
 Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 27 Tests dieser Suite geprüft, nicht separat gezählt.
 

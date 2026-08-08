@@ -53,3 +53,31 @@ fn test_astronomy_module() {
     "#;
     assert_eq!(eval_knowledge(source), "(((s . 0) . sun) ((p . 0) . earth))");
 }
+
+#[test]
+fn test_describe_collects_every_fact_about_a_symbol() {
+    let source = r#"
+        (load-knowledge "../../knowledge/astronomy.my")
+        (describe 'earth 'astronomy)
+    "#;
+    // `earth` appears in one fact (`(planet earth)`); the `orbits` rule is not
+    // a fact, so it is excluded even though `earth` could satisfy it.
+    assert_eq!(eval_knowledge(source), "((planet earth))");
+}
+
+#[test]
+fn test_describe_unknown_module() {
+    let source = r#"
+        (describe 'earth 'biology)
+    "#;
+    assert_eq!(eval_knowledge(source), "Module-not-found");
+}
+
+#[test]
+fn test_describe_symbol_with_no_facts() {
+    let source = r#"
+        (load-knowledge "../../knowledge/astronomy.my")
+        (describe 'pluto 'astronomy)
+    "#;
+    assert_eq!(eval_knowledge(source), "()");
+}
