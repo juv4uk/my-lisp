@@ -1,0 +1,75 @@
+; A minimal backward-chaining inference engine (micro-Prolog), fulfilling the
+; "Advice Taker" vision: deriving new facts from known rules and facts.
+; Built directly on top of the unification primitive (`lib/unify.my`).
+;
+; Rules are structured as `(head . body)`.
+; A simple fact has no body: `((parent alice bob))`
+; A rule with conditions: `((grandparent (var x) (var y)) (parent (var x) (var z)) (parent (var z) (var y)))`
+; 
+; `reason` takes a `goal` and a list of `rules`, and returns a list of valid 
+; substitutions (bindings) that satisfy the goal, or an empty list if none.
+; Note: Variable renaming (standardizing apart) is omitted here for minimalism,
+; matching `unify`'s lack of occurs-check.
+;
+; Мінімальний рушій логічного висновку (micro-Prolog), що втілює бачення
+; "Advice Taker": виведення нових фактів з відомих правил та фактів.
+; Побудований безпосередньо поверх примітиву унікації (`lib/unify.my`).
+;
+; Правила структуровані як `(head . body)`.
+; Простий факт не має тіла: `((parent alice bob))`
+; Правило з умовами: `((grandparent (var x) (var y)) (parent (var x) (var z)) (parent (var z) (var y)))`
+;
+; `reason` приймає `goal` (запит) та список `rules` (правил), і повертає список 
+; валідних підстановок, що задовольняють запит, або порожній список.
+; Примітка: Перейменування змінних (standardizing apart) тут пропущено заради
+; мінімалізму, подібно до відсутності occurs-check в `unify`.
+;
+; Eine minimale Inferenz-Engine (Micro-Prolog), die die "Advice Taker"-Vision
+; erfüllt: Ableitung neuer Fakten aus bekannten Regeln und Fakten.
+; Direkt aufgebaut auf dem Unifikations-Primitiv (`lib/unify.my`).
+;
+; Regeln sind als `(head . body)` strukturiert.
+; Ein einfacher Fakt hat keinen Körper: `((parent alice bob))`
+; Eine Regel mit Bedingungen: `((grandparent (var x) (var y)) (parent (var x) (var z)) (parent (var z) (var y)))`
+;
+; `reason` nimmt ein `goal` (Ziel) und eine Liste von `rules` (Regeln) und gibt 
+; eine Liste gültiger Substitutionen zurück, die das Ziel erfüllen, oder eine leere Liste.
+; Hinweis: Variablenumbenennung (standardizing apart) wurde hier der Einfachheit halber 
+; weggelassen, passend zum fehlenden Occurs-Check in `unify`.
+
+(def reason
+  (lambda (goal rules)
+    (prove-goal goal rules '() rules)))
+
+; Proves a single goal against a list of rules, accumulating successful substitutions.
+(def prove-goal
+  (lambda (goal rules subst all-rules)
+    (cond
+      ((atom rules) '())
+      (t (append 
+           (prove-rule goal (car rules) subst all-rules)
+           (prove-goal goal (cdr rules) subst all-rules))))))
+
+; Tries to unify the goal with the head of a single rule, then proves its body.
+(def prove-rule
+  (lambda (goal rule subst all-rules)
+    (let ((new-subst (unify goal (car rule) subst)))
+      (cond
+        ((failed-subst? new-subst) '())
+        (t (prove-goals (cdr rule) new-subst all-rules))))))
+
+; Proves a conjunction (list) of goals sequentially, threading substitutions.
+(def prove-goals
+  (lambda (goals subst all-rules)
+    (cond
+      ((atom goals) (list subst))
+      (t (flatmap-prove-goals (cdr goals) all-rules (prove-goal (car goals) all-rules subst all-rules))))))
+
+; Helper to flatmap the proof of remaining goals over a list of current substitutions.
+(def flatmap-prove-goals
+  (lambda (remaining-goals all-rules substs)
+    (cond
+      ((atom substs) '())
+      (t (append
+           (prove-goals remaining-goals (car substs) all-rules)
+           (flatmap-prove-goals remaining-goals all-rules (cdr substs)))))))
