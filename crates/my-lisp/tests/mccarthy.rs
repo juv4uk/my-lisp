@@ -411,6 +411,10 @@ fn conformance_tests_from_json() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session)
         .expect("lib/core.my should load before conformance fixtures run");
+    eval_program(include_str!("../../../lib/unify.my"), &mut session)
+        .expect("lib/unify.my should load before conformance fixtures run");
+    eval_program(include_str!("../../../lib/reason.my"), &mut session)
+        .expect("lib/reason.my should load before conformance fixtures run");
 
     for fixture in fixtures {
         let expr = fixture["expr"].as_str().expect("fixture needs an \"expr\" string");

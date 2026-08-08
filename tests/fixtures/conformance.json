@@ -53,5 +53,13 @@
   { "expr": "(let* ((x 1) (y (+ x 1))) y)", "expected": "2" },
   { "expr": "(equal? '(1 (2 3) 4) '(1 (2 3) 4))", "expected": "t" },
   { "expr": "(equal? '(1 2) '(1 2 3))", "expected": "()" },
-  { "expr": "(eq (lambda (x) x) (lambda (x) x))", "expected": "()" }
+  { "expr": "(eq (lambda (x) x) (lambda (x) x))", "expected": "()" },
+  { "expr": "(unify 'a 'a '())", "expected": "()" },
+  { "expr": "(unify '(var x) 'a '())", "expected": "((x . a))" },
+  { "expr": "(unify '(var x) '(var x) '())", "expected": "()" },
+  { "expr": "(unify '(1 (var x) 3) '(1 2 3) '())", "expected": "((x . 2))" },
+  { "expr": "(unify '(1 (var x) 3) '(1 2 4) '())", "expected": "fail" },
+  { "expr": "(let ((rules '(((parent alice bob))))) (reason '(parent alice bob) rules))", "expected": "(())" },
+  { "expr": "(let ((rules '(((parent alice bob))))) (reason (list 'parent (logic-var 'x) 'bob) rules))", "expected": "(((x . alice)))" },
+  { "expr": "(let ((rules '(((bird (var x)) (animal (var x)) (not (penguin (var x)))) ((animal tweety)) ((animal pingu)) ((penguin pingu))))) (reason (list 'bird (logic-var 'x)) rules))", "expected": "((((x . 0) . tweety) (x var (x . 0))))" }
 ]

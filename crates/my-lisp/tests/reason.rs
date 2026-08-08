@@ -88,3 +88,18 @@ fn recursive_rule_standardizing_apart() {
     // alice -> bob -> charlie -> dave = 1 valid path
     assert_eq!(eval_reason(source), "1");
 }
+
+#[test]
+fn negation_as_failure() {
+    let source = r#"
+        (let ((rules '(
+                 ((bird (var x)) (animal (var x)) (not (penguin (var x))))
+                 ((animal tweety))
+                 ((animal pingu))
+                 ((penguin pingu))
+               )))
+             (reason (list 'bird (logic-var 'x)) rules))
+    "#;
+    // Only tweety is a bird because pingu is a penguin, so the 'not' fails for pingu.
+    assert_eq!(eval_reason(source), "((((x . 0) . tweety) (x var (x . 0))))");
+}

@@ -77,10 +77,20 @@
           (t (prove-goals (cdr renamed-rule) new-subst all-rules (+ depth 1))))))))
 
 ; Proves a conjunction (list) of goals sequentially, threading substitutions.
+; Supports Negation as Failure via `(not <goal>)`.
 (def prove-goals
   (lambda (goals subst all-rules depth)
     (cond
       ((atom goals) (list subst))
+      ((eq (caar goals) 'not)
+        (let ((not-result (prove-goal (cadr (car goals)) all-rules subst all-rules depth)))
+          (cond
+            ((atom not-result)
+              ; The inner goal failed, so `not` succeeds!
+              (flatmap-prove-goals (cdr goals) all-rules depth (list subst)))
+            (t
+              ; The inner goal succeeded, so `not` fails.
+              '()))))
       (t (flatmap-prove-goals (cdr goals) all-rules depth (prove-goal (car goals) all-rules subst all-rules depth))))))
 
 ; Helper to flatmap the proof of remaining goals over a list of current substitutions.
