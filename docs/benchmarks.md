@@ -2,7 +2,7 @@
 
 ## English
 
-The benchmark suite runs the same `.my` programs through the ClojureScript prototype and canonical Rust core. It measures parser throughput plus arithmetic, list recursion, direct recursion, and lexical closures. Each case receives 50 warm-up executions; the reported value is average microseconds per operation over 1,000 measured executions.
+The benchmark suite historically ran the same `.my` programs through the ClojureScript prototype and the canonical Rust core, to quantify the migration. The ClojureScript prototype has since been fully replaced (see `docs/language-core.md`), so the CLJS side of these numbers is a historical comparison point, not an active engine. It measures parser throughput plus arithmetic, list recursion, direct recursion, and lexical closures. Each case receives 50 warm-up executions; the reported value is average microseconds per operation over 1,000 measured executions.
 
 Run `npm run benchmark`. Set `MY_LISP_BENCH_ITERATIONS` to change the measured iteration count. Results depend on CPU, power mode, compiler version, background activity, and thermal state; compare engines from the same run instead of treating one machine's numbers as universal.
 
@@ -10,7 +10,7 @@ These are microbenchmarks, not product-performance promises. They deliberately i
 
 ## Українська
 
-Набір benchmark запускає однакові програми `.my` через ClojureScript-прототип і канонічне Rust-ядро. Він вимірює parser, арифметику, рекурсію списків, пряму рекурсію та лексичні замикання. Кожен випадок має 50 прогрівальних запусків; результат — середня кількість мікросекунд на операцію за 1 000 виміряних запусків.
+Набір benchmark історично запускав однакові програми `.my` через ClojureScript-прототип і канонічне Rust-ядро, щоб виміряти прогрес міграції. ClojureScript-прототип відтоді повністю замінено (див. `docs/language-core.md`), тож CLJS-частина цих чисел — історична точка порівняння, а не активний рушій. Він вимірює parser, арифметику, рекурсію списків, пряму рекурсію та лексичні замикання. Кожен випадок має 50 прогрівальних запусків; результат — середня кількість мікросекунд на операцію за 1 000 виміряних запусків.
 
 Запуск: `npm run benchmark`. Змінна `MY_LISP_BENCH_ITERATIONS` задає іншу кількість виміряних ітерацій. Результати залежать від CPU, режиму живлення, версії компілятора, фонової активності й температури; порівнюйте рушії з одного запуску, а не сприймайте числа одного комп’ютера як універсальні.
 
@@ -18,7 +18,7 @@ These are microbenchmarks, not product-performance promises. They deliberately i
 
 ## Deutsch
 
-Die Benchmark-Suite führt dieselben `.my`-Programme im ClojureScript-Prototyp und im kanonischen Rust-Kern aus. Gemessen werden Parser, Arithmetik, Listenrekursion, direkte Rekursion und lexikalische Closures. Jeder Fall erhält 50 Aufwärmausführungen; ausgegeben werden durchschnittliche Mikrosekunden pro Operation aus 1.000 gemessenen Ausführungen.
+Die Benchmark-Suite führte historisch dieselben `.my`-Programme im ClojureScript-Prototyp und im kanonischen Rust-Kern aus, um den Migrationsfortschritt zu messen. Der ClojureScript-Prototyp wurde inzwischen vollständig ersetzt (siehe `docs/language-core.md`), daher ist die CLJS-Seite dieser Zahlen ein historischer Vergleichspunkt und keine aktive Engine. Gemessen werden Parser, Arithmetik, Listenrekursion, direkte Rekursion und lexikalische Closures. Jeder Fall erhält 50 Aufwärmausführungen; ausgegeben werden durchschnittliche Mikrosekunden pro Operation aus 1.000 gemessenen Ausführungen.
 
 Start mit `npm run benchmark`. `MY_LISP_BENCH_ITERATIONS` ändert die Anzahl gemessener Iterationen. Ergebnisse hängen von CPU, Energiemodus, Compiler-Version, Hintergrundlast und Temperatur ab; Engines sollen innerhalb desselben Laufs verglichen werden, statt Zahlen eines Rechners als universell anzusehen.
 
