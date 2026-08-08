@@ -192,6 +192,33 @@ fn bootstrap_library_provides_list_utilities() {
 }
 
 #[test]
+fn bootstrap_library_provides_let_and_let_star() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    let run = |source: &str, session: &mut Session| {
+        eval_program(source, session).unwrap().value.to_string()
+    };
+    assert_eq!(run("(let ((x 1) (y 2)) (+ x y))", &mut session), "3");
+    assert_eq!(run("(let () 42)", &mut session), "42");
+    // Parallel, not sequential: y's value expression can't see x yet.
+    let parallel_shadowing_fails =
+        eval_program("(let ((x 1) (y x)) (+ x y))", &mut session).unwrap_err();
+    assert_eq!(parallel_shadowing_fails.kind, ErrorKind::UnknownSymbol);
+    // A let binding shadows an outer def without mutating it.
+    assert_eq!(run("(def z 100) (let ((z 1)) z)", &mut session), "1");
+    assert_eq!(run("z", &mut session), "100");
+    // let* threads each binding's value through to the ones after it.
+    assert_eq!(
+        run(
+            "(let* ((x 1) (y (+ x 1)) (z (+ y 1))) (list x y z))",
+            &mut session
+        ),
+        "(1 2 3)"
+    );
+    assert_eq!(run("(let* () 7)", &mut session), "7");
+}
+
+#[test]
 fn reader_supports_unicode_comments_and_quote_sugar() {
     let expressions = parse("; коментар\n'радіо").unwrap();
     assert_eq!(expressions.len(), 1);

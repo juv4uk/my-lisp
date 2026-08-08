@@ -48,5 +48,7 @@
   { "expr": "(lambda (x))", "error": "Arity" },
   { "expr": "(quote a b)", "error": "Arity" },
   { "expr": "(cons 1)", "error": "Arity" },
-  { "expr": "(/ 1 0)", "error": "InvalidForm" }
+  { "expr": "(/ 1 0)", "error": "InvalidForm" },
+  { "expr": "(let ((x 1) (y 2)) (+ x y))", "expected": "3" },
+  { "expr": "(let* ((x 1) (y (+ x 1))) y)", "expected": "2" }
 ]
