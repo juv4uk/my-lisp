@@ -261,3 +261,27 @@
     (cond
       ((atom forms) '())
       (t (append (clips-form->clauses (car forms)) (clips-import (cdr forms)))))))
+
+; Step 4: read a real CLIPS source file off disk and import it — the tool
+; this whole file exists to build. `read-file` (new Rust primitive, see
+; crates/my-lisp/src/eval/special_forms.rs's header comment on it) reads
+; the raw text; `read-all` (also new) parses it into every top-level form
+; as data, the multi-form counterpart to `read`; `clips-import` does the
+; rest exactly as it would for a caller-supplied quoted literal.
+;
+; Крок 4: прочитати справжній CLIPS-файл з диска й імпортувати його —
+; інструмент, заради якого існує весь цей файл. `read-file` (новий
+; Rust-примітив) читає сирий текст; `read-all` (теж новий) парсить його в
+; кожну форму верхнього рівня як дані — багатоформний відповідник `read`;
+; `clips-import` робить решту точно так само, як і для наданого викликачем
+; quoted-літералу.
+;
+; Schritt 4: eine echte CLIPS-Quelldatei von der Festplatte lesen und
+; importieren — das Werkzeug, für das diese ganze Datei existiert.
+; `read-file` (neues Rust-Primitiv) liest den rohen Text; `read-all`
+; (ebenfalls neu) parst ihn in jede Form der obersten Ebene als Daten — das
+; Mehrform-Gegenstück zu `read`; `clips-import` erledigt den Rest genau so
+; wie für ein vom Aufrufer bereitgestelltes Quote-Literal.
+(def clips-import-file
+  (lambda (path)
+    (clips-import (read-all (read-file path)))))

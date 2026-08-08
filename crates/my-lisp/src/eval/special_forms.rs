@@ -208,6 +208,77 @@ pub(super) fn evaluate_eval(
     evaluate(&expression, environment)
 }
 
+/// Step 4 of `lib/clips-import.my`: reading a *real* `.clp` file off disk
+/// rather than a caller-supplied quoted literal. `load` already reads a
+/// file, but evaluates every top-level form it finds — exactly wrong for
+/// CLIPS source, whose `defrule`/`=>` forms aren't meaningful my-lisp code
+/// to *run*, only to read as data (see this file's own header comment).
+/// `read-file` returns the raw text; `read-all` (below) parses text into
+/// every top-level form as data, the multi-form counterpart to `read`
+/// (which errors unless the string holds exactly one form). Deliberately
+/// a new, separate host-capability boundary — not bundled into `load` or
+/// `read` — since it changes what those two already-trusted forms can do.
+/// Крок 4 `lib/clips-import.my`: читання *справжнього* `.clp`-файлу з
+/// диска, а не наданого викликачем quoted-літералу. `load` уже читає
+/// файл, але виконує кожну знайдену форму верхнього рівня — саме
+/// неправильно для CLIPS-коду, чиї форми `defrule`/`=>` не є осмисленим
+/// my-lisp кодом для *виконання*, лише для читання як дані. `read-file`
+/// повертає сирий текст; `read-all` (нижче) парсить текст у кожну форму
+/// верхнього рівня як дані — багатоформний відповідник `read` (який падає,
+/// якщо рядок містить не рівно одну форму). Свідомо нова, окрема
+/// host-capability межа — не вбудована в `load` чи `read` — бо змінює те,
+/// що ці дві вже довірені форми можуть робити.
+/// Schritt 4 von `lib/clips-import.my`: eine *echte* `.clp`-Datei von der
+/// Festplatte lesen statt eines vom Aufrufer bereitgestellten
+/// Quote-Literals. `load` liest bereits eine Datei, wertet aber jede
+/// gefundene Form der obersten Ebene aus — genau falsch für CLIPS-Quellcode,
+/// dessen `defrule`/`=>`-Formen kein sinnvoller my-lisp-Code zum
+/// *Ausführen* sind, sondern nur zum Lesen als Daten. `read-file` gibt den
+/// rohen Text zurück; `read-all` (unten) parst Text in jede Form der
+/// obersten Ebene als Daten — das Mehrform-Gegenstück zu `read` (das
+/// fehlschlägt, sofern der String nicht genau eine Form enthält). Bewusst
+/// eine neue, separate Host-Capability-Grenze — nicht in `load` oder
+/// `read` eingebaut — da sie ändert, was diese beiden bereits vertrauten
+/// Formen können.
+pub(super) fn evaluate_read_file(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("read-file", arguments, 1, span)?;
+    let evaluated = evaluate(&arguments[0], environment)?;
+    let Value::String(ref path) = evaluated else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "read-file expects a string path · read-file очікує рядок-шлях · read-file erwartet einen String-Pfad",
+            span,
+        ));
+    };
+    let contents = read_file(path, span)?;
+    Ok(Value::String(Rc::from(contents.as_str())))
+}
+
+pub(super) fn evaluate_read_all(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("read-all", arguments, 1, span)?;
+    let evaluated = evaluate(&arguments[0], environment)?;
+    let Value::String(ref text) = evaluated else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "read-all expects a string · read-all очікує рядок · read-all erwartet eine Zeichenkette",
+            span,
+        ));
+    };
+    let expressions = crate::parse(text).map_err(|mut error| {
+        error.span = span;
+        error
+    })?;
+    Ok(Value::list(expressions.iter().map(quoted)))
+}
+
 pub(super) fn evaluate_load(
     arguments: &[Expr],
     environment: &Environment,

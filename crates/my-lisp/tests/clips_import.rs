@@ -129,6 +129,22 @@ fn clips_import_mixes_deffacts_and_defrule_into_one_usable_module() {
 }
 
 #[test]
+fn clips_import_file_reads_and_imports_a_real_clp_file() {
+    // tests/fixtures/astronomy.clp is a genuine CLIPS source file, not a
+    // caller-supplied quoted literal — the actual "connect to old
+    // symbolic-AI systems" tool this whole file exists to build.
+    let source = r#"
+        (def imported (clips-import-file "../../tests/fixtures/astronomy.clp"))
+        (defmodule imported-astro imported)
+        (forward-in 'imported-astro)
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "((orbits earth sun) (orbits mars sun) (star sun) (planet mars) (planet earth))"
+    );
+}
+
+#[test]
 fn clips_import_result_feeds_straight_into_defmodule() {
     // The whole point: no hand-editing step between import and use.
     let source = r#"

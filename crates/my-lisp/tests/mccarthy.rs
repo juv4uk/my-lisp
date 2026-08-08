@@ -487,6 +487,23 @@ fn string_rest_drops_exactly_the_first_character() {
 }
 
 #[test]
+fn read_all_parses_every_top_level_form_as_data() {
+    // Unlike `read`, which errors unless the string holds exactly one
+    // form, `read-all` returns every top-level form as a list of data.
+    assert_eq!(
+        eval("(read-all \"(a b) (c d) 5\")").to_string(),
+        "((a b) (c d) 5)"
+    );
+}
+
+#[test]
+fn read_all_rejects_a_non_string() {
+    let error = eval_program("(read-all '(a b))", &mut Session::default())
+        .expect_err("expected a Type error");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
 fn symbol_to_string_rejects_a_non_symbol() {
     let error = eval_program("(symbol->string \"already a string\")", &mut Session::default())
         .expect_err("expected a Type error");

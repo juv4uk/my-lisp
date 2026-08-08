@@ -150,6 +150,12 @@ fn evaluate_list(
         Some("load") => {
             special_forms::evaluate_load(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("read-file") => {
+            special_forms::evaluate_read_file(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("read-all") => {
+            special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("symbol?") => {
             special_forms::evaluate_symbol_predicate(arguments, environment, span).map(EvalStep::Value)
         }
