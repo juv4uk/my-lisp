@@ -75,6 +75,10 @@ Freeing every implementation to choose its own representation. `CONS = a BRAM ad
 
 **Свідчення сьогодні:** дискусія про `fpga-lisp` — 28-бітний регістр там vs довільна точність у Rust — саме та різниця, яку ця аксіома робить неважливою для контракту.
 
+**Межа (2026-08-09):** "спостережувана поведінка" означає — спостережувана *через власні примітиви мови*, ті, що тестує `conformance.my`, не через побічні канали, які хост міг би випадково розкрити (розташування в пам'яті, час виконання, ідентичність вказівника для замикань поза тим, що вже перевіряє сам `eq`). Наприклад, `(eq (lambda (x) x) (lambda (x) x))` дає `()` — не тому, що дві лямбди структурно різні, а тому, що `eq` для замикань перевіряє ідентичність, не структуру; це вже частина контракту (Tier 2, G1). Але якби реалізація додала спосіб побачити *адресу* замикання в пам'яті — G1 нічого про це не каже, бо це не спостережувано через мову.
+
+**Boundary (2026-08-09):** "observable behavior" means observable *through the language's own primitives*, the ones `conformance.my` tests — not through side channels a host might accidentally leak (memory layout, execution timing, pointer identity for closures beyond what `eq` already tests). For instance, `(eq (lambda (x) x) (lambda (x) x))` gives `()` — not because the two lambdas differ structurally, but because `eq` on closures tests identity, not structure; that's already part of the contract (Tier 2, G1). But if an implementation exposed a way to see a closure's memory address, G1 says nothing about that — it isn't observable through the language.
+
 ### G2 — Every value can be built from just two things: atoms and pairs · Кожне значення можна побудувати лише з двох речей: атомів і пар
 
 The whole data universe grows from one structural rule: `(a b c)` is sugar for `(a . (b . (c . ())))`. `cons`/`car`/`cdr` are the algebra that builds and takes apart this one structure, not a grab-bag of "list utilities."
@@ -83,11 +87,19 @@ The whole data universe grows from one structural rule: `(a b c)` is sugar for `
 
 **Перевірено сьогодні, не гіпотетично:** до 2026-08-09 ця можливість була порушена в самій реалізації — `'(p . 0)` читався reader'ом як звичайний трьохелементний список, не як `cons('p, 0)`, попри те що обидва друкувалися однаково. `read ∘ print ≠ identity` для частини простору значень. Виправлено тим самим днем (`ExprKind::Pair`, `crates/my-lisp/src/parser.rs`) — саме тому цю аксіому можна тепер писати з чистою совістю.
 
+**Межа, яку варто прочитати уважно (2026-08-09), — це саме те питання, яке поставив зовнішній рецензент.** G2 — не онтологічне твердження "кожне значення рантайму буквально є Atom | Pair". Rust-реалізація має `Number`/`Rational`/`String`/`Symbol`/`Closure`/`Macro` окремими варіантами `Value`, не побудованими з `Pair`. G2 — твердження про *структурну композицію*: складені значення (списки, дерева) будуються рівно через `cons`/`car`/`cdr`, і нічого понад цю алгебру не потрібно, щоб виразити будь-яку структуру. "Атом" у цій аксіомі означає "не пара" — будь-яке неподільне значення (число, символ, замикання) є атомом у цьому сенсі, незалежно від того, з чого воно складається всередині хоста. Слабше твердження, ніж перше прочитання, але саме те, яке насправді true і перевіряється фікстурами.
+
+**Boundary worth reading carefully (2026-08-09) — this is exactly the question an external reviewer raised.** G2 is not the ontological claim "every runtime value is literally `Atom | Pair`." The Rust implementation has `Number`/`Rational`/`String`/`Symbol`/`Closure`/`Macro` as separate `Value` variants, not built out of `Pair`. G2 is a claim about *structural composition*: composite values (lists, trees) are built through exactly `cons`/`car`/`cdr`, and nothing beyond that algebra is needed to express any structure. "Atom" in this axiom means "not a pair" — any indivisible value (a number, a symbol, a closure) is an atom in this sense, regardless of what it's made of inside the host. A weaker claim than the first reading suggests, but the one that's actually true and what the fixtures check.
+
 ### G3 — Program structure can be inspected, transformed, and built like any other value · Структуру програми можна оглядати, трансформувати й будувати, як і будь-яке інше значення
 
 Not just "support `'(+ 1 2)`" — the deeper claim: the syntactic structure of a program is a value of the language. `quote`, `read`, `eval`, macros, and a metacircular evaluator (`lib/meta-eval.my`) are all consequences of this, not separate features bolted on.
 
 Не просто "підтримати `'(+ 1 2)`" — глибше твердження: синтаксична структура програми є значенням мови. `quote`, `read`, `eval`, макроси й метациркулярний евалюатор (`lib/meta-eval.my`) — усе це наслідки цього факту, не окремі прибудовані можливості.
+
+**Межа (2026-08-09):** G3 — про *синтаксис програми* як дані (те, що `quote`/`read` бачать: список символів, чисел, вкладених списків), не про повну рефлексію в довільне рантайм-значення. Замикання й макроси друкуються непрозоро (`<lambda>`/`<macro>`) — не можна `car`/`cdr` замикання, щоб побачити його параметри чи тіло як дані. Це свідомо, не порушення: параметри/тіло вже були даними *до* створення замикання (у формі `lambda`, яку `quote`/`read` бачать без проблем) — G3 стосується структури коду, яку ще не обчислено, не внутрішньої будови вже застосованого значення.
+
+**Boundary (2026-08-09):** G3 is about *program syntax* as data (what `quote`/`read` see: a list of symbols, numbers, nested lists), not full reflection into an arbitrary runtime value. Closures and macros print opaquely (`<lambda>`/`<macro>`) — you can't `car`/`cdr` a closure to see its parameters or body as data. This is deliberate, not a violation: the parameters/body were already data *before* the closure was built (in the `lambda` form itself, which `quote`/`read` see just fine) — G3 concerns code structure not yet evaluated, not the internal shape of an already-applied value.
 
 ### G4 — A minimal core can grow an entire language inside itself · Мінімальне ядро може вирощувати всю мову всередині себе
 
@@ -107,11 +119,19 @@ Before reaching for a new primitive, ask what the existing core can already expr
 
 `map`/`filter`/`reduce` живуть у `lib/core.my`, не в Rust-ядрі, саме тому, що вже виразні через саме ядро — бібліотека, не фіксована частина машини. Дзеркальне відображення G4, застосоване до того, що *вже є*: G4 фільтрує нові додавання, G5 — постійна перевірка.
 
+**Межа (2026-08-09):** "можна виразити" ≠ "мусить бути перенесене". Арифметика *технічно* виразна через `cons`-клітинки (унарне/Пеано-кодування чисел), але свідомо лишається в Rust — перенесення порушило б дух S1 (точність), замінивши справжню bignum-арифметику абсурдною складністю, вдаваною "вищістю над межею реалізації", яка нічого корисного не дає. G5 — не обов'язок мінімізувати Rust-ядро заради самої мінімізації; це перевірка "чи вже виразне *прийнятним* способом", як і сталось із `list` (виразний через варіативний `lambda`, без жодних компромісів) — не універсальний тест "чи виразне хоч якось".
+
+**Boundary (2026-08-09):** "expressible" ≠ "must move." Arithmetic is *technically* expressible via `cons` cells (unary/Peano-encoded numbers), but deliberately stays in Rust — moving it would violate the spirit of S1 (precision), trading real bignum arithmetic for absurd complexity that's only nominally "living above the implementation boundary," not usefully so. G5 isn't an obligation to minimize the Rust core for its own sake; it's a check for "already expressible *acceptably*," the way `list` was (expressible via variadic `lambda`, with no tradeoffs) — not a blanket test of "expressible somehow."
+
 ### G6 — Conformance can be defined purely by observable behavior · Конформність можна визначити суто спостережуваною поведінкою
 
 Letting radically different machines — Rust, a future C core, `fpga-lisp` — all genuinely be the same language. A future HDL core needs no `Rc`, no heap shape matching Rust's, no shared evaluator code — only the same answers. This is `conformance.my`'s entire reason for existing.
 
 Це дозволяє геть різним машинам — Rust, майбутньому C-ядру, `fpga-lisp` — справді бути однією мовою. Майбутньому HDL-ядру не потрібен `Rc`, форма купи, що збігається з Rust-реалізацією, чи спільний код evaluator'а — лише ті самі відповіді. Це вся причина існування `conformance.my`.
+
+**Межа (2026-08-09):** "спостережувана поведінка" тут — та сама вузька межа, що й у G1 (через примітиви мови, не побічні канали). І окремо: G6 нічого не каже про *продуктивність*. HDL-ядро може бути на порядки повільнішим за Rust і лишатись повністю конформним — G6 стосується *яких відповідей* дає обчислення, не *за який час*. Це варто мати на увазі, коли `fpga-lisp` зрештою дійде до кроку 28: провал у швидкості — не провал конформності.
+
+**Boundary (2026-08-09):** "observable behavior" here is the same narrow scope as G1's (through the language's primitives, not side channels). Separately: G6 says nothing about *performance*. An HDL core can be orders of magnitude slower than Rust and remain fully conformant — G6 is about *which answers* a computation gives, not *how fast*. Worth keeping in mind once `fpga-lisp` reaches step 28: a speed shortfall isn't a conformance failure.
 
 ### G7 — The same expression can mean the same thing everywhere · Той самий вираз може означати те саме всюди
 
@@ -119,11 +139,19 @@ The unifying possibility all the others serve. Rust, a future C core, `fpga-lisp
 
 Об'єднувальна можливість, якій служать усі інші. Rust, майбутнє C-ядро, `fpga-lisp` — усе це реалізації однієї абстрактної системи, не окремі діалекти, що випадково поділяють назву.
 
+**Межа вже названа деінде (2026-08-09):** статус цієї аксіоми як не-до-кінця-доведеної гіпотези вже детально розібраний у принципі 4 й `PLAN.md` пункті 1 — не повторюю тут. Коротко: G7 сьогодні доведена на рівні окремих примітивів (`fpga-lisp` M01–M05), не на рівні повного `conformance.my`.
+
+**Boundary already named elsewhere (2026-08-09):** this axiom's status as a not-yet-fully-proven hypothesis is already worked through in principle 4 and `PLAN.md` item 1 — not repeated here. Short version: G7 is proven today at the primitive level (`fpga-lisp` M01–M05), not yet at the level of the full `conformance.my`.
+
 ### G8 — The absence of any element and the absence of truth can be the same value · Відсутність будь-якого елемента й відсутність істини можуть бути тим самим значенням
 
 Found as a real gap while walking `conformance.my` fixture-by-fixture (`docs/conformance-tier-map.md`, fixtures #10/#20) — `cond`/NIL semantics were already implied by the Tier 1 definition but never stated as an axiom. Resolved by doing what McCarthy himself did in Lisp 1.5, not what Scheme later did: `'()` is both the empty list and the canonical false — one value serves two roles, not two separate "nothing"-shaped values to track (`cond` selects the first clause whose test is not `'()`; `'()` itself is that clause's failure case). This is the same minimal-core instinct as G4, applied to values instead of primitives: fewer distinct concepts of "nothing," not more. Scheme's later split of `'()`/`#f` is a different, equally legitimate design — not a correction of an error — but it is *not* my-lisp's choice; my-lisp's own tests (`(cond (() 'wrong) (t 'right))`) already commit to McCarthy's original conflation, this axiom just says so out loud instead of leaving it implicit.
 
 Знайдено як реальну прогалину під час проходу по `conformance.my` фікстура за фікстурою (`docs/conformance-tier-map.md`, фікстури #10/#20) — семантика `cond`/NIL уже малась на увазі визначенням Рівня 1, але ніколи не була сформульована як аксіома. Вирішено так, як зробив сам МакКарті в Lisp 1.5, не так, як пізніше зробив Scheme: `'()` — водночас порожній список і канонічна хиба — одне значення служить двом ролям, а не два окремі "нічого"-подібні значення, які треба відстежувати (`cond` обирає першу гілку, чий тест не `'()`; сам `'()` — це випадок провалу цієї гілки). Це той самий інстинкт мінімального ядра, що й G4, застосований до значень, не примітивів: менше окремих понять "нічого", не більше. Пізніший розділ `'()`/`#f` у Scheme — інший, так само законний дизайн — не виправлення помилки — але це *не* вибір my-lisp; власні тести my-lisp (`(cond (() 'wrong) (t 'right))`) уже зобов'язуються перед оригінальним суміщенням МакКарті, ця аксіома лише каже це вголос замість того, щоб лишати неявним.
+
+**Межа, перевірена живою симуляцією (2026-08-09):** G8 — вузько про `'()` конкретно, не загальне правило "будь-яке порожнє значення хибне". Перевірено: `(cond (0 'truthy) (t 'falsy))` → `truthy` — число `0` **істинне** в my-lisp, не хибне (на відміну від C/Python/JS). `(eq "" '())` → `()` — порожній рядок не `eq` до `'()`. G8 стосується виключно списку/булевого домену: `'()` водночас "порожній список" і "хиба", і більше нічого не поділяє цю подвійну роль. `Value::is_truthy` у `crates/my-lisp/src/value.rs` — єдине джерело істини: хибні лише `Nil` і `Bool(false)`, все інше істинне.
+
+**Boundary, verified live (2026-08-09):** G8 is narrowly about `'()` specifically, not a general "any empty value is false" rule. Verified: `(cond (0 'truthy) (t 'falsy))` → `truthy` — the number `0` is **truthy** in my-lisp, not falsy (unlike C/Python/JS). `(eq "" '())` → `()` — an empty string is not `eq` to `'()`. G8 concerns exactly the list/boolean domain: `'()` is both "empty list" and "false," and nothing else shares that dual role. `Value::is_truthy` in `crates/my-lisp/src/value.rs` is the single source of truth: only `Nil` and `Bool(false)` are falsy, everything else is truthy.
 
 ## Safety axioms — what no conforming implementation may silently do · Безпекові аксіоми — чого жодна конформна реалізація не має права робити мовчки
 
@@ -141,11 +169,19 @@ Found as a real gap while walking `conformance.my` fixture-by-fixture (`docs/con
 
 `(car 'a)` не просто "не працює" — вона видає конкретний, названий вид провалу (`Type`). Формулювання повідомлення може відрізнятись між реалізаціями й мовами; контракт — саме *категорія*. `conformance.my` уже перевіряє рівно п'ять категорій: `Parse`, `UnknownSymbol`, `Arity`, `Type`, `InvalidForm`.
 
+**Реальна неузгодженість, знайдена сьогодні (2026-08-09), не вирішена тут:** `crates/my-lisp/src/error.rs`'s `ErrorKind` має рівно ці п'ять варіантів — жодного шостого. Але S1 і S3 (нижче) у власному тексті називають `NumericOverflow` і `OutOfMemory`, ніби це вже реальні, названі категорії — а їх немає в enum. Ці два імені зараз чисто описові (як мала б називатись майбутня категорія для обмеженої реалізації), не частина сьогоднішнього перевіреного контракту. Перш ніж ратифікувати S1/S3, варто або (а) додати ці категорії в `ErrorKind` і фікстуру, що їх перевіряє, або (б) переформулювати текст так, щоб не натякати на існування того, чого ще немає. П'ять категорій S2 — те, що `conformance.my` тестує *сьогодні*, не заявлене як назавжди замкнений список.
+
+**Real inconsistency found today (2026-08-09), not resolved here:** `crates/my-lisp/src/error.rs`'s `ErrorKind` has exactly these five variants — no sixth. But S1 and S3 (below) name `NumericOverflow` and `OutOfMemory` in their own prose as if they were already real, named categories — they aren't in the enum. Those two names are currently purely descriptive (what a future category for a bounded implementation *should* be called), not part of today's tested contract. Before ratifying S1/S3, either (a) add those categories to `ErrorKind` plus a fixture testing them, or (b) reword the text so it doesn't imply something exists that doesn't yet. S2's five categories are what `conformance.my` tests *today*, not asserted as a closed list forever.
+
 ### S3 — Never let a resource limit silently redefine an operation's meaning · Ніколи не дозволяти обмеженню ресурсу мовчки переозначити сенс операції
 
 4096 cons cells on an FPGA is a legitimate capability limit — the correct response is `OutOfMemory`, not a `cons` that quietly starts overwriting old cells. Bounded integers are legitimate — the correct response to overflow is a named error, not silent wraparound. No filesystem is a legitimate capability boundary, not a defect. **Bounded implementations are acceptable; incompatible semantics are not.**
 
 4096 cons-комірок на FPGA — законне обмеження можливостей: правильна відповідь — `OutOfMemory`, не `cons`, що мовчки починає перезаписувати старі комірки. Обмежені цілі числа — законні: правильна відповідь на переповнення — названа помилка, не тихе загортання (wraparound). Відсутність файлової системи — законна межа можливостей, не дефект. **Обмежені реалізації прийнятні; несумісна семантика — ні.**
+
+**Той самий `OutOfMemory`, що й у примітці до S2 (2026-08-09):** ця назва тут описова, не реальна категорія `ErrorKind` сьогодні — дивись примітку в S2 вище.
+
+**The same `OutOfMemory` flagged in S2's note (2026-08-09):** this name is descriptive here, not a real `ErrorKind` category today — see the note in S2 above.
 
 ## Deliberately left open — not decided here · Свідомо залишено відкритим — не вирішено тут
 
