@@ -634,3 +634,69 @@ fn constitution_json_stays_in_sync_with_conformance_json() {
         }
     }
 }
+
+/// Project principle 3 ("build the reasoning machine") deliberately has no
+/// G/S axiom counterpart in `docs/language-core-axioms.md` — an axiom is a
+/// claim about the language, this principle is a claim about why the
+/// project exists, and those are different categories on purpose. But that
+/// leaves nothing in the language contract itself that would notice if
+/// `lib/unify.my`/`lib/reason.my` were quietly deleted, or Tier 3 coverage
+/// thinned out over time — the erosion would only be caught by whoever
+/// happened to remember to look. This test is a process guard, not a
+/// semantic one: it doesn't test what `unify`/`reason` mean (that's
+/// `tests/unify.rs`/`tests/reason.rs`), only that they still exist, still
+/// load, still prove one real fact, and that Tier 3 hasn't silently shrunk
+/// below a floor. If the floor is intentionally being lowered, lower this
+/// assertion explicitly — don't let it drift unnoticed.
+/// Принцип проєкту 3 ("реалізувати розумну машину") свідомо не має
+/// відповідника серед G/S аксіом у `docs/language-core-axioms.md` — аксіома
+/// це твердження про мову, цей принцип — твердження про те, чому проєкт
+/// існує, і це різні категорії навмисно. Але це означає, що ніщо в самому
+/// мовному контракті не помітить, якщо `lib/unify.my`/`lib/reason.my` тихо
+/// видалять, або покриття Рівня 3 з часом зменшиться — ерозію впіймає лише
+/// той, хто випадково згадає подивитись. Цей тест — процесна гарантія, не
+/// семантична: він не перевіряє, що означають `unify`/`reason` (це роблять
+/// `tests/unify.rs`/`tests/reason.rs`), лише що вони й досі існують,
+/// завантажуються, доводять один реальний факт, і що Рівень 3 мовчки не
+/// просів нижче межі. Якщо межу свідомо знижують — знизити цю перевірку
+/// явно, не дати їй розмитись непоміченою.
+#[test]
+fn symbolic_reasoning_layer_stays_loaded_and_tested() {
+    use serde_json::Value as Json;
+
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session)
+        .expect("lib/core.my should load before the symbolic layer");
+    eval_program(include_str!("../../../lib/unify.my"), &mut session)
+        .expect("lib/unify.my should load — the symbolic reasoning layer must stay present");
+    eval_program(include_str!("../../../lib/reason.my"), &mut session)
+        .expect("lib/reason.my should load — the symbolic reasoning layer must stay present");
+
+    let result = eval_program(
+        "(let ((rules '(((parent alice bob))))) (reason '(parent alice bob) rules))",
+        &mut session,
+    )
+    .expect("reason should still actually prove a fact, not just load without error");
+    assert_eq!(
+        result.value.to_string(),
+        "((() (proved (parent alice bob) (parent alice bob) ())))"
+    );
+
+    let tier_map: Json = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/conformance-tier-map.json"
+    ))
+    .expect("conformance-tier-map.json should be valid JSON");
+    let tier3_count = tier_map
+        .as_array()
+        .expect("conformance-tier-map.json should be an array")
+        .iter()
+        .filter(|entry| entry.get("tier").and_then(Json::as_i64) == Some(3))
+        .count();
+    assert!(
+        tier3_count >= 20,
+        "Tier 3 (ECOSYSTEM CONFORMANCE, which includes unify/reason) fixture count dropped to \
+         {tier3_count} — project principle 3 names symbolic reasoning a project goal, not an \
+         optional add-on; if this floor is intentionally being lowered, lower this assertion \
+         explicitly instead of letting coverage drift down unnoticed"
+    );
+}
