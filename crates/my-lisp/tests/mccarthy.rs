@@ -526,3 +526,56 @@ fn string_rest_rejects_an_empty_string() {
     .expect_err("expected a Type error on an empty string");
     assert_eq!(error.kind, ErrorKind::Type);
 }
+
+// --- dotted pairs: read ∘ print must be identity ------------------------
+// Before this, `'(p . 0)` read as a *proper* 3-element list containing the
+// literal symbol `.` in the middle — not a real dotted pair — even though
+// the printer renders a genuine `(cons 'p 0)` with exactly that same text.
+// The two structures printed identically but were never `equal?`. This is
+// exactly the P2 axiom violation flagged while discussing
+// `my-lisp-constitution.json`: every value must round-trip through
+// read/print as itself, and a printed dotted pair must read back as one.
+
+// `equal?` lives in lib/core.my, not the primitive core `eval()` above
+// preloads — these two need it, so they load core.my themselves.
+fn eval_with_core(source: &str) -> Value {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(source, &mut session).unwrap().value
+}
+
+#[test]
+fn a_quoted_dotted_pair_literal_equals_the_cons_it_prints_as() {
+    assert_eq!(
+        eval_with_core("(equal? '(p . 0) (cons 'p 0))").to_string(),
+        "t"
+    );
+}
+
+#[test]
+fn read_of_a_printed_dotted_pair_reconstructs_the_same_structure() {
+    // The literal round-trip: `(cons 'p 0)` prints as the text "(p . 0)"
+    // (see value.rs's `write_pair`); feeding that exact text back through
+    // `read` must reconstruct something `equal?` to the original cons cell.
+    assert_eq!(
+        eval_with_core(r#"(equal? (read "(p . 0)") (cons 'p 0))"#).to_string(),
+        "t"
+    );
+}
+
+#[test]
+fn a_multi_element_dotted_list_reads_as_nested_pairs() {
+    assert_eq!(eval("'(a b . c)").to_string(), "(a b . c)");
+    assert_eq!(eval("(car '(a b . c))").to_string(), "a");
+    assert_eq!(eval("(car (cdr '(a b . c)))").to_string(), "b");
+    assert_eq!(eval("(cdr (cdr '(a b . c)))").to_string(), "c");
+}
+
+#[test]
+fn a_dotted_pair_used_directly_as_code_is_an_invalid_form() {
+    // Only meaningful as data (inside `quote`, or via `read`) — a dotted
+    // pair is not a valid call form, the same way `(1 2 3)` isn't.
+    let error = eval_program("(p . 0)", &mut Session::default())
+        .expect_err("expected an InvalidForm error");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+}

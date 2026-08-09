@@ -657,5 +657,6 @@ pub(super) fn quoted(expression: &Expr) -> Value {
         ExprKind::String(value) => Value::String(value.clone()),
         ExprKind::Symbol(symbol) => Value::Symbol(symbol.clone()),
         ExprKind::List(items) => Value::list(items.iter().map(quoted)),
+        ExprKind::Pair(head, tail) => Value::Pair(Rc::new(quoted(head)), Rc::new(quoted(tail))),
     }
 }

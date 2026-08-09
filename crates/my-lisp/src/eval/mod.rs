@@ -98,6 +98,11 @@ pub(crate) fn evaluate_step(
         }),
         ExprKind::List(items) if items.is_empty() => Ok(EvalStep::Value(Value::Nil)),
         ExprKind::List(items) => evaluate_list(items, environment, expression.span),
+        ExprKind::Pair(_, _) => Err(LanguageError::new(
+            ErrorKind::InvalidForm,
+            "a dotted pair is not executable code · dotted-пара не є виконуваним кодом · ein Dotted Pair ist kein ausführbarer Code",
+            expression.span,
+        )),
     }
 }
 

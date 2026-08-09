@@ -1,4 +1,23 @@
 use crate::{ErrorKind, Expr, ExprKind, LanguageError, Span};
+use std::rc::Rc;
+
+/// `true` for a token that is exactly the single character `.` — the reader
+/// marker for a dotted pair's tail, never a symbol name in ordinary use.
+fn is_dot_symbol(expr: &Expr) -> bool {
+    matches!(&expr.kind, ExprKind::Symbol(symbol) if &**symbol == ".")
+}
+
+/// Folds `items` right-to-left onto `tail`, building nested `ExprKind::Pair`
+/// nodes — `(a b . c)` becomes `Pair(a, Pair(b, c))`, the same shape `cons`
+/// builds at runtime. Every node shares the whole list's span; only the
+/// individual `items`/`tail` sub-expressions keep their own precise spans.
+fn dotted_list(items: Vec<Expr>, tail: Expr, start: usize, end: usize) -> Expr {
+    let span = Span { start, end };
+    items.into_iter().rev().fold(tail, |acc, item| Expr {
+        kind: ExprKind::Pair(Rc::new(item), Rc::new(acc)),
+        span,
+    })
+}
 
 pub fn parse(source: &str) -> Result<Vec<Expr>, LanguageError> {
     let mut parser = Parser { source, cursor: 0 };
@@ -76,7 +95,40 @@ impl Parser<'_> {
                         },
                     });
                 }
-                Some(_) => items.push(self.expression()?),
+                Some(_) => {
+                    let item = self.expression()?;
+                    if is_dot_symbol(&item) {
+                        if items.is_empty() {
+                            return Err(self.error(
+                                "unexpected '.' with nothing before it · неочікувана '.' без нічого перед нею · unerwartetes '.' ohne vorangehenden Ausdruck",
+                                item.span.start,
+                                item.span.end,
+                            ));
+                        }
+                        self.skip_ignored();
+                        if matches!(self.peek(), None | Some(')')) {
+                            return Err(self.error(
+                                "expected an expression after '.' · очікувався вираз після '.' · Ausdruck nach '.' erwartet",
+                                self.cursor,
+                                self.cursor,
+                            ));
+                        }
+                        let tail = self.expression()?;
+                        self.skip_ignored();
+                        return match self.peek() {
+                            Some(')') => {
+                                self.bump();
+                                Ok(dotted_list(items, tail, start, self.cursor))
+                            }
+                            _ => Err(self.error(
+                                "expected ')' after a dotted pair's tail · очікувалась ')' після хвоста dotted-пари · ')' nach dem Ende eines Dotted Pair erwartet",
+                                self.cursor,
+                                self.cursor,
+                            )),
+                        };
+                    }
+                    items.push(item);
+                }
                 None => {
                     return Err(self.error(
                         "unclosed list · незакритий список · nicht geschlossene Liste",
@@ -252,6 +304,55 @@ mod tests {
         };
         assert_eq!(items.len(), 3);
         assert!(matches!(&items[1].kind, ExprKind::List(inner) if inner.len() == 2));
+    }
+
+    #[test]
+    fn parses_a_dotted_pair() {
+        let ExprKind::Pair(head, tail) = parse_one("(1 . 2)").kind else {
+            panic!("expected a dotted pair");
+        };
+        assert!(matches!(head.kind, ExprKind::Number(n) if n == 1.0));
+        assert!(matches!(tail.kind, ExprKind::Number(n) if n == 2.0));
+    }
+
+    #[test]
+    fn parses_a_multi_element_dotted_list_as_nested_pairs() {
+        // `(a b . c)` folds right-to-left onto the tail, the same shape
+        // `cons` builds at runtime: `Pair(a, Pair(b, c))`.
+        let ExprKind::Pair(head, rest) = parse_one("(a b . c)").kind else {
+            panic!("expected a dotted pair");
+        };
+        assert!(matches!(&head.kind, ExprKind::Symbol(s) if &**s == "a"));
+        let ExprKind::Pair(inner_head, inner_tail) = &rest.kind else {
+            panic!("expected a nested dotted pair");
+        };
+        assert!(matches!(&inner_head.kind, ExprKind::Symbol(s) if &**s == "b"));
+        assert!(matches!(&inner_tail.kind, ExprKind::Symbol(s) if &**s == "c"));
+    }
+
+    #[test]
+    fn a_lone_dot_outside_a_list_is_an_ordinary_symbol() {
+        // Only special between two sub-expressions inside parentheses — a
+        // bare top-level `.` has nothing to be a separator between.
+        assert!(matches!(parse_one(".").kind, ExprKind::Symbol(s) if &*s == "."));
+    }
+
+    #[test]
+    fn a_dot_with_nothing_before_it_is_a_parse_error() {
+        let error = parse("(. 1)").unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Parse);
+    }
+
+    #[test]
+    fn a_dot_with_nothing_after_it_is_a_parse_error() {
+        let error = parse("(1 .)").unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Parse);
+    }
+
+    #[test]
+    fn a_dot_followed_by_more_than_one_tail_expression_is_a_parse_error() {
+        let error = parse("(1 . 2 3)").unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Parse);
     }
 
     #[test]
