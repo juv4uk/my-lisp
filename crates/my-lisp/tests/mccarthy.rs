@@ -579,3 +579,58 @@ fn a_dotted_pair_used_directly_as_code_is_an_invalid_form() {
         .expect_err("expected an InvalidForm error");
     assert_eq!(error.kind, ErrorKind::InvalidForm);
 }
+
+/// `my-lisp-constitution.json` is a *generated projection* over
+/// `tests/fixtures/conformance.json` (`scripts/build-constitution.py`
+/// regenerates it) — the same one-source-plus-projection shape
+/// `lib/knowledge.my`'s `*knowledge-journal*` uses for runtime state,
+/// applied here to documentation instead. This test is the CI-enforced
+/// half of that pattern: if someone appends a fixture to `conformance.json`
+/// and forgets to add a matching tag to `conformance-tier-map.json` and
+/// rerun the generator, the two files silently drift — this test turns
+/// that into a loud, immediate failure instead.
+/// `my-lisp-constitution.json` — це *згенерована проекція* над
+/// `tests/fixtures/conformance.json` (перегенеровує `scripts/build-constitution.py`)
+/// — та сама форма "одне джерело + проекція", яку `*knowledge-journal*`
+/// з `lib/knowledge.my` використовує для рантайм-стану, застосована тут до
+/// документації. Цей тест — примусова CI-половина того патерну: якщо хтось
+/// додасть фікстуру в `conformance.json` і забуде додати тег у
+/// `conformance-tier-map.json` та перегенерувати, ці два файли мовчки
+/// розійдуться — цей тест перетворює це на негайний, гучний провал.
+#[test]
+fn constitution_json_stays_in_sync_with_conformance_json() {
+    use serde_json::Value as Json;
+
+    let conformance: Json =
+        serde_json::from_str(include_str!("../../../tests/fixtures/conformance.json"))
+            .expect("conformance.json should be valid JSON");
+    let conformance = conformance
+        .as_array()
+        .expect("conformance.json should be an array");
+
+    let constitution: Json =
+        serde_json::from_str(include_str!("../../../my-lisp-constitution.json"))
+            .expect("my-lisp-constitution.json should be valid JSON");
+    let fixtures = constitution["fixtures"]
+        .as_array()
+        .expect("my-lisp-constitution.json should have a \"fixtures\" array");
+
+    assert_eq!(
+        conformance.len(),
+        fixtures.len(),
+        "my-lisp-constitution.json has a different fixture count than conformance.json — \
+         run `python3 scripts/build-constitution.py` to regenerate it"
+    );
+
+    for (i, (fact, tagged)) in conformance.iter().zip(fixtures).enumerate() {
+        for key in ["expr", "expected", "error", "mode"] {
+            assert_eq!(
+                fact.get(key),
+                tagged.get(key),
+                "fixture #{} field \"{key}\" drifted between conformance.json and \
+                 my-lisp-constitution.json — run `python3 scripts/build-constitution.py`",
+                i + 1
+            );
+        }
+    }
+}

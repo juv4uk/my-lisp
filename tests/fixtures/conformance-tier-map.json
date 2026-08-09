@@ -1,0 +1,392 @@
+[
+  {
+    "tier": 1,
+    "axioms": [
+      "G3"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G1"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G1"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G8"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S1"
+    ]
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S1"
+    ]
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S1"
+    ]
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S1"
+    ]
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S1"
+    ]
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S1"
+    ]
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G1"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G1"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G1"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G8"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 2,
+    "axioms": []
+  },
+  {
+    "tier": 2,
+    "axioms": []
+  },
+  {
+    "tier": 2,
+    "axioms": []
+  },
+  {
+    "tier": 2,
+    "axioms": []
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "G1",
+      "S1"
+    ]
+  },
+  {
+    "tier": 2,
+    "axioms": []
+  },
+  {
+    "tier": 2,
+    "axioms": []
+  },
+  {
+    "tier": 2,
+    "axioms": []
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "G3"
+    ]
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "G3"
+    ]
+  },
+  {
+    "tier": null,
+    "axioms": [],
+    "layer": "literate-markdown",
+    "note": "optional layer, not one of the three tiers — a future non-Rust core without literate-Markdown support may skip this fixture entirely"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "S2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "S2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "S2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "S2"
+    ],
+    "note": "symbol lookup is core semantics (tier 1 explicitly lists \"symbols\"); not actually borderline with tier 2"
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S2"
+    ]
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "S2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "S2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S2"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ]
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "G1"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 3,
+    "axioms": []
+  },
+  {
+    "tier": 3,
+    "axioms": []
+  },
+  {
+    "tier": 3,
+    "axioms": []
+  },
+  {
+    "tier": 3,
+    "axioms": []
+  },
+  {
+    "tier": 3,
+    "axioms": []
+  },
+  {
+    "tier": 3,
+    "axioms": []
+  },
+  {
+    "tier": 3,
+    "axioms": []
+  },
+  {
+    "tier": 3,
+    "axioms": []
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G2"
+    ]
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G2"
+    ],
+    "role": "constitutive"
+  },
+  {
+    "tier": 1,
+    "axioms": [
+      "G2"
+    ],
+    "role": "constitutive"
+  }
+]
