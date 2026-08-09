@@ -1,0 +1,6 @@
+# GitHub's Linguist doesn't know the `.my` extension, so my-lisp source
+# is otherwise invisible in the repo's language stats. `.my` is close
+# enough in spirit to Common Lisp to tag it that way rather than let it
+# vanish entirely.
+*.my linguist-language=Common Lisp
+*.lisp linguist-language=Common Lisp
