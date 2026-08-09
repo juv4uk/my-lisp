@@ -74,7 +74,7 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 | 66 | `(unify '(var x) '(f (var x)) '())` | 3 | — | occurs-check, principle 3 evidence — prevents building an infinite structure |
 | 67 | `(defmacro foo)` error `Arity` | 2 | S2 | `defmacro` validates arity like any other special form |
 | 68 | `(defmacro 5 (x) x)` error `InvalidForm` | 2 | S2 | `defmacro` validates its name is a symbol, not just its arity |
-| 69 | `(def count-down (lambda (n) (cond ((eq n 0) 'done) (t (count-down (- n 1)))))) (count-down 100000)` | 2 | S3 | 100,000-deep self-tail-call stays O(1) Rust stack; previously only `stack_safety.rs`, not the implementation-independent contract |
+| 69 | `(def count-down (lambda (n) (cond ((eq n 0) 'done) (t (count-down (- n 1)))))) (count-down 100000)` | 2 | S3 | 100,000-deep self-tail-call stays O(1) host-stack usage regardless of depth; previously only `stack_safety.rs` (Rust-specific), not the implementation-independent contract |
 | 70 | `(map (lambda (x) (+ x 1)) '())` | 3 | G5 | empty-list edge case, previously untested |
 | 71 | `(filter (lambda (x) (eq x 2)) '())` | 3 | G5 | empty-list edge case, previously untested |
 | 72 | `(reduce (lambda (acc x) (+ acc x)) 0 '())` | 3 | G5 | empty-list edge case — returns initial accumulator unchanged, previously untested |
@@ -83,7 +83,7 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 
 **2026-08-09, still later:** three fixtures appended (append-only, at the end, per the file's own convention) closing gaps found by opinion review: `unify`'s occurs-check (previously only covered by `unify.rs`'s Rust-level unit test, not the implementation-independent contract) and two `defmacro` error paths (arity, non-symbol name) — the macro system previously had zero error coverage in `conformance.json`.
 
-**2026-08-09, even later:** one more fixture appended closing the last gap from the same review — a 100,000-deep tail-recursive call, so stack-safety-under-recursion is now part of the implementation-independent contract too, not just `stack_safety.rs`'s Rust-only coverage.
+**2026-08-09, even later:** one more fixture appended closing the last gap from the same review — a 100,000-deep tail-recursive call, so stack-safety-under-recursion is now part of the implementation-independent contract too, not just `stack_safety.rs`'s Rust-only coverage. (Its note originally said "O(1) Rust stack" — corrected to "host-stack usage" after review found the contract's own explanatory text had quietly assumed a Rust reader, the one place Rust-specific wording had leaked outside an explanation into something closer to a claim.)
 
 **2026-08-09, last pass of the day:** three empty-list edge cases appended for `map`/`filter`/`reduce` — until now these had exactly one fixture each (happy path only), a real coverage gap next to `unify`/`reason`'s ~9 fixtures including a full proof tree. Not a claim that symbolic AI is over-tested — principle 3 names it as a project goal, so deeper coverage there is a deliberate choice — but `map`/`filter`/`reduce` having zero edge cases was an accident of "it just worked when written," not a decision. File is now 72 fixtures.
 

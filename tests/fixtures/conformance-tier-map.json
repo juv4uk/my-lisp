@@ -407,7 +407,7 @@
     "axioms": [
       "S3"
     ],
-    "note": "100,000-deep self-tail-call through the real evaluator stays O(1) Rust stack — previously only exercised by crates/my-lisp/tests/stack_safety.rs, not the implementation-independent contract; a non-tail-call-optimizing future core would fail here, not just in production"
+    "note": "100,000-deep self-tail-call through the real evaluator stays O(1) host-stack usage regardless of recursion depth — previously only exercised by crates/my-lisp/tests/stack_safety.rs (Rust-specific), not the implementation-independent contract; a non-tail-call-optimizing future core would fail here, not just in production"
   },
   {
     "tier": 3,
