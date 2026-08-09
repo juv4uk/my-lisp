@@ -103,10 +103,11 @@
     {
       "tier": 1,
       "axioms": [
-        "core-primitive"
+        "G3"
       ],
       "expr": "(quote radio)",
-      "expected": "radio"
+      "expected": "radio",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -114,7 +115,8 @@
         "G2"
       ],
       "expr": "(atom 'radio)",
-      "expected": "t"
+      "expected": "t",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -122,7 +124,8 @@
         "G2"
       ],
       "expr": "(atom '())",
-      "expected": "t"
+      "expected": "t",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -130,7 +133,8 @@
         "G2"
       ],
       "expr": "(atom '(radio antenna))",
-      "expected": "()"
+      "expected": "()",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -138,7 +142,8 @@
         "G1"
       ],
       "expr": "(eq 'radio 'radio)",
-      "expected": "t"
+      "expected": "t",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -146,7 +151,8 @@
         "G1"
       ],
       "expr": "(eq 'radio 'antenna)",
-      "expected": "()"
+      "expected": "()",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -154,7 +160,8 @@
         "G2"
       ],
       "expr": "(car '(radio antenna))",
-      "expected": "radio"
+      "expected": "radio",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -162,7 +169,8 @@
         "G2"
       ],
       "expr": "(cdr '(radio antenna))",
-      "expected": "(antenna)"
+      "expected": "(antenna)",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -170,7 +178,8 @@
         "G2"
       ],
       "expr": "(cons 'radio '(antenna))",
-      "expected": "(radio antenna)"
+      "expected": "(radio antenna)",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -178,7 +187,8 @@
         "G8"
       ],
       "expr": "(cond (() 'wrong) (t 'right))",
-      "expected": "right"
+      "expected": "right",
+      "role": "constitutive"
     },
     {
       "tier": 2,
@@ -234,7 +244,8 @@
         "G1"
       ],
       "expr": "(eq 3 3)",
-      "expected": "t"
+      "expected": "t",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -242,7 +253,8 @@
         "G1"
       ],
       "expr": "(eq 3 4)",
-      "expected": "()"
+      "expected": "()",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -250,7 +262,8 @@
         "G1"
       ],
       "expr": "(eq \"radio\" \"radio\")",
-      "expected": "t"
+      "expected": "t",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -258,7 +271,8 @@
         "G8"
       ],
       "expr": "(cond (() 'first) (() 'second) (t 'third))",
-      "expected": "third"
+      "expected": "third",
+      "role": "constitutive"
     },
     {
       "tier": 3,
@@ -430,7 +444,8 @@
         "S2"
       ],
       "expr": "(car 5)",
-      "error": "Type"
+      "error": "Type",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -438,7 +453,8 @@
         "S2"
       ],
       "expr": "(car '())",
-      "error": "Type"
+      "error": "Type",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -446,7 +462,8 @@
         "S2"
       ],
       "expr": "(eq '(1) '(2))",
-      "error": "Type"
+      "error": "Type",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -471,7 +488,8 @@
         "S2"
       ],
       "expr": "(quote a b)",
-      "error": "Arity"
+      "error": "Arity",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -479,7 +497,8 @@
         "S2"
       ],
       "expr": "(cons 1)",
-      "error": "Arity"
+      "error": "Arity",
+      "role": "constitutive"
     },
     {
       "tier": 2,
@@ -527,7 +546,8 @@
         "G1"
       ],
       "expr": "(eq (lambda (x) x) (lambda (x) x))",
-      "expected": "()"
+      "expected": "()",
+      "role": "constitutive"
     },
     {
       "tier": 3,
@@ -591,7 +611,8 @@
         "G2"
       ],
       "expr": "(car '(a b . c))",
-      "expected": "a"
+      "expected": "a",
+      "role": "constitutive"
     },
     {
       "tier": 1,
@@ -599,7 +620,9 @@
         "G2"
       ],
       "expr": "(cdr (cdr '(a b . c)))",
-      "expected": "c"
+      "expected": "c",
+      "role": "constitutive"
     }
-  ]
+  ],
+  "$roleField": "Each fixture may carry \"role\": \"constitutive\" — meaning it directly invokes one of McCarthy's seven original primitives (quote, atom, eq, car, cdr, cons, cond), including their documented error paths. A constitutive fixture doesn't just provide evidence that an axiom holds; it's one of the acts that makes the axiom true in the first place — remove the primitive and the axiom becomes false, not just unproven. Every other fixture (role omitted, i.e. \"derived\") demonstrates a consequence built on top of the constitutive primitives — removing it could in principle still leave the axiom provable some other way."
 }
