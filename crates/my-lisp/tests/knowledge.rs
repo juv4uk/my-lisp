@@ -149,3 +149,78 @@ fn test_usage_of_unrecorded_rule_is_zero() {
     "#;
     assert_eq!(eval_knowledge(source), "0");
 }
+
+// --- append-only fact journal --------------------------------------------
+// `*knowledge-base*` (a single snapshot per module, replaced outright on
+// every write) is gone; `*knowledge-journal*` is the source of truth now —
+// a flat, ever-growing list of `tell`/`retract` events, and a module's
+// clause list is a projection folded over it on demand.
+
+#[test]
+fn retract_knowledge_removes_a_fact_the_module_can_no_longer_prove() {
+    let source = r#"
+        (defmodule zoo '(((has-fur cat)) ((has-fur dog))))
+        (retract-knowledge zoo '((has-fur cat)))
+        (reason-in 'zoo '(has-fur cat))
+    "#;
+    assert_eq!(eval_knowledge(source), "()");
+}
+
+#[test]
+fn retract_knowledge_leaves_the_rest_of_the_module_intact() {
+    let source = r#"
+        (defmodule zoo '(((has-fur cat)) ((has-fur dog))))
+        (retract-knowledge zoo '((has-fur cat)))
+        (car (car (reason-in 'zoo '(has-fur dog))))
+    "#;
+    assert_eq!(eval_knowledge(source), "()");
+}
+
+#[test]
+fn a_module_retracted_down_to_nothing_is_still_a_known_module() {
+    // This is exactly the distinction `module-known?` exists to preserve:
+    // "no `defmodule`/`tell-knowledge` ever named this module" must read
+    // differently from "this module existed, but everything it was told
+    // has since been retracted" — the second case still isn't
+    // `Module-not-found`, it's a known module with an empty clause list.
+    let source = r#"
+        (defmodule zoo '(((has-fur cat))))
+        (retract-knowledge zoo '((has-fur cat)))
+        (reason-in 'zoo '(has-fur cat))
+    "#;
+    assert_eq!(eval_knowledge(source), "()");
+    let describe_source = r#"
+        (defmodule zoo '(((has-fur cat))))
+        (retract-knowledge zoo '((has-fur cat)))
+        (describe 'cat 'zoo)
+    "#;
+    // `describe` returning `()` (an empty fact list, not the symbol
+    // `Module-not-found`) is the proof the module is still known.
+    assert_eq!(eval_knowledge(describe_source), "()");
+}
+
+#[test]
+fn defmodule_called_twice_for_the_same_name_accumulates_instead_of_replacing() {
+    // A deliberate behavior change from the old snapshot model, where a
+    // second `defmodule` for the same name silently shadowed the first:
+    // an append-only journal never discards what an earlier call told it,
+    // so both calls' clauses are visible together.
+    let source = r#"
+        (defmodule zoo '(((has-fur cat))))
+        (defmodule zoo '(((has-fur dog))))
+        (list (car (car (reason-in 'zoo '(has-fur cat))))
+              (car (car (reason-in 'zoo '(has-fur dog)))))
+    "#;
+    assert_eq!(eval_knowledge(source), "(() ())");
+}
+
+#[test]
+fn tell_knowledge_and_defmodule_contributions_to_the_same_module_both_survive() {
+    let source = r#"
+        (defmodule zoo '(((has-fur cat))))
+        (tell-knowledge zoo '(((has-fur dog))))
+        (list (car (car (reason-in 'zoo '(has-fur cat))))
+              (car (car (reason-in 'zoo '(has-fur dog)))))
+    "#;
+    assert_eq!(eval_knowledge(source), "(() ())");
+}

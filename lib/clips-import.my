@@ -210,8 +210,8 @@
              (clips-templates-from-forms (cdr forms))))
       (t (clips-templates-from-forms (cdr forms))))))
 
-; `eq`-based, same shape as lib/knowledge.my's `assoc` — kept local rather
-; than depending on that file loading first, since clips-import.my has
+; `eq`-based association-list lookup, kept local rather than depending on
+; any other `lib/*.my` file loading first, since clips-import.my has
 ; otherwise only ever needed lib/core.my.
 (def clips-assoc
   (lambda (key alist)

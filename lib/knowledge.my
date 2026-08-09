@@ -1,23 +1,133 @@
 ;; knowledge.my - A module system for the Lisp Knowledge Representation
 
-;; assoc looks up a key in an association list, returning the key-value pair or '()
-(def assoc
-  (lambda (key alist)
-    (cond
-      ((atom alist) '())
-      ((eq key (car (car alist))) (car alist))
-      ('t (assoc key (cdr alist))))))
+;; --- append-only fact journal --------------------------------------------
+;; Earlier, `*knowledge-base*` held one snapshot per module — every
+;; `defmodule`/`tell-knowledge` call replaced it outright. That snapshot
+;; could never answer "when did the module learn this?", and there was no
+;; way to take a fact back at all (`retract-knowledge` didn't exist).
+;; `*knowledge-journal*` replaces it as the single source of truth: a
+;; flat, ever-growing list of `(tell module-name clause)`/`(retract
+;; module-name clause)` events, newest first (the same `cons`-prepend
+;; convention `*working-memory*`/`*usage-counts*` already use elsewhere in
+;; this project). No timestamps — my-lisp has no clock primitive, and
+;; inventing one here would be exactly the kind of unearned precision
+;; McCarthy principle 6 warns against; list order (oldest to newest once
+;; reversed) is the only ordering this journal actually has, and it's
+;; honest about that. A module's current clause list is now a *projection*
+;; over the journal (`module-clauses-now`), computed on demand, not stored
+;; anywhere directly.
+;;
+;; Раніше `*knowledge-base*` тримав один знімок на модуль — кожен виклик
+;; `defmodule`/`tell-knowledge` повністю його переписував. Той знімок
+;; ніколи не міг відповісти "коли модуль це дізнався?", і не було способу
+;; забрати факт назад узагалі (`retract-knowledge` не існував).
+;; `*knowledge-journal*` замінює його як єдине джерело правди: плаский,
+;; постійно зростаючий список подій `(tell module-name clause)`/`(retract
+;; module-name clause)`, найновіші спершу (той самий `cons`-паттерн, що й
+;; `*working-memory*`/`*usage-counts*` уже використовують деінде в
+;; проєкті). Без часових міток — my-lisp не має примітиву годинника, і
+;; вигадати його тут було б саме тією невиправданою точністю, проти якої
+;; застерігає принцип 6 МакКарті; порядок списку (від найстарішого до
+;; найновішого після розвороту) — єдиний порядок, який цей журнал
+;; насправді має, і це чесно визнано. Поточний список clause модуля тепер
+;; — *проекція* журналу (`module-clauses-now`), обчислена на вимогу, а не
+;; збережена десь напряму.
+;;
+;; Früher hielt `*knowledge-base*` einen Schnappschuss pro Modul — jeder
+;; `defmodule`/`tell-knowledge`-Aufruf ersetzte ihn vollständig. Dieser
+;; Schnappschuss konnte nie beantworten "wann hat das Modul das gelernt?",
+;; und es gab keine Möglichkeit, einen Fakt überhaupt zurückzunehmen
+;; (`retract-knowledge` existierte nicht). `*knowledge-journal*` ersetzt
+;; ihn als einzige Quelle der Wahrheit: eine flache, stetig wachsende
+;; Liste von `(tell module-name clause)`/`(retract module-name
+;; clause)`-Ereignissen, neueste zuerst (dieselbe `cons`-Präfix-Konvention,
+;; die `*working-memory*`/`*usage-counts*` anderswo im Projekt bereits
+;; verwenden). Keine Zeitstempel — my-lisp hat kein Uhr-Primitiv, und eines
+;; hier zu erfinden wäre genau die unverdiente Präzision, vor der
+;; McCarthy-Prinzip 6 warnt; die Listenreihenfolge (älteste zuerst nach
+;; Umkehrung) ist die einzige Ordnung, die dieses Journal tatsächlich hat,
+;; und das wird ehrlich anerkannt. Die aktuelle Clause-Liste eines Moduls
+;; ist jetzt eine *Projektion* über das Journal (`module-clauses-now`), auf
+;; Anfrage berechnet, nicht irgendwo direkt gespeichert.
+(def *knowledge-journal* '())
 
-;; Define a global registry for modules (an association list mapping module names to rules)
-;; Using def var to store a global state that can be updated
-(def *knowledge-base* '())
+;; clauses->tell-events turns a plain clause list into one `tell` event per
+;; clause — ordinary my-lisp, not a macro, since nothing here needs the
+;; top-level `def`-rebinding trick; only the macros below (which actually
+;; grow `*knowledge-journal*`) do.
+(def clauses->tell-events
+  (lambda (module-name clauses)
+    (map (lambda (clause) (list 'tell module-name clause)) clauses)))
 
-;; defmodule registers a list of rules under a specific module name
+;; defmodule registers a list of clauses under a specific module name —
+;; same public shape as before, but now expands to pushing one `tell`
+;; event per clause onto `*knowledge-journal*` instead of replacing a
+;; snapshot. A behavior change worth naming explicitly, not hiding: calling
+;; `defmodule` twice for the same name used to silently shadow the first
+;; call; now it *accumulates* both calls' clauses, which is the more
+;; honest reading of "append-only" — nothing an earlier call told the
+;; journal is ever quietly discarded by a later one.
 (defmacro defmodule (name rules)
-  (list 'def '*knowledge-base*
+  (list 'def '*knowledge-journal*
+        (list 'append
+              (list 'clauses->tell-events (list 'quote name) rules)
+              '*knowledge-journal*)))
+
+;; retract-knowledge is the capability the journal actually earns that the
+;; old snapshot model never had at all: taking one clause back out of a
+;; module. `clause` is left unquoted, the same convention `defmodule`'s
+;; `rules` follows, so the caller decides whether to pass a literal or a
+;; variable holding the clause to remove.
+(defmacro retract-knowledge (module-name clause)
+  (list 'def '*knowledge-journal*
         (list 'cons
-              (list 'list (list 'quote name) rules)
-              '*knowledge-base*)))
+              (list 'list (list 'quote 'retract) (list 'quote module-name) clause)
+              '*knowledge-journal*)))
+
+;; module-journal-events filters the whole journal down to one module's
+;; own events, preserving their relative (newest-first) order.
+(def module-journal-events
+  (lambda (module-name journal)
+    (cond
+      ((atom journal) '())
+      ((equal? (second (car journal)) module-name)
+       (cons (car journal) (module-journal-events module-name (cdr journal))))
+      (t (module-journal-events module-name (cdr journal))))))
+
+;; module-known? distinguishes "no module by this name was ever told
+;; anything" from "the module exists but every clause it was ever told has
+;; since been retracted" — the second case must still project to an empty
+;; clause list, not `Module-not-found`. Kept as its own check (not folded
+;; into `module-clauses-now`) precisely so callers can tell those two
+;; apart, the same distinction `reason-in`/`forward-in`/`describe` already
+;; promised before the journal existed.
+(def module-known?
+  (lambda (module-name)
+    (cond
+      ((atom (module-journal-events module-name *knowledge-journal*)) '())
+      (t t))))
+
+;; apply-journal-event folds one event onto a running clause list: `tell`
+;; adds the clause, `retract` removes one matching occurrence — reusing
+;; `lib/forward.my`'s own `retract-fact` (`equal?`-based, removes the first
+;; match) rather than writing a second copy of the same logic.
+(def apply-journal-event
+  (lambda (clauses event)
+    (cond
+      ((eq (car event) 'tell) (cons (third event) clauses))
+      ((eq (car event) 'retract) (retract-fact (third event) clauses))
+      (t clauses))))
+
+;; module-clauses-now is the projection itself: a module's events, put
+;; back into chronological (oldest-first) order and folded left to right
+;; through `apply-journal-event`. Every reader of a module's clauses
+;; (`reason-in`, `forward-in`, `describe`) goes through this now, instead
+;; of reading a stored snapshot — the journal is the only thing actually
+;; stored.
+(def module-clauses-now
+  (lambda (module-name)
+    (reduce apply-journal-event '()
+            (reverse (module-journal-events module-name *knowledge-journal*)))))
 
 ;; load-knowledge reads a file and loads its module definition
 (defmacro load-knowledge (module-name)
@@ -26,10 +136,9 @@
 ;; reason-in queries a specific module by name
 (def reason-in
   (lambda (module-name goal)
-    (let ((module (assoc module-name *knowledge-base*)))
-      (cond
-        ((atom module) 'Module-not-found)
-        ('t (reason goal (car (cdr module))))))))
+    (cond
+      ((module-known? module-name) (reason goal (module-clauses-now module-name)))
+      (t 'Module-not-found))))
 
 ;; --- forward-chaining integration (lib/forward.my) ----------------------
 ;; `reason-in` asks a targeted question of a module (backward-chaining:
@@ -69,35 +178,40 @@
 ;; Fixpunkt.
 (def forward-in
   (lambda (module-name)
-    (let ((module (assoc module-name *knowledge-base*)))
-      (cond
-        ((atom module) 'Module-not-found)
-        (t (run-multi (car (cdr module)) '()))))))
+    (cond
+      ((module-known? module-name) (run-multi (module-clauses-now module-name) '()))
+      (t 'Module-not-found))))
 
-;; check-conflict checks if the negation of the first rule's head is provable
+;; check-conflict checks if the negation of the first rule's head is
+;; provable. Retract is deliberately exempt from this check (per explicit
+;; agreement): conflict detection guards against *adding* contradictory
+;; information, not against *removing* it — taking a clause back out can
+;; never itself contradict anything already known.
 (def check-conflict
   (lambda (module-name rules)
-    (let ((existing (assoc module-name *knowledge-base*)))
-      (cond
-        ((atom existing) '())
-        ('t (let ((head (car (car rules))))
-              (let ((proofs (reason-in module-name (list 'not head))))
-                (cond
-                  ((atom proofs) '())
-                  (t t)))))))))
+    (cond
+      ((module-known? module-name)
+       (let ((head (car (car rules))))
+         (let ((proofs (reason-in module-name (list 'not head))))
+           (cond
+             ((atom proofs) '())
+             (t t)))))
+      (t '()))))
 
-;; tell-knowledge adds new rules to a module, creating it if it doesn't exist
-;; Uses macro expansion to modify the global *knowledge-base*
+;; tell-knowledge adds new clauses to a module, creating it if it doesn't
+;; exist yet — same conflict check as before, but on success it now pushes
+;; `tell` events onto `*knowledge-journal*` instead of rebuilding a
+;; snapshot; `module-clauses-now` picks up every clause any `tell-knowledge`
+;; or `defmodule` call for this module ever contributed, in order.
 (defmacro tell-knowledge (module-name rules)
   (list 'cond
         (list (list 'check-conflict (list 'quote module-name) rules)
               (list 'quote 'Conflict-detected))
         (list 't
-              (list 'def '*knowledge-base*
-                    (list 'cons
-                          (list 'list (list 'quote module-name)
-                                (list 'append rules (list 'car (list 'cdr (list 'assoc (list 'quote module-name) '*knowledge-base*)))))
-                          '*knowledge-base*)))))
+              (list 'def '*knowledge-journal*
+                    (list 'append
+                          (list 'clauses->tell-events (list 'quote module-name) rules)
+                          '*knowledge-journal*)))))
 
 ;; --- "atom as concept entry point" ------------------------------------
 ;; A bare symbol like `earth` doesn't mean anything by itself — its meaning
@@ -146,10 +260,9 @@
 ;; or `Module-not-found` for consistency with `reason-in`.
 (def describe
   (lambda (item module-name)
-    (let ((module (assoc module-name *knowledge-base*)))
-      (cond
-        ((atom module) 'Module-not-found)
-        (t (collect-facts-about item (car (cdr module))))))))
+    (cond
+      ((module-known? module-name) (collect-facts-about item (module-clauses-now module-name)))
+      (t 'Module-not-found))))
 
 ;; --- usage tracking (which knowledge is actually alive) ----------------
 ;; A per-fact/per-rule usage counter, cheap enough to make "is this module
