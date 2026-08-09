@@ -209,7 +209,8 @@
         historyIndex = -1;
         printLine("my-lisp> " + line, "line-input");
 
-        const candidateSource = committed.join("\n") + "\n" + line;
+        const committedSource = committed.join("\n") + "\n";
+        const candidateSource = committedSource + line;
         try {
           const evaluation = wasmModule.evaluate(candidateSource, "my-lisp");
           for (const out of evaluation.output || []) {
@@ -222,8 +223,42 @@
           // невдалий рядок не може зіпсувати наступні обчислення — як у справжньому REPL.
           committed.push(line);
         } catch (error) {
-          printLine("Error: " + (error && error.message ? error.message : error), "line-error");
+          const message = error && error.message ? error.message : String(error);
+          printLine("Error: " + localizeErrorPosition(message, committedSource), "line-error");
         }
+      }
+
+      // The WASM `evaluate()` call above always sees the whole growing session
+      // buffer (`committedSource + line`, see the comment above `committed`),
+      // so a `LanguageError`'s span — and the byte offsets in its Display text
+      // ("... at / позиція / Stelle START..END") — are positions in that whole
+      // buffer, not in the line the user just typed. Left alone, a one-character
+      // typo reports something like "698..700", which reads as nonsense. This
+      // rewrites those two numbers to be relative to `line` instead, by
+      // subtracting the UTF-8 byte length of everything committed before it
+      // (`Span` is a byte offset — see crates/my-lisp/src/syntax.rs — so the
+      // subtraction has to use UTF-8 byte length via TextEncoder, not JS's
+      // UTF-16-code-unit `.length`, or it would misalign on any Cyrillic or
+      // other multi-byte input in the committed history).
+      // Виклик WASM `evaluate()` вище завжди бачить увесь буфер сесії, що
+      // росте (`committedSource + line`, див. коментар над `committed`), тож
+      // `span` `LanguageError` — і байтові зсуви в його Display-тексті ("...
+      // at / позиція / Stelle START..END") — це позиції в усьому буфері, не в
+      // рядку, який користувач щойно ввів. Без цього одна помилка в одному
+      // символі показує щось на кшталт "698..700", що читається як
+      // безглуздя. Ця функція переписує ці два числа відносно `line`,
+      // віднімаючи довжину в UTF-8-байтах усього закомiченого перед ним
+      // (`Span` — байтовий зсув, тож віднімання має рахувати саме UTF-8-байти
+      // через TextEncoder, не JS-івську `.length` в UTF-16-code-units — інакше
+      // зсунеться на будь-якому кириличному чи іншому багатобайтовому вводі в
+      // історії).
+      function localizeErrorPosition(message, committedSource) {
+        const match = message.match(/^(.*Stelle )(\d+)\.\.(\d+)(.*)$/s);
+        if (!match) return message;
+        const prefixBytes = new TextEncoder().encode(committedSource).length;
+        const start = Math.max(0, Number(match[2]) - prefixBytes);
+        const end = Math.max(0, Number(match[3]) - prefixBytes);
+        return match[1] + start + ".." + end + match[4];
       }
 
       main();
