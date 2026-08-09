@@ -1,0 +1,88 @@
+# conformance.json — tier and axiom map (working draft)
+
+Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.json` itself — nothing in the actual fixture file changes here. This is the "next step" pass promised in that document: every fixture, in order, tagged with its tier (1 = CORE SEMANTICS, 2 = LANGUAGE CONTRACT, 3 = ECOSYSTEM CONFORMANCE) and, where one clearly applies, the axiom (G1–G7, S1–S3) it's evidence for.
+
+**Status: draft, not yet ratified.** Produced 2026-08-09 as a discussion basis, not a final classification.
+
+| # | expr | Tier | Axiom | Note |
+|---|---|---|---|---|
+| 1 | `(quote radio)` | 1 | — | core primitive itself |
+| 2 | `(atom 'radio)` | 1 | G2 | |
+| 3 | `(atom '())` | 1 | G2 | NIL is also an atom |
+| 4 | `(atom '(radio antenna))` | 1 | G2 | |
+| 5 | `(eq 'radio 'radio)` | 1 | G1 | |
+| 6 | `(eq 'radio 'antenna)` | 1 | G1 | |
+| 7 | `(car '(radio antenna))` | 1 | G2 | |
+| 8 | `(cdr '(radio antenna))` | 1 | G2 | |
+| 9 | `(cons 'radio '(antenna))` | 1 | G2 | |
+| 10 | `(cond (() 'wrong) (t 'right))` | 1 | G8 | gap closed — see below |
+| 11 | `(/ 5 6 8 7)` → `5/336` | 2 | S1 | |
+| 12 | `(+ (/ 1 3) (/ 1 3))` | 2 | S1 | |
+| 13 | `(- 1 (/ 1 3))` | 2 | S1 | |
+| 14 | `(* (/ 2 3) (/ 9 4))` | 2 | S1 | |
+| 15 | `(- (/ 1 3))` | 2 | S1 | |
+| 16 | `(+ (/ 1 2) 0.25)` → `0.75` | 2 | S1 | exact+inexact→inexact rule |
+| 17 | `(eq 3 3)` | 1 | G1 | |
+| 18 | `(eq 3 4)` | 1 | G1 | |
+| 19 | `(eq "radio" "radio")` | 1 | G1 | strings as atoms |
+| 20 | `(cond (() 'first) (() 'second) (t 'third))` | 1 | G8 | same gap as #10 |
+| 21 | `(second '(radio antenna signal))` | 3 | G5 | `lib/core.my` |
+| 22 | `(third '(radio antenna signal))` | 3 | G5 | |
+| 23 | `(not '())` | 3 | G5 | |
+| 24 | `(not 'radio)` | 3 | G5 | |
+| 25 | `(length '(radio antenna signal))` | 3 | G5 | |
+| 26 | `(length '())` | 3 | G5 | |
+| 27 | `(reverse '(radio antenna signal))` | 3 | G5 | |
+| 28 | `(append '(radio) '(antenna signal))` | 3 | G5 | |
+| 29 | `(map (lambda (x) (+ x 1)) '(1 2 3))` | 3 | G5 | `lambda` itself is tier 1/2, `map` is tier 3 |
+| 30 | `(filter (lambda (x) (eq x 2)) '(1 2 3 2))` | 3 | G5 | |
+| 31 | `(reduce (lambda (acc x) (+ acc x)) 0 '(1 2 3 4))` | 3 | G5 | |
+| 32 | `(< 1 2 3)` | 2 | — | chained comparison, host primitive |
+| 33 | `(< 1 3 2)` | 2 | — | |
+| 34 | `(> 3 2 1)` | 2 | — | |
+| 35 | `(= 1 1 1)` | 2 | — | |
+| 36 | `(= 1/2 0.5)` | 2 | G1, S1 | value equality across exact/inexact representation |
+| 37 | `(<= 1 1 2)` | 2 | — | |
+| 38 | `(>= 2 2 1)` | 2 | — | |
+| 39 | `(print 42)` | 2 | — | host capability (session transcript), not pure semantics |
+| 40 | `(read "(+ 1 2)")` | 2 | G3 | |
+| 41 | `(eval (read "(+ 1 2)"))` | 2 | G3 | |
+| 42 | literate markdown fixture | **separate** | — | explicitly optional layer per its own doc note |
+| 43 | `(car 5)` error `Type` | 1 | S2 | |
+| 44 | `(car '())` error `Type` | 1 | S2 | |
+| 45 | `(eq '(1) '(2))` error `Type` | 1 | S2 | `eq` only accepts atoms |
+| 46 | `(undefined-symbol)` error `UnknownSymbol` | 1/2 | S2 | |
+| 47 | `(lambda (x))` error `Arity` | 2 | S2 | |
+| 48 | `(quote a b)` error `Arity` | 1 | S2 | |
+| 49 | `(cons 1)` error `Arity` | 1 | S2 | |
+| 50 | `(/ 1 0)` error `InvalidForm` | 2 | S2 | |
+| 51 | `(let ((x 1) (y 2)) (+ x y))` | 3 | G5 | `let` is a macro in `lib/core.my` |
+| 52 | `(let* ((x 1) (y (+ x 1))) y)` | 3 | G5 | |
+| 53 | `(equal? '(1 (2 3) 4) '(1 (2 3) 4))` | 3 | G5 | |
+| 54 | `(equal? '(1 2) '(1 2 3))` | 3 | G5 | |
+| 55 | `(eq (lambda (x) x) (lambda (x) x))` | 2 | G1 | closure identity, not structural equality |
+| 56 | `(unify 'a 'a '())` | 3 | — | principle 3 evidence, not a G/S axiom |
+| 57 | `(unify '(var x) 'a '())` | 3 | — | |
+| 58 | `(unify '(var x) '(var x) '())` | 3 | — | |
+| 59 | `(unify '(1 (var x) 3) '(1 2 3) '())` | 3 | — | |
+| 60 | `(unify '(1 (var x) 3) '(1 2 4) '())` | 3 | — | |
+| 61 | `reason` — simple fact proof | 3 | — | principle 3 |
+| 62 | `reason` — with `logic-var` | 3 | — | principle 3 |
+| 63 | `reason` — bird/penguin proof tree | 3 | — | principle 3, the deepest fixture in the file |
+| 64 | `(equal? '(p . 0) (cons 'p 0))` | 1 | G2 | today's dotted-pair fix, direct evidence |
+| 65 | `(car '(a b . c))` | 1 | G2 | |
+| 66 | `(cdr (cdr '(a b . c)))` | 1 | G2 | |
+
+## A gap found by doing this pass — and closed the same day
+
+Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` acting as false — this is exactly what the Tier 1 definition in `language-core-axioms.md` already names ("truth/NIL") as part of core semantics, but no G-axiom actually stated it. Found by walking the fixtures, not predicted in advance — exactly the kind of thing this exercise exists to surface. Closed by adding **G8**: `'()` is deliberately both the empty list and the canonical false, the same choice McCarthy made in Lisp 1.5, stated explicitly rather than left implicit. Not what Scheme later did (splitting `'()`/`#f`) — a different, equally legitimate design, but not this language's own choice, which its own tests already commit to.
+
+## Counts
+
+- Tier 1 (CORE SEMANTICS): 22 fixtures
+- Tier 2 (LANGUAGE CONTRACT): 15 fixtures
+- Tier 3 (ECOSYSTEM CONFORMANCE): 20 fixtures
+- Separate (literate layer): 1 fixture
+- Fixtures with no clean G/S axiom mapping: 8 (`unify`/`reason`, evidence for principle 3, not the G/S axiom list) — #10/#20 resolved by G8, no longer unmapped
+
+This distribution is itself informative: symbolic reasoning (`unify`/`reason`) is 8 of 68 fixtures but is exactly the part principle 3 says should never be treated as optional — worth keeping in mind if the file ever splits physically, so `symbolic.json` doesn't end up looking like an afterthought relative to `language-core.json`'s larger fixture count.
