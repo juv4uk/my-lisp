@@ -47,9 +47,24 @@
 ;
 ; Не McCarthy-повний: лише одноарністні `atom`/`eq`/`car`/`cdr`/`cons` і
 ; двоаргументні `+`/`-`/`*` (справжні примітиви варіативні там, де це
-; важливо, напр. `+`); немає `defmacro`, `def`, `list` чи операторів
-; порівняння всередині інтерпретованих програм. Навмисно мінімальний, легко
-; розширити так само тому, хто захоче.
+; важливо, напр. `+`); немає `list` чи операторів порівняння всередині
+; інтерпретованих програм. Навмисно мінімальний, легко розширити так само
+; тому, хто захоче.
+;
+; `def`/`defmacro` (2026-08-09): `my-eval` сам (вирази) лишається чистою
+; функцією `(expr, env) -> value` — `def` не вписується в цю форму, бо йому
+; треба *повернути новий env*, не лише значення. Тому `def`/`defmacro`
+; обробляються окремим рівнем — `my-eval-top-form`/`my-eval-program` — який
+; існує лише для послідовності верхньорівневих форм (як `lib/core.my`), не
+; всередині виразу. Середовище тут — незмінний asoc-список (`cons`), тож
+; `def` не *мутує* фрейм (на відміну від справжнього `def` у хост-мові,
+; `environment.rs:70`) — він створює новий, розширений env і повертає його,
+; `my-eval-program` явно протягує цей env до наступної форми. Чесна межа:
+; рекурсивний **верхньорівневий** `def` (функція, що викликає саму себе за
+; іменем) НЕ підтримується — замикання захоплює env *до* власного
+; зв'язування, тож рекурсивний виклик усередині тіла не знайде себе. Це
+; окрема, більша задача (потрібна якась форма відкладеного/само-посилального
+; зв'язування), навмисно не вирішена тут, а не прихована.
 ;
 ; Metazirkulärer Evaluator: my-eval interpretiert my-lisp-Quellcode
 ; (gelesen als Daten, z. B. via `read`) nur mit my-lisps eigenen Primitiven.
@@ -118,8 +133,26 @@
          ((eq (car expr) '+) (+ (my-eval (second expr) env) (my-eval (third expr) env)))
          ((eq (car expr) '-) (- (my-eval (second expr) env) (my-eval (third expr) env)))
          ((eq (car expr) '*) (* (my-eval (second expr) env) (my-eval (third expr) env)))
+         ((my-macro? (env-lookup (car expr) env))
+          (my-eval (my-apply (env-lookup (car expr) env) (cdr expr)) env))
          (t (my-apply (my-eval (car expr) env) (my-eval-list (cdr expr) env)))))
       (t (my-apply (my-eval (car expr) env) (my-eval-list (cdr expr) env))))))
+
+; A macro call's args are passed to `my-apply` unevaluated (`(cdr expr)`
+; directly, not `my-eval-list`'d) — the macro body builds an expansion from
+; the raw argument forms, then `my-eval` runs *that* expansion once more,
+; the same two-step shape (expand, then evaluate the result) real
+; `defmacro` uses in the host language.
+; Аргументи виклику макроса передаються `my-apply` неоцінені (`(cdr expr)`
+; напряму, не через `my-eval-list`) — тіло макроса будує розгортку із сирих
+; форм аргументів, тоді `my-eval` виконує *цю розгортку* ще раз — та сама
+; двокрокова форма (розгорнути, тоді обчислити результат), яку справжній
+; `defmacro` використовує в хост-мові.
+(def my-macro?
+  (lambda (value)
+    (cond
+      ((atom value) '())
+      (t (eq (car value) 'macro)))))
 
 (def my-eval-cond
   (lambda (clauses env)
@@ -152,6 +185,8 @@
     (cond
       ((eq (car fn) 'closure)
        (my-eval-body (third fn) (bind-params (second fn) args (car (cdr (cdr (cdr fn)))))))
+      ((eq (car fn) 'macro)
+       (my-eval-body (third fn) (bind-params (second fn) args (car (cdr (cdr (cdr fn)))))))
       (t (list 'not-callable fn)))))
 
 (def env-lookup
@@ -160,3 +195,34 @@
       ((atom env) name)
       ((eq (car (car env)) name) (cdr (car env)))
       (t (env-lookup name (cdr env))))))
+
+; Top-level form sequencing — `def`/`defmacro` live here, not in `my-eval`
+; itself (see the file-header note). `my-eval-top-form` returns
+; `(new-env . value)`; `def`/`defmacro` extend `env` by consing a new
+; binding onto the front (same shadowing rule as a real alist environment —
+; the newest binding for a name wins), everything else evaluates normally
+; and passes `env` through unchanged.
+; Послідовність верхньорівневих форм — `def`/`defmacro` живуть тут, не в
+; самому `my-eval` (див. примітку на початку файлу). `my-eval-top-form`
+; повертає `(новий-env . значення)`; `def`/`defmacro` розширюють `env`,
+; додаючи нове зв'язування спереду (те саме правило затінення, що й у
+; справжньому asoc-середовищі — найновіше зв'язування для імені перемагає),
+; усе інше обчислюється звично й передає `env` без змін.
+(def my-eval-top-form
+  (lambda (form env)
+    (cond
+      ((atom form) (cons env (my-eval form env)))
+      ((eq (car form) 'def)
+       (let ((value (my-eval (third form) env)))
+         (cons (cons (cons (second form) value) env) value)))
+      ((eq (car form) 'defmacro)
+       (let ((macro-val (list 'macro (third form) (cdr (cdr (cdr form))) env)))
+         (cons (cons (cons (second form) macro-val) env) macro-val)))
+      (t (cons env (my-eval form env))))))
+
+(def my-eval-program
+  (lambda (forms env)
+    (let ((result (my-eval-top-form (car forms) env)))
+      (cond
+        ((atom (cdr forms)) result)
+        (t (my-eval-program (cdr forms) (car result)))))))

@@ -36,13 +36,17 @@
 
 Цієї сесії закрито: literate-фікстуру (надлишкову), occurs-check `unify`, помилки `defmacro`, tail-recursion, edge-кейси `map`/`filter`/`reduce`. Не перевірено ще: чи є симетричне покриття для `let*`/`length`/`append`/`reverse` на порожніх і крайових вхідних даних, і чи `understand`/`narrate` (природномовний міст) взагалі присутні в `conformance.json` — зараз вони перевірені лише в `crates/my-lisp/tests/understand.rs`/`narrate.rs`, не в implementation-independent контракті.
 
-## 8. `lib/meta-eval.my` — розширити `my-eval` до `def`/`defmacro`
+## 8. ✅ `lib/meta-eval.my` — `def`/`defmacro` додано
 
-Перевірено живою симуляцією (2026-08-09): `my-eval` (метациркулярний evaluator, написаний самою my-lisp) коректно інтерпретує реальну форму функції з `lib/core.my` (`second`, як `(lambda (values) (car (cdr values)))`) через `quote`/застосування — `(my-eval '((lambda (second) (second '(a b c))) (lambda (values) (car (cdr values)))) '())` дає `b`, той самий результат, що й пряме `(second '(a b c))`.
+Зроблено (2026-08-09): `my-eval` сам лишився чистою функцією `(expr, env) -> value` без змін — `def`/`defmacro` живуть в окремому шарі, `my-eval-top-form`/`my-eval-program`, що протягує (не мутує — `env` тут незмінний asoc-список) розширений env через послідовність верхньорівневих форм. `defmacro` реалізовано через новий тег `'macro` (та сама форма, що й `'closure`, лише аргументи передаються `my-apply` неоцінені, а результат `my-eval`-иться ще раз — двокроковий expand-тоді-eval).
 
-Чесна межа, знайдена тим самим тестом: `my-eval` підтримує лише `quote`/`cond`/`lambda`/`atom`/`eq`/`car`/`cdr`/`cons`/`+`/`-`/`*` і застосування — жодного `def`/`defmacro`. Це означає, що йому не можна згодувати `lib/core.my` як є (top-level `def`-форми), лише вирази, де все зв'язування — через `lambda`-застосування вручну. Тобто справжній, робочий крок G4 ("мінімальне ядро вирощує всю мову зсередини себе"), але не повний самохост.
+**Перевірено живою симуляцією, найсильніше твердження:** дослівний фрагмент реального `lib/core.my` (`identity`/`not`/`pair`/`second`/`third`, скопійований як є, не спрощений) завантажено через `read-all`/`my-eval-program`, і `(second '(a b c))` через `my-eval` дав `b` — той самий результат, що й прямий Rust-рушій.
 
-Наступний вимірюваний крок: додати `def`/`defmacro` до `my-eval` (мутація середовища на кшталт того, як `env-lookup`/`bind-params` уже працюють з alist-середовищем, але з можливістю розширювати його по ходу, не лише для `lambda`-параметрів) — щоб `my-eval` міг проковтнути реальний `lib/core.my` файл цілком, не лише окремі вирази вручну переписані під `lambda`-форму. Тест-критерій: `(my-eval-program (read-all (read-file "lib/core.my")) '())`, а тоді виклик чогось із результату (`second`, `map`) через той самий `my-eval`, з тим самим очікуваним значенням, що й прямий Rust-рушій дає.
+**Чесна межа, знайдена й регресійно протестована, не прихована:** рекурсивний **верхньорівневий** `def` (функція, що викликає сама себе за іменем) не бачить власного зв'язування — замикання захоплює `env` до того, як власний `def` його розширив (на відміну від справжнього `def` у хост-мові, що мутує наявний фрейм, `environment.rs:70`). `self_recursive_top_level_def_does_not_see_its_own_binding` у `crates/my-lisp/tests/meta_eval.rs` фіксує цю межу як очікувану поведінку (`Type`-помилка), не як недогляд.
+
+Тести: `def_extends_the_environment_visible_to_later_top_level_forms`, `def_can_bind_a_lambda_callable_from_a_later_top_level_form`, `defmacro_expands_before_evaluating_using_unevaluated_argument_forms`, `loads_a_real_verbatim_slice_of_lib_core_my_and_runs_it_through_my_eval`, `self_recursive_top_level_def_does_not_see_its_own_binding` у `crates/my-lisp/tests/meta_eval.rs`.
+
+**Лишається відкритим, не зроблено зараз:** self-referential top-level `def` (потребувало б якоїсь форми відкладеного зв'язування, окрема більша задача) і `list`-примітив усередині інтерпретованих програм — без нього не кожен реальний файл `lib/core.my` можна проковтнути цілим (макроси `let`/`let*` використовують `list`), лише фрагменти без нього.
 
 ## Нотатки
 
