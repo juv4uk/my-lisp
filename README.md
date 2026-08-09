@@ -37,7 +37,7 @@ That instinct is tested, not just stated: [`lib/meta-eval.my`](lib/meta-eval.my)
 
 Explainability runs through all of it, not bolted on after: `explain-proof`/`reason-explain`/`provenance` turn a proof tree into a human-readable "why," and [`lib/understand.my`](lib/understand.my)/[`lib/narrate.my`](lib/narrate.my) bridge controlled natural language to and from knowledge structures — text in, structure out, and back again.
 
-[`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) exists because Lisp's history is also a history of dialects drifting apart — MacLisp, InterLisp, a dozen Scheme variants, Common Lisp's attempt to reunify them. This file is the one thing a future C core or HDL Lisp-machine core must agree with, so a second implementation never becomes "just another dialect."
+[`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) exists because Lisp's history is also a history of dialects drifting apart — MacLisp, InterLisp, a dozen Scheme variants, Common Lisp's attempt to reunify them. This file is the one thing `fpga-lisp`'s HDL Lisp-machine core must agree with, so a second implementation never becomes "just another dialect."
 
 This repository is the canonical Rust implementation:
 
@@ -70,7 +70,7 @@ cargo test --workspace
 - [`docs/benchmarks.md`](docs/benchmarks.md) — benchmark methodology and a local baseline.
 - [`docs/versioning.md`](docs/versioning.md) — why this repo's version history looks the way it does.
 
-`my-lisp` began inside a broader IDE project, [`my-idea`](https://github.com/juv4uk/my-idea), and was extracted here to stand on its own. Future implementations of the same language — a C core for embedded targets, and a from-scratch Lisp-machine HDL core — are planned as separate, parallel repositories.
+`my-lisp` began inside a broader IDE project, [`my-idea`](https://github.com/juv4uk/my-idea), and was extracted here to stand on its own. A second implementation of the same language — a from-scratch Lisp-machine HDL core, `fpga-lisp` — is developed as a separate, parallel repository. A previously-planned third implementation (a C core for embedded targets) was dropped by explicit decision; two independent implementations is the current commitment.
 
 ## Українська
 
@@ -90,7 +90,7 @@ Rust надає лише те, що робить особливо добре —
 
 Пояснюваність проходить крізь усе це, не приліплена окремо: `explain-proof`/`reason-explain`/`provenance` перетворюють дерево доведення на людське "чому", а [`lib/understand.my`](lib/understand.my)/[`lib/narrate.my`](lib/narrate.my) з'єднують контрольовану природну мову зі структурами знань в обидва боки — текст на вхід, структура на вихід, і назад.
 
-[`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) існує, бо історія Lisp — це також історія діалектів, що розбігались — MacLisp, InterLisp, десяток варіантів Scheme, спроба Common Lisp їх возз'єднати. Цей файл — те єдине, з чим має погоджуватись майбутнє C-ядро чи HDL-ядро Lisp-машини, щоб друга реалізація ніколи не стала "ще одним діалектом".
+[`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) існує, бо історія Lisp — це також історія діалектів, що розбігались — MacLisp, InterLisp, десяток варіантів Scheme, спроба Common Lisp їх возз'єднати. Цей файл — те єдине, з чим має погоджуватись HDL-ядро Lisp-машини `fpga-lisp`, щоб друга реалізація ніколи не стала "ще одним діалектом".
 
 Цей репозиторій — канонічна реалізація на Rust:
 
@@ -122,7 +122,7 @@ cargo test --workspace
 - [`docs/benchmarks.md`](docs/benchmarks.md) — методологія бенчмарків і локальний baseline.
 - [`docs/versioning.md`](docs/versioning.md) — чому історія версій цього репо саме така.
 
-`my-lisp` починалась усередині ширшого IDE-проєкту [`my-idea`](https://github.com/juv4uk/my-idea) й була виділена сюди, щоб існувати самостійно. Майбутні реалізації тієї ж мови — C-ядро для embedded-цілей і власне HDL-ядро Lisp-машини з нуля — плануються як окремі, паралельні репозиторії.
+`my-lisp` починалась усередині ширшого IDE-проєкту [`my-idea`](https://github.com/juv4uk/my-idea) й була виділена сюди, щоб існувати самостійно. Друга реалізація тієї ж мови — HDL-ядро Lisp-машини з нуля, `fpga-lisp` — розробляється як окремий, паралельний репозиторій. Раніше запланована третя реалізація (C-ядро для embedded-цілей) прибрана свідомим рішенням; дві незалежні реалізації — поточне зобов'язання.
 
 ## Deutsch
 
@@ -142,7 +142,7 @@ Dieser Instinkt ist geprüft, nicht nur behauptet: [`lib/meta-eval.my`](lib/meta
 
 Erklärbarkeit zieht sich durch alles, nicht nachträglich angeflanscht: `explain-proof`/`reason-explain`/`provenance` verwandeln einen Beweisbaum in ein menschenlesbares "Warum", und [`lib/understand.my`](lib/understand.my)/[`lib/narrate.my`](lib/narrate.my) verbinden kontrollierte natürliche Sprache mit Wissensstrukturen in beide Richtungen — Text rein, Struktur raus, und zurück.
 
-[`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) existiert, weil Lisps Geschichte auch eine Geschichte auseinanderdriftender Dialekte ist — MacLisp, InterLisp, ein Dutzend Scheme-Varianten, Common Lisps Versuch, sie wiederzuvereinen. Diese Datei ist das eine, dem ein künftiger C-Kern oder HDL-Lisp-Maschinen-Kern entsprechen muss, damit eine zweite Implementierung nie "nur ein weiterer Dialekt" wird.
+[`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) existiert, weil Lisps Geschichte auch eine Geschichte auseinanderdriftender Dialekte ist — MacLisp, InterLisp, ein Dutzend Scheme-Varianten, Common Lisps Versuch, sie wiederzuvereinen. Diese Datei ist das eine, dem `fpga-lisp`s HDL-Lisp-Maschinen-Kern entsprechen muss, damit eine zweite Implementierung nie "nur ein weiterer Dialekt" wird.
 
 Dieses Repository ist die kanonische Rust-Implementierung:
 
@@ -174,7 +174,7 @@ cargo test --workspace
 - [`docs/benchmarks.md`](docs/benchmarks.md) — Benchmark-Methodik und eine lokale Ausgangsmessung.
 - [`docs/versioning.md`](docs/versioning.md) — warum die Versionshistorie dieses Repos so aussieht.
 
-`my-lisp` begann innerhalb eines größeren IDE-Projekts, [`my-idea`](https://github.com/juv4uk/my-idea), und wurde hierher ausgelagert, um eigenständig zu bestehen. Künftige Implementierungen derselben Sprache — ein C-Kern für Embedded-Ziele und ein von Grund auf neuer HDL-Kern für eine Lisp-Maschine — sind als separate, parallele Repositories geplant.
+`my-lisp` begann innerhalb eines größeren IDE-Projekts, [`my-idea`](https://github.com/juv4uk/my-idea), und wurde hierher ausgelagert, um eigenständig zu bestehen. Eine zweite Implementierung derselben Sprache — ein von Grund auf neuer HDL-Kern für eine Lisp-Maschine, `fpga-lisp` — wird als separates, paralleles Repository entwickelt. Ein zuvor geplanter dritter Kern (ein C-Kern für Embedded-Ziele) wurde durch bewusste Entscheidung gestrichen; zwei unabhängige Implementierungen sind die aktuelle Verpflichtung.
 
 ## License · Ліцензія · Lizenz
 
