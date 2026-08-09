@@ -20,17 +20,17 @@ This repository has one test layer: the four Rust crates under `crates/`, run wi
 | `my-lisp` | `tests/narrate.rs` | 6 | `lib/narrate.my`, the "structure -> text" half of the bridge (reverse of `lib/understand.my`): `narrate-fact` as the exact structural inverse of `understand-is`/`understand-relation` (round-trips through `understand`), `narrate-provenance` walking a `provenance` record into a `because`/`and`-joined word-list explanation, and a dedicated regression test pinning the documented limitation that a derived rule head's own `(var ...)` placeholders stay unresolved (`provenance` doesn't carry the query's final substitution) | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | literate-Markdown source-offset mapping | ok |
 | `my-lisp-wasm` | unit test (`src/lib.rs`) | 1 | the WASM adapter produces the same exact/single-pass evaluation struct as the native core | ok |
-| **Total** | | **242** | | **242 passed, 0 failed, 0 ignored** |
+| **Total** | | **253** | | **253 passed, 0 failed, 0 ignored** |
 
-The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 27 tests, not counted separately.
+The implementation-independent conformance fixture at [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite's 46 tests, not counted separately.
 
 ```bash
 cargo test --workspace
 ```
 
-Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignored.
+Last recorded run: 2026-08-09, Windows x86_64 — all passing, 0 failed, 0 ignored.
 
-**Reader caveat surfaced while writing the usage-count tests**: the reader has no dotted-pair literal syntax — `'(p . 0)` parses `.` as an ordinary symbol, producing a 3-element proper list rather than a real dotted pair, even though the printer renders true dotted pairs exactly that way (`(x . alice)` in [`tests/reason.rs`](../crates/my-lisp/tests/reason.rs)'s `variable_binding_from_fact`, for instance). So a quoted `'(p . 0)` and an actual `(cons 'p 0)` are not `equal?`. Not fixed here — noted so the next person doesn't lose an hour to it the way this session did.
+**Reader caveat resolved**: the reader previously had no dotted-pair literal syntax — `'(p . 0)` parsed `.` as an ordinary symbol, producing a 3-element proper list rather than a real dotted pair, even though the printer already rendered true dotted pairs exactly that way. Fixed 2026-08-09 (`ExprKind::Pair`, see the unit-test row above) — a quoted `'(p . 0)` and an actual `(cons 'p 0)` are now `equal?`.
 
 ## Українська
 
@@ -52,17 +52,17 @@ Last recorded run: 2026-08-08, Windows x86_64 — all passing, 0 failed, 0 ignor
 | `my-lisp` | `tests/narrate.rs` | 6 | `lib/narrate.my`, половина мосту "структура -> текст" (обернена до `lib/understand.my`): `narrate-fact` — точна структурна обернена функція до `understand-is`/`understand-relation` (round-trip через `understand`), `narrate-provenance` — обхід запису `provenance` у пояснення-список слів, з'єднане `because`/`and`, і окремий регресійний тест, що фіксує задокументоване обмеження: нерозв'язані `(var ...)` у власній голові виведеного правила лишаються нерозв'язаними (`provenance` не несе фінальної підстановки запиту) | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | зіставлення зміщень початкового коду literate-Markdown | ok |
 | `my-lisp-wasm` | unit-тест (`src/lib.rs`) | 1 | WASM-адаптер видає ту саму точну/однопрохідну структуру обчислення, що й нативне ядро | ok |
-| **Разом** | | **242** | | **242 пройдено, 0 провалів, 0 пропущено** |
+| **Разом** | | **253** | | **253 пройдено, 0 провалів, 0 пропущено** |
 
-Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 27 тестів набору, окремо не рахується.
+Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах тих 46 тестів набору, окремо не рахується.
 
 ```bash
 cargo test --workspace
 ```
 
-Останній зафіксований запуск: 2026-08-08, Windows x86_64 — усі проходять, 0 провалів, 0 пропущено.
+Останній зафіксований запуск: 2026-08-09, Windows x86_64 — усі проходять, 0 провалів, 0 пропущено.
 
-**Застереження щодо reader, знайдене під час написання тестів для лічильника використання**: reader не має синтаксису dotted-pair-літералів — `'(p . 0)` парсить `.` як звичайний символ, даючи 3-елементний власний список замість справжньої dotted pair, хоча printer саме так друкує справжні dotted pairs (наприклад `(x . alice)` у `variable_binding_from_fact` в [`tests/reason.rs`](../crates/my-lisp/tests/reason.rs)). Тож quoted `'(p . 0)` і реальний `(cons 'p 0)` не є `equal?`. Не виправлено тут — лишено як нотатка, щоб наступна людина не втратила на цьому годину, як ця сесія.
+**Застереження щодо reader вирішено**: reader раніше не мав синтаксису dotted-pair-літералів — `'(p . 0)` парсив `.` як звичайний символ, даючи 3-елементний власний список замість справжньої dotted pair, хоча printer уже друкував справжні dotted pairs саме так. Виправлено 2026-08-09 (`ExprKind::Pair`, див. рядок unit-тестів вище) — quoted `'(p . 0)` і реальний `(cons 'p 0)` тепер `equal?`.
 
 ## Deutsch
 
@@ -84,14 +84,14 @@ Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausg
 | `my-lisp` | `tests/narrate.rs` | 6 | `lib/narrate.my`, die Hälfte "Struktur -> Text" der Brücke (Gegenstück zu `lib/understand.my`): `narrate-fact` als exakte strukturelle Umkehrung von `understand-is`/`understand-relation` (Round-Trip durch `understand`), `narrate-provenance` wandelt einen `provenance`-Datensatz in eine mit `because`/`and` verbundene Worterklärung um, und ein dedizierter Regressionstest, der die dokumentierte Einschränkung festhält: ungelöste `(var ...)` im eigenen Kopf einer abgeleiteten Regel bleiben ungelöst (`provenance` trägt nicht die endgültige Substitution der Anfrage) | ok |
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | Offset-Zuordnung von literate-Markdown-Quellcode | ok |
 | `my-lisp-wasm` | Unit-Test (`src/lib.rs`) | 1 | der WASM-Adapter liefert dieselbe exakte/Single-Pass-Auswertungsstruktur wie der native Kern | ok |
-| **Gesamt** | | **242** | | **242 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
+| **Gesamt** | | **253** | | **253 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
 
-Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 27 Tests dieser Suite geprüft, nicht separat gezählt.
+Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.json`](../tests/fixtures/conformance.json) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen der 46 Tests dieser Suite geprüft, nicht separat gezählt.
 
 ```bash
 cargo test --workspace
 ```
 
-Letzter erfasster Lauf: 08.08.2026, Windows x86_64 — alle bestanden, 0 fehlgeschlagen, 0 übersprungen.
+Letzter erfasster Lauf: 09.08.2026, Windows x86_64 — alle bestanden, 0 fehlgeschlagen, 0 übersprungen.
 
-**Reader-Falle, entdeckt beim Schreiben der Nutzungszähler-Tests**: Der Reader kennt keine Syntax für Dotted-Pair-Literale — `'(p . 0)` parst `.` als gewöhnliches Symbol und erzeugt eine dreielementige echte Liste statt eines echten Dotted Pair, obwohl der Printer echte Dotted Pairs genau so ausgibt (z. B. `(x . alice)` in `variable_binding_from_fact` in [`tests/reason.rs`](../crates/my-lisp/tests/reason.rs)). Ein quotiertes `'(p . 0)` und ein tatsächliches `(cons 'p 0)` sind daher nicht `equal?`. Hier nicht behoben — als Hinweis festgehalten, damit die nächste Person nicht dieselbe Stunde verliert wie diese Sitzung.
+**Reader-Falle behoben**: Der Reader kannte zuvor keine Syntax für Dotted-Pair-Literale — `'(p . 0)` parste `.` als gewöhnliches Symbol und erzeugte eine dreielementige echte Liste statt eines echten Dotted Pair, obwohl der Printer echte Dotted Pairs bereits genau so ausgab. Behoben am 2026-08-09 (`ExprKind::Pair`, siehe Unit-Test-Zeile oben) — ein quotiertes `'(p . 0)` und ein tatsächliches `(cons 'p 0)` sind jetzt `equal?`.
