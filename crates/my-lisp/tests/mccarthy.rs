@@ -601,6 +601,10 @@ fn conformance_tests_from_my() {
         .expect("lib/unify.my should load before conformance fixtures run");
     eval_program(include_str!("../../../lib/reason.my"), &mut session)
         .expect("lib/reason.my should load before conformance fixtures run");
+    eval_program(include_str!("../../../lib/understand.my"), &mut session)
+        .expect("lib/understand.my should load before conformance fixtures run");
+    eval_program(include_str!("../../../lib/narrate.my"), &mut session)
+        .expect("lib/narrate.my should load before conformance fixtures run");
 
     for form in &forms {
         let ExprKind::List(entries) = &form.kind else {

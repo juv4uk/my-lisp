@@ -100,3 +100,8 @@
 ((expr . "(princ \"raw\")") (expected . "\"raw\"") (tier . 2) (axioms . ()) (note . "princ composes and returns its argument exactly like print — the raw/unquoted transcript output itself is regression-tested in crates/my-lisp/tests/mccarthy.rs since this fixture harness only checks the return value, not the print transcript"))
 ((expr . "(< 5)") (expected . "t") (tier . 2) (axioms . ()) (note . "a single argument is vacuously ordered, previously untested here"))
 ((expr . "(defmacro my-list items (cons 'quote (cons items '()))) (my-list 1 2 3)") (expected . "(1 2 3)") (tier . 1) (axioms . (G4)) (role . "constitutive") (note . "variadic defmacro success path — the error paths were already covered, the success path wasn't"))
+((expr . "(understand '(earth is a planet))") (expected . "((planet earth))") (tier . 3) (axioms . ()) (note . "lib/understand.my — the controlled-natural-language bridge, previously tested only in Rust unit tests, not the implementation-independent contract"))
+((expr . "(understand '(earth orbits sun))") (expected . "((orbits earth sun))") (tier . 3) (axioms . ()) (note . "subject-verb-object relation shape"))
+((expr . "(understand '(all planet have mass))") (expected . "((has (var w) mass) (planet (var w)))") (tier . 3) (axioms . ()) (note . "universal-rule shape"))
+((expr . "(narrate-fact (car (understand '(earth is a planet))))") (expected . "(earth is a planet)") (tier . 3) (axioms . ()) (note . "lib/narrate.my — the structure-to-text half of the bridge, previously tested only in Rust unit tests"))
+((expr . "(equal? '(mars is a planet) (narrate-fact (car (understand '(mars is a planet)))))") (expected . "t") (tier . 3) (axioms . ()) (note . "understand and narrate-fact are direct inverses for the is-a shape"))

@@ -47,9 +47,9 @@
 
 Свідомо не зроблено раніше: перша половина (`lib/understand.my`/`lib/narrate.my`, контрольована природна мова без LLM) готова й протестована. Друга половина — вільний текст через LLM як інтерфейс перед символьним ядром (`private/lisp-to-knowledge.md`, принцип 5) — залишена явно відкритою, з умовою: якщо повертатись, робити одразу з тестами й документацією на тому ж рівні строгості, що й решта проєкту, не як REPL-хак (те, що видалили минулого разу).
 
-## 9. Покриття `conformance.my` — інші тонкі місця
+## 9. ✅ Покриття `conformance.my` — інші тонкі місця
 
-Закрито цієї сесії: literate-фікстуру (надлишкову), occurs-check `unify`, помилки `defmacro`, tail-recursion, edge-кейси `map`/`filter`/`reduce`/`reverse`/`append`, варіативні `lambda`/`defmacro` (включно з успішним шляхом `defmacro`, не лише помилками), інтроспекція символів/рядків (`symbol?`/`string?`/`symbol->string`/`string->symbol`/`string-first`/`string-rest`), `read-all`, `princ`, одноаргументне `(< 5)`. 91 фікстура. Не перевірено ще: чи `understand`/`narrate` (природномовний міст) взагалі присутні в `conformance.my` — зараз вони перевірені лише в `crates/my-lisp/tests/understand.rs`/`narrate.rs`, не в implementation-independent контракті.
+Закрито цієї сесії: literate-фікстуру (надлишкову), occurs-check `unify`, помилки `defmacro`, tail-recursion, edge-кейси `map`/`filter`/`reduce`/`reverse`/`append`, варіативні `lambda`/`defmacro` (включно з успішним шляхом `defmacro`, не лише помилками), інтроспекція символів/рядків (`symbol?`/`string?`/`symbol->string`/`string->symbol`/`string-first`/`string-rest`), `read-all`, `princ`, одноаргументне `(< 5)`, і нарешті `understand`/`narrate` (природномовний міст, principle 5) — були лише в Rust-юніт-тестах, тепер `conformance_tests_from_my` завантажує `lib/understand.my`/`lib/narrate.my` поряд з `core`/`unify`/`reason`. 96 фікстур.
 
 ## Зроблено цієї сесії (для довідки)
 

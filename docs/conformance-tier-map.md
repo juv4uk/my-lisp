@@ -99,6 +99,11 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 | 89 | `(princ "raw")` | 2 | — | `princ` composes/returns its argument like `print`; raw transcript output is Rust-only regression coverage since this harness checks the return value, not the transcript |
 | 90 | `(< 5)` | 2 | — | a single argument is vacuously ordered |
 | 91 | `(defmacro my-list items (cons 'quote (cons items '()))) (my-list 1 2 3)` | 1 | G4 | variadic `defmacro` success path — only the error paths were covered before |
+| 92 | `(understand '(earth is a planet))` | 3 | — | `lib/understand.my`, previously only Rust unit tests |
+| 93 | `(understand '(earth orbits sun))` | 3 | — | subject-verb-object relation shape |
+| 94 | `(understand '(all planet have mass))` | 3 | — | universal-rule shape |
+| 95 | `(narrate-fact (car (understand '(earth is a planet))))` | 3 | — | `lib/narrate.my`, previously only Rust unit tests |
+| 96 | `(equal? '(mars is a planet) (narrate-fact (car (understand '(mars is a planet)))))` | 3 | — | `understand`/`narrate-fact` are direct inverses for the is-a shape |
 
 **2026-08-09, final pass:** the Lisp-1/Lisp-2 question was resolved by declining the framing — see `docs/language-core-axioms.md`'s "Deliberately left open" section. Two fixtures added proving the actual (already-existing, now-documented) behavior. File is now 78 fixtures.
 
@@ -114,6 +119,8 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 
 **2026-08-09, one more pass:** a second edge-case audit found a different class of gap — primitives that existed and were well-tested in Rust (`crates/my-lisp/tests/mccarthy.rs`) but never made it into the implementation-independent contract at all: `symbol?`/`string?`/`symbol->string`/`string->symbol`/`string-first`/`string-rest` (introspection), `read-all`, `princ` (newly added the same day), `reverse`/`append` on empty lists, single-argument `(< 5)`, and `defmacro`'s variadic *success* path (only its errors were covered). 13 fixtures appended. File is now 91 fixtures.
 
+**2026-08-09, final pass:** the same audit applied to `lib/understand.my`/`lib/narrate.my` (the controlled-natural-language bridge, principle 5) — present in Rust unit tests (`understand.rs`/`narrate.rs`) but absent from the shared contract entirely. `conformance_tests_from_my` now preloads both alongside `core`/`unify`/`reason`. 5 fixtures appended: `understand`'s three clause shapes (is-a, relation, universal rule) and `narrate-fact`'s round-trip with `understand`. File is now 96 fixtures.
+
 ## A gap found by doing this pass — and closed the same day
 
 Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` acting as false — this is exactly what the Tier 1 definition in `language-core-axioms.md` already names ("truth/NIL") as part of core semantics, but no G-axiom actually stated it. Found by walking the fixtures, not predicted in advance — exactly the kind of thing this exercise exists to surface. Closed by adding **G8**: `'()` is deliberately both the empty list and the canonical false, the same choice McCarthy made in Lisp 1.5, stated explicitly rather than left implicit. Not what Scheme later did (splitting `'()`/`#f`) — a different, equally legitimate design, but not this language's own choice, which its own tests already commit to.
@@ -122,8 +129,8 @@ Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` actin
 
 - Tier 1 (CORE SEMANTICS): 28 fixtures
 - Tier 2 (LANGUAGE CONTRACT): 32 fixtures
-- Tier 3 (ECOSYSTEM CONFORMANCE): 31 fixtures
-- Total: 91 fixtures (literate layer removed; occurs-check, defmacro/tail-recursion/map-filter-reduce/variadic-lambda/introspection/read-all/princ fixtures added, all 2026-08-09; see notes above)
+- Tier 3 (ECOSYSTEM CONFORMANCE): 36 fixtures
+- Total: 96 fixtures (literate layer removed; occurs-check, defmacro/tail-recursion/map-filter-reduce/variadic-lambda/introspection/read-all/princ/understand/narrate fixtures added, all 2026-08-09; see notes above)
 
 (Corrected 2026-08-09 from an initial hand count of 22/15/20/1 — `my-lisp-constitution.my`'s machine-checked tier field is now the authoritative count, not this table's manual tally.)
 - Fixtures with no clean G/S axiom mapping: 8 (`unify`/`reason`, evidence for principle 3, not the G/S axiom list) — #10/#20 resolved by G8, no longer unmapped
