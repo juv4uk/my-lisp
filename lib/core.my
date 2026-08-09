@@ -251,3 +251,47 @@
     (t (list 'let
              (list (car bindings))
              (list 'let* (cdr bindings) body)))))
+
+; string-length/string-empty?/string-prefix?/string-contains? (PLAN.md
+; item 14, item 20's G5 audit test applied live) — none of these need a
+; new Rust primitive: string-first/string-rest already expose a string
+; one character at a time, and eq already compares Value::String by
+; value, so "" is a real, checkable base case — the same shape as any
+; other recursive list walk in this file, just walking a string instead
+; of a pair chain. string-append (genuinely un-expressible this way,
+; since nothing here can build a new combined string) stays in Rust —
+; see its own comment in special_forms.rs for why.
+;
+; string-length/string-empty?/string-prefix?/string-contains? (PLAN.md,
+; пункт 14, живо застосований тест G5 з пункту 20) — жодна з них не
+; потребує нового Rust-примітива: string-first/string-rest уже дають
+; рядок по одному символу, а eq вже порівнює Value::String за
+; значенням, тож "" — реальний, перевірюваний базовий випадок — та сама
+; форма, що й будь-який інший рекурсивний обхід списку в цьому файлі,
+; лише по рядку, не по ланцюжку пар. string-append (справді невиразний
+; так само — нічого тут не може побудувати новий об'єднаний рядок)
+; лишається в Rust — див. власний коментар у special_forms.rs, чому.
+(def string-empty?
+  (lambda (s) (eq s "")))
+
+(def string-length
+  (lambda (s)
+    (cond
+      ((string-empty? s) 0)
+      (t (+ 1 (string-length (string-rest s)))))))
+
+(def string-prefix?
+  (lambda (prefix s)
+    (cond
+      ((string-empty? prefix) t)
+      ((string-empty? s) '())
+      ((eq (string-first prefix) (string-first s))
+       (string-prefix? (string-rest prefix) (string-rest s)))
+      (t '()))))
+
+(def string-contains?
+  (lambda (needle s)
+    (cond
+      ((string-prefix? needle s) t)
+      ((string-empty? s) '())
+      (t (string-contains? needle (string-rest s))))))

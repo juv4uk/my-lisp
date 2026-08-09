@@ -329,6 +329,45 @@ pub(super) fn evaluate_write_file(
     Ok(content_value)
 }
 
+/// String concatenation (PLAN.md item 14) — genuinely needs a Rust
+/// primitive, unlike `string-length`/`string-contains?` (both now in
+/// `lib/core.my`, expressible via `string-first`/`string-rest`/`eq`
+/// alone): `Value::String` wraps an immutable `Rc<str>`, and no
+/// existing primitive combines two strings into a new one — the item
+/// 20 audit test ("already expressible acceptably?") comes back no
+/// here, not yes.
+/// Конкатенація рядків (PLAN.md, пункт 14) — справді потребує
+/// Rust-примітива, на відміну від `string-length`/`string-contains?`
+/// (обидва тепер у `lib/core.my`, виразні через самі
+/// `string-first`/`string-rest`/`eq`): `Value::String` огортає
+/// незмінний `Rc<str>`, і жоден наявний примітив не об'єднує два
+/// рядки в новий — тест аудиту з пункту 20 ("уже виразне прийнятним
+/// способом?") тут дає "ні", не "так".
+pub(super) fn evaluate_string_append(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string-append", arguments, 2, span)?;
+    let left_value = evaluate(&arguments[0], environment)?;
+    let Value::String(ref left) = left_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "string-append expects two strings · string-append очікує два рядки · string-append erwartet zwei Zeichenketten",
+            span,
+        ));
+    };
+    let right_value = evaluate(&arguments[1], environment)?;
+    let Value::String(ref right) = right_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "string-append expects two strings · string-append очікує два рядки · string-append erwartet zwei Zeichenketten",
+            span,
+        ));
+    };
+    Ok(Value::String(Rc::from(format!("{left}{right}").as_str())))
+}
+
 pub(super) fn evaluate_read_all(
     arguments: &[Expr],
     environment: &Environment,

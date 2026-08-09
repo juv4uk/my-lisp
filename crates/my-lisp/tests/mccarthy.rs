@@ -1046,3 +1046,34 @@ fn write_file_wrong_arity_is_an_arity_error() {
         .expect_err("write-file with one argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Arity);
 }
+
+// --- string-append (PLAN.md item 14) -------------------------------------
+
+#[test]
+fn string_append_concatenates_two_strings() {
+    assert_eq!(
+        eval(r#"(string-append "hello, " "world")"#),
+        Value::String("hello, world".into())
+    );
+}
+
+#[test]
+fn string_append_rejects_a_non_string_first_argument() {
+    let error = eval_program(r#"(string-append 1 "x")"#, &mut Session::default())
+        .expect_err("a non-string first argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn string_append_rejects_a_non_string_second_argument() {
+    let error = eval_program(r#"(string-append "x" 1)"#, &mut Session::default())
+        .expect_err("a non-string second argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn string_append_wrong_arity_is_an_arity_error() {
+    let error = eval_program(r#"(string-append "only-one")"#, &mut Session::default())
+        .expect_err("string-append with one argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
