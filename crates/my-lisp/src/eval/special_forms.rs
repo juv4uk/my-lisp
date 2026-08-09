@@ -409,6 +409,302 @@ pub(super) fn evaluate_string_less_than(
     Ok(Value::Bool(left.as_ref() < right.as_ref()))
 }
 
+/// `(tcp-connect host port)` (PLAN.md item 21) — the outbound-client half of
+/// "talk to other AI systems" (principle 3, extended to LLM APIs/other
+/// agents): opens a TCP connection, returns a `Value::TcpConnection` handle.
+/// `(tcp-connect "example.com" 443)` — the caller writes an HTTP request
+/// itself with `tcp-write`/`string-append` and reads the response with
+/// `tcp-read`; no HTTP/TLS logic lives in Rust, only the raw byte pipe (S2:
+/// connection failures fail named, `ErrorKind::InvalidForm`, never silently).
+/// `(tcp-connect хост порт)` (PLAN.md, пункт 21) — вихідна/клієнтська
+/// половина "спілкуватись з іншими AI-системами" (принцип 3, поширений на
+/// LLM API/інших агентів): відкриває TCP-з'єднання, повертає handle
+/// `Value::TcpConnection`. `(tcp-connect "example.com" 443)` — сам виклик
+/// формує HTTP-запит через `tcp-write`/`string-append`, читає відповідь
+/// через `tcp-read`; жодної HTTP/TLS-логіки в Rust, лише сирий байтовий
+/// канал (S2: помилки з'єднання провалюються названо, `ErrorKind::InvalidForm`,
+/// ніколи мовчки).
+pub(super) fn evaluate_tcp_connect(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("tcp-connect", arguments, 2, span)?;
+    let host_value = evaluate(&arguments[0], environment)?;
+    let Value::String(ref host) = host_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "tcp-connect expects a string host · tcp-connect очікує рядок-хост · tcp-connect erwartet einen String-Host",
+            arguments[0].span,
+        ));
+    };
+    let port = expect_port(&arguments[1], environment)?;
+    let stream = tcp_connect(host, port, span)?;
+    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
+}
+
+/// `(tcp-listen port)` — the inbound-server half: binds and starts listening,
+/// returns a `Value::TcpListener` handle for `tcp-accept`. Lets my-lisp
+/// accept connections from other agents, not just call out to them.
+/// `(tcp-listen порт)` — вхідна/серверна половина: біндиться й починає
+/// слухати, повертає handle `Value::TcpListener` для `tcp-accept`. Дозволяє
+/// my-lisp приймати з'єднання від інших агентів, не лише звертатись до них.
+pub(super) fn evaluate_tcp_listen(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("tcp-listen", arguments, 1, span)?;
+    let port = expect_port(&arguments[0], environment)?;
+    let listener = tcp_listen(port, span)?;
+    Ok(Value::TcpListener(Rc::new(listener)))
+}
+
+/// `(tcp-accept listener)` — blocks until one inbound connection arrives on
+/// `listener`, returns it as a `Value::TcpConnection` (the same handle type
+/// `tcp-connect` produces — `tcp-read`/`tcp-write`/`tcp-close` don't care
+/// which side opened the connection).
+/// `(tcp-accept listener)` — блокується, поки не прийде одне вхідне
+/// з'єднання на `listener`, повертає його як `Value::TcpConnection` (той
+/// самий тип handle, що дає `tcp-connect` — `tcp-read`/`tcp-write`/`tcp-close`
+/// не розрізняють, яка сторона відкрила з'єднання).
+pub(super) fn evaluate_tcp_accept(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("tcp-accept", arguments, 1, span)?;
+    let listener_value = evaluate(&arguments[0], environment)?;
+    let Value::TcpListener(ref listener) = listener_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "tcp-accept expects a TCP listener · tcp-accept очікує TCP-listener · tcp-accept erwartet einen TCP-Listener",
+            arguments[0].span,
+        ));
+    };
+    let stream = tcp_accept(listener, span)?;
+    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
+}
+
+/// `(tcp-read connection)` — one `read()` call, up to 64 KiB, returned as a
+/// string; `""` means the peer closed the connection (EOF), not an error.
+/// A response larger than one read is drained by calling `tcp-read`
+/// recursively and building the result with `string-append` (item 14) —
+/// the same recursive-accumulation shape `lib/core.my` already uses
+/// everywhere else, not a new idiom invented for sockets.
+/// `(tcp-read connection)` — один виклик `read()`, до 64 КіБ, повертається
+/// як рядок; `""` означає, що інша сторона закрила з'єднання (EOF), не
+/// помилку. Відповідь, більша за один read, витягується рекурсивним
+/// викликом `tcp-read` і будується через `string-append` (пункт 14) — та
+/// сама форма рекурсивного накопичення, що `lib/core.my` уже використовує
+/// всюди, не новий ідіом, вигаданий для сокетів.
+pub(super) fn evaluate_tcp_read(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("tcp-read", arguments, 1, span)?;
+    let connection_value = evaluate(&arguments[0], environment)?;
+    let Value::TcpConnection(ref connection) = connection_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "tcp-read expects a TCP connection · tcp-read очікує TCP-з'єднання · tcp-read erwartet eine TCP-Verbindung",
+            arguments[0].span,
+        ));
+    };
+    let text = tcp_read(connection, span)?;
+    Ok(Value::String(Rc::from(text.as_str())))
+}
+
+/// `(tcp-write connection content)` — writes `content`'s UTF-8 bytes,
+/// returns `content` unchanged (composes like `print`/`write-file`).
+/// `(tcp-write connection content)` — записує UTF-8-байти `content`,
+/// повертає `content` без змін (компонується як `print`/`write-file`).
+pub(super) fn evaluate_tcp_write(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("tcp-write", arguments, 2, span)?;
+    let connection_value = evaluate(&arguments[0], environment)?;
+    let Value::TcpConnection(ref connection) = connection_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "tcp-write expects a TCP connection · tcp-write очікує TCP-з'єднання · tcp-write erwartet eine TCP-Verbindung",
+            arguments[0].span,
+        ));
+    };
+    let content_value = evaluate(&arguments[1], environment)?;
+    let Value::String(ref content) = content_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "tcp-write expects a string as its second argument · tcp-write очікує рядок другим аргументом · tcp-write erwartet eine Zeichenkette als zweites Argument",
+            arguments[1].span,
+        ));
+    };
+    tcp_write(connection, content, span)?;
+    Ok(content_value)
+}
+
+/// `(tcp-close connection)` — explicitly shuts down both directions of the
+/// connection rather than waiting for the handle to be dropped, so the
+/// peer sees the close promptly (matters for HTTP servers reading until
+/// EOF). Returns `t`.
+/// `(tcp-close connection)` — явно закриває з'єднання в обидва боки, не
+/// чекаючи, поки handle буде відкинуто, щоб інша сторона побачила закриття
+/// одразу (важливо для HTTP-серверів, що читають до EOF). Повертає `t`.
+pub(super) fn evaluate_tcp_close(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("tcp-close", arguments, 1, span)?;
+    let connection_value = evaluate(&arguments[0], environment)?;
+    let Value::TcpConnection(ref connection) = connection_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "tcp-close expects a TCP connection · tcp-close очікує TCP-з'єднання · tcp-close erwartet eine TCP-Verbindung",
+            arguments[0].span,
+        ));
+    };
+    tcp_close(connection, span)?;
+    Ok(Value::Bool(true))
+}
+
+fn expect_port(expr: &Expr, environment: &Environment) -> Result<u16, LanguageError> {
+    let value = evaluate(expr, environment)?;
+    let Value::Number(port, _) = value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "expected a port number · очікувався номер порту · erwartete eine Portnummer",
+            expr.span,
+        ));
+    };
+    if port.fract() != 0.0 || port < 0.0 || port > u16::MAX as f64 {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "port must be an integer between 0 and 65535 · порт має бути цілим числом від 0 до 65535 · Port muss eine Ganzzahl zwischen 0 und 65535 sein",
+            expr.span,
+        ));
+    }
+    Ok(port as u16)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn tcp_connect(host: &str, port: u16, span: Span) -> Result<std::net::TcpStream, LanguageError> {
+    std::net::TcpStream::connect((host, port)).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("tcp-connect: failed to connect to {host}:{port}: {error}"),
+            span,
+        )
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn tcp_connect(_host: &str, _port: u16, span: Span) -> Result<std::net::TcpStream, LanguageError> {
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        "tcp-connect: networking is not available in this build",
+        span,
+    ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn tcp_listen(port: u16, span: Span) -> Result<std::net::TcpListener, LanguageError> {
+    std::net::TcpListener::bind(("0.0.0.0", port)).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("tcp-listen: failed to bind port {port}: {error}"),
+            span,
+        )
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn tcp_listen(_port: u16, span: Span) -> Result<std::net::TcpListener, LanguageError> {
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        "tcp-listen: networking is not available in this build",
+        span,
+    ))
+}
+
+fn tcp_accept(
+    listener: &std::net::TcpListener,
+    span: Span,
+) -> Result<std::net::TcpStream, LanguageError> {
+    listener
+        .accept()
+        .map(|(stream, _addr)| stream)
+        .map_err(|error| {
+            LanguageError::new(
+                ErrorKind::InvalidForm,
+                format!("tcp-accept: failed to accept a connection: {error}"),
+                span,
+            )
+        })
+}
+
+fn tcp_read(
+    connection: &std::cell::RefCell<std::net::TcpStream>,
+    span: Span,
+) -> Result<String, LanguageError> {
+    use std::io::Read;
+    let mut buffer = [0u8; 65536];
+    let read = connection
+        .borrow_mut()
+        .read(&mut buffer)
+        .map_err(|error| {
+            LanguageError::new(
+                ErrorKind::InvalidForm,
+                format!("tcp-read: failed to read from the connection: {error}"),
+                span,
+            )
+        })?;
+    String::from_utf8(buffer[..read].to_vec()).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("tcp-read: received bytes that aren't valid UTF-8: {error}"),
+            span,
+        )
+    })
+}
+
+fn tcp_write(
+    connection: &std::cell::RefCell<std::net::TcpStream>,
+    content: &str,
+    span: Span,
+) -> Result<(), LanguageError> {
+    use std::io::Write;
+    connection
+        .borrow_mut()
+        .write_all(content.as_bytes())
+        .map_err(|error| {
+            LanguageError::new(
+                ErrorKind::InvalidForm,
+                format!("tcp-write: failed to write to the connection: {error}"),
+                span,
+            )
+        })
+}
+
+fn tcp_close(
+    connection: &std::cell::RefCell<std::net::TcpStream>,
+    span: Span,
+) -> Result<(), LanguageError> {
+    connection
+        .borrow()
+        .shutdown(std::net::Shutdown::Both)
+        .map_err(|error| {
+            LanguageError::new(
+                ErrorKind::InvalidForm,
+                format!("tcp-close: failed to close the connection: {error}"),
+                span,
+            )
+        })
+}
+
 pub(super) fn evaluate_read_all(
     arguments: &[Expr],
     environment: &Environment,

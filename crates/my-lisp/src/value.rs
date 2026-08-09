@@ -1,6 +1,6 @@
 use crate::bignum::BigInt;
 use crate::{Environment, Exactness, Expr};
-use std::{cmp::Ordering, fmt, rc::Rc, str::FromStr};
+use std::{cell::RefCell, cmp::Ordering, fmt, net::TcpListener, net::TcpStream, rc::Rc, str::FromStr};
 
 /// A reduced exact fraction owned by the language runtime, backed by the
 /// hand-rolled `BigInt` in `bignum.rs` — "exact" has no numeric ceiling
@@ -236,6 +236,36 @@ pub enum Value {
     Pair(Rc<Value>, Rc<Value>),
     Closure(Rc<Closure>),
     Macro(Rc<Closure>),
+    /// An open TCP connection (PLAN.md item 21) — the outbound-client half
+    /// of "talk to other AI systems," principle 3 extended to external
+    /// agents/LLM APIs. Opaque host-capability handle, the same category
+    /// `read-file`/`write-file` already occupy — not user-visible mutable
+    /// *data* in the item-16 sense (nothing here lets a program mutate an
+    /// ordinary binding), just a resource the host manages on the
+    /// language's behalf. `RefCell` because reading/writing a stream
+    /// genuinely advances its position — there is no persistent,
+    /// side-effect-free way to model "the next unread byte of a live
+    /// network connection."
+    /// Відкрите TCP-з'єднання (PLAN.md, пункт 21) — вихідна/клієнтська
+    /// половина "спілкуватись з іншими AI-системами", принцип 3, поширений
+    /// на зовнішніх агентів/LLM API. Непрозорий handle host-можливості, та
+    /// сама категорія, що вже займають `read-file`/`write-file` — не
+    /// видима користувачу мутабельна *дані* в сенсі item 16 (ніщо тут не
+    /// дає програмі мутувати звичайне зв'язування), лише ресурс, яким хост
+    /// керує від імені мови. `RefCell`, бо читання/запис у потік справді
+    /// просуває його позицію — немає постійного, без-побічно-ефектного
+    /// способу змоделювати "наступний непрочитаний байт живого мережевого
+    /// з'єднання".
+    TcpConnection(Rc<RefCell<TcpStream>>),
+    /// A listening TCP socket (PLAN.md item 21) — the inbound-server half:
+    /// lets my-lisp accept connections from other agents, not just call
+    /// out to them. No `RefCell` needed — `TcpListener::accept` takes
+    /// `&self`, it doesn't need to mutate the listener itself.
+    /// TCP-сокет, що слухає (PLAN.md, пункт 21) — вхідна/серверна
+    /// половина: дозволяє my-lisp приймати з'єднання від інших агентів, не
+    /// лише звертатись до них. `RefCell` не потрібен — `TcpListener::accept`
+    /// бере `&self`, не потребує мутувати сам listener.
+    TcpListener(Rc<TcpListener>),
 }
 
 impl PartialEq for Value {
@@ -265,6 +295,12 @@ impl PartialEq for Value {
             // Funktionen besitzen Identität: Zwei getrennt erzeugte Closures sind nicht gleich.
             (Value::Closure(left), Value::Closure(right)) => Rc::ptr_eq(left, right),
             (Value::Macro(left), Value::Macro(right)) => Rc::ptr_eq(left, right),
+            // Same identity rule as Closure/Macro — a resource handle is
+            // itself, not a value with structural equality.
+            // Те саме правило ідентичності, що й Closure/Macro — handle
+            // ресурсу — це він сам, не значення зі структурною рівністю.
+            (Value::TcpConnection(left), Value::TcpConnection(right)) => Rc::ptr_eq(left, right),
+            (Value::TcpListener(left), Value::TcpListener(right)) => Rc::ptr_eq(left, right),
             _ => false,
         }
     }
@@ -377,6 +413,8 @@ fn render(value: &Value, quote_strings: bool) -> String {
         Value::Pair(_, _) => render_pair(value, quote_strings),
         Value::Closure(_) => "<lambda>".to_string(),
         Value::Macro(_) => "<macro>".to_string(),
+        Value::TcpConnection(_) => "<tcp-connection>".to_string(),
+        Value::TcpListener(_) => "<tcp-listener>".to_string(),
     }
 }
 

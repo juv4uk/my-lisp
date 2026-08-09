@@ -142,4 +142,6 @@
 (fixture (expr . "(string-prefix? \"world\" \"hello\")") (expected . "()") (tier . 3) (axioms G5))
 (fixture (expr . "(string-contains? \"ell\" \"hello\")") (expected . "t") (tier . 3) (axioms G5))
 (fixture (expr . "(string-contains? \"xyz\" \"hello\")") (expected . "()") (tier . 3) (axioms G5))
+(fixture (expr . "(tcp-connect 42 8099)") (error . "Type") (tier . 2) (axioms) (note . "PLAN.md item 21 — a real listen/accept/connect round trip needs a live network peer, which conformance.my's single-session fixture runner can't provide; only the type-check error path is a pure expression testable this way. See crates/my-lisp/tests/tcp.rs for the live client/server round-trip, run on separate threads with separate Sessions."))
+(fixture (expr . "(tcp-write \"not a connection\" \"x\")") (error . "Type") (tier . 2) (axioms))
 ()

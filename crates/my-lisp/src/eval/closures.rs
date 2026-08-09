@@ -298,6 +298,23 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
                 span,
             ))
         }
+        // No source syntax represents a live connection/listener — same
+        // capability-boundary reasoning as Closure/Macro above, for the
+        // same reason: quoting/macro-expanding one would need to fabricate
+        // code that could recreate a specific open TCP resource, which
+        // isn't a thing this language can express.
+        // Жоден синтаксис не представляє живе з'єднання/listener — та сама
+        // логіка межі можливостей, що й для Closure/Macro вище, з тієї
+        // самої причини: quote/розгортання макроса на цьому значенні
+        // означало б вигадати код, що відтворив би конкретний відкритий
+        // TCP-ресурс, — це не те, що ця мова може виразити.
+        Value::TcpConnection(_) | Value::TcpListener(_) => {
+            return Err(LanguageError::new(
+                ErrorKind::InvalidForm,
+                "macros cannot return TCP connections or listeners · макроси не можуть повертати TCP-з'єднання чи listener · Makros dürfen keine TCP-Verbindungen oder Listener zurückgeben",
+                span,
+            ))
+        }
     };
     Ok(Expr { kind, span })
 }

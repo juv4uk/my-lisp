@@ -167,6 +167,24 @@ fn evaluate_list(
         Some("string<?") => {
             special_forms::evaluate_string_less_than(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("tcp-connect") => {
+            special_forms::evaluate_tcp_connect(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("tcp-listen") => {
+            special_forms::evaluate_tcp_listen(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("tcp-accept") => {
+            special_forms::evaluate_tcp_accept(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("tcp-read") => {
+            special_forms::evaluate_tcp_read(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("tcp-write") => {
+            special_forms::evaluate_tcp_write(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("tcp-close") => {
+            special_forms::evaluate_tcp_close(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("read-all") => {
             special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
         }
