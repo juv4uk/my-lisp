@@ -1,10 +1,10 @@
 # my-lisp language core axioms · Аксіоми ядра my-lisp · my-lisp-Sprachkern-Axiome
 
-**Status: draft, not yet ratified.** This document precedes `my-lisp-constitution.my` — the file becomes the executable proof of these axioms, not the starting point. Nothing here is final until discussed and agreed on explicitly.
+**Status: draft, not yet ratified — ratification deliberately deferred to the 1.0.0 release (decided 2026-08-09, `PLAN.md` item 5), not a separate event during 0.x development.** This document precedes `my-lisp-constitution.my` — the file becomes the executable proof of these axioms, not the starting point. Nothing here is final until discussed and agreed on explicitly.
 
-**Статус: чернетка, ще не затверджена.** Цей документ передує `my-lisp-constitution.my` — файл стане виконуваним доказом цих аксіом, не відправною точкою. Нічого тут не остаточне, поки не обговорено й не узгоджено явно.
+**Статус: чернетка, ще не затверджена — ратифікація свідомо відкладена до релізу 1.0.0 (рішення 2026-08-09, `PLAN.md` пункт 5), не окрема подія посеред 0.x-розробки.** Цей документ передує `my-lisp-constitution.my` — файл стане виконуваним доказом цих аксіом, не відправною точкою. Нічого тут не остаточне, поки не обговорено й не узгоджено явно.
 
-**Status: Entwurf, noch nicht ratifiziert.** Dieses Dokument geht `my-lisp-constitution.my` voraus — die Datei wird der ausführbare Beweis dieser Axiome, nicht der Ausgangspunkt. Nichts hier ist endgültig, bis es ausdrücklich besprochen und vereinbart wurde.
+**Status: Entwurf, noch nicht ratifiziert — die Ratifizierung ist bewusst auf das 1.0.0-Release verschoben (Entscheidung 2026-08-09, `PLAN.md` Punkt 5), kein separates Ereignis während der 0.x-Entwicklung.** Dieses Dokument geht `my-lisp-constitution.my` voraus — die Datei wird der ausführbare Beweis dieser Axiome, nicht der Ausgangspunkt. Nichts hier ist endgültig, bis es ausdrücklich besprochen und vereinbart wurde.
 
 ## Project principles · Принципи проєкту
 
