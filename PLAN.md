@@ -75,4 +75,5 @@
 
 ## Нотатки
 
+- Зовнішні аналізи репозиторію (декілька за цю сесію) регулярно містять правдоподібні, але неперевірені деталі поряд із точними — приклад: один аналіз описав `lib/reason.my` як forward-chaining рушій, хоча перший рядок самого файлу каже "A minimal **backward**-chaining inference engine (micro-Prolog)" — forward-chaining це окремий `lib/forward.my`. Не єдиний випадок цієї сесії (раніше — вигаданий приклад для `understand.my`, невірна здогадка про `num-rational`-залежність для `Rational`). Кожне зовнішнє твердження про код перевіряти напряму, не приймати на віру, скільки б деталей навколо не було точними.
 - `private/` папка (PROJECT_MEMORY.md, PROFILE.md, mccarthy-principles.md, present-reality-principles.md, lisp-to-knowledge.md) лишається в `.gitignore`, не в публічному репозиторії — перевірено, слідів у git-історії немає.
