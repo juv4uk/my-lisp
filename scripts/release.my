@@ -1,0 +1,82 @@
+; scripts/release.my — tag and push a release (PLAN.md item 21's follow-up:
+; the actual reason `process-run` exists). Runs `cargo test --workspace`
+; first and refuses to tag if it fails — the same gate
+; `.github/workflows/release.yml`'s own `test` job re-checks server-side,
+; this just catches it locally before a bad tag ever reaches GitHub.
+;
+; Edit `*release-version*` (and `*release-remote*`, if it's ever not
+; "my-lisp") below, then run:
+;
+;   my-lisp --allow-process=git,cargo scripts/release.my
+;
+; Without `--allow-process`, `process-run` fails named — see
+; `docs/language-core.md`'s own entry for why the default is fully
+; disabled, not just unbounded: this project's own recommendation is to
+; run this script deliberately, by hand, never from something that also
+; accepts network input in the same session.
+;
+; No version is read from any Cargo.toml — the release workflow itself
+; derives the version purely from the git tag name (`GITHUB_REF_NAME`),
+; confirmed by reading .github/workflows/release.yml directly before
+; writing this script, not assumed.
+;
+; scripts/release.my — тегує й пушить реліз (продовження PLAN.md, пункт
+; 21: сама причина, чому існує `process-run`). Спершу запускає
+; `cargo test --workspace` і відмовляється тегувати, якщо він провалився —
+; той самий гейт, який власна джоба `test` `.github/workflows/release.yml`
+; перевіряє повторно на сервері, ця лише ловить це локально до того, як
+; поганий тег дійде до GitHub.
+;
+; Відредагуй `*release-version*` (і `*release-remote*`, якщо колись стане
+; не "my-lisp") нижче, тоді запусти:
+;
+;   my-lisp --allow-process=git,cargo scripts/release.my
+;
+; Без `--allow-process` `process-run` провалюється названо — див. власний
+; запис у `docs/language-core.md`, чому типовий стан повністю вимкнений,
+; не просто необмежений: власна рекомендація цього проєкту — запускати
+; цей скрипт свідомо, вручну, ніколи з чогось, що в тій самій сесії ще й
+; приймає мережевий вхід.
+;
+; Версія ніде не читається з Cargo.toml — сам release-workflow виводить
+; версію суто з імені git-тегу (`GITHUB_REF_NAME`), перевірено прямим
+; читанням .github/workflows/release.yml перед написанням цього скрипта,
+; не припущено.
+
+(def *release-version* "l0.4.0")
+(def *release-remote* "my-lisp")
+
+(def report-and-exit-if-failed
+  (lambda (label result)
+    (let ((exit-code (car result)))
+      (cond
+        ((eq exit-code 0)
+         (print (string-append label ": ok")))
+        (t ((lambda ()
+              (print (string-append label ": FAILED"))
+              (print (second result))
+              (print (third result))
+              (print "Release aborted.")
+              exit-code)))))))
+
+(def tests
+  (process-run "cargo" '("test" "--workspace")))
+
+(cond
+  ((eq (car tests) 0)
+   ((lambda ()
+      (print "cargo test --workspace: ok")
+      (def tag-result (process-run "git" (list "tag" *release-version*)))
+      (report-and-exit-if-failed "git tag" tag-result)
+      (cond
+        ((eq (car tag-result) 0)
+         ((lambda ()
+            (def push-result
+              (process-run "git" (list "push" *release-remote* *release-version*)))
+            (report-and-exit-if-failed "git push" push-result)
+            (cond
+              ((eq (car push-result) 0)
+               (print (string-append "Released " *release-version* ".")))
+              (t 'push-failed)))))
+        (t 'tag-failed)))))
+  (t (report-and-exit-if-failed "cargo test --workspace" tests)))
