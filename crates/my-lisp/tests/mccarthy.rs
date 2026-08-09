@@ -1107,3 +1107,91 @@ fn string_less_than_wrong_arity_is_an_arity_error() {
         .expect_err("string<? with one argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Arity);
 }
+
+// --- process-run (PLAN.md item 21's follow-up) ---------------------------
+// Deliberately narrow: no shell (Command::new(program).args(args), never
+// sh -c), and disabled by default — a session must opt in via
+// Environment::with_process_allowlist, never something a my-lisp program
+// can grant itself. See that method's own comment: combined with
+// tcp-accept's inbound networking, an unrestricted process-run would let
+// a remote peer reach arbitrary command execution.
+
+#[test]
+fn process_run_fails_named_when_the_session_never_opted_in() {
+    let error = eval_program(r#"(process-run "git" (list "--version"))"#, &mut Session::default())
+        .expect_err("process-run on the default (unrestricted-by-default-off) session must fail named, not run anything");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+}
+
+#[test]
+fn process_run_succeeds_for_an_explicitly_allowed_program() {
+    let mut session = Session {
+        environment: Environment::root().with_process_allowlist(vec!["cmd".to_string()]),
+    };
+    // `cmd /C echo hello` avoids depending on any program beyond what a
+    // Windows CI runner already has, while still proving args are passed
+    // through without a shell interpreting them as one string.
+    let source = r#"(process-run "cmd" (quote ("/C" "echo" "hello")))"#;
+    let result = eval_program(source, &mut session).expect("an explicitly allowed program should run");
+    let Value::Pair(ref exit_code, ref rest) = result.value else {
+        panic!("process-run should return a 3-element list");
+    };
+    assert_eq!(**exit_code, Value::Number(0.0, Exactness::Exact));
+    let Value::Pair(ref stdout, _) = **rest else {
+        panic!("process-run should return a 3-element list");
+    };
+    let Value::String(ref stdout) = **stdout else {
+        panic!("stdout should be a string");
+    };
+    assert!(stdout.contains("hello"), "expected stdout to contain 'hello', got {stdout:?}");
+}
+
+#[test]
+fn process_run_rejects_a_program_not_on_the_allowlist() {
+    let mut session = Session {
+        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    };
+    let error = eval_program(r#"(process-run "cmd" (quote ("/C" "echo" "hi")))"#, &mut session)
+        .expect_err("a program not on the allowlist must fail named, not run");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+}
+
+#[test]
+fn process_run_rejects_a_non_string_program() {
+    let mut session = Session {
+        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    };
+    let error = eval_program("(process-run 42 (list \"x\"))", &mut session)
+        .expect_err("a non-string program name must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn process_run_rejects_a_non_list_args_argument() {
+    let mut session = Session {
+        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    };
+    let error = eval_program(r#"(process-run "git" "not-a-list")"#, &mut session)
+        .expect_err("a non-list args argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn process_run_rejects_a_non_string_element_in_args() {
+    let mut session = Session {
+        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    };
+    let error = eval_program("(process-run \"git\" (quote (42)))", &mut session)
+        .expect_err("a non-string element in args must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn process_run_wrong_arity_is_an_arity_error() {
+    let mut session = Session {
+        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    };
+    let error = eval_program(r#"(process-run "git")"#, &mut session)
+        .expect_err("process-run with one argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}

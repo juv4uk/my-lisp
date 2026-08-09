@@ -34,6 +34,29 @@ struct Limits {
     cons_limit: Option<usize>,
     cons_count: usize,
     numeric_bit_limit: Option<usize>,
+    /// `None` (the default, via `root()`) means `process-run` always fails
+    /// named — the opposite default from `cons_limit`/`numeric_bit_limit`
+    /// (those default to *unbounded*, this defaults to *disabled*), because
+    /// process execution is a categorically bigger capability than a
+    /// resource cap: combined with the inbound networking `tcp-accept`
+    /// gives a session (PLAN.md item 21), an unrestricted `process-run`
+    /// would let a remote peer reach arbitrary command execution through a
+    /// my-lisp program. `Some(programs)` opts a session into running only
+    /// those exact program names, never a shell string — the host (e.g.
+    /// `my-lisp-cli --allow-process=git`) decides the allowlist, a my-lisp
+    /// program itself can never grant itself this.
+    /// `None` (типово, через `root()`) означає, що `process-run` завжди
+    /// провалюється названо — протилежний типовий стан до
+    /// `cons_limit`/`numeric_bit_limit` (ті типово *необмежені*, цей типово
+    /// *вимкнений*), бо виконання процесу — категорійно більша можливість,
+    /// ніж межа ресурсу: разом із вхідною мережею, яку дає сесії
+    /// `tcp-accept` (PLAN.md, пункт 21), необмежений `process-run` дав би
+    /// віддаленому учаснику шлях до довільного виконання команд через
+    /// my-lisp-програму. `Some(programs)` вмикає для сесії запуск лише цих
+    /// точних імен програм, ніколи не рядок shell — хост (напр.
+    /// `my-lisp-cli --allow-process=git`) вирішує allowlist, my-lisp-програма
+    /// сама ніколи не може дозволити це собі.
+    process_allowlist: Option<Vec<String>>,
 }
 
 impl Environment {
@@ -80,6 +103,22 @@ impl Environment {
         self
     }
 
+    /// Opts this session into `process-run`, restricted to exactly the
+    /// program names in `programs` — see `Limits::process_allowlist`'s own
+    /// comment for why this defaults to fully disabled rather than
+    /// unbounded. Only a host embedding the interpreter calls this (e.g.
+    /// `my-lisp-cli`'s `--allow-process` flag); nothing in the language
+    /// itself can reach it.
+    /// Вмикає для сесії `process-run`, обмежений точно іменами програм у
+    /// `programs` — див. власний коментар `Limits::process_allowlist` про
+    /// те, чому це типово повністю вимкнено, не необмежено. Викликає лише
+    /// хост, що вбудовує інтерпретатор (напр. прапор `--allow-process` у
+    /// `my-lisp-cli`); нічого в самій мові не може до цього дотягнутись.
+    pub fn with_process_allowlist(self, programs: Vec<String>) -> Self {
+        self.2.borrow_mut().process_allowlist = Some(programs);
+        self
+    }
+
     /// Called by `cons` before allocating; `Err(())` means the configured
     /// limit (if any) is already reached. No-op (always `Ok`) when this
     /// session never opted into a limit.
@@ -101,6 +140,21 @@ impl Environment {
     /// Налаштована межа ширини числа в бітах, якщо ця сесія її ввімкнула.
     pub(crate) fn numeric_bit_limit(&self) -> Option<usize> {
         self.2.borrow().numeric_bit_limit
+    }
+
+    /// `false` unless this session called `with_process_allowlist` *and*
+    /// `program` is exactly one of the names it listed — no substring
+    /// match, no path resolution tricks, an allowed name must match in
+    /// full.
+    /// `false`, якщо ця сесія не викликала `with_process_allowlist` *або*
+    /// `program` не є точно одним з перелічених там імен — без часткового
+    /// збігу, без хитрощів із роздільною здатністю шляху, дозволене ім'я
+    /// має збігатись повністю.
+    pub(crate) fn is_process_allowed(&self, program: &str) -> bool {
+        match &self.2.borrow().process_allowlist {
+            Some(programs) => programs.iter().any(|allowed| allowed == program),
+            None => false,
+        }
     }
 
     /// A child frame is the future lexical boundary captured by a closure.

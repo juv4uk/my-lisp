@@ -1,4 +1,4 @@
-use my_lisp::{eval_parsed_expressions, parse, Session};
+use my_lisp::{eval_parsed_expressions, parse, Environment, Session};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::env;
@@ -24,10 +24,43 @@ fn history_path() -> Option<PathBuf> {
     Some(PathBuf::from(home).join(".my-lisp-history"))
 }
 
+/// `--allow-process=git,cargo` (PLAN.md item 21's follow-up) — the only
+/// way a my-lisp program running under this CLI can ever get `process-run`
+/// to succeed: `Environment::root()` defaults to disabled (see that
+/// method's own comment for why), and nothing in the language itself can
+/// grant this to a program that wasn't explicitly launched with it. Kept
+/// as a small hand-rolled parser rather than a dependency (`clap` etc.) —
+/// this crate's only external dependency today is `rustyline` for the
+/// REPL line editor, and one flag doesn't justify a second.
+/// `--allow-process=git,cargo` (продовження PLAN.md, пункт 21) — єдиний
+/// спосіб, яким my-lisp-програма під цим CLI може взагалі отримати робочий
+/// `process-run`: `Environment::root()` типово вимкнений (див. власний
+/// коментар цього методу чому), і ніщо в самій мові не може дати це
+/// програмі, яку не запустили явно з цим прапором. Залишено як маленький
+/// власноруч написаний парсер, не залежність (`clap` тощо) — єдина
+/// зовнішня залежність цього крейта сьогодні — `rustyline` для
+/// REPL-редактора рядка, один прапор не виправдовує другу.
+fn allowed_processes(args: &[String]) -> Vec<String> {
+    args.iter()
+        .find_map(|arg| arg.strip_prefix("--allow-process="))
+        .map(|list| list.split(',').map(str::to_string).collect())
+        .unwrap_or_default()
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let mut session = Session::default();
-    
+    let allowed = allowed_processes(&args);
+    let args: Vec<String> = args
+        .into_iter()
+        .filter(|arg| !arg.starts_with("--allow-process="))
+        .collect();
+    let environment = if allowed.is_empty() {
+        Environment::root()
+    } else {
+        Environment::root().with_process_allowlist(allowed)
+    };
+    let mut session = Session { environment };
+
     // Load standard library
     let core_lib = include_str!("../../../lib/core.my");
     if let Ok(core_ast) = parse(core_lib) {
@@ -46,8 +79,9 @@ fn main() {
             println!("Usage: my-lisp [file]");
             println!("If no file is provided, starts the REPL.");
             println!("\nOptions:");
-            println!("  -V, --version  Print version information");
-            println!("  -h, --help     Print help information");
+            println!("  -V, --version               Print version information");
+            println!("  -h, --help                  Print help information");
+            println!("  --allow-process=a,b,c        Allow (process-run) to run exactly these program names");
             return;
         }
 

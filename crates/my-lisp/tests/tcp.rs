@@ -25,6 +25,53 @@ use std::thread;
 /// Займає вільний порт, прибіндившись до порту 0 і зчитавши призначений
 /// ОС номер, тоді одразу звільняє його — уникає жорстко закодованого
 /// номера порту, який міг би зіткнутися з іншим тестом чи реальним сервісом.
+/// Runs a client-side my-lisp program, retrying the whole thing a few
+/// times if it fails — a guard against exactly one kind of flakiness,
+/// not a general retry-until-it-works: the server thread's `tcp-listen`
+/// needs a moment to actually bind and start accepting after
+/// `thread::spawn` returns, and under a fully parallel `cargo test` run
+/// (296 tests, real thread contention) a fixed short sleep isn't always
+/// enough. Each retry is a fresh `tcp-connect` attempt; the server's
+/// single `tcp-accept` call just waits longer, unaffected either way.
+/// Запускає клієнтську my-lisp-програму, повторюючи все кілька разів у
+/// разі провалу — захист саме від одного виду нестабільності, не
+/// загальний "повторюй, поки не спрацює": `tcp-listen` серверного потоку
+/// потребує миті, щоб реально забіндитись і почати приймати з'єднання
+/// після повернення з `thread::spawn`, і під повністю паралельним
+/// прогоном `cargo test` (296 тестів, реальна конкуренція за потоки)
+/// фіксований короткий сон не завжди достатній. Кожна повторна спроба —
+/// свіжий виклик `tcp-connect`; єдиний виклик `tcp-accept` сервера просто
+/// чекає довше, байдуже в обох випадках.
+fn eval_client_with_retry(
+    source: &str,
+    session: &mut Session,
+) -> Result<my_lisp::EvalResult, my_lisp::LanguageError> {
+    let mut last_error = None;
+    for attempt in 0..20 {
+        if attempt > 0 {
+            thread::sleep(std::time::Duration::from_millis(100));
+        }
+        match eval_program(source, session) {
+            Ok(result) => return Ok(result),
+            // Only a `tcp-connect` failure is safe to retry: the server's
+            // single `tcp-accept` hasn't consumed anything yet in that
+            // case. Any other error (e.g. something failed *after* a
+            // successful connect) must not retry — a second connection
+            // attempt would race a server that already accepted-and-
+            // exited on the first one, trading a clear failure for a hang.
+            // Лише провал `tcp-connect` безпечно повторювати: єдиний
+            // `tcp-accept` сервера в цьому випадку ще нічого не спожив.
+            // Будь-яка інша помилка (напр. щось провалилось *після*
+            // успішного підключення) не має повторюватись — друга спроба
+            // з'єднання змагалася б із сервером, що вже прийняв і завершився
+            // на першому, міняючи чітку помилку на зависання.
+            Err(error) if error.message.contains("tcp-connect:") => last_error = Some(error),
+            Err(error) => return Err(error),
+        }
+    }
+    Err(last_error.expect("at least one attempt should have run"))
+}
+
 fn free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
         .expect("binding to port 0 should succeed")
@@ -84,7 +131,7 @@ fn client_and_server_exchange_one_message_each_way() {
         reply
         "#
     );
-    let client_result = eval_program(&client_source, &mut client_session)
+    let client_result = eval_client_with_retry(&client_source, &mut client_session)
         .expect("client-side program should evaluate without error");
 
     assert_eq!(
@@ -128,7 +175,7 @@ fn tcp_read_returns_an_empty_string_on_a_closed_connection() {
         (tcp-read conn)
         "#
     );
-    let result = eval_program(&client_source, &mut client_session)
+    let result = eval_client_with_retry(&client_source, &mut client_session)
         .expect("reading a closed connection should return an empty string, not error");
     assert_eq!(result.value, Value::String("".into()));
 
@@ -199,7 +246,7 @@ fn tcp_write_returns_its_content_argument_unchanged() {
         written
         "#
     );
-    let result = eval_program(&client_source, &mut client_session)
+    let result = eval_client_with_retry(&client_source, &mut client_session)
         .expect("client-side program should evaluate without error");
     assert_eq!(result.value, Value::String("payload".into()));
 

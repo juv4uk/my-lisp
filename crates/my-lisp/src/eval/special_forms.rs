@@ -6,7 +6,7 @@
 //! sowie `def`, `defmacro` und `list`.
 
 use super::{closures, evaluate, evaluate_step, EvalStep};
-use crate::{Environment, ErrorKind, Expr, ExprKind, LanguageError, Span, Value};
+use crate::{Environment, Exactness, ErrorKind, Expr, ExprKind, LanguageError, Span, Value};
 use std::rc::Rc;
 
 /// `print` evaluates its one argument and appends its `Display` text to the
@@ -703,6 +703,112 @@ fn tcp_close(
                 span,
             )
         })
+}
+
+/// `(process-run program args)` (PLAN.md item 21's follow-up) — runs
+/// `program` with `args` (a list of strings) and returns
+/// `(list exit-code stdout stderr)`. Deliberately narrow, not a general
+/// shell-out primitive: `std::process::Command::new(program).args(args)`
+/// never goes through a shell (no `sh -c`, no string interpolation, no
+/// injection surface via `;`/`&&`/backticks in an argument), and the
+/// session must have opted into exactly `program`'s name via
+/// `Environment::with_process_allowlist` — the default session
+/// (`Environment::root()`) always fails this named, never silently. See
+/// that method's own comment for why: combined with `tcp-accept`'s
+/// inbound networking, an unrestricted `process-run` would let a remote
+/// peer reach arbitrary command execution through a my-lisp program.
+/// `(process-run program args)` (продовження PLAN.md, пункт 21) —
+/// запускає `program` з `args` (список рядків), повертає
+/// `(list exit-code stdout stderr)`. Свідомо вузький, не загальний
+/// shell-примітив: `std::process::Command::new(program).args(args)`
+/// ніколи не йде через shell (без `sh -c`, без інтерполяції рядків, без
+/// поверхні для ін'єкції через `;`/`&&`/backtick в аргументі), і сесія
+/// має явно дозволити точно ім'я `program` через
+/// `Environment::with_process_allowlist` — типова сесія
+/// (`Environment::root()`) завжди провалює це названо, ніколи мовчки. Див.
+/// власний коментар того методу чому: разом із вхідною мережею
+/// `tcp-accept`, необмежений `process-run` дав би віддаленому учаснику
+/// шлях до довільного виконання команд через my-lisp-програму.
+pub(super) fn evaluate_process_run(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("process-run", arguments, 2, span)?;
+    let program_value = evaluate(&arguments[0], environment)?;
+    let Value::String(ref program) = program_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "process-run expects a string program name · process-run очікує рядок-ім'я програми · process-run erwartet einen String-Programmnamen",
+            arguments[0].span,
+        ));
+    };
+    if !environment.is_process_allowed(program) {
+        return Err(LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("process-run: {program} is not on this session's allowlist · process-run: {program} немає в allowlist цієї сесії · process-run: {program} steht nicht auf der Allowlist dieser Sitzung"),
+            span,
+        ));
+    }
+    let args_value = evaluate(&arguments[1], environment)?;
+    let args = expect_string_list(&args_value, arguments[1].span)?;
+    let output = process_run(program, &args, span)?;
+    Ok(Value::list([
+        Value::Number(output.status.code().unwrap_or(-1) as f64, Exactness::Exact),
+        Value::String(Rc::from(String::from_utf8_lossy(&output.stdout).as_ref())),
+        Value::String(Rc::from(String::from_utf8_lossy(&output.stderr).as_ref())),
+    ]))
+}
+
+fn expect_string_list(value: &Value, span: Span) -> Result<Vec<String>, LanguageError> {
+    let mut items = Vec::new();
+    let mut current = value;
+    loop {
+        match current {
+            Value::Nil => return Ok(items),
+            Value::Pair(head, tail) => {
+                let Value::String(ref text) = **head else {
+                    return Err(LanguageError::new(
+                        ErrorKind::Type,
+                        "process-run expects a list of strings for its second argument · process-run очікує список рядків другим аргументом · process-run erwartet eine Liste von Zeichenketten als zweites Argument",
+                        span,
+                    ));
+                };
+                items.push(text.to_string());
+                current = tail;
+            }
+            _ => {
+                return Err(LanguageError::new(
+                    ErrorKind::Type,
+                    "process-run expects a proper list of strings for its second argument · process-run очікує правильний список рядків другим аргументом · process-run erwartet eine echte Liste von Zeichenketten als zweites Argument",
+                    span,
+                ))
+            }
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn process_run(program: &str, args: &[String], span: Span) -> Result<std::process::Output, LanguageError> {
+    std::process::Command::new(program)
+        .args(args)
+        .output()
+        .map_err(|error| {
+            LanguageError::new(
+                ErrorKind::InvalidForm,
+                format!("process-run: failed to run {program}: {error}"),
+                span,
+            )
+        })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn process_run(_program: &str, _args: &[String], span: Span) -> Result<std::process::Output, LanguageError> {
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        "process-run: process execution is not available in this build",
+        span,
+    ))
 }
 
 pub(super) fn evaluate_read_all(

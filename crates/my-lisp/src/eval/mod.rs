@@ -185,6 +185,9 @@ fn evaluate_list(
         Some("tcp-close") => {
             special_forms::evaluate_tcp_close(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("process-run") => {
+            special_forms::evaluate_process_run(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("read-all") => {
             special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
         }
