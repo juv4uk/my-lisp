@@ -1126,12 +1126,15 @@ fn process_run_fails_named_when_the_session_never_opted_in() {
 #[test]
 fn process_run_succeeds_for_an_explicitly_allowed_program() {
     let mut session = Session {
-        environment: Environment::root().with_process_allowlist(vec!["cmd".to_string()]),
+        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
     };
-    // `cmd /C echo hello` avoids depending on any program beyond what a
-    // Windows CI runner already has, while still proving args are passed
+    // `git --version` runs on every platform this project builds for
+    // (Linux/macOS/Windows CI runners all have `git` — the workflow
+    // itself checks out the repo with it) without going through a
+    // platform-specific shell (`cmd` on Windows, `sh`/`echo` elsewhere
+    // aren't the same program), while still proving args are passed
     // through without a shell interpreting them as one string.
-    let source = r#"(process-run "cmd" (quote ("/C" "echo" "hello")))"#;
+    let source = r#"(process-run "git" (quote ("--version")))"#;
     let result = eval_program(source, &mut session).expect("an explicitly allowed program should run");
     let Value::Pair(ref exit_code, ref rest) = result.value else {
         panic!("process-run should return a 3-element list");
@@ -1143,7 +1146,7 @@ fn process_run_succeeds_for_an_explicitly_allowed_program() {
     let Value::String(ref stdout) = **stdout else {
         panic!("stdout should be a string");
     };
-    assert!(stdout.contains("hello"), "expected stdout to contain 'hello', got {stdout:?}");
+    assert!(stdout.contains("git version"), "expected stdout to contain 'git version', got {stdout:?}");
 }
 
 #[test]
