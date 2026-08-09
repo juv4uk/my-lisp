@@ -639,6 +639,42 @@
       "note": "defmacro validates its name is a symbol, not just its arity",
       "expr": "(defmacro 5 (x) x)",
       "error": "InvalidForm"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S3"
+      ],
+      "note": "100,000-deep self-tail-call through the real evaluator stays O(1) Rust stack — previously only exercised by crates/my-lisp/tests/stack_safety.rs, not the implementation-independent contract; a non-tail-call-optimizing future core would fail here, not just in production",
+      "expr": "(def count-down (lambda (n) (cond ((eq n 0) 'done) (t (count-down (- n 1)))))) (count-down 100000)",
+      "expected": "done"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "note": "empty-list edge case, previously untested — map",
+      "expr": "(map (lambda (x) (+ x 1)) '())",
+      "expected": "()"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "note": "empty-list edge case, previously untested — filter",
+      "expr": "(filter (lambda (x) (eq x 2)) '())",
+      "expected": "()"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "note": "empty-list edge case, previously untested — reduce returns its initial accumulator unchanged",
+      "expr": "(reduce (lambda (acc x) (+ acc x)) 0 '())",
+      "expected": "0"
     }
   ]
 }

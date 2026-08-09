@@ -401,5 +401,33 @@
       "S2"
     ],
     "note": "defmacro validates its name is a symbol, not just its arity"
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S3"
+    ],
+    "note": "100,000-deep self-tail-call through the real evaluator stays O(1) Rust stack — previously only exercised by crates/my-lisp/tests/stack_safety.rs, not the implementation-independent contract; a non-tail-call-optimizing future core would fail here, not just in production"
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ],
+    "note": "empty-list edge case, previously untested — map"
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ],
+    "note": "empty-list edge case, previously untested — filter"
+  },
+  {
+    "tier": 3,
+    "axioms": [
+      "G5"
+    ],
+    "note": "empty-list edge case, previously untested — reduce returns its initial accumulator unchanged"
   }
 ]

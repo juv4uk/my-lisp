@@ -66,5 +66,9 @@
   { "expr": "(cdr (cdr '(a b . c)))", "expected": "c" },
   { "expr": "(unify '(var x) '(f (var x)) '())", "expected": "fail" },
   { "expr": "(defmacro foo)", "error": "Arity" },
-  { "expr": "(defmacro 5 (x) x)", "error": "InvalidForm" }
+  { "expr": "(defmacro 5 (x) x)", "error": "InvalidForm" },
+  { "expr": "(def count-down (lambda (n) (cond ((eq n 0) 'done) (t (count-down (- n 1)))))) (count-down 100000)", "expected": "done" },
+  { "expr": "(map (lambda (x) (+ x 1)) '())", "expected": "()" },
+  { "expr": "(filter (lambda (x) (eq x 2)) '())", "expected": "()" },
+  { "expr": "(reduce (lambda (acc x) (+ acc x)) 0 '())", "expected": "0" }
 ]

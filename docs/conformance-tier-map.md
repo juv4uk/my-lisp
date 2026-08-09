@@ -74,10 +74,18 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 | 66 | `(unify '(var x) '(f (var x)) '())` | 3 | — | occurs-check, principle 3 evidence — prevents building an infinite structure |
 | 67 | `(defmacro foo)` error `Arity` | 2 | S2 | `defmacro` validates arity like any other special form |
 | 68 | `(defmacro 5 (x) x)` error `InvalidForm` | 2 | S2 | `defmacro` validates its name is a symbol, not just its arity |
+| 69 | `(def count-down (lambda (n) (cond ((eq n 0) 'done) (t (count-down (- n 1)))))) (count-down 100000)` | 2 | S3 | 100,000-deep self-tail-call stays O(1) Rust stack; previously only `stack_safety.rs`, not the implementation-independent contract |
+| 70 | `(map (lambda (x) (+ x 1)) '())` | 3 | G5 | empty-list edge case, previously untested |
+| 71 | `(filter (lambda (x) (eq x 2)) '())` | 3 | G5 | empty-list edge case, previously untested |
+| 72 | `(reduce (lambda (acc x) (+ acc x)) 0 '())` | 3 | G5 | empty-list edge case — returns initial accumulator unchanged, previously untested |
 
 **2026-08-09, later same day:** the literate-markdown fixture (formerly #42) was removed from `conformance.json` entirely — it was the file's only non-S-expression entry and duplicated coverage already owned by `crates/my-lisp-literate/tests/literate_offsets.rs`. Rows 1-65 above were renumbered to match the resulting 65-fixture file.
 
-**2026-08-09, still later:** three fixtures appended (append-only, at the end, per the file's own convention) closing gaps found by opinion review: `unify`'s occurs-check (previously only covered by `unify.rs`'s Rust-level unit test, not the implementation-independent contract) and two `defmacro` error paths (arity, non-symbol name) — the macro system previously had zero error coverage in `conformance.json`. File is now 68 fixtures.
+**2026-08-09, still later:** three fixtures appended (append-only, at the end, per the file's own convention) closing gaps found by opinion review: `unify`'s occurs-check (previously only covered by `unify.rs`'s Rust-level unit test, not the implementation-independent contract) and two `defmacro` error paths (arity, non-symbol name) — the macro system previously had zero error coverage in `conformance.json`.
+
+**2026-08-09, even later:** one more fixture appended closing the last gap from the same review — a 100,000-deep tail-recursive call, so stack-safety-under-recursion is now part of the implementation-independent contract too, not just `stack_safety.rs`'s Rust-only coverage.
+
+**2026-08-09, last pass of the day:** three empty-list edge cases appended for `map`/`filter`/`reduce` — until now these had exactly one fixture each (happy path only), a real coverage gap next to `unify`/`reason`'s ~9 fixtures including a full proof tree. Not a claim that symbolic AI is over-tested — principle 3 names it as a project goal, so deeper coverage there is a deliberate choice — but `map`/`filter`/`reduce` having zero edge cases was an accident of "it just worked when written," not a decision. File is now 72 fixtures.
 
 ## A gap found by doing this pass — and closed the same day
 
@@ -86,9 +94,9 @@ Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` actin
 ## Counts
 
 - Tier 1 (CORE SEMANTICS): 23 fixtures
-- Tier 2 (LANGUAGE CONTRACT): 21 fixtures
-- Tier 3 (ECOSYSTEM CONFORMANCE): 24 fixtures
-- Total: 68 fixtures (literate layer removed, occurs-check + 2 defmacro error fixtures added, both 2026-08-09; see notes above)
+- Tier 2 (LANGUAGE CONTRACT): 22 fixtures
+- Tier 3 (ECOSYSTEM CONFORMANCE): 27 fixtures
+- Total: 72 fixtures (literate layer removed; occurs-check, 2 defmacro error fixtures, 1 tail-recursion fixture, and 3 map/filter/reduce empty-list fixtures added, all 2026-08-09; see notes above)
 
 (Corrected 2026-08-09 from an initial hand count of 22/15/20/1 — `my-lisp-constitution.json`'s machine-checked tier field is now the authoritative count, not this table's manual tally.)
 - Fixtures with no clean G/S axiom mapping: 8 (`unify`/`reason`, evidence for principle 3, not the G/S axiom list) — #10/#20 resolved by G8, no longer unmapped
