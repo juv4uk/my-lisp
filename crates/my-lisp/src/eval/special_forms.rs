@@ -462,6 +462,13 @@ pub(super) fn evaluate_cons(
     exact_arity("cons", arguments, 2, span)?;
     let head = evaluate(&arguments[0], environment)?;
     let tail = evaluate(&arguments[1], environment)?;
+    if environment.try_alloc_cons().is_err() {
+        return Err(LanguageError::new(
+            ErrorKind::OutOfMemory,
+            "cons: resource limit reached · cons: досягнуто межі ресурсу · cons: Ressourcengrenze erreicht",
+            span,
+        ));
+    }
     Ok(Value::Pair(Rc::new(head), Rc::new(tail)))
 }
 

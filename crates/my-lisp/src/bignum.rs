@@ -282,6 +282,23 @@ impl BigInt {
         self.negative
     }
 
+    /// Bit width of the magnitude (sign ignored), `0` for zero itself —
+    /// used only to enforce an *opt-in* numeric resource limit
+    /// (`Environment::with_numeric_bit_limit`), never in ordinary
+    /// arithmetic. The reference Rust implementation stays unbounded by
+    /// default (see `docs/language-core-axioms.md`'s S1).
+    /// Ширина величини в бітах (знак ігнорується), `0` для самого нуля —
+    /// використовується лише для примусового *опційного* числового
+    /// обмеження ресурсу (`Environment::with_numeric_bit_limit`), ніколи в
+    /// звичайній арифметиці. Еталонна Rust-реалізація лишається
+    /// необмеженою за замовчуванням (див. S1 у `docs/language-core-axioms.md`).
+    pub fn bit_length(&self) -> usize {
+        match self.magnitude.0.last() {
+            None => 0,
+            Some(&top) => (self.magnitude.0.len() - 1) * 32 + (32 - top.leading_zeros() as usize),
+        }
+    }
+
     fn normalized(negative: bool, magnitude: Magnitude) -> Self {
         let is_zero = magnitude.is_zero();
         BigInt {

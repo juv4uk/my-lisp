@@ -64,6 +64,7 @@ pub(super) fn evaluate_arithmetic(
         _ => unreachable!("known arithmetic operator"),
     }
     .ok_or_else(|| arithmetic_overflow(span))?;
+    check_numeric_limit(environment, &result, span)?;
     Ok(exact_value(result))
 }
 
@@ -146,6 +147,32 @@ fn arithmetic_overflow(span: Span) -> LanguageError {
     )
 }
 
+/// Enforces an *opt-in* numeric resource limit (`Environment::with_numeric_bit_limit`)
+/// — a no-op when this session never configured one, which is every
+/// `conformance.my` fixture and the Rust reference implementation by
+/// default (see S1's own open note on arbitrary precision). Checked after
+/// computing an exact result, never used to fall back to an inexact
+/// approximation — that would violate S1, not satisfy it.
+/// Застосовує *опційну* числову межу ресурсу (`Environment::with_numeric_bit_limit`)
+/// — нічого не робить, якщо ця сесія її не налаштувала, що є типовим для
+/// кожної фікстури `conformance.my` й Rust-реалізації (див. власну
+/// відкриту примітку S1 про довільну точність). Перевіряється після
+/// обчислення точного результату, ніколи не використовується, щоб
+/// відкотитись до неточного наближення — це порушило б S1, не
+/// задовольнило б його.
+fn check_numeric_limit(environment: &Environment, result: &Rational, span: Span) -> Result<(), LanguageError> {
+    if let Some(limit) = environment.numeric_bit_limit() {
+        if result.bit_length() > limit {
+            return Err(LanguageError::new(
+                ErrorKind::NumericOverflow,
+                "exact arithmetic result exceeds the configured bit-length limit · точний результат арифметики перевищує налаштовану межу в бітах · exaktes Arithmetikergebnis überschreitet die konfigurierte Bitlängengrenze",
+                span,
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn evaluate_division(
     arguments: &[Expr],
     environment: &Environment,
@@ -199,6 +226,7 @@ pub(super) fn evaluate_division(
                 .ok_or_else(|| division_error(span))?;
         }
     }
+    check_numeric_limit(environment, &result, span)?;
     Ok(exact_value(result))
 }
 

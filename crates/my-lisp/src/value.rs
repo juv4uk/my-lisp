@@ -102,6 +102,15 @@ impl Rational {
         }
     }
 
+    /// The wider of numerator/denominator bit width — see `BigInt::bit_length`
+    /// for why this exists (an opt-in resource-limit check, not ordinary use).
+    /// Ширша з двох величин чисельника/знаменника в бітах — див.
+    /// `BigInt::bit_length`, чому це існує (опційна перевірка обмеження
+    /// ресурсу, не звичайне використання).
+    pub fn bit_length(&self) -> usize {
+        self.numerator.bit_length().max(self.denominator.bit_length())
+    }
+
     pub fn checked_div(self, divisor: Self) -> Option<Self> {
         if divisor.numerator.is_zero() {
             return None;

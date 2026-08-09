@@ -8,6 +8,34 @@ pub enum ErrorKind {
     Arity,
     Type,
     InvalidForm,
+    /// A resource limit was hit, not a logic error — S3's own example
+    /// ("4096 cons cells on an FPGA") named this category before it
+    /// existed in code (found during a 2026-08-09 pre-ratification axiom
+    /// audit). The Rust reference implementation has no *default* cap
+    /// (arbitrary-precision heap), but `Environment::with_cons_limit`
+    /// lets a session opt into one — for testing what a genuinely bounded
+    /// implementation (an FPGA, an embedded C core) must do: fail named
+    /// and loud, never silently redefine `cons`'s meaning.
+    /// Влучено обмеження ресурсу, не логічна помилка — власний приклад S3
+    /// ("4096 cons-комірок на FPGA") назвав цю категорію до того, як вона
+    /// існувала в коді (знайдено під час аудиту аксіом перед ратифікацією,
+    /// 2026-08-09). Rust-реалізація не має *типової* межі (купа довільної
+    /// точності), але `Environment::with_cons_limit` дозволяє сесії
+    /// увімкнути її — для перевірки, що справді обмежена реалізація
+    /// (FPGA, embedded C-ядро) мусить робити: провалюватись названо й
+    /// гучно, ніколи не переозначати сенс `cons` мовчки.
+    OutOfMemory,
+    /// Same shape as `OutOfMemory`, for numeric magnitude instead of heap
+    /// space — S1's own example named it before it existed too.
+    /// `Environment::with_numeric_bit_limit` opts a session into a bit-length
+    /// cap on exact arithmetic results; past it, the operation fails named,
+    /// it never silently approximates.
+    /// Та сама форма, що й `OutOfMemory`, для числової величини замість
+    /// купи — власний приклад S1 теж назвав це до того, як існувало в коді.
+    /// `Environment::with_numeric_bit_limit` вмикає для сесії межу в бітах
+    /// на результати точної арифметики; за нею операція провалюється
+    /// названо, ніколи не наближає мовчки.
+    NumericOverflow,
 }
 
 /// Structured errors let the IDE underline the exact source range later.

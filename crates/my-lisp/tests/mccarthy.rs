@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, parse, ErrorKind, Expr, ExprKind, Rational, Session, Value};
+use my_lisp::{eval_program, parse, Environment, ErrorKind, Expr, ExprKind, Rational, Session, Value};
 
 /// Looks up `key` in a my-lisp alist `((k1 . v1) (k2 . v2) ...)`, already
 /// parsed as `Expr`s (data, not evaluated) — used by the two
@@ -889,4 +889,85 @@ fn symbolic_reasoning_layer_stays_loaded_and_tested() {
          optional add-on; if this floor is intentionally being lowered, lower this assertion \
          explicitly instead of letting coverage drift down unnoticed"
     );
+}
+
+/// S3 named `OutOfMemory` in its own prose before the category existed in
+/// code (found during the 2026-08-09 pre-ratification axiom audit) — this
+/// makes it real: an opt-in cons-cell cap, simulating a genuinely bounded
+/// heap (S3's own example, "4096 cons cells on an FPGA") without needing
+/// real hardware to verify the claim "bounded implementations fail named,
+/// never silently redefine `cons`'s meaning." The default session (every
+/// `conformance.my` fixture) stays unbounded — this is opt-in, not a new
+/// default limit on the reference implementation.
+/// S3 назвав `OutOfMemory` у власному тексті до того, як категорія
+/// існувала в коді (знайдено під час аудиту аксіом перед ратифікацією,
+/// 2026-08-09) — цей тест робить її реальною: опційна межа на кількість
+/// cons-комірок, що імітує справді обмежену купу (власний приклад S3,
+/// "4096 cons-комірок на FPGA") без потреби в реальному залізі, щоб
+/// перевірити твердження "обмежені реалізації провалюються названо,
+/// ніколи не переозначають сенс `cons` мовчки". Типова сесія (кожна
+/// фікстура `conformance.my`) лишається необмеженою — це опційно, не нова
+/// типова межа для еталонної реалізації.
+#[test]
+fn cons_respects_an_opt_in_resource_limit_and_fails_named_not_silently() {
+    let mut session = Session {
+        environment: Environment::root().with_cons_limit(2),
+    };
+    eval_program("(cons 1 2)", &mut session).expect("first cons should succeed");
+    eval_program("(cons 3 4)", &mut session).expect("second cons should succeed");
+    let error =
+        eval_program("(cons 5 6)", &mut session).expect_err("third cons should hit the limit");
+    assert_eq!(error.kind, ErrorKind::OutOfMemory);
+}
+
+#[test]
+fn cons_stays_unbounded_by_default_matching_every_conformance_fixture() {
+    // The default Session::default() (what conformance_tests_from_my uses)
+    // never opts into a limit — confirms OutOfMemory is reachable only when
+    // a session deliberately asks for it, not a new default restriction.
+    let mut session = Session::default();
+    for _ in 0..10_000 {
+        eval_program("(cons 1 2)", &mut session).expect("unbounded session should never run out");
+    }
+}
+
+/// Same shape as the `cons` limit above, for `S1`'s own named example
+/// (`NumericOverflow`) instead of `S3`'s (`OutOfMemory`) — an opt-in
+/// bit-length cap on exact arithmetic results. Never falls back to an
+/// inexact approximation past the limit (that would violate S1, not
+/// satisfy it) — it fails named instead.
+/// Та сама форма, що й межа `cons` вище, для власного названого прикладу
+/// `S1` (`NumericOverflow`) замість `S3` (`OutOfMemory`) — опційна межа в
+/// бітах на результати точної арифметики. Ніколи не відкочується до
+/// неточного наближення за межею (це порушило б S1, не задовольнило б
+/// його) — натомість провалюється названо.
+#[test]
+fn arithmetic_respects_an_opt_in_numeric_bit_limit_and_fails_named_not_silently() {
+    let mut session = Session {
+        environment: Environment::root().with_numeric_bit_limit(8), // fits up to 255
+    };
+    eval_program("(+ 100 100)", &mut session).expect("200 fits in 8 bits");
+    let error = eval_program("(+ 200 200)", &mut session)
+        .expect_err("400 exceeds an 8-bit limit and must not silently approximate");
+    assert_eq!(error.kind, ErrorKind::NumericOverflow);
+}
+
+#[test]
+fn division_respects_the_same_opt_in_numeric_bit_limit() {
+    let mut session = Session {
+        environment: Environment::root().with_numeric_bit_limit(8),
+    };
+    let error = eval_program("(/ 1 1000)", &mut session)
+        .expect_err("a denominator past the bit limit must fail named");
+    assert_eq!(error.kind, ErrorKind::NumericOverflow);
+}
+
+#[test]
+fn arithmetic_stays_unbounded_by_default_matching_every_conformance_fixture() {
+    let mut session = Session::default();
+    eval_program(
+        "(def big (lambda (n acc) (cond ((eq n 0) acc) (t (big (- n 1) (* acc 2)))))) (big 100 1)",
+        &mut session,
+    )
+    .expect("unbounded session should compute a 100-bit result without a limit error");
 }
