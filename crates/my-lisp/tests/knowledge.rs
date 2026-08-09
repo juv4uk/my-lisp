@@ -37,6 +37,17 @@ fn test_defmodule_and_reason_in() {
 }
 
 #[test]
+fn test_defmodule_and_reason_in_physics() {
+    let source = r#"
+        (load-knowledge "../../knowledge/physics.my")
+        (let ((results (reason-in 'physics '(has-mass (var x)))))
+             ;; We expect the first proof result to bind (x . apple)
+             (car (car results)))
+    "#;
+    assert_eq!(eval_knowledge(source), "((x . apple))");
+}
+
+#[test]
 fn test_reason_in_unknown_module() {
     let source = r#"
         (reason-in 'biology '(is-alive cell))
@@ -58,6 +69,18 @@ fn test_forward_in_materializes_every_derivable_fact_in_a_module() {
     assert_eq!(
         eval_knowledge(source),
         "((ancestor tom jim) (ancestor tom pat) (ancestor tom ann) (ancestor bob jim) (ancestor tom bob) (ancestor tom liz) (ancestor bob ann) (ancestor bob pat) (ancestor pat jim) (grandparent tom ann) (grandparent tom pat) (grandparent bob jim) (parent pat jim) (parent bob pat) (parent bob ann) (parent tom liz) (parent tom bob))"
+    );
+}
+
+#[test]
+fn test_forward_in_materializes_every_derivable_fact_in_astronomy() {
+    let source = r#"
+        (load-knowledge "../../knowledge/astronomy.my")
+        (forward-in 'astronomy)
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((orbits earth sun) (orbits mars sun) (star sun) (planet mars) (planet earth))"
     );
 }
 
@@ -92,6 +115,49 @@ fn test_family_module() {
              (car (car results)))
     "#;
     assert_eq!(eval_knowledge(source), "(((z . 0) . bob) ((y . 0) . ann) ((x . 0) . tom))");
+}
+
+#[test]
+fn test_forward_in_chains_multiple_rules_in_physics() {
+    let source = r#"
+        (load-knowledge "../../knowledge/physics.my")
+        (forward-in 'physics)
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((attracted-by-gravity apple) (has-mass apple))"
+    );
+}
+
+#[test]
+fn test_astronomy_module() {
+    let source = r#"
+        (load-knowledge "../../knowledge/astronomy.my")
+        (let ((results (reason-in 'astronomy '(orbits earth sun))))
+             ;; The result contains the bindings used during the proof, including rule variables
+             (car (car results)))
+    "#;
+    assert_eq!(eval_knowledge(source), "(((s . 0) . sun) ((p . 0) . earth))");
+}
+
+#[test]
+fn test_describe_collects_every_fact_about_a_symbol_astronomy() {
+    let source = r#"
+        (load-knowledge "../../knowledge/astronomy.my")
+        (describe 'earth 'astronomy)
+    "#;
+    // `earth` appears in one fact (`(planet earth)`); the `orbits` rule is not
+    // a fact, so it is excluded even though `earth` could satisfy it.
+    assert_eq!(eval_knowledge(source), "((planet earth))");
+}
+
+#[test]
+fn test_describe_symbol_with_no_facts_astronomy() {
+    let source = r#"
+        (load-knowledge "../../knowledge/astronomy.my")
+        (describe 'pluto 'astronomy)
+    "#;
+    assert_eq!(eval_knowledge(source), "()");
 }
 
 #[test]
@@ -146,6 +212,22 @@ fn test_record_usage_accumulates_across_separate_queries() {
         (usage-of rule-key)
     "#;
     // The `grandparent` rule fired once per query, on two separate top-level
+    // `record-usage!` calls; usage-of reports the running total.
+    assert_eq!(eval_knowledge(source), "2");
+}
+
+#[test]
+fn test_record_usage_accumulates_across_separate_queries_astronomy() {
+    let source = r#"
+        (load-knowledge "../../knowledge/astronomy.my")
+        (def rule-key (list 'orbits (list 'var (cons 'p 0)) (list 'var (cons 's 0))))
+        (def results-1 (reason-in 'astronomy '(orbits earth sun)))
+        (record-usage! (second (car results-1)))
+        (def results-2 (reason-in 'astronomy '(orbits mars sun)))
+        (record-usage! (second (car results-2)))
+        (usage-of rule-key)
+    "#;
+    // The `orbits` rule fired once per query, on two separate top-level
     // `record-usage!` calls; usage-of reports the running total.
     assert_eq!(eval_knowledge(source), "2");
 }
