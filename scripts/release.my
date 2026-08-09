@@ -4,10 +4,13 @@
 ; `.github/workflows/release.yml`'s own `test` job re-checks server-side,
 ; this just catches it locally before a bad tag ever reaches GitHub.
 ;
-; Edit `*release-version*` (and `*release-remote*`, if it's ever not
-; "my-lisp") below, then run:
+; Takes the version as a command-line argument (`*argv*`, added
+; 2026-08-09 alongside this script — `my-lisp-cli` defines it from
+; whatever follows the filename, before running the script), not a
+; hand-edited constant — the `l` tag prefix (`docs/versioning.md`) is
+; added here, so the caller passes a bare version:
 ;
-;   my-lisp --allow-process=git,cargo scripts/release.my
+;   my-lisp --allow-process=git,cargo scripts/release.my 0.4.4
 ;
 ; Without `--allow-process`, `process-run` fails named — see
 ; `docs/language-core.md`'s own entry for why the default is fully
@@ -27,10 +30,13 @@
 ; перевіряє повторно на сервері, ця лише ловить це локально до того, як
 ; поганий тег дійде до GitHub.
 ;
-; Відредагуй `*release-version*` (і `*release-remote*`, якщо колись стане
-; не "my-lisp") нижче, тоді запусти:
+; Бере версію як аргумент командного рядка (`*argv*`, додано 2026-08-09
+; поруч із цим скриптом — `my-lisp-cli` визначає його з усього, що йде
+; після імені файлу, до запуску скрипта), не як ручну константу — префікс
+; тегу `l` (`docs/versioning.md`) додається тут, тож викликач передає
+; голу версію:
 ;
-;   my-lisp --allow-process=git,cargo scripts/release.my
+;   my-lisp --allow-process=git,cargo scripts/release.my 0.4.4
 ;
 ; Без `--allow-process` `process-run` провалюється названо — див. власний
 ; запис у `docs/language-core.md`, чому типовий стан повністю вимкнений,
@@ -43,8 +49,24 @@
 ; читанням .github/workflows/release.yml перед написанням цього скрипта,
 ; не припущено.
 
-(def *release-version* "l0.4.0")
 (def *release-remote* "my-lisp")
+
+(def *release-version*
+  (cond
+    ((atom *argv*)
+     (error-missing-version))
+    (t (string-append "l" (car *argv*)))))
+
+; `error-missing-version` deliberately isn't defined — calling an
+; unbound symbol is `ErrorKind::UnknownSymbol`, a real named failure
+; (S2), not a made-up ad-hoc error primitive this language doesn't
+; otherwise have. If `*argv*` is empty, the script fails loud and named
+; right here, before `process-run` ever gets called.
+; `error-missing-version` свідомо не визначено — виклик незв'язаного
+; символу це `ErrorKind::UnknownSymbol`, реальний названий провал (S2),
+; не вигаданий ad-hoc примітив помилки, якого ця мова інакше не має.
+; Якщо `*argv*` порожній, скрипт провалюється гучно й названо саме тут,
+; до того, як `process-run` взагалі викликається.
 
 (def report-and-exit-if-failed
   (lambda (label result)

@@ -1,4 +1,5 @@
-use my_lisp::{eval_parsed_expressions, parse, Environment, Session};
+use my_lisp::{eval_parsed_expressions, parse, Environment, Session, Value};
+use std::rc::Rc;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::env;
@@ -87,6 +88,28 @@ fn main() {
 
         // Run file
         let filename = arg;
+
+        // `*argv*` (PLAN.md item 21's follow-up, for scripts/release.my
+        // taking a version on the command line) — everything after the
+        // filename, as a my-lisp list of strings, defined before the
+        // script runs. Empty when nothing follows the filename, not an
+        // error — a script that wants an argument checks for that itself
+        // (`(atom *argv*)`), the same way any other missing-input case in
+        // this language is handled, not a special CLI-only mechanism.
+        // `*argv*` (продовження PLAN.md, пункту 21, для scripts/release.my,
+        // яка бере версію з командного рядка) — усе після імені файлу, як
+        // my-lisp-список рядків, визначений до запуску скрипта. Порожній,
+        // якщо нічого не йде після імені файлу, не помилка — скрипт, якому
+        // потрібен аргумент, сам перевіряє це (`(atom *argv*)`), так само
+        // як будь-який інший випадок відсутнього вводу в цій мові, не
+        // окремий CLI-специфічний механізм.
+        let argv = Value::list(
+            args[2..]
+                .iter()
+                .map(|arg| Value::String(Rc::from(arg.as_str()))),
+        );
+        session.environment.define("*argv*", argv);
+
         match fs::read_to_string(filename) {
             Ok(source) => {
                 match parse(&source) {

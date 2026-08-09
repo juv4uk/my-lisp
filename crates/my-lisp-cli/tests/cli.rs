@@ -199,3 +199,42 @@ fn core_lib_is_preloaded_before_running_a_file() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert_eq!(stdout.trim(), "5");
 }
+
+#[test]
+fn argv_carries_everything_after_the_filename() {
+    // *argv* (PLAN.md item 21's follow-up, for scripts/release.my taking a
+    // version on the command line) is whatever follows the filename, as a
+    // my-lisp list of strings — not parsed as code, just passed through.
+    // *argv* (продовження PLAN.md, пункту 21, для scripts/release.my, яка
+    // бере версію з командного рядка) — усе, що йде після імені файлу, як
+    // my-lisp-список рядків — не парситься як код, лише передається як є.
+    let dir = std::env::temp_dir();
+    let path = dir.join("my-lisp-cli-test-argv.my");
+    std::fs::write(&path, "*argv*").expect("should write temp file");
+
+    let output = my_lisp()
+        .arg(&path)
+        .arg("0.4.4")
+        .arg("extra")
+        .output()
+        .expect("binary should run");
+    let _ = std::fs::remove_file(&path);
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout.trim(), "(\"0.4.4\" \"extra\")");
+}
+
+#[test]
+fn argv_is_empty_when_nothing_follows_the_filename() {
+    let dir = std::env::temp_dir();
+    let path = dir.join("my-lisp-cli-test-argv-empty.my");
+    std::fs::write(&path, "*argv*").expect("should write temp file");
+
+    let output = my_lisp().arg(&path).output().expect("binary should run");
+    let _ = std::fs::remove_file(&path);
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout.trim(), "()");
+}
