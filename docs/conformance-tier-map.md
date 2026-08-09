@@ -82,6 +82,10 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 | 74 | `((lambda args args) 1 2 3)` | 1 | G2 | bare-symbol lambda-list — zero fixed params, every argument as one list |
 | 75 | `((lambda (a b . rest) a) 1)` error `Arity` | 1 | S2 | variadic lambda still enforces its fixed parameters |
 | 76 | `(list 1 2 3)` | 3 | G5 | `list` moved from a Rust special form to `lib/core.my` `(lambda args args)` |
+| 77 | `(let ((second (lambda (x) 'shadowed))) (second '(1 2 3)))` | 2 | G4 | neither Lisp-1 nor Lisp-2 as an identity — ordinary bindings share one namespace, locally shadowable |
+| 78 | `(let ((car (lambda (x) 'shadowed))) (car '(1 2)))` | 1 | G4 | the seven primitives are syntax, dispatched before env lookup, never shadowable |
+
+**2026-08-09, final pass:** the Lisp-1/Lisp-2 question was resolved by declining the framing — see `docs/language-core-axioms.md`'s "Deliberately left open" section. Two fixtures added proving the actual (already-existing, now-documented) behavior. File is now 78 fixtures.
 
 **2026-08-09, latest:** variadic lambda parameters added (`(a b . rest)` dotted lists, and bare-symbol `args` for "every argument") — three shapes shared across the Lisp family, not one dialect's `&rest` keyword. This let `list` itself move out of Rust into `lib/core.my` as `(def list (lambda args args))`, closing the one real candidate found while auditing the Rust built-in surface against G4/G5 ("can the core already say this?"). File is now 76 fixtures.
 

@@ -74,5 +74,7 @@
   { "expr": "((lambda (a b . rest) rest) 1 2 3 4 5)", "expected": "(3 4 5)" },
   { "expr": "((lambda args args) 1 2 3)", "expected": "(1 2 3)" },
   { "expr": "((lambda (a b . rest) a) 1)", "error": "Arity" },
-  { "expr": "(list 1 2 3)", "expected": "(1 2 3)" }
+  { "expr": "(list 1 2 3)", "expected": "(1 2 3)" },
+  { "expr": "(let ((second (lambda (x) 'shadowed))) (second '(1 2 3)))", "expected": "shadowed" },
+  { "expr": "(let ((car (lambda (x) 'shadowed))) (car '(1 2)))", "expected": "1" }
 ]

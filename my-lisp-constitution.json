@@ -714,6 +714,25 @@
       "note": "list moved from a Rust special form to lib/core.my (lambda args args) once variadic parameters existed to express it",
       "expr": "(list 1 2 3)",
       "expected": "(1 2 3)"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "G4"
+      ],
+      "note": "neither Lisp-1 nor Lisp-2 as an identity — ordinary def/defmacro bindings share one namespace and are locally shadowable",
+      "expr": "(let ((second (lambda (x) 'shadowed))) (second '(1 2 3)))",
+      "expected": "shadowed"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G4"
+      ],
+      "role": "constitutive",
+      "note": "the seven primitives are syntax, dispatched before any environment lookup, so never shadowable — the same distinction Scheme draws between special forms and procedures",
+      "expr": "(let ((car (lambda (x) 'shadowed))) (car '(1 2)))",
+      "expected": "1"
     }
   ]
 }
