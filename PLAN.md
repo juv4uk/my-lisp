@@ -36,6 +36,14 @@
 
 Цієї сесії закрито: literate-фікстуру (надлишкову), occurs-check `unify`, помилки `defmacro`, tail-recursion, edge-кейси `map`/`filter`/`reduce`. Не перевірено ще: чи є симетричне покриття для `let*`/`length`/`append`/`reverse` на порожніх і крайових вхідних даних, і чи `understand`/`narrate` (природномовний міст) взагалі присутні в `conformance.json` — зараз вони перевірені лише в `crates/my-lisp/tests/understand.rs`/`narrate.rs`, не в implementation-independent контракті.
 
+## 8. `lib/meta-eval.my` — розширити `my-eval` до `def`/`defmacro`
+
+Перевірено живою симуляцією (2026-08-09): `my-eval` (метациркулярний evaluator, написаний самою my-lisp) коректно інтерпретує реальну форму функції з `lib/core.my` (`second`, як `(lambda (values) (car (cdr values)))`) через `quote`/застосування — `(my-eval '((lambda (second) (second '(a b c))) (lambda (values) (car (cdr values)))) '())` дає `b`, той самий результат, що й пряме `(second '(a b c))`.
+
+Чесна межа, знайдена тим самим тестом: `my-eval` підтримує лише `quote`/`cond`/`lambda`/`atom`/`eq`/`car`/`cdr`/`cons`/`+`/`-`/`*` і застосування — жодного `def`/`defmacro`. Це означає, що йому не можна згодувати `lib/core.my` як є (top-level `def`-форми), лише вирази, де все зв'язування — через `lambda`-застосування вручну. Тобто справжній, робочий крок G4 ("мінімальне ядро вирощує всю мову зсередини себе"), але не повний самохост.
+
+Наступний вимірюваний крок: додати `def`/`defmacro` до `my-eval` (мутація середовища на кшталт того, як `env-lookup`/`bind-params` уже працюють з alist-середовищем, але з можливістю розширювати його по ходу, не лише для `lambda`-параметрів) — щоб `my-eval` міг проковтнути реальний `lib/core.my` файл цілком, не лише окремі вирази вручну переписані під `lambda`-форму. Тест-критерій: `(my-eval-program (read-all (read-file "lib/core.my")) '())`, а тоді виклик чогось із результату (`second`, `map`) через той самий `my-eval`, з тим самим очікуваним значенням, що й прямий Rust-рушій дає.
+
 ## Нотатки
 
 - `private/` папка (PROJECT_MEMORY.md, PROFILE.md, mccarthy-principles.md, present-reality-principles.md, lisp-to-knowledge.md) лишається в `.gitignore`, не в публічному репозиторії — перевірено, слідів у git-історії немає.
