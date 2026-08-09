@@ -130,6 +130,26 @@ Die erste Bootstrap-Bibliothek ist `lib/core.my`. Ihre Definitionen (`identity`,
 
 - Symbols: any run of non-whitespace, non-`()`/`;` characters that isn't a number or a `n/d` rational — UTF-8 throughout, so Cyrillic identifiers (`радіо`, `довжина`) are first-class. · Символи: будь-яка послідовність непробільних символів поза `()`/`;`, що не є числом чи `n/d`-раціональним — UTF-8 наскрізь, тож кириличні ідентифікатори (`радіо`, `довжина`) рівноправні. · Symbole: jede Folge von Nicht-Leerraum-Zeichen außerhalb von `()`/`;`, die keine Zahl oder ein `n/d`-Rational ist — durchgehend UTF-8, kyrillische Bezeichner sind gleichberechtigt.
 - Numbers: `42`, `-4.5` parse as inexact `f64` (`Value::Number`). A bare `n/d` token (e.g. `5/6`) parses directly as an exact `Rational`, the same value `/` would produce — no need to write `(/ 5 6)` for a literal fraction. · Числа: `42`, `-4.5` парсяться як неточний `f64`. Голий токен `n/d` (напр. `5/6`) парситься напряму як точний `Rational` — не потрібно писати `(/ 5 6)` для дробового літералу. · Zahlen: `42`, `-4.5` werden als inexaktes `f64` geparst. Ein nackter `n/d`-Token (z. B. `5/6`) wird direkt als exaktes `Rational` geparst.
+
+  **Decided, not yet implemented (2026-08-09, `PLAN.md` item 10):** the line above describes today's actual parser. The decided target model makes exactness a property of the literal's *kind*, not its digit count: an integer literal is exact, a decimal or exponential real literal is inexact — trailing zeros or digit count never change that (`3.0`, `3.00`, `3.000` are the same inexact value; a future `3e0`/`1.2e3` exponential syntax would be inexact too, same rule, no special-casing the decimal point specifically).
+  ```
+  3      → exact integer
+  3.0    → inexact real
+  3.00   → inexact real
+  3.000  → inexact real
+  5/6    → exact rational (already true today)
+  ```
+  Once implemented, this becomes an executable fact in `conformance.my`, not just prose here — see `docs/language-core-axioms.md`'s S1 for the semantic principle (exactness belongs to the value, never inferred from a result's numeric shape) and `PLAN.md` item 10 for the migration's status.
+
+  **Вирішено, ще не реалізовано (2026-08-09, `PLAN.md` пункт 10):** рядок вище описує сьогоднішній реальний парсер. Вирішена цільова модель робить exactness властивістю *виду* літералу, не кількості цифр: цілочисельний літерал — точний, десятковий чи експоненційний речовий літерал — неточний — нулі в кінці чи кількість цифр цього не міняють (`3.0`, `3.00`, `3.000` — те саме неточне значення; майбутній `3e0`/`1.2e3` теж буде неточним, те саме правило, без окремого випадку саме для крапки).
+  ```
+  3      → точне ціле
+  3.0    → неточне речове
+  3.00   → неточне речове
+  3.000  → неточне речове
+  5/6    → точне раціональне (уже правда сьогодні)
+  ```
+  Коли реалізовано, це стане виконуваним фактом у `conformance.my`, не лише прозою тут — див. S1 у `docs/language-core-axioms.md` (семантичний принцип: exactness належить значенню, ніколи не виводиться з числового вигляду результату) і `PLAN.md` пункт 10 щодо статусу впровадження.
 - Strings: `"..."` with `\n`, `\t`, `\"`, `\\` escapes; any other escaped character passes through literally. · Рядки: `"..."` з escape-послідовностями `\n`, `\t`, `\"`, `\\`; будь-який інший escape-символ проходить буквально. · Zeichenketten: `"..."` mit den Escapes `\n`, `\t`, `\"`, `\\`; jedes andere escapete Zeichen wird unverändert übernommen.
 - Lists: `(a b c)`, built from `cons` cells ending in `()`/`Nil`. An improper (dotted) tail prints as `(a . b)`. · Списки: `(a b c)`, побудовані з `cons`-комірок, що закінчуються `()`/`Nil`. Неправильний (крапковий) хвіст друкується як `(a . b)`. · Listen: `(a b c)`, aus `cons`-Zellen aufgebaut, die mit `()`/`Nil` enden. Ein unechter (gepunkteter) Tail wird als `(a . b)` ausgegeben.
 - `'expr` is reader sugar for `(quote expr)`, desugared before the evaluator ever sees it. There is no quasiquote/unquote (no `` ` ``/`,`) — macro templates are built by hand from `list`/`cons`, as `lib/core.my`'s bootstrap style and the `unless` macro example in `docs/quote-tutorial.md` show. · `'вираз` — синтаксичний цукор для `(quote вираз)`, розкривається до того, як обчислювач його побачить. Немає quasiquote/unquote (немає `` ` ``/`,`) — шаблони макросів будуються вручну з `list`/`cons`. · `'ausdruck` ist Reader-Zucker für `(quote ausdruck)`. Es gibt kein Quasiquote/Unquote — Makro-Vorlagen werden manuell aus `list`/`cons` gebaut.
