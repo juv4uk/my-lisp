@@ -1,4 +1,4 @@
-use crate::{ErrorKind, Expr, ExprKind, LanguageError, Span};
+use crate::{Exactness, ErrorKind, Expr, ExprKind, LanguageError, Span};
 use std::rc::Rc;
 
 /// `true` for a token that is exactly the single character `.` — the reader
@@ -196,14 +196,39 @@ impl Parser<'_> {
         // `Rational::from_literal` parst Zähler-/Nenner-Text beliebiger Genauigkeit
         // direkt (siehe bignum.rs) — ein Token wie `123456789012345678901/2`, viel
         // zu groß für `i64`, ist weiterhin ein exaktes rationales Literal, kein Symbol.
+        // Integer literal → exact; decimal or exponential-notation literal →
+        // inexact (PLAN.md item 10, Path A) — the rule keys off literal
+        // *syntax* ('.', 'e'/'E'), not "does the value happen to be a whole
+        // number," so a future `3e0`/`1.2e3` is inexact without needing a
+        // decimal point, and `3.0`/`3.00`/`3.000` are all the same inexact
+        // value regardless of trailing zeros.
+        // Цілий літерал → exact; десятковий чи літерал в експоненційній
+        // нотації → inexact (PLAN.md, пункт 10, шлях A) — правило дивиться
+        // на *синтаксис* написання ('.', 'e'/'E'), не на те, чи значення
+        // випадково ціле, тож майбутній `3e0`/`1.2e3` буде inexact без
+        // потреби в десятковій крапці, а `3.0`/`3.00`/`3.000` — те саме
+        // inexact значення незалежно від кількості нулів наприкінці.
+        let exactness = |text: &str| {
+            if text.contains(['.', 'e', 'E']) {
+                Exactness::Inexact
+            } else {
+                Exactness::Exact
+            }
+        };
         let kind = if let Some((num, den)) = token.split_once('/') {
             if let Some(r) = crate::value::Rational::from_literal(num, den) {
                 ExprKind::Rational(r)
             } else {
-                token.parse::<f64>().map(ExprKind::Number).unwrap_or_else(|_| ExprKind::Symbol(token.into()))
+                token
+                    .parse::<f64>()
+                    .map(|n| ExprKind::Number(n, exactness(token)))
+                    .unwrap_or_else(|_| ExprKind::Symbol(token.into()))
             }
         } else {
-            token.parse::<f64>().map(ExprKind::Number).unwrap_or_else(|_| ExprKind::Symbol(token.into()))
+            token
+                .parse::<f64>()
+                .map(|n| ExprKind::Number(n, exactness(token)))
+                .unwrap_or_else(|_| ExprKind::Symbol(token.into()))
         };
         Ok(Expr {
             kind,
@@ -255,8 +280,16 @@ mod tests {
 
     #[test]
     fn parses_integers_and_floats_as_numbers() {
-        assert!(matches!(parse_one("42").kind, ExprKind::Number(n) if n == 42.0));
-        assert!(matches!(parse_one("-3.5").kind, ExprKind::Number(n) if n == -3.5));
+        assert!(matches!(parse_one("42").kind, ExprKind::Number(n, Exactness::Exact) if n == 42.0));
+        assert!(matches!(parse_one("-3.5").kind, ExprKind::Number(n, Exactness::Inexact) if n == -3.5));
+    }
+
+    #[test]
+    fn integer_literal_is_exact_decimal_literal_is_inexact() {
+        assert!(matches!(parse_one("3").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0));
+        assert!(matches!(parse_one("3.0").kind, ExprKind::Number(n, Exactness::Inexact) if n == 3.0));
+        assert!(matches!(parse_one("3.00").kind, ExprKind::Number(n, Exactness::Inexact) if n == 3.0));
+        assert!(matches!(parse_one("3e0").kind, ExprKind::Number(n, Exactness::Inexact) if n == 3.0));
     }
 
     #[test]
@@ -311,8 +344,8 @@ mod tests {
         let ExprKind::Pair(head, tail) = parse_one("(1 . 2)").kind else {
             panic!("expected a dotted pair");
         };
-        assert!(matches!(head.kind, ExprKind::Number(n) if n == 1.0));
-        assert!(matches!(tail.kind, ExprKind::Number(n) if n == 2.0));
+        assert!(matches!(head.kind, ExprKind::Number(n, Exactness::Exact) if n == 1.0));
+        assert!(matches!(tail.kind, ExprKind::Number(n, Exactness::Exact) if n == 2.0));
     }
 
     #[test]
@@ -380,7 +413,7 @@ mod tests {
     fn semicolon_comments_are_skipped() {
         let expressions = parse("; a comment\n42 ; trailing comment").expect("should parse");
         assert_eq!(expressions.len(), 1);
-        assert!(matches!(expressions[0].kind, ExprKind::Number(n) if n == 42.0));
+        assert!(matches!(expressions[0].kind, ExprKind::Number(n, Exactness::Exact) if n == 42.0));
     }
 
     #[test]

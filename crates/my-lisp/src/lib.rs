@@ -18,5 +18,5 @@ pub use environment::{Environment, Session};
 pub use error::{ErrorKind, LanguageError};
 pub use eval::{eval_parsed_expressions, eval_program, EvalResult};
 pub use parser::parse;
-pub use syntax::{Expr, ExprKind, Span};
+pub use syntax::{Exactness, Expr, ExprKind, Span};
 pub use value::{Closure, Rational, Value};

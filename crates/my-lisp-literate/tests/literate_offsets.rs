@@ -1,4 +1,4 @@
-use my_lisp::Value;
+use my_lisp::{Exactness, Value};
 use my_lisp_literate::SourceMode;
 
 #[test]
@@ -23,7 +23,7 @@ Some more text.
     let mut session = my_lisp::Session::default();
     let result = my_lisp_literate::eval_literate(source, SourceMode::Literate, &mut session).expect("should evaluate successfully");
     
-    assert_eq!(result.0.value, Value::Number(42.0));
+    assert_eq!(result.0.value, Value::Number(42.0, Exactness::Exact));
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn test_fallback_no_markdown() {
     let source = "(+ 10 20)";
     let mut session = my_lisp::Session::default();
     let result = my_lisp_literate::eval_literate(source, SourceMode::PureLisp, &mut session).expect("should evaluate fallback");
-    assert_eq!(result.0.value, Value::Number(30.0));
+    assert_eq!(result.0.value, Value::Number(30.0, Exactness::Exact));
 }
 
 #[test]

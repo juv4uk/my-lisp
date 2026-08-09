@@ -86,7 +86,7 @@ pub(crate) fn evaluate_step(
     environment: &Environment,
 ) -> Result<EvalStep, LanguageError> {
     match &expression.kind {
-        ExprKind::Number(number) => Ok(EvalStep::Value(Value::Number(*number))),
+        ExprKind::Number(number, exactness) => Ok(EvalStep::Value(Value::Number(*number, *exactness))),
         ExprKind::Rational(rational) => Ok(EvalStep::Value(Value::Rational(rational.clone()))),
         ExprKind::String(value) => Ok(EvalStep::Value(Value::String(value.clone()))),
         ExprKind::Symbol(symbol) => environment.get(symbol).map(EvalStep::Value).ok_or_else(|| {

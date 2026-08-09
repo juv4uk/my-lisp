@@ -674,7 +674,7 @@ pub(super) fn exact_arity(
 
 pub(super) fn quoted(expression: &Expr) -> Value {
     match &expression.kind {
-        ExprKind::Number(number) => Value::Number(*number),
+        ExprKind::Number(number, exactness) => Value::Number(*number, *exactness),
         ExprKind::Rational(rational) => Value::Rational(rational.clone()),
         ExprKind::String(value) => Value::String(value.clone()),
         ExprKind::Symbol(symbol) => Value::Symbol(symbol.clone()),

@@ -1,5 +1,5 @@
 use crate::bignum::BigInt;
-use crate::{Environment, Expr};
+use crate::{Environment, Exactness, Expr};
 use std::{cmp::Ordering, fmt, rc::Rc, str::FromStr};
 
 /// A reduced exact fraction owned by the language runtime, backed by the
@@ -229,7 +229,7 @@ pub struct Closure {
 pub enum Value {
     Nil,
     Bool(bool),
-    Number(f64),
+    Number(f64, Exactness),
     Rational(Rational),
     String(Rc<str>),
     Symbol(Rc<str>),
@@ -243,7 +243,17 @@ impl PartialEq for Value {
         match (self, other) {
             (Value::Nil, Value::Nil) => true,
             (Value::Bool(left), Value::Bool(right)) => left == right,
-            (Value::Number(left), Value::Number(right)) => left == right,
+            // Exactness is part of a number's identity (PLAN.md item 10, Path
+            // A): (eq 3 3.0) is () because these are different values in the
+            // model, even though (= 3 3.0) is t (same magnitude). See `=` in
+            // arithmetic.rs for the magnitude-only comparison.
+            // Exactness — частина ідентичності числа (PLAN.md, пункт 10,
+            // шлях A): (eq 3 3.0) дає (), бо це різні значення в моделі,
+            // хоча (= 3 3.0) дає t (та сама величина). Див. `=` в
+            // arithmetic.rs для порівняння лише за величиною.
+            (Value::Number(left, left_exactness), Value::Number(right, right_exactness)) => {
+                left == right && left_exactness == right_exactness
+            }
             (Value::Rational(left), Value::Rational(right)) => left == right,
             (Value::String(left), Value::String(right)) => left == right,
             (Value::Symbol(left), Value::Symbol(right)) => left == right,
@@ -326,7 +336,23 @@ fn render(value: &Value, quote_strings: bool) -> String {
         Value::Nil => "()".to_string(),
         Value::Bool(true) => "t".to_string(),
         Value::Bool(false) => "()".to_string(),
-        Value::Number(number) => number.to_string(),
+        Value::Number(number, Exactness::Exact) => number.to_string(),
+        // Rust's `{}` for f64 prints a whole number like 3.0 as "3", which
+        // would silently erase the written-with-a-decimal-point intent this
+        // whole redesign exists to preserve — force at least one decimal
+        // digit so an inexact number always prints as inexact.
+        // Rust's `{}` для f64 друкує ціле число на кшталт 3.0 як "3", що
+        // мовчки стерло б саме той намір "написано з крапкою", заради
+        // якого існує весь цей редизайн — примусово друкувати щонайменше
+        // одну десяткову цифру, щоб неточне число завжди друкувалось як
+        // неточне.
+        Value::Number(number, Exactness::Inexact) => {
+            if number.fract() == 0.0 && number.is_finite() {
+                format!("{number:.1}")
+            } else {
+                number.to_string()
+            }
+        }
         Value::Rational(number) => number.to_string(),
         Value::String(text) => {
             if quote_strings {

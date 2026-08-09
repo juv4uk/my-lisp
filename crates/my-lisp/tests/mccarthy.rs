@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, parse, Environment, ErrorKind, Expr, ExprKind, Rational, Session, Value};
+use my_lisp::{eval_program, parse, Environment, ErrorKind, Exactness, Expr, ExprKind, Rational, Session, Value};
 
 /// Looks up `key` in a my-lisp alist `((k1 . v1) (k2 . v2) ...)`, already
 /// parsed as `Expr`s (data, not evaluated) — used by the two
@@ -35,7 +35,7 @@ fn alist_number(entries: &[Expr], key: &str) -> Option<f64> {
             return None;
         }
         match &v.kind {
-            ExprKind::Number(n) => Some(*n),
+            ExprKind::Number(n, _) => Some(*n),
             _ => None,
         }
     })
@@ -51,7 +51,7 @@ fn division_is_an_exact_reduced_rational() {
         eval("(/ 5 6 8 7)"),
         Value::Rational(Rational::new(5, 336).unwrap())
     );
-    assert_eq!(eval("(/ 8 4)"), Value::Number(2.0));
+    assert_eq!(eval("(/ 8 4)"), Value::Number(2.0, Exactness::Exact));
     assert_eq!(
         eval("(/ (/ 2 3))"),
         Value::Rational(Rational::new(3, 2).unwrap())
@@ -114,8 +114,8 @@ fn arithmetic_promotes_exact_integers_and_preserves_inexact_numbers() {
         eval("(- (/ 1 3))"),
         Value::Rational(Rational::new(-1, 3).unwrap())
     );
-    assert_eq!(eval("(+ (/ 1 2) 0.25)"), Value::Number(0.75));
-    assert_eq!(eval("(+ (/ 1 2) (/ 1 2))"), Value::Number(1.0));
+    assert_eq!(eval("(+ (/ 1 2) 0.25)"), Value::Number(0.75, Exactness::Inexact));
+    assert_eq!(eval("(+ (/ 1 2) (/ 1 2))"), Value::Number(1.0, Exactness::Exact));
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn print_appends_to_output_and_returns_its_argument() {
 #[test]
 fn print_composes_inside_expressions_and_accumulates_in_order() {
     let result = eval_program("(+ (print 1) (print 2))", &mut Session::default()).unwrap();
-    assert_eq!(result.value, Value::Number(3.0));
+    assert_eq!(result.value, Value::Number(3.0, Exactness::Exact));
     assert_eq!(result.output, vec!["1".to_string(), "2".to_string()]);
 }
 
@@ -166,12 +166,12 @@ fn read_parses_text_into_data_without_evaluating_it() {
         eval(r#"(read "(+ 1 2)")"#),
         Value::list([
             Value::Symbol("+".into()),
-            Value::Number(1.0),
-            Value::Number(2.0),
+            Value::Number(1.0, Exactness::Exact),
+            Value::Number(2.0, Exactness::Exact),
         ])
     );
     assert_eq!(eval(r#"(read "radio")"#), Value::Symbol("radio".into()));
-    assert_eq!(eval(r#"(read "42")"#), Value::Number(42.0));
+    assert_eq!(eval(r#"(read "42")"#), Value::Number(42.0, Exactness::Exact));
 }
 
 #[test]
@@ -188,8 +188,8 @@ fn read_rejects_non_string_arguments_and_multi_expression_input() {
 
 #[test]
 fn eval_closes_the_read_eval_loop_by_hand() {
-    assert_eq!(eval(r#"(eval (read "(+ 1 2)"))"#), Value::Number(3.0));
-    assert_eq!(eval("(eval (quote (+ 1 2)))"), Value::Number(3.0));
+    assert_eq!(eval(r#"(eval (read "(+ 1 2)"))"#), Value::Number(3.0, Exactness::Exact));
+    assert_eq!(eval("(eval (quote (+ 1 2)))"), Value::Number(3.0, Exactness::Exact));
 }
 
 #[test]
@@ -197,7 +197,7 @@ fn eval_looks_up_a_quoted_symbol_in_the_calling_environment() {
     let mut session = Session::default();
     eval_program("(def x 5)", &mut session).unwrap();
     let result = eval_program("(eval 'x)", &mut session).unwrap();
-    assert_eq!(result.value, Value::Number(5.0));
+    assert_eq!(result.value, Value::Number(5.0, Exactness::Exact));
 }
 
 #[test]
@@ -433,16 +433,16 @@ fn lambda_reports_invalid_parameters_and_arity() {
 fn dotted_lambda_list_binds_extra_arguments_as_a_rest_list() {
     assert_eq!(
         eval("((lambda (a b . rest) rest) 1 2 3 4 5)"),
-        Value::list(vec![Value::Number(3.0), Value::Number(4.0), Value::Number(5.0)])
+        Value::list(vec![Value::Number(3.0, Exactness::Exact), Value::Number(4.0, Exactness::Exact), Value::Number(5.0, Exactness::Exact)])
     );
-    assert_eq!(eval("((lambda (a . rest) a) 1 2 3)"), Value::Number(1.0));
+    assert_eq!(eval("((lambda (a . rest) a) 1 2 3)"), Value::Number(1.0, Exactness::Exact));
 }
 
 #[test]
 fn bare_symbol_lambda_list_binds_every_argument_as_one_list() {
     assert_eq!(
         eval("((lambda args args) 1 2 3)"),
-        Value::list(vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)])
+        Value::list(vec![Value::Number(1.0, Exactness::Exact), Value::Number(2.0, Exactness::Exact), Value::Number(3.0, Exactness::Exact)])
     );
     assert_eq!(eval("((lambda args args))"), Value::Nil);
 }
@@ -464,7 +464,7 @@ fn variadic_defmacro_binds_unevaluated_rest_arguments() {
     .unwrap();
     assert_eq!(
         result.value,
-        Value::list(vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)])
+        Value::list(vec![Value::Number(1.0, Exactness::Exact), Value::Number(2.0, Exactness::Exact), Value::Number(3.0, Exactness::Exact)])
     );
 }
 
@@ -558,7 +558,7 @@ fn list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin() {
     let result = eval_program("(list 1 2 3)", &mut session).unwrap();
     assert_eq!(
         result.value,
-        Value::list(vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)])
+        Value::list(vec![Value::Number(1.0, Exactness::Exact), Value::Number(2.0, Exactness::Exact), Value::Number(3.0, Exactness::Exact)])
     );
     // Without core.my loaded, "list" is an ordinary unbound symbol now —
     // regression-tests that it really did leave the Rust special-form table.

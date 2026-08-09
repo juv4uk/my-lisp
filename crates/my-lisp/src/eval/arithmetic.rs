@@ -3,7 +3,7 @@
 //! Verarbeitung exakter/inexakter Zahlen für `+`, `-`, `*` und `/`.
 
 use super::evaluate;
-use crate::{Environment, ErrorKind, Expr, LanguageError, Rational, Span, Value};
+use crate::{Environment, ErrorKind, Exactness, Expr, LanguageError, Rational, Span, Value};
 
 pub(super) fn evaluate_arithmetic(
     operator: &str,
@@ -43,7 +43,7 @@ pub(super) fn evaluate_arithmetic(
                 .fold(values[0], |result, value| result - value),
             _ => unreachable!("known arithmetic operator"),
         };
-        return Ok(Value::Number(result));
+        return Ok(Value::Number(result, Exactness::Inexact));
     }
 
     let exact = values
@@ -118,12 +118,17 @@ fn numeric_value(value: Value, span: Span) -> Result<Numeric, LanguageError> {
     // Herausbewegen eines Feldes aus einem `match` nach Wert verbietet.
     match &value {
         Value::Rational(rational) => Ok(Numeric::Exact(rational.clone())),
-        Value::Number(number)
-            if number.fract() == 0.0 && *number >= i64::MIN as f64 && *number <= i64::MAX as f64 =>
-        {
-            Ok(Numeric::Exact(Rational::integer(*number as i64)))
-        }
-        Value::Number(number) => Ok(Numeric::Inexact(*number)),
+        // Reads the tag the reader/arithmetic already set (PLAN.md item 10,
+        // Path A) instead of re-guessing exactness from `fract() == 0.0` —
+        // an exact `Value::Number` is always integral by construction (see
+        // `exact_value` below), so converting straight to `i64` is safe.
+        // Читає тег, який уже встановив reader/арифметика (PLAN.md, пункт
+        // 10, шлях A), замість того щоб заново вгадувати exactness через
+        // `fract() == 0.0` — точний `Value::Number` завжди цілий за
+        // побудовою (див. `exact_value` нижче), тож пряма конверсія в
+        // `i64` безпечна.
+        Value::Number(number, Exactness::Exact) => Ok(Numeric::Exact(Rational::integer(*number as i64))),
+        Value::Number(number, Exactness::Inexact) => Ok(Numeric::Inexact(*number)),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
             "arithmetic expects numbers · арифметика очікує числа · Arithmetik erwartet Zahlen",
@@ -134,7 +139,7 @@ fn numeric_value(value: Value, span: Span) -> Result<Numeric, LanguageError> {
 
 fn exact_value(value: Rational) -> Value {
     match value.as_precise_i64() {
-        Some(n) => Value::Number(n as f64),
+        Some(n) => Value::Number(n as f64, Exactness::Exact),
         None => Value::Rational(value),
     }
 }
@@ -191,9 +196,7 @@ pub(super) fn evaluate_division(
         // `numeric_value` above.
         match &value {
             Value::Rational(rational) => Ok(rational.clone()),
-            Value::Number(number) if number.fract() == 0.0 && *number >= i64::MIN as f64 && *number <= i64::MAX as f64 => {
-                Ok(Rational::integer(*number as i64))
-            }
+            Value::Number(number, Exactness::Exact) => Ok(Rational::integer(*number as i64)),
             _ => Err(LanguageError::new(
                 ErrorKind::Type,
                 "/ expects exact integers or rational numbers · / очікує точні цілі або раціональні числа · / erwartet exakte Ganz- oder rationale Zahlen",

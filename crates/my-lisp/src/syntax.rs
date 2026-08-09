@@ -16,9 +16,28 @@ pub struct Expr {
     pub span: Span,
 }
 
+/// Whether a numeric value is a precise quantity or a floating-point
+/// approximation — a property of the value itself (PLAN.md item 10, Path A),
+/// not of how it happens to print. Set once at the reader (integer literal
+/// → `Exact`; decimal/exponential literal → `Inexact`) and propagated by
+/// arithmetic's promotion rule (`Exact ⊕ Exact → Exact`, anything touching
+/// `Inexact` → `Inexact`), never re-guessed from a result's shape.
+/// Чи є числове значення точною величиною, чи наближенням із плаваючою
+/// комою — властивість самого значення (PLAN.md, пункт 10, шлях A), не
+/// того, як воно друкується. Встановлюється один раз у reader'і (цілий
+/// літерал → `Exact`; десятковий/експоненційний літерал → `Inexact`) і
+/// поширюється правилом promotion в арифметиці (`Exact ⊕ Exact → Exact`,
+/// будь-який дотик до `Inexact` → `Inexact`), ніколи не вгадується заново
+/// з форми результату.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Exactness {
+    Exact,
+    Inexact,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExprKind {
-    Number(f64),
+    Number(f64, Exactness),
     Rational(Rational),
     String(Rc<str>),
     Symbol(Rc<str>),

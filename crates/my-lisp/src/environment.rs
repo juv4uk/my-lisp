@@ -176,6 +176,7 @@ impl Default for Session {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Exactness;
 
     #[test]
     fn root_predefines_t_as_true() {
@@ -186,8 +187,8 @@ mod tests {
     #[test]
     fn define_then_get_returns_the_value() {
         let root = Environment::root();
-        root.define("x", Value::Number(1.0));
-        assert_eq!(root.get("x"), Some(Value::Number(1.0)));
+        root.define("x", Value::Number(1.0, Exactness::Exact));
+        assert_eq!(root.get("x"), Some(Value::Number(1.0, Exactness::Exact)));
     }
 
     #[test]
@@ -199,9 +200,9 @@ mod tests {
     #[test]
     fn child_reads_bindings_from_its_parent() {
         let root = Environment::root();
-        root.define("x", Value::Number(1.0));
+        root.define("x", Value::Number(1.0, Exactness::Exact));
         let child = root.child();
-        assert_eq!(child.get("x"), Some(Value::Number(1.0)));
+        assert_eq!(child.get("x"), Some(Value::Number(1.0, Exactness::Exact)));
     }
 
     #[test]
@@ -214,25 +215,25 @@ mod tests {
         // bleiben: Parameter einer Closure dürfen außerhalb ihres Aufrufs nie sichtbar werden.
         let root = Environment::root();
         let child = root.child();
-        child.define("local", Value::Number(2.0));
+        child.define("local", Value::Number(2.0, Exactness::Exact));
         assert_eq!(root.get("local"), None);
     }
 
     #[test]
     fn child_binding_shadows_the_parent_without_mutating_it() {
         let root = Environment::root();
-        root.define("x", Value::Number(1.0));
+        root.define("x", Value::Number(1.0, Exactness::Exact));
         let child = root.child();
-        child.define("x", Value::Number(2.0));
-        assert_eq!(child.get("x"), Some(Value::Number(2.0)));
-        assert_eq!(root.get("x"), Some(Value::Number(1.0)));
+        child.define("x", Value::Number(2.0, Exactness::Exact));
+        assert_eq!(child.get("x"), Some(Value::Number(2.0, Exactness::Exact)));
+        assert_eq!(root.get("x"), Some(Value::Number(1.0, Exactness::Exact)));
     }
 
     #[test]
     fn redefining_in_the_same_frame_overwrites_the_previous_value() {
         let root = Environment::root();
-        root.define("x", Value::Number(1.0));
-        root.define("x", Value::Number(2.0));
-        assert_eq!(root.get("x"), Some(Value::Number(2.0)));
+        root.define("x", Value::Number(1.0, Exactness::Exact));
+        root.define("x", Value::Number(2.0, Exactness::Exact));
+        assert_eq!(root.get("x"), Some(Value::Number(2.0, Exactness::Exact)));
     }
 }

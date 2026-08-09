@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, Session, Value};
+use my_lisp::{eval_program, Exactness, Session, Value};
 use std::rc::Rc;
 
 fn build_long_list(count: usize) -> Value {
@@ -26,8 +26,8 @@ fn cons_chain_clone_does_not_overflow_stack() {
 #[test]
 fn shared_tails_do_not_overflow_stack() {
     let tail = build_long_list(150_000);
-    let list1 = Value::Pair(Rc::new(Value::Number(1.0)), Rc::new(tail.clone()));
-    let list2 = Value::Pair(Rc::new(Value::Number(2.0)), Rc::new(tail));
+    let list1 = Value::Pair(Rc::new(Value::Number(1.0, Exactness::Exact)), Rc::new(tail.clone()));
+    let list2 = Value::Pair(Rc::new(Value::Number(2.0, Exactness::Exact)), Rc::new(tail));
     
     drop(list1); // Drops list1's head and its Rc to tail. tail's refcount goes from 2 to 1. No iterative drop for tail.
     drop(list2); // Drops list2's head and its Rc to tail. tail's refcount goes from 1 to 0. Iterative drop handles tail.
@@ -49,14 +49,14 @@ fn core_lib_list_utilities_stay_stack_safe_on_a_long_list() {
         (length (map (lambda (x) (+ x 1)) (filter (lambda (x) (> x 50000)) (append big '()))))
     "#;
     let result = eval_program(source, &mut session).unwrap();
-    assert_eq!(result.value, Value::Number(50000.0));
+    assert_eq!(result.value, Value::Number(50000.0, Exactness::Exact));
 }
 
 #[test]
 fn improper_lists_do_not_overflow_stack() {
     let count = 150_000;
     // Improper list ends in Number(42.0)
-    let mut list = Value::Number(42.0);
+    let mut list = Value::Number(42.0, Exactness::Exact);
     for _ in 0..count {
         list = Value::Pair(Rc::new(Value::Nil), Rc::new(list));
     }
