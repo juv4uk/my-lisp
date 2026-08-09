@@ -274,37 +274,101 @@ impl Value {
 
 impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Value::Nil => write!(formatter, "()"),
-            Value::Bool(true) => write!(formatter, "t"),
-            Value::Bool(false) => write!(formatter, "()"),
-            Value::Number(number) => write!(formatter, "{number}"),
-            Value::Rational(number) => write!(formatter, "{number}"),
-            Value::String(value) => write!(formatter, "\"{value}\""),
-            Value::Symbol(symbol) => write!(formatter, "{symbol}"),
-            Value::Pair(_, _) => write_pair(formatter, self),
-            Value::Closure(_) => write!(formatter, "<lambda>"),
-            Value::Macro(_) => write!(formatter, "<macro>"),
-        }
+        write!(formatter, "{}", render(self, true))
     }
 }
 
-fn write_pair(formatter: &mut fmt::Formatter<'_>, value: &Value) -> fmt::Result {
-    write!(formatter, "(")?;
+impl Value {
+    /// The `princ`/`display` half of the classic Lisp print-function pair
+    /// (Common Lisp `princ`, Scheme `display`): human-facing output, no
+    /// quotes or escapes around strings — as opposed to `Display`/`to_string`
+    /// above, which is the `prin1`/`write` half (re-readable by `read`,
+    /// strings quoted and escaped). Neither replaces the other; `print`
+    /// (this crate's primitive, backed by `Display`) needs to round-trip
+    /// through `read`, so it keeps quoting — `princ` exists for output
+    /// that's meant to be read by a person or reassembled as raw text
+    /// (e.g. a tool that emits new .my source), never re-parsed as data.
+    /// «princ»/«display»-половина класичної Lisp-пари функцій друку
+    /// (Common Lisp `princ`, Scheme `display`): вивід для людини, без
+    /// лапок і екранування навколо рядків — на відміну від `Display`/
+    /// `to_string` вище, що є «prin1»/«write»-половиною (читається назад
+    /// через `read`, рядки в лапках і екрановані). Жодна не замінює іншу;
+    /// `print` (примітив цього крейта, на основі `Display`) має коректно
+    /// читатись назад через `read`, тож зберігає лапки — `princ` існує для
+    /// виводу, призначеного людині чи повторному складанню як сирий текст
+    /// (напр. інструмент, що видає новий `.my`-сирцевий код), ніколи не
+    /// для повторного парсингу як даних.
+    pub fn to_princ_string(&self) -> String {
+        render(self, false)
+    }
+}
+
+/// Shared by `Display` (`quote_strings: true`, escaped — `prin1`/`write`
+/// semantics) and `Value::to_princ_string` (`quote_strings: false`, raw —
+/// `princ`/`display` semantics). One recursive walk, one flag, so the two
+/// output modes can never silently diverge on anything but string handling.
+/// Спільне для `Display` (`quote_strings: true`, з екрануванням —
+/// семантика `prin1`/`write`) і `Value::to_princ_string` (`quote_strings:
+/// false`, сирий вивід — семантика `princ`/`display`). Один рекурсивний
+/// обхід, один прапорець, тож два режими виводу не можуть мовчки розійтись
+/// у чомусь, крім обробки рядків.
+fn render(value: &Value, quote_strings: bool) -> String {
+    match value {
+        Value::Nil => "()".to_string(),
+        Value::Bool(true) => "t".to_string(),
+        Value::Bool(false) => "()".to_string(),
+        Value::Number(number) => number.to_string(),
+        Value::Rational(number) => number.to_string(),
+        Value::String(text) => {
+            if quote_strings {
+                let mut escaped = String::with_capacity(text.len() + 2);
+                escaped.push('"');
+                for ch in text.chars() {
+                    match ch {
+                        '"' => escaped.push_str("\\\""),
+                        '\\' => escaped.push_str("\\\\"),
+                        '\n' => escaped.push_str("\\n"),
+                        '\t' => escaped.push_str("\\t"),
+                        other => escaped.push(other),
+                    }
+                }
+                escaped.push('"');
+                escaped
+            } else {
+                text.to_string()
+            }
+        }
+        Value::Symbol(symbol) => symbol.to_string(),
+        Value::Pair(_, _) => render_pair(value, quote_strings),
+        Value::Closure(_) => "<lambda>".to_string(),
+        Value::Macro(_) => "<macro>".to_string(),
+    }
+}
+
+fn render_pair(value: &Value, quote_strings: bool) -> String {
+    let mut out = String::from("(");
     let mut current = value;
     let mut first = true;
     loop {
         match current {
             Value::Pair(head, tail) => {
                 if !first {
-                    write!(formatter, " ")?;
+                    out.push(' ');
                 }
-                write!(formatter, "{head}")?;
+                out.push_str(&render(head, quote_strings));
                 current = tail;
                 first = false;
             }
-            Value::Nil => return write!(formatter, ")"),
-            tail => return write!(formatter, " . {tail})"),
+            Value::Nil => {
+                out.push(')');
+                return out;
+            }
+            tail => {
+                out.push_str(" . ");
+                out.push_str(&render(tail, quote_strings));
+                out.push(')');
+                return out;
+            }
         }
     }
 }

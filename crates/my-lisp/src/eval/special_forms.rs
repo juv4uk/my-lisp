@@ -39,6 +39,33 @@ pub(super) fn evaluate_print(
     Ok(value)
 }
 
+/// `princ`, the `display`/`princ` half of the classic Lisp print-function
+/// pair `print` is the other half of (see `Value::to_princ_string`):
+/// strings come out raw, no surrounding quotes or escapes — for output
+/// meant for a person or for reassembling as literal text, never meant to
+/// be `read` back as the same value. `(princ "a")` and `(princ 'a)` print
+/// identically (`a`) for exactly this reason: both are "the letter a as
+/// text," the distinction `print` cares about (which one `read` would
+/// reconstruct) doesn't apply here.
+/// `princ`, «display»/«princ»-половина класичної Lisp-пари функцій друку,
+/// другу половину якої складає `print` (див. `Value::to_princ_string`):
+/// рядки виходять сирими, без лапок і екранування — для виводу, призначеного
+/// людині чи повторному складанню як буквальний текст, ніколи не для
+/// зчитування назад через `read` тим самим значенням. `(princ "a")` і
+/// `(princ 'a)` друкують однаково (`a`) саме тому: обидва — "буква a як
+/// текст", розрізнення, важливе для `print` (яке саме значення відновив
+/// би `read`), тут не застосовне.
+pub(super) fn evaluate_princ(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("princ", arguments, 1, span)?;
+    let value = evaluate(&arguments[0], environment)?;
+    environment.print(value.to_princ_string());
+    Ok(value)
+}
+
 /// `read` is McCarthy's original reader primitive: it turns text into one
 /// s-expression of *data*, the same way `'expr` does, without evaluating it —
 /// `(eval (read "(+ 1 2)"))` is the read/eval loop written out by hand, in

@@ -427,6 +427,79 @@ fn variadic_defmacro_binds_unevaluated_rest_arguments() {
     );
 }
 
+/// `Display`/`print` previously wrote `"{value}"` with no escaping at all —
+/// a string containing a literal `"` broke `read ∘ print = identity`
+/// silently (the printed text wasn't valid to read back: it would close
+/// early on the embedded quote). Found 2026-08-09 while building tooling
+/// that prints fixture data containing real quotes. Fixed by giving
+/// `print` real `prin1`/`write` semantics (Common Lisp/Scheme's own
+/// convention for the "read-back-safe" print function): escape `"`, `\`,
+/// `\n`, `\t`.
+/// `Display`/`print` раніше писали `"{value}"` без жодного екранування —
+/// рядок з буквальною `"` мовчки ламав `read ∘ print = identity`
+/// (надрукований текст не читався назад коректно: закривався зарано на
+/// вбудованій лапці). Знайдено 2026-08-09 під час написання тулінгу, що
+/// друкує дані фікстур із реальними лапками. Виправлено наданням `print`
+/// справжньої семантики `prin1`/`write` (власна конвенція Common
+/// Lisp/Scheme для "безпечної для read" функції друку): екранувати `"`,
+/// `\`, `\n`, `\t`.
+#[test]
+fn print_escapes_embedded_quotes_and_backslashes_so_read_can_reconstruct_the_string() {
+    // A string value containing a literal " and \, built via my-lisp source
+    // escaping — the *value* itself is `(eq "radio" "radio")`, 22 chars,
+    // no backslashes in the value, just in how it's written here.
+    let source = r#""(eq \"radio\" \"radio\")""#;
+    let value = eval_program(source, &mut Session::default())
+        .unwrap()
+        .value;
+    // `to_string()` is now valid my-lisp source for that same string literal
+    // — parsing it again (not wrapping in another layer of quoting) should
+    // reconstruct the identical value.
+    let printed = value.to_string();
+    let reread = eval_program(&printed, &mut Session::default())
+        .unwrap()
+        .value;
+    assert_eq!(reread, value, "printed text should read back to the same string value");
+}
+
+/// `princ` — the `princ`/`display` half of the classic Lisp print-function
+/// pair `print` (fixed above) is the other half of: raw text, no quotes or
+/// escapes, for output meant for a person or reassembled as literal source
+/// text (e.g. a tool generating new .my files), never re-parsed as data.
+/// `princ` — «princ»/«display»-половина класичної Lisp-пари функцій друку,
+/// другу половину якої складає полагоджений вище `print`: сирий текст, без
+/// лапок і екранування, для виводу, призначеного людині чи повторному
+/// складанню як буквальний сирцевий текст (напр. інструмент, що генерує
+/// новий `.my`-файл), ніколи не для повторного парсингу як даних.
+#[test]
+fn princ_outputs_a_string_raw_without_quotes_or_escapes() {
+    let mut session = Session::default();
+    let result = eval_program(r#"(princ "(eq \"radio\" \"radio\")")"#, &mut session).unwrap();
+    assert_eq!(result.output, vec![r#"(eq "radio" "radio")"#.to_string()]);
+    // princ still returns the string value itself, just like print does —
+    // composes the same way, only the transcript text differs.
+    assert_eq!(
+        result.value,
+        Value::String(r#"(eq "radio" "radio")"#.into())
+    );
+}
+
+#[test]
+fn princ_and_print_render_symbols_and_numbers_identically() {
+    assert_eq!(
+        eval_program("(princ 'radio)", &mut Session::default())
+            .unwrap()
+            .output,
+        vec!["radio".to_string()]
+    );
+    assert_eq!(
+        eval_program("(princ 42)", &mut Session::default())
+            .unwrap()
+            .output,
+        vec!["42".to_string()]
+    );
+}
+
 /// `list` used to be a Rust special form; moved to `lib/core.my` the same
 /// day variadic lambda parameters were added, since `(def list (lambda
 /// args args))` expresses it exactly — G4/G5's own filter ("can the
