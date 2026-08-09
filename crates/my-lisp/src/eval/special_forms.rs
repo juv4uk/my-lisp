@@ -285,6 +285,50 @@ pub(super) fn evaluate_read_file(
     Ok(Value::String(Rc::from(contents.as_str())))
 }
 
+/// The write-side counterpart to `read-file` (PLAN.md item 13) — one
+/// primitive that opens and writes in a single step, the same shape
+/// `read-file` already uses for opening and reading, rather than a
+/// separate stateful file-handle value: the language has no mutable
+/// cells or handles to represent one, and none of `read-file`/`load`
+/// needed one either. Always creates or truncates-and-overwrites the
+/// target file (`std::fs::write`'s own semantics), never appends —
+/// append is a separate, not-yet-decided capability, not silently
+/// folded into this one.
+/// Симетричний до `read-file` бік запису (PLAN.md, пункт 13) — один
+/// примітив, що відкриває й записує за один крок, та сама форма, яку
+/// вже використовує `read-file` для відкриття й читання, а не окреме
+/// stateful-значення файлового дескриптора: мова не має мутабельних
+/// комірок чи дескрипторів, щоб його представити, і жодному з
+/// `read-file`/`load` він не був потрібен. Завжди створює чи
+/// перезаписує (обрізаючи) цільовий файл (власна семантика
+/// `std::fs::write`), ніколи не дописує — дописування це окрема, ще не
+/// вирішена спроможність, не мовчки згорнута в цю.
+pub(super) fn evaluate_write_file(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("write-file", arguments, 2, span)?;
+    let path_value = evaluate(&arguments[0], environment)?;
+    let Value::String(ref path) = path_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "write-file expects a string path · write-file очікує рядок-шлях · write-file erwartet einen String-Pfad",
+            span,
+        ));
+    };
+    let content_value = evaluate(&arguments[1], environment)?;
+    let Value::String(ref content) = content_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "write-file expects a string as its second argument · write-file очікує рядок другим аргументом · write-file erwartet eine Zeichenkette als zweites Argument",
+            span,
+        ));
+    };
+    write_file(path, content, span)?;
+    Ok(content_value)
+}
+
 pub(super) fn evaluate_read_all(
     arguments: &[Expr],
     environment: &Environment,
@@ -351,6 +395,26 @@ fn read_file(_path: &str, span: Span) -> Result<String, LanguageError> {
     Err(LanguageError::new(
         ErrorKind::InvalidForm,
         "load: file system access is not available in this build",
+        span,
+    ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn write_file(path: &str, content: &str, span: Span) -> Result<(), LanguageError> {
+    std::fs::write(path, content).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("write-file: failed to write file {path}: {error}"),
+            span,
+        )
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn write_file(_path: &str, _content: &str, span: Span) -> Result<(), LanguageError> {
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        "write-file: file system access is not available in this build",
         span,
     ))
 }

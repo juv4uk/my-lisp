@@ -975,3 +975,74 @@ fn arithmetic_stays_unbounded_by_default_matching_every_conformance_fixture() {
     )
     .expect("unbounded session should compute a 100-bit result without a limit error");
 }
+
+// --- write-file (PLAN.md item 13) ---------------------------------------
+// The write-side counterpart to read-file: always creates or
+// truncates-and-overwrites the target, never appends. Uses a real temp
+// file (std::env::temp_dir(), no crate dependency — this crate stays
+// zero-dependency by design) rather than a fixture, since it's a real
+// filesystem side effect, not a pure expression.
+
+#[test]
+fn write_file_then_read_file_round_trips_the_same_content() {
+    let path = std::env::temp_dir().join("my-lisp-write-file-round-trip.txt");
+    // Forward slashes only: my-lisp's string reader treats an unrecognized
+    // backslash escape as "drop the backslash, keep the character" (only
+    // \n/\t/\"/\\ are special — see parser.rs's `string` method), so a raw
+    // Windows path like `C:\Users\...` embedded in a double-quoted literal
+    // would silently lose every backslash instead of erroring.
+    let path_str = path.to_str().expect("temp path should be valid UTF-8").replace('\\', "/");
+    let source = format!(r#"(write-file "{path_str}" "hello from my-lisp")"#);
+    let mut session = Session::default();
+    let result = eval_program(&source, &mut session).expect("write-file should succeed");
+    // write-file returns its content argument unchanged, like print does with its value.
+    assert_eq!(result.value, Value::String("hello from my-lisp".into()));
+
+    let read_back = eval_program(&format!(r#"(read-file "{path_str}")"#), &mut session)
+        .expect("read-file should read back what write-file wrote");
+    assert_eq!(read_back.value, Value::String("hello from my-lisp".into()));
+
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn write_file_overwrites_rather_than_appends() {
+    let path = std::env::temp_dir().join("my-lisp-write-file-overwrite.txt");
+    // Forward slashes only: my-lisp's string reader treats an unrecognized
+    // backslash escape as "drop the backslash, keep the character" (only
+    // \n/\t/\"/\\ are special — see parser.rs's `string` method), so a raw
+    // Windows path like `C:\Users\...` embedded in a double-quoted literal
+    // would silently lose every backslash instead of erroring.
+    let path_str = path.to_str().expect("temp path should be valid UTF-8").replace('\\', "/");
+    let mut session = Session::default();
+    eval_program(&format!(r#"(write-file "{path_str}" "first")"#), &mut session)
+        .expect("first write-file should succeed");
+    eval_program(&format!(r#"(write-file "{path_str}" "second")"#), &mut session)
+        .expect("second write-file should succeed");
+    let read_back = eval_program(&format!(r#"(read-file "{path_str}")"#), &mut session)
+        .expect("read-file should see only the second write");
+    assert_eq!(read_back.value, Value::String("second".into()));
+
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn write_file_rejects_a_non_string_path() {
+    let error = eval_program(r#"(write-file 42 "x")"#, &mut Session::default())
+        .expect_err("a non-string path must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn write_file_rejects_a_non_string_content_argument() {
+    let error = eval_program(r#"(write-file "path-does-not-matter-here.txt" 42)"#, &mut Session::default())
+        .expect_err("a non-string content argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn write_file_wrong_arity_is_an_arity_error() {
+    let error = eval_program(r#"(write-file "only-a-path.txt")"#, &mut Session::default())
+        .expect_err("write-file with one argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
