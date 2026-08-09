@@ -98,7 +98,7 @@
             (report-and-exit-if-failed "git push" push-result)
             (cond
               ((eq (car push-result) 0)
-               (print (string-append "Released " *release-version* ".")))
+               (print (string-append (string-append "Released " *release-version*) ".")))
               (t 'push-failed)))))
         (t 'tag-failed)))))
   (t (report-and-exit-if-failed "cargo test --workspace" tests)))
