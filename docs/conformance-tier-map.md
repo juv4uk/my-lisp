@@ -78,6 +78,12 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 | 70 | `(map (lambda (x) (+ x 1)) '())` | 3 | G5 | empty-list edge case, previously untested |
 | 71 | `(filter (lambda (x) (eq x 2)) '())` | 3 | G5 | empty-list edge case, previously untested |
 | 72 | `(reduce (lambda (acc x) (+ acc x)) 0 '())` | 3 | G5 | empty-list edge case — returns initial accumulator unchanged, previously untested |
+| 73 | `((lambda (a b . rest) rest) 1 2 3 4 5)` | 1 | G2 | dotted lambda-list — variadic parameter binding, added so `list` could move out of Rust |
+| 74 | `((lambda args args) 1 2 3)` | 1 | G2 | bare-symbol lambda-list — zero fixed params, every argument as one list |
+| 75 | `((lambda (a b . rest) a) 1)` error `Arity` | 1 | S2 | variadic lambda still enforces its fixed parameters |
+| 76 | `(list 1 2 3)` | 3 | G5 | `list` moved from a Rust special form to `lib/core.my` `(lambda args args)` |
+
+**2026-08-09, latest:** variadic lambda parameters added (`(a b . rest)` dotted lists, and bare-symbol `args` for "every argument") — three shapes shared across the Lisp family, not one dialect's `&rest` keyword. This let `list` itself move out of Rust into `lib/core.my` as `(def list (lambda args args))`, closing the one real candidate found while auditing the Rust built-in surface against G4/G5 ("can the core already say this?"). File is now 76 fixtures.
 
 **2026-08-09, later same day:** the literate-markdown fixture (formerly #42) was removed from `conformance.json` entirely — it was the file's only non-S-expression entry and duplicated coverage already owned by `crates/my-lisp-literate/tests/literate_offsets.rs`. Rows 1-65 above were renumbered to match the resulting 65-fixture file.
 
@@ -93,10 +99,10 @@ Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` actin
 
 ## Counts
 
-- Tier 1 (CORE SEMANTICS): 23 fixtures
+- Tier 1 (CORE SEMANTICS): 26 fixtures
 - Tier 2 (LANGUAGE CONTRACT): 22 fixtures
-- Tier 3 (ECOSYSTEM CONFORMANCE): 27 fixtures
-- Total: 72 fixtures (literate layer removed; occurs-check, 2 defmacro error fixtures, 1 tail-recursion fixture, and 3 map/filter/reduce empty-list fixtures added, all 2026-08-09; see notes above)
+- Tier 3 (ECOSYSTEM CONFORMANCE): 28 fixtures
+- Total: 76 fixtures (literate layer removed; occurs-check, defmacro/tail-recursion/map-filter-reduce/variadic-lambda fixtures added, all 2026-08-09; see notes above)
 
 (Corrected 2026-08-09 from an initial hand count of 22/15/20/1 — `my-lisp-constitution.json`'s machine-checked tier field is now the authoritative count, not this table's manual tally.)
 - Fixtures with no clean G/S axiom mapping: 8 (`unify`/`reason`, evidence for principle 3, not the G/S axiom list) — #10/#20 resolved by G8, no longer unmapped

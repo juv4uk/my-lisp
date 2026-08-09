@@ -70,5 +70,9 @@
   { "expr": "(def count-down (lambda (n) (cond ((eq n 0) 'done) (t (count-down (- n 1)))))) (count-down 100000)", "expected": "done" },
   { "expr": "(map (lambda (x) (+ x 1)) '())", "expected": "()" },
   { "expr": "(filter (lambda (x) (eq x 2)) '())", "expected": "()" },
-  { "expr": "(reduce (lambda (acc x) (+ acc x)) 0 '())", "expected": "0" }
+  { "expr": "(reduce (lambda (acc x) (+ acc x)) 0 '())", "expected": "0" },
+  { "expr": "((lambda (a b . rest) rest) 1 2 3 4 5)", "expected": "(3 4 5)" },
+  { "expr": "((lambda args args) 1 2 3)", "expected": "(1 2 3)" },
+  { "expr": "((lambda (a b . rest) a) 1)", "error": "Arity" },
+  { "expr": "(list 1 2 3)", "expected": "(1 2 3)" }
 ]

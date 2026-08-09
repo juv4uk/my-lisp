@@ -377,18 +377,6 @@ pub(super) fn evaluate_defmacro(
     Ok(macro_val)
 }
 
-pub(super) fn evaluate_list_func(
-    arguments: &[Expr],
-    environment: &Environment,
-    _span: Span,
-) -> Result<Value, LanguageError> {
-    let mut values = Vec::with_capacity(arguments.len());
-    for argument in arguments {
-        values.push(evaluate(argument, environment)?);
-    }
-    Ok(Value::list(values))
-}
-
 pub(super) fn evaluate_eq(
     arguments: &[Expr],
     environment: &Environment,

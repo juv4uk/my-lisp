@@ -48,6 +48,14 @@
 
 **Лишається відкритим, не зроблено зараз:** self-referential top-level `def` (потребувало б якоїсь форми відкладеного зв'язування, окрема більша задача) і `list`-примітив усередині інтерпретованих програм — без нього не кожен реальний файл `lib/core.my` можна проковтнути цілим (макроси `let`/`let*` використовують `list`), лише фрагменти без нього.
 
+## 9. ✅ Аудит Rust built-in surface — `list` перенесено в `lib/core.my`
+
+Прямий запит користувача (2026-08-09): "оптимізувати Rust, видалити з нього те, що Lisp робить добре". Пройшов увесь список Rust-примітивів (`crates/my-lisp/src/eval/mod.rs`) проти фільтра G4/принципу 3 з `mccarthy-principles.md` ("чи наявне ядро вже може це виразити"). Висновок: сім примітивів МакКарті, `lambda`/`def`/`defmacro` (задекларований мінімум бутстрапу), I/O (`print`/`read`/`eval`/`load`/`read-file`/`read-all` — capability boundary), інтроспекція символів/рядків (нема іншого способу дістатись усередину символу) і арифметика (потребує bignum-машинерії хоста) — усе легітимно primitive, нічого дешево прибрати.
+
+Єдиний кандидат: `list` — чистий цукор над `cons`, але заблокований відсутністю варіативних параметрів у `lambda`/`defmacro`. За прямим підтвердженням користувача ("взятись за більшу задачу") — зроблено: `(a b . rest)` (dotted lambda-list, та сама dotted-pair reader-підтримка з Кроку 17) і голий символ `args` (нуль фіксованих параметрів, усі аргументи) — дві форми, спільні для родини Lisp, не `&rest`-ключове слово одного діалекту. `Closure` отримав нове поле `rest: Option<Rc<str>>`; `apply`/`apply_macro` тепер приймають "щонайменше N" замість точного N, коли rest є. Після цього `list` видалено з Rust (`evaluate_list_func` прибрано повністю, не залишено як мертвий код) і додано в `lib/core.my` як `(def list (lambda args args))`.
+
+Тести: `dotted_lambda_list_binds_extra_arguments_as_a_rest_list`, `bare_symbol_lambda_list_binds_every_argument_as_one_list`, `variadic_lambda_still_requires_its_fixed_parameters`, `variadic_defmacro_binds_unevaluated_rest_arguments`, `list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin` у `crates/my-lisp/tests/mccarthy.rs`. 4 нові фікстури в `conformance.json` (76 всього) — варіативність тепер частина implementation-independent контракту, не лише Rust-деталь.
+
 ## Нотатки
 
 - `private/` папка (PROJECT_MEMORY.md, PROFILE.md, mccarthy-principles.md, present-reality-principles.md, lisp-to-knowledge.md) лишається в `.gitignore`, не в публічному репозиторії — перевірено, слідів у git-історії немає.

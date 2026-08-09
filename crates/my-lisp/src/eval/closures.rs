@@ -6,6 +6,100 @@ use super::{evaluate, special_forms::quoted, EvalStep};
 use crate::{Closure, Environment, ErrorKind, Expr, ExprKind, LanguageError, Span, Value};
 use std::{collections::HashSet, rc::Rc};
 
+/// Parses a lambda-list, which comes in three shapes shared across the Lisp
+/// family (not one dialect's `&rest` keyword): `(a b)` — exactly two fixed
+/// parameters, no rest; `(a b . rest)` — a dotted list, `rest` bound to
+/// every argument past `a`/`b`; and a bare symbol `args` — zero fixed
+/// parameters, every argument bound to `args`. The third shape reads as an
+/// ordinary `ExprKind::Symbol`, the second as nested `ExprKind::Pair` (the
+/// same dotted-pair reader support added earlier for data literals),
+/// exactly the shapes `parser.rs` already produces — no new parser syntax.
+/// Розбирає lambda-list, що має три форми, спільні для родини Lisp (не
+/// ключове слово `&rest` одного діалекту): `(a b)` — точно два фіксовані
+/// параметри, без rest; `(a b . rest)` — dotted-список, `rest` зв'язується
+/// з усіма аргументами понад `a`/`b`; голий символ `args` — нуль фіксованих
+/// параметрів, кожен аргумент зв'язується з `args`. Третя форма читається як
+/// звичайний `ExprKind::Symbol`, друга — як вкладений `ExprKind::Pair` (та
+/// сама підтримка dotted-pair reader'а, додана раніше для літералів даних) —
+/// саме ті форми, які `parser.rs` уже й так виробляє, без нового синтаксису.
+fn parse_lambda_list(expr: &Expr) -> Result<(Vec<Rc<str>>, Option<Rc<str>>), LanguageError> {
+    match &expr.kind {
+        ExprKind::Symbol(name) => Ok((Vec::new(), Some(name.clone()))),
+        ExprKind::List(parameter_forms) => {
+            let mut parameters = Vec::with_capacity(parameter_forms.len());
+            let mut unique = HashSet::new();
+            for parameter in parameter_forms.iter() {
+                let ExprKind::Symbol(name) = &parameter.kind else {
+                    return Err(LanguageError::new(
+                        ErrorKind::InvalidForm,
+                        "lambda parameter must be a symbol · параметр lambda має бути символом · lambda-Parameter muss ein Symbol sein",
+                        parameter.span,
+                    ));
+                };
+                if !unique.insert(name.clone()) {
+                    return Err(LanguageError::new(
+                        ErrorKind::InvalidForm,
+                        format!("duplicate lambda parameter · повторний параметр lambda · doppelter lambda-Parameter: {name}"),
+                        parameter.span,
+                    ));
+                }
+                parameters.push(name.clone());
+            }
+            Ok((parameters, None))
+        }
+        ExprKind::Pair(_, _) => {
+            let mut parameters = Vec::new();
+            let mut unique = HashSet::new();
+            let mut current: &Expr = expr;
+            let rest = loop {
+                match &current.kind {
+                    ExprKind::Pair(head, tail) => {
+                        let ExprKind::Symbol(name) = &head.kind else {
+                            return Err(LanguageError::new(
+                                ErrorKind::InvalidForm,
+                                "lambda parameter must be a symbol · параметр lambda має бути символом · lambda-Parameter muss ein Symbol sein",
+                                head.span,
+                            ));
+                        };
+                        if !unique.insert(name.clone()) {
+                            return Err(LanguageError::new(
+                                ErrorKind::InvalidForm,
+                                format!("duplicate lambda parameter · повторний параметр lambda · doppelter lambda-Parameter: {name}"),
+                                head.span,
+                            ));
+                        }
+                        parameters.push(name.clone());
+                        current = tail;
+                    }
+                    ExprKind::Symbol(name) => {
+                        if !unique.insert(name.clone()) {
+                            return Err(LanguageError::new(
+                                ErrorKind::InvalidForm,
+                                format!("duplicate lambda parameter · повторний параметр lambda · doppelter lambda-Parameter: {name}"),
+                                current.span,
+                            ));
+                        }
+                        break name.clone();
+                    }
+                    _ => {
+                        return Err(LanguageError::new(
+                            ErrorKind::InvalidForm,
+                            "rest parameter must be a symbol · rest-параметр має бути символом · Rest-Parameter muss ein Symbol sein",
+                            current.span,
+                        ))
+                    }
+                }
+            };
+            Ok((parameters, Some(rest)))
+        }
+        _ => Err(LanguageError::new(
+            ErrorKind::InvalidForm,
+            "lambda parameters must be a list, dotted list, or symbol · параметри lambda мають бути списком, dotted-списком або символом · lambda-Parameter müssen eine Liste, Dotted-Liste oder ein Symbol sein",
+            expr.span,
+        )),
+    }
+}
+
 pub(super) fn create_lambda(
     arguments: &[Expr],
     environment: &Environment,
@@ -18,37 +112,42 @@ pub(super) fn create_lambda(
             span,
         ));
     }
-    let ExprKind::List(parameter_forms) = &arguments[0].kind else {
-        return Err(LanguageError::new(
-            ErrorKind::InvalidForm,
-            "lambda parameters must be a list · параметри lambda мають бути списком · lambda-Parameter müssen eine Liste sein",
-            arguments[0].span,
-        ));
-    };
-    let mut parameters = Vec::with_capacity(parameter_forms.len());
-    let mut unique = HashSet::new();
-    for parameter in parameter_forms.iter() {
-        let ExprKind::Symbol(name) = &parameter.kind else {
-            return Err(LanguageError::new(
-                ErrorKind::InvalidForm,
-                "lambda parameter must be a symbol · параметр lambda має бути символом · lambda-Parameter muss ein Symbol sein",
-                parameter.span,
-            ));
-        };
-        if !unique.insert(name.clone()) {
-            return Err(LanguageError::new(
-                ErrorKind::InvalidForm,
-                format!("duplicate lambda parameter · повторний параметр lambda · doppelter lambda-Parameter: {name}"),
-                parameter.span,
-            ));
-        }
-        parameters.push(name.clone());
-    }
+    let (parameters, rest) = parse_lambda_list(&arguments[0])?;
     Ok(Value::Closure(Rc::new(Closure {
         parameters,
+        rest,
         body: arguments[1..].into(),
         environment: environment.clone(),
     })))
+}
+
+/// Shared by `apply`/`apply_macro`: exact arity when there's no rest
+/// parameter, "at least this many" when there is.
+/// Спільне для `apply`/`apply_macro`: точна арність, якщо нема rest-
+/// параметра, "щонайменше стільки" — якщо є.
+fn check_arity(
+    label: &str,
+    fixed: usize,
+    has_rest: bool,
+    received: usize,
+    span: Span,
+) -> Result<(), LanguageError> {
+    let arity_ok = if has_rest { received >= fixed } else { received == fixed };
+    if arity_ok {
+        return Ok(());
+    }
+    let expected = if has_rest {
+        format!("at least / щонайменше / mindestens {fixed}")
+    } else {
+        fixed.to_string()
+    };
+    Err(LanguageError::new(
+        ErrorKind::Arity,
+        format!(
+            "{label}: expected / очікувалося / erwartet {expected}; received / отримано / erhalten {received}"
+        ),
+        span,
+    ))
 }
 
 pub(super) fn apply(
@@ -64,17 +163,7 @@ pub(super) fn apply(
             span,
         ));
     };
-    if arguments.len() != closure.parameters.len() {
-        return Err(LanguageError::new(
-            ErrorKind::Arity,
-            format!(
-                "lambda: expected / очікувалося / erwartet {}; received / отримано / erhalten {}",
-                closure.parameters.len(),
-                arguments.len()
-            ),
-            span,
-        ));
-    }
+    check_arity("lambda", closure.parameters.len(), closure.rest.is_some(), arguments.len(), span)?;
 
     // Arguments belong to the caller; parameters belong to the captured lexical frame.
     // Аргументи належать виклику, а параметри — захопленому лексичному фрейму.
@@ -83,6 +172,13 @@ pub(super) fn apply(
     for (parameter, argument) in closure.parameters.iter().zip(arguments.iter()) {
         let value = evaluate(argument, calling_environment)?;
         local_environment.define(parameter.clone(), value);
+    }
+    if let Some(rest_name) = &closure.rest {
+        let mut rest_values = Vec::with_capacity(arguments.len() - closure.parameters.len());
+        for argument in &arguments[closure.parameters.len()..] {
+            rest_values.push(evaluate(argument, calling_environment)?);
+        }
+        local_environment.define(rest_name.clone(), Value::list(rest_values));
     }
     let last = last_body_expression(&closure.body, &local_environment, span)?;
     // Tail positions become data for the evaluator loop instead of recursive Rust calls.
@@ -130,22 +226,19 @@ pub(super) fn apply_macro(
     calling_environment: &Environment,
     span: Span,
 ) -> Result<EvalStep, LanguageError> {
-    if arguments.len() != closure.parameters.len() {
-        return Err(LanguageError::new(
-            ErrorKind::Arity,
-            format!(
-                "defmacro: expected / очікувалося / erwartet {}; received / отримано / erhalten {}",
-                closure.parameters.len(),
-                arguments.len()
-            ),
-            span,
-        ));
-    }
+    check_arity("defmacro", closure.parameters.len(), closure.rest.is_some(), arguments.len(), span)?;
 
     let local_environment = closure.environment.child();
     for (parameter, argument) in closure.parameters.iter().zip(arguments.iter()) {
         let value = quoted(argument); // Do NOT evaluate arguments
         local_environment.define(parameter.clone(), value);
+    }
+    if let Some(rest_name) = &closure.rest {
+        let rest_values: Vec<Value> = arguments[closure.parameters.len()..]
+            .iter()
+            .map(quoted) // Do NOT evaluate arguments
+            .collect();
+        local_environment.define(rest_name.clone(), Value::list(rest_values));
     }
 
     let last = last_body_expression(&closure.body, &local_environment, span)?;

@@ -127,9 +127,6 @@ fn evaluate_list(
         Some("defmacro") => {
             special_forms::evaluate_defmacro(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("list") => {
-            special_forms::evaluate_list_func(arguments, environment, span).map(EvalStep::Value)
-        }
         Some("cond") => special_forms::evaluate_cond(arguments, environment, span),
         Some("atom") => {
             special_forms::exact_arity("atom", arguments, 1, span)?;
@@ -233,11 +230,15 @@ mod single_pass_eval_tests {
 
     #[test]
     fn macros_expand_and_evaluate_correctly() {
+        // `list` moved to lib/core.my (2026-08-09) — this test deliberately
+        // doesn't load it, to keep exercising defmacro/macro-expansion in
+        // isolation from the bootstrap library, so `cons`/quote build the
+        // expansion by hand instead.
         let source = r#"
             (defmacro unless (condition body)
-                (list 'cond
-                    (list condition '())
-                    (list 't body)))
+                (cons 'cond
+                    (cons (cons condition (cons '() '()))
+                    (cons (cons 't (cons body '())) '()))))
             (unless () 'success)
         "#;
         let mut session = Session::default();

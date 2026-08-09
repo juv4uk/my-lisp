@@ -198,6 +198,17 @@ impl fmt::Display for Rational {
 #[derive(Clone, Debug)]
 pub struct Closure {
     pub(crate) parameters: Vec<Rc<str>>,
+    /// The dotted-list/bare-symbol rest parameter, if any — bound to a list
+    /// of every argument past `parameters.len()`. `None` means the closure
+    /// takes exactly `parameters.len()` arguments, no more.
+    /// Варіативний параметр (dotted-list/голий символ), якщо є — зв'язується
+    /// зі списком усіх аргументів понад `parameters.len()`. `None` означає,
+    /// що замикання приймає точно `parameters.len()` аргументів, не більше.
+    /// Der variadische Rest-Parameter (Dotted-List/nacktes Symbol), falls
+    /// vorhanden — gebunden an eine Liste aller Argumente über
+    /// `parameters.len()` hinaus. `None` bedeutet, die Closure nimmt genau
+    /// `parameters.len()` Argumente, nicht mehr.
+    pub(crate) rest: Option<Rc<str>>,
     pub(crate) body: Rc<[Expr]>,
     pub(crate) environment: Environment,
 }

@@ -378,6 +378,80 @@ fn lambda_reports_invalid_parameters_and_arity() {
     assert_eq!(arity.kind, ErrorKind::Arity);
 }
 
+/// Variadic parameters (2026-08-09, PLAN.md item 8's follow-on): three
+/// shapes shared across the Lisp family, not one dialect's `&rest`
+/// keyword — `(a b . rest)` (dotted list, reusing the same reader support
+/// added earlier for data literals), a bare symbol (zero fixed params,
+/// every argument), and the existing `(a b)` (exact arity, unchanged).
+/// Варіативні параметри (2026-08-09, продовження пункту 8 з PLAN.md): три
+/// форми, спільні для родини Lisp, не ключове слово `&rest` одного
+/// діалекту — `(a b . rest)` (dotted-список, та сама підтримка reader'а,
+/// додана раніше для літералів даних), голий символ (нуль фіксованих
+/// параметрів, кожен аргумент), і наявний `(a b)` (точна арність, без змін).
+#[test]
+fn dotted_lambda_list_binds_extra_arguments_as_a_rest_list() {
+    assert_eq!(
+        eval("((lambda (a b . rest) rest) 1 2 3 4 5)"),
+        Value::list(vec![Value::Number(3.0), Value::Number(4.0), Value::Number(5.0)])
+    );
+    assert_eq!(eval("((lambda (a . rest) a) 1 2 3)"), Value::Number(1.0));
+}
+
+#[test]
+fn bare_symbol_lambda_list_binds_every_argument_as_one_list() {
+    assert_eq!(
+        eval("((lambda args args) 1 2 3)"),
+        Value::list(vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)])
+    );
+    assert_eq!(eval("((lambda args args))"), Value::Nil);
+}
+
+#[test]
+fn variadic_lambda_still_requires_its_fixed_parameters() {
+    let error = eval_program("((lambda (a b . rest) a) 1)", &mut Session::default()).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Arity);
+    assert!(error.message.contains("at least"));
+}
+
+#[test]
+fn variadic_defmacro_binds_unevaluated_rest_arguments() {
+    let mut session = Session::default();
+    let result = eval_program(
+        "(defmacro my-list items (cons 'quote (cons items '()))) (my-list 1 2 3)",
+        &mut session,
+    )
+    .unwrap();
+    assert_eq!(
+        result.value,
+        Value::list(vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)])
+    );
+}
+
+/// `list` used to be a Rust special form; moved to `lib/core.my` the same
+/// day variadic lambda parameters were added, since `(def list (lambda
+/// args args))` expresses it exactly — G4/G5's own filter ("can the
+/// existing core already say this?") applied to the Rust surface itself,
+/// not just to `.my` code.
+/// `list` раніше був спеціальною формою Rust; перенесено в `lib/core.my`
+/// того самого дня, коли додано варіативні параметри lambda, бо `(def list
+/// (lambda args args))` виражає це точно — той самий фільтр G4/G5 ("чи
+/// наявне ядро вже може це сказати?"), застосований до самого Rust-шару,
+/// не лише до `.my`-коду.
+#[test]
+fn list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    let result = eval_program("(list 1 2 3)", &mut session).unwrap();
+    assert_eq!(
+        result.value,
+        Value::list(vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)])
+    );
+    // Without core.my loaded, "list" is an ordinary unbound symbol now —
+    // regression-tests that it really did leave the Rust special-form table.
+    let unbound = eval_program("(list 1 2 3)", &mut Session::default()).unwrap_err();
+    assert_eq!(unbound.kind, ErrorKind::UnknownSymbol);
+}
+
 /// tests/fixtures/conformance.json is the implementation-independent contract
 /// (see CLAUDE.md): any future my-lisp implementation — C, HDL, whatever —
 /// should reproduce these results once it gets the seven primitives and
