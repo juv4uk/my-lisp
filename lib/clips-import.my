@@ -754,17 +754,78 @@
       ((clips-rule-preamble-form? (car body)) (clips-strip-rule-preamble (cdr body)))
       (t body))))
 
+; CLIPS's `exists`/`forall` quantified conditional elements — "true if at
+; least one/every matching fact exists" — have no equivalent in
+; `lib/forward.my`'s condition dispatcher (`match-one-condition` only
+; recognizes `not`/`or`/`and`/`test`). Left unguarded, a condition like
+; `(exists (unsolved))` would fall through to ordinary fact matching —
+; trying to unify against a fact literally headed `exists`, which never
+; exists — and the whole rule would silently never fire. Found via a real
+; external file (`tests/fixtures/sudoku-external.clp`, CLIPS's own Sudoku
+; solver), the same "verify with a throwaway debug test first" way as
+; every other bug in this file. Same policy as the original (pre-Step-7)
+; `not` guard: skip the whole rule, don't import a rule that can never
+; match — the same "skip, don't crash" honesty this file has followed
+; since Step 5, not a silent wrong answer.
+; Квантифіковані умовні елементи CLIPS `exists`/`forall` — "істинно, якщо
+; існує принаймні один/кожен факт, що збігається" — не мають аналога в
+; диспетчері умов `lib/forward.my` (`match-one-condition` розпізнає лише
+; `not`/`or`/`and`/`test`). Без охорони умова на кшталт
+; `(exists (unsolved))` потрапила б у звичайне зіставлення фактів —
+; намагаючись уніфікувати з фактом, чия голова буквально `exists`, якого
+; ніколи не існує — і все правило мовчки ніколи б не спрацювало.
+; Знайдено на справжньому зовнішньому файлі (`tests/fixtures/sudoku-external.clp`,
+; власний Sudoku-solver CLIPS), тим самим способом "спершу тимчасовий
+; debug-тест", що й кожен інший баг цього файлу. Та сама політика, що й
+; початковий (до-Кроку-7) guard для `not`: пропустити все правило, не
+; імпортувати правило, яке ніколи не зможе спрацювати — та сама чесність
+; "пропустити, не впасти", якою цей файл керується з Кроку 5, а не тиха
+; неправильна відповідь.
+; CLIPS' quantifizierte Bedingungselemente `exists`/`forall` — "wahr, wenn
+; mindestens ein/jeder passende Fakt existiert" — haben kein Äquivalent im
+; Bedingungs-Dispatcher von `lib/forward.my` (`match-one-condition` kennt
+; nur `not`/`or`/`and`/`test`). Ungeschützt würde eine Bedingung wie
+; `(exists (unsolved))` in die gewöhnliche Faktenprüfung fallen — und
+; versuchen, gegen einen Fakt zu unifizieren, der buchstäblich `exists`
+; heißt und nie existiert — die ganze Regel würde still nie feuern.
+; Gefunden an einer echten externen Datei (`tests/fixtures/sudoku-external.clp`,
+; CLIPS' eigener Sudoku-Löser), auf demselben Weg "erst ein Wegwerf-
+; Debug-Test" wie jeder andere Fehler in dieser Datei. Dieselbe Politik
+; wie der ursprüngliche (Vor-Schritt-7)-Guard für `not`: die ganze Regel
+; überspringen, keine Regel importieren, die nie passen kann — dieselbe
+; "überspringen statt abstürzen"-Ehrlichkeit, der diese Datei seit
+; Schritt 5 folgt, statt einer stillen falschen Antwort.
+(def clips-condition-is-exists-or-forall?
+  (lambda (condition)
+    (cond
+      ((atom condition) '())
+      ((atom (car condition))
+       (cond
+         ((eq (car condition) 'exists) t)
+         ((eq (car condition) 'forall) t)
+         (t '())))
+      (t '()))))
+
+(def clips-any-exists-condition?
+  (lambda (conditions)
+    (cond
+      ((atom conditions) '())
+      ((clips-condition-is-exists-or-forall? (car conditions)) t)
+      (t (clips-any-exists-condition? (cdr conditions))))))
+
 (def clips-defrule->clauses
   (lambda (form templates)
     (let ((split (clips-split-at-arrow (clips-strip-rule-preamble (cddr form)))))
-      (let ((conditions (clips-convert-vars (clips-convert-template-list (car split) templates)))
-            (relevant (clips-drop-printouts (second split))))
-        (cond
-          ((clips-all-asserts? relevant)
-           (clips-clauses-for-conclusions
-             (clips-convert-template-list (clips-assert-conclusions relevant) templates)
-             conditions))
-          (t '()))))))
+      (cond
+        ((clips-any-exists-condition? (car split)) '())
+        (t (let ((conditions (clips-convert-vars (clips-convert-template-list (car split) templates)))
+                  (relevant (clips-drop-printouts (second split))))
+             (cond
+               ((clips-all-asserts? relevant)
+                (clips-clauses-for-conclusions
+                  (clips-convert-template-list (clips-assert-conclusions relevant) templates)
+                  conditions))
+               (t '()))))))))
 
 ; Dispatches on one top-level CLIPS form's leading symbol. Unknown or
 ; not-yet-supported forms produce no clauses rather than erroring — a

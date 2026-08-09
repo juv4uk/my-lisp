@@ -624,3 +624,58 @@ fn clips_import_file_imports_an_eighth_real_external_clp_file_with_bare_tilde_co
         "expected 17 goal-directed rules plus startup's 13 asserted facts to survive"
     );
 }
+
+#[test]
+fn clips_defrule_with_an_exists_condition_is_skipped_not_silently_broken() {
+    // Regression: `exists`/`forall` are CLIPS quantified conditional
+    // elements with no equivalent in lib/forward.my's condition
+    // dispatcher. Before this guard, `(exists (unsolved))` fell through
+    // to ordinary fact matching against a fact literally headed `exists`
+    // — which never exists — so the whole rule would silently never
+    // fire. Found via a real external file (sudoku.clp, see below).
+    let source = r#"
+        (clips-import '((defrule wait-for-more
+            (rank (value ?last))
+            (exists (unsolved))
+            =>
+            (assert (rank (value done))))))
+    "#;
+    assert_eq!(eval_import(source), "()");
+}
+
+#[test]
+fn clips_defrule_without_an_exists_condition_still_imports_normally() {
+    let source = r#"
+        (clips-import '((defrule plain
+            (rank (value ?last))
+            =>
+            (assert (rank (value done))))))
+    "#;
+    assert_eq!(
+        eval_import(source),
+        "(((rank (value done)) (rank (value (var last)))))"
+    );
+}
+
+#[test]
+fn clips_import_file_imports_a_ninth_real_external_clp_file_and_finds_the_exists_bug() {
+    // sudoku.clp (CLIPS's own Sudoku solver) is the real file that first
+    // used `exists` — `(exists (unsolved))`, "true if at least one
+    // unsolved cell remains" — inside a rank-selection rule. No deffacts
+    // in this file (puzzle data loads separately); 12 defrules, most
+    // disqualified by `not`/`test`-heavy conditions converting correctly
+    // (already-known limitations, not bugs) or surviving as genuine
+    // working clauses.
+    let source = r#"
+        (clips-import-file "../../tests/fixtures/sudoku-external.clp")
+    "#;
+    let imported = eval_import(source);
+    assert!(
+        !imported.contains("exists"),
+        "expected the exists-bearing rule to be skipped entirely, got: {imported}"
+    );
+    assert!(
+        imported.contains("(size-value 1 1)"),
+        "expected a converted deftemplate fact to survive the import, got: {imported}"
+    );
+}
