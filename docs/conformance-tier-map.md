@@ -47,31 +47,37 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 | 39 | `(print 42)` | 2 | — | host capability (session transcript), not pure semantics |
 | 40 | `(read "(+ 1 2)")` | 2 | G3 | |
 | 41 | `(eval (read "(+ 1 2)"))` | 2 | G3 | |
-| 42 | literate markdown fixture | **separate** | — | explicitly optional layer per its own doc note |
-| 43 | `(car 5)` error `Type` | 1 | S2 | |
-| 44 | `(car '())` error `Type` | 1 | S2 | |
-| 45 | `(eq '(1) '(2))` error `Type` | 1 | S2 | `eq` only accepts atoms |
-| 46 | `(undefined-symbol)` error `UnknownSymbol` | 1/2 | S2 | |
-| 47 | `(lambda (x))` error `Arity` | 2 | S2 | |
-| 48 | `(quote a b)` error `Arity` | 1 | S2 | |
-| 49 | `(cons 1)` error `Arity` | 1 | S2 | |
-| 50 | `(/ 1 0)` error `InvalidForm` | 2 | S2 | |
-| 51 | `(let ((x 1) (y 2)) (+ x y))` | 3 | G5 | `let` is a macro in `lib/core.my` |
-| 52 | `(let* ((x 1) (y (+ x 1))) y)` | 3 | G5 | |
-| 53 | `(equal? '(1 (2 3) 4) '(1 (2 3) 4))` | 3 | G5 | |
-| 54 | `(equal? '(1 2) '(1 2 3))` | 3 | G5 | |
-| 55 | `(eq (lambda (x) x) (lambda (x) x))` | 2 | G1 | closure identity, not structural equality |
-| 56 | `(unify 'a 'a '())` | 3 | — | principle 3 evidence, not a G/S axiom |
-| 57 | `(unify '(var x) 'a '())` | 3 | — | |
-| 58 | `(unify '(var x) '(var x) '())` | 3 | — | |
-| 59 | `(unify '(1 (var x) 3) '(1 2 3) '())` | 3 | — | |
-| 60 | `(unify '(1 (var x) 3) '(1 2 4) '())` | 3 | — | |
-| 61 | `reason` — simple fact proof | 3 | — | principle 3 |
-| 62 | `reason` — with `logic-var` | 3 | — | principle 3 |
-| 63 | `reason` — bird/penguin proof tree | 3 | — | principle 3, the deepest fixture in the file |
-| 64 | `(equal? '(p . 0) (cons 'p 0))` | 1 | G2 | today's dotted-pair fix, direct evidence |
-| 65 | `(car '(a b . c))` | 1 | G2 | |
-| 66 | `(cdr (cdr '(a b . c)))` | 1 | G2 | |
+| 42 | `(car 5)` error `Type` | 1 | S2 | |
+| 43 | `(car '())` error `Type` | 1 | S2 | |
+| 44 | `(eq '(1) '(2))` error `Type` | 1 | S2 | `eq` only accepts atoms |
+| 45 | `(undefined-symbol)` error `UnknownSymbol` | 1/2 | S2 | |
+| 46 | `(lambda (x))` error `Arity` | 2 | S2 | |
+| 47 | `(quote a b)` error `Arity` | 1 | S2 | |
+| 48 | `(cons 1)` error `Arity` | 1 | S2 | |
+| 49 | `(/ 1 0)` error `InvalidForm` | 2 | S2 | |
+| 50 | `(let ((x 1) (y 2)) (+ x y))` | 3 | G5 | `let` is a macro in `lib/core.my` |
+| 51 | `(let* ((x 1) (y (+ x 1))) y)` | 3 | G5 | |
+| 52 | `(equal? '(1 (2 3) 4) '(1 (2 3) 4))` | 3 | G5 | |
+| 53 | `(equal? '(1 2) '(1 2 3))` | 3 | G5 | |
+| 54 | `(eq (lambda (x) x) (lambda (x) x))` | 2 | G1 | closure identity, not structural equality |
+| 55 | `(unify 'a 'a '())` | 3 | — | principle 3 evidence, not a G/S axiom |
+| 56 | `(unify '(var x) 'a '())` | 3 | — | |
+| 57 | `(unify '(var x) '(var x) '())` | 3 | — | |
+| 58 | `(unify '(1 (var x) 3) '(1 2 3) '())` | 3 | — | |
+| 59 | `(unify '(1 (var x) 3) '(1 2 4) '())` | 3 | — | |
+| 60 | `reason` — simple fact proof | 3 | — | principle 3 |
+| 61 | `reason` — with `logic-var` | 3 | — | principle 3 |
+| 62 | `reason` — bird/penguin proof tree | 3 | — | principle 3, the deepest fixture in the file |
+| 63 | `(equal? '(p . 0) (cons 'p 0))` | 1 | G2 | today's dotted-pair fix; derived — `equal?` is a `lib/core.my` function, not one of the seven primitives, even though `cons` sits inside it |
+| 64 | `(car '(a b . c))` | 1 | G2 | today's dotted-pair fix; constitutive — `car` invoked directly |
+| 65 | `(cdr (cdr '(a b . c)))` | 1 | G2 | today's dotted-pair fix; constitutive — `cdr` invoked directly |
+| 66 | `(unify '(var x) '(f (var x)) '())` | 3 | — | occurs-check, principle 3 evidence — prevents building an infinite structure |
+| 67 | `(defmacro foo)` error `Arity` | 2 | S2 | `defmacro` validates arity like any other special form |
+| 68 | `(defmacro 5 (x) x)` error `InvalidForm` | 2 | S2 | `defmacro` validates its name is a symbol, not just its arity |
+
+**2026-08-09, later same day:** the literate-markdown fixture (formerly #42) was removed from `conformance.json` entirely — it was the file's only non-S-expression entry and duplicated coverage already owned by `crates/my-lisp-literate/tests/literate_offsets.rs`. Rows 1-65 above were renumbered to match the resulting 65-fixture file.
+
+**2026-08-09, still later:** three fixtures appended (append-only, at the end, per the file's own convention) closing gaps found by opinion review: `unify`'s occurs-check (previously only covered by `unify.rs`'s Rust-level unit test, not the implementation-independent contract) and two `defmacro` error paths (arity, non-symbol name) — the macro system previously had zero error coverage in `conformance.json`. File is now 68 fixtures.
 
 ## A gap found by doing this pass — and closed the same day
 
@@ -80,9 +86,9 @@ Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` actin
 ## Counts
 
 - Tier 1 (CORE SEMANTICS): 23 fixtures
-- Tier 2 (LANGUAGE CONTRACT): 19 fixtures
-- Tier 3 (ECOSYSTEM CONFORMANCE): 23 fixtures
-- Separate (literate layer): 1 fixture
+- Tier 2 (LANGUAGE CONTRACT): 21 fixtures
+- Tier 3 (ECOSYSTEM CONFORMANCE): 24 fixtures
+- Total: 68 fixtures (literate layer removed, occurs-check + 2 defmacro error fixtures added, both 2026-08-09; see notes above)
 
 (Corrected 2026-08-09 from an initial hand count of 22/15/20/1 — `my-lisp-constitution.json`'s machine-checked tier field is now the authoritative count, not this table's manual tally.)
 - Fixtures with no clean G/S axiom mapping: 8 (`unify`/`reason`, evidence for principle 3, not the G/S axiom list) — #10/#20 resolved by G8, no longer unmapped

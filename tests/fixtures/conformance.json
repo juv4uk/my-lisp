@@ -40,7 +40,6 @@
   { "expr": "(print 42)", "expected": "42" },
   { "expr": "(read \"(+ 1 2)\")", "expected": "(+ 1 2)" },
   { "expr": "(eval (read \"(+ 1 2)\"))", "expected": "3" },
-  { "expr": "# Literate Lisp\n\nThis is a literate program.\n\n```my-lisp\n(def x 10)\n(* x 2)\n```\n\nIt ignores non-code blocks.", "expected": "20", "mode": "markdown" },
   { "expr": "(car 5)", "error": "Type" },
   { "expr": "(car '())", "error": "Type" },
   { "expr": "(eq '(1) '(2))", "error": "Type" },
@@ -64,5 +63,8 @@
   { "expr": "(let ((rules '(((bird (var x)) (animal (var x)) (not (penguin (var x)))) ((animal tweety)) ((animal pingu)) ((penguin pingu))))) (reason (list 'bird (logic-var 'x)) rules))", "expected": "(((((x . 0) . tweety) (x var (x . 0))) (proved (bird (var x)) (bird (var (x . 0))) ((proved (animal (var (x . 0))) (animal tweety) ()) (proved-not (penguin (var (x . 0))))))))" },
   { "expr": "(equal? '(p . 0) (cons 'p 0))", "expected": "t" },
   { "expr": "(car '(a b . c))", "expected": "a" },
-  { "expr": "(cdr (cdr '(a b . c)))", "expected": "c" }
+  { "expr": "(cdr (cdr '(a b . c)))", "expected": "c" },
+  { "expr": "(unify '(var x) '(f (var x)) '())", "expected": "fail" },
+  { "expr": "(defmacro foo)", "error": "Arity" },
+  { "expr": "(defmacro 5 (x) x)", "error": "InvalidForm" }
 ]

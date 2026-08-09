@@ -431,15 +431,6 @@
       "expected": "3"
     },
     {
-      "tier": null,
-      "axioms": [],
-      "layer": "literate-markdown",
-      "note": "optional layer, not one of the three tiers — a future non-Rust core without literate-Markdown support may skip this fixture entirely",
-      "expr": "# Literate Lisp\n\nThis is a literate program.\n\n```my-lisp\n(def x 10)\n(* x 2)\n```\n\nIt ignores non-code blocks.",
-      "expected": "20",
-      "mode": "markdown"
-    },
-    {
       "tier": 1,
       "axioms": [
         "S2"
@@ -623,6 +614,31 @@
       "role": "constitutive",
       "expr": "(cdr (cdr '(a b . c)))",
       "expected": "c"
+    },
+    {
+      "tier": 3,
+      "axioms": [],
+      "note": "occurs-check, principle 3 evidence — prevents building an infinite structure, not a G/S axiom",
+      "expr": "(unify '(var x) '(f (var x)) '())",
+      "expected": "fail"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S2"
+      ],
+      "note": "defmacro validates arity like any other special form",
+      "expr": "(defmacro foo)",
+      "error": "Arity"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S2"
+      ],
+      "note": "defmacro validates its name is a symbol, not just its arity",
+      "expr": "(defmacro 5 (x) x)",
+      "error": "InvalidForm"
     }
   ]
 }

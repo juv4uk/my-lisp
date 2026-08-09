@@ -247,12 +247,6 @@
     ]
   },
   {
-    "tier": null,
-    "axioms": [],
-    "layer": "literate-markdown",
-    "note": "optional layer, not one of the three tiers — a future non-Rust core without literate-Markdown support may skip this fixture entirely"
-  },
-  {
     "tier": 1,
     "axioms": [
       "S2"
@@ -388,5 +382,24 @@
       "G2"
     ],
     "role": "constitutive"
+  },
+  {
+    "tier": 3,
+    "axioms": [],
+    "note": "occurs-check, principle 3 evidence — prevents building an infinite structure, not a G/S axiom"
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S2"
+    ],
+    "note": "defmacro validates arity like any other special form"
+  },
+  {
+    "tier": 2,
+    "axioms": [
+      "S2"
+    ],
+    "note": "defmacro validates its name is a symbol, not just its arity"
   }
 ]
