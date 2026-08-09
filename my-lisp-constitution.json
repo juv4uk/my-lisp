@@ -1,0 +1,605 @@
+{
+  "$about": "my-lisp-constitution.json — the executable proof of docs/language-core-axioms.md's project principles and axioms (G1-G8 generative, S1-S3 safety). Each fixture is one of the observable claims from tests/fixtures/conformance.json, now tagged with the tier (1 CORE SEMANTICS, 2 LANGUAGE CONTRACT, 3 ECOSYSTEM CONFORMANCE, or 'literate' for the optional literate-Markdown layer) and, where one applies, the axiom(s) it is evidence for. Symbolic-reasoning fixtures (tier 3, unify/reason) carry no axiom tag on purpose — they are evidence for project principle 3, not the G/S axiom list.",
+  "$status": "draft — not yet ratified; will become read-only once ratified",
+  "$provenance": "generated from tests/fixtures/conformance.json + docs/conformance-tier-map.md, 2026-08-09",
+  "$selfContained": "principles and axioms below are the canonical one-line statements from docs/language-core-axioms.md, kept here so this file can be read and understood on its own; docs/language-core-axioms.md remains the single source of the full prose rationale, examples, and open questions — not duplicated here, to avoid two sources of truth for the same wording drifting apart",
+  "principlesDocument": "docs/language-core-axioms.md",
+  "tierMap": "docs/conformance-tier-map.md",
+  "principles": [
+    {
+      "n": 1,
+      "en": "Write about possibilities, not limitations.",
+      "uk": "Писати про можливості, не про обмеження."
+    },
+    {
+      "n": 2,
+      "en": "Be Lisp in the full sense of the word — homoiconicity and a minimal, closed core that grows the rest of the language from inside itself, not the surface syntax of any one historical dialect.",
+      "uk": "Бути Lisp-ом у повному розумінні цього слова — гомоіконність і мінімальне, замкнене ядро, що вирощує решту мови зсередини себе, не поверхневий синтаксис якогось одного історичного діалекту."
+    },
+    {
+      "n": 3,
+      "en": "Build the reasoning machine — McCarthy's documented 1958 Advice Taker goal, extended by the author's own hybrid neural/symbolic vision (private/lisp-to-knowledge.md).",
+      "uk": "Реалізувати розумну машину — задокументована ціль МакКарті 1958 року (Advice Taker), продовжена власним гібридним нейро-символьним баченням автора (private/lisp-to-knowledge.md)."
+    },
+    {
+      "n": 4,
+      "en": "Cross-platform-ness, or more simply: universality — the falsifiability test for G6/G7; my-lisp commits to real, physically different substrates (Rust, a future C core, fpga-lisp), not just one implementation asserting conformance.",
+      "uk": "Кросплатформеність, або простіше — універсальність — тест на фальсифіковність для G6/G7; my-lisp зобов'язується перед реально різними фізичними субстратами (Rust, майбутнє C-ядро, fpga-lisp), не лише однією реалізацією, що заявляє конформність."
+    },
+    {
+      "n": 5,
+      "en": "Maximum awareness of today's technology, applied to symbolic AI — classical symbolic AI is not a museum piece; modern tooling and modern LLMs (as the fuzzy natural-language interface, not a competitor to the precise symbolic core) are part of building it.",
+      "uk": "Максимальна обізнаність у сьогоднішніх технологіях, застосована до символьного ШІ — класичний символьний AI не музейний експонат; сучасні інструменти й сучасні LLM (як нечіткий інтерфейс природної мови, не конкурент точному символьному ядру) — частина його побудови."
+    }
+  ],
+  "axioms": {
+    "generative": [
+      {
+        "id": "G1",
+        "en": "A value's meaning can be fully defined by observable behavior.",
+        "uk": "Значення value може бути повністю визначене спостережуваною поведінкою."
+      },
+      {
+        "id": "G2",
+        "en": "Every value can be built from just two things: atoms and pairs.",
+        "uk": "Кожне значення можна побудувати лише з двох речей: атомів і пар."
+      },
+      {
+        "id": "G3",
+        "en": "Program structure can be inspected, transformed, and built like any other value.",
+        "uk": "Структуру програми можна оглядати, трансформувати й будувати, як і будь-яке інше значення."
+      },
+      {
+        "id": "G4",
+        "en": "A minimal core can grow an entire language inside itself.",
+        "uk": "Мінімальне ядро може вирощувати всю мову всередині себе."
+      },
+      {
+        "id": "G5",
+        "en": "Anything expressible within the language can live above the implementation boundary.",
+        "uk": "Усе, що виразне мовою, може жити над межею реалізації."
+      },
+      {
+        "id": "G6",
+        "en": "Conformance can be defined purely by observable behavior.",
+        "uk": "Конформність можна визначити суто спостережуваною поведінкою."
+      },
+      {
+        "id": "G7",
+        "en": "The same expression can mean the same thing everywhere.",
+        "uk": "Той самий вираз може означати те саме всюди."
+      },
+      {
+        "id": "G8",
+        "en": "The absence of any element and the absence of truth can be the same value.",
+        "uk": "Відсутність будь-якого елемента й відсутність істини можуть бути тим самим значенням."
+      }
+    ],
+    "safety": [
+      {
+        "id": "S1",
+        "en": "Never silently turn an exact value into an approximation.",
+        "uk": "Ніколи мовчки не перетворювати точне значення на наближення."
+      },
+      {
+        "id": "S2",
+        "en": "Never fail silently — every failure is a named, observable outcome.",
+        "uk": "Ніколи не провалюватись мовчки — кожен провал є названим, спостережуваним результатом."
+      },
+      {
+        "id": "S3",
+        "en": "Never let a resource limit silently redefine an operation's meaning.",
+        "uk": "Ніколи не дозволяти обмеженню ресурсу мовчки переозначити сенс операції."
+      }
+    ]
+  },
+  "tiers": {
+    "1": "CORE SEMANTICS — every conforming implementation must have this",
+    "2": "LANGUAGE CONTRACT — every conforming implementation must have this",
+    "3": "ECOSYSTEM CONFORMANCE — an implementation can be my-lisp without this loaded yet; tests a library, not the language itself",
+    "literate": "LITERATE MARKDOWN LAYER — not one of the three tiers; optional, skippable by an implementation with no literate-Markdown support"
+  },
+  "fixtures": [
+    {
+      "tier": 1,
+      "axioms": [
+        "core-primitive"
+      ],
+      "expr": "(quote radio)",
+      "expected": "radio"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G2"
+      ],
+      "expr": "(atom 'radio)",
+      "expected": "t"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G2"
+      ],
+      "expr": "(atom '())",
+      "expected": "t"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G2"
+      ],
+      "expr": "(atom '(radio antenna))",
+      "expected": "()"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G1"
+      ],
+      "expr": "(eq 'radio 'radio)",
+      "expected": "t"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G1"
+      ],
+      "expr": "(eq 'radio 'antenna)",
+      "expected": "()"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G2"
+      ],
+      "expr": "(car '(radio antenna))",
+      "expected": "radio"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G2"
+      ],
+      "expr": "(cdr '(radio antenna))",
+      "expected": "(antenna)"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G2"
+      ],
+      "expr": "(cons 'radio '(antenna))",
+      "expected": "(radio antenna)"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G8"
+      ],
+      "expr": "(cond (() 'wrong) (t 'right))",
+      "expected": "right"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S1"
+      ],
+      "expr": "(/ 5 6 8 7)",
+      "expected": "5/336"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S1"
+      ],
+      "expr": "(+ (/ 1 3) (/ 1 3))",
+      "expected": "2/3"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S1"
+      ],
+      "expr": "(- 1 (/ 1 3))",
+      "expected": "2/3"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S1"
+      ],
+      "expr": "(* (/ 2 3) (/ 9 4))",
+      "expected": "3/2"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S1"
+      ],
+      "expr": "(- (/ 1 3))",
+      "expected": "-1/3"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S1"
+      ],
+      "expr": "(+ (/ 1 2) 0.25)",
+      "expected": "0.75"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G1"
+      ],
+      "expr": "(eq 3 3)",
+      "expected": "t"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G1"
+      ],
+      "expr": "(eq 3 4)",
+      "expected": "()"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G1"
+      ],
+      "expr": "(eq \"radio\" \"radio\")",
+      "expected": "t"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G8"
+      ],
+      "expr": "(cond (() 'first) (() 'second) (t 'third))",
+      "expected": "third"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(second '(radio antenna signal))",
+      "expected": "antenna"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(third '(radio antenna signal))",
+      "expected": "signal"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(not '())",
+      "expected": "t"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(not 'radio)",
+      "expected": "()"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(length '(radio antenna signal))",
+      "expected": "3"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(length '())",
+      "expected": "0"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(reverse '(radio antenna signal))",
+      "expected": "(signal antenna radio)"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(append '(radio) '(antenna signal))",
+      "expected": "(radio antenna signal)"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(map (lambda (x) (+ x 1)) '(1 2 3))",
+      "expected": "(2 3 4)"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(filter (lambda (x) (eq x 2)) '(1 2 3 2))",
+      "expected": "(2 2)"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(reduce (lambda (acc x) (+ acc x)) 0 '(1 2 3 4))",
+      "expected": "10"
+    },
+    {
+      "tier": 2,
+      "axioms": [],
+      "expr": "(< 1 2 3)",
+      "expected": "t"
+    },
+    {
+      "tier": 2,
+      "axioms": [],
+      "expr": "(< 1 3 2)",
+      "expected": "()"
+    },
+    {
+      "tier": 2,
+      "axioms": [],
+      "expr": "(> 3 2 1)",
+      "expected": "t"
+    },
+    {
+      "tier": 2,
+      "axioms": [],
+      "expr": "(= 1 1 1)",
+      "expected": "t"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "G1",
+        "S1"
+      ],
+      "expr": "(= 1/2 0.5)",
+      "expected": "t"
+    },
+    {
+      "tier": 2,
+      "axioms": [],
+      "expr": "(<= 1 1 2)",
+      "expected": "t"
+    },
+    {
+      "tier": 2,
+      "axioms": [],
+      "expr": "(>= 2 2 1)",
+      "expected": "t"
+    },
+    {
+      "tier": 2,
+      "axioms": [],
+      "expr": "(print 42)",
+      "expected": "42"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "G3"
+      ],
+      "expr": "(read \"(+ 1 2)\")",
+      "expected": "(+ 1 2)"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "G3"
+      ],
+      "expr": "(eval (read \"(+ 1 2)\"))",
+      "expected": "3"
+    },
+    {
+      "tier": null,
+      "axioms": [],
+      "expr": "# Literate Lisp\n\nThis is a literate program.\n\n```my-lisp\n(def x 10)\n(* x 2)\n```\n\nIt ignores non-code blocks.",
+      "expected": "20",
+      "mode": "markdown",
+      "layer": "literate-markdown",
+      "note": "optional layer, not one of the three tiers — a future non-Rust core without literate-Markdown support may skip this fixture entirely"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "S2"
+      ],
+      "expr": "(car 5)",
+      "error": "Type"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "S2"
+      ],
+      "expr": "(car '())",
+      "error": "Type"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "S2"
+      ],
+      "expr": "(eq '(1) '(2))",
+      "error": "Type"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "S2"
+      ],
+      "expr": "(undefined-symbol)",
+      "error": "UnknownSymbol",
+      "note": "symbol lookup is core semantics (tier 1 explicitly lists \"symbols\"); not actually borderline with tier 2"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S2"
+      ],
+      "expr": "(lambda (x))",
+      "error": "Arity"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "S2"
+      ],
+      "expr": "(quote a b)",
+      "error": "Arity"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "S2"
+      ],
+      "expr": "(cons 1)",
+      "error": "Arity"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "S2"
+      ],
+      "expr": "(/ 1 0)",
+      "error": "InvalidForm"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(let ((x 1) (y 2)) (+ x y))",
+      "expected": "3"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(let* ((x 1) (y (+ x 1))) y)",
+      "expected": "2"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(equal? '(1 (2 3) 4) '(1 (2 3) 4))",
+      "expected": "t"
+    },
+    {
+      "tier": 3,
+      "axioms": [
+        "G5"
+      ],
+      "expr": "(equal? '(1 2) '(1 2 3))",
+      "expected": "()"
+    },
+    {
+      "tier": 2,
+      "axioms": [
+        "G1"
+      ],
+      "expr": "(eq (lambda (x) x) (lambda (x) x))",
+      "expected": "()"
+    },
+    {
+      "tier": 3,
+      "axioms": [],
+      "expr": "(unify 'a 'a '())",
+      "expected": "()"
+    },
+    {
+      "tier": 3,
+      "axioms": [],
+      "expr": "(unify '(var x) 'a '())",
+      "expected": "((x . a))"
+    },
+    {
+      "tier": 3,
+      "axioms": [],
+      "expr": "(unify '(var x) '(var x) '())",
+      "expected": "()"
+    },
+    {
+      "tier": 3,
+      "axioms": [],
+      "expr": "(unify '(1 (var x) 3) '(1 2 3) '())",
+      "expected": "((x . 2))"
+    },
+    {
+      "tier": 3,
+      "axioms": [],
+      "expr": "(unify '(1 (var x) 3) '(1 2 4) '())",
+      "expected": "fail"
+    },
+    {
+      "tier": 3,
+      "axioms": [],
+      "expr": "(let ((rules '(((parent alice bob))))) (reason '(parent alice bob) rules))",
+      "expected": "((() (proved (parent alice bob) (parent alice bob) ())))"
+    },
+    {
+      "tier": 3,
+      "axioms": [],
+      "expr": "(let ((rules '(((parent alice bob))))) (reason (list 'parent (logic-var 'x) 'bob) rules))",
+      "expected": "((((x . alice)) (proved (parent (var x) bob) (parent alice bob) ())))"
+    },
+    {
+      "tier": 3,
+      "axioms": [],
+      "expr": "(let ((rules '(((bird (var x)) (animal (var x)) (not (penguin (var x)))) ((animal tweety)) ((animal pingu)) ((penguin pingu))))) (reason (list 'bird (logic-var 'x)) rules))",
+      "expected": "(((((x . 0) . tweety) (x var (x . 0))) (proved (bird (var x)) (bird (var (x . 0))) ((proved (animal (var (x . 0))) (animal tweety) ()) (proved-not (penguin (var (x . 0))))))))"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G2"
+      ],
+      "expr": "(equal? '(p . 0) (cons 'p 0))",
+      "expected": "t"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G2"
+      ],
+      "expr": "(car '(a b . c))",
+      "expected": "a"
+    },
+    {
+      "tier": 1,
+      "axioms": [
+        "G2"
+      ],
+      "expr": "(cdr (cdr '(a b . c)))",
+      "expected": "c"
+    }
+  ]
+}

@@ -154,6 +154,6 @@ Found as a real gap while walking `conformance.json` fixture-by-fixture (`docs/c
 
 ## Next step · Наступний крок
 
-Walk `tests/fixtures/conformance.json`'s 65 (now 68) fixtures one at a time and tag each with the tier (1/2/3) and, where relevant, the axiom (G1–G7 or S1–S3) it's evidence for. Only after that pass is it worth deciding whether the file physically splits into `language-core.json` / `stdlib.json` / `symbolic.json`, or stays one file with tier markers.
+Walk `tests/fixtures/conformance.json`'s 66 fixtures one at a time and tag each with the tier (1/2/3) and, where relevant, the axiom (G1–G7 or S1–S3) it's evidence for. Only after that pass is it worth deciding whether the file physically splits into `language-core.json` / `stdlib.json` / `symbolic.json`, or stays one file with tier markers.
 
 Пройти всі 65 (тепер 68) фікстур `tests/fixtures/conformance.json` одну за одною й позначити кожну рівнем (1/2/3) і, де доречно, аксіомою (G1–G7 чи S1–S3), доказом якої вона є. Лише після цього проходу варто вирішувати, чи файл фізично розділиться на `language-core.json` / `stdlib.json` / `symbolic.json`, чи лишиться одним файлом з маркерами рівнів.

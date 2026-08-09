@@ -79,10 +79,12 @@ Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` actin
 
 ## Counts
 
-- Tier 1 (CORE SEMANTICS): 22 fixtures
-- Tier 2 (LANGUAGE CONTRACT): 15 fixtures
-- Tier 3 (ECOSYSTEM CONFORMANCE): 20 fixtures
+- Tier 1 (CORE SEMANTICS): 23 fixtures
+- Tier 2 (LANGUAGE CONTRACT): 19 fixtures
+- Tier 3 (ECOSYSTEM CONFORMANCE): 23 fixtures
 - Separate (literate layer): 1 fixture
+
+(Corrected 2026-08-09 from an initial hand count of 22/15/20/1 — `my-lisp-constitution.json`'s machine-checked tier field is now the authoritative count, not this table's manual tally.)
 - Fixtures with no clean G/S axiom mapping: 8 (`unify`/`reason`, evidence for principle 3, not the G/S axiom list) — #10/#20 resolved by G8, no longer unmapped
 
-This distribution is itself informative: symbolic reasoning (`unify`/`reason`) is 8 of 68 fixtures but is exactly the part principle 3 says should never be treated as optional — worth keeping in mind if the file ever splits physically, so `symbolic.json` doesn't end up looking like an afterthought relative to `language-core.json`'s larger fixture count.
+This distribution is itself informative: symbolic reasoning (`unify`/`reason`) is 8 of 66 fixtures but is exactly the part principle 3 says should never be treated as optional — worth keeping in mind if the file ever splits physically, so `symbolic.json` doesn't end up looking like an afterthought relative to `language-core.json`'s larger fixture count.
