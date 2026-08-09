@@ -605,6 +605,8 @@ fn conformance_tests_from_my() {
         .expect("lib/understand.my should load before conformance fixtures run");
     eval_program(include_str!("../../../lib/narrate.my"), &mut session)
         .expect("lib/narrate.my should load before conformance fixtures run");
+    eval_program(include_str!("../../../lib/persistent-map.my"), &mut session)
+        .expect("lib/persistent-map.my should load before conformance fixtures run");
 
     for form in &forms {
         let ExprKind::List(entries) = &form.kind else {
@@ -1075,5 +1077,33 @@ fn string_append_rejects_a_non_string_second_argument() {
 fn string_append_wrong_arity_is_an_arity_error() {
     let error = eval_program(r#"(string-append "only-one")"#, &mut Session::default())
         .expect_err("string-append with one argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
+
+// --- string<? (PLAN.md item 15 — the one primitive its persistent-map
+// design needed) --------------------------------------------------------
+
+#[test]
+fn string_less_than_orders_strings_lexicographically() {
+    assert_eq!(eval(r#"(string<? "a" "b")"#), Value::Bool(true));
+    assert_eq!(eval(r#"(string<? "b" "a")"#), Value::Bool(false));
+    assert_eq!(eval(r#"(string<? "a" "a")"#), Value::Bool(false));
+}
+
+#[test]
+fn string_less_than_rejects_non_string_arguments() {
+    let left = eval_program(r#"(string<? 1 "a")"#, &mut Session::default())
+        .expect_err("a non-string left argument must fail named, not panic");
+    assert_eq!(left.kind, ErrorKind::Type);
+
+    let right = eval_program(r#"(string<? "a" 1)"#, &mut Session::default())
+        .expect_err("a non-string right argument must fail named, not panic");
+    assert_eq!(right.kind, ErrorKind::Type);
+}
+
+#[test]
+fn string_less_than_wrong_arity_is_an_arity_error() {
+    let error = eval_program(r#"(string<? "only-one")"#, &mut Session::default())
+        .expect_err("string<? with one argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Arity);
 }

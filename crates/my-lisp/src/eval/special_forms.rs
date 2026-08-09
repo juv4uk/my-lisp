@@ -368,6 +368,47 @@ pub(super) fn evaluate_string_append(
     Ok(Value::String(Rc::from(format!("{left}{right}").as_str())))
 }
 
+/// Lexicographic string ordering (PLAN.md item 15) — the one new Rust
+/// primitive the persistent-map design actually needs: Rust's `Ord` for
+/// `&str` gives this for free, but nothing in the language could derive
+/// "is one string before another" from `string-first`/`string-rest`/`eq`
+/// alone (those only ever test *equality* one character at a time, never
+/// ordering). Everything built on top of this one primitive — the
+/// balanced tree itself, insert, lookup — is ordinary my-lisp, per the
+/// same item-20 G5 test `string-append` failed and `string-length` passed.
+/// Лексикографічне впорядкування рядків (PLAN.md, пункт 15) — єдиний
+/// новий Rust-примітив, якого справді потребує дизайн персистентної
+/// мапи: `Ord` для `&str` у Rust дає це безкоштовно, але ніщо в мові не
+/// могло вивести "який рядок раніше" лише зі `string-first`/`string-rest`/
+/// `eq` (вони перевіряють лише *рівність* по символу, ніколи порядок).
+/// Усе, побудоване поверх цього одного примітива — саме збалансоване
+/// дерево, вставка, пошук — звичайна my-lisp, за тим самим тестом G5 з
+/// пункту 20, який `string-append` провалив, а `string-length` пройшла.
+pub(super) fn evaluate_string_less_than(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string<?", arguments, 2, span)?;
+    let left_value = evaluate(&arguments[0], environment)?;
+    let Value::String(ref left) = left_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "string<? expects two strings · string<? очікує два рядки · string<? erwartet zwei Zeichenketten",
+            span,
+        ));
+    };
+    let right_value = evaluate(&arguments[1], environment)?;
+    let Value::String(ref right) = right_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "string<? expects two strings · string<? очікує два рядки · string<? erwartet zwei Zeichenketten",
+            span,
+        ));
+    };
+    Ok(Value::Bool(left.as_ref() < right.as_ref()))
+}
+
 pub(super) fn evaluate_read_all(
     arguments: &[Expr],
     environment: &Environment,

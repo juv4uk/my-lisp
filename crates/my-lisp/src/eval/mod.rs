@@ -164,6 +164,9 @@ fn evaluate_list(
         Some("string-append") => {
             special_forms::evaluate_string_append(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("string<?") => {
+            special_forms::evaluate_string_less_than(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("read-all") => {
             special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
         }
