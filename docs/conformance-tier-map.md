@@ -86,6 +86,19 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 | 76 | `(list 1 2 3)` | 3 | G5 | `list` moved from a Rust special form to `lib/core.my` `(lambda args args)` |
 | 77 | `(let ((second (lambda (x) 'shadowed))) (second '(1 2 3)))` | 2 | G4 | neither Lisp-1 nor Lisp-2 as an identity — ordinary bindings share one namespace, locally shadowable |
 | 78 | `(let ((car (lambda (x) 'shadowed))) (car '(1 2)))` | 1 | G4 | the seven primitives are syntax, dispatched before env lookup, never shadowable |
+| 79 | `(reverse '())` | 3 | G5 | empty-list edge case, previously untested |
+| 80 | `(append '() '(a b))` | 3 | G5 | empty-list edge case — empty first argument |
+| 81 | `(append '(a b) '())` | 3 | G5 | empty-list edge case — empty second argument |
+| 82 | `(symbol? 'radio)` | 2 | — | symbol/string introspection — previously only Rust unit tests |
+| 83 | `(string? "radio")` | 2 | — | |
+| 84 | `(symbol->string 'radio)` | 2 | — | |
+| 85 | `(string->symbol "radio")` | 2 | — | |
+| 86 | `(string-first "radio")` | 2 | — | |
+| 87 | `(string-rest "radio")` | 2 | — | |
+| 88 | `(read-all "1 2 3")` | 2 | G3 | multi-form counterpart to `read`, previously only Rust unit tests |
+| 89 | `(princ "raw")` | 2 | — | `princ` composes/returns its argument like `print`; raw transcript output is Rust-only regression coverage since this harness checks the return value, not the transcript |
+| 90 | `(< 5)` | 2 | — | a single argument is vacuously ordered |
+| 91 | `(defmacro my-list items (cons 'quote (cons items '()))) (my-list 1 2 3)` | 1 | G4 | variadic `defmacro` success path — only the error paths were covered before |
 
 **2026-08-09, final pass:** the Lisp-1/Lisp-2 question was resolved by declining the framing — see `docs/language-core-axioms.md`'s "Deliberately left open" section. Two fixtures added proving the actual (already-existing, now-documented) behavior. File is now 78 fixtures.
 
@@ -99,16 +112,18 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 
 **2026-08-09, last pass of the day:** three empty-list edge cases appended for `map`/`filter`/`reduce` — until now these had exactly one fixture each (happy path only), a real coverage gap next to `unify`/`reason`'s ~9 fixtures including a full proof tree. Not a claim that symbolic AI is over-tested — principle 3 names it as a project goal, so deeper coverage there is a deliberate choice — but `map`/`filter`/`reduce` having zero edge cases was an accident of "it just worked when written," not a decision. File is now 72 fixtures.
 
+**2026-08-09, one more pass:** a second edge-case audit found a different class of gap — primitives that existed and were well-tested in Rust (`crates/my-lisp/tests/mccarthy.rs`) but never made it into the implementation-independent contract at all: `symbol?`/`string?`/`symbol->string`/`string->symbol`/`string-first`/`string-rest` (introspection), `read-all`, `princ` (newly added the same day), `reverse`/`append` on empty lists, single-argument `(< 5)`, and `defmacro`'s variadic *success* path (only its errors were covered). 13 fixtures appended. File is now 91 fixtures.
+
 ## A gap found by doing this pass — and closed the same day
 
 Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` acting as false — this is exactly what the Tier 1 definition in `language-core-axioms.md` already names ("truth/NIL") as part of core semantics, but no G-axiom actually stated it. Found by walking the fixtures, not predicted in advance — exactly the kind of thing this exercise exists to surface. Closed by adding **G8**: `'()` is deliberately both the empty list and the canonical false, the same choice McCarthy made in Lisp 1.5, stated explicitly rather than left implicit. Not what Scheme later did (splitting `'()`/`#f`) — a different, equally legitimate design, but not this language's own choice, which its own tests already commit to.
 
 ## Counts
 
-- Tier 1 (CORE SEMANTICS): 26 fixtures
-- Tier 2 (LANGUAGE CONTRACT): 22 fixtures
-- Tier 3 (ECOSYSTEM CONFORMANCE): 28 fixtures
-- Total: 76 fixtures (literate layer removed; occurs-check, defmacro/tail-recursion/map-filter-reduce/variadic-lambda fixtures added, all 2026-08-09; see notes above)
+- Tier 1 (CORE SEMANTICS): 28 fixtures
+- Tier 2 (LANGUAGE CONTRACT): 32 fixtures
+- Tier 3 (ECOSYSTEM CONFORMANCE): 31 fixtures
+- Total: 91 fixtures (literate layer removed; occurs-check, defmacro/tail-recursion/map-filter-reduce/variadic-lambda/introspection/read-all/princ fixtures added, all 2026-08-09; see notes above)
 
 (Corrected 2026-08-09 from an initial hand count of 22/15/20/1 — `my-lisp-constitution.my`'s machine-checked tier field is now the authoritative count, not this table's manual tally.)
 - Fixtures with no clean G/S axiom mapping: 8 (`unify`/`reason`, evidence for principle 3, not the G/S axiom list) — #10/#20 resolved by G8, no longer unmapped

@@ -49,7 +49,7 @@
 
 ## 9. Покриття `conformance.my` — інші тонкі місця
 
-Закрито цієї сесії: literate-фікстуру (надлишкову), occurs-check `unify`, помилки `defmacro`, tail-recursion, edge-кейси `map`/`filter`/`reduce`, варіативні `lambda`/`defmacro`. Не перевірено ще: чи є симетричне покриття для `let*`/`length`/`append`/`reverse` на порожніх і крайових вхідних даних, і чи `understand`/`narrate` (природномовний міст) взагалі присутні в `conformance.my` — зараз вони перевірені лише в `crates/my-lisp/tests/understand.rs`/`narrate.rs`, не в implementation-independent контракті.
+Закрито цієї сесії: literate-фікстуру (надлишкову), occurs-check `unify`, помилки `defmacro`, tail-recursion, edge-кейси `map`/`filter`/`reduce`/`reverse`/`append`, варіативні `lambda`/`defmacro` (включно з успішним шляхом `defmacro`, не лише помилками), інтроспекція символів/рядків (`symbol?`/`string?`/`symbol->string`/`string->symbol`/`string-first`/`string-rest`), `read-all`, `princ`, одноаргументне `(< 5)`. 91 фікстура. Не перевірено ще: чи `understand`/`narrate` (природномовний міст) взагалі присутні в `conformance.my` — зараз вони перевірені лише в `crates/my-lisp/tests/understand.rs`/`narrate.rs`, не в implementation-independent контракті.
 
 ## Зроблено цієї сесії (для довідки)
 
