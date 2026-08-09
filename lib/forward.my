@@ -1024,6 +1024,133 @@
       ((eval (apply-subst expression subst)) (list subst))
       (t '()))))
 
+; Step 15: `(exists <CE>+)`/`(forall <first-CE> <CE>+)` — the same class of
+; bug as `not`/`or`/`and`/`test` (Steps 7/10-12), found by importing a
+; real external CLIPS file (`tests/fixtures/sudoku-external.clp`, CLIPS's
+; own Sudoku solver): `(exists (unsolved))` matched nothing, because no
+; fact's head is ever the symbol `exists` — the importer's Step 19 guard
+; skips any rule using `exists`/`forall` rather than import one that can
+; never fire, exactly the safety net Step 7's `not` guard was before this
+; step existed.
+;
+; `exists` succeeds if its conjunction of sub-conditions matches *at
+; least once* against the current facts — but, like `not`, it binds
+; nothing back into the outer `subst`: an existence check, not a source
+; of new variables. `match-conditions` (already built on
+; `thread-conjunction`) does exactly the matching; `match-exists-condition`
+; only asks whether that came back non-empty, discarding whichever
+; sub-substitution actually satisfied it and returning the *original*
+; `subst` unchanged on success.
+;
+; `forall` looked like it could reuse `exists`/`not`/`and` the same way —
+; "no counter-example exists" — but `match-negated-condition` only ever
+; matches its inner pattern directly against facts (`match-condition-
+; against-facts`), not through `match-one-condition`, so a `not` can't
+; actually wrap a compound `and` (verified by a failing debug test before
+; settling on this version, not assumed). `forall` is written directly
+; instead: gather every substitution `first-condition` produces
+; (`match-one-condition`, so it can itself be `not`/`or`/`and`/`exists`),
+; then require every one of them to also satisfy `rest-conditions`
+; (`match-conditions`, the same conjunction-threader everything else
+; here uses) — if even one candidate fails, the whole `forall` fails.
+;
+; Крок 15: `(exists <CE>+)`/`(forall <перша-CE> <CE>+)` — той самий клас
+; бага, що й `not`/`or`/`and`/`test` (Кроки 7/10-12), знайдений при
+; імпорті реального зовнішнього CLIPS-файлу (`tests/fixtures/sudoku-external.clp`,
+; власний Sudoku-solver CLIPS): `(exists (unsolved))` не збігалася ні з
+; чим, бо жоден факт ніколи не має головою символ `exists` — guard Кроку
+; 19 в імпортері пропускає будь-яке правило з `exists`/`forall`, замість
+; імпортувати те, що ніколи не спрацює — саме та сітка безпеки, якою був
+; guard `not` у Кроці 7 до появи цього кроку.
+;
+; `exists` успішний, якщо його кон'юнкція під-умов збігається
+; **хоча б раз** проти поточних фактів — але, як і `not`, не зв'язує
+; нічого назад у зовнішню `subst`: це перевірка існування, не джерело
+; нових змінних. `match-conditions` (уже побудована на
+; `thread-conjunction`) виконує саме це зіставлення; `match-exists-condition`
+; лише питає, чи результат непорожній, відкидаючи будь-яку конкретну
+; під-підстановку, що задовольнила умову, і повертаючи при успіху
+; **незмінну оригінальну** `subst`.
+;
+; Виглядало, що `forall` можна так само перевикористати через
+; `exists`/`not`/`and` — "не існує контрприкладу" — але
+; `match-negated-condition` завжди зіставляє свій внутрішній патерн
+; напряму з фактами (`match-condition-against-facts`), не через
+; `match-one-condition`, тож `not` насправді не може обгорнути складену
+; `and` (перевірено провальним debug-тестом перед тим, як зупинитись на
+; цій версії, не здогадано). `forall` натомість написана напряму: зібрати
+; кожну підстановку, яку дає `first-condition` (`match-one-condition`,
+; тож вона сама може бути `not`/`or`/`and`/`exists`), а тоді вимагати,
+; щоб кожна з них також задовольняла `rest-conditions` (`match-conditions`,
+; той самий кон'юнкт-протягувач, що й скрізь тут) — якщо хоч один
+; кандидат провалюється, весь `forall` провалюється.
+;
+; Schritt 15: `(exists <CE>+)`/`(forall <erste-CE> <CE>+)` — dieselbe
+; Bugklasse wie `not`/`or`/`and`/`test` (Schritte 7/10-12), gefunden beim
+; Import einer echten externen CLIPS-Datei (`tests/fixtures/sudoku-external.clp`,
+; CLIPS' eigener Sudoku-Löser): `(exists (unsolved))` glich nichts ab,
+; weil kein Fakt je das Symbol `exists` als Kopf hat — der Guard aus
+; Schritt 19 im Importer überspringt jede Regel mit `exists`/`forall`,
+; statt eine zu importieren, die nie feuern kann — genau das
+; Sicherheitsnetz, das der `not`-Guard vor Schritt 7 war.
+;
+; `exists` gelingt, wenn seine Konjunktion von Unterbedingungen
+; **mindestens einmal** gegen die aktuellen Fakten passt — bindet aber,
+; wie `not`, nichts zurück in die äußere `subst`: eine Existenzprüfung,
+; keine Quelle neuer Variablen. `match-conditions` (bereits auf
+; `thread-conjunction` aufgebaut) übernimmt genau dieses Matching;
+; `match-exists-condition` fragt nur, ob das Ergebnis nicht leer war,
+; verwirft jede konkrete Unter-Substitution, die es erfüllt hat, und
+; gibt bei Erfolg die **unveränderte ursprüngliche** `subst` zurück.
+;
+; Es sah so aus, als könnte `forall` genauso `exists`/`not`/`and`
+; wiederverwenden — "es existiert kein Gegenbeispiel" — aber
+; `match-negated-condition` gleicht sein inneres Muster immer direkt
+; gegen Fakten ab (`match-condition-against-facts`), nicht über
+; `match-one-condition`, sodass ein `not` ein zusammengesetztes `and`
+; tatsächlich nicht umschließen kann (durch einen fehlschlagenden
+; Debug-Test verifiziert, bevor diese Version feststand, nicht
+; angenommen). `forall` ist stattdessen direkt geschrieben: alle
+; Substitutionen sammeln, die `first-condition` liefert
+; (`match-one-condition`, kann also selbst `not`/`or`/`and`/`exists`
+; sein), dann verlangen, dass jede davon auch `rest-conditions` erfüllt
+; (`match-conditions`, derselbe Konjunktions-Fädler wie überall hier) —
+; scheitert auch nur ein Kandidat, scheitert das ganze `forall`.
+(def condition-is-exists?
+  (lambda (condition)
+    (cond
+      ((atom condition) '())
+      ((atom (car condition)) (eq (car condition) 'exists))
+      (t '()))))
+
+(def match-exists-condition
+  (lambda (sub-conditions facts subst)
+    (cond
+      ((atom (match-conditions sub-conditions facts subst)) '())
+      (t (list subst)))))
+
+(def condition-is-forall?
+  (lambda (condition)
+    (cond
+      ((atom condition) '())
+      ((atom (car condition)) (eq (car condition) 'forall))
+      (t '()))))
+
+(def forall-every-candidate-satisfies?
+  (lambda (candidates rest-conditions facts)
+    (cond
+      ((atom candidates) t)
+      ((atom (match-conditions rest-conditions facts (car candidates))) '())
+      (t (forall-every-candidate-satisfies? (cdr candidates) rest-conditions facts)))))
+
+(def match-forall-condition
+  (lambda (first-condition rest-conditions facts subst)
+    (cond
+      ((forall-every-candidate-satisfies?
+         (match-one-condition first-condition facts subst) rest-conditions facts)
+       (list subst))
+      (t '()))))
+
 (def match-one-condition
   (lambda (condition facts subst)
     (cond
@@ -1031,6 +1158,9 @@
       ((condition-is-or? condition) (match-or-condition (cdr condition) facts subst))
       ((condition-is-and? condition) (match-and-condition (cdr condition) facts subst))
       ((condition-is-test? condition) (match-test-condition (second condition) subst))
+      ((condition-is-exists? condition) (match-exists-condition (cdr condition) facts subst))
+      ((condition-is-forall? condition)
+       (match-forall-condition (second condition) (cdr (cdr condition)) facts subst))
       (t (match-condition-against-facts condition facts subst)))))
 
 ; Built directly on `thread-conjunction` (lib/unify.my) — the same

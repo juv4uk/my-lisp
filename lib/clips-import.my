@@ -323,6 +323,8 @@
          ((eq (car term) 'not) (list 'not (clips-convert-template (second term) templates)))
          ((eq (car term) 'or) (cons 'or (clips-convert-template-list (cdr term) templates)))
          ((eq (car term) 'and) (cons 'and (clips-convert-template-list (cdr term) templates)))
+         ((eq (car term) 'exists) (cons 'exists (clips-convert-template-list (cdr term) templates)))
+         ((eq (car term) 'forall) (cons 'forall (clips-convert-template-list (cdr term) templates)))
          (t (let ((slot-order (clips-template-slot-order (clips-strip-module-prefix (car term)) templates)))
               (cond
                 ((atom slot-order) term)
@@ -754,78 +756,44 @@
       ((clips-rule-preamble-form? (car body)) (clips-strip-rule-preamble (cdr body)))
       (t body))))
 
-; CLIPS's `exists`/`forall` quantified conditional elements — "true if at
-; least one/every matching fact exists" — have no equivalent in
-; `lib/forward.my`'s condition dispatcher (`match-one-condition` only
-; recognizes `not`/`or`/`and`/`test`). Left unguarded, a condition like
-; `(exists (unsolved))` would fall through to ordinary fact matching —
-; trying to unify against a fact literally headed `exists`, which never
-; exists — and the whole rule would silently never fire. Found via a real
-; external file (`tests/fixtures/sudoku-external.clp`, CLIPS's own Sudoku
-; solver), the same "verify with a throwaway debug test first" way as
-; every other bug in this file. Same policy as the original (pre-Step-7)
-; `not` guard: skip the whole rule, don't import a rule that can never
-; match — the same "skip, don't crash" honesty this file has followed
-; since Step 5, not a silent wrong answer.
-; Квантифіковані умовні елементи CLIPS `exists`/`forall` — "істинно, якщо
-; існує принаймні один/кожен факт, що збігається" — не мають аналога в
-; диспетчері умов `lib/forward.my` (`match-one-condition` розпізнає лише
-; `not`/`or`/`and`/`test`). Без охорони умова на кшталт
-; `(exists (unsolved))` потрапила б у звичайне зіставлення фактів —
-; намагаючись уніфікувати з фактом, чия голова буквально `exists`, якого
-; ніколи не існує — і все правило мовчки ніколи б не спрацювало.
-; Знайдено на справжньому зовнішньому файлі (`tests/fixtures/sudoku-external.clp`,
-; власний Sudoku-solver CLIPS), тим самим способом "спершу тимчасовий
-; debug-тест", що й кожен інший баг цього файлу. Та сама політика, що й
-; початковий (до-Кроку-7) guard для `not`: пропустити все правило, не
-; імпортувати правило, яке ніколи не зможе спрацювати — та сама чесність
-; "пропустити, не впасти", якою цей файл керується з Кроку 5, а не тиха
-; неправильна відповідь.
-; CLIPS' quantifizierte Bedingungselemente `exists`/`forall` — "wahr, wenn
-; mindestens ein/jeder passende Fakt existiert" — haben kein Äquivalent im
-; Bedingungs-Dispatcher von `lib/forward.my` (`match-one-condition` kennt
-; nur `not`/`or`/`and`/`test`). Ungeschützt würde eine Bedingung wie
-; `(exists (unsolved))` in die gewöhnliche Faktenprüfung fallen — und
-; versuchen, gegen einen Fakt zu unifizieren, der buchstäblich `exists`
-; heißt und nie existiert — die ganze Regel würde still nie feuern.
-; Gefunden an einer echten externen Datei (`tests/fixtures/sudoku-external.clp`,
-; CLIPS' eigener Sudoku-Löser), auf demselben Weg "erst ein Wegwerf-
-; Debug-Test" wie jeder andere Fehler in dieser Datei. Dieselbe Politik
-; wie der ursprüngliche (Vor-Schritt-7)-Guard für `not`: die ganze Regel
-; überspringen, keine Regel importieren, die nie passen kann — dieselbe
-; "überspringen statt abstürzen"-Ehrlichkeit, der diese Datei seit
-; Schritt 5 folgt, statt einer stillen falschen Antwort.
-(def clips-condition-is-exists-or-forall?
-  (lambda (condition)
-    (cond
-      ((atom condition) '())
-      ((atom (car condition))
-       (cond
-         ((eq (car condition) 'exists) t)
-         ((eq (car condition) 'forall) t)
-         (t '())))
-      (t '()))))
-
-(def clips-any-exists-condition?
-  (lambda (conditions)
-    (cond
-      ((atom conditions) '())
-      ((clips-condition-is-exists-or-forall? (car conditions)) t)
-      (t (clips-any-exists-condition? (cdr conditions))))))
-
+; Step 19's `exists`/`forall` guard — skip a whole rule rather than
+; import one that could never fire — is gone now that `lib/forward.my`
+; Step 15 gives `exists`/`forall` real dispatcher support, the same way
+; Step 5's `not` guard was removed once `lib/forward.my` Step 7 gave `not`
+; real support. `clips-convert-template` also learned to recurse into
+; `exists`/`forall` sub-conditions (same lesson Step 13 already taught for
+; `not`/`or`/`and`), so a template fact nested inside either now gets its
+; named slots converted to positional form too.
+; Guard `exists`/`forall` із Кроку 19 — пропустити все правило замість
+; імпорту того, що ніколи б не спрацювало — прибрано, тепер коли
+; `lib/forward.my` Крок 15 дає `exists`/`forall` справжню диспетчерну
+; підтримку, так само як guard `not` з Кроку 5 прибрано, коли
+; `lib/forward.my` Крок 7 дав `not` справжню підтримку.
+; `clips-convert-template` також навчилась рекурсувати в під-умови
+; `exists`/`forall` (той самий урок, що Крок 13 уже дав для `not`/`or`/
+; `and`), тож факт-шаблон, вкладений у будь-яку з них, тепер теж отримує
+; конвертацію іменованих слотів у позиційну форму.
+; Steps 19s `exists`/`forall`-Guard — die ganze Regel überspringen statt
+; eine zu importieren, die nie feuern könnte — ist jetzt weg, da
+; `lib/forward.my` Schritt 15 `exists`/`forall` echte Dispatcher-
+; Unterstützung gibt, genauso wie Schritt 5s `not`-Guard entfernt wurde,
+; als `lib/forward.my` Schritt 7 `not` echte Unterstützung gab.
+; `clips-convert-template` hat auch gelernt, in `exists`/`forall`-
+; Unterbedingungen zu rekursieren (dieselbe Lehre, die Schritt 13 bereits
+; für `not`/`or`/`and` gab), sodass ein Template-Fakt, verschachtelt in
+; einer von beiden, jetzt auch seine benannten Slots in positionale Form
+; umgewandelt bekommt.
 (def clips-defrule->clauses
   (lambda (form templates)
     (let ((split (clips-split-at-arrow (clips-strip-rule-preamble (cddr form)))))
-      (cond
-        ((clips-any-exists-condition? (car split)) '())
-        (t (let ((conditions (clips-convert-vars (clips-convert-template-list (car split) templates)))
-                  (relevant (clips-drop-printouts (second split))))
-             (cond
-               ((clips-all-asserts? relevant)
-                (clips-clauses-for-conclusions
-                  (clips-convert-template-list (clips-assert-conclusions relevant) templates)
-                  conditions))
-               (t '()))))))))
+      (let ((conditions (clips-convert-vars (clips-convert-template-list (car split) templates)))
+            (relevant (clips-drop-printouts (second split))))
+        (cond
+          ((clips-all-asserts? relevant)
+           (clips-clauses-for-conclusions
+             (clips-convert-template-list (clips-assert-conclusions relevant) templates)
+             conditions))
+          (t '()))))))
 
 ; Dispatches on one top-level CLIPS form's leading symbol. Unknown or
 ; not-yet-supported forms produce no clauses rather than erroring — a

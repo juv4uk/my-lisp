@@ -485,3 +485,62 @@ fn assert_fact_adds_to_the_global_working_memory() {
     "#;
     assert_eq!(eval_forward(source), "((planet mars) (planet earth))");
 }
+
+#[test]
+fn run_multi_supports_exists_conditions() {
+    // Step 15: `(exists (unsolved ?u))` succeeds if at least one matching
+    // fact exists, but — unlike an ordinary condition — binds nothing
+    // back into the rule's own substitution: `?u` never appears in the
+    // derived fact, only `?c` does.
+    let source = r#"
+        (run-multi
+          (list (list (list 'found (logic-var 'c))
+                      (list 'cell (logic-var 'c))
+                      (list 'exists (list 'unsolved (logic-var 'u)))))
+          (list '(cell a) '(unsolved x)))
+    "#;
+    assert_eq!(eval_forward(source), "((found a) (cell a) (unsolved x))");
+}
+
+#[test]
+fn match_exists_condition_fails_when_no_fact_matches() {
+    let source = r#"
+        (run-multi
+          (list (list (list 'found (logic-var 'c))
+                      (list 'cell (logic-var 'c))
+                      (list 'exists (list 'unsolved (logic-var 'u)))))
+          (list '(cell a)))
+    "#;
+    assert_eq!(eval_forward(source), "((cell a))");
+}
+
+#[test]
+fn run_multi_supports_forall_conditions() {
+    // Step 15: `(forall (item ?x) (color ?x red))` succeeds only if every
+    // `item` fact's own `?x` also satisfies `(color ?x red)` — here both
+    // `a` and `b` are red, so the rule fires.
+    let source = r#"
+        (run-multi
+          (list (list (list 'all-red)
+                      (list 'forall (list 'item (logic-var 'x)) (list 'color (logic-var 'x) 'red))))
+          (list '(item a) '(item b) '(color a red) '(color b red)))
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "((all-red) (item a) (item b) (color a red) (color b red))"
+    );
+}
+
+#[test]
+fn match_forall_condition_fails_when_one_candidate_does_not_satisfy_the_rest() {
+    let source = r#"
+        (run-multi
+          (list (list (list 'all-red)
+                      (list 'forall (list 'item (logic-var 'x)) (list 'color (logic-var 'x) 'red))))
+          (list '(item a) '(item b) '(color a red) '(color b blue)))
+    "#;
+    assert_eq!(
+        eval_forward(source),
+        "((item a) (item b) (color a red) (color b blue))"
+    );
+}
