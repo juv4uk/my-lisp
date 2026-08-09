@@ -1,8 +1,10 @@
-# conformance.json — tier and axiom map (working draft)
+# conformance.my — tier and axiom map (working draft)
 
-Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.json` itself — nothing in the actual fixture file changes here. This is the "next step" pass promised in that document: every fixture, in order, tagged with its tier (1 = CORE SEMANTICS, 2 = LANGUAGE CONTRACT, 3 = ECOSYSTEM CONFORMANCE) and, where one clearly applies, the axiom (G1–G7, S1–S3) it's evidence for.
+Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.my` itself — nothing in the actual fixture file changes here. This is the "next step" pass promised in that document: every fixture, in order, tagged with its tier (1 = CORE SEMANTICS, 2 = LANGUAGE CONTRACT, 3 = ECOSYSTEM CONFORMANCE) and, where one clearly applies, the axiom (G1–G7, S1–S3) it's evidence for.
 
 **Status: draft, not yet ratified.** Produced 2026-08-09 as a discussion basis, not a final classification.
+
+**2026-08-09, format update:** `conformance.my` moved off JSON, and the tags this table describes now live *inside* `conformance.my` itself (one flat alist per fixture, fact keys and tag keys in the same record — see `tests/fixtures/README.md`), not in a separate `conformance-tier-map.json` file. This table stays as a human-readable index; the machine-readable source of the tags is `conformance.my`'s own `tier`/`axioms`/`role`/`note` fields.
 
 | # | expr | Tier | Axiom | Note |
 |---|---|---|---|---|
@@ -89,9 +91,9 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 
 **2026-08-09, latest:** variadic lambda parameters added (`(a b . rest)` dotted lists, and bare-symbol `args` for "every argument") — three shapes shared across the Lisp family, not one dialect's `&rest` keyword. This let `list` itself move out of Rust into `lib/core.my` as `(def list (lambda args args))`, closing the one real candidate found while auditing the Rust built-in surface against G4/G5 ("can the core already say this?"). File is now 76 fixtures.
 
-**2026-08-09, later same day:** the literate-markdown fixture (formerly #42) was removed from `conformance.json` entirely — it was the file's only non-S-expression entry and duplicated coverage already owned by `crates/my-lisp-literate/tests/literate_offsets.rs`. Rows 1-65 above were renumbered to match the resulting 65-fixture file.
+**2026-08-09, later same day:** the literate-markdown fixture (formerly #42) was removed from `conformance.my` entirely — it was the file's only non-S-expression entry and duplicated coverage already owned by `crates/my-lisp-literate/tests/literate_offsets.rs`. Rows 1-65 above were renumbered to match the resulting 65-fixture file.
 
-**2026-08-09, still later:** three fixtures appended (append-only, at the end, per the file's own convention) closing gaps found by opinion review: `unify`'s occurs-check (previously only covered by `unify.rs`'s Rust-level unit test, not the implementation-independent contract) and two `defmacro` error paths (arity, non-symbol name) — the macro system previously had zero error coverage in `conformance.json`.
+**2026-08-09, still later:** three fixtures appended (append-only, at the end, per the file's own convention) closing gaps found by opinion review: `unify`'s occurs-check (previously only covered by `unify.rs`'s Rust-level unit test, not the implementation-independent contract) and two `defmacro` error paths (arity, non-symbol name) — the macro system previously had zero error coverage in `conformance.my`.
 
 **2026-08-09, even later:** one more fixture appended closing the last gap from the same review — a 100,000-deep tail-recursive call, so stack-safety-under-recursion is now part of the implementation-independent contract too, not just `stack_safety.rs`'s Rust-only coverage. (Its note originally said "O(1) Rust stack" — corrected to "host-stack usage" after review found the contract's own explanatory text had quietly assumed a Rust reader, the one place Rust-specific wording had leaked outside an explanation into something closer to a claim.)
 
@@ -108,7 +110,7 @@ Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` actin
 - Tier 3 (ECOSYSTEM CONFORMANCE): 28 fixtures
 - Total: 76 fixtures (literate layer removed; occurs-check, defmacro/tail-recursion/map-filter-reduce/variadic-lambda fixtures added, all 2026-08-09; see notes above)
 
-(Corrected 2026-08-09 from an initial hand count of 22/15/20/1 — `my-lisp-constitution.json`'s machine-checked tier field is now the authoritative count, not this table's manual tally.)
+(Corrected 2026-08-09 from an initial hand count of 22/15/20/1 — `my-lisp-constitution.my`'s machine-checked tier field is now the authoritative count, not this table's manual tally.)
 - Fixtures with no clean G/S axiom mapping: 8 (`unify`/`reason`, evidence for principle 3, not the G/S axiom list) — #10/#20 resolved by G8, no longer unmapped
 
 This distribution is itself informative: symbolic reasoning (`unify`/`reason`) is 8 of 66 fixtures but is exactly the part principle 3 says should never be treated as optional — worth keeping in mind if the file ever splits physically, so `symbolic.json` doesn't end up looking like an afterthought relative to `language-core.json`'s larger fixture count.

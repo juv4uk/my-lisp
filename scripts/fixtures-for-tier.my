@@ -1,0 +1,46 @@
+; scripts/fixtures-for-tier.my — filters tests/fixtures/conformance.my down
+; to one tier, on demand (2026-08-09, my-lisp replacing the old Python
+; version now that conformance.my is native data and print escapes
+; strings correctly — no parser or string-append needed for this either).
+;
+; conformance.my deliberately stays one file (see PLAN.md) — this script
+; makes "which fixtures must I pass to be my-lisp at Tier N?" trivial to
+; answer without a future implementer reinventing the filter logic.
+;
+; Usage:
+;   cargo run -p my-lisp-cli -- scripts/fixtures-for-tier.my 1
+; (the CLI has no argv-passing convention today, so for now edit
+; `target-tier` below directly — see the note at the bottom.)
+
+(def target-tier 1)
+
+(def fixture-tier
+  (lambda (fixture)
+    (cdr (assoc-my 'tier fixture))))
+
+(def assoc-my
+  (lambda (key alist)
+    (cond
+      ((atom alist) '())
+      ((eq (car (car alist)) key) (car alist))
+      (t (assoc-my key (cdr alist))))))
+
+(def print-matching
+  (lambda (remaining)
+    (cond
+      ((atom remaining) '())
+      (t ((lambda ()
+            (cond
+              ((eq (fixture-tier (car remaining)) target-tier)
+               (print (car remaining)))
+              (t '()))
+            (print-matching (cdr remaining))))))))
+
+(print-matching (read-all (read-file "tests/fixtures/conformance.my")))
+
+; No argv access from my-lisp yet (no capability primitive for it — adding
+; one just for this would be scope creep for a two-script convenience
+; tool). Edit `target-tier` above and rerun, or use grep/awk on
+; conformance.my directly for a one-off filter — both fine for how rarely
+; this is actually needed.
+'()

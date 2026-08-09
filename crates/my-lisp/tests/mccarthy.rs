@@ -1,4 +1,45 @@
-use my_lisp::{eval_program, parse, ErrorKind, Rational, Session, Value};
+use my_lisp::{eval_program, parse, ErrorKind, Expr, ExprKind, Rational, Session, Value};
+
+/// Looks up `key` in a my-lisp alist `((k1 . v1) (k2 . v2) ...)`, already
+/// parsed as `Expr`s (data, not evaluated) — used by the two
+/// `tests/fixtures/conformance.my`-consuming tests below, which read the
+/// fixture file as reader-level data rather than executing it.
+fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
+    entries.iter().find_map(|entry| {
+        let ExprKind::Pair(k, v) = &entry.kind else {
+            return None;
+        };
+        let ExprKind::Symbol(name) = &k.kind else {
+            return None;
+        };
+        if &**name != key {
+            return None;
+        }
+        match &v.kind {
+            ExprKind::String(s) => Some(s.as_ref()),
+            _ => None,
+        }
+    })
+}
+
+/// Same as `alist_str`, but for a numeric field (e.g. `tier`).
+fn alist_number(entries: &[Expr], key: &str) -> Option<f64> {
+    entries.iter().find_map(|entry| {
+        let ExprKind::Pair(k, v) = &entry.kind else {
+            return None;
+        };
+        let ExprKind::Symbol(name) = &k.kind else {
+            return None;
+        };
+        if &**name != key {
+            return None;
+        }
+        match &v.kind {
+            ExprKind::Number(n) => Some(*n),
+            _ => None,
+        }
+    })
+}
 
 fn eval(source: &str) -> Value {
     eval_program(source, &mut Session::default()).unwrap().value
@@ -525,35 +566,33 @@ fn list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin() {
     assert_eq!(unbound.kind, ErrorKind::UnknownSymbol);
 }
 
-/// tests/fixtures/conformance.json is the implementation-independent contract
+/// tests/fixtures/conformance.my is the implementation-independent contract
 /// (see CLAUDE.md): any future my-lisp implementation — C, HDL, whatever —
 /// should reproduce these results once it gets the seven primitives and
 /// lambda/def/defmacro right, since everything above that (lib/core.my
 /// included) is plain my-lisp source, not Rust. Preloading core.my here lets
 /// fixtures exercise it directly instead of duplicating stdlib coverage.
-/// tests/fixtures/conformance.json — незалежний від реалізації контракт
+/// Written as my-lisp data (2026-08-09, moved off JSON), so this test reads
+/// it via `parse` — the same reader every my-lisp program goes through —
+/// not `serde_json`; the fixture file no longer needs a foreign format to
+/// stay implementation-independent, it needs my-lisp's own reader, which
+/// every conforming implementation already has by definition.
+/// tests/fixtures/conformance.my — незалежний від реалізації контракт
 /// (див. CLAUDE.md): будь-яка майбутня реалізація my-lisp — C, HDL, що
 /// завгодно — має відтворювати ці результати, щойно правильно реалізує сім
 /// примітивів і lambda/def/defmacro, бо все, що над ними (включно з
 /// lib/core.my), — звичайний my-lisp-код, не Rust. Попереднє завантаження
 /// core.my тут дозволяє фікстурам напряму його використовувати замість
-/// дублювання покриття stdlib.
-/// tests/fixtures/conformance.json ist der implementierungsunabhängige
-/// Vertrag (siehe CLAUDE.md): jede künftige my-lisp-Implementierung — C,
-/// HDL, was auch immer — sollte diese Ergebnisse reproduzieren, sobald sie
-/// die sieben Primitive und lambda/def/defmacro korrekt umsetzt, da alles
-/// darüber (inklusive lib/core.my) gewöhnlicher my-lisp-Quellcode ist, kein
-/// Rust. Das Vorladen von core.my erlaubt es Fixtures, es direkt zu nutzen,
-/// statt Stdlib-Abdeckung zu duplizieren.
+/// дублювання покриття stdlib. Записано як my-lisp-дані (2026-08-09,
+/// перенесено з JSON), тож цей тест читає файл через `parse` — той самий
+/// reader, крізь який проходить будь-яка my-lisp-програма — не через
+/// `serde_json`; файлу фікстур більше не потрібен чужий формат, щоб
+/// лишатись незалежним від реалізації, йому потрібен власний reader
+/// my-lisp, який будь-яка конформна реалізація вже має за визначенням.
 #[test]
-fn conformance_tests_from_json() {
-    use my_lisp_literate::{eval_literate, SourceMode};
-    use serde_json::Value as Json;
-
-    let json: Json =
-        serde_json::from_str(include_str!("../../../tests/fixtures/conformance.json"))
-            .expect("conformance.json should be valid JSON");
-    let fixtures = json.as_array().expect("conformance.json should be an array");
+fn conformance_tests_from_my() {
+    let forms = parse(include_str!("../../../tests/fixtures/conformance.my"))
+        .expect("conformance.my should parse as valid my-lisp source");
 
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session)
@@ -563,15 +602,13 @@ fn conformance_tests_from_json() {
     eval_program(include_str!("../../../lib/reason.my"), &mut session)
         .expect("lib/reason.my should load before conformance fixtures run");
 
-    for fixture in fixtures {
-        let expr = fixture["expr"].as_str().expect("fixture needs an \"expr\" string");
-        let is_markdown = fixture.get("mode").and_then(Json::as_str) == Some("markdown");
+    for form in &forms {
+        let ExprKind::List(entries) = &form.kind else {
+            panic!("each top-level form in conformance.my should be an alist: {form:?}");
+        };
+        let expr = alist_str(entries, "expr").expect("fixture needs an \"expr\" string");
 
-        if let Some(expected_error) = fixture.get("error").and_then(Json::as_str) {
-            assert!(
-                !is_markdown,
-                "error fixtures aren't supported in markdown mode: {expr}"
-            );
+        if let Some(expected_error) = alist_str(entries, "error") {
             let error = eval_program(expr, &mut session)
                 .expect_err(&format!("expected an error but evaluation succeeded: {expr}"));
             assert_eq!(
@@ -582,22 +619,12 @@ fn conformance_tests_from_json() {
             continue;
         }
 
-        let expected = fixture["expected"]
-            .as_str()
-            .expect("fixture needs an \"expected\" string (or an \"error\" string)");
-
-        let actual = if is_markdown {
-            eval_literate(expr, SourceMode::Literate, &mut session)
-                .unwrap_or_else(|e| panic!("markdown fixture failed: {e}\nexpr: {expr}"))
-                .0
-                .value
-                .to_string()
-        } else {
-            eval_program(expr, &mut session)
-                .unwrap_or_else(|e| panic!("fixture failed: {e}\nexpr: {expr}"))
-                .value
-                .to_string()
-        };
+        let expected =
+            alist_str(entries, "expected").expect("fixture needs an \"expected\" string (or an \"error\" string)");
+        let actual = eval_program(expr, &mut session)
+            .unwrap_or_else(|e| panic!("fixture failed: {e}\nexpr: {expr}"))
+            .value
+            .to_string();
         assert_eq!(actual, expected, "Failed on expression: {}", expr);
     }
 }
@@ -727,55 +754,72 @@ fn a_dotted_pair_used_directly_as_code_is_an_invalid_form() {
     assert_eq!(error.kind, ErrorKind::InvalidForm);
 }
 
-/// `my-lisp-constitution.json` is a *generated projection* over
-/// `tests/fixtures/conformance.json` (`scripts/build-constitution.py`
+/// `my-lisp-constitution.my` is a *generated projection* over
+/// `tests/fixtures/conformance.my` (`scripts/build-constitution.my`
 /// regenerates it) — the same one-source-plus-projection shape
 /// `lib/knowledge.my`'s `*knowledge-journal*` uses for runtime state,
 /// applied here to documentation instead. This test is the CI-enforced
-/// half of that pattern: if someone appends a fixture to `conformance.json`
-/// and forgets to add a matching tag to `conformance-tier-map.json` and
-/// rerun the generator, the two files silently drift — this test turns
-/// that into a loud, immediate failure instead.
-/// `my-lisp-constitution.json` — це *згенерована проекція* над
-/// `tests/fixtures/conformance.json` (перегенеровує `scripts/build-constitution.py`)
+/// half of that pattern: if someone appends a fixture to `conformance.my`
+/// and forgets to rerun the generator, the two files silently drift — this
+/// test turns that into a loud, immediate failure instead. Both files are
+/// my-lisp data now (2026-08-09, moved off JSON), so this test parses them
+/// the same way `conformance_tests_from_my` does above, not via serde_json.
+/// `my-lisp-constitution.my` — це *згенерована проекція* над
+/// `tests/fixtures/conformance.my` (перегенеровує `scripts/build-constitution.my`)
 /// — та сама форма "одне джерело + проекція", яку `*knowledge-journal*`
 /// з `lib/knowledge.my` використовує для рантайм-стану, застосована тут до
 /// документації. Цей тест — примусова CI-половина того патерну: якщо хтось
-/// додасть фікстуру в `conformance.json` і забуде додати тег у
-/// `conformance-tier-map.json` та перегенерувати, ці два файли мовчки
-/// розійдуться — цей тест перетворює це на негайний, гучний провал.
+/// додасть фікстуру в `conformance.my` і забуде перегенерувати, ці два
+/// файли мовчки розійдуться — цей тест перетворює це на негайний, гучний
+/// провал. Обидва файли тепер my-lisp-дані (2026-08-09, перенесено з JSON),
+/// тож цей тест парсить їх так само, як `conformance_tests_from_my` вище,
+/// не через `serde_json`.
 #[test]
-fn constitution_json_stays_in_sync_with_conformance_json() {
-    use serde_json::Value as Json;
+fn constitution_my_stays_in_sync_with_conformance_my() {
+    let conformance = parse(include_str!("../../../tests/fixtures/conformance.my"))
+        .expect("conformance.my should parse as valid my-lisp source");
 
-    let conformance: Json =
-        serde_json::from_str(include_str!("../../../tests/fixtures/conformance.json"))
-            .expect("conformance.json should be valid JSON");
-    let conformance = conformance
-        .as_array()
-        .expect("conformance.json should be an array");
-
-    let constitution: Json =
-        serde_json::from_str(include_str!("../../../my-lisp-constitution.json"))
-            .expect("my-lisp-constitution.json should be valid JSON");
-    let fixtures = constitution["fixtures"]
-        .as_array()
-        .expect("my-lisp-constitution.json should have a \"fixtures\" array");
+    let constitution_forms = parse(include_str!("../../../my-lisp-constitution.my"))
+        .expect("my-lisp-constitution.my should parse as valid my-lisp source");
+    let fixtures: Vec<&[Expr]> = constitution_forms
+        .iter()
+        .filter_map(|form| {
+            let ExprKind::List(items) = &form.kind else {
+                return None;
+            };
+            // `(print (cons 'fixture fixture))` in build-constitution.my
+            // prints as `(fixture (expr . ...) (expected . ...) ...)` — the
+            // fixture alist's own entries spliced in as `cons`'s tail, not
+            // wrapped in a nested list, since `fixture` here is already a
+            // proper list and `(a . (b c))` prints flat as `(a b c)`.
+            let (head, entries) = items.split_first()?;
+            let ExprKind::Symbol(name) = &head.kind else {
+                return None;
+            };
+            if &**name != "fixture" {
+                return None;
+            }
+            Some(entries)
+        })
+        .collect();
 
     assert_eq!(
         conformance.len(),
         fixtures.len(),
-        "my-lisp-constitution.json has a different fixture count than conformance.json — \
-         run `python3 scripts/build-constitution.py` to regenerate it"
+        "my-lisp-constitution.my has a different fixture count than conformance.my — \
+         run `cargo run -p my-lisp-cli -- scripts/build-constitution.my > my-lisp-constitution.my` to regenerate it"
     );
 
-    for (i, (fact, tagged)) in conformance.iter().zip(fixtures).enumerate() {
-        for key in ["expr", "expected", "error", "mode"] {
+    for (i, (fact_form, tagged_entries)) in conformance.iter().zip(fixtures.iter()).enumerate() {
+        let ExprKind::List(fact_entries) = &fact_form.kind else {
+            panic!("conformance.my fixture #{} should be an alist", i + 1);
+        };
+        for key in ["expr", "expected", "error"] {
             assert_eq!(
-                fact.get(key),
-                tagged.get(key),
-                "fixture #{} field \"{key}\" drifted between conformance.json and \
-                 my-lisp-constitution.json — run `python3 scripts/build-constitution.py`",
+                alist_str(fact_entries, key),
+                alist_str(tagged_entries, key),
+                "fixture #{} field \"{key}\" drifted between conformance.my and \
+                 my-lisp-constitution.my — regenerate it",
                 i + 1
             );
         }
@@ -809,8 +853,6 @@ fn constitution_json_stays_in_sync_with_conformance_json() {
 /// явно, не дати їй розмитись непоміченою.
 #[test]
 fn symbolic_reasoning_layer_stays_loaded_and_tested() {
-    use serde_json::Value as Json;
-
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session)
         .expect("lib/core.my should load before the symbolic layer");
@@ -829,15 +871,16 @@ fn symbolic_reasoning_layer_stays_loaded_and_tested() {
         "((() (proved (parent alice bob) (parent alice bob) ())))"
     );
 
-    let tier_map: Json = serde_json::from_str(include_str!(
-        "../../../tests/fixtures/conformance-tier-map.json"
-    ))
-    .expect("conformance-tier-map.json should be valid JSON");
-    let tier3_count = tier_map
-        .as_array()
-        .expect("conformance-tier-map.json should be an array")
+    let forms = parse(include_str!("../../../tests/fixtures/conformance.my"))
+        .expect("conformance.my should parse as valid my-lisp source");
+    let tier3_count = forms
         .iter()
-        .filter(|entry| entry.get("tier").and_then(Json::as_i64) == Some(3))
+        .filter(|form| {
+            let ExprKind::List(entries) = &form.kind else {
+                return false;
+            };
+            alist_number(entries, "tier") == Some(3.0)
+        })
         .count();
     assert!(
         tier3_count >= 20,

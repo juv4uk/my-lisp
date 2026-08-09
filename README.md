@@ -37,7 +37,7 @@ That instinct is tested, not just stated: [`lib/meta-eval.my`](lib/meta-eval.my)
 
 Explainability runs through all of it, not bolted on after: `explain-proof`/`reason-explain`/`provenance` turn a proof tree into a human-readable "why," and [`lib/understand.my`](lib/understand.my)/[`lib/narrate.my`](lib/narrate.my) bridge controlled natural language to and from knowledge structures — text in, structure out, and back again.
 
-[`tests/fixtures/conformance.json`](tests/fixtures/conformance.json) exists because Lisp's history is also a history of dialects drifting apart — MacLisp, InterLisp, a dozen Scheme variants, Common Lisp's attempt to reunify them. This file is the one thing a future C core or HDL Lisp-machine core must agree with, so a second implementation never becomes "just another dialect."
+[`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) exists because Lisp's history is also a history of dialects drifting apart — MacLisp, InterLisp, a dozen Scheme variants, Common Lisp's attempt to reunify them. This file is the one thing a future C core or HDL Lisp-machine core must agree with, so a second implementation never becomes "just another dialect."
 
 This repository is the canonical Rust implementation:
 
@@ -90,7 +90,7 @@ Rust надає лише те, що робить особливо добре —
 
 Пояснюваність проходить крізь усе це, не приліплена окремо: `explain-proof`/`reason-explain`/`provenance` перетворюють дерево доведення на людське "чому", а [`lib/understand.my`](lib/understand.my)/[`lib/narrate.my`](lib/narrate.my) з'єднують контрольовану природну мову зі структурами знань в обидва боки — текст на вхід, структура на вихід, і назад.
 
-[`tests/fixtures/conformance.json`](tests/fixtures/conformance.json) існує, бо історія Lisp — це також історія діалектів, що розбігались — MacLisp, InterLisp, десяток варіантів Scheme, спроба Common Lisp їх возз'єднати. Цей файл — те єдине, з чим має погоджуватись майбутнє C-ядро чи HDL-ядро Lisp-машини, щоб друга реалізація ніколи не стала "ще одним діалектом".
+[`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) існує, бо історія Lisp — це також історія діалектів, що розбігались — MacLisp, InterLisp, десяток варіантів Scheme, спроба Common Lisp їх возз'єднати. Цей файл — те єдине, з чим має погоджуватись майбутнє C-ядро чи HDL-ядро Lisp-машини, щоб друга реалізація ніколи не стала "ще одним діалектом".
 
 Цей репозиторій — канонічна реалізація на Rust:
 
@@ -142,7 +142,7 @@ Dieser Instinkt ist geprüft, nicht nur behauptet: [`lib/meta-eval.my`](lib/meta
 
 Erklärbarkeit zieht sich durch alles, nicht nachträglich angeflanscht: `explain-proof`/`reason-explain`/`provenance` verwandeln einen Beweisbaum in ein menschenlesbares "Warum", und [`lib/understand.my`](lib/understand.my)/[`lib/narrate.my`](lib/narrate.my) verbinden kontrollierte natürliche Sprache mit Wissensstrukturen in beide Richtungen — Text rein, Struktur raus, und zurück.
 
-[`tests/fixtures/conformance.json`](tests/fixtures/conformance.json) existiert, weil Lisps Geschichte auch eine Geschichte auseinanderdriftender Dialekte ist — MacLisp, InterLisp, ein Dutzend Scheme-Varianten, Common Lisps Versuch, sie wiederzuvereinen. Diese Datei ist das eine, dem ein künftiger C-Kern oder HDL-Lisp-Maschinen-Kern entsprechen muss, damit eine zweite Implementierung nie "nur ein weiterer Dialekt" wird.
+[`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) existiert, weil Lisps Geschichte auch eine Geschichte auseinanderdriftender Dialekte ist — MacLisp, InterLisp, ein Dutzend Scheme-Varianten, Common Lisps Versuch, sie wiederzuvereinen. Diese Datei ist das eine, dem ein künftiger C-Kern oder HDL-Lisp-Maschinen-Kern entsprechen muss, damit eine zweite Implementierung nie "nur ein weiterer Dialekt" wird.
 
 Dieses Repository ist die kanonische Rust-Implementierung:
 
