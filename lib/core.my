@@ -295,3 +295,43 @@
       ((string-prefix? needle s) t)
       ((string-empty? s) '())
       (t (string-contains? needle (string-rest s))))))
+
+; quotient/mod (G5 test: already expressible via existing means?) — yes.
+; Unlike bitwise operations (AND/OR/XOR/shift — no primitive exposes a
+; number's binary representation at all, so those would genuinely need a
+; new Rust primitive), integer division and remainder for non-negative
+; integers fall straight out of repeated subtraction plus the comparison
+; primitives already here — no new Rust code, same class of gap as
+; string-length before it. Surfaced from the fpga-lisp session's
+; assembler.my (2026-08-10), which flagged the *absence* of bitwise/mod
+; but found it non-load-bearing for its own current needs; added here
+; anyway since it's genuinely useful independent of that one caller and
+; costs nothing new in Rust. Scope: non-negative `a`, positive `b` only —
+; no attempt at negative-number semantics (floor vs. truncate division
+; is a real, unresolved design choice for negatives, deliberately left
+; open rather than guessed at).
+; quotient/mod (G5-тест: уже виразне через наявне?) — так. На відміну
+; від бітових операцій (AND/OR/XOR/зсув — жоден примітив узагалі не
+; відкриває бінарне представлення числа, тож ті справді потребували б
+; нового Rust-примітиву), цілочисельне ділення й остача для
+; невід'ємних чисел випливають напряму з повторюваного віднімання й
+; наявних примітивів порівняння — без нового Rust-коду, той самий клас
+; прогалини, що й string-length раніше. Знахідка з сесії fpga-lisp,
+; assembler.my (2026-08-10), яка позначила ВІДСУТНІСТЬ bitwise/mod, але
+; визнала це не критичним для власних поточних потреб; додано тут усе
+; одно, бо це реально корисне незалежно від того одного викликача й не
+; коштує нічого нового в Rust. Обсяг: лише невід'ємне `a`, додатне `b`
+; — без спроби вгадати семантику для від'ємних чисел (floor чи truncate
+; ділення — реальний, невирішений вибір дизайну для них, свідомо
+; залишений відкритим, не вгаданий навмання).
+(def quotient
+  (lambda (a b)
+    (cond
+      ((< a b) 0)
+      (t (+ 1 (quotient (- a b) b))))))
+
+(def mod
+  (lambda (a b)
+    (cond
+      ((< a b) a)
+      (t (mod (- a b) b)))))
