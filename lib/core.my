@@ -426,9 +426,27 @@
       ((< a (+ chunk chunk)) (cons chunk mult))
       (t (largest-chunk a b (+ chunk chunk) (+ mult mult))))))
 
+; `b = 0` used to hang forever: `largest-chunk` starts doubling from
+; `chunk = b`, and `0 + 0 = 0` never grows, so its "does chunk still
+; fit" check never flips — an infinite tail-recursive loop, not a
+; crash, silent unless you're specifically watching for it. Found the
+; same way as the earlier stack-overflow bug: tested an edge case the
+; first version never considered. `/` (the Rust primitive) already
+; fails named on division by zero (`ErrorKind::InvalidForm`) — routing
+; through it here reuses that real, already-tested error instead of
+; inventing a second, different one for the same condition.
+; `b = 0` раніше зависав назавжди: `largest-chunk` починає подвоювати
+; від `chunk = b`, а `0 + 0 = 0` ніколи не росте, тож перевірка "чи
+; chunk усе ще вміщується" ніколи не переверталась — нескінченний
+; хвостово-рекурсивний цикл, не крах, непомітний, якщо спеціально не
+; шукати. `/` (Rust-примітив) уже провалюється названо на діленні на
+; нуль (`ErrorKind::InvalidForm`) — маршрутизація через нього тут
+; перевикористовує цю реальну, вже перевірену помилку замість
+; вигадування другої, іншої для того самого стану.
 (def quotient
   (lambda (a b)
     (cond
+      ((eq b 0) (/ a b))
       ((< a b) 0)
       (t (let ((chunk+mult (largest-chunk a b b 1)))
            (+ (cdr chunk+mult) (quotient (- a (car chunk+mult)) b)))))))

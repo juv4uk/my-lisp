@@ -139,6 +139,8 @@
 ((expr . "(quotient 9999999999999 10)") (expected . "999999999999") (tier . 3) (axioms . (G5)) (note . "regression fixture: the original repeated-subtraction quotient had recursion depth equal to the quotient's VALUE, not its digit count, and overflowed the Rust host's stack on exactly this input while implementing number->string. Fixed 2026-08-10 via a doubling algorithm, O(log(a/b)) depth"))
 ((expr . "(number->string 9999999999999)") (expected . "\"9999999999999\"") (tier . 3) (axioms . (G5)) (note . "surfaced from the fpga-lisp session's assembler.my, which had its own version limited to ~10 digits by a fixed DECIMAL-POWERS table; this one has no digit-count ceiling of its own"))
 ((expr . "(number->string 0)") (expected . "\"0\"") (tier . 3) (axioms . (G5)))
+((expr . "(quotient 5 0)") (error . "InvalidForm") (tier . 3) (axioms . (G5)) (note . "regression fixture: (quotient a 0) used to hang forever (largest-chunk's doubling never grows from chunk=0) instead of failing named -- fixed 2026-08-10 by routing b=0 through the primitive / for its already-tested division-by-zero error"))
+((expr . "(mod 5 0)") (error . "InvalidForm") (tier . 3) (axioms . (G5)))
 ((expr . "(fourth '(w x y z))") (expected . "z") (tier . 3) (axioms . (G5)) (note . "surfaced from the fpga-lisp session's assembler.my — same single-parameter primitive-chain pattern as second/third, one step deeper"))
 ((expr . "(nth 2 '(a b c))") (expected . "c") (tier . 3) (axioms . (G5)))
 ((expr . "(member? 'b '(a b c))") (expected . "t") (tier . 3) (axioms . (G5)))
