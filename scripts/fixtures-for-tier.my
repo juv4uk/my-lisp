@@ -5,25 +5,37 @@
 ;
 ; conformance.my deliberately stays one file (see PLAN.md) — this script
 ; makes "which fixtures must I pass to be my-lisp at Tier N?" trivial to
-; answer without a future implementer reinventing the filter logic.
+; answer without a future implementer reinventing the filter logic. This
+; is exactly the tool fpga-lisp's own roadmap step 28 ("run the real
+; Tier-1 fixtures, not a hand-picked subset") needs repeatedly during
+; bring-up — friction here is friction there too.
 ;
 ; Usage:
 ;   cargo run -p my-lisp-cli -- scripts/fixtures-for-tier.my 1
-; (the CLI has no argv-passing convention today, so for now edit
-; `target-tier` below directly — see the note at the bottom.)
+; *argv* (added 2026-08-09 for scripts/release.my, general-purpose in
+; my-lisp-cli since then) carries the tier as a string; assoc (added
+; 2026-08-10, lib/core.my) replaced this file's own hand-rolled
+; assoc-my — both were dead weight this script no longer needs to carry
+; on its own, updated here as soon as the underlying gaps closed instead
+; of leaving the workaround comment stale.
 
-(def target-tier 1)
+(def target-tier
+  (cond
+    ((atom *argv*) (missing-tier-argument))
+    (t (read (car *argv*)))))
+
+; `missing-tier-argument` is deliberately unbound — calling it is a real
+; named ErrorKind::UnknownSymbol (S2), not an invented ad-hoc error
+; primitive, same convention scripts/release.my already uses for its own
+; missing-argument case.
+; `missing-tier-argument` навмисно незв'язаний — виклик дає реальну
+; названу ErrorKind::UnknownSymbol (S2), не вигаданий ad-hoc примітив
+; помилки, та сама конвенція, яку вже використовує scripts/release.my
+; для власного випадку відсутнього аргументу.
 
 (def fixture-tier
   (lambda (fixture)
-    (cdr (assoc-my 'tier fixture))))
-
-(def assoc-my
-  (lambda (key alist)
-    (cond
-      ((atom alist) '())
-      ((eq (car (car alist)) key) (car alist))
-      (t (assoc-my key (cdr alist))))))
+    (cdr (assoc 'tier fixture))))
 
 (def print-matching
   (lambda (remaining)
@@ -37,10 +49,3 @@
             (print-matching (cdr remaining))))))))
 
 (print-matching (read-all (read-file "tests/fixtures/conformance.my")))
-
-; No argv access from my-lisp yet (no capability primitive for it — adding
-; one just for this would be scope creep for a two-script convenience
-; tool). Edit `target-tier` above and rerun, or use grep/awk on
-; conformance.my directly for a one-off filter — both fine for how rarely
-; this is actually needed.
-'()
