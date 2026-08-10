@@ -190,12 +190,6 @@
 ; Schleifenkörper nicht Schritt für Schritt dauerhaft einen globalen Zustand
 ; aktualisieren. Um das Ergebnis zurückzusynchronisieren, ruf `assert-facts!`
 ; selbst auf oberster Ebene auf: `(assert-facts! (run rules *working-memory*))`.
-(def member?
-  (lambda (item lst)
-    (cond
-      ((atom lst) '())
-      ((equal? item (car lst)) t)
-      (t (member? item (cdr lst))))))
 
 (def append-new
   (lambda (facts wm)

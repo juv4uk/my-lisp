@@ -175,10 +175,6 @@
          '()))
       (t '()))))
 
-(def cadddr
-  (lambda (lst)
-    (car (cdr (cdr (cdr lst))))))
-
 (def explain-proof-list
   (lambda (nodes level)
     (cond

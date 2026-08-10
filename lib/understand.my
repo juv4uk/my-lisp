@@ -93,9 +93,6 @@
       (list (list 'has (list 'var 'w) property)
             (list subject-class (list 'var 'w))))))
 
-(def cddr
-  (lambda (lst) (cdr (cdr lst))))
-
 (def understand
   (lambda (words)
     (cond

@@ -142,3 +142,5 @@
 ((expr . "(member? 'q '(a b c))") (expected . "()") (tier . 3) (axioms . (G5)))
 ((expr . "(assoc 'b '((a . 1) (b . 2) (c . 3)))") (expected . "(b . 2)") (tier . 3) (axioms . (G5)) (note . "generalizes the (symbol . value) alist-lookup shape lib/meta-eval.my's env-lookup already hand-rolls for its own specific case"))
 ((expr . "(assoc 'q '((a . 1) (b . 2)))") (expected . "()") (tier . 3) (axioms . (G5)))
+((expr . "(cddr '(a b c d))") (expected . "(c d)") (tier . 3) (axioms . (G5)) (note . "found duplicated locally in lib/understand.my before being moved to core.my, 2026-08-10"))
+((expr . "(eq cadddr fourth)") (expected . "t") (tier . 3) (axioms . (G5)) (note . "cadddr is a literal alias for fourth, same closure object -- lib/reason.my had its own character-for-character-identical local cadddr before this dedup"))

@@ -44,6 +44,18 @@
   (lambda (values)
     (car (cdr (cdr (cdr values))))))
 
+; cadddr — the classical car/cdr-composition name for the exact same
+; operation fourth already performs; kept as an alias (same closure
+; object, not a second definition) since real callers already spell it
+; this way (lib/reason.my had its own local (def cadddr ...) before
+; this, character-for-character identical to fourth's body).
+; cadddr — класична car/cdr-композиційна назва для тієї самої операції,
+; що вже виконує fourth; лишено як псевдонім (той самий об'єкт-closure,
+; не друге визначення), бо реальні виклики вже пишуть саме так
+; (lib/reason.my мав власний локальний (def cadddr ...) до цього,
+; посимвольно ідентичний тілу fourth).
+(def cadddr fourth)
+
 (def caar
   (lambda (values)
     (car (car values))))
@@ -51,6 +63,10 @@
 (def cadr
   (lambda (values)
     (car (cdr values))))
+
+(def cddr
+  (lambda (values)
+    (cdr (cdr values))))
 
 ; length/map/filter build their result via a tail-recursive `-onto`
 ; accumulator, same shape as reverse/reverse-onto below, instead of consing
