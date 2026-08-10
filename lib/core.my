@@ -40,6 +40,10 @@
   (lambda (values)
     (car (cdr (cdr values)))))
 
+(def fourth
+  (lambda (values)
+    (car (cdr (cdr (cdr values))))))
+
 (def caar
   (lambda (values)
     (car (car values))))
@@ -244,6 +248,42 @@
       (t (cond
            ((equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
            (t '()))))))
+
+; nth/member?/assoc (G5 test: already expressible via existing means?)
+; — yes, same recursive-list-walk shape as length/reverse above.
+; Surfaced from the fpga-lisp session's assembler.my (2026-08-10), which
+; had independently reimplemented all three locally (as nth, contains?/
+; any-eq?, and assoc-str) because lib/core.my didn't have them — real,
+; evidenced duplication, not a speculative gap. A generalized assoc here
+; also matches the shape lib/meta-eval.my's own env-lookup already hand-
+; rolls for its specific (symbol . value) alist case.
+; nth/member?/assoc (G5-тест: уже виразне через наявне?) — так, та сама
+; форма рекурсивного обходу списку, що й length/reverse вище. Знахідка
+; з сесії fpga-lisp, assembler.my (2026-08-10), яка незалежно
+; перевинайшла всі три локально (як nth, contains?/any-eq? і assoc-str),
+; бо lib/core.my їх не мав — реальне, доказове дублювання, не
+; спекулятивна прогалина. Узагальнений assoc тут також збігається з
+; формою, яку lib/meta-eval.my's власний env-lookup уже вручну пише для
+; свого специфічного випадку asoc-списку (symbol . value).
+(def nth
+  (lambda (i lst)
+    (cond
+      ((eq i 0) (car lst))
+      (t (nth (- i 1) (cdr lst))))))
+
+(def member?
+  (lambda (item lst)
+    (cond
+      ((atom lst) '())
+      ((equal? item (car lst)) t)
+      (t (member? item (cdr lst))))))
+
+(def assoc
+  (lambda (key alist)
+    (cond
+      ((atom alist) '())
+      ((equal? key (car (car alist))) (car alist))
+      (t (assoc key (cdr alist))))))
 
 (defmacro let* (bindings body)
   (cond
