@@ -299,18 +299,9 @@
   (list 'def '*usage-counts*
         (list 'merge-usage (list 'count-usage proof) '*usage-counts*)))
 
-;; assoc uses `eq`, which rejects the compound rule-head terms stored as
-;; usage-count keys — assoc-equal is the same lookup built on `equal?`.
-(def assoc-equal
-  (lambda (key alist)
-    (cond
-      ((atom alist) '())
-      ((equal? key (car (car alist))) (car alist))
-      (t (assoc-equal key (cdr alist))))))
-
 (def usage-of
   (lambda (rule-head)
-    (let ((entry (assoc-equal rule-head *usage-counts*)))
+    (let ((entry (assoc rule-head *usage-counts*)))
       (cond
         ((atom entry) 0)
         (t (cdr entry))))))

@@ -58,9 +58,6 @@
 ; eine bedingungslose Clause pro Fakt. `defrule` (Regeln, und CLIPS'
 ; `?x`-Variablensyntax, die zu `(var x)` konvertiert werden muss) ist ein
 ; separater, späterer Schritt, hier nicht unterstellt.
-(def cddr
-  (lambda (lst) (cdr (cdr lst))))
-
 ; --- Step 8: deftemplate, CLIPS's named-slot facts -----------------------
 ; Ordinary CLIPS facts are positional, the same shape my-lisp facts always
 ; were: `(planet earth)`. A `deftemplate` changes that for facts of its
@@ -210,19 +207,9 @@
              (clips-templates-from-forms (cdr forms))))
       (t (clips-templates-from-forms (cdr forms))))))
 
-; `eq`-based association-list lookup, kept local rather than depending on
-; any other `lib/*.my` file loading first, since clips-import.my has
-; otherwise only ever needed lib/core.my.
-(def clips-assoc
-  (lambda (key alist)
-    (cond
-      ((atom alist) '())
-      ((eq key (car (car alist))) (car alist))
-      (t (clips-assoc key (cdr alist))))))
-
 (def clips-template-slot-order
   (lambda (name templates)
-    (let ((entry (clips-assoc name templates)))
+    (let ((entry (assoc name templates)))
       (cond
         ((atom entry) '())
         (t (cdr entry))))))
