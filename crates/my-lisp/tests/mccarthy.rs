@@ -1049,6 +1049,89 @@ fn write_file_wrong_arity_is_an_arity_error() {
     assert_eq!(error.kind, ErrorKind::Arity);
 }
 
+// --- write-file-bytes / read-file-bytes (PLAN.md item 22) -----------------
+// The byte-level counterpart to write-file/read-file: write-file can only
+// ever produce valid UTF-8 (Value::String wraps &str), so a byte like 0xff
+// or 0xfe — not valid on its own as UTF-8 — could never be written raw.
+// These round-trip a list of fixnums 0-255 through std::fs::write/read
+// directly over Vec<u8>, proving non-UTF-8 bytes survive intact.
+
+#[test]
+fn write_file_bytes_then_read_file_bytes_round_trips_non_utf8_bytes() {
+    let path = std::env::temp_dir().join("my-lisp-write-file-bytes-round-trip.bin");
+    let path_str = path.to_str().expect("temp path should be valid UTF-8").replace('\\', "/");
+    // 255 and 254 are not valid standalone UTF-8 bytes — this is the exact
+    // case write-file (String-based) cannot represent.
+    let source = format!(r#"(write-file-bytes "{path_str}" '(0 1 2 255 65 254))"#);
+    let mut session = Session::default();
+    let result = eval_program(&source, &mut session).expect("write-file-bytes should succeed");
+    assert_eq!(
+        result.value,
+        Value::list([0, 1, 2, 255, 65, 254].map(|n| Value::Number(n as f64, Exactness::Exact)))
+    );
+
+    let raw = std::fs::read(&path).expect("the file should exist with raw bytes");
+    assert_eq!(raw, vec![0u8, 1, 2, 255, 65, 254]);
+
+    let read_back = eval_program(&format!(r#"(read-file-bytes "{path_str}")"#), &mut session)
+        .expect("read-file-bytes should read back what write-file-bytes wrote");
+    assert_eq!(
+        read_back.value,
+        Value::list([0, 1, 2, 255, 65, 254].map(|n| Value::Number(n as f64, Exactness::Exact)))
+    );
+
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn write_file_bytes_rejects_a_non_string_path() {
+    let error = eval_program(r#"(write-file-bytes 42 '(1 2 3))"#, &mut Session::default())
+        .expect_err("a non-string path must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn write_file_bytes_rejects_a_non_list_second_argument() {
+    let error = eval_program(r#"(write-file-bytes "path-does-not-matter.bin" 42)"#, &mut Session::default())
+        .expect_err("a non-list second argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn write_file_bytes_rejects_an_out_of_range_element() {
+    let error = eval_program(r#"(write-file-bytes "path-does-not-matter.bin" '(1 256 3))"#, &mut Session::default())
+        .expect_err("an element above 255 must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn write_file_bytes_rejects_a_negative_element() {
+    let error = eval_program(r#"(write-file-bytes "path-does-not-matter.bin" '(1 -1 3))"#, &mut Session::default())
+        .expect_err("a negative element must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn read_file_bytes_rejects_a_non_string_path() {
+    let error = eval_program(r#"(read-file-bytes 42)"#, &mut Session::default())
+        .expect_err("a non-string path must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn write_file_bytes_wrong_arity_is_an_arity_error() {
+    let error = eval_program(r#"(write-file-bytes "only-a-path.bin")"#, &mut Session::default())
+        .expect_err("write-file-bytes with one argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
+
+#[test]
+fn read_file_bytes_wrong_arity_is_an_arity_error() {
+    let error = eval_program(r#"(read-file-bytes)"#, &mut Session::default())
+        .expect_err("read-file-bytes with no arguments must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
+
 // --- string-append (PLAN.md item 14) -------------------------------------
 
 #[test]

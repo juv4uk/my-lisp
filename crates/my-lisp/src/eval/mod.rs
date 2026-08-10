@@ -161,6 +161,12 @@ fn evaluate_list(
         Some("write-file") => {
             special_forms::evaluate_write_file(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("read-file-bytes") => {
+            special_forms::evaluate_read_file_bytes(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("write-file-bytes") => {
+            special_forms::evaluate_write_file_bytes(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("string-append") => {
             special_forms::evaluate_string_append(arguments, environment, span).map(EvalStep::Value)
         }

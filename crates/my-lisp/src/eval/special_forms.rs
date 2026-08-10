@@ -329,6 +329,109 @@ pub(super) fn evaluate_write_file(
     Ok(content_value)
 }
 
+/// `(write-file-bytes path byte-list)` (PLAN.md item 22) — the byte-level
+/// counterpart to `write-file`: `byte-list` is a list of fixnums 0-255,
+/// written as raw bytes (`std::fs::write(path, &bytes)` over a `Vec<u8>`),
+/// never through `&str`. `write-file` can only ever produce valid UTF-8 —
+/// no primitive in the language can build a string containing an
+/// arbitrary byte (no char-code/integer->char, no bytevector type), so
+/// writing a real binary (compiled machine code, any non-UTF-8 format)
+/// was impossible before this. Same shape as `write-file` otherwise:
+/// always creates-or-truncates, never appends.
+/// `(write-file-bytes path byte-list)` (PLAN.md, пункт 22) — байтовий
+/// відповідник `write-file`: `byte-list` — список fixnum 0-255, пишеться
+/// як сирі байти (`std::fs::write(path, &bytes)` над `Vec<u8>`), ніколи
+/// через `&str`. `write-file` завжди дає лише коректний UTF-8 — жоден
+/// примітив мови не міг побудувати рядок із довільним байтом (немає
+/// char-code/integer->char, немає типу bytevector), тож записати
+/// справжній бінарник (скомпільований машинний код, будь-який
+/// не-UTF-8-формат) до цього було неможливо. Форма та сама, що й у
+/// `write-file`: завжди створює чи перезаписує, ніколи не дописує.
+pub(super) fn evaluate_write_file_bytes(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("write-file-bytes", arguments, 2, span)?;
+    let path_value = evaluate(&arguments[0], environment)?;
+    let Value::String(ref path) = path_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "write-file-bytes expects a string path · write-file-bytes очікує рядок-шлях · write-file-bytes erwartet einen String-Pfad",
+            span,
+        ));
+    };
+    let bytes_value = evaluate(&arguments[1], environment)?;
+    let bytes = expect_byte_list(&bytes_value, arguments[1].span)?;
+    write_file_bytes(path, &bytes, span)?;
+    Ok(bytes_value)
+}
+
+/// `(read-file-bytes path)` (PLAN.md item 22) — the byte-level counterpart
+/// to `read-file`: returns the file's raw bytes as a list of fixnums
+/// 0-255, not a UTF-8-decoded string, which would fail outright — or
+/// worse, silently corrupt — on a non-UTF-8 file.
+/// `(read-file-bytes path)` (PLAN.md, пункт 22) — байтовий відповідник
+/// `read-file`: повертає сирі байти файлу як список fixnum 0-255, не
+/// UTF-8-декодований рядок, який би або відверто провалився, або —
+/// гірше — мовчки спотворив дані на не-UTF-8-файлі.
+pub(super) fn evaluate_read_file_bytes(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("read-file-bytes", arguments, 1, span)?;
+    let evaluated = evaluate(&arguments[0], environment)?;
+    let Value::String(ref path) = evaluated else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "read-file-bytes expects a string path · read-file-bytes очікує рядок-шлях · read-file-bytes erwartet einen String-Pfad",
+            span,
+        ));
+    };
+    let bytes = read_file_bytes(path, span)?;
+    Ok(Value::list(
+        bytes
+            .into_iter()
+            .map(|byte| Value::Number(byte as f64, Exactness::Exact)),
+    ))
+}
+
+fn expect_byte_list(value: &Value, span: Span) -> Result<Vec<u8>, LanguageError> {
+    let mut bytes = Vec::new();
+    let mut current = value;
+    loop {
+        match current {
+            Value::Nil => return Ok(bytes),
+            Value::Pair(head, tail) => {
+                let Value::Number(number, _) = **head else {
+                    return Err(LanguageError::new(
+                        ErrorKind::Type,
+                        "write-file-bytes expects a list of integers 0-255 · write-file-bytes очікує список цілих чисел 0-255 · write-file-bytes erwartet eine Liste von Ganzzahlen 0-255",
+                        span,
+                    ));
+                };
+                if number.fract() != 0.0 || !(0.0..=255.0).contains(&number) {
+                    return Err(LanguageError::new(
+                        ErrorKind::Type,
+                        "write-file-bytes expects each element to be an integer between 0 and 255 · write-file-bytes очікує, щоб кожен елемент був цілим числом від 0 до 255 · write-file-bytes erwartet, dass jedes Element eine Ganzzahl zwischen 0 und 255 ist",
+                        span,
+                    ));
+                }
+                bytes.push(number as u8);
+                current = tail;
+            }
+            _ => {
+                return Err(LanguageError::new(
+                    ErrorKind::Type,
+                    "write-file-bytes expects a proper list of integers 0-255 · write-file-bytes очікує правильний список цілих чисел 0-255 · write-file-bytes erwartet eine echte Liste von Ganzzahlen 0-255",
+                    span,
+                ))
+            }
+        }
+    }
+}
+
 /// String concatenation (PLAN.md item 14) — genuinely needs a Rust
 /// primitive, unlike `string-length`/`string-contains?` (both now in
 /// `lib/core.my`, expressible via `string-first`/`string-rest`/`eq`
@@ -897,6 +1000,46 @@ fn write_file(_path: &str, _content: &str, span: Span) -> Result<(), LanguageErr
     Err(LanguageError::new(
         ErrorKind::InvalidForm,
         "write-file: file system access is not available in this build",
+        span,
+    ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn read_file_bytes(path: &str, span: Span) -> Result<Vec<u8>, LanguageError> {
+    std::fs::read(path).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("read-file-bytes: failed to read file {path}: {error}"),
+            span,
+        )
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn read_file_bytes(_path: &str, span: Span) -> Result<Vec<u8>, LanguageError> {
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        "read-file-bytes: file system access is not available in this build",
+        span,
+    ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn write_file_bytes(path: &str, bytes: &[u8], span: Span) -> Result<(), LanguageError> {
+    std::fs::write(path, bytes).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("write-file-bytes: failed to write file {path}: {error}"),
+            span,
+        )
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn write_file_bytes(_path: &str, _bytes: &[u8], span: Span) -> Result<(), LanguageError> {
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        "write-file-bytes: file system access is not available in this build",
         span,
     ))
 }
