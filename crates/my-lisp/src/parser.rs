@@ -157,6 +157,7 @@ impl Parser<'_> {
                 '\\' => match self.bump() {
                     Some('n') => value.push('\n'),
                     Some('t') => value.push('\t'),
+                    Some('r') => value.push('\r'),
                     Some('"') => value.push('"'),
                     Some('\\') => value.push('\\'),
                     Some(other) => value.push(other),
@@ -322,6 +323,21 @@ mod tests {
             panic!("expected a string literal");
         };
         assert_eq!(&*value, "line\n\ttab\"quote");
+    }
+
+    /// `\r` used to silently fall through the "unrecognized escape" branch
+    /// (drop the backslash, keep the literal letter) — `"\r"` parsed as the
+    /// one-character string `"r"`, not carriage-return 0x0D. Found via a
+    /// real bug in the fpga-lisp session's assembler.my: code checking
+    /// `(eq (string-first s) "\r")` to strip CR silently ate every literal
+    /// 'r' character in unrelated text instead. `\r` now joins `\n`/`\t` as
+    /// a real recognized escape — the same category, not a new capability.
+    #[test]
+    fn parses_carriage_return_escape() {
+        let ExprKind::String(value) = parse_one(r#""a\rb""#).kind else {
+            panic!("expected a string literal");
+        };
+        assert_eq!(&*value, "a\rb");
     }
 
     #[test]

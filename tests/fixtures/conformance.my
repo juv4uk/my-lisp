@@ -28,6 +28,7 @@
 ((expr . "(eq 3 3)") (expected . "t") (tier . 1) (axioms . (G1)) (role . "constitutive"))
 ((expr . "(eq 3 4)") (expected . "()") (tier . 1) (axioms . (G1)) (role . "constitutive"))
 ((expr . "(eq \"radio\" \"radio\")") (expected . "t") (tier . 1) (axioms . (G1)) (role . "constitutive"))
+((expr . "(eq \"\\r\" \"r\")") (expected . "()") (tier . 1) (axioms . (G1)) (role . "constitutive") (note . "\\r must be the real carriage-return byte (0x0D), not the letter r — found broken in a real fpga-lisp bug, fixed 2026-08-10"))
 ((expr . "(cond (() 'first) (() 'second) (t 'third))") (expected . "third") (tier . 1) (axioms . (G8)) (role . "constitutive"))
 ((expr . "(second '(radio antenna signal))") (expected . "antenna") (tier . 3) (axioms . (G5)))
 ((expr . "(third '(radio antenna signal))") (expected . "signal") (tier . 3) (axioms . (G5)))
