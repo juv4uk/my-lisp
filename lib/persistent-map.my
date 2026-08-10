@@ -51,8 +51,17 @@
 (def node-key (lambda (n) (car n)))
 (def node-value (lambda (n) (second n)))
 (def node-height (lambda (n) (third n)))
-(def node-left (lambda (n) (car (cdr (cdr (cdr n))))))
-(def node-right (lambda (n) (car (cdr (cdr (cdr (cdr n)))))))
+; node-left/node-right kept as semantic names (readability inside the
+; AVL balance/rotate logic below) but aliased to fourth/fifth (same
+; closure objects, core.my, 2026-08-10) rather than re-spelling the
+; same primitive chains locally — they computed exactly what
+; fourth/fifth already do.
+; node-left/node-right лишено як семантичні назви (читабельність у
+; логіці балансування/ротації AVL нижче), але як псевдоніми fourth/
+; fifth (ті самі об'єкти-closure з core.my), не переписані вручну —
+; вони обчислювали точно те саме, що вже роблять fourth/fifth.
+(def node-left fourth)
+(def node-right fifth)
 
 (def height-of
   (lambda (n) (cond ((atom n) 0) (t (node-height n)))))

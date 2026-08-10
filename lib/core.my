@@ -56,6 +56,20 @@
 ; посимвольно ідентичний тілу fourth).
 (def cadddr fourth)
 
+; fifth — same single-parameter primitive-chain pattern as second/third/
+; fourth, one step deeper. Found duplicated in two places at once:
+; lib/narrate.my's own local (def fifth ...), character-for-character
+; identical, and lib/persistent-map.my's node-right, same operation
+; spelled out by hand rather than named.
+; fifth — той самий однопараметричний ланцюжок примітивів, що й
+; second/third/fourth, ще на крок глибший. Знайдено дубльованим одразу
+; у двох місцях: власний локальний (def fifth ...) у lib/narrate.my,
+; посимвольно ідентичний, і node-right у lib/persistent-map.my — та
+; сама операція, виписана вручну замість названа.
+(def fifth
+  (lambda (values)
+    (car (cdr (cdr (cdr (cdr values)))))))
+
 (def caar
   (lambda (values)
     (car (car values))))
