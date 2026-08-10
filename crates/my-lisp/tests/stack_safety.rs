@@ -52,6 +52,64 @@ fn core_lib_list_utilities_stay_stack_safe_on_a_long_list() {
     assert_eq!(result.value, Value::Number(50000.0, Exactness::Exact));
 }
 
+/// `scripts/symbol-table.my`'s own `sort-symbols`/`insert-sorted` (2026-08-10,
+/// requested by the fpga-lisp session for a canonical symbol-name -> id
+/// table) genuinely overflowed the Rust stack in a debug build at just 83
+/// elements — the naive `(cons (car sorted) (insert-sorted sym (cdr
+/// sorted)))` shape, not the tail-recursive one now in the file. Runs the
+/// real script's own logic against lib/core.my (83 symbols as of this
+/// writing) to guard against a future non-tail-recursive regression.
+/// Mirrors scripts/symbol-table.my's own collect/sort functions rather
+/// than running that file directly: the script's own tail calls
+/// `(read-file "lib/core.my")` with a path relative to the repo root,
+/// which isn't `cargo test`'s working directory (the crate root) --
+/// `include_str!` sidesteps that entirely by embedding the text at
+/// compile time. Keep this in sync with scripts/symbol-table.my if its
+/// collect-symbols-onto/insert-sorted/sort-symbols logic changes.
+#[test]
+fn symbol_table_sort_stays_stack_safe() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    let helpers = r#"
+        (def collect-symbols-onto
+          (lambda (expr acc)
+            (cond
+              ((symbol? expr) (cond ((member? expr acc) acc) (t (cons expr acc))))
+              ((atom expr) acc)
+              (t (collect-symbols-onto (cdr expr) (collect-symbols-onto (car expr) acc))))))
+        (def collect-all-symbols
+          (lambda (forms acc)
+            (cond
+              ((atom forms) acc)
+              (t (collect-all-symbols (cdr forms) (collect-symbols-onto (car forms) acc))))))
+        (def insert-sorted-onto
+          (lambda (sym before after)
+            (cond
+              ((atom after) (reverse-onto before (list sym)))
+              ((string<? (symbol->string sym) (symbol->string (car after)))
+               (reverse-onto before (cons sym after)))
+              (t (insert-sorted-onto sym (cons (car after) before) (cdr after))))))
+        (def insert-sorted (lambda (sym sorted) (insert-sorted-onto sym '() sorted)))
+        (def sort-symbols-onto
+          (lambda (remaining sorted)
+            (cond
+              ((atom remaining) sorted)
+              (t (sort-symbols-onto (cdr remaining) (insert-sorted (car remaining) sorted))))))
+        (def sort-symbols (lambda (symbols) (sort-symbols-onto symbols '())))
+    "#;
+    eval_program(helpers, &mut session).unwrap();
+
+    let core_forms_source = format!(
+        r#"(length (sort-symbols (collect-all-symbols (read-all {:?}) '())))"#,
+        include_str!("../../../lib/core.my")
+    );
+    let result = eval_program(&core_forms_source, &mut session).unwrap();
+    let Value::Number(count, _) = result.value else {
+        panic!("length should return a number");
+    };
+    assert!(count >= 80.0, "expected at least ~80 symbols in lib/core.my, got {count}");
+}
+
 #[test]
 fn improper_lists_do_not_overflow_stack() {
     let count = 150_000;
