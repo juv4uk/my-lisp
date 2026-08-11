@@ -60,7 +60,11 @@ fn allowed_processes(args: &[String]) -> Vec<String> {
 /// machine", matching what the stdio REPL already allows.
 /// One connection is served at a time against the same `Session` the file
 /// or stdio REPL would use, so state persists across reconnects the same
-/// way it persists across REPL lines.
+/// way it persists across REPL lines — and, since state is shared, so does
+/// anything one caller `def`s. Every expression is logged to stderr with
+/// its peer address so a shared mutation (or a broken result) can be
+/// traced back to whoever sent it — discovered the hard way after a
+/// caller redefined `+` and nothing recorded who.
 fn run_tcp_repl(port: u16, session: &mut Session) {
     let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, port)) {
         Ok(listener) => listener,
@@ -91,6 +95,7 @@ fn run_tcp_repl(port: u16, session: &mut Session) {
                     if trimmed.is_empty() {
                         continue;
                     }
+                    eprintln!("TCP REPL: {peer} > {trimmed}");
                     let response = match parse(trimmed) {
                         Ok(ast) => match eval_parsed_expressions(&ast, session) {
                             Ok(result) => {
