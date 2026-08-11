@@ -29,7 +29,9 @@
      (rust-toolchain-on-this-machine . (installed 1 97 1))
      (msvc-linker-status . working-after-disk-freed)
      (gnu-toolchain-status . flaky-shared-rustup-default-with-cml-use-msvc-instead)
-     (tcp-repl . (flag "--tcp[=PORT]" commit "1a9dd63" bind "127.0.0.1-only" verified manually))))
+     (tcp-repl . (flag "--tcp[=PORT]" commit "1a9dd63" bind "127.0.0.1-only"
+                   isolation-fix "c762a0c" logging "8c1631a"
+                   note "each connection gets its own fresh Environment::root(), not a shared mutable Session — a connection's def is invisible to every other connection; every expression logged to stderr with peer address"))))
    (fpga-lisp .
     ((role . hardware-implementation)
      (isa-contract . (0 2))
