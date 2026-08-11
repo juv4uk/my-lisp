@@ -52,6 +52,7 @@ This repository is the canonical Rust implementation:
 - [`lib/forward.my`](lib/forward.my) — forward-chaining inference with truth maintenance.
 - [`lib/knowledge.my`](lib/knowledge.my) — named, queryable knowledge modules.
 - [`lib/world.my`](lib/world.my) — navigable and branch-comparable immutable history, snapshot-local reasoning, atomic ingestion, and data-only exchange.
+- [`lib/content-store.my`](lib/content-store.my) — an immutable content-addressed store that deduplicates equal knowledge and World histories.
 - [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — controlled natural language, both directions.
 - [`lib/clips-import.my`](lib/clips-import.my) — imports real CLIPS `.clp` source files.
 
@@ -111,6 +112,7 @@ Rust надає лише те, що робить особливо добре —
 - [`lib/forward.my`](lib/forward.my) — forward-chaining висновування з truth maintenance.
 - [`lib/knowledge.my`](lib/knowledge.my) — іменовані, запитувані модулі знань.
 - [`lib/world.my`](lib/world.my) — навігована й порівнювана між гілками незмінна історія, snapshot-local reasoning, атомарне надходження та data-only обмін.
+- [`lib/content-store.my`](lib/content-store.my) — незмінне content-addressed сховище, що дедуплікує рівні знання та історії World.
 - [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — контрольована природна мова в обидва боки.
 - [`lib/clips-import.my`](lib/clips-import.my) — імпортує справжні CLIPS `.clp`-файли.
 
@@ -169,6 +171,7 @@ Dieses Repository ist die kanonische Rust-Implementierung:
 - [`lib/forward.my`](lib/forward.my) — Forward-Chaining-Inferenz mit Truth Maintenance.
 - [`lib/knowledge.my`](lib/knowledge.my) — benannte, abfragbare Wissensmodule.
 - [`lib/world.my`](lib/world.my) — navigierbare und zweigvergleichbare unveränderliche Geschichte, lokales Schließen, atomare Aufnahme und Datenaustausch.
+- [`lib/content-store.my`](lib/content-store.my) — ein unveränderlicher content-addressed Store, der gleiches Wissen und gleiche World-Geschichten dedupliziert.
 - [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — kontrollierte natürliche Sprache, beide Richtungen.
 - [`lib/clips-import.my`](lib/clips-import.my) — importiert echte CLIPS-`.clp`-Quelldateien.
 
