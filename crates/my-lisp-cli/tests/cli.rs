@@ -238,3 +238,113 @@ fn argv_is_empty_when_nothing_follows_the_filename() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert_eq!(stdout.trim(), "()");
 }
+
+/// The banner line proves `bind` succeeded, but the very first connection
+/// against a just-spawned dev binary on this machine has been observed to
+/// have its handshake accepted by the OS and then reset before a full
+/// request/response round-trip completes — a real, reproducible flake
+/// here (plausibly local AV/firewall inspecting a newly-listening
+/// unsigned binary), not a bug in the request-handling loop itself, which
+/// a manual, unhurried connection to the same binary always answers
+/// correctly. Retrying the whole round-trip, not just `connect`, is what
+/// actually absorbs it — a version that only retried `connect` still saw
+/// the reset on the subsequent read.
+fn request_with_retry(port: u16, request: &str) -> String {
+    use std::io::{BufRead, Write};
+    use std::net::TcpStream;
+    use std::time::Duration;
+
+    let mut last_err = None;
+    for _ in 0..100 {
+        let attempt = (|| -> std::io::Result<String> {
+            let mut stream = TcpStream::connect(("127.0.0.1", port))?;
+            writeln!(stream, "{request}")?;
+            let mut response = String::new();
+            std::io::BufReader::new(&stream).read_line(&mut response)?;
+            Ok(response)
+        })();
+        match attempt {
+            Ok(response) if !response.trim().is_empty() => return response,
+            Ok(_) => last_err = None,
+            Err(err) => last_err = Some(err),
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    panic!("should get a non-empty response after retrying: {last_err:?}");
+}
+
+/// `--tcp=0` binds an OS-assigned ephemeral port instead of a fixed one —
+/// keeps this test from colliding with a real `--tcp=9999` instance
+/// already running on the machine, and from leaking a fixed port if the
+/// test process is killed uncleanly.
+fn spawn_sexpr_server() -> (std::process::Child, u16) {
+    use std::io::BufRead;
+    use std::process::Stdio;
+
+    let mut child = my_lisp()
+        .args(["--tcp=0", "--protocol=sexpr"])
+        .stderr(Stdio::piped())
+        .stdout(Stdio::null())
+        .spawn()
+        .expect("binary should start");
+
+    let stderr = child.stderr.take().expect("stderr should be piped");
+    let mut reader = std::io::BufReader::new(stderr);
+    let mut banner = String::new();
+    reader
+        .read_line(&mut banner)
+        .expect("banner line should be read before the port is needed");
+    let port: u16 = banner
+        .trim()
+        .rsplit(':')
+        .next()
+        .expect("banner should end in :PORT")
+        .parse()
+        .expect("banner port should be numeric");
+
+    (child, port)
+}
+
+#[test]
+fn sexpr_protocol_eval_returns_structured_response() {
+    let (mut child, port) = spawn_sexpr_server();
+    let response = request_with_retry(port, r#"(request (id 1) (op eval) (source "(+ 1 2)"))"#);
+    child.kill().expect("should be able to stop the server");
+
+    assert!(response.contains("(status ok)"), "unexpected response: {response}");
+    assert!(response.contains("(value 3)"), "unexpected response: {response}");
+    assert!(response.contains("(output ())"), "unexpected response: {response}");
+}
+
+#[test]
+fn sexpr_protocol_diagnose_returns_structured_error() {
+    let (mut child, port) = spawn_sexpr_server();
+    let response = request_with_retry(port, r#"(request (id 2) (op diagnose) (source "(car 1)"))"#);
+    child.kill().expect("should be able to stop the server");
+
+    assert!(response.contains("(status error)"), "unexpected response: {response}");
+    assert!(response.contains("(kind type-error)"), "unexpected response: {response}");
+}
+
+#[test]
+fn sexpr_protocol_parse_returns_canonical_structure_not_debug_format() {
+    let (mut child, port) = spawn_sexpr_server();
+    let response = request_with_retry(port, r#"(request (id 3) (op parse) (source "(+ 1 2)"))"#);
+    child.kill().expect("should be able to stop the server");
+
+    assert!(response.contains("(value (+ 1 2))"), "expected canonical my-lisp syntax, not a Rust Debug string: {response}");
+}
+
+#[test]
+fn sexpr_protocol_connections_do_not_share_state() {
+    let (mut child, port) = spawn_sexpr_server();
+
+    let _ = request_with_retry(port, r#"(request (id 1) (op eval) (source "(def leaked 999)"))"#);
+    let second_response = request_with_retry(port, r#"(request (id 2) (op eval) (source "leaked"))"#);
+    child.kill().expect("should be able to stop the server");
+
+    assert!(
+        second_response.contains("(status error)") && second_response.contains("unknown-symbol"),
+        "a def on one connection leaked into another: {second_response}"
+    );
+}

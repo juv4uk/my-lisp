@@ -167,22 +167,32 @@ fn dotted_alist_lookup(alist: &Value, key: &str) -> Option<Value> {
     })
 }
 
-fn ok_response(id: &Value, value: Value) -> Value {
+/// `output` carries every `print`/`println`-style side-effect line the
+/// evaluated expression produced, in order — dropping it (the first cut
+/// of this protocol did) silently discards real program output, which is
+/// exactly the "optimistic" half-truth this protocol exists to prevent.
+fn ok_response(id: &Value, value: Value, output: &[String], contract_version: &Value) -> Value {
     Value::list([
         Value::Symbol("response".into()),
         Value::list([Value::Symbol("id".into()), id.clone()]),
         Value::list([Value::Symbol("status".into()), Value::Symbol("ok".into())]),
         Value::list([Value::Symbol("value".into()), value]),
+        Value::list([
+            Value::Symbol("output".into()),
+            Value::list(output.iter().map(|line| Value::String(line.as_str().into()))),
+        ]),
+        Value::list([Value::Symbol("contract-version".into()), contract_version.clone()]),
     ])
 }
 
-fn error_response(id: &Value, kind: &str, message: &str) -> Value {
+fn error_response(id: &Value, kind: &str, message: &str, contract_version: &Value) -> Value {
     Value::list([
         Value::Symbol("response".into()),
         Value::list([Value::Symbol("id".into()), id.clone()]),
         Value::list([Value::Symbol("status".into()), Value::Symbol("error".into())]),
         Value::list([Value::Symbol("kind".into()), Value::Symbol(kind.into())]),
         Value::list([Value::Symbol("message".into()), Value::String(message.into())]),
+        Value::list([Value::Symbol("contract-version".into()), contract_version.clone()]),
     ])
 }
 
@@ -258,7 +268,7 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_ve
                     }) {
                         Some(value) => value,
                         None => {
-                            let resp = error_response(&Value::Nil, "parse-error", "request envelope is not a valid s-expression");
+                            let resp = error_response(&Value::Nil, "parse-error", "request envelope is not a valid s-expression", &contract_version);
                             let _ = writeln!(stream, "{resp}");
                             continue;
                         }
@@ -291,28 +301,41 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_ve
                     }
 
                     let response = match op.as_deref() {
-                        Some("contract-version") => ok_response(&id, contract_version.clone()),
+                        Some("contract-version") => ok_response(&id, contract_version.clone(), &[], &contract_version),
+                        // `parse` renders the canonical structure via the same
+                        // `quote`-and-print path the request envelope itself
+                        // uses, not Rust's `{:?}` — the caller gets my-lisp
+                        // syntax back, not this CLI's internal AST debug
+                        // format. Limited to a single top-level form, the
+                        // same arity `quote` itself has.
                         Some("parse") => match &source {
-                            None => error_response(&id, "invalid-form", "op `parse` requires a `source` field"),
+                            None => error_response(&id, "invalid-form", "op `parse` requires a `source` field", &contract_version),
                             Some(src) => match parse(src) {
-                                Ok(ast) => ok_response(&id, Value::String(
-                                    ast.iter().map(|e| format!("{e:?}")).collect::<Vec<_>>().join(" ").into(),
-                                )),
-                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message),
+                                Ok(ast) if ast.len() == 1 => {
+                                    let quoted_src = format!("(quote {src})");
+                                    match parse(&quoted_src).ok().and_then(|q| {
+                                        eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
+                                    }) {
+                                        Some(structure) => ok_response(&id, structure, &[], &contract_version),
+                                        None => error_response(&id, "parse-error", "source parsed but could not be rendered as data", &contract_version),
+                                    }
+                                }
+                                Ok(_) => error_response(&id, "invalid-form", "op `parse` accepts exactly one top-level form", &contract_version),
+                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
                             },
                         },
                         Some(op_name @ ("eval" | "diagnose")) => match &source {
-                            None => error_response(&id, "invalid-form", &format!("op `{op_name}` requires a `source` field")),
+                            None => error_response(&id, "invalid-form", &format!("op `{op_name}` requires a `source` field"), &contract_version),
                             Some(src) => match parse(src) {
                                 Ok(ast) => match eval_parsed_expressions(&ast, &mut session) {
-                                    Ok(result) => ok_response(&id, result.value),
-                                    Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message),
+                                    Ok(result) => ok_response(&id, result.value, &result.output, &contract_version),
+                                    Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
                                 },
-                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message),
+                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
                             },
                         },
-                        Some(other) => error_response(&id, "invalid-form", &format!("unknown op `{other}`")),
-                        None => error_response(&id, "invalid-form", "request is missing an `op` field"),
+                        Some(other) => error_response(&id, "invalid-form", &format!("unknown op `{other}`"), &contract_version),
+                        None => error_response(&id, "invalid-form", "request is missing an `op` field", &contract_version),
                     };
 
                     if writeln!(stream, "{response}").is_err() {
