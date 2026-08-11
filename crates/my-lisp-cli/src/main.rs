@@ -58,14 +58,20 @@ fn allowed_processes(args: &[String]) -> Vec<String> {
 /// `process-run` if `--allow-process` was also passed. Loopback-only keeps
 /// that blast radius to "processes already running as this user on this
 /// machine", matching what the stdio REPL already allows.
-/// One connection is served at a time against the same `Session` the file
-/// or stdio REPL would use, so state persists across reconnects the same
-/// way it persists across REPL lines — and, since state is shared, so does
-/// anything one caller `def`s. Every expression is logged to stderr with
-/// its peer address so a shared mutation (or a broken result) can be
-/// traced back to whoever sent it — discovered the hard way after a
-/// caller redefined `+` and nothing recorded who.
-fn run_tcp_repl(port: u16, session: &mut Session) {
+/// Each connection gets its own fresh `Session` (core.my reloaded from
+/// scratch) rather than sharing one across every caller — tried the shared
+/// version first, and it let one connection's `def` (accidental or not)
+/// corrupt every other caller's environment with no way to trace it back.
+/// `Environment` clones cheaply (`Rc<RefCell<Frame>>`) but that's exactly
+/// the problem: a clone shares the underlying frame, it doesn't fork it,
+/// so cloning an existing `Session` would not have fixed this — a genuinely
+/// new `Environment::root()` per connection is what isolates state.
+/// State does NOT persist across reconnects within the same connection is
+/// fine (a single connection's lines share state, same as one REPL
+/// session), but two different connections never see each other's `def`s.
+/// Every expression is still logged to stderr with its peer address, for
+/// the same accountability reason the isolation itself was added for.
+fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
     let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, port)) {
         Ok(listener) => listener,
         Err(err) => {
@@ -84,6 +90,16 @@ fn run_tcp_repl(port: u16, session: &mut Session) {
         let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_else(|_| "?".into());
         eprintln!("TCP REPL: connection from {peer}");
 
+        let environment = if allowed.is_empty() {
+            Environment::root()
+        } else {
+            Environment::root().with_process_allowlist(allowed.to_vec())
+        };
+        let mut session = Session { environment };
+        if let Ok(core_ast) = parse(core_lib) {
+            let _ = eval_parsed_expressions(&core_ast, &mut session);
+        }
+
         let mut reader = BufReader::new(stream.try_clone().expect("clone TCP stream"));
         let mut line = String::new();
         loop {
@@ -97,7 +113,7 @@ fn run_tcp_repl(port: u16, session: &mut Session) {
                     }
                     eprintln!("TCP REPL: {peer} > {trimmed}");
                     let response = match parse(trimmed) {
-                        Ok(ast) => match eval_parsed_expressions(&ast, session) {
+                        Ok(ast) => match eval_parsed_expressions(&ast, &mut session) {
                             Ok(result) => {
                                 let mut out = String::new();
                                 for line in result.output {
@@ -129,6 +145,7 @@ fn main() {
         .into_iter()
         .filter(|arg| !arg.starts_with("--allow-process="))
         .collect();
+    let allowed_for_tcp = allowed.clone();
     let environment = if allowed.is_empty() {
         Environment::root()
     } else {
@@ -166,7 +183,7 @@ fn main() {
                 .strip_prefix("--tcp=")
                 .and_then(|p| p.parse::<u16>().ok())
                 .unwrap_or(9999);
-            run_tcp_repl(port, &mut session);
+            run_tcp_repl(port, core_lib, &allowed_for_tcp);
             return;
         }
 
