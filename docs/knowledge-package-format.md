@@ -22,6 +22,8 @@ never be loaded as executable source.
 then delegate to the same atomic acceptance policy as `advise-all`. Either all
 clauses enter the journal or none do. `make-knowledge-package` constructs the
 canonical in-memory shape for adapters that produce data directly.
+`write-knowledge-package` performs the other direction: it validates a module
+and clause batch, serializes the canonical envelope, and writes one expression.
 
 ## Українська
 
@@ -35,6 +37,8 @@ Clause використовують чинний формат `lib/reason.my` і
 передають її тій самій атомарній політиці, що й `advise-all`: журнал отримує
 або всі clause, або жодної. `make-knowledge-package` створює канонічну форму в
 пам'яті для адаптерів інших проєктів.
+`write-knowledge-package` виконує зворотний напрям: перевіряє пакет і записує
+канонічну оболонку одним S-виразом.
 
 ## Deutsch
 
@@ -49,3 +53,5 @@ Datei wird als Daten gelesen und niemals als ausführbarer Quelltext geladen.
 verwenden danach dieselbe atomare Annahmepolitik wie `advise-all`: entweder
 gelangen alle Clauses ins Journal oder keine. `make-knowledge-package` erzeugt
 die kanonische Speicherform für Adapter anderer Projekte.
+`write-knowledge-package` übernimmt die Gegenrichtung: prüfen und die
+kanonische Hülle als einen S-Ausdruck schreiben.

@@ -146,6 +146,9 @@ fn evaluate_list(
         Some("princ") => {
             special_forms::evaluate_princ(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("write-to-string") => {
+            special_forms::evaluate_write_to_string(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("read") => {
             special_forms::evaluate_read(arguments, environment, span).map(EvalStep::Value)
         }

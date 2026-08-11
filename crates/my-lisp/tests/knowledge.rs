@@ -523,3 +523,28 @@ fn import_knowledge_file_reads_the_data_only_example() {
     "#;
     assert_eq!(eval_knowledge(source), "(accepted (((x . 0) . earth)))");
 }
+
+#[test]
+fn write_knowledge_package_round_trips_through_file_import() {
+    let path = std::env::temp_dir().join("my-lisp-knowledge-package.my");
+    let path_str = path.to_str().unwrap().replace('\\', "/");
+    let source = format!(r#"
+        (write-knowledge-package "{path_str}" 'exchange
+          '(((planet earth))
+            ((has-mass (var x)) (planet (var x)))))
+        (list (car (import-knowledge-file "{path_str}"))
+              (car (car (reason-in 'exchange '(has-mass earth)))))
+    "#);
+    assert_eq!(eval_knowledge(&source), "(accepted (((x . 0) . earth)))");
+    std::fs::remove_file(path).ok();
+}
+
+#[test]
+fn write_knowledge_package_rejects_invalid_data_before_creating_a_file() {
+    let path = std::env::temp_dir().join("my-lisp-invalid-package.my");
+    std::fs::remove_file(&path).ok();
+    let path_str = path.to_str().unwrap().replace('\\', "/");
+    let source = format!(r#"(write-knowledge-package "{path_str}" 'exchange '())"#);
+    assert_eq!(eval_knowledge(&source), "(rejected (reason invalid-batch) (input ()))");
+    assert!(!path.exists());
+}

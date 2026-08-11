@@ -66,6 +66,21 @@ pub(super) fn evaluate_princ(
     Ok(value)
 }
 
+/// Returns the same canonical, read-back-safe representation used by `print`
+/// without touching the output transcript. This is the minimal bridge needed
+/// to compose structured Lisp data with `write-file` and `tcp-write`.
+/// Повертає канонічне представлення `print`, придатне для `read`, без виводу.
+/// Gibt die kanonische, wieder einlesbare `print`-Darstellung ohne Ausgabe zurück.
+pub(super) fn evaluate_write_to_string(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("write-to-string", arguments, 1, span)?;
+    let value = evaluate(&arguments[0], environment)?;
+    Ok(Value::String(Rc::from(value.to_string())))
+}
+
 /// `read` is McCarthy's original reader primitive: it turns text into one
 /// s-expression of *data*, the same way `'expr` does, without evaluating it —
 /// `(eval (read "(+ 1 2)"))` is the read/eval loop written out by hand, in

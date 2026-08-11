@@ -577,6 +577,26 @@
   (list 'import-knowledge-package
         (list 'read (list 'read-file path))))
 
+;; Export is deliberately a plain function: unlike import it does not mutate
+;; the knowledge journal. It validates the module and clauses, serializes the
+;; canonical package with `write-to-string`, and writes exactly one expression.
+;; Експорт не змінює журнал: перевіряє дані, канонічно серіалізує й записує.
+;; Export verändert das Journal nicht: prüfen, kanonisch serialisieren, schreiben.
+(def write-knowledge-package
+  (lambda (path module-name clauses)
+    (cond
+      ((eq (symbol? module-name) '())
+       (list 'rejected (list 'reason 'invalid-module) (list 'input module-name)))
+      ((atom clauses)
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-proper-list? clauses) '())
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-clauses-valid? clauses) '())
+       (list 'rejected (list 'reason 'invalid-clause) (list 'input clauses)))
+      (t
+       (let ((package (make-knowledge-package module-name clauses)))
+         (second (list (write-file path (write-to-string package)) package)))))))
+
 ;; --- "atom as concept entry point" ------------------------------------
 ;; A bare symbol like `earth` doesn't mean anything by itself — its meaning
 ;; comes from the facts we've recorded around it. `describe` turns a symbol

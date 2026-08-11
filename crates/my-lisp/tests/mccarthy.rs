@@ -1008,6 +1008,18 @@ fn write_file_then_read_file_round_trips_the_same_content() {
 }
 
 #[test]
+fn write_to_string_round_trips_structured_data_without_printing() {
+    let mut session = Session::default();
+    let result = eval_program(r#"(write-to-string '(package "radio" 3/2))"#, &mut session)
+        .expect("structured data should serialize");
+    assert_eq!(result.value, Value::String(r#"(package "radio" 3/2)"#.into()));
+    assert!(result.output.is_empty());
+    let reread = eval_program(r#"(read (write-to-string '(package "radio" 3/2)))"#, &mut session)
+        .expect("serialized data should read back");
+    assert_eq!(reread.value.to_string(), r#"(package "radio" 3/2)"#);
+}
+
+#[test]
 fn write_file_overwrites_rather_than_appends() {
     let path = std::env::temp_dir().join("my-lisp-write-file-overwrite.txt");
     // Forward slashes only: my-lisp's string reader treats an unrecognized
