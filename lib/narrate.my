@@ -83,3 +83,28 @@
       ((eq (provenance-source prov) 'fact) (narrate-fact (provenance-rule prov)))
       (t (append (narrate-fact (provenance-rule prov))
                   (cons 'because (narrate-derivation (provenance-derived-from prov))))))))
+
+; `narrate-answer` grounds the conclusion with the caller's actual query while
+; retaining the proof's real premises. A renamed rule head can contain
+; internal `(var (name . depth))` placeholders; the successful ground query
+; is the honest user-facing answer, and the proof children remain the honest
+; explanation of why it holds.
+;
+; `narrate-answer` конкретизує висновок фактичним запитом викликача, але
+; зберігає справжні передумови доведення. Перейменована голова правила може
+; містити внутрішні плейсхолдери `(var (name . depth))`; успішний конкретний
+; запит є чесною відповіддю для користувача, а дочірні вузли доведення —
+; чесним поясненням, чому вона істинна.
+;
+; `narrate-answer` konkretisiert die Schlussfolgerung mit der tatsächlichen
+; Anfrage des Aufrufers und behält die echten Beweisprämissen bei. Ein
+; umbenannter Regelkopf kann interne `(var (name . depth))`-Platzhalter
+; enthalten; die erfolgreiche konkrete Anfrage ist die ehrliche Antwort für
+; den Benutzer, die Beweiskinder bleiben die ehrliche Begründung dafür.
+(def narrate-answer
+  (lambda (goal proof)
+    (let ((derivations (provenance-derived-from (provenance proof))))
+      (cond
+        ((atom derivations) (narrate-fact goal))
+        (t (append (narrate-fact goal)
+                   (cons 'because (narrate-derivation derivations))))))))

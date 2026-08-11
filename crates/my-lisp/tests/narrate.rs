@@ -117,3 +117,18 @@ fn assert_understand_and_narrate_are_direct_inverses_for_the_is_a_shape() {
     "#;
     assert_eq!(eval_narrate(source), "t");
 }
+
+#[test]
+fn narrate_answer_uses_the_ground_query_and_the_real_proof_premises() {
+    let source = r#"
+        (let* ((rules '(((has (var x) mass) (planet (var x)))
+                        ((planet earth))))
+               (goal '(has earth mass))
+               (proof (second (car (reason goal rules)))))
+          (narrate-answer goal proof))
+    "#;
+    assert_eq!(
+        eval_narrate(source),
+        "(earth has mass because earth is a planet)"
+    );
+}
