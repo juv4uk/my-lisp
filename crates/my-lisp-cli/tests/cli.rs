@@ -313,17 +313,27 @@ fn spawn_sexpr_server() -> (std::process::Child, u16) {
 // retry budget tried (up to 100 retries * 100ms), for the *entire*
 // duration of the test binary's run — that shape (never once succeeds,
 // not "occasionally succeeds") points at something structurally blocking
-// inbound connections to a freshly spawned, freshly compiled, unsigned
-// dev binary on this specific machine — plausibly Windows Firewall/
-// Defender holding a new listener pending an interactive prompt that
-// never appears in a non-interactive test run — not a bug in the
+// inbound connections from this specific compiled test binary.
+//
+// Root cause is NOT Windows Firewall/Defender, despite an earlier version
+// of this comment guessing that: two independent sessions (2026-08-12)
+// reproduced the identical 100%-reproducible ConnectionRefused inside
+// WSL2/Linux, where no such AV/firewall applies. A minimal standalone
+// repro crate — same child binary, same Command::spawn/stderr-banner/
+// retry-connect pattern, run both outside and inside `cargo test`, from
+// both a native Linux path and the same `/mnt/c/...` DrvFs path this repo
+// lives on — always succeeds on the first attempt. The failure is
+// isolated to something specific to this test binary
+// (`my-lisp-cli/tests/cli.rs`) itself, not the OS, not WSL/DrvFs, and not
+// `cargo test`/libtest in general (the minimal repro ran under libtest
+// too, fine). True root cause is still open. Not a bug in the
 // request-handling loop itself, which a manual, unhurried connection to
 // the same binary answers correctly every time. Run explicitly with
 // `cargo test -- --ignored` on a machine without this constraint (CI,
 // or after resolving it locally) to get real pass/fail signal from them.
 
 #[test]
-#[ignore = "ConnectionRefused for the entire test run on this dev machine, plausibly Windows Firewall/Defender blocking a fresh unsigned binary's listener outside an interactive session — see the block comment above. Functionality is independently verified manually."]
+#[ignore = "ConnectionRefused for the entire test run in this specific test binary; root cause unknown but confirmed OS-independent (reproduced under WSL2/Linux, not just Windows) — see the block comment above. Functionality is independently verified manually."]
 fn sexpr_protocol_eval_returns_structured_response() {
     let (mut child, port) = spawn_sexpr_server();
     let response = request_with_retry(port, r#"(request (id 1) (op eval) (source "(+ 1 2)"))"#);
