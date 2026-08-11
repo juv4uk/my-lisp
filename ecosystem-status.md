@@ -4,7 +4,7 @@ Persisted status snapshot for the three-repository ecosystem (`my-lisp`, `fpga-l
 
 **Not the contract.** The actual compatibility contract lives in the versioned files: `language-contract.my` (this repo), `ISA.md` (`fpga-lisp`, not yet created), `compatibility.my` (`cml`). This file is a snapshot for humans/sessions to orient quickly; if it disagrees with those files, the versioned files win.
 
-Last synced: 2026-08-11, via direct cross-session messages with both other repos' active CCD sessions.
+Last synced: 2026-08-11, via direct cross-session messages with all active CCD sessions in the ecosystem (`fpga-lisp`, `cml`, and — newly joined — `my-idea`).
 
 ## my-lisp (this repo)
 
@@ -12,6 +12,8 @@ Last synced: 2026-08-11, via direct cross-session messages with both other repos
 - Exactness model (`Exactness::Exact`/`Inexact` as a value property): fully implemented, stable, no further semantic change planned.
 - `equal?` (`lib/core.my`) and `defmacro` (Rust bootstrap kernel): both long-stable, nothing changing.
 - Not currently blocking either other repo.
+- Rust toolchain (`rustc`/`cargo` 1.97.1) newly installed on this machine (2026-08-11) — was previously missing entirely, which had also blocked `cml`'s own local verification. MSVC linker (Visual Studio Build Tools, C++ workload) install in progress at time of writing; once complete, `cargo test --workspace` becomes runnable here for the first time this session.
+- New session joined the ecosystem: **`my-idea`** (the IDE project `my-lisp` was originally extracted from). Briefed on current state 2026-08-11. See `docs/my-idea-architecture-review.md` for a full architecture review the user wrote for `my-idea` — most relevant cross-repo point: `my-idea` depends on `my-lisp` through two independent paths (Cargo git dependency + git submodule for WASM) that are only manually kept in sync, a real drift risk once a fourth repository is in the loop.
 
 ## fpga-lisp
 
@@ -26,13 +28,16 @@ Last synced: 2026-08-11, via direct cross-session messages with both other repos
 
 - `compatibility.my`: pins language-contract + ISA versions and tested SHAs (details not yet re-confirmed in this sync round).
 - Tier-1 fixtures: **29/34** passing as of the last confirmed figure (2026-08-11); `let` now lowers to an immediately-invoked lambda, no new FPGA primitive needed.
-- Remaining gaps: `equal?`, `defmacro`, three exactness/float fixtures — confirmed to be test-harness *filters* (`tests/conformance_test.rs:239-251`), not adapter changes. The compile→assemble→simulate adapter is already shared/unchanged across fixtures — First Blind Fixture's structural criterion is already met; what's left is removing the filter lines and adding compilation support for those forms.
+- `equal?`: implemented (2026-08-11) as a compiled native subroutine (`src/compiler.rs`, `cml_equal`) — iterative worklist over a shared stack register (R11), not recursion, so it does **not** depend on fpga-lisp's `letrec` blocker. Skip removed from `tests/conformance_test.rs`. **Status: ready for review, not verified/merged** — no Rust toolchain was available in that session to run `cargo test` locally; blocked on machine verification.
+- Remaining gaps: `defmacro` (next — needs a macro-expansion pass before compilation, larger effort), three exactness/float fixtures. Confirmed: the `equal?`/`defmacro`/exactness skips are test-harness *filters* (`tests/conformance_test.rs:239-251`), not adapter changes — the compile→assemble→simulate adapter is already shared/unchanged across fixtures, so First Blind Fixture's structural criterion is already met; what's left is removing filter lines and adding compilation support per form.
 - HEAP/RESULT decode format: confirmed to match fpga-lisp's `tb_cml_e2e.sv` output.
-- Next after current work: pinned interface CI (`docs/ecosystem-roadmap.md` item 7), realistic once equal?/defmacro/exactness lands and fpga-lisp's `letrec` blocker clears.
+- **CI status: none.** No `.github/workflows` exists in `cml` at all. Raised the question of standing up pinned interface CI (`docs/ecosystem-roadmap.md` item 7) earlier than planned, specifically because it's now the only way to machine-verify `equal?`/`defmacro`/exactness work — but declined to create CI/CD infrastructure unilaterally since it affects all three repos. **Awaiting user decision** (asked 2026-08-11, not yet answered).
+- Next after current work: pinned interface CI, realistic once equal?/defmacro/exactness lands and fpga-lisp's `letrec` blocker clears.
 
-## Open ecosystem-wide blocker
+## Open ecosystem-wide blockers
 
-`letrec`/self-referential recursion in fpga-lisp closures — the one item every other piece of remaining work (cml's Tier-3-adjacent fixtures, pinned CI) is waiting behind, directly or indirectly.
+1. `letrec`/self-referential recursion in fpga-lisp closures — blocks `cml`'s Tier-3-adjacent fixtures indirectly and fpga-lisp's own `core.my` bootstrap directly.
+2. No CI anywhere in the ecosystem yet — `cml`'s `equal?` work (and any future compiler change) has no machine-verified confirmation path on this developer's machine until either a Rust+MSVC toolchain is fully working locally, or pinned interface CI exists. User decision pending on standing up CI now vs. later.
 
 ## How to refresh this file
 
