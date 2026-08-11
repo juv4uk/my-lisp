@@ -99,7 +99,7 @@
    (why . "user's own assessment after reviewing this session's history: cross-agent coordination (AGENTS.md, NOTE-*, status docs) is supporting infrastructure, not the product — risk of 'documentation about documentation' commits crowding out actual product work. This is the concrete next product step, not another status file")
    (per-repo .
     ((my-lisp . "expose the interpreter result for `length` on a fixed input as the oracle value — this is already what tests/fixtures/conformance.my's tier-1 fixtures are for; no new work needed here unless cml/fpga-lisp need a different entry point")
-     (cml . "compile that same `length` fixture to fpga-lisp ISA on a pinned my-lisp SHA, keep the binary/assembly reproducible")
+     (cml . "compile that same `length` fixture to fpga-lisp ISA on a pinned my-lisp SHA, keep the binary/assembly reproducible — scoped by cml itself: the compiler currently has zero support for named self/mutually-recursive `def` (only lambda/let/cond/primitives/quote), so this milestone requires implementing that first, automating what fpga-lisp hand-assembled for M28/M29 (placeholder-pair + SETCDR backpatch), not just pointing the existing compiler at a new fixture")
      (fpga-lisp . "run the compiled binary on real iverilog, decode the result structurally (not raw register dump)")
      (my-idea . "one panel: source -> compiled instructions -> execution -> decoded result -> oracle match, PASS/FAIL, not a text dump")))
    (anti-pattern-to-avoid . "no more NOTE-*.md proliferation or 'agent X replied to agent Y' commits — coordinate this milestone through this one field and normal commits that actually touch code")))
