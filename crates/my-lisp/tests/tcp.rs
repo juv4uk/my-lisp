@@ -212,6 +212,57 @@ fn receive_knowledge_package_drains_chunks_and_atomically_imports() {
 }
 
 #[test]
+fn framed_exchange_returns_an_accepted_receipt_to_the_sender() {
+    let port = free_port();
+    let server = thread::spawn(move || {
+        let mut session = Session::default();
+        load_knowledge(&mut session);
+        let source = format!(r#"
+            (def listener (tcp-listen {port}))
+            (def connection (tcp-accept listener))
+            (accept-knowledge-exchange connection)
+        "#);
+        eval_program(&source, &mut session).unwrap().value.to_string()
+    });
+    let mut client = Session::default();
+    load_knowledge(&mut client);
+    let source = format!(r#"
+        (def connection (tcp-connect "127.0.0.1" {port}))
+        (exchange-knowledge-package connection 'exchange '(((planet earth))))
+    "#);
+    let receipt = eval_client_with_retry(&source, &mut client).unwrap();
+    assert_eq!(receipt.value.to_string(),
+               "(accepted (module exchange) (knowledge (((planet earth)))))");
+    assert_eq!(server.join().unwrap(), receipt.value.to_string());
+}
+
+#[test]
+fn framed_exchange_returns_conflict_and_does_not_install_the_new_fact() {
+    let port = free_port();
+    let server = thread::spawn(move || {
+        let mut session = Session::default();
+        load_knowledge(&mut session);
+        let source = format!(r#"
+            (defmodule exchange '(((not (planet pluto)))))
+            (def listener (tcp-listen {port}))
+            (def connection (tcp-accept listener))
+            (def decision (accept-knowledge-exchange connection))
+            (list (car decision) (reason-in 'exchange '(planet pluto)))
+        "#);
+        eval_program(&source, &mut session).unwrap().value.to_string()
+    });
+    let mut client = Session::default();
+    load_knowledge(&mut client);
+    let source = format!(r#"
+        (def connection (tcp-connect "127.0.0.1" {port}))
+        (exchange-knowledge-package connection 'exchange '(((planet pluto))))
+    "#);
+    let receipt = eval_client_with_retry(&source, &mut client).unwrap();
+    assert_eq!(receipt.value.to_string().split_whitespace().next(), Some("(conflict"));
+    assert_eq!(server.join().unwrap(), "(conflict ())");
+}
+
+#[test]
 fn tcp_read_returns_an_empty_string_on_a_closed_connection() {
     let port = free_port();
 

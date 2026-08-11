@@ -635,6 +635,76 @@
                     (list 'read (list 'tcp-read-to-eof connection "")))
               (list 'import-knowledge-package '*received-knowledge-package*))))
 
+;; A newline-framed request/receipt protocol keeps the connection open long
+;; enough for the receiver to answer with the structured import decision.
+;; `write-to-string` escapes newlines inside string values, so a literal LF is
+;; an unambiguous frame boundary. One request and one receipt per connection
+;; means no unread suffix has to survive between calls.
+;; Протокол із LF-frame лишає з'єднання відкритим для структурованої квитанції.
+;; LF-gerahmtes Protokoll hält die Verbindung für eine strukturierte Quittung offen.
+(def string-through-line
+  (lambda (text accumulated)
+    (cond
+      ((string-empty? text) '())
+      ((eq (string-first text) "\n") (list accumulated))
+      (t (string-through-line
+           (string-rest text)
+           (string-append accumulated (string-first text)))))))
+
+(def tcp-read-frame
+  (lambda (connection accumulated)
+    (let ((chunk (tcp-read connection)))
+      (cond
+        ((string-empty? chunk) '())
+        (t
+         (let ((line (string-through-line
+                       (string-append accumulated chunk) "")))
+           (cond
+             ((atom line)
+              (tcp-read-frame connection (string-append accumulated chunk)))
+             (t (car line)))))))))
+
+(def exchange-knowledge-package
+  (lambda (connection module-name clauses)
+    (cond
+      ((eq (symbol? module-name) '())
+       (list 'rejected (list 'reason 'invalid-module) (list 'input module-name)))
+      ((atom clauses)
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-proper-list? clauses) '())
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-clauses-valid? clauses) '())
+       (list 'rejected (list 'reason 'invalid-clause) (list 'input clauses)))
+      (t
+       (let ((package (make-knowledge-package module-name clauses)))
+         (third
+           (list
+             (tcp-write connection
+                        (string-append (write-to-string package) "\n"))
+             (def *knowledge-receipt-text* (tcp-read-frame connection ""))
+             (let ((receipt (read *knowledge-receipt-text*)))
+               (second (list (tcp-close connection) receipt))))))))))
+
+(defmacro accept-knowledge-exchange (connection)
+  (list 'second
+        (list 'list
+              (list 'def '*received-knowledge-package*
+                    (list 'read (list 'tcp-read-frame connection "")))
+              (list 'let
+                    (list (list 'decision
+                                (list 'import-knowledge-package
+                                      '*received-knowledge-package*)))
+                    (list 'second
+                          (list 'list
+                                (list 'tcp-write connection
+                                      (list 'string-append
+                                            (list 'write-to-string 'decision)
+                                            "\n"))
+                                (list 'second
+                                      (list 'list
+                                            (list 'tcp-close connection)
+                                            'decision))))))))
+
 ;; --- "atom as concept entry point" ------------------------------------
 ;; A bare symbol like `earth` doesn't mean anything by itself — its meaning
 ;; comes from the facts we've recorded around it. `describe` turns a symbol

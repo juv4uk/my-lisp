@@ -30,6 +30,11 @@ For process-to-process transport, `send-knowledge-package` and
 unambiguous frame boundary. Receivers drain all chunks before `read`; received
 data is validated and imported, never evaluated.
 
+When the sender needs confirmation, `exchange-knowledge-package` and
+`accept-knowledge-exchange` use LF-framed canonical expressions and return the
+receiver's actual structured `accepted`/`rejected`/`conflict` decision. Literal
+newlines inside values are escaped by `write-to-string`, so framing is stable.
+
 ## Українська
 
 Міжпроєктний формат — один data-only S-вираз із обов'язковими полями `format`,
@@ -47,6 +52,9 @@ Clause використовують чинний формат `lib/reason.my` і
 Для обміну між процесами `send-knowledge-package`/`receive-knowledge-package`
 передають один пакет на TCP-з'єднання з EOF як однозначною межею. Дані
 читаються, перевіряються та імпортуються, але ніколи не виконуються.
+Коли потрібне підтвердження, `exchange-knowledge-package` і
+`accept-knowledge-exchange` повертають фактичне структуроване рішення receiver-а
+через LF-framed канонічні S-вирази.
 
 ## Deutsch
 
@@ -66,3 +74,6 @@ kanonische Hülle als einen S-Ausdruck schreiben.
 Für Prozesse übertragen `send-knowledge-package`/`receive-knowledge-package`
 genau ein Paket pro TCP-Verbindung mit EOF als eindeutiger Grenze. Empfangene
 Daten werden gelesen, geprüft und importiert, niemals ausgeführt.
+Wenn eine Bestätigung nötig ist, liefern `exchange-knowledge-package` und
+`accept-knowledge-exchange` die tatsächliche strukturierte Entscheidung des
+Empfängers über LF-gerahmte kanonische S-Ausdrücke zurück.
