@@ -93,5 +93,15 @@
     "fpga-lisp's M28 (447ee0e) was reported manually-verified-passing but its first real iverilog run returns the param symbol instead of FIXNUM 3 — a lesson that manual trace is not a substitute for the simulator, applies equally to any 'verified by inspection' claim from any repo in this ecosystem")))
  (pending-user-decisions .
   ((cml-ci-after-the-fact . "accept cml's unilateral CI creation, or have it reverted?")))
+ (next-milestone .
+  ((name . pinned-end-to-end-length)
+   (goal . "one real, non-trivial my-lisp program (length, not a single CAR) proven identical end-to-end: my-lisp interpreter result == cml-compiled fpga-lisp result, on a pinned SHA triple, with the comparison itself automated (not a manually-eyeballed register dump) and the result surfaced as evidence in my-idea, not just a green CI badge")
+   (why . "user's own assessment after reviewing this session's history: cross-agent coordination (AGENTS.md, NOTE-*, status docs) is supporting infrastructure, not the product — risk of 'documentation about documentation' commits crowding out actual product work. This is the concrete next product step, not another status file")
+   (per-repo .
+    ((my-lisp . "expose the interpreter result for `length` on a fixed input as the oracle value — this is already what tests/fixtures/conformance.my's tier-1 fixtures are for; no new work needed here unless cml/fpga-lisp need a different entry point")
+     (cml . "compile that same `length` fixture to fpga-lisp ISA on a pinned my-lisp SHA, keep the binary/assembly reproducible")
+     (fpga-lisp . "run the compiled binary on real iverilog, decode the result structurally (not raw register dump)")
+     (my-idea . "one panel: source -> compiled instructions -> execution -> decoded result -> oracle match, PASS/FAIL, not a text dump")))
+   (anti-pattern-to-avoid . "no more NOTE-*.md proliferation or 'agent X replied to agent Y' commits — coordinate this milestone through this one field and normal commits that actually touch code")))
  (how-to-refresh .
   "Ask the four-point status request from docs/ecosystem-sync.md via the CCD session-management message tool, then hand-update this file's relevant repositories/open-blockers entries. Keep docs/ecosystem-sync.md and ecosystem-status.md's prose in sync with this file's facts."))
