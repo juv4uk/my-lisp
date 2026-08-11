@@ -195,6 +195,33 @@
                         (world-journal world))
                 (world-metadata world))))
 
+;; Once `lib/world.my` is loaded, the legacy `defmodule` surface becomes a
+;; thin compatibility wrapper over the explicit World transition. It rebuilds
+;; only the legacy journal binding from the returned world, so existing
+;; `reason-in`/`forward-in` callers keep exactly their old contract while the
+;; write semantics now have one implementation: `world-tell-all`. The wrapper
+;; can disappear after the remaining global writers migrate.
+;;
+;; Після завантаження `lib/world.my` старий `defmodule` стає тонкою сумісною
+;; обгорткою над явним переходом World. Із поверненого світу він перевизначає
+;; лише старий journal-binding: чинні `reason-in`/`forward-in` не змінюють
+;; контракт, а семантика запису вже має одну реалізацію — `world-tell-all`.
+;; Обгортку можна буде прибрати після міграції решти глобальних writer-ів.
+;;
+;; Sobald `lib/world.my` geladen ist, wird die alte `defmodule`-Oberfläche zu
+;; einer dünnen Kompatibilitätshülle um den expliziten World-Übergang. Aus der
+;; gelieferten Welt bindet sie nur das alte Journal neu; bestehende
+;; `reason-in`/`forward-in`-Aufrufer behalten ihren Vertrag, während
+;; `world-tell-all` die einzige Schreibsemantik liefert. Nach der Migration der
+;; übrigen globalen Writer kann diese Hülle entfallen.
+(defmacro defmodule (name rules)
+  (list 'def '*knowledge-journal*
+        (list 'world-journal
+              (list 'world-tell-all
+                    (list 'make-world '() '*knowledge-journal* '())
+                    (list 'quote name)
+                    rules))))
+
 (def advise-all-world
   (lambda (world module-name clauses)
     (let ((decision (advice-all-decision-in-world world module-name clauses)))

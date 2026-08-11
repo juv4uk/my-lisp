@@ -67,6 +67,54 @@ fn later_versions_preserve_every_earlier_snapshot() {
 }
 
 #[test]
+fn defmodule_compatibility_wrapper_uses_the_world_transition() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((clauses '(((planet earth)) ((star sun)))))
+              (let ((expected
+                      (world-journal
+                        (world-tell-all
+                          (make-world '() *knowledge-journal* '())
+                          'space
+                          clauses))))
+                ((lambda ()
+                   (defmodule space clauses)
+                   (equal? *knowledge-journal* expected)))))
+            "#
+        ),
+        "t"
+    );
+}
+
+#[test]
+fn defmodule_after_world_load_keeps_legacy_reason_in_behavior() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (defmodule space '(((planet earth))))
+            (reason-in 'space '(planet earth))
+            "#
+        ),
+        "((() (proved (planet earth) (planet earth) ())))"
+    );
+}
+
+#[test]
+fn repeated_compatible_defmodule_calls_still_accumulate() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (defmodule space '(((planet earth))))
+            (defmodule space '(((planet mars))))
+            (module-clauses-now 'space)
+            "#
+        ),
+        "(((planet mars)) ((planet earth)))"
+    );
+}
+
+#[test]
 fn retract_creates_history_instead_of_erasing_it() {
     assert_eq!(
         eval_world(

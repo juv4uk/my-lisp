@@ -23,9 +23,9 @@ This repository has one test layer: the four Rust crates under `crates/`, run wi
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | literate-Markdown source-offset mapping | ok |
 | `my-lisp-wasm` | unit test (`src/lib.rs`) | 1 | the WASM adapter produces the same exact/single-pass evaluation struct as the native core | ok |
 | `my-lisp` | `tests/advice.rs` | 2 | end-to-end `understand → advise → reason-in → narrate-answer`, including rejection without journal mutation | ok |
-| `my-lisp` | `tests/world.rs` | 38 | `lib/world.my`: immutable branch/history operations plus canonical content identity — equal knowledge and reconstructed worlds share addresses, addresses round-trip, and equal current clauses with different histories remain distinct | ok |
+| `my-lisp` | `tests/world.rs` | 41 | `lib/world.my`: immutable branch/history operations, canonical content identity, and the `defmodule` compatibility wrapper over `world-tell-all` with unchanged reasoning and accumulation | ok |
 | `my-lisp` | `tests/content_store.rs` | 5 | `lib/content-store.my`: immutable address→content storage, retrieval, deduplication, and preservation of distinct World histories | ok |
-| **Total** | | **389** | | **389 passed, 0 failed, 0 ignored** |
+| **Total** | | **392** | | **392 passed, 0 failed, 0 ignored** |
 
 The implementation-independent conformance fixture at [`tests/fixtures/conformance.my`](../tests/fixtures/conformance.my) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite, not counted separately. The suite also pins `symbol?` as a `lib/core.my` function rather than a Rust built-in.
 
@@ -60,9 +60,9 @@ Last recorded run: 2026-08-11, Linux x86_64, Rust/Cargo 1.93.0 from Guix — all
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | зіставлення зміщень початкового коду literate-Markdown | ok |
 | `my-lisp-wasm` | unit-тест (`src/lib.rs`) | 1 | WASM-адаптер видає ту саму точну/однопрохідну структуру обчислення, що й нативне ядро | ok |
 | `my-lisp` | `tests/advice.rs` | 2 | наскрізний `understand → advise → reason-in → narrate-answer`, включно з відхиленням без зміни журналу | ok |
-| `my-lisp` | `tests/world.rs` | 38 | `lib/world.my`: незмінні гілки/історія плюс канонічна content identity — рівні знання й реконструйовані світи мають одну адресу, адреси round-trip, а однакові clauses із різними історіями лишаються різними | ok |
+| `my-lisp` | `tests/world.rs` | 41 | `lib/world.my`: незмінні гілки/історія, канонічна content identity і compatibility-обгортка `defmodule` над `world-tell-all` без зміни reasoning та накопичення | ok |
 | `my-lisp` | `tests/content_store.rs` | 5 | `lib/content-store.my`: незмінне зберігання address→content, отримання, дедуплікація та збереження різних історій World | ok |
-| **Разом** | | **389** | | **389 пройдено, 0 провалів, 0 пропущено** |
+| **Разом** | | **392** | | **392 пройдено, 0 провалів, 0 пропущено** |
 
 Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.my`](../tests/fixtures/conformance.my) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах цього набору, окремо не рахується. Набір також фіксує `symbol?` як функцію `lib/core.my`, а не Rust built-in.
 
@@ -97,9 +97,9 @@ Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausg
 | `my-lisp-literate` | `tests/literate_offsets.rs` | 4 | Offset-Zuordnung von literate-Markdown-Quellcode | ok |
 | `my-lisp-wasm` | Unit-Test (`src/lib.rs`) | 1 | der WASM-Adapter liefert dieselbe exakte/Single-Pass-Auswertungsstruktur wie der native Kern | ok |
 | `my-lisp` | `tests/advice.rs` | 2 | durchgängig `understand → advise → reason-in → narrate-answer`, einschließlich Ablehnung ohne Journaländerung | ok |
-| `my-lisp` | `tests/world.rs` | 38 | `lib/world.my`: unveränderliche Zweige/Geschichte plus kanonische Inhaltsidentität — gleiches Wissen und rekonstruierte Welten teilen Adressen, Adressen sind rücklesbar, gleiche Clauses aus verschiedener Geschichte bleiben verschieden | ok |
+| `my-lisp` | `tests/world.rs` | 41 | `lib/world.my`: unveränderliche Zweige/Geschichte, kanonische Inhaltsidentität und die `defmodule`-Kompatibilitätshülle um `world-tell-all` bei unverändertem Schließen und Sammeln | ok |
 | `my-lisp` | `tests/content_store.rs` | 5 | `lib/content-store.my`: unveränderliche Adresse→Inhalt-Speicherung, Abruf, Deduplizierung und Erhalt verschiedener World-Geschichten | ok |
-| **Gesamt** | | **389** | | **389 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
+| **Gesamt** | | **392** | | **392 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
 
 Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.my`](../tests/fixtures/conformance.my) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen dieser Suite geprüft, nicht separat gezählt. Die Suite fixiert außerdem `symbol?` als Funktion aus `lib/core.my` statt als Rust-Builtin.
 
