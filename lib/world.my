@@ -1,0 +1,85 @@
+;; An immutable world is ordinary my-lisp data:
+;;   (world parent newest-first-knowledge-journal metadata)
+;; Every transition returns a new value. The previous world remains its parent,
+;; and the new journal shares the complete old journal as its cons tail. No
+;; mutable host object or Rust primitive is needed.
+;;
+;; Незмінний світ — це звичайні дані my-lisp:
+;;   (world батько журнал-знань-від-нових-до-старих метадані)
+;; Кожен перехід повертає нове значення. Попередній світ лишається батьком,
+;; а новий журнал структурно ділить увесь старий журнал як хвіст cons. Жодного
+;; мутабельного об'єкта хоста чи нового Rust-примітива не потрібно.
+;;
+;; Eine unveränderliche Welt besteht aus gewöhnlichen my-lisp-Daten:
+;;   (world vorgänger wissenjournal-neueste-zuerst metadaten)
+;; Jeder Übergang liefert einen neuen Wert. Die vorige Welt bleibt ihr
+;; Vorgänger, und das neue Journal teilt das vollständige alte Journal als
+;; Cons-Ende. Kein veränderliches Hostobjekt und kein Rust-Primitiv ist nötig.
+
+(def make-world
+  (lambda (parent journal metadata)
+    (list 'world parent journal metadata)))
+
+(def empty-world
+  (lambda ()
+    (make-world '() '() '())))
+
+(def world?
+  (lambda (value)
+    (cond
+      ((atom value) '())
+      ((eq (car value) 'world) t)
+      (t '()))))
+
+(def world-parent (lambda (world) (second world)))
+(def world-journal (lambda (world) (third world)))
+(def world-metadata (lambda (world) (fourth world)))
+
+;; Events intentionally have the same data shape as `lib/knowledge.my`'s
+;; journal, so a later migration can reuse packages and projections unchanged.
+;; Події навмисно мають ту саму форму, що й журнал `lib/knowledge.my`.
+;; Ereignisse haben absichtlich dieselbe Form wie in `lib/knowledge.my`.
+(def world-record
+  (lambda (world event)
+    (make-world world
+                (cons event (world-journal world))
+                (world-metadata world))))
+
+(def world-tell
+  (lambda (world module-name clause)
+    (world-record world (list 'tell module-name clause))))
+
+(def world-retract
+  (lambda (world module-name clause)
+    (world-record world (list 'retract module-name clause))))
+
+(def world-module-events
+  (lambda (world module-name)
+    (filter (lambda (event) (equal? (second event) module-name))
+            (world-journal world))))
+
+(def world-remove-first
+  (lambda (value values)
+    (cond
+      ((atom values) '())
+      ((equal? value (car values)) (cdr values))
+      (t (cons (car values) (world-remove-first value (cdr values)))))))
+
+(def world-apply-event
+  (lambda (clauses event)
+    (cond
+      ((eq (car event) 'tell) (cons (third event) clauses))
+      ((eq (car event) 'retract)
+       (world-remove-first (third event) clauses))
+      (t clauses))))
+
+(def world-module-known?
+  (lambda (world module-name)
+    (cond
+      ((atom (world-module-events world module-name)) '())
+      (t t))))
+
+(def world-clauses
+  (lambda (world module-name)
+    (reduce world-apply-event '()
+            (reverse (world-module-events world module-name)))))
