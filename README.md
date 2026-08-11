@@ -72,6 +72,7 @@ cargo test --workspace
 - [`docs/knowledge-package-format.md`](docs/knowledge-package-format.md) — versioned data-only interchange for other projects and AI adapters.
 - [`docs/content-identity.md`](docs/content-identity.md) — canonical knowledge/world identity before cryptographic hashing.
 - [`docs/canonical-serialization.md`](docs/canonical-serialization.md) — the portable `write-to-string` wire format and its round-trip law.
+- [`docs/ecosystem-roadmap.md`](docs/ecosystem-roadmap.md) — the contract path across my-lisp, the CML compiler, and fpga-lisp.
 - [`docs/clean-code.md`](docs/clean-code.md) / [`CLEAN_CODE_PLAN.md`](CLEAN_CODE_PLAN.md) — Clean Code design principles and their executable roadmap.
 - [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — a small symbolic-AI example: unification, written in my-lisp itself.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — how John McCarthy himself described Lisp's origin and evolution, from 1958 to his death in 2011, and where this project follows or departs from that account.
@@ -134,6 +135,7 @@ cargo test --workspace
 - [`docs/knowledge-package-format.md`](docs/knowledge-package-format.md) — версіонований data-only обмін з іншими проєктами й AI-адаптерами.
 - [`docs/content-identity.md`](docs/content-identity.md) — канонічна identity знань і світів до криптографічного hashing.
 - [`docs/canonical-serialization.md`](docs/canonical-serialization.md) — переносний формат `write-to-string` і його закон round-trip.
+- [`docs/ecosystem-roadmap.md`](docs/ecosystem-roadmap.md) — шлях контрактів між my-lisp, компілятором CML і fpga-lisp.
 - [`docs/clean-code.md`](docs/clean-code.md) / [`CLEAN_CODE_PLAN.md`](CLEAN_CODE_PLAN.md) — принципи Clean Code та виконуваний roadmap їх упровадження.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — як сам Джон Маккарті описував походження й розвиток Lisp, від 1958-го до своєї смерті 2011-го, і де цей проєкт іде за цим викладом, а де відходить.
 - [`docs/testing.md`](docs/testing.md) — поточний перелік тестів.
@@ -195,6 +197,7 @@ cargo test --workspace
 - [`docs/knowledge-package-format.md`](docs/knowledge-package-format.md) — versionierter reiner Datenaustausch für andere Projekte und KI-Adapter.
 - [`docs/content-identity.md`](docs/content-identity.md) — kanonische Wissens-/Weltidentität vor kryptographischem Hashing.
 - [`docs/canonical-serialization.md`](docs/canonical-serialization.md) — das portable `write-to-string`-Format und sein Round-Trip-Gesetz.
+- [`docs/ecosystem-roadmap.md`](docs/ecosystem-roadmap.md) — der Vertragspfad durch my-lisp, den CML-Compiler und fpga-lisp.
 - [`docs/clean-code.md`](docs/clean-code.md) / [`CLEAN_CODE_PLAN.md`](CLEAN_CODE_PLAN.md) — Clean-Code-Prinzipien und ihr ausführbarer Umsetzungsplan.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — wie John McCarthy selbst Ursprung und Entwicklung von Lisp beschrieb, von 1958 bis zu seinem Tod 2011, und wo dieses Projekt dieser Darstellung folgt oder von ihr abweicht.
 - [`docs/testing.md`](docs/testing.md) — aktuelles Testinventar.

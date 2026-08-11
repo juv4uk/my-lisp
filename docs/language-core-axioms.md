@@ -129,9 +129,9 @@ Letting radically different machines — Rust, `fpga-lisp` — all genuinely be 
 
 Це дозволяє геть різним машинам — Rust, `fpga-lisp` — справді бути однією мовою. HDL-ядру не потрібен `Rc`, форма купи, що збігається з Rust-реалізацією, чи спільний код evaluator'а — лише ті самі відповіді. Це вся причина існування `conformance.my`.
 
-**Межа (2026-08-09):** "спостережувана поведінка" тут — та сама вузька межа, що й у G1 (через примітиви мови, не побічні канали). І окремо: G6 нічого не каже про *продуктивність*. HDL-ядро може бути на порядки повільнішим за Rust і лишатись повністю конформним — G6 стосується *яких відповідей* дає обчислення, не *за який час*. Це варто мати на увазі, коли `fpga-lisp` зрештою дійде до кроку 28: провал у швидкості — не провал конформності.
+**Межа (оновлено 2026-08-11):** "спостережувана поведінка" тут — та сама вузька межа, що й у G1 (через примітиви мови, не побічні канали). І окремо: G6 нічого не каже про *продуктивність*. HDL-ядро може бути на порядки повільнішим за Rust і лишатись повністю конформним — G6 стосується *яких відповідей* дає обчислення, не *за який час*. `fpga-lisp` уже має evaluator і частковий CML conformance path; провал у швидкості все одно не є провалом конформності.
 
-**Boundary (2026-08-09):** "observable behavior" here is the same narrow scope as G1's (through the language's primitives, not side channels). Separately: G6 says nothing about *performance*. An HDL core can be orders of magnitude slower than Rust and remain fully conformant — G6 is about *which answers* a computation gives, not *how fast*. Worth keeping in mind once `fpga-lisp` reaches step 28: a speed shortfall isn't a conformance failure.
+**Boundary (updated 2026-08-11):** "observable behavior" here is the same narrow scope as G1's (through the language's primitives, not side channels). Separately: G6 says nothing about *performance*. An HDL core can be orders of magnitude slower than Rust and remain fully conformant — G6 is about *which answers* a computation gives, not *how fast*. `fpga-lisp` now has an evaluator and a partial CML conformance path; a speed shortfall still is not a conformance failure.
 
 ### G7 — The same expression can mean the same thing everywhere · Той самий вираз може означати те саме всюди
 
@@ -139,9 +139,9 @@ The unifying possibility all the others serve. Rust, `fpga-lisp` — implementat
 
 Об'єднувальна можливість, якій служать усі інші. Rust, `fpga-lisp` — реалізації однієї абстрактної системи, не окремі діалекти, що випадково поділяють назву.
 
-**Межа вже названа деінде (2026-08-09):** статус цієї аксіоми як не-до-кінця-доведеної гіпотези вже детально розібраний у принципі 4 й `PLAN.md` пункті 1 — не повторюю тут. Коротко: G7 сьогодні доведена на рівні окремих примітивів (`fpga-lisp` M01–M05), не на рівні повного `conformance.my`.
+**Межа, оновлена 2026-08-11:** G7 уже доведена сильніше за окремі примітиви: `fpga-lisp` має повний evaluator, а `cml` — частковий Tier-1 шлях compile → assemble → simulate. Вона ще не доведена на рівні повного `conformance.my`: потрібні versioned ISA boundary, canonical structured-result decoder і blind fixtures через незмінний adapter. Актуальна послідовність — у [`ecosystem-roadmap.md`](ecosystem-roadmap.md).
 
-**Boundary already named elsewhere (2026-08-09):** this axiom's status as a not-yet-fully-proven hypothesis is already worked through in principle 4 and `PLAN.md` item 1 — not repeated here. Short version: G7 is proven today at the primitive level (`fpga-lisp` M01–M05), not yet at the level of the full `conformance.my`.
+**Boundary updated 2026-08-11:** G7 is now proven beyond isolated primitives: `fpga-lisp` has a complete evaluator and `cml` has a partial Tier-1 compile → assemble → simulate path. It is not yet proven across the full `conformance.my`: that needs a versioned ISA boundary, canonical structured-result decoding, and blind fixtures through an unchanged adapter. See [`ecosystem-roadmap.md`](ecosystem-roadmap.md).
 
 ### G8 — The absence of any element and the absence of truth can be the same value · Відсутність будь-якого елемента й відсутність істини можуть бути тим самим значенням
 
