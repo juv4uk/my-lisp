@@ -455,6 +455,44 @@
   (lambda (a b)
     (- a (* b (quotient a b)))))
 
+; `<=` and `>=` need no Rust dispatch: the strict comparisons plus equality
+; already preserve exact/inexact numeric semantics, while ordinary recursion
+; supplies variadic chaining. A required first parameter keeps zero arguments
+; an Arity error; one argument is vacuously ordered, matching the old builtin.
+; `<=` і `>=` не потребують Rust-dispatch: строгих порівнянь і рівності вже
+; досить, а ланцюжок дає звичайна рекурсія. Обов'язковий перший параметр
+; зберігає Arity для нуля аргументів; один аргумент тривіально впорядкований.
+; `<=` und `>=` brauchen keinen Rust-Dispatch: strikte Vergleiche und Gleichheit
+; reichen, gewöhnliche Rekursion liefert die Verkettung. Der Pflichtparameter
+; erhält den Arity-Fehler bei null Argumenten; ein Argument ist trivial geordnet.
+(def nondecreasing-from?
+  (lambda (current remaining)
+    (cond
+      ((atom remaining) t)
+      ((< current (car remaining))
+       (nondecreasing-from? (car remaining) (cdr remaining)))
+      ((= current (car remaining))
+       (nondecreasing-from? (car remaining) (cdr remaining)))
+      (t '()))))
+
+(def nonincreasing-from?
+  (lambda (current remaining)
+    (cond
+      ((atom remaining) t)
+      ((> current (car remaining))
+       (nonincreasing-from? (car remaining) (cdr remaining)))
+      ((= current (car remaining))
+       (nonincreasing-from? (car remaining) (cdr remaining)))
+      (t '()))))
+
+(def <=
+  (lambda (first . remaining)
+    (nondecreasing-from? first remaining)))
+
+(def >=
+  (lambda (first . remaining)
+    (nonincreasing-from? first remaining)))
+
 ; number->string (G5 test: already expressible via existing means?) —
 ; yes, now that quotient/mod exist. Surfaced from the fpga-lisp
 ; session's assembler.my, which had its own version built on a fixed

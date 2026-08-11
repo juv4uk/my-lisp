@@ -133,11 +133,6 @@ fn comparisons_chain_and_promote_exact_inexact_like_arithmetic() {
     assert_eq!(eval("(< (/ 1 3) (/ 1 2))"), Value::Bool(true));
     // A single argument is vacuously ordered/equal.
     assert_eq!(eval("(< 5)"), Value::Bool(true));
-    assert_eq!(eval("(<= 1 1 2)"), Value::Bool(true));
-    assert_eq!(eval("(<= 1 2 1)"), Value::Bool(false));
-    assert_eq!(eval("(>= 3 3 2)"), Value::Bool(true));
-    assert_eq!(eval("(>= 2 3)"), Value::Bool(false));
-    assert_eq!(eval("(<= 1/2 0.5)"), Value::Bool(true));
 }
 
 #[test]
@@ -564,6 +559,21 @@ fn list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin() {
     // regression-tests that it really did leave the Rust special-form table.
     let unbound = eval_program("(list 1 2 3)", &mut Session::default()).unwrap_err();
     assert_eq!(unbound.kind, ErrorKind::UnknownSymbol);
+}
+
+#[test]
+fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    assert_eq!(eval_program("(<= 1 1 2)", &mut session).unwrap().value, Value::Bool(true));
+    assert_eq!(eval_program("(<= 1 2 1)", &mut session).unwrap().value, Value::Nil);
+    assert_eq!(eval_program("(>= 3 3 2)", &mut session).unwrap().value, Value::Bool(true));
+    assert_eq!(eval_program("(>= 2 3)", &mut session).unwrap().value, Value::Nil);
+    assert_eq!(eval_program("(<= 1/2 0.5)", &mut session).unwrap().value, Value::Bool(true));
+    assert_eq!(eval_program("(<= 5)", &mut session).unwrap().value, Value::Bool(true));
+    assert_eq!(eval_program("(<=)", &mut session).unwrap_err().kind, ErrorKind::Arity);
+    assert_eq!(eval_program("(<= 1 2)", &mut Session::default()).unwrap_err().kind,
+               ErrorKind::UnknownSymbol);
 }
 
 /// tests/fixtures/conformance.my is the implementation-independent contract
