@@ -597,6 +597,44 @@
        (let ((package (make-knowledge-package module-name clauses)))
          (second (list (write-file path (write-to-string package)) package)))))))
 
+;; TCP transport uses one package per connection and EOF as the frame boundary.
+;; TCP may split one write into many reads, so the receiver drains every chunk
+;; before parsing exactly one S-expression. The sender closes only after
+;; `tcp-write` succeeds. No received bytes are ever passed to `eval`.
+;; TCP-транспорт: один пакет на з'єднання, EOF — межа; отримане ніколи не `eval`.
+;; TCP-Transport: ein Paket pro Verbindung, EOF als Grenze; Empfang nie per `eval`.
+(def tcp-read-to-eof
+  (lambda (connection accumulated)
+    (let ((chunk (tcp-read connection)))
+      (cond
+        ((string-empty? chunk) accumulated)
+        (t (tcp-read-to-eof connection
+                            (string-append accumulated chunk)))))))
+
+(def send-knowledge-package
+  (lambda (connection module-name clauses)
+    (cond
+      ((eq (symbol? module-name) '())
+       (list 'rejected (list 'reason 'invalid-module) (list 'input module-name)))
+      ((atom clauses)
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-proper-list? clauses) '())
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-clauses-valid? clauses) '())
+       (list 'rejected (list 'reason 'invalid-clause) (list 'input clauses)))
+      (t
+       (let ((package (make-knowledge-package module-name clauses)))
+         (third (list (tcp-write connection (write-to-string package))
+                      (tcp-close connection)
+                      package)))))))
+
+(defmacro receive-knowledge-package (connection)
+  (list 'second
+        (list 'list
+              (list 'def '*received-knowledge-package*
+                    (list 'read (list 'tcp-read-to-eof connection "")))
+              (list 'import-knowledge-package '*received-knowledge-package*))))
+
 ;; --- "atom as concept entry point" ------------------------------------
 ;; A bare symbol like `earth` doesn't mean anything by itself — its meaning
 ;; comes from the facts we've recorded around it. `describe` turns a symbol

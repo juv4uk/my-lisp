@@ -16,7 +16,8 @@
 //! реальний сокет.
 
 use my_lisp::{eval_program, ErrorKind, Session, Value};
-use std::net::TcpListener;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::thread;
 
 /// Grabs a free port by binding to port 0 and reading back what the OS
@@ -78,6 +79,14 @@ fn free_port() -> u16 {
         .local_addr()
         .expect("a bound listener should have a local address")
         .port()
+}
+
+fn load_knowledge(session: &mut Session) {
+    eval_program(include_str!("../../../lib/core.my"), session).unwrap();
+    eval_program(include_str!("../../../lib/unify.my"), session).unwrap();
+    eval_program(include_str!("../../../lib/reason.my"), session).unwrap();
+    eval_program(include_str!("../../../lib/forward.my"), session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.my"), session).unwrap();
 }
 
 #[test]
@@ -148,6 +157,58 @@ fn client_and_server_exchange_one_message_each_way() {
     // символами лапок.
     let server_saw = server.join().expect("server thread should not panic");
     assert_eq!(server_saw, "\"hello from client\"");
+}
+
+#[test]
+fn send_knowledge_package_transmits_one_canonical_expression_then_eof() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut text = String::new();
+        stream.read_to_string(&mut text).unwrap();
+        text
+    });
+    let mut session = Session::default();
+    load_knowledge(&mut session);
+    let source = format!(r#"
+        (def connection (tcp-connect "127.0.0.1" {port}))
+        (send-knowledge-package connection 'exchange
+          '(((planet earth)) ((has-mass (var x)) (planet (var x)))))
+    "#);
+    eval_program(&source, &mut session).unwrap();
+    assert_eq!(
+        server.join().unwrap(),
+        "((format . my-lisp-knowledge) (version 0 1) (module . exchange) (clauses ((planet earth)) ((has-mass (var x)) (planet (var x)))))"
+    );
+}
+
+#[test]
+fn receive_knowledge_package_drains_chunks_and_atomically_imports() {
+    let port = free_port();
+    let server = thread::spawn(move || {
+        let mut session = Session::default();
+        load_knowledge(&mut session);
+        let source = format!(r#"
+            (def listener (tcp-listen {port}))
+            (def connection (tcp-accept listener))
+            (receive-knowledge-package connection)
+            (car (car (reason-in 'exchange '(has-mass earth))))
+        "#);
+        eval_program(&source, &mut session).unwrap().value.to_string()
+    });
+    let payload = b"((format . my-lisp-knowledge) (version 0 1) (module . exchange) (clauses . (((planet earth)) ((has-mass (var x)) (planet (var x))))))";
+    let mut stream = loop {
+        match TcpStream::connect(("127.0.0.1", port)) {
+            Ok(stream) => break stream,
+            Err(_) => thread::sleep(std::time::Duration::from_millis(50)),
+        }
+    };
+    for chunk in payload.chunks(17) {
+        stream.write_all(chunk).unwrap();
+    }
+    drop(stream);
+    assert_eq!(server.join().unwrap(), "(((x . 0) . earth))");
 }
 
 #[test]

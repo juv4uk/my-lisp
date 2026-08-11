@@ -25,6 +25,11 @@ canonical in-memory shape for adapters that produce data directly.
 `write-knowledge-package` performs the other direction: it validates a module
 and clause batch, serializes the canonical envelope, and writes one expression.
 
+For process-to-process transport, `send-knowledge-package` and
+`receive-knowledge-package` use one package per TCP connection, with EOF as the
+unambiguous frame boundary. Receivers drain all chunks before `read`; received
+data is validated and imported, never evaluated.
+
 ## Українська
 
 Міжпроєктний формат — один data-only S-вираз із обов'язковими полями `format`,
@@ -39,6 +44,9 @@ Clause використовують чинний формат `lib/reason.my` і
 пам'яті для адаптерів інших проєктів.
 `write-knowledge-package` виконує зворотний напрям: перевіряє пакет і записує
 канонічну оболонку одним S-виразом.
+Для обміну між процесами `send-knowledge-package`/`receive-knowledge-package`
+передають один пакет на TCP-з'єднання з EOF як однозначною межею. Дані
+читаються, перевіряються та імпортуються, але ніколи не виконуються.
 
 ## Deutsch
 
@@ -55,3 +63,6 @@ gelangen alle Clauses ins Journal oder keine. `make-knowledge-package` erzeugt
 die kanonische Speicherform für Adapter anderer Projekte.
 `write-knowledge-package` übernimmt die Gegenrichtung: prüfen und die
 kanonische Hülle als einen S-Ausdruck schreiben.
+Für Prozesse übertragen `send-knowledge-package`/`receive-knowledge-package`
+genau ein Paket pro TCP-Verbindung mit EOF als eindeutiger Grenze. Empfangene
+Daten werden gelesen, geprüft und importiert, niemals ausgeführt.
