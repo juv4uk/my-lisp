@@ -45,7 +45,7 @@
      (ci-status . created-verdict-pending)
      (conformance-my-running . nil)
      (open-blocker . letrec-in-closures)
-     (open-blocker-note . "plan item 24, before rational/bignum (item 25); blocks bootstrapping reverse/append/map from core.my")
+     (open-blocker-note . "plan item 24, before rational/bignum (item 25); blocks bootstrapping reverse/append/map from core.my; DO NOT assume letrec works until re-confirmed — M28 regression shows the mechanism itself needs a fix, not just M29 built on top of it")
      (isa-representational-gaps . (no-inexact-numbers no-rationals no-string-tag))))
    (cml .
     ((role . aot-compiler)
