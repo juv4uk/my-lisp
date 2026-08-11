@@ -597,3 +597,87 @@ fn reconstructed_equal_worlds_have_no_branch_delta() {
         "(() ())"
     );
 }
+
+#[test]
+fn equal_knowledge_has_the_same_canonical_content_address() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (eq (knowledge-content-address '((planet earth)))
+                (knowledge-content-address '((planet earth))))
+            "#
+        ),
+        "t"
+    );
+}
+
+#[test]
+fn different_knowledge_has_a_different_content_address() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (eq (knowledge-content-address '((planet earth)))
+                (knowledge-content-address '((planet mars))))
+            "#
+        ),
+        "()"
+    );
+}
+
+#[test]
+fn knowledge_content_addresses_round_trip_to_the_same_structure() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((knowledge
+                    '((has-mass (var x)) (planet (var x)))))
+              (equal? knowledge
+                      (read (knowledge-content-address knowledge))))
+            "#
+        ),
+        "t"
+    );
+}
+
+#[test]
+fn independently_reconstructed_worlds_have_the_same_content_address() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((source
+                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
+              (let ((copy
+                      (second
+                        (import-knowledge-package-world
+                          (empty-world)
+                          (make-world-knowledge-package source 'zoo)))))
+                (eq (world-content-address source)
+                    (world-content-address copy))))
+            "#
+        ),
+        "t"
+    );
+}
+
+#[test]
+fn equal_current_clauses_do_not_erase_distinct_world_histories() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((direct
+                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
+              (let ((told
+                      (world-tell (empty-world) 'zoo '((has-fur cat)))))
+                (let ((retracted
+                        (world-retract told 'zoo '((has-fur cat)))))
+                  (let ((retold
+                          (world-tell retracted 'zoo '((has-fur cat)))))
+                    (list (equal? (world-clauses direct 'zoo)
+                                  (world-clauses retold 'zoo))
+                          (eq (world-content-address direct)
+                              (world-content-address retold)))))))
+            "#
+        ),
+        "(t ())"
+    );
+}

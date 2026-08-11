@@ -392,3 +392,38 @@
          (list (list 'base base)
                (list 'left (world-diff base left))
                (list 'right (world-diff base right))))))))
+
+;; Content identity starts with a canonical address, not a premature hash
+;; primitive. `write-to-string` is deterministic and read-back-safe, so equal
+;; knowledge has exactly the same address on every conforming implementation.
+;; A world's address covers its complete event journal plus metadata; parent is
+;; omitted because the journal already contains the whole history, avoiding a
+;; recursively duplicated serialization. This is an exact key, not a fixed-size
+;; cryptographic digest. A future SHA layer may hash this key without changing
+;; what identity means.
+;;
+;; Content-ідентичність починається з канонічної адреси, не передчасного hash-
+;; примітива. `write-to-string` детермінований і read-back-safe, тому рівне
+;; знання має ту саму адресу в кожній conforming-реалізації. Адреса світу
+;; охоплює весь журнал подій і metadata; parent не дублюється рекурсивно.
+;; Це точний ключ, не криптографічний digest; майбутній SHA лише стисне ключ.
+;;
+;; Inhaltsidentität beginnt mit einer kanonischen Adresse statt einem
+;; voreiligen Hash-Primitiv. `write-to-string` ist deterministisch und
+;; rücklesbar, daher hat gleiches Wissen in jeder konformen Implementierung
+;; dieselbe Adresse. Die Weltadresse umfasst Journal und Metadaten; der
+;; Vorgänger wird nicht rekursiv dupliziert. Dies ist ein exakter Schlüssel,
+;; kein kryptographischer Digest; ein späteres SHA kann diesen Schlüssel kürzen.
+(def knowledge-content-address
+  (lambda (knowledge)
+    (write-to-string knowledge)))
+
+(def world-address-content
+  (lambda (world)
+    (list 'world-history
+          (world-journal world)
+          (world-metadata world))))
+
+(def world-content-address
+  (lambda (world)
+    (knowledge-content-address (world-address-content world))))

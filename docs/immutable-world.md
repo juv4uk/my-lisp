@@ -24,6 +24,8 @@ History is navigable without a clock: `world-depth` counts transitions from the 
 
 `world-common-ancestor` aligns unequal depths and finds the semantic branch point. `world-branch-diff` returns `(base ...)`, `(left events)`, and `(right events)`, giving a future merge policy explicit evidence without choosing conflict or retraction precedence today. Independently reconstructed but structurally equal worlds correctly have no delta.
 
+Content identity is canonical before it is cryptographic. `knowledge-content-address` is exact read-back-safe canonical text; `world-content-address` covers the complete journal and metadata without recursively duplicating parents. Equal reconstructed histories share an address, while equal current clauses reached through different histories do not. A future digest may hash this address without changing identity semantics.
+
 ## Українська
 
 `lib/world.my` — перший виконуваний зріз архітектури `Expression × World → Value × World`. Світ є звичайними S-expression-даними:
@@ -48,6 +50,8 @@ History is navigable without a clock: `world-depth` counts transitions from the 
 
 `world-common-ancestor` вирівнює різні глибини й знаходить семантичну точку розгалуження. `world-branch-diff` повертає `(base ...)`, `(left події)` і `(right події)`, даючи майбутній merge-policy явні докази без передчасного вибору пріоритету конфліктів чи retract. Незалежно реконструйовані, але структурно рівні світи правильно мають нульову дельту.
 
+Content-ідентичність канонічна раніше, ніж криптографічна. `knowledge-content-address` — точний read-back-safe текст; `world-content-address` охоплює журнал і metadata без рекурсивного дублювання parents. Рівні реконструйовані історії мають одну адресу, однакові поточні clauses із різними історіями — різні. Майбутній digest може хешувати адресу, не змінюючи семантику identity.
+
 ## Deutsch
 
 `lib/world.my` ist der erste ausführbare Ausschnitt der Architektur `Expression × World → Value × World`. Eine Welt besteht aus gewöhnlichen S-Expression-Daten:
@@ -71,3 +75,5 @@ Diese Schicht fügt bewusst kein Rust-Primitiv hinzu und ersetzt `lib/knowledge.
 Geschichte ist ohne Uhr navigierbar: `world-depth` zählt Übergänge ab der Wurzel, `world-at-depth` findet einen exakten Vorgängerschnappschuss und `world-diff from to` liefert chronologische Ereignisse, wenn `from` Vorfahr von `to` ist. Geschwisterzweige liefern `World-not-ancestor`; Merge-Semantik wird nicht erraten.
 
 `world-common-ancestor` gleicht unterschiedliche Tiefen aus und findet den semantischen Verzweigungspunkt. `world-branch-diff` liefert `(base ...)`, `(left ereignisse)` und `(right ereignisse)` als Belege für eine spätere Merge-Policy, ohne heute Konflikt- oder Rücknahmevorrang zu erfinden. Unabhängig rekonstruierte, strukturell gleiche Welten haben korrekt kein Delta.
+
+Inhaltsidentität ist kanonisch, bevor sie kryptographisch ist. `knowledge-content-address` ist exakter rücklesbarer Text; `world-content-address` umfasst Journal und Metadaten ohne rekursive Eltern-Duplikation. Gleiche rekonstruierte Geschichten teilen eine Adresse, gleiche aktuelle Clauses aus verschiedenen Geschichten nicht. Ein späterer Digest darf die Adresse hashen, ohne Identität neu zu definieren.
