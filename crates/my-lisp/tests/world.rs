@@ -115,6 +115,63 @@ fn repeated_compatible_defmodule_calls_still_accumulate() {
 }
 
 #[test]
+fn tell_knowledge_compatibility_wrapper_uses_the_world_transition() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (defmodule space '(((planet earth))))
+            (def clauses '(((planet mars))))
+            (def expected-journal
+              (world-journal
+                (world-tell-all
+                  (make-world '() *knowledge-journal* '())
+                  'space
+                  clauses)))
+            (tell-knowledge space clauses)
+            (equal? *knowledge-journal* expected-journal)
+            "#
+        ),
+        "t"
+    );
+}
+
+#[test]
+fn conflicting_tell_knowledge_keeps_the_legacy_journal_unchanged() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (defmodule space '(((not (planet earth)))))
+            (let ((before *knowledge-journal*))
+              (list (tell-knowledge space '(((planet earth))))
+                    (equal? before *knowledge-journal*)))
+            "#
+        ),
+        "(Conflict-detected t)"
+    );
+}
+
+#[test]
+fn retract_knowledge_compatibility_wrapper_uses_the_world_transition() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (defmodule space '(((planet earth))))
+            (def expected-journal
+              (world-journal
+                (world-retract
+                  (make-world '() *knowledge-journal* '())
+                  'space
+                  '((planet earth)))))
+            (retract-knowledge space '((planet earth)))
+            (list (equal? *knowledge-journal* expected-journal)
+                  (reason-in 'space '(planet earth)))
+            "#
+        ),
+        "(t ())"
+    );
+}
+
+#[test]
 fn retract_creates_history_instead_of_erasing_it() {
     assert_eq!(
         eval_world(

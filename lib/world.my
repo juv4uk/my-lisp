@@ -222,6 +222,43 @@
                     (list 'quote name)
                     rules))))
 
+;; The other two legacy journal macros follow the same bridge. `tell-knowledge`
+;; deliberately keeps its established pre-write conflict check and delegates
+;; only the accepted transition; `retract-knowledge` remains unconditional
+;; because removing knowledge cannot introduce a contradiction. Both rebuild
+;; the compatibility journal from a returned immutable World.
+;;
+;; Інші два legacy journal-макроси переходять тим самим мостом.
+;; `tell-knowledge` зберігає чинну перевірку конфлікту перед записом і делегує
+;; лише прийнятий перехід; `retract-knowledge` лишається безумовним, бо
+;; вилучення знання не створює суперечності. Обидва відновлюють compatibility-
+;; журнал із поверненого незмінного World.
+;;
+;; Die beiden anderen alten Journal-Makros nutzen dieselbe Brücke.
+;; `tell-knowledge` behält seine Konfliktprüfung vor dem Schreiben und
+;; delegiert nur den akzeptierten Übergang; `retract-knowledge` bleibt
+;; bedingungslos, weil Wissensentzug keinen Widerspruch erzeugen kann. Beide
+;; gewinnen das Kompatibilitätsjournal aus einer unveränderlichen World zurück.
+(defmacro tell-knowledge (module-name rules)
+  (list 'cond
+        (list (list 'check-conflict (list 'quote module-name) rules)
+              (list 'quote 'Conflict-detected))
+        (list 't
+              (list 'def '*knowledge-journal*
+                    (list 'world-journal
+                          (list 'world-tell-all
+                                (list 'make-world '() '*knowledge-journal* '())
+                                (list 'quote module-name)
+                                rules))))))
+
+(defmacro retract-knowledge (module-name clause)
+  (list 'def '*knowledge-journal*
+        (list 'world-journal
+              (list 'world-retract
+                    (list 'make-world '() '*knowledge-journal* '())
+                    (list 'quote module-name)
+                    clause))))
+
 (def advise-all-world
   (lambda (world module-name clauses)
     (let ((decision (advice-all-decision-in-world world module-name clauses)))
