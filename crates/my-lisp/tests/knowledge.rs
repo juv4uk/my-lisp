@@ -314,3 +314,75 @@ fn tell_knowledge_and_defmodule_contributions_to_the_same_module_both_survive() 
     "#;
     assert_eq!(eval_knowledge(source), "(() ())");
 }
+
+// --- guarded Advice Taker ingestion ------------------------------------
+// Accepted input mutates the journal; rejected and conflicting input do not.
+// Absence of a fact is never treated as its explicit negation.
+// Прийнятий ввід змінює журнал; відхилений і конфліктний — ні. Відсутність
+// факту ніколи не вважається його явним запереченням.
+// Akzeptierte Eingabe ändert das Journal; abgelehnte und widersprüchliche
+// Eingabe nicht. Das Fehlen eines Fakts gilt nie als explizite Verneinung.
+
+#[test]
+fn advise_accepts_a_valid_fact_and_makes_it_queryable() {
+    let source = r#"
+        (list
+          (advise astronomy '((planet venus)))
+          (car (car (reason-in 'astronomy '(planet venus)))))
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((accepted (module astronomy) (knowledge ((planet venus)))) ())"
+    );
+}
+
+#[test]
+fn advise_accepts_a_valid_rule_and_reason_uses_it() {
+    let source = r#"
+        (advise astronomy '((planet earth)))
+        (advise astronomy '((has-mass (var x)) (planet (var x))))
+        (car (car (reason-in 'astronomy '(has-mass earth))))
+    "#;
+    assert_eq!(eval_knowledge(source), "(((x . 0) . earth))");
+}
+
+#[test]
+fn advise_rejects_malformed_clause_without_creating_a_module() {
+    let source = r#"
+        (list
+          (advise astronomy '(planet venus))
+          (reason-in 'astronomy '(planet venus)))
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((rejected (reason invalid-clause) (input (planet venus))) Module-not-found)"
+    );
+}
+
+#[test]
+fn advise_rejects_a_malformed_logic_variable() {
+    assert_eq!(
+        eval_knowledge("(advise astronomy '((planet (var))))"),
+        "(rejected (reason invalid-clause) (input ((planet (var)))))"
+    );
+}
+
+#[test]
+fn advise_reports_an_explicit_conflict_without_recording_it() {
+    let source = r#"
+        (advise astronomy '((not (planet pluto))))
+        (def result (advise astronomy '((planet pluto))))
+        (list (car result)
+              (second (third result))
+              (reason-in 'astronomy '(planet pluto)))
+    "#;
+    assert_eq!(eval_knowledge(source), "(conflict (not (planet pluto)) ())");
+}
+
+#[test]
+fn advise_does_not_confuse_absence_with_explicit_negation() {
+    assert_eq!(
+        eval_knowledge("(advise astronomy '((planet neptune)))"),
+        "(accepted (module astronomy) (knowledge ((planet neptune))))"
+    );
+}
