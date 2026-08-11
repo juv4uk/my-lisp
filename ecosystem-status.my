@@ -34,9 +34,10 @@
     ((role . hardware-implementation)
      (isa-contract . (0 2))
      (hardware-verified-milestones . (m01 . m27))
-     (m28-status . merged-simplified-length)
+     (m28-status . regressed-real-bug-found)
      (m28-commit . "447ee0e")
      (m28-note . "direct non-tail recursion, not the canonical length-onto accumulator form")
+     (m28-regression-note . "first real iverilog run (not manual trace) halts cleanly but R9 holds TAG:SYMBOL VAL:920 (the param symbol id) instead of FIXNUM 3 — a real bug, not a hang; root-causing in progress, was previously and incorrectly reported as manually-verified-passing")
      (m29-status . wip-pending-ci)
      (m29-commit . "cec7889")
      (m29-note . "canonical tail-recursive length/length-onto — needed to bootstrap reverse/append/map from core.my")
@@ -78,7 +79,9 @@
    (no-ecosystem-ci-until-now .
     "resolved: cml's CI (created unilaterally 2026-08-11 before user confirmation arrived) has since run twice, both green — equal? and defmacro are machine-verified via iverilog E2E")
    (isa-no-inexact-rational-string .
-    "representational gap, not an implementation gap; blocks my-lisp's stated core purpose (exact rational arithmetic) from ever reaching fpga-lisp until isa-contract.my adds tags/encoding for it")))
+    "representational gap, not an implementation gap; blocks my-lisp's stated core purpose (exact rational arithmetic) from ever reaching fpga-lisp until isa-contract.my adds tags/encoding for it")
+   (m28-manual-verification-was-wrong .
+    "fpga-lisp's M28 (447ee0e) was reported manually-verified-passing but its first real iverilog run returns the param symbol instead of FIXNUM 3 — a lesson that manual trace is not a substitute for the simulator, applies equally to any 'verified by inspection' claim from any repo in this ecosystem")))
  (pending-user-decisions .
   ((cml-ci-after-the-fact . "accept cml's unilateral CI creation, or have it reverted?")))
  (how-to-refresh .
