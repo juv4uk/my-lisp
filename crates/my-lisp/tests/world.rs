@@ -231,6 +231,57 @@ fn advise_all_compatibility_wrapper_rolls_back_invalid_batch() {
 }
 
 #[test]
+fn package_import_compatibility_wrapper_commits_the_accepted_world() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (def package
+              (make-knowledge-package 'space '(((planet earth)))))
+            (list (car (import-knowledge-package package))
+                  (car (reason-in 'space '(planet earth))))
+            "#
+        ),
+        "(accepted (() (proved (planet earth) (planet earth) ())))"
+    );
+}
+
+#[test]
+fn package_import_compatibility_wrapper_preserves_journal_on_rejection() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (def before *knowledge-journal*)
+            (def package
+              '((format . my-lisp-knowledge)
+                (version 99 0)
+                (module . space)
+                (clauses . (((planet earth))))))
+            (def decision (import-knowledge-package package))
+            (list (car decision) (equal? before *knowledge-journal*))
+            "#
+        ),
+        "(rejected t)"
+    );
+}
+
+#[test]
+fn package_import_compatibility_wrapper_preserves_journal_on_conflict() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (defmodule space '(((not (planet earth)))))
+            (def before *knowledge-journal*)
+            (def package
+              (make-knowledge-package 'space '(((planet earth)))))
+            (def decision (import-knowledge-package package))
+            (list (car decision) (equal? before *knowledge-journal*))
+            "#
+        ),
+        "(conflict t)"
+    );
+}
+
+#[test]
 fn retract_creates_history_instead_of_erasing_it() {
     assert_eq!(
         eval_world(
