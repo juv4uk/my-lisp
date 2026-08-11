@@ -14,6 +14,8 @@ This layer deliberately contains no Rust primitive and does not replace `lib/kno
 
 `reason-in-world` and `forward-in-world` are the first consumers of that explicit state. Backward and forward reasoning now operate on a selected snapshot or branch without reading the global `*knowledge-journal*`; the same query may therefore have a different, reproducible answer in two worlds.
 
+`advise-world` makes guarded ingestion pure as well. It always returns `(decision world)`: accepted knowledge carries a new world, while malformed or conflicting input carries the exact original world. It reuses `lib/knowledge.my`'s clause validation and conflict vocabulary but checks only the supplied snapshot, never global knowledge.
+
 ## Українська
 
 `lib/world.my` — перший виконуваний зріз архітектури `Expression × World → Value × World`. Світ є звичайними S-expression-даними:
@@ -28,6 +30,8 @@ This layer deliberately contains no Rust primitive and does not replace `lib/kno
 
 `reason-in-world` і `forward-in-world` — перші споживачі цього явного стану. Backward- і forward-reasoning тепер працюють з обраним snapshot чи гілкою, не читаючи глобальний `*knowledge-journal*`; тому одна ціль може мати різну, відтворювану відповідь у двох світах.
 
+`advise-world` так само робить чистим захищене надходження знань. Він завжди повертає `(рішення світ)`: прийняте знання несе новий світ, а malformed чи конфліктний ввід — точно початковий. Функція перевикористовує validation і словник конфліктів із `lib/knowledge.my`, але перевіряє лише переданий snapshot, ніколи глобальне знання.
+
 ## Deutsch
 
 `lib/world.my` ist der erste ausführbare Ausschnitt der Architektur `Expression × World → Value × World`. Eine Welt besteht aus gewöhnlichen S-Expression-Daten:
@@ -41,3 +45,5 @@ This layer deliberately contains no Rust primitive and does not replace `lib/kno
 Diese Schicht fügt bewusst kein Rust-Primitiv hinzu und ersetzt `lib/knowledge.my` noch nicht. Ihr Ereignisformat ist mit dem bestehenden Journal `(tell modul clause)` / `(retract modul clause)` vollständig kompatibel. Der nächste Migrationsschritt kann Wissensoperationen daher zu expliziten Funktionen „Welt hinein → Welt hinaus“ machen, ohne Pakete, Regeln oder Beweise zu ändern.
 
 `reason-in-world` und `forward-in-world` sind die ersten Verbraucher dieses expliziten Zustands. Rückwärts- und Vorwärtsschluss arbeiten nun auf einem gewählten Schnappschuss oder Zweig, ohne das globale `*knowledge-journal*` zu lesen; dieselbe Anfrage kann deshalb in zwei Welten eine unterschiedliche, reproduzierbare Antwort haben.
+
+`advise-world` macht auch die geschützte Wissensaufnahme rein. Es liefert immer `(entscheidung welt)`: Akzeptiertes Wissen enthält eine neue Welt, ungültige oder widersprüchliche Eingabe exakt die ursprüngliche. Es nutzt Validierung und Konfliktvokabular aus `lib/knowledge.my`, prüft aber nur den übergebenen Schnappschuss, niemals globales Wissen.

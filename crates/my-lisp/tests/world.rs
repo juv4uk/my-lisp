@@ -6,6 +6,7 @@ fn eval_world(source: &str) -> String {
     eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/world.my"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap()
@@ -172,5 +173,75 @@ fn world_reasoning_reports_an_unknown_module_without_global_fallback() {
     assert_eq!(
         eval_world("(forward-in-world (empty-world) 'missing)"),
         "Module-not-found"
+    );
+}
+
+#[test]
+fn advise_world_accepts_into_a_new_queryable_world() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((before (empty-world)))
+              (let ((result (advise-world before 'astronomy '((planet venus)))))
+                (let ((after (second result)))
+                  (list (car (car result))
+                        (world-clauses before 'astronomy)
+                        (cond
+                          ((atom (reason-in-world after 'astronomy '(planet venus))) 'no)
+                          (t 'yes))))))
+            "#
+        ),
+        "(accepted () yes)"
+    );
+}
+
+#[test]
+fn advise_world_rejection_returns_the_unchanged_world() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((before (empty-world)))
+              (let ((result (advise-world before 'astronomy '(planet venus))))
+                (list (car (car result))
+                      (equal? before (second result))
+                      (world-module-known? (second result) 'astronomy))))
+            "#
+        ),
+        "(rejected t ())"
+    );
+}
+
+#[test]
+fn advise_world_conflict_preserves_the_existing_snapshot() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((w1 (world-tell (empty-world)
+                                  'astronomy
+                                  '((not (planet pluto))))))
+              (let ((result (advise-world w1 'astronomy '((planet pluto)))))
+                (list (car (car result))
+                      (equal? w1 (second result))
+                      (world-clauses (second result) 'astronomy))))
+            "#
+        ),
+        "(conflict t (((not (planet pluto)))))"
+    );
+}
+
+#[test]
+fn advise_world_does_not_read_the_global_knowledge_journal() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (advise astronomy '((not (planet mars))))
+            (let ((result (advise-world (empty-world)
+                                        'astronomy
+                                        '((planet mars)))))
+              (list (car (car result))
+                    (world-clauses (second result) 'astronomy)))
+            "#
+        ),
+        "(accepted (((planet mars))))"
     );
 }
