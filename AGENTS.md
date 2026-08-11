@@ -44,9 +44,16 @@ message.
 
 Read `fpga-lisp/isa-contract.my`, `cml/compatibility.my`, and each
 neighbor's own `evidence/` directory directly rather than asking. Use
-`my-lisp --tcp=9999` (loopback-only, one isolated environment per
-connection) as a semantic oracle for quick checks — not as a message bus
-between agents.
+`my-lisp --tcp=9999 --protocol=sexpr` (loopback-only) for two distinct
+things: `eval`/`parse`/`diagnose`/`contract-version` as a semantic
+oracle, each connection getting its own isolated environment (a `def` on
+one connection is invisible to every other); and `notify`/`poll` as a
+lightweight cross-agent mailbox (owner decision, 2026-08-12) — those two
+ops share one server-wide mailbox instead of per-connection state,
+deliberately kept separate from eval sessions. `notify` takes `from`,
+optional `to` (omit for broadcast), `message`; `poll` takes `for` and
+optional `since` (a mailbox entry id, default 0) and returns every entry
+addressed to `for` or broadcast, with `id` greater than `since`.
 
 ## Environment: WSL2 + Guix
 

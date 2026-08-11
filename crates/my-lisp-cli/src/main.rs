@@ -1,4 +1,4 @@
-use my_lisp::{eval_parsed_expressions, parse, Environment, ErrorKind, Session, Value};
+use my_lisp::{eval_parsed_expressions, parse, Environment, ErrorKind, Exactness, Session, Value};
 use std::rc::Rc;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -196,6 +196,33 @@ fn error_response(id: &Value, kind: &str, message: &str, contract_version: &Valu
     ])
 }
 
+/// A single `notify`d message, kept in `run_tcp_repl_sexpr`'s in-memory
+/// mailbox — deliberately separate from any `Session`/`Environment`, so
+/// agent coordination never touches the isolated eval-oracle state each
+/// connection gets (see this function's own doc comment). `to: None`
+/// means broadcast to every `poll`er.
+struct MailboxEntry {
+    id: u64,
+    from: String,
+    to: Option<String>,
+    message: String,
+}
+
+fn mailbox_entry_to_value(entry: &MailboxEntry) -> Value {
+    Value::list([
+        Value::list([Value::Symbol("id".into()), Value::Number(entry.id as f64, Exactness::Exact)]),
+        Value::list([Value::Symbol("from".into()), Value::String(entry.from.as_str().into())]),
+        Value::list([
+            Value::Symbol("to".into()),
+            match &entry.to {
+                Some(to) => Value::String(to.as_str().into()),
+                None => Value::Nil,
+            },
+        ]),
+        Value::list([Value::Symbol("message".into()), Value::String(entry.message.as_str().into())]),
+    ])
+}
+
 fn error_kind_symbol(kind: &ErrorKind) -> &'static str {
     match kind {
         ErrorKind::Parse => "parse-error",
@@ -213,10 +240,14 @@ fn error_kind_symbol(kind: &ErrorKind) -> &'static str {
 /// `(request (id ..) (op ..) (source ..))` in, one `(response (id ..)
 /// (status ..) ..)` out, every time, so `cml`/`fpga-lisp`/`my-idea` can
 /// parse a response without guessing whether a given line is a value, an
-/// error, or REPL chrome. Deliberately narrow op set — `eval`, `parse`,
-/// `diagnose`, `contract-version` — this is a semantic oracle, not a
-/// coordination channel: no `git status`, no CI status, no agent
-/// messages. Same per-connection isolation as the human REPL.
+/// error, or REPL chrome. Op set: `eval`, `parse`, `diagnose`,
+/// `contract-version` for semantic-oracle use (same per-connection
+/// isolation as the human REPL — a `def` on one connection is invisible
+/// to every other), plus `notify`/`poll` for lightweight agent-to-agent
+/// coordination (owner decision, 2026-08-12) — those two share one
+/// mailbox across every connection instead of per-connection state,
+/// deliberately kept separate from eval sessions so the oracle's
+/// isolation guarantee still holds for `eval`/`parse`/`diagnose`.
 fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_version: Value) {
     let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, port)) {
         Ok(listener) => listener,
@@ -227,6 +258,11 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_ve
     };
     let actual_port = listener.local_addr().map(|a| a.port()).unwrap_or(port);
     eprintln!("my-lisp TCP REPL v{} (sexpr protocol) listening on 127.0.0.1:{actual_port}", env!("CARGO_PKG_VERSION"));
+
+    // Shared across every connection this process ever accepts — connections
+    // are handled one at a time (no threads), so plain `Vec`s need no lock.
+    let mut mailbox: Vec<MailboxEntry> = Vec::new();
+    let mut next_mailbox_id: u64 = 1;
 
     for stream in listener.incoming() {
         let mut stream = match stream {
@@ -279,6 +315,11 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_ve
                     let mut id = Value::Nil;
                     let mut op: Option<String> = None;
                     let mut source: Option<String> = None;
+                    let mut from: Option<String> = None;
+                    let mut to: Option<String> = None;
+                    let mut message: Option<String> = None;
+                    let mut for_agent: Option<String> = None;
+                    let mut since: u64 = 0;
                     for field in fields.iter().skip(1) {
                         let kv = list_items(field);
                         let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
@@ -293,6 +334,31 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_ve
                                 "source" => {
                                     if let Value::String(s) = val {
                                         source = Some(s.to_string());
+                                    }
+                                }
+                                "from" => {
+                                    if let Value::String(s) = val {
+                                        from = Some(s.to_string());
+                                    }
+                                }
+                                "to" => {
+                                    if let Value::String(s) = val {
+                                        to = Some(s.to_string());
+                                    }
+                                }
+                                "message" => {
+                                    if let Value::String(s) = val {
+                                        message = Some(s.to_string());
+                                    }
+                                }
+                                "for" => {
+                                    if let Value::String(s) = val {
+                                        for_agent = Some(s.to_string());
+                                    }
+                                }
+                                "since" => {
+                                    if let Value::Number(n, _) = val {
+                                        since = *n as u64;
                                     }
                                 }
                                 _ => {}
@@ -333,6 +399,33 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_ve
                                 },
                                 Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
                             },
+                        },
+                        Some("notify") => match (&from, &message) {
+                            (None, _) => error_response(&id, "invalid-form", "op `notify` requires a `from` field", &contract_version),
+                            (_, None) => error_response(&id, "invalid-form", "op `notify` requires a `message` field", &contract_version),
+                            (Some(from), Some(message)) => {
+                                let entry_id = next_mailbox_id;
+                                next_mailbox_id += 1;
+                                mailbox.push(MailboxEntry {
+                                    id: entry_id,
+                                    from: from.clone(),
+                                    to: to.clone(),
+                                    message: message.clone(),
+                                });
+                                ok_response(&id, Value::Number(entry_id as f64, Exactness::Exact), &[], &contract_version)
+                            }
+                        },
+                        Some("poll") => match &for_agent {
+                            None => error_response(&id, "invalid-form", "op `poll` requires a `for` field", &contract_version),
+                            Some(for_agent) => {
+                                let matches: Vec<Value> = mailbox
+                                    .iter()
+                                    .filter(|entry| entry.id > since)
+                                    .filter(|entry| entry.to.as_deref().is_none_or(|to| to == for_agent))
+                                    .map(mailbox_entry_to_value)
+                                    .collect();
+                                ok_response(&id, Value::list(matches), &[], &contract_version)
+                            }
                         },
                         Some(other) => error_response(&id, "invalid-form", &format!("unknown op `{other}`"), &contract_version),
                         None => error_response(&id, "invalid-form", "request is missing an `op` field", &contract_version),
