@@ -75,6 +75,15 @@ fn exact_arithmetic_handles_products_beyond_i64_range() {
     assert_eq!(result.value.to_string(), "9223372037000250000");
 }
 
+#[test]
+fn bare_large_integer_literals_remain_exact() {
+    let literal = "123456789012345678901234567890";
+    assert_eq!(eval(literal).to_string(), literal);
+    assert_eq!(eval(&format!("(+ {literal} 1)")).to_string(),
+               "123456789012345678901234567891");
+    assert_eq!(eval(&format!("(eq {literal} {literal})")), Value::Bool(true));
+}
+
 /// The case that actually matters, more than any single large literal:
 /// results *computed* via repeated exact arithmetic growing past the old
 /// i64 ceiling. `(/ 1 1)` forces the exact path from the start (a bare

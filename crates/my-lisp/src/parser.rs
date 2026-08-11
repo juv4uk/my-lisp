@@ -225,10 +225,19 @@ impl Parser<'_> {
                     .map(|n| ExprKind::Number(n, exactness(token)))
                     .unwrap_or_else(|_| ExprKind::Symbol(token.into()))
             }
+        } else if exactness(token) == Exactness::Exact {
+            // Preserve the compact f64-backed representation only where it is
+            // mathematically exact; larger integer literals enter the same
+            // arbitrary-precision Rational path as n/1 arithmetic results.
+            crate::value::Rational::from_literal(token, "1")
+                .map(|integer| match integer.as_precise_i64() {
+                    Some(value) => ExprKind::Number(value as f64, Exactness::Exact),
+                    None => ExprKind::Rational(integer),
+                })
+                .unwrap_or_else(|| ExprKind::Symbol(token.into()))
         } else {
-            token
-                .parse::<f64>()
-                .map(|n| ExprKind::Number(n, exactness(token)))
+            token.parse::<f64>()
+                .map(|n| ExprKind::Number(n, Exactness::Inexact))
                 .unwrap_or_else(|_| ExprKind::Symbol(token.into()))
         };
         Ok(Expr {
@@ -291,6 +300,14 @@ mod tests {
         assert!(matches!(parse_one("3.0").kind, ExprKind::Number(n, Exactness::Inexact) if n == 3.0));
         assert!(matches!(parse_one("3.00").kind, ExprKind::Number(n, Exactness::Inexact) if n == 3.0));
         assert!(matches!(parse_one("3e0").kind, ExprKind::Number(n, Exactness::Inexact) if n == 3.0));
+    }
+
+    #[test]
+    fn large_integer_literal_uses_arbitrary_precision_without_rounding() {
+        let ExprKind::Rational(integer) = parse_one("123456789012345678901234567890").kind else {
+            panic!("large exact integer should use the arbitrary-precision path");
+        };
+        assert_eq!(integer.to_string(), "123456789012345678901234567890");
     }
 
     #[test]

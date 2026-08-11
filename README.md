@@ -25,6 +25,8 @@ cargo run -p my-lisp-cli -- path/to/file.my
 
 Exact rational arithmetic is a core purpose, not a nice-to-have: `/` on integers/rationals stays exact (`5/336`, not `0.0148...`), following Racket's exact/inexact distinction. `.my` is the canonical source extension; `.lisp` is a compatible alias.
 
+The central architecture is one structural language for programs, facts, rules, and proofs. Machines exchange knowledge rather than executable commands, then reason locally under the same conformance contract across Rust and FPGA implementations.
+
 ### Philosophy
 
 Rust provides only what it does exceptionally well — safe values, parsing, lexical closures, deterministic evaluation, stack control, diagnostics — and stops there. Every derived form grows in my-lisp whenever the kernel can express it: `<=`/`>=` have moved out of Rust dispatch into recursive `lib/core.my`; `eval` reuses the data→code conversion already needed by macro expansion. This is the same instinct that kept John McCarthy from finishing M-expressions once S-expressions turned out to be enough.
@@ -80,6 +82,8 @@ cargo test --workspace
 
 Точна раціональна арифметика — базова мета, а не бонус: `/` над цілими/раціональними лишається точним (`5/336`, а не `0.0148...`), за зразком розрізнення exact/inexact у Racket. `.my` — канонічне розширення початкового коду; `.lisp` — сумісний псевдонім.
 
+Центральна архітектура — одна структурна мова для програм, фактів, правил і доведень. Машини обмінюються знаннями, не командами на виконання, а потім міркують локально за спільним conformance-контрактом Rust- і FPGA-реалізацій.
+
 ### Філософія
 
 Rust надає лише те, що робить особливо добре — безпечні значення, парсинг, лексичні замикання, детерміноване обчислення, контроль стека й діагностику. Похідні форми ростуть у my-lisp, коли ядро вже може їх виразити: `<=`/`>=` перенесені з Rust-dispatch у рекурсивний `lib/core.my`, а `eval` перевикористовує наявне перетворення дані→код. Це той самий інстинкт, що не дав Маккарті добудувати M-expressions, коли S-виразів виявилось досить.
@@ -133,6 +137,8 @@ cargo test --workspace
 `my-lisp` ist ein Lisp, aufgebaut um McCarthys sieben Primitive — `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond` — plus den minimalen semantischen Kern, der zum Bootstrap von allem anderen nötig ist: `lambda`, `def`, `defmacro`. Alles, was aus diesem Kern ableitbar ist, ist in my-lisp selbst geschrieben ([`lib/core.my`](lib/core.my)), nicht als Rust-Built-in hinzugefügt. Vollständige Begründung: [`docs/language-core.md`](docs/language-core.md).
 
 Exakte rationale Arithmetik ist ein Kernziel, kein Extra: `/` bleibt bei Ganzzahlen/rationalen Zahlen exakt (`5/336`, nicht `0.0148...`), nach Rackets exakt/inexakt-Unterscheidung. `.my` ist die kanonische Quellcodedateiendung; `.lisp` bleibt ein kompatibler Alias.
+
+Die zentrale Architektur ist eine gemeinsame Struktursprache für Programme, Fakten, Regeln und Beweise. Maschinen tauschen Wissen statt Ausführungsbefehle aus und schließen lokal unter demselben Konformitätsvertrag für Rust- und FPGA-Implementierungen.
 
 ### Philosophie
 

@@ -165,4 +165,5 @@
 (fixture (expr . "(cddr '(a b c d))") (expected . "(c d)") (tier . 3) (axioms G5) (note . "found duplicated locally in lib/understand.my before being moved to core.my, 2026-08-10"))
 (fixture (expr . "(eq cadddr fourth)") (expected . "t") (tier . 3) (axioms G5) (note . "cadddr is a literal alias for fourth, same closure object -- lib/reason.my had its own character-for-character-identical local cadddr before this dedup"))
 (fixture (expr . "(fifth '(v w x y z))") (expected . "z") (tier . 3) (axioms G5) (note . "found duplicated in two places at once: lib/narrate.my's own local fifth (identical), and lib/persistent-map.my's node-right (same operation, no name)"))
+(fixture (expr . "(+ 123456789012345678901234567890 1)") (expected . "123456789012345678901234567891") (tier . 2) (axioms S1) (note . "bare integer literals use arbitrary precision beyond f64's exact 2^53 range; exact syntax never silently rounds"))
 ()
