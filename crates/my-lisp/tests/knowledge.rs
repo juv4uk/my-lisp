@@ -386,3 +386,77 @@ fn advise_does_not_confuse_absence_with_explicit_negation() {
         "(accepted (module astronomy) (knowledge ((planet neptune))))"
     );
 }
+
+#[test]
+fn advise_all_accepts_a_batch_atomically_and_rules_use_the_whole_batch() {
+    let source = r#"
+        (list
+          (advise-all astronomy
+            '(((planet earth))
+              ((has-mass (var x)) (planet (var x)))))
+          (car (car (reason-in 'astronomy '(has-mass earth)))))
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((accepted (module astronomy) (knowledge (((planet earth)) ((has-mass (var x)) (planet (var x)))))) (((x . 0) . earth)))"
+    );
+}
+
+#[test]
+fn advise_all_rejects_the_whole_batch_when_one_clause_is_malformed() {
+    let source = r#"
+        (list
+          (car (advise-all astronomy '(((planet earth)) (planet mars))))
+          (reason-in 'astronomy '(planet earth)))
+    "#;
+    assert_eq!(eval_knowledge(source), "(rejected Module-not-found)");
+}
+
+#[test]
+fn advise_all_rejects_an_empty_batch_without_creating_a_module() {
+    let source = r#"
+        (list (advise-all astronomy '())
+              (reason-in 'astronomy '(planet earth)))
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((rejected (reason invalid-batch) (input ())) Module-not-found)"
+    );
+}
+
+#[test]
+fn advise_all_detects_an_internal_explicit_conflict_without_writing() {
+    let source = r#"
+        (list
+          (car (advise-all astronomy
+                 '(((planet pluto)) ((not (planet pluto))))))
+          (reason-in 'astronomy '(planet pluto)))
+    "#;
+    assert_eq!(eval_knowledge(source), "(conflict Module-not-found)");
+}
+
+#[test]
+fn advise_all_detects_a_conflict_derived_by_the_proposed_rules() {
+    let source = r#"
+        (list
+          (car (advise-all astronomy
+                 '(((planet pluto))
+                   ((not (dwarf pluto)))
+                   ((dwarf (var x)) (planet (var x))))))
+          (reason-in 'astronomy '(planet pluto)))
+    "#;
+    assert_eq!(eval_knowledge(source), "(conflict Module-not-found)");
+}
+
+#[test]
+fn advise_all_detects_a_conflict_activated_across_existing_and_new_knowledge() {
+    let source = r#"
+        (defmodule astronomy
+          '(((not (has-mass pluto)))
+            ((has-mass (var x)) (planet (var x)))))
+        (list
+          (car (advise-all astronomy '(((planet pluto)))))
+          (reason-in 'astronomy '(planet pluto)))
+    "#;
+    assert_eq!(eval_knowledge(source), "(conflict ())");
+}

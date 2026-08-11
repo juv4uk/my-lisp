@@ -367,6 +367,124 @@
                             (list 'list (list 'quote 'knowledge) clause)))))
         (list 't (list 'advice-decision (list 'quote module-name) clause))))
 
+;; `advise-all` is the transactional companion to `advise`. Translators often
+;; produce several mutually dependent clauses, so validating and writing them
+;; one at a time could leave half an answer in the journal. The whole batch is
+;; checked against the module plus the proposed clauses; only one journal
+;; replacement happens after every clause passes and no opposite is derivable.
+;;
+;; `advise-all` — транзакційний відповідник `advise`. Перекладачі часто
+;; породжують кілька взаємозалежних clause, тому поелементна перевірка й запис
+;; могли б лишити в журналі половину відповіді. Увесь пакет перевіряється проти
+;; модуля разом із запропонованими clause; журнал змінюється один раз лише після
+;; успішної перевірки всіх елементів і відсутності вивідної протилежності.
+;;
+;; `advise-all` ist das transaktionale Gegenstück zu `advise`. Übersetzer
+;; erzeugen oft mehrere voneinander abhängige Clauses; eine elementweise
+;; Prüfung könnte daher eine halbe Antwort im Journal hinterlassen. Das ganze
+;; Paket wird gegen das Modul samt vorgeschlagenen Clauses geprüft; das Journal
+;; wird erst einmalig ersetzt, wenn alles gültig und kein Gegenteil ableitbar
+;; ist.
+(def knowledge-clauses-valid?
+  (lambda (clauses)
+    (cond
+      ((atom clauses) (eq clauses '()))
+      ((knowledge-clause-valid? (car clauses))
+       (knowledge-clauses-valid? (cdr clauses)))
+      (t '()))))
+
+(def advice-negative-head-conflict
+  (lambda (rules all-rules)
+    (cond
+      ((atom rules) '())
+      (t
+       (let ((head (car (car rules))))
+         (cond
+           ((eq (car head) 'not)
+            (let ((positive (second head)))
+              (let ((proofs (reason positive all-rules)))
+                (cond
+                  ((atom proofs)
+                   (advice-negative-head-conflict (cdr rules) all-rules))
+                  (t (list head positive (car proofs)))))))
+           (t (advice-negative-head-conflict (cdr rules) all-rules))))))))
+
+(def advice-batch-conflict
+  (lambda (clauses remaining all-rules)
+    (cond
+      ((atom remaining)
+       (let ((global (advice-negative-head-conflict all-rules all-rules)))
+         (cond
+           ((atom global) '())
+           (t (list (car clauses) (car global) (third global))))))
+      (t
+       (let ((opposite (opposite-knowledge-head (car (car remaining)))))
+         (let ((proofs (reason opposite all-rules)))
+           (cond
+             ((atom proofs)
+              (advice-batch-conflict clauses (cdr remaining) all-rules))
+             (t (list (car remaining) opposite (car proofs))))))))))
+
+(def advice-all-decision
+  (lambda (module-name clauses)
+    (cond
+      ((eq (symbol? module-name) '())
+       (list 'rejected (list 'reason 'invalid-module) (list 'input clauses)))
+      ((atom clauses)
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-proper-list? clauses) '())
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-clauses-valid? clauses) '())
+       (list 'rejected (list 'reason 'invalid-clause) (list 'input clauses)))
+      (t
+       (let ((existing (cond
+                         ((module-known? module-name)
+                          (module-clauses-now module-name))
+                         (t '()))))
+         (let ((conflict (advice-batch-conflict clauses clauses
+                                                (append clauses existing))))
+           (cond
+             ((atom conflict)
+              (list 'accepted
+                    (list 'module module-name)
+                    (list 'knowledge clauses)))
+             (t
+              (list 'conflict
+                    (list 'new (car conflict))
+                    (list 'existing (second conflict))
+                    (list 'proof (third conflict)))))))))))
+
+;; As with `advise`, sequencing stays in the macro so `def` updates the
+;; caller's persistent frame rather than a helper lambda's temporary frame.
+;; Як і в `advise`, послідовність лишається в макросі, щоб `def` оновлював
+;; сталий фрейм викликача, а не тимчасовий фрейм допоміжної lambda.
+;; Wie bei `advise` bleibt die Sequenz im Makro, damit `def` den dauerhaften
+;; Aufrufer-Frame statt des temporären Frames einer Hilfs-Lambda aktualisiert.
+(defmacro advise-all (module-name clauses)
+  (list 'cond
+        (list
+          (list 'equal?
+                (list 'car
+                      (list 'advice-all-decision
+                            (list 'quote module-name) clauses))
+                (list 'quote 'accepted))
+          (list 'second
+                (list 'list
+                      (list 'def '*knowledge-journal*
+                            (list 'append
+                                  (list 'clauses->tell-events
+                                        (list 'quote module-name) clauses)
+                                  '*knowledge-journal*))
+                      (list 'list
+                            (list 'quote 'accepted)
+                            (list 'list
+                                  (list 'quote 'module)
+                                  (list 'quote module-name))
+                            (list 'list (list 'quote 'knowledge) clauses)))))
+        (list 't
+              (list 'advice-all-decision
+                    (list 'quote module-name) clauses))))
+
 ;; --- "atom as concept entry point" ------------------------------------
 ;; A bare symbol like `earth` doesn't mean anything by itself — its meaning
 ;; comes from the facts we've recorded around it. `describe` turns a symbol

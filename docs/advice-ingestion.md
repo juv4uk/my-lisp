@@ -29,6 +29,17 @@ Explicit negative knowledge uses a head such as `((not (planet pluto)))`.
 This is distinct from `(not goal)` inside a rule body, where the reasoning
 engine implements negation as failure.
 
+For translator output containing several clauses, use `advise-all`. It
+validates the complete non-empty batch against both the current module and
+the proposed clauses, including contradictions derived through proposed
+rules. The journal receives every clause in one update or receives none:
+
+```lisp
+(advise-all astronomy
+  '(((planet earth))
+    ((has-mass (var x)) (planet (var x)))))
+```
+
 ## Українська
 
 `advise` — data-only межа запису між недовіреним перекладачем і символьним
@@ -45,6 +56,11 @@ narrate-answer` і повертає пояснену відповідь. Рез�
 Явне негативне знання має голову на кшталт `((not (planet pluto)))`. Це не
 те саме, що `(not goal)` у тілі правила, де reasoning-рушій використовує
 negation as failure.
+
+Для результату перекладача з кількох clause слід використовувати
+`advise-all`. Вона атомарно перевіряє весь непорожній пакет разом із чинним
+модулем, включно із суперечностями, виведеними запропонованими правилами:
+журнал отримує або всі clause одним оновленням, або жодної.
 
 ## Deutsch
 
@@ -63,3 +79,8 @@ Oberfläche gebundenen Meldungen.
 Explizit negatives Wissen verwendet einen Kopf wie `((not (planet pluto)))`.
 Das unterscheidet sich von `(not goal)` in einem Regelrumpf, wo die
 Inferenz-Engine Negation als Fehlschlag verwendet.
+
+Für Übersetzerausgaben mit mehreren Clauses dient `advise-all`. Sie prüft das
+gesamte nichtleere Paket atomar zusammen mit dem vorhandenen Modul,
+einschließlich durch vorgeschlagene Regeln abgeleiteter Widersprüche. Das
+Journal erhält entweder alle Clauses in einer Aktualisierung oder keine.
