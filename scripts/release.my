@@ -49,7 +49,7 @@
 ; читанням .github/workflows/release.yml перед написанням цього скрипта,
 ; не припущено.
 
-(def *release-remote* "my-lisp")
+(def *release-remote* "origin")
 
 (def *release-version*
   (cond
