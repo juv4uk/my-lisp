@@ -11,7 +11,7 @@ Verified on 2026-08-11: FPGA already has the seven basic operations, environment
 3. ✅ One generic adapter runs `expr → compile → assemble → simulate → canonical result → expected`.
 4. ✅ Atoms, fixnums, proper lists, and dotted pairs are decoded exactly from the FPGA heap—never as `(...)`.
 5. ✅ Tier-1 error results are observable: CML classifies static `Arity`/`UnknownSymbol`, while the FPGA reports runtime `Type` through a machine-readable channel.
-6. Successive blind Tier-1 fixtures run without content-specific adapter changes; remove the remaining feature-specific skips.
+6. 🔄 Successive blind Tier-1 fixtures run without content-specific adapter changes: `let` now lowers to a lambda application and 29/34 fixtures execute; `equal?`, `defmacro`, and three exactness/float fixtures remain.
 7. CML gets pinned interface CI and a non-blocking latest-heads compatibility job.
 8. Guix supplies Rust, Guile, Python, and Icarus Verilog; proprietary board synthesis stays a separate capability.
 9. Compiled Lisp grows by value: a small `core.my` subset, then `unify.my`, then `reason.my`.
@@ -27,7 +27,7 @@ Verified on 2026-08-11: FPGA already has the seven basic operations, environment
 3. ✅ Один generic adapter виконує `expr → compile → assemble → simulate → canonical result → expected`.
 4. ✅ Adapter точно декодує atoms, fixnums, proper lists і dotted pairs із FPGA heap — ніколи не згортає їх до `(...)`.
 5. ✅ Tier-1 error results спостережувані: CML класифікує статичні `Arity`/`UnknownSymbol`, а FPGA повідомляє runtime `Type` через машинозчитуваний канал.
-6. Послідовні blind Tier-1 fixtures проходять без content-specific змін adapter-а; решта feature-specific skips усувається.
+6. 🔄 Послідовні blind Tier-1 fixtures проходять без content-specific змін adapter-а: `let` тепер знижується до lambda application і виконується 29/34 fixtures; лишилися `equal?`, `defmacro` та три exactness/float fixtures.
 7. CML отримує pinned interface CI та неблокуючий latest-heads compatibility job.
 8. Guix надає Rust, Guile, Python та Icarus Verilog; пропрієтарний синтез плати лишається окремою capability.
 9. Compiled Lisp росте за цінністю: малий subset `core.my`, потім `unify.my`, потім `reason.my`.
@@ -43,7 +43,7 @@ Am 2026-08-11 verifiziert: Das FPGA besitzt die sieben Basisoperationen, Environ
 3. ✅ Ein generischer Adapter führt `expr → compile → assemble → simulate → kanonisches Ergebnis → expected` aus.
 4. ✅ Atome, Fixnums, echte Listen und Dotted Pairs werden aus dem FPGA-Heap exakt dekodiert—nie als `(...)`.
 5. ✅ Tier-1-Fehlerergebnisse sind beobachtbar: CML klassifiziert statische `Arity`/`UnknownSymbol`, während das FPGA Laufzeit-`Type` über einen maschinenlesbaren Kanal meldet.
-6. Aufeinanderfolgende blinde Tier-1-Fixtures laufen ohne inhaltsspezifische Adapteränderungen; die verbleibenden Feature-spezifischen Skips werden entfernt.
+6. 🔄 Aufeinanderfolgende blinde Tier-1-Fixtures laufen ohne inhaltsspezifische Adapteränderungen: `let` wird nun zu einer Lambda-Anwendung abgesenkt und 29/34 Fixtures laufen; `equal?`, `defmacro` und drei Exactness-/Float-Fixtures bleiben.
 7. CML erhält gepinnte Interface-CI und einen nicht blockierenden Latest-Heads-Job.
 8. Guix liefert Rust, Guile, Python und Icarus Verilog; proprietäre Board-Synthese bleibt eine getrennte Capability.
 9. Kompiliertes Lisp wächst nach Nutzen: ein kleiner `core.my`-Teil, dann `unify.my`, dann `reason.my`.
