@@ -151,3 +151,54 @@
         ((eq (car decision) 'accepted)
          (list decision (world-tell world module-name clause)))
         (t (list decision world))))))
+
+;; The batch form creates exactly one child world after the whole proposed
+;; knowledge set validates and proves conflict-free. Proposed rules can support
+;; or contradict one another during the check; no prefix can leak on failure.
+;; Пакетна форма створює рівно один дочірній світ лише після validation усього
+;; набору й перевірки конфліктів; жоден префікс не просочується при помилці.
+;; Die Stapelform erzeugt genau eine Kindwelt erst nach vollständiger Prüfung;
+;; bei einem Fehler kann kein Präfix des Pakets durchsickern.
+(def advice-all-decision-in-world
+  (lambda (world module-name clauses)
+    (cond
+      ((eq (symbol? module-name) '())
+       (list 'rejected (list 'reason 'invalid-module) (list 'input clauses)))
+      ((atom clauses)
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-proper-list? clauses) '())
+       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+      ((eq (knowledge-clauses-valid? clauses) '())
+       (list 'rejected (list 'reason 'invalid-clause) (list 'input clauses)))
+      (t
+       (let ((existing (cond
+                         ((world-module-known? world module-name)
+                          (world-clauses world module-name))
+                         (t '()))))
+         (let ((conflict (advice-batch-conflict
+                           clauses clauses (append clauses existing))))
+           (cond
+             ((atom conflict)
+              (list 'accepted
+                    (list 'module module-name)
+                    (list 'knowledge clauses)))
+             (t
+              (list 'conflict
+                    (list 'new (car conflict))
+                    (list 'existing (second conflict))
+                    (list 'proof (third conflict)))))))))))
+
+(def world-tell-all
+  (lambda (world module-name clauses)
+    (make-world world
+                (append (clauses->tell-events module-name clauses)
+                        (world-journal world))
+                (world-metadata world))))
+
+(def advise-all-world
+  (lambda (world module-name clauses)
+    (let ((decision (advice-all-decision-in-world world module-name clauses)))
+      (cond
+        ((eq (car decision) 'accepted)
+         (list decision (world-tell-all world module-name clauses)))
+        (t (list decision world))))))

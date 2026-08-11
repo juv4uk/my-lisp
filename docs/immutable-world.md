@@ -16,6 +16,8 @@ This layer deliberately contains no Rust primitive and does not replace `lib/kno
 
 `advise-world` makes guarded ingestion pure as well. It always returns `(decision world)`: accepted knowledge carries a new world, while malformed or conflicting input carries the exact original world. It reuses `lib/knowledge.my`'s clause validation and conflict vocabulary but checks only the supplied snapshot, never global knowledge.
 
+`advise-all-world` applies the same contract atomically to a non-empty clause batch. Proposed facts and rules are validated and conflict-checked together, so they may support one another; success creates exactly one child world, while any malformed clause or internal/derived conflict leaves the original world intact with no partial prefix.
+
 ## Українська
 
 `lib/world.my` — перший виконуваний зріз архітектури `Expression × World → Value × World`. Світ є звичайними S-expression-даними:
@@ -32,6 +34,8 @@ This layer deliberately contains no Rust primitive and does not replace `lib/kno
 
 `advise-world` так само робить чистим захищене надходження знань. Він завжди повертає `(рішення світ)`: прийняте знання несе новий світ, а malformed чи конфліктний ввід — точно початковий. Функція перевикористовує validation і словник конфліктів із `lib/knowledge.my`, але перевіряє лише переданий snapshot, ніколи глобальне знання.
 
+`advise-all-world` атомарно застосовує той самий контракт до непорожнього пакета clause. Запропоновані факти й правила перевіряються разом і можуть підтримувати одне одного; успіх створює рівно один дочірній світ, а malformed clause чи внутрішній/вивідний конфлікт лишає початковий світ цілим без часткового префікса.
+
 ## Deutsch
 
 `lib/world.my` ist der erste ausführbare Ausschnitt der Architektur `Expression × World → Value × World`. Eine Welt besteht aus gewöhnlichen S-Expression-Daten:
@@ -47,3 +51,5 @@ Diese Schicht fügt bewusst kein Rust-Primitiv hinzu und ersetzt `lib/knowledge.
 `reason-in-world` und `forward-in-world` sind die ersten Verbraucher dieses expliziten Zustands. Rückwärts- und Vorwärtsschluss arbeiten nun auf einem gewählten Schnappschuss oder Zweig, ohne das globale `*knowledge-journal*` zu lesen; dieselbe Anfrage kann deshalb in zwei Welten eine unterschiedliche, reproduzierbare Antwort haben.
 
 `advise-world` macht auch die geschützte Wissensaufnahme rein. Es liefert immer `(entscheidung welt)`: Akzeptiertes Wissen enthält eine neue Welt, ungültige oder widersprüchliche Eingabe exakt die ursprüngliche. Es nutzt Validierung und Konfliktvokabular aus `lib/knowledge.my`, prüft aber nur den übergebenen Schnappschuss, niemals globales Wissen.
+
+`advise-all-world` wendet denselben Vertrag atomar auf einen nichtleeren Clause-Stapel an. Vorgeschlagene Fakten und Regeln werden gemeinsam geprüft und dürfen einander stützen; Erfolg erzeugt genau eine Kindwelt, während eine ungültige Clause oder ein interner/abgeleiteter Konflikt die ursprüngliche Welt ohne Teilpräfix bewahrt.

@@ -245,3 +245,101 @@ fn advise_world_does_not_read_the_global_knowledge_journal() {
         "(accepted (((planet mars))))"
     );
 }
+
+#[test]
+fn advise_all_world_accepts_one_atomic_dependent_batch() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((before (empty-world)))
+              (let ((result
+                      (advise-all-world
+                        before
+                        'astronomy
+                        '(((planet earth))
+                          ((has-mass (var x)) (planet (var x)))))))
+                (let ((after (second result)))
+                  (list (car (car result))
+                        (world-clauses before 'astronomy)
+                        (cond
+                          ((atom (reason-in-world after 'astronomy
+                                                 '(has-mass earth))) 'no)
+                          (t 'yes))
+                        (equal? before (world-parent after))))))
+            "#
+        ),
+        "(accepted () yes t)"
+    );
+}
+
+#[test]
+fn advise_all_world_rejects_the_whole_malformed_batch() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((before (empty-world)))
+              (let ((result
+                      (advise-all-world before 'astronomy
+                                        '(((planet earth)) (planet mars)))))
+                (list (car (car result))
+                      (equal? before (second result))
+                      (world-module-known? (second result) 'astronomy))))
+            "#
+        ),
+        "(rejected t ())"
+    );
+}
+
+#[test]
+fn advise_all_world_rejects_an_empty_batch_without_a_new_world() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((before (empty-world)))
+              (let ((result (advise-all-world before 'astronomy '())))
+                (list (car (car result))
+                      (second (second (car result)))
+                      (equal? before (second result)))))
+            "#
+        ),
+        "(rejected invalid-batch t)"
+    );
+}
+
+#[test]
+fn advise_all_world_detects_internal_conflict_without_partial_writes() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((before (empty-world)))
+              (let ((result
+                      (advise-all-world
+                        before
+                        'astronomy
+                        '(((planet pluto)) ((not (planet pluto)))))))
+                (list (car (car result))
+                      (equal? before (second result))
+                      (world-module-known? (second result) 'astronomy))))
+            "#
+        ),
+        "(conflict t ())"
+    );
+}
+
+#[test]
+fn advise_all_world_ignores_conflicts_in_the_global_journal() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (advise astronomy '((not (planet mars))))
+            (let ((result
+                    (advise-all-world (empty-world)
+                                      'astronomy
+                                      '(((planet mars))))))
+              (list (car (car result))
+                    (world-clauses (second result) 'astronomy)))
+            "#
+        ),
+        "(accepted (((planet mars))))"
+    );
+}
