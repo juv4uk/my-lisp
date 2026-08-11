@@ -65,6 +65,8 @@
      (compatibility-my-updated . "b2c52c2")
      (compatibility-my-note . "pipeline now includes macro-expand; supported now includes equal?/defmacro; conformance is 34 tagged tier-1, 9 skipped, all one inexact-number gap")
      (testing-docs . "docs/testing.md (218e461), trilingual, linked from README")
+     (agents-md . "b347c03")
+     (tcp-repl-connected . t)
      (documented-limitations . (no-inexact-numbers no-rationals no-canonical-strings
                                  no-more-than-eight-call-arguments))))
    (my-idea .
