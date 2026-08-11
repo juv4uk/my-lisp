@@ -36,20 +36,18 @@
     ((role . hardware-implementation)
      (isa-contract . (0 2))
      (hardware-verified-milestones . (m01 . m27))
-     (m28-status . regressed-real-bug-found)
+     (m28-status . passed-real-iverilog-run)
      (m28-commit . "447ee0e")
-     (m28-note . "direct non-tail recursion, not the canonical length-onto accumulator form")
-     (m28-regression-note . "confirmed and documented: full 16-register dump at halt shows R9=symbol'lst(920) instead of FIXNUM 3, and R11 (software call stack) left as CONS not NIL — unbalanced push/pop that only surfaces on real 3-level self-referential recursion, which no earlier milestone exercised; each eval_core.inc block checked statically balanced on its own, so the bug is in the interaction between nested calls, not one isolated spot; root cause not yet found")
-     (m28-docs-corrected . "69a6244 — removed false checkmark PASSED status from docs/lisp-machine-plan.md, docs/testing.md, AGENTS.md, ecosystem-status.md")
-     (m29-blocked-by . m28-same-bug)
-     (m29-status . wip-pending-ci)
+     (m28-fix-commit . "7542682")
+     (m29-status . passed-real-iverilog-run)
      (m29-commit . "cec7889")
-     (m29-note . "canonical tail-recursive length/length-onto — needed to bootstrap reverse/append/map from core.my")
+     (m29-note . "canonical tail-recursive length/length-onto — bootstraps reverse/append/map from core.my")
+     (m28-m29-root-cause . "not the letrec/SETCDR mechanism — that worked correctly from the start. The two demo files' test data (a b c) was passed unquoted into a call position, so it was evaluated as code: 'a looked up as an operator, unbound lookup fell through to NIL, CAR(NIL) hit a type error, and halted with garbage registers — which read as the wrong result (a stray symbol) and was first misdiagnosed as a call-stack imbalance bug. Every earlier bootstrap demo had correctly quoted its test data; these two didn't. Fixed by quoting '(a b c) in both files. Re-run confirmed: M28 PASSED (sim time 115224960), M29 PASSED (sim time 121180340), R9=TAG:FIXNUM VAL:3 in both.")
      (ci-commit . "9e9ea06")
-     (ci-status . created-verdict-pending)
+     (ci-status . green)
      (conformance-my-running . nil)
-     (open-blocker . letrec-in-closures)
-     (open-blocker-note . "plan item 24, before rational/bignum (item 25); blocks bootstrapping reverse/append/map from core.my; DO NOT assume letrec works until re-confirmed — M28 regression shows the mechanism itself needs a fix, not just M29 built on top of it")
+     (open-blocker . nil)
+     (open-blocker-note . "letrec-in-closures (plan item 24) resolved — M28/M29 both pass on real iverilog now that the actual bug (unquoted test data, not the mechanism) was found and fixed")
      (isa-representational-gaps . (no-inexact-numbers no-rationals no-string-tag))))
    (cml .
     ((role . aot-compiler)
@@ -81,7 +79,7 @@
      (planned-feature . system-observatory)))))
  (open-blockers .
   ((letrec-in-fpga-lisp-closures .
-    "blocks cml's Tier-3-adjacent fixtures indirectly and fpga-lisp's own core.my bootstrap directly")
+    "RESOLVED (7542682) — M28/M29 both PASSED on real iverilog; the letrec/SETCDR mechanism itself was correct throughout, the bug was unquoted test data in two demo files, not the mechanism")
    (no-ecosystem-ci-until-now .
     "cml's CI (created unilaterally 2026-08-11 before user confirmation arrived) was first reported green via a since-debunked HTML-page check, then found genuinely FAILURE on all 8 runs, root-caused (stale unknown-operator table in the test harness, not the compiler) and fixed in 4565549 — equal?/defmacro are now actually machine-verified, not just reported as such")
    (verify-ci-via-rest-api-not-html .
