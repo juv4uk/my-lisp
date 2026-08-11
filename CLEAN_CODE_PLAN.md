@@ -27,7 +27,7 @@
 
 ## Етап 1 — зафіксувати закони до нового tooling
 
-### 1. Canonical serialization conformance
+### 1. Canonical serialization conformance ✅
 
 - Описати канонічний друк кожного Value-kind: symbols, strings/escapes, proper та
   dotted lists, exact integers/rationals, inexact numbers.
@@ -35,6 +35,11 @@
 - Зафіксувати, що content identity залежить від цього контракту, не від Rust
   printer internals чи SHA.
 - Критерій готовності: Rust проходить fixtures; формат достатній для FPGA adapter.
+
+Виконано 2026-08-11: [`docs/canonical-serialization.md`](docs/canonical-serialization.md)
+визначає data-only домен і точний portable text; Tier-2 fixtures фіксують канонічний
+текст та `read(write(value)) = value` для кожного підтриманого Value-kind. Content
+identity тепер явно посилається на цей контракт, а не на Rust printer чи SHA.
 
 ### 2. Pure readers as the only semantics
 
@@ -184,11 +189,10 @@
 
 ## Найближча черга комітів
 
-1. Canonical serialization specification + conformance fixtures.
-2. Legacy readers delegated to explicit World readers.
-3. Legacy history policy decision and tests.
-4. Effect naming audit and compatibility proposal.
-5. Docstring representation design spike in my-lisp data.
+1. Legacy readers delegated to explicit World readers.
+2. Legacy history policy decision and tests.
+3. Effect naming audit and compatibility proposal.
+4. Docstring representation design spike in my-lisp data.
 
 Після кожного коміту цей список переглядається за фактичними знахідками, але
 порядок залежностей не змінюється без записаного обґрунтування.
