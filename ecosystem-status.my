@@ -27,7 +27,8 @@
      (exactness-model . fully-implemented)
      (blocking-others . nil)
      (rust-toolchain-on-this-machine . (installed 1 97 1))
-     (msvc-linker-status . install-in-progress)))
+     (msvc-linker-status . install-failed-disk-full)
+     (gnu-toolchain-status . builds-fail-dlltool-createprocess-missing-as-exe)))
    (fpga-lisp .
     ((role . hardware-implementation)
      (isa-contract . (0 2))
@@ -42,11 +43,14 @@
      (tested-my-lisp-sha . "ed10151")
      (tested-fpga-lisp-sha . "01bb01a")
      (tier-1-fixtures . (29 . 34))
-     (equal-status . merged-unverified)
+     (equal-status . merged-machine-verified)
      (equal-commit . "6b884a8")
-     (equal-blocked-on . fpga-simulator-toolchain-missing-in-session)
-     (defmacro-status . not-started)
-     (ci-status . created)
+     (equal-ci-run . (success "1m59s"))
+     (defmacro-status . merged-machine-verified)
+     (defmacro-commit . "a8e6cdf")
+     (defmacro-ci-run . (success "1m34s"))
+     (tier-1-skips-remaining . 0)
+     (ci-status . green)
      (ci-created-without-user-confirmation . t)
      (documented-limitations . (no-inexact-numbers no-rationals no-canonical-strings
                                  no-more-than-eight-call-arguments))))
@@ -60,7 +64,7 @@
   ((letrec-in-fpga-lisp-closures .
     "blocks cml's Tier-3-adjacent fixtures indirectly and fpga-lisp's own core.my bootstrap directly")
    (no-ecosystem-ci-until-now .
-    "cml created CI unilaterally 2026-08-11 before user confirmation arrived; flagged, not reverted as of this snapshot")
+    "resolved: cml's CI (created unilaterally 2026-08-11 before user confirmation arrived) has since run twice, both green — equal? and defmacro are machine-verified via iverilog E2E")
    (isa-no-inexact-rational-string .
     "representational gap, not an implementation gap; blocks my-lisp's stated core purpose (exact rational arithmetic) from ever reaching fpga-lisp until isa-contract.my adds tags/encoding for it")))
  (pending-user-decisions .
