@@ -4,6 +4,8 @@ use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::env;
 use std::fs;
+use std::io::{BufRead, BufReader, Write};
+use std::net::{Ipv4Addr, TcpListener};
 use std::path::PathBuf;
 use std::process;
 
@@ -48,6 +50,73 @@ fn allowed_processes(args: &[String]) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// `--tcp` / `--tcp=PORT` — a REPL reachable over TCP instead of stdio, for
+/// other local processes (e.g. a cross-session tool) to eval expressions
+/// against without shelling out to the CLI per call. Bound to
+/// `127.0.0.1` only — never `0.0.0.0` — since there is no authentication:
+/// anything that can reach this port can eval arbitrary my-lisp, including
+/// `process-run` if `--allow-process` was also passed. Loopback-only keeps
+/// that blast radius to "processes already running as this user on this
+/// machine", matching what the stdio REPL already allows.
+/// One connection is served at a time against the same `Session` the file
+/// or stdio REPL would use, so state persists across reconnects the same
+/// way it persists across REPL lines.
+fn run_tcp_repl(port: u16, session: &mut Session) {
+    let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, port)) {
+        Ok(listener) => listener,
+        Err(err) => {
+            eprintln!("Error: could not bind TCP REPL to 127.0.0.1:{port}: {err}");
+            process::exit(1);
+        }
+    };
+    let actual_port = listener.local_addr().map(|a| a.port()).unwrap_or(port);
+    println!("my-lisp TCP REPL v{} listening on 127.0.0.1:{actual_port}", env!("CARGO_PKG_VERSION"));
+
+    for stream in listener.incoming() {
+        let mut stream = match stream {
+            Ok(stream) => stream,
+            Err(_) => continue,
+        };
+        let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_else(|_| "?".into());
+        eprintln!("TCP REPL: connection from {peer}");
+
+        let mut reader = BufReader::new(stream.try_clone().expect("clone TCP stream"));
+        let mut line = String::new();
+        loop {
+            line.clear();
+            match reader.read_line(&mut line) {
+                Ok(0) => break, // connection closed
+                Ok(_) => {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    let response = match parse(trimmed) {
+                        Ok(ast) => match eval_parsed_expressions(&ast, session) {
+                            Ok(result) => {
+                                let mut out = String::new();
+                                for line in result.output {
+                                    out.push_str(&line);
+                                    out.push('\n');
+                                }
+                                out.push_str(&result.value.to_string());
+                                out
+                            }
+                            Err(e) => format!("Error: {}", e.render(trimmed)),
+                        },
+                        Err(e) => format!("Parse error: {}", e.render(trimmed)),
+                    };
+                    if writeln!(stream, "{response}").is_err() {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        eprintln!("TCP REPL: {peer} disconnected");
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let allowed = allowed_processes(&args);
@@ -83,6 +152,16 @@ fn main() {
             println!("  -V, --version               Print version information");
             println!("  -h, --help                  Print help information");
             println!("  --allow-process=a,b,c        Allow (process-run) to run exactly these program names");
+            println!("  --tcp[=PORT]                 Serve the REPL over TCP on 127.0.0.1 (default port 9999) instead of stdio");
+            return;
+        }
+
+        if arg == "--tcp" || arg.starts_with("--tcp=") {
+            let port = arg
+                .strip_prefix("--tcp=")
+                .and_then(|p| p.parse::<u16>().ok())
+                .unwrap_or(9999);
+            run_tcp_repl(port, &mut session);
             return;
         }
 
