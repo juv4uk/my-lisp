@@ -104,6 +104,7 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 | 94 | `(understand '(all planet have mass))` | 3 | — | universal-rule shape |
 | 95 | `(narrate-fact (car (understand '(earth is a planet))))` | 3 | — | `lib/narrate.my`, previously only Rust unit tests |
 | 96 | `(equal? '(mars is a planet) (narrate-fact (car (understand '(mars is a planet)))))` | 3 | — | `understand`/`narrate-fact` are direct inverses for the is-a shape |
+| 97 | `(cond (0 'zero-is-truthy) (t 'wrong))` | 1 | G8 | canonical cross-implementation gate: fixnum `0` is truthy; only Nil is canonical false |
 
 **2026-08-09, final pass:** the Lisp-1/Lisp-2 question was resolved by declining the framing — see `docs/language-core-axioms.md`'s "Deliberately left open" section. Two fixtures added proving the actual (already-existing, now-documented) behavior. File is now 78 fixtures.
 
@@ -127,10 +128,10 @@ Fixtures #10 and #20 test `cond` selecting the first true clause and `'()` actin
 
 ## Counts
 
-- Tier 1 (CORE SEMANTICS): 28 fixtures
+- Tier 1 (CORE SEMANTICS): 29 fixtures
 - Tier 2 (LANGUAGE CONTRACT): 32 fixtures
 - Tier 3 (ECOSYSTEM CONFORMANCE): 36 fixtures
-- Total: 96 fixtures (literate layer removed; occurs-check, defmacro/tail-recursion/map-filter-reduce/variadic-lambda/introspection/read-all/princ/understand/narrate fixtures added, all 2026-08-09; see notes above)
+- Total: 97 fixtures (literate layer removed; occurs-check, defmacro/tail-recursion/map-filter-reduce/variadic-lambda/introspection/read-all/princ/understand/narrate fixtures added 2026-08-09; canonical G8 zero-truthiness gate added 2026-08-11; see notes above)
 
 (Corrected 2026-08-09 from an initial hand count of 22/15/20/1 — `my-lisp-constitution.my`'s machine-checked tier field is now the authoritative count, not this table's manual tally.)
 - Fixtures with no clean G/S axiom mapping: 8 (`unify`/`reason`, evidence for principle 3, not the G/S axiom list) — #10/#20 resolved by G8, no longer unmapped

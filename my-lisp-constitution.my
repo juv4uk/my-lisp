@@ -178,4 +178,5 @@
 (fixture (expr . "(list (equal? (read (write-to-string 42)) 42) (equal? (read (write-to-string 10/20)) 1/2))") (expected . "(t t)") (tier . 2) (axioms G6 S1) (note . "canonical serialization round-trip: exact numbers"))
 (fixture (expr . "(list (write-to-string 3.00) (write-to-string 1.25))") (expected . "(\"3.0\" \"1.25\")") (tier . 2) (axioms G6 S1) (note . "canonical serialization: finite inexact numbers"))
 (fixture (expr . "(list (equal? (read (write-to-string 3.00)) 3.0) (equal? (read (write-to-string 1.25)) 1.25))") (expected . "(t t)") (tier . 2) (axioms G6 S1) (note . "canonical serialization round-trip: finite inexact numbers"))
+(fixture (expr . "(cond (0 'zero-is-truthy) (t 'wrong))") (expected . "zero-is-truthy") (tier . 1) (axioms G8) (role . "constitutive") (note . "canonical cross-implementation G8 gate: fixnum 0 is truthy; only Nil is the canonical false value"))
 ()
