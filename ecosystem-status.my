@@ -27,8 +27,9 @@
      (exactness-model . fully-implemented)
      (blocking-others . nil)
      (rust-toolchain-on-this-machine . (installed 1 97 1))
-     (msvc-linker-status . install-failed-disk-full)
-     (gnu-toolchain-status . builds-fail-dlltool-createprocess-missing-as-exe)))
+     (msvc-linker-status . working-after-disk-freed)
+     (gnu-toolchain-status . flaky-shared-rustup-default-with-cml-use-msvc-instead)
+     (tcp-repl . (flag "--tcp[=PORT]" commit "1a9dd63" bind "127.0.0.1-only" verified manually))))
    (fpga-lisp .
     ((role . hardware-implementation)
      (isa-contract . (0 2))
@@ -60,6 +61,9 @@
      (tier-1-skips-remaining . 0)
      (ci-status . green)
      (ci-created-without-user-confirmation . t)
+     (compatibility-my-updated . "b2c52c2")
+     (compatibility-my-note . "pipeline now includes macro-expand; supported now includes equal?/defmacro; conformance is 34 tagged tier-1, 9 skipped, all one inexact-number gap")
+     (testing-docs . "docs/testing.md (218e461), trilingual, linked from README")
      (documented-limitations . (no-inexact-numbers no-rationals no-canonical-strings
                                  no-more-than-eight-call-arguments))))
    (my-idea .
