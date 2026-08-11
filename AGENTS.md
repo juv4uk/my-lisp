@@ -1,63 +1,55 @@
-# AGENTS.md — ecosystem overview for agents working in this repo
+# AGENTS.md — my-lisp
 
-This repo (`my-lisp`) is one of four in a coordinated ecosystem. If you're
-an agent (Codex, Claude Code, or otherwise) picking up work here, read this
-first — it saves you from re-deriving context another agent already has.
+## Role
 
-## The four repositories
+Semantic source of truth for the four-repository ecosystem (`my-lisp`,
+`fpga-lisp`, `cml`, `my-idea`). Defines what a my-lisp program means; every
+other repository must match this, not the reverse.
 
-- **my-lisp** (this repo) — the semantic source of truth. Defines the
-  language: parser, evaluator, exactness model (rationals, no floats),
-  `lib/core.my` standard library. Language contract version 1.0
-  (`language-contract.my`). Nothing else in the ecosystem may drift from
-  what this repo says the language means.
-- **fpga-lisp** — hardware implementation of the same language on an FPGA.
-  Tracks an ISA contract (`isa-contract.my`, version 0.2) against my-lisp's
-  semantics. Currently blocked on `letrec`-in-closures (plan item 24)
-  before it can bootstrap `reverse`/`append`/`map` from `core.my`.
-- **cml** — an AOT compiler from my-lisp source to fpga-lisp's ISA. Tracks
-  conformance against both other repos (`compatibility.my`). Has CI
-  (`.github/workflows/`) running real `iverilog` E2E simulation.
-- **my-idea** — an observer/IDE layer, depends on my-lisp via
-  cargo-git-dependency/submodule. Building toward a "System Observatory"
-  panel.
+## Authoritative files
 
-## Machine-readable status
+- `language-contract.my` — the versioned semantic contract (currently 1.0).
+- `docs/language-core-axioms.md` — the G1–G8/S1–S3 axioms the contract
+  covers, with the reasoning behind each.
+- `tests/fixtures/conformance.my` — the fixture set every claim of
+  conformance (from any repo) is checked against, tagged by axiom.
+- `ecosystem-status.my` — a curated snapshot pointer across all four repos,
+  not itself authoritative for any one repo's details (see `evidence/`).
 
-`ecosystem-status.my` in this repo is a flat alist (read via `(read-file
-"ecosystem-status.my")`) — current status of all four repos, refreshed by
-hand after each cross-session sync. Read it before assuming anything is
-stale or unverified; it's usually more current than any prose doc.
+## How to run tests
 
-`docs/ecosystem-sync.md` narrates the same facts for humans, chronologically.
+```
+cargo +stable-x86_64-pc-windows-msvc test --workspace
+```
+(GNU toolchain is flaky on this machine when the shared rustup default
+toolchain changes — use the MSVC toolchain explicitly.)
 
-## Talking to my-lisp live
+## What not to change without a contract bump
 
-`my-lisp --tcp[=PORT]` (default 9999) starts a REPL reachable over TCP on
-`127.0.0.1` only (no auth — same trust boundary as the stdio REPL). Useful
-for one-off semantic checks (`(length '(a b c))`, truthy rules, etc.)
-without shelling out to the CLI per call. Start it, then connect to
-`127.0.0.1:9999` and send one expression per line.
+- Any axiom in `docs/language-core-axioms.md`, or `language-contract.my`'s
+  version number, without deliberate discussion — other repos pin against
+  this version.
+- `tests/fixtures/conformance.my` entries are append-only historical
+  facts; don't edit an existing fixture's `expr`/`expected`, add a new one.
 
-## Conventions worth knowing before editing
+## How to create evidence
 
-- `*.my` "contract" files (`language-contract.my`, `isa-contract.my`,
-  `compatibility.my`, `ecosystem-status.my`) are **data, not code** — one
-  flat alist each, read via `(read-file ...)`, never `(load ...)`-ed as
-  executable source.
-- `docs/versioning.md` — git tags use an `l` prefix (`l0.18.0`), not bare
-  semver.
-- `scripts/release.my` is the only sanctioned release path — it runs
-  `cargo test --workspace` first and refuses to tag on failure.
-- G8 axiom: only `Nil` (the empty list) is falsy. Everything else,
-  including fixnum `0`, is truthy.
+See `evidence/README.md` for the format. One file per
+`(requirement-id, implementation, commit)` at
+`evidence/<id>/<implementation>/<short-sha>.my`. A durable claim ("X now
+passes/fails") gets an evidence file or a contract edit — not a status
+message.
 
-## Cross-session coordination protocol (agreed with cml/fpga-lisp)
+## How to check neighboring repositories
 
-1. Durable facts go in `ecosystem-status.my`/`ecosystem-status.md` —
-   written after the fact (commit done, CI green), not "plan to do X".
-2. Direct messages between sessions are for synchronous asks, not
-   restating what's already in a status file.
-3. Anchor claims to a commit sha or file:line, not a paraphrase from memory.
-4. Don't block on confirmation before continuing your own work unless
-   there's a real dependency.
+Read `fpga-lisp/isa-contract.my`, `cml/compatibility.my`, and each
+neighbor's own `evidence/` directory directly rather than asking. Use
+`my-lisp --tcp=9999` (loopback-only, one isolated environment per
+connection) as a semantic oracle for quick checks — not as a message bus
+between agents.
+
+## Live coordination context
+
+A separate, parallel coordination effort (Codex as primary agent, OpenCode
+as reviewer) runs through `C:\Users\user\Documents\GitHub\docs` — read
+`docs/AGENT_MEMORY.md` there before assuming an area is untouched.
