@@ -48,6 +48,21 @@ neighbor's own `evidence/` directory directly rather than asking. Use
 connection) as a semantic oracle for quick checks — not as a message bus
 between agents.
 
+## Environment: WSL2 + Guix
+
+Work in this repo from inside WSL2, under the Linux user named after this
+repo (`my-lisp`), not directly from Windows. Enter the declared environment
+before running anything:
+
+```
+wsl -u my-lisp
+cd /mnt/c/GitHub/my-lisp
+guix shell -m manifest.scm
+```
+
+`manifest.scm` pins the toolchain versions this repo expects; don't rely on
+whatever happens to be on `$PATH` outside the shell.
+
 ## Live coordination context
 
 A separate, parallel coordination effort (Codex as primary agent, OpenCode
