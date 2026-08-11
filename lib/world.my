@@ -333,3 +333,62 @@
               (cond
                 ((world-not-ancestor? transition) transition)
                 (t (append earlier transition)))))))))))
+
+;; Branch comparison stops before merge policy. First align both histories to
+;; the same absolute depth, then walk parents together until their values are
+;; equal. Since worlds are immutable values, structurally equal histories are
+;; the same semantic world even if reconstructed independently from a package.
+;; `world-branch-diff` exposes the common base plus both chronological deltas.
+;;
+;; Порівняння гілок зупиняється до merge-policy. Історії вирівнюються за
+;; абсолютною глибиною й разом ідуть до рівного предка. Для immutable-значень
+;; структурно рівні історії — той самий семантичний світ. `world-branch-diff`
+;; показує спільну базу та обидві хронологічні дельти.
+;;
+;; Der Zweigvergleich endet vor einer Merge-Policy. Beide Geschichten werden
+;; auf gleiche Tiefe gebracht und gemeinsam bis zum gleichen Vorfahren verfolgt.
+;; Bei unveränderlichen Werten sind strukturell gleiche Geschichten dieselbe
+;; semantische Welt. `world-branch-diff` zeigt Basis und beide Zeitdeltas.
+(def world-climb-to-depth
+  (lambda (world current-depth target-depth)
+    (cond
+      ((= current-depth target-depth) world)
+      (t (world-climb-to-depth (world-parent world)
+                               (- current-depth 1)
+                               target-depth)))))
+
+(def world-common-ancestor-aligned
+  (lambda (left right)
+    (cond
+      ((equal? left right) left)
+      ((atom (world-parent left)) 'World-no-common-ancestor)
+      ((atom (world-parent right)) 'World-no-common-ancestor)
+      (t (world-common-ancestor-aligned (world-parent left)
+                                        (world-parent right))))))
+
+(def world-common-ancestor
+  (lambda (left right)
+    (let ((left-depth (world-depth left))
+          (right-depth (world-depth right)))
+      (let ((target-depth (cond
+                            ((< left-depth right-depth) left-depth)
+                            (t right-depth))))
+        (world-common-ancestor-aligned
+          (world-climb-to-depth left left-depth target-depth)
+          (world-climb-to-depth right right-depth target-depth))))))
+
+(def world-no-common-ancestor?
+  (lambda (value)
+    (cond
+      ((atom value) (eq value 'World-no-common-ancestor))
+      (t '()))))
+
+(def world-branch-diff
+  (lambda (left right)
+    (let ((base (world-common-ancestor left right)))
+      (cond
+        ((world-no-common-ancestor? base) base)
+        (t
+         (list (list 'base base)
+               (list 'left (world-diff base left))
+               (list 'right (world-diff base right))))))))

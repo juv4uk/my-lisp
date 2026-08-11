@@ -526,3 +526,74 @@ fn world_diff_refuses_to_invent_a_path_between_sibling_branches() {
         "World-not-ancestor"
     );
 }
+
+#[test]
+fn world_common_ancestor_finds_the_branch_point() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((root (empty-world)))
+              (let ((base (world-tell root 'zoo '((animal cat)))))
+                (let ((left (world-tell base 'zoo '((has-fur cat))))
+                      (right (world-tell base 'zoo '((has-tail cat)))))
+                  (equal? base (world-common-ancestor left right)))))
+            "#
+        ),
+        "t"
+    );
+}
+
+#[test]
+fn world_common_ancestor_aligns_unequal_branch_depths() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((root (empty-world)))
+              (let ((base (world-tell root 'zoo '((animal cat)))))
+                (let ((left1 (world-tell base 'zoo '((has-fur cat))))
+                      (right (world-tell base 'zoo '((has-tail cat)))))
+                  (let ((left2 (world-tell left1 'zoo '((likes cat milk)))))
+                    (equal? base (world-common-ancestor left2 right))))))
+            "#
+        ),
+        "t"
+    );
+}
+
+#[test]
+fn world_branch_diff_reports_both_chronological_deltas() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((base (world-tell (empty-world) 'zoo '((animal cat)))))
+              (let ((left (world-tell base 'zoo '((has-fur cat))))
+                    (right (world-tell base 'zoo '((has-tail cat)))))
+                (let ((comparison (world-branch-diff left right)))
+                  (list (second (second comparison))
+                        (second (third comparison))))))
+            "#
+        ),
+        "(((tell zoo ((has-fur cat)))) ((tell zoo ((has-tail cat)))))"
+    );
+}
+
+#[test]
+fn reconstructed_equal_worlds_have_no_branch_delta() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((source
+                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
+              (let ((copy
+                      (second
+                        (import-knowledge-package-world
+                          (empty-world)
+                          (make-world-knowledge-package source 'zoo)))))
+                (let ((comparison (world-branch-diff source copy)))
+                  (list (second (second comparison))
+                        (second (third comparison))))))
+            "#
+        ),
+        "(() ())"
+    );
+}
