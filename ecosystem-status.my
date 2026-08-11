@@ -34,7 +34,8 @@
                    note "each connection gets its own fresh Environment::root(), not a shared mutable Session — a connection's def is invisible to every other connection; every expression logged to stderr with peer address"))))
    (fpga-lisp .
     ((role . hardware-implementation)
-     (isa-contract . (0 2))
+     (isa-contract . (1 0))
+     (evidence . "evidence/G5/fpga-lisp/ and evidence/G8/fpga-lisp/ in the fpga-lisp repo, not duplicated here — see evidence/README.md's protocol")
      (hardware-verified-milestones . (m01 . m27))
      (m28-status . passed-real-iverilog-run)
      (m28-commit . "447ee0e")
