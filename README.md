@@ -51,7 +51,7 @@ This repository is the canonical Rust implementation:
 - [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — unification and backward-chaining inference.
 - [`lib/forward.my`](lib/forward.my) — forward-chaining inference with truth maintenance.
 - [`lib/knowledge.my`](lib/knowledge.my) — named, queryable knowledge modules.
-- [`lib/world.my`](lib/world.my) — immutable, parent-linked world versions with structurally shared history, snapshot-local reasoning, and atomic pure knowledge ingestion.
+- [`lib/world.my`](lib/world.my) — immutable world history, snapshot-local reasoning, atomic ingestion, and versioned data-only snapshot exchange.
 - [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — controlled natural language, both directions.
 - [`lib/clips-import.my`](lib/clips-import.my) — imports real CLIPS `.clp` source files.
 
@@ -109,7 +109,7 @@ Rust надає лише те, що робить особливо добре —
 - [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — унікація й backward-chaining висновування.
 - [`lib/forward.my`](lib/forward.my) — forward-chaining висновування з truth maintenance.
 - [`lib/knowledge.my`](lib/knowledge.my) — іменовані, запитувані модулі знань.
-- [`lib/world.my`](lib/world.my) — незмінні версії світу з батьківськими зв'язками, структурно спільною історією, snapshot-local reasoning і атомарним чистим надходженням знань.
+- [`lib/world.my`](lib/world.my) — незмінна історія світу, snapshot-local reasoning, атомарне надходження та версіонований data-only обмін snapshots.
 - [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — контрольована природна мова в обидва боки.
 - [`lib/clips-import.my`](lib/clips-import.my) — імпортує справжні CLIPS `.clp`-файли.
 
@@ -166,7 +166,7 @@ Dieses Repository ist die kanonische Rust-Implementierung:
 - [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — Unifikation und Backward-Chaining-Inferenz.
 - [`lib/forward.my`](lib/forward.my) — Forward-Chaining-Inferenz mit Truth Maintenance.
 - [`lib/knowledge.my`](lib/knowledge.my) — benannte, abfragbare Wissensmodule.
-- [`lib/world.my`](lib/world.my) — unveränderliche, vorgängerverknüpfte Weltversionen mit strukturell geteilter Geschichte, schnappschusslokalem Schlussfolgern und atomarer reiner Wissensaufnahme.
+- [`lib/world.my`](lib/world.my) — unveränderliche Weltgeschichte, schnappschusslokales Schließen, atomare Aufnahme und versionierter reiner Schnappschussaustausch.
 - [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — kontrollierte natürliche Sprache, beide Richtungen.
 - [`lib/clips-import.my`](lib/clips-import.my) — importiert echte CLIPS-`.clp`-Quelldateien.
 

@@ -25,6 +25,11 @@ canonical in-memory shape for adapters that produce data directly.
 `write-knowledge-package` performs the other direction: it validates a module
 and clause batch, serializes the canonical envelope, and writes one expression.
 
+Immutable worlds use the same envelope: `make-world-knowledge-package` exports
+the selected snapshot, and `import-knowledge-package-world` returns
+`(decision world)`. Successful import creates one child world; every rejection
+or conflict preserves the exact target snapshot. Package data is never `eval`.
+
 For process-to-process transport, `send-knowledge-package` and
 `receive-knowledge-package` use one package per TCP connection, with EOF as the
 unambiguous frame boundary. Receivers drain all chunks before `read`; received
@@ -49,6 +54,10 @@ Clause використовують чинний формат `lib/reason.my` і
 пам'яті для адаптерів інших проєктів.
 `write-knowledge-package` виконує зворотний напрям: перевіряє пакет і записує
 канонічну оболонку одним S-виразом.
+Immutable worlds використовують ту саму оболонку: `make-world-knowledge-package`
+експортує вибраний snapshot, а `import-knowledge-package-world` повертає
+`(рішення світ)`. Успіх створює один дочірній світ; rejection чи conflict
+зберігає точний цільовий snapshot. Дані пакета ніколи не `eval`.
 Для обміну між процесами `send-knowledge-package`/`receive-knowledge-package`
 передають один пакет на TCP-з'єднання з EOF як однозначною межею. Дані
 читаються, перевіряються та імпортуються, але ніколи не виконуються.
@@ -71,6 +80,10 @@ gelangen alle Clauses ins Journal oder keine. `make-knowledge-package` erzeugt
 die kanonische Speicherform für Adapter anderer Projekte.
 `write-knowledge-package` übernimmt die Gegenrichtung: prüfen und die
 kanonische Hülle als einen S-Ausdruck schreiben.
+Unveränderliche Welten nutzen dieselbe Hülle: `make-world-knowledge-package`
+exportiert den gewählten Schnappschuss, `import-knowledge-package-world` liefert
+`(entscheidung welt)`. Erfolg erzeugt eine Kindwelt; Ablehnung oder Konflikt
+bewahrt den exakten Zielschnappschuss. Paketdaten werden niemals `eval`.
 Für Prozesse übertragen `send-knowledge-package`/`receive-knowledge-package`
 genau ein Paket pro TCP-Verbindung mit EOF als eindeutiger Grenze. Empfangene
 Daten werden gelesen, geprüft und importiert, niemals ausgeführt.

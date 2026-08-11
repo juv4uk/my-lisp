@@ -202,3 +202,63 @@
         ((eq (car decision) 'accepted)
          (list decision (world-tell-all world module-name clauses)))
         (t (list decision world))))))
+
+;; World interchange reuses the established, versioned `my-lisp-knowledge`
+;; envelope. Export reads one explicit snapshot. Import validates the envelope
+;; as data and then delegates the only possible transition to
+;; `advise-all-world`; received data is never evaluated as code.
+;; World-обмін перевикористовує чинну версіоновану оболонку
+;; `my-lisp-knowledge`. Експорт читає явний snapshot, імпорт передає єдиний
+;; можливий перехід в `advise-all-world`; отримані дані ніколи не eval-код.
+;; Der World-Austausch nutzt die bestehende versionierte Hülle
+;; `my-lisp-knowledge`. Export liest einen expliziten Schnappschuss, Import
+;; delegiert den einzigen Übergang an `advise-all-world`; Daten werden nie evaluiert.
+(def make-world-knowledge-package
+  (lambda (world module-name)
+    (cond
+      ((eq (symbol? module-name) '())
+       (list 'rejected (list 'reason 'invalid-module) (list 'input module-name)))
+      ((eq (world-module-known? world module-name) '()) 'Module-not-found)
+      (t
+       (let ((clauses (world-clauses world module-name)))
+         (cond
+           ((atom clauses)
+            (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
+           (t (make-knowledge-package module-name clauses))))))))
+
+(def import-knowledge-package-world
+  (lambda (world package)
+    (cond
+      ((atom package)
+       (list (list 'rejected
+                   (list 'reason 'invalid-package)
+                   (list 'input package))
+             world))
+      ((eq (knowledge-proper-list? package) '())
+       (list (list 'rejected
+                   (list 'reason 'invalid-package)
+                   (list 'input package))
+             world))
+      ((eq (knowledge-package-entries-valid? package) '())
+       (list (list 'rejected
+                   (list 'reason 'invalid-package)
+                   (list 'input package))
+             world))
+      ((eq (knowledge-package-field 'format package) 'my-lisp-knowledge)
+       (cond
+         ((equal? (knowledge-package-field 'version package)
+                  *knowledge-package-version*)
+          (advise-all-world world
+                            (knowledge-package-field 'module package)
+                            (knowledge-package-field 'clauses package)))
+         (t
+          (list (list 'rejected
+                      (list 'reason 'unsupported-version)
+                      (list 'version
+                            (knowledge-package-field 'version package)))
+                world))))
+      (t
+       (list (list 'rejected
+                   (list 'reason 'invalid-package)
+                   (list 'input package))
+             world)))))

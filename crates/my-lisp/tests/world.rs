@@ -343,3 +343,111 @@ fn advise_all_world_ignores_conflicts_in_the_global_journal() {
         "(accepted (((planet mars))))"
     );
 }
+
+#[test]
+fn world_package_export_reads_the_selected_snapshot_only() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((w1 (world-tell (empty-world) 'astronomy '((planet earth)))))
+              (let ((w2 (world-tell w1 'astronomy '((planet mars)))))
+                (list (knowledge-package-field
+                        'clauses (make-world-knowledge-package w1 'astronomy))
+                      (knowledge-package-field
+                        'clauses (make-world-knowledge-package w2 'astronomy)))))
+            "#
+        ),
+        "((((planet earth))) (((planet mars)) ((planet earth))))"
+    );
+}
+
+#[test]
+fn world_package_import_atomically_creates_a_queryable_child() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((before (empty-world)))
+              (let ((package
+                      (make-knowledge-package
+                        'astronomy
+                        '(((planet earth))
+                          ((has-mass (var x)) (planet (var x)))))))
+                (let ((result (import-knowledge-package-world before package)))
+                  (let ((after (second result)))
+                    (list (car (car result))
+                          (equal? before (world-parent after))
+                          (cond
+                            ((atom (reason-in-world after 'astronomy
+                                                   '(has-mass earth))) 'no)
+                            (t 'yes)))))))
+            "#
+        ),
+        "(accepted t yes)"
+    );
+}
+
+#[test]
+fn world_package_import_rejects_unsupported_versions_without_transition() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (def before (empty-world))
+            (def result
+              (import-knowledge-package-world
+                before
+                '((format . my-lisp-knowledge)
+                  (version 1 0)
+                  (module . astronomy)
+                  (clauses . (((planet earth)))))))
+            (list (car (car result))
+                  (second (second (car result)))
+                  (equal? before (second result)))
+            "#
+        ),
+        "(rejected unsupported-version t)"
+    );
+}
+
+#[test]
+fn world_package_import_conflict_preserves_the_target_snapshot() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((before
+                    (world-tell (empty-world)
+                                'astronomy
+                                '((not (planet pluto))))))
+              (let ((package
+                      (make-knowledge-package 'astronomy
+                                              '(((planet pluto))))))
+                (let ((result (import-knowledge-package-world before package)))
+                  (list (car (car result))
+                        (equal? before (second result))
+                        (world-clauses (second result) 'astronomy)))))
+            "#
+        ),
+        "(conflict t (((not (planet pluto)))))"
+    );
+}
+
+#[test]
+fn exported_snapshot_can_seed_an_independent_world_branch() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((source
+                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
+              (let ((package (make-world-knowledge-package source 'zoo)))
+                (let ((target (second
+                                (import-knowledge-package-world
+                                  (empty-world) package))))
+                  (let ((target-grown
+                          (world-tell target 'zoo '((has-fur dog)))))
+                    (list (world-clauses source 'zoo)
+                          (world-clauses target 'zoo)
+                          (world-clauses target-grown 'zoo))))))
+            "#
+        ),
+        "((((has-fur cat))) (((has-fur cat))) (((has-fur dog)) ((has-fur cat))))"
+    );
+}
