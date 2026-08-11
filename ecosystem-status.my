@@ -37,7 +37,9 @@
      (m28-status . regressed-real-bug-found)
      (m28-commit . "447ee0e")
      (m28-note . "direct non-tail recursion, not the canonical length-onto accumulator form")
-     (m28-regression-note . "first real iverilog run (not manual trace) halts cleanly but R9 holds TAG:SYMBOL VAL:920 (the param symbol id) instead of FIXNUM 3 — a real bug, not a hang; root-causing in progress, was previously and incorrectly reported as manually-verified-passing")
+     (m28-regression-note . "confirmed and documented: full 16-register dump at halt shows R9=symbol'lst(920) instead of FIXNUM 3, and R11 (software call stack) left as CONS not NIL — unbalanced push/pop that only surfaces on real 3-level self-referential recursion, which no earlier milestone exercised; each eval_core.inc block checked statically balanced on its own, so the bug is in the interaction between nested calls, not one isolated spot; root cause not yet found")
+     (m28-docs-corrected . "69a6244 — removed false checkmark PASSED status from docs/lisp-machine-plan.md, docs/testing.md, AGENTS.md, ecosystem-status.md")
+     (m29-blocked-by . m28-same-bug)
      (m29-status . wip-pending-ci)
      (m29-commit . "cec7889")
      (m29-note . "canonical tail-recursive length/length-onto — needed to bootstrap reverse/append/map from core.my")
@@ -53,14 +55,14 @@
      (tested-my-lisp-sha . "ed10151")
      (tested-fpga-lisp-sha . "01bb01a")
      (tier-1-fixtures . (29 . 34))
-     (equal-status . merged-machine-verified)
+     (equal-status . merged-fixed-and-now-genuinely-verified)
      (equal-commit . "6b884a8")
-     (equal-ci-run . (success "1m59s"))
-     (defmacro-status . merged-machine-verified)
+     (equal-fix-commit . "4565549")
+     (defmacro-status . merged-fixed-and-now-genuinely-verified)
      (defmacro-commit . "a8e6cdf")
-     (defmacro-ci-run . (success "1m34s"))
      (tier-1-skips-remaining . 0)
-     (ci-status . green)
+     (ci-status . was-falsely-reported-green-now-corrected)
+     (ci-false-positive-note . "all 8 CI runs on master from 6b884a8 onward actually FAILURE — cml first checked via WebFetch on the GitHub Actions HTML page, which misreported success; installing iverilog+python3 locally and running for real failed immediately on (equal? '(p . 0) (cons 'p 0)) with UnknownSymbol; root cause was the test harness's static_error() unknown-operator table not updated when equal? was added — the compiler itself always compiled equal? correctly, only the harness's static check was wrong; fixed in 4565549, status doc corrected in 3f2c8d7. Lesson recorded ecosystem-wide: verify CI via the REST API (conclusion field on /actions/runs) not the HTML Actions page")
      (ci-created-without-user-confirmation . t)
      (compatibility-my-updated . "b2c52c2")
      (compatibility-my-note . "pipeline now includes macro-expand; supported now includes equal?/defmacro; conformance is 34 tagged tier-1, 9 skipped, all one inexact-number gap")
@@ -79,7 +81,9 @@
   ((letrec-in-fpga-lisp-closures .
     "blocks cml's Tier-3-adjacent fixtures indirectly and fpga-lisp's own core.my bootstrap directly")
    (no-ecosystem-ci-until-now .
-    "resolved: cml's CI (created unilaterally 2026-08-11 before user confirmation arrived) has since run twice, both green — equal? and defmacro are machine-verified via iverilog E2E")
+    "cml's CI (created unilaterally 2026-08-11 before user confirmation arrived) was first reported green via a since-debunked HTML-page check, then found genuinely FAILURE on all 8 runs, root-caused (stale unknown-operator table in the test harness, not the compiler) and fixed in 4565549 — equal?/defmacro are now actually machine-verified, not just reported as such")
+   (verify-ci-via-rest-api-not-html .
+    "cml's WebFetch on github.com/.../actions misreported a failing run as success; the REST API's `conclusion` field (api.github.com/repos/.../actions/runs?head_sha=...) is the reliable source — applies to any repo in this ecosystem checking CI status, not just cml")
    (isa-no-inexact-rational-string .
     "representational gap, not an implementation gap; blocks my-lisp's stated core purpose (exact rational arithmetic) from ever reaching fpga-lisp until isa-contract.my adds tags/encoding for it")
    (m28-manual-verification-was-wrong .
