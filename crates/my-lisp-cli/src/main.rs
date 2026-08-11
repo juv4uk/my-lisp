@@ -1,4 +1,4 @@
-use my_lisp::{eval_parsed_expressions, parse, Environment, Session, Value};
+use my_lisp::{eval_parsed_expressions, parse, Environment, ErrorKind, Session, Value};
 use std::rc::Rc;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -138,14 +138,218 @@ fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
     }
 }
 
+/// Walks a `Value` list (the `Pair`-chain shape `Value::list` builds) into
+/// a `Vec`, stopping at the first non-`Pair` tail. Used only for reading
+/// the machine-protocol's own request/response envelopes — the language
+/// itself has `car`/`cdr` for this, but the CLI here is reading a `Value`
+/// that was never `def`d into a running `Session`.
+fn list_items(mut value: &Value) -> Vec<Value> {
+    let mut items = Vec::new();
+    while let Value::Pair(head, tail) = value {
+        items.push((**head).clone());
+        value = tail;
+    }
+    items
+}
+
+/// Looks up `(key . value)` in a dotted-pair alist like
+/// `language-contract.my`'s `((major . 1) (minor . 0) ...)` — distinct
+/// from `list_items`' 2-element-list reading of the request/response
+/// envelope, since a dotted pair's cdr is the value directly, not a
+/// nested one-element list.
+fn dotted_alist_lookup(alist: &Value, key: &str) -> Option<Value> {
+    list_items(alist).into_iter().find_map(|item| match &item {
+        Value::Pair(k, v) => match &**k {
+            Value::Symbol(name) if &**name == key => Some((**v).clone()),
+            _ => None,
+        },
+        _ => None,
+    })
+}
+
+fn ok_response(id: &Value, value: Value) -> Value {
+    Value::list([
+        Value::Symbol("response".into()),
+        Value::list([Value::Symbol("id".into()), id.clone()]),
+        Value::list([Value::Symbol("status".into()), Value::Symbol("ok".into())]),
+        Value::list([Value::Symbol("value".into()), value]),
+    ])
+}
+
+fn error_response(id: &Value, kind: &str, message: &str) -> Value {
+    Value::list([
+        Value::Symbol("response".into()),
+        Value::list([Value::Symbol("id".into()), id.clone()]),
+        Value::list([Value::Symbol("status".into()), Value::Symbol("error".into())]),
+        Value::list([Value::Symbol("kind".into()), Value::Symbol(kind.into())]),
+        Value::list([Value::Symbol("message".into()), Value::String(message.into())]),
+    ])
+}
+
+fn error_kind_symbol(kind: &ErrorKind) -> &'static str {
+    match kind {
+        ErrorKind::Parse => "parse-error",
+        ErrorKind::UnknownSymbol => "unknown-symbol",
+        ErrorKind::Arity => "arity-error",
+        ErrorKind::Type => "type-error",
+        ErrorKind::InvalidForm => "invalid-form",
+        ErrorKind::OutOfMemory => "out-of-memory",
+        ErrorKind::NumericOverflow => "numeric-overflow",
+    }
+}
+
+/// `--tcp=PORT --protocol=sexpr` — the same live oracle as `run_tcp_repl`,
+/// but for machines instead of humans: no banner, no prompt, one strict
+/// `(request (id ..) (op ..) (source ..))` in, one `(response (id ..)
+/// (status ..) ..)` out, every time, so `cml`/`fpga-lisp`/`my-idea` can
+/// parse a response without guessing whether a given line is a value, an
+/// error, or REPL chrome. Deliberately narrow op set — `eval`, `parse`,
+/// `diagnose`, `contract-version` — this is a semantic oracle, not a
+/// coordination channel: no `git status`, no CI status, no agent
+/// messages. Same per-connection isolation as the human REPL.
+fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_version: Value) {
+    let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, port)) {
+        Ok(listener) => listener,
+        Err(err) => {
+            eprintln!("Error: could not bind TCP REPL to 127.0.0.1:{port}: {err}");
+            process::exit(1);
+        }
+    };
+    let actual_port = listener.local_addr().map(|a| a.port()).unwrap_or(port);
+    eprintln!("my-lisp TCP REPL v{} (sexpr protocol) listening on 127.0.0.1:{actual_port}", env!("CARGO_PKG_VERSION"));
+
+    for stream in listener.incoming() {
+        let mut stream = match stream {
+            Ok(stream) => stream,
+            Err(_) => continue,
+        };
+        let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_else(|_| "?".into());
+        eprintln!("TCP REPL: connection from {peer}");
+
+        let environment = if allowed.is_empty() {
+            Environment::root()
+        } else {
+            Environment::root().with_process_allowlist(allowed.to_vec())
+        };
+        let mut session = Session { environment };
+        if let Ok(core_ast) = parse(core_lib) {
+            let _ = eval_parsed_expressions(&core_ast, &mut session);
+        }
+
+        let mut reader = BufReader::new(stream.try_clone().expect("clone TCP stream"));
+        let mut line = String::new();
+        loop {
+            line.clear();
+            match reader.read_line(&mut line) {
+                Ok(0) => break,
+                Ok(_) => {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    eprintln!("TCP REPL: {peer} > {trimmed}");
+
+                    // The request envelope itself is read as literal data
+                    // (`quote`), never evaluated — `(op eval)` deciding to
+                    // evaluate `source` is the only place code ever runs.
+                    let quoted = format!("(quote {trimmed})");
+                    let request = match parse(&quoted).ok().and_then(|ast| {
+                        eval_parsed_expressions(&ast, &mut session).ok().map(|r| r.value)
+                    }) {
+                        Some(value) => value,
+                        None => {
+                            let resp = error_response(&Value::Nil, "parse-error", "request envelope is not a valid s-expression");
+                            let _ = writeln!(stream, "{resp}");
+                            continue;
+                        }
+                    };
+
+                    let fields = list_items(&request);
+                    // fields[0] is the `request` tag symbol itself.
+                    let mut id = Value::Nil;
+                    let mut op: Option<String> = None;
+                    let mut source: Option<String> = None;
+                    for field in fields.iter().skip(1) {
+                        let kv = list_items(field);
+                        let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
+                        if let Value::Symbol(name) = key {
+                            match &**name {
+                                "id" => id = val.clone(),
+                                "op" => {
+                                    if let Value::Symbol(s) = val {
+                                        op = Some(s.to_string());
+                                    }
+                                }
+                                "source" => {
+                                    if let Value::String(s) = val {
+                                        source = Some(s.to_string());
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    let response = match op.as_deref() {
+                        Some("contract-version") => ok_response(&id, contract_version.clone()),
+                        Some("parse") => match &source {
+                            None => error_response(&id, "invalid-form", "op `parse` requires a `source` field"),
+                            Some(src) => match parse(src) {
+                                Ok(ast) => ok_response(&id, Value::String(
+                                    ast.iter().map(|e| format!("{e:?}")).collect::<Vec<_>>().join(" ").into(),
+                                )),
+                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message),
+                            },
+                        },
+                        Some(op_name @ ("eval" | "diagnose")) => match &source {
+                            None => error_response(&id, "invalid-form", &format!("op `{op_name}` requires a `source` field")),
+                            Some(src) => match parse(src) {
+                                Ok(ast) => match eval_parsed_expressions(&ast, &mut session) {
+                                    Ok(result) => ok_response(&id, result.value),
+                                    Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message),
+                                },
+                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message),
+                            },
+                        },
+                        Some(other) => error_response(&id, "invalid-form", &format!("unknown op `{other}`")),
+                        None => error_response(&id, "invalid-form", "request is missing an `op` field"),
+                    };
+
+                    if writeln!(stream, "{response}").is_err() {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        eprintln!("TCP REPL: {peer} disconnected");
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let allowed = allowed_processes(&args);
+    let sexpr_protocol = args.iter().any(|a| a == "--protocol=sexpr");
     let args: Vec<String> = args
         .into_iter()
-        .filter(|arg| !arg.starts_with("--allow-process="))
+        .filter(|arg| !arg.starts_with("--allow-process=") && arg != "--protocol=sexpr")
         .collect();
     let allowed_for_tcp = allowed.clone();
+    let contract_version = {
+        let contract_source = include_str!("../../../language-contract.my");
+        let mut throwaway = Session { environment: Environment::root() };
+        let quoted = format!("(quote {contract_source})");
+        parse(&quoted)
+            .ok()
+            .and_then(|ast| eval_parsed_expressions(&ast, &mut throwaway).ok())
+            .map(|r| r.value)
+            .and_then(|v| {
+                let major = dotted_alist_lookup(&v, "major")?;
+                let minor = dotted_alist_lookup(&v, "minor")?;
+                Some(Value::list([major, minor]))
+            })
+            .unwrap_or(Value::Nil)
+    };
     let environment = if allowed.is_empty() {
         Environment::root()
     } else {
@@ -175,6 +379,7 @@ fn main() {
             println!("  -h, --help                  Print help information");
             println!("  --allow-process=a,b,c        Allow (process-run) to run exactly these program names");
             println!("  --tcp[=PORT]                 Serve the REPL over TCP on 127.0.0.1 (default port 9999) instead of stdio");
+            println!("  --protocol=sexpr              With --tcp: strict (request (id) (op) (source)) / (response ...) envelope, no banner/prompt");
             return;
         }
 
@@ -183,7 +388,11 @@ fn main() {
                 .strip_prefix("--tcp=")
                 .and_then(|p| p.parse::<u16>().ok())
                 .unwrap_or(9999);
-            run_tcp_repl(port, core_lib, &allowed_for_tcp);
+            if sexpr_protocol {
+                run_tcp_repl_sexpr(port, core_lib, &allowed_for_tcp, contract_version);
+            } else {
+                run_tcp_repl(port, core_lib, &allowed_for_tcp);
+            }
             return;
         }
 
