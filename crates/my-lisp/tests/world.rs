@@ -172,6 +172,65 @@ fn retract_knowledge_compatibility_wrapper_uses_the_world_transition() {
 }
 
 #[test]
+fn advise_compatibility_wrapper_commits_only_the_accepted_world() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (list (advise space '((planet earth)))
+                  (reason-in 'space '(planet earth)))
+            "#
+        ),
+        "((accepted (module space) (knowledge ((planet earth)))) ((() (proved (planet earth) (planet earth) ()))))"
+    );
+}
+
+#[test]
+fn advise_compatibility_wrapper_preserves_journal_on_conflict() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (defmodule space '(((not (planet earth)))))
+            (def before *knowledge-journal*)
+            (def decision (advise space '((planet earth))))
+            (list (car decision) (equal? before *knowledge-journal*))
+            "#
+        ),
+        "(conflict t)"
+    );
+}
+
+#[test]
+fn advise_all_compatibility_wrapper_keeps_atomic_world_transition() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (def decision
+              (advise-all space
+                '(((star sun))
+                  ((planet earth) (star sun)))))
+            (list (car decision)
+                  (length (module-clauses-now 'space)))
+            "#
+        ),
+        "(accepted 2)"
+    );
+}
+
+#[test]
+fn advise_all_compatibility_wrapper_rolls_back_invalid_batch() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (def before *knowledge-journal*)
+            (def decision (advise-all space '(((planet earth)) malformed)))
+            (list (car decision) (equal? before *knowledge-journal*))
+            "#
+        ),
+        "(rejected t)"
+    );
+}
+
+#[test]
 fn retract_creates_history_instead_of_erasing_it() {
     assert_eq!(
         eval_world(

@@ -10,7 +10,7 @@
 
 `empty-world` creates a root. `world-tell` and `world-retract` return a new world whose `world-parent` is the previous value. They never alter the input world. The newest journal is one `cons` cell whose tail is the complete previous journal, so history uses structural sharing rather than copying every event. `world-clauses` projects a module at any retained version, including a version whose facts were later retracted.
 
-This layer deliberately contains no Rust primitive. Its event representation is byte-for-byte compatible with the existing `(tell module clause)` / `(retract module clause)` journal. Once `world.my` is loaded, legacy `defmodule`, `tell-knowledge`, and `retract-knowledge` become thin wrappers over `world-tell-all`/`world-retract`: they extract the returned journal so existing readers retain their exact behavior. `tell-knowledge` still rejects conflicts before transitioning; retraction remains unconditional.
+This layer deliberately contains no Rust primitive. Its event representation is byte-for-byte compatible with the existing journal. Once `world.my` is loaded, legacy `defmodule`, `tell-knowledge`, `retract-knowledge`, `advise`, and `advise-all` become thin wrappers over World transitions. Guarded wrappers rebind the journal only from an accepted World; rejection and conflict preserve it exactly.
 
 `reason-in-world` and `forward-in-world` are the first consumers of that explicit state. Backward and forward reasoning now operate on a selected snapshot or branch without reading the global `*knowledge-journal*`; the same query may therefore have a different, reproducible answer in two worlds.
 
@@ -36,7 +36,7 @@ Content identity is canonical before it is cryptographic. `knowledge-content-add
 
 `empty-world` створює корінь. `world-tell` і `world-retract` повертають новий світ, де `world-parent` — попереднє значення, і ніколи не змінюють вхідний світ. Новий журнал додає лише одну cons-комірку, хвостом якої є весь попередній журнал: історія використовує structural sharing, а не копіювання всіх подій. `world-clauses` проєктує модуль у будь-якій збереженій версії, включно з версією, факти якої пізніше відкликали.
 
-Шар навмисно не додає Rust-примітивів. Формат подій точно сумісний із чинним журналом `(tell модуль clause)` / `(retract модуль clause)`. Після завантаження `world.my` старі `defmodule`, `tell-knowledge` і `retract-knowledge` стають тонкими обгортками над `world-tell-all`/`world-retract`: вони дістають журнал із поверненого світу, тому чинні читачі зберігають точну поведінку. `tell-knowledge` досі відхиляє конфлікт до переходу; retract лишається безумовним.
+Шар навмисно не додає Rust-примітивів, а формат подій точно сумісний із чинним журналом. Після завантаження `world.my` старі `defmodule`, `tell-knowledge`, `retract-knowledge`, `advise` й `advise-all` стають тонкими обгортками над World-переходами. Guarded-обгортки перевизначають журнал лише з accepted World; rejection і conflict точно його зберігають.
 
 `reason-in-world` і `forward-in-world` — перші споживачі цього явного стану. Backward- і forward-reasoning тепер працюють з обраним snapshot чи гілкою, не читаючи глобальний `*knowledge-journal*`; тому одна ціль може мати різну, відтворювану відповідь у двох світах.
 
@@ -62,7 +62,7 @@ Content-ідентичність канонічна раніше, ніж кри�
 
 `empty-world` erzeugt die Wurzel. `world-tell` und `world-retract` liefern eine neue Welt, deren `world-parent` der vorige Wert ist, und verändern niemals ihre Eingabe. Das neue Journal ergänzt nur eine Cons-Zelle, deren Ende das vollständige vorige Journal ist: Geschichte nutzt strukturelle Teilung statt alle Ereignisse zu kopieren. `world-clauses` projiziert ein Modul in jeder erhaltenen Version, auch wenn seine Fakten später zurückgenommen wurden.
 
-Diese Schicht fügt bewusst kein Rust-Primitiv hinzu. Ihr Ereignisformat ist mit dem bestehenden Journal `(tell modul clause)` / `(retract modul clause)` vollständig kompatibel. Nach dem Laden von `world.my` werden `defmodule`, `tell-knowledge` und `retract-knowledge` zu dünnen Hüllen um `world-tell-all`/`world-retract`: Sie entnehmen der gelieferten Welt das Journal, sodass bestehende Leser ihr exaktes Verhalten behalten. `tell-knowledge` weist Konflikte weiterhin vor dem Übergang ab; Rücknahme bleibt bedingungslos.
+Diese Schicht fügt bewusst kein Rust-Primitiv hinzu; ihr Ereignisformat bleibt vollständig journal-kompatibel. Nach dem Laden von `world.my` werden `defmodule`, `tell-knowledge`, `retract-knowledge`, `advise` und `advise-all` zu dünnen Hüllen um World-Übergänge. Geschützte Hüllen binden das Journal nur aus einer akzeptierten World neu; Ablehnung und Konflikt bewahren es exakt.
 
 `reason-in-world` und `forward-in-world` sind die ersten Verbraucher dieses expliziten Zustands. Rückwärts- und Vorwärtsschluss arbeiten nun auf einem gewählten Schnappschuss oder Zweig, ohne das globale `*knowledge-journal*` zu lesen; dieselbe Anfrage kann deshalb in zwei Welten eine unterschiedliche, reproduzierbare Antwort haben.
 
