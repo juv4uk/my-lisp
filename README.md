@@ -71,6 +71,7 @@ cargo test --workspace
 - [`docs/advice-ingestion.md`](docs/advice-ingestion.md) — the guarded `understand → advise → reason → narrate` knowledge boundary.
 - [`docs/knowledge-package-format.md`](docs/knowledge-package-format.md) — versioned data-only interchange for other projects and AI adapters.
 - [`docs/content-identity.md`](docs/content-identity.md) — canonical knowledge/world identity before cryptographic hashing.
+- [`docs/clean-code.md`](docs/clean-code.md) / [`CLEAN_CODE_PLAN.md`](CLEAN_CODE_PLAN.md) — Clean Code design principles and their executable roadmap.
 - [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — a small symbolic-AI example: unification, written in my-lisp itself.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — how John McCarthy himself described Lisp's origin and evolution, from 1958 to his death in 2011, and where this project follows or departs from that account.
 - [`docs/testing.md`](docs/testing.md) — current test inventory.
@@ -131,6 +132,7 @@ cargo test --workspace
 - [`docs/advice-ingestion.md`](docs/advice-ingestion.md) — захищена межа знань `understand → advise → reason → narrate`.
 - [`docs/knowledge-package-format.md`](docs/knowledge-package-format.md) — версіонований data-only обмін з іншими проєктами й AI-адаптерами.
 - [`docs/content-identity.md`](docs/content-identity.md) — канонічна identity знань і світів до криптографічного hashing.
+- [`docs/clean-code.md`](docs/clean-code.md) / [`CLEAN_CODE_PLAN.md`](CLEAN_CODE_PLAN.md) — принципи Clean Code та виконуваний roadmap їх упровадження.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — як сам Джон Маккарті описував походження й розвиток Lisp, від 1958-го до своєї смерті 2011-го, і де цей проєкт іде за цим викладом, а де відходить.
 - [`docs/testing.md`](docs/testing.md) — поточний перелік тестів.
 - [`docs/benchmarks.md`](docs/benchmarks.md) — методологія бенчмарків і локальний baseline.
@@ -190,6 +192,7 @@ cargo test --workspace
 - [`docs/advice-ingestion.md`](docs/advice-ingestion.md) — die geschützte Wissensgrenze `understand → advise → reason → narrate`.
 - [`docs/knowledge-package-format.md`](docs/knowledge-package-format.md) — versionierter reiner Datenaustausch für andere Projekte und KI-Adapter.
 - [`docs/content-identity.md`](docs/content-identity.md) — kanonische Wissens-/Weltidentität vor kryptographischem Hashing.
+- [`docs/clean-code.md`](docs/clean-code.md) / [`CLEAN_CODE_PLAN.md`](CLEAN_CODE_PLAN.md) — Clean-Code-Prinzipien und ihr ausführbarer Umsetzungsplan.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — wie John McCarthy selbst Ursprung und Entwicklung von Lisp beschrieb, von 1958 bis zu seinem Tod 2011, und wo dieses Projekt dieser Darstellung folgt oder von ihr abweicht.
 - [`docs/testing.md`](docs/testing.md) — aktuelles Testinventar.
 - [`docs/benchmarks.md`](docs/benchmarks.md) — Benchmark-Methodik und eine lokale Ausgangsmessung.
