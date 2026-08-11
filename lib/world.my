@@ -267,76 +267,50 @@
          (list decision (world-tell-all world module-name clauses)))
         (t (list decision world))))))
 
-;; Guarded legacy ingestion is now only a top-level compatibility shell around
-;; the pure `(decision world)` API. A journal rebinding exists solely in the
-;; accepted branch; rejection and conflict return the World decision unchanged.
-;; Захищене legacy-надходження тепер лише top-level compatibility-обгортка над
-;; чистим API `(decision world)`; журнал перевизначається виключно при accepted.
-;; Die geschützte Legacy-Aufnahme ist nur noch eine Top-Level-Hülle um die reine
-;; `(entscheidung welt)`-API; nur der akzeptierte Zweig bindet das Journal neu.
+;; A guarded compatibility transition must be evaluated exactly once. `let`
+;; cannot hold it because `def` would then update a disposable lambda frame, so
+;; this expansion uses one explicit top-level scratch binding. The argument and
+;; pure World transition run once; only accepted results rebind the journal.
+;; Guarded compatibility-перехід обчислюється рівно раз. `let` не підходить, бо
+;; `def` оновив би тимчасовий lambda-frame, тому expansion має одне явне
+;; top-level scratch binding. Аргумент і World-перехід виконуються один раз.
+;; Ein geschützter Kompatibilitätsübergang wird genau einmal ausgewertet. `let`
+;; eignet sich nicht, da `def` sonst einen temporären Lambda-Frame ändert; diese
+;; Expansion nutzt daher eine ausdrückliche Top-Level-Zwischenbindung.
+(def legacy-world-transition-expansion
+  (lambda (transition)
+    (list 'second
+          (list 'list
+                (list 'def '*legacy-knowledge-transition* transition)
+                (list 'cond
+                      (list
+                        (list 'equal?
+                              (list 'car
+                                    (list 'car '*legacy-knowledge-transition*))
+                              (list 'quote 'accepted))
+                        (list 'second
+                              (list 'list
+                                    (list 'def '*knowledge-journal*
+                                          (list 'world-journal
+                                                (list 'second
+                                                      '*legacy-knowledge-transition*)))
+                                    (list 'car '*legacy-knowledge-transition*))))
+                      (list 't
+                            (list 'car '*legacy-knowledge-transition*)))))))
+
 (defmacro advise (module-name clause)
-  (list 'cond
-        (list
-          (list 'equal?
-                (list 'car
-                      (list 'car
-                            (list 'advise-world
-                                  (list 'make-world '() '*knowledge-journal* '())
-                                  (list 'quote module-name)
-                                  clause)))
-                (list 'quote 'accepted))
-          (list 'second
-                (list 'list
-                      (list 'def '*knowledge-journal*
-                            (list 'world-journal
-                                  (list 'second
-                                        (list 'advise-world
-                                              (list 'make-world '() '*knowledge-journal* '())
-                                              (list 'quote module-name)
-                                              clause))))
-                      (list 'list
-                            (list 'quote 'accepted)
-                            (list 'list (list 'quote 'module)
-                                  (list 'quote module-name))
-                            (list 'list (list 'quote 'knowledge) clause)))))
-        (list 't
-              (list 'car
-                    (list 'advise-world
-                          (list 'make-world '() '*knowledge-journal* '())
-                          (list 'quote module-name)
-                          clause)))))
+  (legacy-world-transition-expansion
+    (list 'advise-world
+          (list 'make-world '() '*knowledge-journal* '())
+          (list 'quote module-name)
+          clause)))
 
 (defmacro advise-all (module-name clauses)
-  (list 'cond
-        (list
-          (list 'equal?
-                (list 'car
-                      (list 'car
-                            (list 'advise-all-world
-                                  (list 'make-world '() '*knowledge-journal* '())
-                                  (list 'quote module-name)
-                                  clauses)))
-                (list 'quote 'accepted))
-          (list 'second
-                (list 'list
-                      (list 'def '*knowledge-journal*
-                            (list 'world-journal
-                                  (list 'second
-                                        (list 'advise-all-world
-                                              (list 'make-world '() '*knowledge-journal* '())
-                                              (list 'quote module-name)
-                                              clauses))))
-                      (list 'list
-                            (list 'quote 'accepted)
-                            (list 'list (list 'quote 'module)
-                                  (list 'quote module-name))
-                            (list 'list (list 'quote 'knowledge) clauses)))))
-        (list 't
-              (list 'car
-                    (list 'advise-all-world
-                          (list 'make-world '() '*knowledge-journal* '())
-                          (list 'quote module-name)
-                          clauses)))))
+  (legacy-world-transition-expansion
+    (list 'advise-all-world
+          (list 'make-world '() '*knowledge-journal* '())
+          (list 'quote module-name)
+          clauses)))
 
 ;; World interchange reuses the established, versioned `my-lisp-knowledge`
 ;; envelope. Export reads one explicit snapshot. Import validates the envelope
@@ -408,32 +382,10 @@
 ;; Konflikte und atomarer Übergang liegen beim datenreinen World-Importer; nur
 ;; ein akzeptiertes Ergebnis bindet das Journal neu.
 (defmacro import-knowledge-package (package)
-  (list 'cond
-        (list
-          (list 'equal?
-                (list 'car
-                      (list 'car
-                            (list 'import-knowledge-package-world
-                                  (list 'make-world '() '*knowledge-journal* '())
-                                  package)))
-                (list 'quote 'accepted))
-          (list 'second
-                (list 'list
-                      (list 'def '*knowledge-journal*
-                            (list 'world-journal
-                                  (list 'second
-                                        (list 'import-knowledge-package-world
-                                              (list 'make-world '() '*knowledge-journal* '())
-                                              package))))
-                      (list 'car
-                            (list 'import-knowledge-package-world
-                                  (list 'make-world '() '*knowledge-journal* '())
-                                  package)))))
-        (list 't
-              (list 'car
-                    (list 'import-knowledge-package-world
-                          (list 'make-world '() '*knowledge-journal* '())
-                          package)))))
+  (legacy-world-transition-expansion
+    (list 'import-knowledge-package-world
+          (list 'make-world '() '*knowledge-journal* '())
+          package)))
 
 ;; History navigation is derived from parent links, not timestamps. Depth is
 ;; absolute from the root (`empty-world` = 0). `world-diff from to` returns the

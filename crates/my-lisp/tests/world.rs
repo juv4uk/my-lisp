@@ -200,6 +200,24 @@ fn advise_compatibility_wrapper_preserves_journal_on_conflict() {
 }
 
 #[test]
+fn advise_compatibility_argument_is_evaluated_once() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (def *evaluation-count* 0)
+            (def decision
+              (advise space
+                (second
+                  (list (def *evaluation-count* (+ *evaluation-count* 1))
+                        '((planet earth))))))
+            (list *evaluation-count* (car decision))
+            "#
+        ),
+        "(1 accepted)"
+    );
+}
+
+#[test]
 fn advise_all_compatibility_wrapper_keeps_atomic_world_transition() {
     assert_eq!(
         eval_world(
@@ -227,6 +245,24 @@ fn advise_all_compatibility_wrapper_rolls_back_invalid_batch() {
             "#
         ),
         "(rejected t)"
+    );
+}
+
+#[test]
+fn advise_all_compatibility_argument_is_evaluated_once() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (def *evaluation-count* 0)
+            (def decision
+              (advise-all space
+                (second
+                  (list (def *evaluation-count* (+ *evaluation-count* 1))
+                        '(((planet earth)))))))
+            (list *evaluation-count* (car decision))
+            "#
+        ),
+        "(1 accepted)"
     );
 }
 
@@ -278,6 +314,25 @@ fn package_import_compatibility_wrapper_preserves_journal_on_conflict() {
             "#
         ),
         "(conflict t)"
+    );
+}
+
+#[test]
+fn package_import_compatibility_argument_is_evaluated_once() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (def *evaluation-count* 0)
+            (def decision
+              (import-knowledge-package
+                (second
+                  (list (def *evaluation-count* (+ *evaluation-count* 1))
+                        (make-knowledge-package
+                          'space '(((planet earth))))))))
+            (list *evaluation-count* (car decision))
+            "#
+        ),
+        "(1 accepted)"
     );
 }
 
