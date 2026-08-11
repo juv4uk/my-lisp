@@ -65,6 +65,7 @@ cargo test --workspace
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — a beginner walkthrough of homoiconicity.
 - [`docs/advice-taker.md`](docs/advice-taker.md) — a tutorial on building and using the Advice Taker backward-chaining engine.
 - [`docs/advice-ingestion.md`](docs/advice-ingestion.md) — the guarded `understand → advise → reason → narrate` knowledge boundary.
+- [`docs/knowledge-package-format.md`](docs/knowledge-package-format.md) — versioned data-only interchange for other projects and AI adapters.
 - [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — a small symbolic-AI example: unification, written in my-lisp itself.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — how John McCarthy himself described Lisp's origin and evolution, from 1958 to his death in 2011, and where this project follows or departs from that account.
 - [`docs/testing.md`](docs/testing.md) — current test inventory.
@@ -119,6 +120,7 @@ cargo test --workspace
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — вступний огляд гомоіконічності.
 - [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — маленький приклад символьного AI: унікація, написана самою my-lisp.
 - [`docs/advice-ingestion.md`](docs/advice-ingestion.md) — захищена межа знань `understand → advise → reason → narrate`.
+- [`docs/knowledge-package-format.md`](docs/knowledge-package-format.md) — версіонований data-only обмін з іншими проєктами й AI-адаптерами.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — як сам Джон Маккарті описував походження й розвиток Lisp, від 1958-го до своєї смерті 2011-го, і де цей проєкт іде за цим викладом, а де відходить.
 - [`docs/testing.md`](docs/testing.md) — поточний перелік тестів.
 - [`docs/benchmarks.md`](docs/benchmarks.md) — методологія бенчмарків і локальний baseline.
@@ -172,6 +174,7 @@ cargo test --workspace
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — ein Einsteiger-Rundgang durch Homoikonizität.
 - [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — ein kleines symbolisches KI-Beispiel: Unifikation, geschrieben in my-lisp selbst.
 - [`docs/advice-ingestion.md`](docs/advice-ingestion.md) — die geschützte Wissensgrenze `understand → advise → reason → narrate`.
+- [`docs/knowledge-package-format.md`](docs/knowledge-package-format.md) — versionierter reiner Datenaustausch für andere Projekte und KI-Adapter.
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — wie John McCarthy selbst Ursprung und Entwicklung von Lisp beschrieb, von 1958 bis zu seinem Tod 2011, und wo dieses Projekt dieser Darstellung folgt oder von ihr abweicht.
 - [`docs/testing.md`](docs/testing.md) — aktuelles Testinventar.
 - [`docs/benchmarks.md`](docs/benchmarks.md) — Benchmark-Methodik und eine lokale Ausgangsmessung.

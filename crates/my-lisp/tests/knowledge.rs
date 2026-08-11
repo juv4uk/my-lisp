@@ -460,3 +460,66 @@ fn advise_all_detects_a_conflict_activated_across_existing_and_new_knowledge() {
     "#;
     assert_eq!(eval_knowledge(source), "(conflict ())");
 }
+
+#[test]
+fn knowledge_package_constructor_has_the_versioned_interchange_shape() {
+    assert_eq!(
+        eval_knowledge("(make-knowledge-package 'astronomy '(((planet earth))))"),
+        "((format . my-lisp-knowledge) (version 0 1) (module . astronomy) (clauses ((planet earth))))"
+    );
+}
+
+#[test]
+fn import_knowledge_package_atomically_installs_valid_data() {
+    let source = r#"
+        (def package
+          '((format . my-lisp-knowledge)
+            (version 0 1)
+            (module . astronomy)
+            (clauses . (((planet earth))
+                        ((has-mass (var x)) (planet (var x)))))))
+        (list (car (import-knowledge-package package))
+              (car (car (reason-in 'astronomy '(has-mass earth)))))
+    "#;
+    assert_eq!(eval_knowledge(source), "(accepted (((x . 0) . earth)))");
+}
+
+#[test]
+fn import_knowledge_package_rejects_an_unsupported_version_without_writing() {
+    let source = r#"
+        (def package
+          '((format . my-lisp-knowledge)
+            (version 1 0)
+            (module . astronomy)
+            (clauses . (((planet earth))))))
+        (list (knowledge-package-decision package)
+              (reason-in 'astronomy '(planet earth)))
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((rejected (reason unsupported-version) (version (1 0))) Module-not-found)"
+    );
+}
+
+#[test]
+fn import_knowledge_package_rejects_a_malformed_envelope_without_writing() {
+    let source = r#"
+        (def package '((format . my-lisp-knowledge) broken-entry))
+        (list (knowledge-package-decision package)
+              (reason-in 'astronomy '(planet earth)))
+    "#;
+    assert_eq!(
+        eval_knowledge(source),
+        "((rejected (reason invalid-package) (input ((format . my-lisp-knowledge) broken-entry))) Module-not-found)"
+    );
+}
+
+#[test]
+fn import_knowledge_file_reads_the_data_only_example() {
+    let source = r#"
+        (list
+          (car (import-knowledge-file "../../knowledge/examples/astronomy-package.my"))
+          (car (car (reason-in 'astronomy-exchange '(has-mass earth)))))
+    "#;
+    assert_eq!(eval_knowledge(source), "(accepted (((x . 0) . earth)))");
+}
