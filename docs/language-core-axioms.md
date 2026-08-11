@@ -139,9 +139,9 @@ The unifying possibility all the others serve. Rust, `fpga-lisp` — implementat
 
 Об'єднувальна можливість, якій служать усі інші. Rust, `fpga-lisp` — реалізації однієї абстрактної системи, не окремі діалекти, що випадково поділяють назву.
 
-**Межа, оновлена 2026-08-11:** G7 уже доведена сильніше за окремі примітиви: `fpga-lisp` має повний evaluator, а `cml` — частковий Tier-1 шлях compile → assemble → simulate. Вона ще не доведена на рівні повного `conformance.my`: потрібні versioned ISA boundary, canonical structured-result decoder і blind fixtures через незмінний adapter. Актуальна послідовність — у [`ecosystem-roadmap.md`](ecosystem-roadmap.md).
+**Межа, оновлена 2026-08-11:** G7 уже доведена на підтриманій частині Tier 1: `fpga-lisp` має evaluator та ISA contract `0.2`, а `cml` — versioned compatibility, generic compile → assemble → simulate path і canonical heap decoder для proper/dotted lists. До повного `conformance.my` лишаються feature-specific skips, error-result protocol і повне покриття. Актуальна послідовність — у [`ecosystem-roadmap.md`](ecosystem-roadmap.md).
 
-**Boundary updated 2026-08-11:** G7 is now proven beyond isolated primitives: `fpga-lisp` has a complete evaluator and `cml` has a partial Tier-1 compile → assemble → simulate path. It is not yet proven across the full `conformance.my`: that needs a versioned ISA boundary, canonical structured-result decoding, and blind fixtures through an unchanged adapter. See [`ecosystem-roadmap.md`](ecosystem-roadmap.md).
+**Boundary updated 2026-08-11:** G7 is now proven across the supported Tier-1 subset: `fpga-lisp` has an evaluator and ISA contract `0.2`; `cml` has versioned compatibility, a generic compile → assemble → simulate path, and canonical heap decoding for proper/dotted lists. Feature-specific skips, an error-result protocol, and full `conformance.my` coverage remain. See [`ecosystem-roadmap.md`](ecosystem-roadmap.md).
 
 ### G8 — The absence of any element and the absence of truth can be the same value · Відсутність будь-якого елемента й відсутність істини можуть бути тим самим значенням
 

@@ -6,10 +6,10 @@ The product is one vertical system with three independently versioned repositori
 
 Verified on 2026-08-11: FPGA already has the seven basic operations, environments, closures, `cond`, a complete `eval(expr, env)`, and a CML end-to-end testbench. CML compiles variables, conditionals, closures, calls, quoted lists, strings, dotted lists, and variadic arguments, and has a partial Tier-1 conformance runner. The remaining problem is a complete, reproducible boundary:
 
-1. `fpga-lisp` publishes a machine-readable, versioned ISA contract: tags, opcodes, registers, calling convention, program image, and limits.
-2. `cml` publishes `compatibility.my`: supported my-lisp contract, target ISA, tested SHAs, supported tiers/features, and explicit limitations.
-3. One fixture-independent adapter runs `expr → compile → assemble → simulate → canonical result → expected`.
-4. The adapter decodes atoms, signed fixnums, proper lists, and dotted pairs exactly—never as `(...)`.
+1. ✅ `fpga-lisp` ISA contract `0.2` records tags, opcodes, registers, calling convention, program image, and limits.
+2. ✅ `cml` has `compatibility.my` with my-lisp contract `1.0`, target ISA, tested SHAs, features, and limitations.
+3. ✅ One generic adapter runs `expr → compile → assemble → simulate → canonical result → expected`.
+4. ✅ Atoms, fixnums, proper lists, and dotted pairs are decoded exactly from the FPGA heap—never as `(...)`.
 5. Successive blind Tier-1 fixtures run without content-specific adapter changes.
 6. CML gets pinned interface CI and a non-blocking latest-heads compatibility job.
 7. Guix supplies Rust, Guile, Python, and Icarus Verilog; proprietary board synthesis stays a separate capability.
@@ -21,10 +21,10 @@ Verified on 2026-08-11: FPGA already has the seven basic operations, environment
 
 Перевірено 2026-08-11: FPGA вже має сім базових операцій, environments, closures, `cond`, повний `eval(expr, env)` і CML E2E testbench. CML компілює variables, conditionals, closures, calls, quoted lists, strings, dotted lists і variadic arguments та має частковий Tier-1 conformance runner. Залишилась повна відтворювана межа:
 
-1. `fpga-lisp` публікує машинно-читаний versioned ISA contract: tags, opcodes, registers, calling convention, program image і limits.
-2. `cml` публікує `compatibility.my`: підтриманий контракт my-lisp, цільову ISA, перевірені SHA, tiers/features і явні обмеження.
-3. Один незалежний від fixtures adapter виконує `expr → compile → assemble → simulate → canonical result → expected`.
-4. Adapter точно декодує atoms, signed fixnums, proper lists і dotted pairs — ніколи не згортає їх до `(...)`.
+1. ✅ ISA contract `fpga-lisp` `0.2` фіксує tags, opcodes, registers, calling convention, program image і limits.
+2. ✅ `cml` має `compatibility.my` із контрактом my-lisp `1.0`, цільовою ISA, перевіреними SHA, features і обмеженнями.
+3. ✅ Один generic adapter виконує `expr → compile → assemble → simulate → canonical result → expected`.
+4. ✅ Adapter точно декодує atoms, fixnums, proper lists і dotted pairs із FPGA heap — ніколи не згортає їх до `(...)`.
 5. Послідовні blind Tier-1 fixtures проходять без content-specific змін adapter-а.
 6. CML отримує pinned interface CI та неблокуючий latest-heads compatibility job.
 7. Guix надає Rust, Guile, Python та Icarus Verilog; пропрієтарний синтез плати лишається окремою capability.
@@ -36,10 +36,10 @@ Das Produkt ist ein vertikales System aus drei unabhängig versionierten Reposit
 
 Am 2026-08-11 verifiziert: Das FPGA besitzt die sieben Basisoperationen, Environments, Closures, `cond`, ein vollständiges `eval(expr, env)` und eine CML-End-to-End-Testbench. CML kompiliert Variablen, Bedingungen, Closures, Aufrufe, zitierte Listen, Strings, Dotted Lists und variadische Argumente und besitzt einen partiellen Tier-1-Konformitätsrunner. Offen bleibt eine vollständige reproduzierbare Grenze:
 
-1. `fpga-lisp` veröffentlicht einen maschinenlesbaren, versionierten ISA-Vertrag für Tags, Opcodes, Register, Aufrufkonvention, Program-Image und Grenzen.
-2. `cml` veröffentlicht `compatibility.my` mit unterstütztem my-lisp-Vertrag, Ziel-ISA, geprüften SHAs, Tiers/Features und expliziten Grenzen.
-3. Ein fixture-unabhängiger Adapter führt `expr → compile → assemble → simulate → kanonisches Ergebnis → expected` aus.
-4. Der Adapter dekodiert Atome, vorzeichenbehaftete Fixnums, echte Listen und Dotted Pairs exakt—nie als `(...)`.
+1. ✅ Der `fpga-lisp`-ISA-Vertrag `0.2` hält Tags, Opcodes, Register, Aufrufkonvention, Program-Image und Grenzen fest.
+2. ✅ `cml` besitzt `compatibility.my` mit my-lisp-Vertrag `1.0`, Ziel-ISA, geprüften SHAs, Features und Grenzen.
+3. ✅ Ein generischer Adapter führt `expr → compile → assemble → simulate → kanonisches Ergebnis → expected` aus.
+4. ✅ Atome, Fixnums, echte Listen und Dotted Pairs werden aus dem FPGA-Heap exakt dekodiert—nie als `(...)`.
 5. Aufeinanderfolgende blinde Tier-1-Fixtures laufen ohne inhaltsspezifische Adapteränderungen.
 6. CML erhält gepinnte Interface-CI und einen nicht blockierenden Latest-Heads-Job.
 7. Guix liefert Rust, Guile, Python und Icarus Verilog; proprietäre Board-Synthese bleibt eine getrennte Capability.
