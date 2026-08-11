@@ -200,9 +200,6 @@ fn evaluate_list(
         Some("read-all") => {
             special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("symbol?") => {
-            special_forms::evaluate_symbol_predicate(arguments, environment, span).map(EvalStep::Value)
-        }
         Some("string?") => {
             special_forms::evaluate_string_predicate(arguments, environment, span).map(EvalStep::Value)
         }

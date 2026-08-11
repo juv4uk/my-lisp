@@ -1202,24 +1202,6 @@ pub(super) fn evaluate_cons(
 /// inspizieren. Drei kleine, allgemeine Primitive (kein einzelner
 /// Ad-hoc-Helfer "strip-question-mark"), damit die Fähigkeit
 /// wiederverwendbar bleibt, nicht einmalig.
-/// `symbol->string` needs a way to answer "is this actually a symbol"
-/// before being called on an arbitrary atom — a CLIPS fact's arguments can
-/// just as easily be numbers (`(temperature 98)`) as symbols, and there
-/// was no existing predicate to tell them apart (see lib/unify.my's own
-/// header comment: "no symbol?/numberp? primitive"). One small, general
-/// predicate, not a special case baked into `symbol->string` itself.
-pub(super) fn evaluate_symbol_predicate(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("symbol?", arguments, 1, span)?;
-    Ok(Value::Bool(matches!(
-        evaluate(&arguments[0], environment)?,
-        Value::Symbol(_)
-    )))
-}
-
 /// The `string?` counterpart to `symbol?` — found necessary by importing
 /// a second genuine external CLIPS file: CLIPS conventionally allows an
 /// optional docstring (a bare string literal) right after a `defrule`'s

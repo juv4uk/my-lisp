@@ -710,6 +710,49 @@ fn string_predicate_distinguishes_strings_from_other_atoms() {
 }
 
 #[test]
+fn symbol_predicate_is_a_my_lisp_function_not_a_rust_builtin() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    assert_eq!(
+        eval_program("(symbol? 'hello)", &mut session)
+            .unwrap()
+            .value,
+        Value::Bool(true)
+    );
+    assert_eq!(
+        eval_program("(symbol? 5)", &mut session).unwrap().value,
+        Value::Nil
+    );
+    assert_eq!(
+        eval_program("(symbol? \"hello\")", &mut session)
+            .unwrap()
+            .value,
+        Value::Nil
+    );
+    assert_eq!(
+        eval_program("(symbol? '(hello))", &mut session)
+            .unwrap()
+            .value,
+        Value::Nil
+    );
+    assert_eq!(
+        eval_program(
+            "(symbol? (string->symbol \"strange symbol\"))",
+            &mut session
+        )
+        .unwrap()
+        .value,
+        Value::Bool(true)
+    );
+    assert_eq!(
+        eval_program("(symbol? 'hello)", &mut Session::default())
+            .unwrap_err()
+            .kind,
+        ErrorKind::UnknownSymbol
+    );
+}
+
+#[test]
 fn symbol_to_string_rejects_a_non_symbol() {
     let error = eval_program("(symbol->string \"already a string\")", &mut Session::default())
         .expect_err("expected a Type error");

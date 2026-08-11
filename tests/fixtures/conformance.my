@@ -91,7 +91,7 @@
 ((expr . "(reverse '())") (expected . "()") (tier . 3) (axioms . (G5)) (note . "empty-list edge case, previously untested"))
 ((expr . "(append '() '(a b))") (expected . "(a b)") (tier . 3) (axioms . (G5)) (note . "empty-list edge case, previously untested — empty first argument"))
 ((expr . "(append '(a b) '())") (expected . "(a b)") (tier . 3) (axioms . (G5)) (note . "empty-list edge case, previously untested — empty second argument"))
-((expr . "(symbol? 'radio)") (expected . "t") (tier . 2) (axioms . ()) (note . "symbol/string introspection — previously tested only in Rust unit tests, not the implementation-independent contract"))
+((expr . "(symbol? 'radio)") (expected . "t") (tier . 3) (axioms . (G5)) (note . "symbol? is now lib/core.my: derived from atom, write-to-string, string->symbol, and eq rather than Rust type dispatch"))
 ((expr . "(string? \"radio\")") (expected . "t") (tier . 2) (axioms . ()))
 ((expr . "(symbol->string 'radio)") (expected . "\"radio\"") (tier . 2) (axioms . ()))
 ((expr . "(string->symbol \"radio\")") (expected . "radio") (tier . 2) (axioms . ()))

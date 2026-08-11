@@ -366,6 +366,24 @@
       ((string-empty? s) '())
       (t (string-contains? needle (string-rest s))))))
 
+; `symbol?` moved out of Rust after `write-to-string` made the distinction
+; expressible without exceptions: among atoms, exactly a Symbol is identical
+; to the Symbol reconstructed from its canonical text. The atom guard keeps
+; primitive `eq` away from pairs. This works for arbitrary symbol names, not
+; only reader-friendly identifiers, because `string->symbol` takes raw text.
+; `symbol?` перенесено з Rust: серед атомів лише Symbol тотожний символу,
+; відновленому з його канонічного тексту. `atom` не допускає пари до `eq`.
+; `symbol?` wurde aus Rust verschoben: Unter Atomen ist nur ein Symbol mit dem
+; aus seinem kanonischen Text rekonstruierten Symbol identisch; `atom` schützt `eq`.
+(def symbol?
+  (lambda (value)
+    (cond
+      ((atom value)
+       (cond
+         ((eq value (string->symbol (write-to-string value))) t)
+         (t '())))
+      (t '()))))
+
 ; quotient/mod (G5 test: already expressible via existing means?) — yes.
 ; Unlike bitwise operations (AND/OR/XOR/shift — no primitive exposes a
 ; number's binary representation at all, so those would genuinely need a

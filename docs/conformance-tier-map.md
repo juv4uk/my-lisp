@@ -89,7 +89,7 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 | 79 | `(reverse '())` | 3 | G5 | empty-list edge case, previously untested |
 | 80 | `(append '() '(a b))` | 3 | G5 | empty-list edge case — empty first argument |
 | 81 | `(append '(a b) '())` | 3 | G5 | empty-list edge case — empty second argument |
-| 82 | `(symbol? 'radio)` | 2 | — | symbol/string introspection — previously only Rust unit tests |
+| 82 | `(symbol? 'radio)` | 3 | G5 | `symbol?` moved from Rust type dispatch to `lib/core.my`, derived through canonical serialization and symbol reconstruction |
 | 83 | `(string? "radio")` | 2 | — | |
 | 84 | `(symbol->string 'radio)` | 2 | — | |
 | 85 | `(string->symbol "radio")` | 2 | — | |
