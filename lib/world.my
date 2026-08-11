@@ -83,3 +83,23 @@
   (lambda (world module-name)
     (reduce world-apply-event '()
             (reverse (world-module-events world module-name)))))
+
+;; Pure reasoning adapters: the answer depends only on the explicit world,
+;; module, and goal. They deliberately do not inspect `*knowledge-journal*`.
+;; Чисті reasoning-адаптери: відповідь залежить лише від явно переданих світу,
+;; модуля й цілі; глобальний `*knowledge-journal*` вони не читають.
+;; Reine Schlussfolgerungsadapter: Die Antwort hängt nur von der expliziten
+;; Welt, dem Modul und dem Ziel ab; `*knowledge-journal*` wird nicht gelesen.
+(def reason-in-world
+  (lambda (world module-name goal)
+    (cond
+      ((world-module-known? world module-name)
+       (reason goal (world-clauses world module-name)))
+      (t 'Module-not-found))))
+
+(def forward-in-world
+  (lambda (world module-name)
+    (cond
+      ((world-module-known? world module-name)
+       (run-multi (world-clauses world module-name) '()))
+      (t 'Module-not-found))))

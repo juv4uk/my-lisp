@@ -3,6 +3,9 @@ use my_lisp::{eval_program, Session};
 fn eval_world(source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/world.my"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap()
@@ -93,5 +96,81 @@ fn independent_branches_can_grow_from_the_same_world() {
             "#
         ),
         "((((has-fur cat))) (((has-fur dog))) ())"
+    );
+}
+
+#[test]
+fn backward_reasoning_reads_the_selected_world_snapshot() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((w0 (empty-world)))
+              (let ((w1 (world-tell w0 'family '((parent tom bob)))))
+                (let ((w2 (world-retract w1 'family '((parent tom bob)))))
+                  (list (cond
+                          ((atom (reason-in-world w1 'family '(parent tom bob))) 'no)
+                          (t 'yes))
+                        (cond
+                          ((atom (reason-in-world w2 'family '(parent tom bob))) 'no)
+                          (t 'yes))))))
+            "#
+        ),
+        "(yes no)"
+    );
+}
+
+#[test]
+fn backward_reasoning_keeps_independent_branches_isolated() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((root (empty-world)))
+              (let ((cats (world-tell root 'zoo '((likes alice cats))))
+                    (dogs (world-tell root 'zoo '((likes alice dogs)))))
+                (list (cond
+                        ((atom (reason-in-world cats 'zoo '(likes alice cats))) 'no)
+                        (t 'yes))
+                      (cond
+                        ((atom (reason-in-world cats 'zoo '(likes alice dogs))) 'no)
+                        (t 'yes))
+                      (cond
+                        ((atom (reason-in-world dogs 'zoo '(likes alice dogs))) 'no)
+                        (t 'yes))
+                      (cond
+                        ((atom (reason-in-world dogs 'zoo '(likes alice cats))) 'no)
+                        (t 'yes)))))
+            "#
+        ),
+        "(yes no yes no)"
+    );
+}
+
+#[test]
+fn forward_reasoning_materializes_only_the_selected_world() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((w0 (empty-world)))
+              (let ((w1 (world-tell w0 'physics '((has-mass apple)))))
+                (let ((w2 (world-tell w1 'physics
+                                      '((attracted-by-gravity (var x))
+                                        (has-mass (var x))))))
+                  (list (forward-in-world w1 'physics)
+                        (forward-in-world w2 'physics)))))
+            "#
+        ),
+        "(((has-mass apple)) ((attracted-by-gravity apple) (has-mass apple)))"
+    );
+}
+
+#[test]
+fn world_reasoning_reports_an_unknown_module_without_global_fallback() {
+    assert_eq!(
+        eval_world("(reason-in-world (empty-world) 'missing '(fact x))"),
+        "Module-not-found"
+    );
+    assert_eq!(
+        eval_world("(forward-in-world (empty-world) 'missing)"),
+        "Module-not-found"
     );
 }
