@@ -262,3 +262,74 @@
                    (list 'reason 'invalid-package)
                    (list 'input package))
              world)))))
+
+;; History navigation is derived from parent links, not timestamps. Depth is
+;; absolute from the root (`empty-world` = 0). `world-diff from to` returns the
+;; chronological event list only when `from` is an ancestor of `to`; divergent
+;; branches return `World-not-ancestor` until an explicit merge law exists.
+;;
+;; Навігація історією спирається на батьківські зв'язки, не timestamps. Глибина
+;; абсолютна від кореня (`empty-world` = 0). `world-diff from to` повертає
+;; хронологічні події лише для предка; різні гілки дають `World-not-ancestor`,
+;; доки не визначено чесний закон merge.
+;;
+;; Geschichtsnavigation folgt Vorgängerlinks statt Zeitstempeln. Die Tiefe ist
+;; absolut ab der Wurzel (`empty-world` = 0). `world-diff from to` liefert
+;; chronologische Ereignisse nur für einen Vorfahren; getrennte Zweige ergeben
+;; `World-not-ancestor`, bis ein ausdrückliches Merge-Gesetz definiert ist.
+(def world-depth
+  (lambda (world)
+    (cond
+      ((atom (world-parent world)) 0)
+      (t (+ 1 (world-depth (world-parent world)))))))
+
+(def world-at-depth-from
+  (lambda (world current-depth target-depth)
+    (cond
+      ((= current-depth target-depth) world)
+      ((< current-depth target-depth) 'World-not-found)
+      ((atom (world-parent world)) 'World-not-found)
+      (t (world-at-depth-from (world-parent world)
+                              (- current-depth 1)
+                              target-depth)))))
+
+(def world-at-depth
+  (lambda (world target-depth)
+    (cond
+      ((< target-depth 0) 'World-not-found)
+      (t (world-at-depth-from world (world-depth world) target-depth)))))
+
+(def world-journal-prefix
+  (lambda (journal old-journal)
+    (cond
+      ((equal? journal old-journal) '())
+      ((atom journal) 'World-not-ancestor)
+      (t
+       (let ((rest (world-journal-prefix (cdr journal) old-journal)))
+         (cond
+           ((world-not-ancestor? rest) rest)
+           (t (cons (car journal) rest))))))))
+
+(def world-not-ancestor?
+  (lambda (value)
+    (cond
+      ((atom value) (eq value 'World-not-ancestor))
+      (t '()))))
+
+(def world-diff
+  (lambda (from to)
+    (cond
+      ((equal? from to) '())
+      ((atom (world-parent to)) 'World-not-ancestor)
+      (t
+       (let ((earlier (world-diff from (world-parent to))))
+         (cond
+           ((world-not-ancestor? earlier) earlier)
+           (t
+            (let ((transition
+                    (world-journal-prefix
+                      (world-journal to)
+                      (world-journal (world-parent to)))))
+              (cond
+                ((world-not-ancestor? transition) transition)
+                (t (append earlier transition)))))))))))

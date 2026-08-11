@@ -20,6 +20,8 @@ This layer deliberately contains no Rust primitive and does not replace `lib/kno
 
 `make-world-knowledge-package` exports one module from one selected snapshot using the existing versioned `my-lisp-knowledge` data envelope. `import-knowledge-package-world` validates that envelope and delegates to `advise-all-world`: valid data seeds an independent child branch; malformed, unsupported, or conflicting data returns the exact target world unchanged. Package data is inspected, never evaluated.
 
+History is navigable without a clock: `world-depth` counts transitions from the root, `world-at-depth` recovers an exact ancestor snapshot, and `world-diff from to` returns chronological journal events when `from` is an ancestor of `to`. Sibling branches return `World-not-ancestor`; merge semantics are not guessed.
+
 ## Українська
 
 `lib/world.my` — перший виконуваний зріз архітектури `Expression × World → Value × World`. Світ є звичайними S-expression-даними:
@@ -40,6 +42,8 @@ This layer deliberately contains no Rust primitive and does not replace `lib/kno
 
 `make-world-knowledge-package` експортує один модуль з обраного snapshot у чинній версіонованій data-оболонці `my-lisp-knowledge`. `import-knowledge-package-world` валідовує її та делегує `advise-all-world`: коректні дані породжують незалежну дочірню гілку; malformed, unsupported чи конфліктні повертають точний цільовий світ. Дані пакета ніколи не виконуються.
 
+Історією можна навігувати без годинника: `world-depth` рахує переходи від кореня, `world-at-depth` повертає точний ancestor snapshot, а `world-diff from to` — хронологічні події, коли `from` є предком `to`. Sibling-гілки повертають `World-not-ancestor`; merge-семантика не вигадується.
+
 ## Deutsch
 
 `lib/world.my` ist der erste ausführbare Ausschnitt der Architektur `Expression × World → Value × World`. Eine Welt besteht aus gewöhnlichen S-Expression-Daten:
@@ -59,3 +63,5 @@ Diese Schicht fügt bewusst kein Rust-Primitiv hinzu und ersetzt `lib/knowledge.
 `advise-all-world` wendet denselben Vertrag atomar auf einen nichtleeren Clause-Stapel an. Vorgeschlagene Fakten und Regeln werden gemeinsam geprüft und dürfen einander stützen; Erfolg erzeugt genau eine Kindwelt, während eine ungültige Clause oder ein interner/abgeleiteter Konflikt die ursprüngliche Welt ohne Teilpräfix bewahrt.
 
 `make-world-knowledge-package` exportiert ein Modul aus einem gewählten Schnappschuss in der bestehenden versionierten Datenhülle `my-lisp-knowledge`. `import-knowledge-package-world` prüft sie und delegiert an `advise-all-world`: gültige Daten erzeugen einen unabhängigen Kindzweig; ungültige, nicht unterstützte oder widersprüchliche Daten geben die exakte Zielwelt zurück. Paketdaten werden niemals evaluiert.
+
+Geschichte ist ohne Uhr navigierbar: `world-depth` zählt Übergänge ab der Wurzel, `world-at-depth` findet einen exakten Vorgängerschnappschuss und `world-diff from to` liefert chronologische Ereignisse, wenn `from` Vorfahr von `to` ist. Geschwisterzweige liefern `World-not-ancestor`; Merge-Semantik wird nicht erraten.

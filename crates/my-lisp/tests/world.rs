@@ -451,3 +451,78 @@ fn exported_snapshot_can_seed_an_independent_world_branch() {
         "((((has-fur cat))) (((has-fur cat))) (((has-fur dog)) ((has-fur cat))))"
     );
 }
+
+#[test]
+fn world_depth_counts_transitions_from_the_root() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((w0 (empty-world)))
+              (let ((w1 (world-tell w0 'zoo '((has-fur cat)))))
+                (let ((w2 (world-retract w1 'zoo '((has-fur cat)))))
+                  (list (world-depth w0)
+                        (world-depth w1)
+                        (world-depth w2)))))
+            "#
+        ),
+        "(0 1 2)"
+    );
+}
+
+#[test]
+fn world_at_depth_recovers_an_exact_historical_snapshot() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((w0 (empty-world)))
+              (let ((w1 (world-tell w0 'zoo '((has-fur cat)))))
+                (let ((w2 (world-tell w1 'zoo '((has-fur dog)))))
+                  (list (equal? w0 (world-at-depth w2 0))
+                        (equal? w1 (world-at-depth w2 1))
+                        (equal? w2 (world-at-depth w2 2))))))
+            "#
+        ),
+        "(t t t)"
+    );
+}
+
+#[test]
+fn world_at_depth_rejects_depths_outside_the_history() {
+    assert_eq!(
+        eval_world("(list (world-at-depth (empty-world) -1) (world-at-depth (empty-world) 1))"),
+        "(World-not-found World-not-found)"
+    );
+}
+
+#[test]
+fn world_diff_returns_chronological_events_across_atomic_transitions() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((w0 (empty-world)))
+              (let ((w1
+                      (world-tell-all
+                        w0 'zoo
+                        '(((has-fur cat)) ((has-fur dog))))))
+                (let ((w2 (world-retract w1 'zoo '((has-fur cat)))))
+                  (world-diff w0 w2))))
+            "#
+        ),
+        "((tell zoo ((has-fur cat))) (tell zoo ((has-fur dog))) (retract zoo ((has-fur cat))))"
+    );
+}
+
+#[test]
+fn world_diff_refuses_to_invent_a_path_between_sibling_branches() {
+    assert_eq!(
+        eval_world(
+            r#"
+            (let ((root (empty-world)))
+              (let ((cats (world-tell root 'zoo '((has-fur cat))))
+                    (dogs (world-tell root 'zoo '((has-fur dog)))))
+                (world-diff cats dogs)))
+            "#
+        ),
+        "World-not-ancestor"
+    );
+}
