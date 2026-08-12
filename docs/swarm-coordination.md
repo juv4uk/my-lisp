@@ -147,28 +147,72 @@ agent that's merely slow. This is exactly the capability-declaration
 piece `next-best-action` scoring (below) needs — not built itself yet,
 but the registry it would read `capabilities` from now exists.
 
-### `next-best-action` self-organization
+### `next-best-action` self-organization — built (commit `d57f09c`)
 
 The actual "swarm" behavior, per the proposal: after any state change
 (startup, task complete, task blocked, new event, dependency changed),
 each agent computes what to do next itself, instead of waiting for
-the owner to assign it:
+the owner to assign it. Implemented score, simplified from the
+original four-term product to two (capability-match folded into a
+hard gate rather than a multiplier, dependency-centrality folded into
+unblock-impact — see the rationale below):
 
 ```
-score = priority × capability-match × unblock-impact × dependency-centrality
+score = priority × (1 + unblock-impact)
 ```
 
-An agent atomically claims the top-scored task; others automatically
-pick the next since the claimed one drops out of contention. The
-atomic claim primitive itself now exists (`claim`/`release`, above) —
-what's still missing: a machine-readable task list with declared
-dependencies (partially what `ecosystem-status.my`'s
-`current-task`/`next-milestone` fields are, but not structured enough
-for a score function yet, and not wired to `claim` at all — an agent
-could `claim` a task id today, but nothing yet derives that id from
-`ecosystem-status.my` or scores it against alternatives), the score
-function itself, and capability declarations per agent (from `hello`,
-above).
+where a task naming a `capability` the caller doesn't have, an
+unsatisfied `depends-on`, an existing claim by someone else, or
+`done: true` is excluded from the ranking entirely — not down-ranked,
+absent. `unblock-impact` is how many other not-yet-done tasks name
+this one in their own `depends-on`.
+
+```lisp
+(request (id 1) (op define-task) (task "ISA-RATIONAL")
+         (capabilities (verilog isa-design)))
+(request (id 2) (op define-task) (task "CML-RATIONAL")
+         (capabilities (compiler rust)) (depends-on ("ISA-RATIONAL")))
+(request (id 3) (op next-best-action) (from "cml"))
+-> only DOC-CLEANUP-style unrelated work, CML-RATIONAL excluded
+   (blocked) and ISA-RATIONAL excluded (wrong capabilities)
+
+(request (id 4) (op complete-task) (task "ISA-RATIONAL"))
+(request (id 5) (op next-best-action) (from "cml"))
+-> CML-RATIONAL now outranks everything else
+```
+
+Manually verified with exactly this shape — the original proposal's
+own worked example (fpga-lisp finishing an ISA layout task
+unblocks cml's dependent one, whose score jumps from excluded to
+top-ranked). An agent still has to actually call `claim` on the
+top-scored task itself (a `next-best-action` call doesn't auto-claim —
+deliberately: computing the ranking and acting on it are different
+operations, so a caller can inspect the list before committing).
+Capabilities fall back to whatever `from`'s last `hello` registered
+in `presence` if not passed explicitly to `next-best-action`.
+
+**Why capability-match became a gate, not a multiplier:** the original
+proposal's `score = priority × capability-match × unblock-impact ×
+dependency-centrality` implies a task an agent is *partially*
+qualified for should rank lower than one it's fully qualified for, but
+still appear. In practice, "partially has the required capabilities"
+usually means "cannot actually do this task" (compiling requires the
+`compiler` capability outright, not 60% of it) — so a hard exclude is
+both simpler to implement and more honest about what the score means.
+If a future task genuinely has gradations of capability match (e.g.
+"prefers but doesn't require `iverilog`"), that's a reason to add a
+second scoring dimension deliberately, not to weaken this gate.
+
+**Why dependency-centrality folded into unblock-impact:** the
+proposal's own worked examples never actually distinguish "how many
+tasks does this block" (unblock-impact) from "how central is this task
+in the dependency graph" (dependency-centrality) — they're the same
+signal at this scale (a handful of tasks per repo, not hundreds). If
+the task graph grows large enough that indirect centrality (a task
+blocking a task that blocks many others) meaningfully diverges from
+direct unblock-impact, that's the trigger to add it back as a separate
+term — not before, since an unused knob nobody can validate is worse
+than an honest, working two-term score.
 
 ### `capability-request` / temporary coalitions
 

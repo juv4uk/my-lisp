@@ -92,7 +92,21 @@ connection) for three distinct things:
   `capabilities`, `task`, and `seconds-since-heartbeat` — no automatic
   eviction, judge staleness yourself. In-memory, non-persistent.
 
-All five ops classes share one process, but nothing `Rc`-based
+- `define-task`/`complete-task`/`next-best-action` — self-organizing
+  task scoring (owner decision, 2026-08-12). `define-task` takes `task`,
+  optional `priority` (default 1.0), `capabilities`, `depends-on` (a
+  list of other task ids). `complete-task` takes `task`, marks it done
+  and drops its claim — not restricted to the current holder. `next-
+  best-action` takes `from` and optional `capabilities` (falls back to
+  `presence`'s record of `from`'s last `hello` if omitted), returns
+  every actionable task ranked by `priority × (1 + unblock-impact)`
+  descending — a task naming a capability the caller lacks, with an
+  unsatisfied `depends-on`, already done, or already claimed by someone
+  else is excluded outright, not merely down-ranked. `unblock-impact`
+  is how many other not-yet-done tasks list this one in `depends-on`.
+  In-memory, non-persistent.
+
+All six ops classes share one process, but nothing `Rc`-based
 (the language's own `Value`) ever crosses a thread boundary — only
 plain `String`s move between connection threads, so this doesn't touch
 `Value`'s single-threaded reference counting.
