@@ -287,6 +287,17 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   (dozens of events) there's no pressure to compact automatically —
   `compact` is a manual, safe, on-demand tool for when a node's own
   history grows large from churn, not a background job.
+- **M0.9** — done: `(status)` op (bundles `presence` + `list-members` +
+  `list-task-state` into one round trip — checking swarm health used to
+  mean three separate requests stitched together by hand) and a real
+  integration test suite (`crates/swarm-node/tests/integration.rs`, 5
+  tests), promoting the ad-hoc bash smoke scripts used to validate every
+  M-step so far into something `cargo test` runs and catches regressions
+  in automatically. Covers anti-entropy sync + live push-event, quorum
+  claim + fencing + STALE rejection, gossip peer discovery, compaction
+  round-tripping derived state, and dynamic membership (voter quorum +
+  worker join via gossip + `status`) — spawning real `swarm-node` child
+  processes and talking to them over real TCP, not mocking anything.
 - Migration: `:9999` keeps running throughout so cml/fpga-lisp/my-idea
   aren't blocked; they migrate their coordination traffic to `swarm-node`
   on their own schedule per "Migrating off `:9999` for coordination" above

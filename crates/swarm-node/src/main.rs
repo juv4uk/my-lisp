@@ -343,6 +343,9 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("presence") => {
                 handle_presence(&node, &mut stream);
             }
+            Some("status") => {
+                handle_status(&node, &mut stream);
+            }
             Some("join") => {
                 handle_join(&node, &msg, &mut stream);
             }
@@ -1009,12 +1012,66 @@ fn handle_next_best_action(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream)
 /// "is this node up right now" is inherently ephemeral and shouldn't
 /// survive a restart as a stale fact, so it deliberately isn't durable.
 fn handle_presence(node: &Arc<Node>, stream: &mut TcpStream) {
+    send(stream, &presence_sexp(node));
+}
+
+fn presence_sexp(node: &Arc<Node>) -> Sexp {
     let mut ids: Vec<String> = node.peers.lock().unwrap().keys().cloned().collect();
     ids.push(node.identity.node_id.clone());
     ids.sort();
+    Sexp::list(vec![Sexp::atom("presence"), Sexp::list(ids.into_iter().map(Sexp::atom).collect())])
+}
+
+/// Local client op: `(status)`. One round trip instead of three —
+/// `presence` + `list-members` + `list-task-state` bundled together, for
+/// whoever's checking swarm health (a human, or an agent deciding what to
+/// do next) without stitching three separate replies together by hand.
+fn handle_status(node: &Arc<Node>, stream: &mut TcpStream) {
+    let presence = presence_sexp(node);
+
+    let journal = node.journal.lock().unwrap();
+    let members = state::membership(&journal);
+    let mut member_ids: Vec<&String> = members.keys().collect();
+    member_ids.sort();
+    let members_sexp = Sexp::list(vec![
+        Sexp::atom("members"),
+        Sexp::list(
+            member_ids
+                .into_iter()
+                .map(|id| {
+                    let m = &members[id];
+                    Sexp::list(vec![
+                        Sexp::list(vec![Sexp::atom("node"), Sexp::atom(id)]),
+                        Sexp::list(vec![Sexp::atom("present"), Sexp::atom(if m.present { "t" } else { "nil" })]),
+                        Sexp::list(vec![Sexp::atom("roles"), Sexp::list(m.roles.iter().map(Sexp::atom).collect())]),
+                        Sexp::list(vec![Sexp::atom("capabilities"), Sexp::list(m.capabilities.iter().map(Sexp::atom).collect())]),
+                    ])
+                })
+                .collect(),
+        ),
+    ]);
+    let tasks_sexp = Sexp::list(vec![
+        Sexp::atom("task-states"),
+        Sexp::list(
+            state::all_task_ids(&journal)
+                .iter()
+                .map(|task| task_state_sexp(task, &state::task_state(&journal, task)))
+                .collect(),
+        ),
+    ]);
+    drop(journal);
+
     send(
         stream,
-        &Sexp::list(vec![Sexp::atom("presence"), Sexp::list(ids.into_iter().map(Sexp::atom).collect())]),
+        &Sexp::list(vec![
+            Sexp::atom("status"),
+            Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)]),
+            Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
+            Sexp::list(vec![Sexp::atom("synced"), Sexp::atom(if node.synced() { "t" } else { "nil" })]),
+            presence,
+            members_sexp,
+            tasks_sexp,
+        ]),
     );
 }
 
