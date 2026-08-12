@@ -60,6 +60,33 @@ one of `pass`, `fail`, or `skip` (with a `note` field explaining why, for
 `skip`). A `fail` entry is exactly as valid to commit as a `pass` — the
 point is an honest, checkable record, not a scoreboard.
 
+### Optional `environment` field
+
+Pins the toolchain state a run was produced under, not just the code
+state `commit` already pins — reproducible via `guix time-machine`
+against the ecosystem's `channels.scm` (one level up from each repo, or
+copied in if a repo needs its own). Omit entirely when not using Guix, or
+when the distinction doesn't matter for a given fixture; existing evidence
+files without it remain valid, this is additive, not a schema break.
+
+```lisp
+(evidence
+  ...
+  (environment
+    (guix-revision . "5375f33fd48ffc3b39ecc1c5993e299258a043d8")
+    (channels . "channels.scm")
+    (manifest . "manifest.scm"))
+  ...)
+```
+
+`guix-revision` comes from `guix describe` (the `commit` field of the
+`guix` channel) at the time of the run, not necessarily the same as
+whatever `channels.scm` currently pins if it's since been updated —
+`channels.scm` is how you'd reproduce that exact revision later, this
+field is the record of what was actually used. `manifest` names the
+`manifest.scm` (or `guix.scm`) the run's `guix shell` was invoked with,
+relative to the implementation's own repo root.
+
 ## What this replaces
 
 - Hand-copying "PASS"/"green"/"working" into README prose or a shared
