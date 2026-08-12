@@ -170,6 +170,44 @@ fn dotted_alist_lookup(alist: &Value, key: &str) -> Option<Value> {
     })
 }
 
+/// A bare atom usable as an id or capability name — a `Symbol` or a
+/// `String`, both of which the data files (`tasks.my`, `ecosystem-status.my`)
+/// legitimately use for identifiers.
+fn atom_string(value: &Value) -> Option<String> {
+    match value {
+        Value::String(s) => Some(s.to_string()),
+        Value::Symbol(s) => Some(s.to_string()),
+        _ => None,
+    }
+}
+
+/// `capabilities`/`depends-on` from a data file are plain lists of
+/// symbols or strings; a malformed entry in the middle is skipped rather
+/// than failing the whole file, and the caller reports it as a warning.
+fn list_of_atoms(value: &Value) -> Vec<String> {
+    list_items(value)
+        .into_iter()
+        .filter_map(|item| atom_string(&item))
+        .collect()
+}
+
+/// The `done` status in `tasks.my` — accepts the same spellings a data
+/// file might use for a boolean, `None` only if the field is present but
+/// unrecognized (the caller then keeps the existing in-memory status
+/// rather than guessing).
+fn bool_from_value(value: &Value) -> Option<bool> {
+    match value {
+        Value::Bool(b) => Some(*b),
+        Value::Nil => Some(false),
+        Value::Symbol(s) | Value::String(s) => match &**s {
+            "t" | "true" | "yes" => Some(true),
+            "nil" | "false" | "no" => Some(false),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 /// `output` carries every `print`/`println`-style side-effect line the
 /// evaluated expression produced, in order — dropping it (the first cut
 /// of this protocol did) silently discards real program output, which is
@@ -235,10 +273,37 @@ struct Subscriber {
     sender: mpsc::Sender<String>,
 }
 
+/// One published event, kept in `Broker::event_log` alongside live
+/// delivery so a `subscribe` with `since` can replay everything a
+/// reconnecting agent missed while its connection was down — the gap
+/// `AGENTS.md`'s durability warning describes ("every op resets on
+/// restart") doesn't have to mean a *subscriber* restart also loses
+/// history, only that the log itself doesn't survive the *server*
+/// restarting. Capped the same way the mailbox is (oldest-first drain).
+struct StoredEvent {
+    id: u64,
+    from: String,
+    topic: String,
+    message: String,
+}
+
 #[derive(Default)]
 struct Broker {
     subscribers: Vec<Subscriber>,
     next_subscriber_id: u64,
+    event_log: Vec<StoredEvent>,
+    next_event_id: u64,
+}
+
+fn stored_event_to_text(event: &StoredEvent) -> String {
+    Value::list([
+        Value::Symbol("event".into()),
+        Value::list([Value::Symbol("id".into()), Value::Number(event.id as f64, Exactness::Exact)]),
+        Value::list([Value::Symbol("from".into()), Value::String(event.from.as_str().into())]),
+        Value::list([Value::Symbol("topic".into()), Value::String(event.topic.as_str().into())]),
+        Value::list([Value::Symbol("message".into()), Value::String(event.message.as_str().into())]),
+    ])
+    .to_string()
 }
 
 /// `claim`/`release`'s shared state — a task id maps to the agent name
@@ -302,15 +367,27 @@ struct TaskTable {
 /// a different envelope shape depending on who triggered the event.
 /// Returns how many subscribers actually received it.
 fn broadcast_event(broker: &Arc<Mutex<Broker>>, from: &str, topic: &str, message: &str) -> u32 {
-    let event_text = Value::list([
-        Value::Symbol("event".into()),
-        Value::list([Value::Symbol("from".into()), Value::String(from.into())]),
-        Value::list([Value::Symbol("topic".into()), Value::String(topic.into())]),
-        Value::list([Value::Symbol("message".into()), Value::String(message.into())]),
-    ])
-    .to_string();
     let mut delivered = 0u32;
     let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
+    // Log first, deliver second, both under this one lock acquisition —
+    // that's what makes `subscribe`'s replay-then-live-register race-free
+    // (see its own comment): no event can land between a subscriber
+    // taking its replay snapshot and registering for live delivery,
+    // because both of those also happen under this same `broker` lock.
+    broker_state.next_event_id += 1;
+    let event_id = broker_state.next_event_id;
+    broker_state.event_log.push(StoredEvent {
+        id: event_id,
+        from: from.to_string(),
+        topic: topic.to_string(),
+        message: message.to_string(),
+    });
+    const EVENT_LOG_CAPACITY: usize = 500;
+    if broker_state.event_log.len() > EVENT_LOG_CAPACITY {
+        let excess = broker_state.event_log.len() - EVENT_LOG_CAPACITY;
+        broker_state.event_log.drain(0..excess);
+    }
+    let event_text = stored_event_to_text(broker_state.event_log.last().expect("just pushed"));
     broker_state.subscribers.retain(|subscriber| {
         if !subscriber.topics.is_empty() && !subscriber.topics.iter().any(|t| t == topic) {
             return true;
@@ -520,6 +597,7 @@ fn handle_sexpr_connection(
                 let mut depends_on: Vec<String> = Vec::new();
                 let mut needs: Option<String> = None;
                 let mut context: Option<String> = None;
+                let mut file: Option<String> = None;
                 for field in fields.iter().skip(1) {
                     let kv = list_items(field);
                     let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
@@ -621,6 +699,11 @@ fn handle_sexpr_connection(
                             "context" => {
                                 if let Value::String(s) = val {
                                     context = Some(s.to_string());
+                                }
+                            }
+                            "file" => {
+                                if let Value::String(s) = val {
+                                    file = Some(s.to_string());
                                 }
                             }
                             _ => {}
@@ -727,10 +810,30 @@ fn handle_sexpr_connection(
                     // opens a second connection for that, the same way a
                     // real pub/sub client library keeps publish and
                     // subscribe on separate sockets.
+                    //
+                    // `since` (an event id, default 0) replays everything
+                    // matching `topics` from `Broker::event_log` before
+                    // switching to live delivery — a reconnecting agent
+                    // that remembers the last event id it saw doesn't lose
+                    // whatever happened while its connection was down.
+                    // The replay snapshot and the live-subscriber
+                    // registration happen under the same lock acquisition
+                    // (below), so there's no gap an event could fall
+                    // through: anything logged before this point is in
+                    // the replay list, anything logged after is delivered
+                    // live, and `broadcast_event` itself only ever logs
+                    // and delivers under that identical lock.
                     Some("subscribe") => {
                         let (sender, receiver) = mpsc::channel::<String>();
-                        let subscriber_id = {
+                        let (subscriber_id, replay) = {
                             let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
+                            let replay: Vec<String> = broker_state
+                                .event_log
+                                .iter()
+                                .filter(|event| event.id > since)
+                                .filter(|event| topics.is_empty() || topics.iter().any(|t| t == &event.topic))
+                                .map(stored_event_to_text)
+                                .collect();
                             broker_state.next_subscriber_id += 1;
                             let subscriber_id = broker_state.next_subscriber_id;
                             broker_state.subscribers.push(Subscriber {
@@ -738,7 +841,7 @@ fn handle_sexpr_connection(
                                 topics: topics.clone(),
                                 sender,
                             });
-                            subscriber_id
+                            (subscriber_id, replay)
                         };
                         let ack = ok_response(&id, Value::Symbol("subscribed".into()), &[], &contract_version);
                         if writeln!(stream, "{ack}").is_err() {
@@ -746,7 +849,19 @@ fn handle_sexpr_connection(
                             broker_state.subscribers.retain(|s| s.id != subscriber_id);
                             break;
                         }
-                        eprintln!("TCP REPL: {peer} subscribed to {topics:?}, switching to push mode");
+                        let mut replay_failed = false;
+                        for event_text in &replay {
+                            if writeln!(stream, "{event_text}").is_err() {
+                                replay_failed = true;
+                                break;
+                            }
+                        }
+                        if replay_failed {
+                            let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
+                            broker_state.subscribers.retain(|s| s.id != subscriber_id);
+                            break;
+                        }
+                        eprintln!("TCP REPL: {peer} subscribed to {topics:?} (replayed {} missed events since {since}), switching to push mode", replay.len());
                         for event_text in receiver.iter() {
                             if writeln!(stream, "{event_text}").is_err() {
                                 break;
@@ -922,6 +1037,127 @@ fn handle_sexpr_connection(
                             }
                         }
                     },
+                    // Imports the durable task plan from a `tasks.my`
+                    // flat-alist file (same data convention as
+                    // ecosystem-status.my): `((kind . tasks-my) (tasks .
+                    // (("TASK-ID" . ((priority . 0.8) (capabilities .
+                    // (compiler rust)) (depends-on . ("OTHER")) (done . ()))))
+                    // ...)))`. Upsert — defines or redefines each listed
+                    // task, preserving `done` unless the file says
+                    // otherwise; tasks *not* listed are left alone (so
+                    // re-syncing can't clobber auto-created `HELP:...`
+                    // tasks or the in-memory claims). This is the bridge
+                    // between the durable plan (git-tracked files) and the
+                    // in-memory registry `next-best-action` scores, and the
+                    // fix for the restart-loss the AGENTS.md durability
+                    // rule warns about: after a server restart an agent
+                    // re-runs `sync-tasks` and the plan is back. A file
+                    // error fails the whole op; a malformed entry inside an
+                    // otherwise valid file is skipped with a warning, so
+                    // one typo doesn't silently drop the whole board.
+                    Some("sync-tasks") => match &file {
+                        None => error_response(&id, "invalid-form", "op `sync-tasks` requires a `file` field", &contract_version),
+                        Some(path) => match fs::read_to_string(path) {
+                            Err(e) => error_response(&id, "io-error", &format!("cannot read `{path}`: {e}"), &contract_version),
+                            Ok(content) => match parse(&content) {
+                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                                Ok(ast) if ast.len() != 1 => error_response(
+                                    &id,
+                                    "invalid-form",
+                                    "op `sync-tasks` expects a single top-level form (one flat alist) in the file",
+                                    &contract_version,
+                                ),
+                                Ok(_) => {
+                                    // `parse` yields `Expr`s, not `Value`s,
+                                    // so the file's structure is turned into
+                                    // data the same way the request envelope
+                                    // and the `parse` op do: `quote` it and
+                                    // evaluate — dotted pairs stay dotted.
+                                    let quoted_file = format!("(quote {content})");
+                                    let rendered = parse(&quoted_file).ok().and_then(|q| {
+                                        eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
+                                    });
+                                    match rendered {
+                                        None => error_response(
+                                            &id,
+                                            "parse-error",
+                                            "tasks file parsed but could not be rendered as data",
+                                            &contract_version,
+                                        ),
+                                        Some(file_value) => match dotted_alist_lookup(&file_value, "tasks") {
+                                            None => error_response(
+                                                &id,
+                                                "invalid-form",
+                                                "sync-tasks file must contain a `(tasks . ...)` alist key",
+                                                &contract_version,
+                                            ),
+                                            Some(tasks_value) => {
+                                                let mut defined: Vec<String> = Vec::new();
+                                                let mut warnings: Vec<String> = Vec::new();
+                                                for entry in list_items(&tasks_value) {
+                                                    let Value::Pair(task_id_value, props_value) = &entry else {
+                                                        warnings.push("a task entry is not a dotted pair (task-id . props)".to_string());
+                                                        continue;
+                                                    };
+                                                    let Some(task_id) = atom_string(task_id_value) else {
+                                                        warnings.push("a task id is neither a string nor a symbol".to_string());
+                                                        continue;
+                                                    };
+                                                    if task_id.is_empty() {
+                                                        warnings.push("a task id is empty".to_string());
+                                                        continue;
+                                                    }
+                                                    let mut priority = 1.0;
+                                                    if let Some(priority_value) = dotted_alist_lookup(props_value, "priority") {
+                                                        if let Value::Number(n, _) = &priority_value {
+                                                            priority = *n;
+                                                        } else {
+                                                            warnings.push(format!("task `{task_id}`: `priority` is not a number"));
+                                                        }
+                                                    }
+                                                    let capabilities = dotted_alist_lookup(props_value, "capabilities")
+                                                        .map(|v| list_of_atoms(&v))
+                                                        .unwrap_or_default();
+                                                    let depends_on = dotted_alist_lookup(props_value, "depends-on")
+                                                        .map(|v| list_of_atoms(&v))
+                                                        .unwrap_or_default();
+                                                    let file_done = dotted_alist_lookup(props_value, "done").and_then(|v| bool_from_value(&v));
+                                                    let (is_new_task, existing_done) = {
+                                                        let mut task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
+                                                        let new = !task_state.tasks.contains_key(&task_id);
+                                                        let existing_done = task_state.tasks.get(&task_id).map(|t| t.done).unwrap_or(false);
+                                                        task_state.tasks.insert(task_id.clone(), TaskDef {
+                                                            priority,
+                                                            capabilities,
+                                                            depends_on,
+                                                            done: file_done.unwrap_or(existing_done),
+                                                        });
+                                                        (new, existing_done)
+                                                    };
+                                                    if is_new_task {
+                                                        let publisher = from.clone().unwrap_or_else(|| "unknown".to_string());
+                                                        broadcast_event(broker, &publisher, "task-created", &format!("task {task_id} defined via sync-tasks"));
+                                                    }
+                                                    defined.push(task_id);
+                                                }
+                                                let value = Value::list([
+                                                    Value::list([
+                                                        Value::Symbol("defined".into()),
+                                                        Value::list(defined.into_iter().map(|task_id| Value::String(task_id.as_str().into()))),
+                                                    ]),
+                                                    Value::list([
+                                                        Value::Symbol("warnings".into()),
+                                                        Value::list(warnings.into_iter().map(|warning| Value::String(warning.as_str().into()))),
+                                                    ]),
+                                                ]);
+                                                ok_response(&id, value, &[], &contract_version)
+                                            }
+                                        },
+                                    }
+                                }
+                            },
+                        },
+                    },
                     // `score = priority × capability-match × (1 +
                     // unblock-impact)`, per docs/swarm-coordination.md.
                     // capability-match is a hard gate here, not a
@@ -1089,6 +1325,52 @@ fn handle_sexpr_connection(
     eprintln!("TCP REPL: {peer} disconnected");
 }
 
+/// One-shot P2P client: connects to a peer's TCP REPL and forwards a
+/// single sexpr request read from stdin, printing the response line to
+/// stdout. This is the peer side of the mesh topology in
+/// docs/swarm-autonomy.md — every agent runs its own server, and agents
+/// talk to each other directly through this primitive, no shared hub:
+/// `printf '%s\n' '(request (op notify) (from "me") (to "you") (message "hi"))' |
+///   my-lisp --connect=127.0.0.1:9992`.
+fn run_client(address: &str) {
+    let mut stream = match TcpStream::connect(address) {
+        Ok(stream) => stream,
+        Err(e) => {
+            eprintln!("my-lisp: cannot connect to {address}: {e}");
+            process::exit(1);
+        }
+    };
+    let mut line = String::new();
+    match std::io::stdin().lock().read_line(&mut line) {
+        Ok(0) => {
+            eprintln!("my-lisp: --connect expects a request on stdin, none was found");
+            process::exit(1);
+        }
+        Ok(_) => {
+            let request = line.trim();
+            if request.is_empty() {
+                eprintln!("my-lisp: --connect expects a non-empty request on stdin");
+                process::exit(1);
+            }
+            if writeln!(stream, "{request}").is_err() {
+                eprintln!("my-lisp: write to {address} failed");
+                process::exit(1);
+            }
+            let mut response = String::new();
+            if BufReader::new(&stream).read_line(&mut response).is_ok() {
+                print!("{response}");
+            } else {
+                eprintln!("my-lisp: read from {address} failed");
+                process::exit(1);
+            }
+        }
+        Err(e) => {
+            eprintln!("my-lisp: cannot read request from stdin: {e}");
+            process::exit(1);
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let allowed = allowed_processes(&args);
@@ -1149,6 +1431,7 @@ fn main() {
             println!("  --allow-process=a,b,c        Allow (process-run) to run exactly these program names");
             println!("  --tcp[=PORT]                 Serve the REPL over TCP on 127.0.0.1 (default port 9999) instead of stdio");
             println!("  --protocol=sexpr              With --tcp: strict (request (id) (op) (source)) / (response ...) envelope, no banner/prompt");
+            println!("  --connect=HOST:PORT            P2P client: forward one sexpr request from stdin to a peer's TCP REPL, print the response");
             return;
         }
 
@@ -1162,6 +1445,16 @@ fn main() {
             } else {
                 run_tcp_repl(port, core_lib, &allowed_for_tcp);
             }
+            return;
+        }
+
+        if arg.starts_with("--connect=") {
+            let address = arg.strip_prefix("--connect=").unwrap_or_default();
+            if address.is_empty() {
+                eprintln!("my-lisp: --connect requires HOST:PORT");
+                process::exit(1);
+            }
+            run_client(address);
             return;
         }
 
