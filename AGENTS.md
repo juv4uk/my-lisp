@@ -154,15 +154,20 @@ connection) for three distinct things:
 - `define-task`/`complete-task`/`next-best-action` — self-organizing
   task scoring (owner decision, 2026-08-12). `define-task` takes `task`,
   optional `priority` (default 1.0), `capabilities`, `depends-on` (a
-  list of other task ids). `complete-task` takes `task`, marks it done
-  and drops its claim — not restricted to the current holder. `next-
-  best-action` takes `from` and optional `capabilities` (falls back to
-  `presence`'s record of `from`'s last `hello` if omitted), returns
-  every actionable task ranked by `priority × (1 + unblock-impact)`
-  descending — a task naming a capability the caller lacks, with an
-  unsatisfied `depends-on`, already done, or already claimed by someone
-  else is excluded outright, not merely down-ranked. `unblock-impact`
-  is how many other not-yet-done tasks list this one in `depends-on`.
+  list of other task ids), and optional `description` (prose — what the
+  task actually is; preserved across a redefinition that omits it, same
+  as `done`). `complete-task` takes `task`, marks it done and drops its
+  claim — not restricted to the current holder. `next-best-action` takes
+  `from` and optional `capabilities` (falls back to `presence`'s record
+  of `from`'s last `hello` if omitted), returns every actionable task
+  ranked by `priority × (1 + unblock-impact)` descending, each entry
+  carrying its `description` (or `()` if none was ever set) so you don't
+  have to cross-reference a file just to know what a ranked task id is
+  — a task naming a capability the caller lacks, with an unsatisfied
+  `depends-on`, already done, or already claimed by someone else is
+  excluded outright, not merely down-ranked. `unblock-impact` is how
+  many other not-yet-done tasks list this one in `depends-on`.
+  `list-claims` also carries each claim's `description` the same way.
   In-memory, non-persistent.
 
 - `sync-tasks`/`sync-milestone` — bridge durable files into the
