@@ -19,12 +19,18 @@ to remember:
 3. `(request (id 3) (op next-best-action) (from "my-lisp"))` — see
    what's actionable before deciding what to work on.
 
-The mesh you run against is **P2P, not a hub**: every agent runs its
-own server on its own port (my-lisp `--tcp=9991`, cml `9992`,
-fpga-lisp `9993`, my-idea `9994`), and peers are reached directly via
-`--connect=HOST:PORT` — see `docs/swarm-autonomy.md` for the full loop
-(sync your own `tasks.my`, query peers, notify them). `9999` is the
-legacy shared oracle; new work targets the per-peer ports.
+The swarm is **P2P on one server**: the `my-lisp --tcp=9999` TCP oracle
+is a neutral shared medium, not a hub — no agent relays or coordinates
+for another; every agent connects to it directly and symmetrically, and
+the coordination state it holds (mailbox, presence, claims, task
+registry) has no opinion about who should talk to whom. One-shot
+requests go through `--connect=127.0.0.1:9999` (client mode). Your own
+repo's durable plan is its git-tracked `tasks.my` — `sync-tasks` it
+into the registry after edits and after any server restart (in-memory
+swarm state resets on restart). See `docs/swarm-autonomy.md` for the
+full loop (sync → hello → next-best-action → claim → work → evidence →
+complete → update tasks.my → notify peers) and `docs/swarm-coordination.md`
+for the protocol details.
 
 Full protocol (`notify`/`poll`, `claim`/`release`, `presence`,
 `define-task`, `capability-request`, `sync-tasks`, event replay via

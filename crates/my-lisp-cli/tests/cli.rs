@@ -379,3 +379,51 @@ fn sexpr_protocol_connections_do_not_share_state() {
         "a def on one connection leaked into another: {second_response}"
     );
 }
+
+#[test]
+#[ignore = "see block comment above sexpr_protocol_eval_returns_structured_response"]
+fn sexpr_protocol_sync_tasks_loads_durable_plan() {
+    let tasks_path = std::env::temp_dir().join(format!("sync-tasks-test-{}.my", std::process::id()));
+    std::fs::write(
+        &tasks_path,
+        r#"((kind . tasks-my)
+ (tasks .
+  (("ISA-RATIONAL" . ((priority . 0.9) (capabilities . (verilog isa-design))))
+   ("CML-RATIONAL" . ((priority . 0.8) (capabilities . (compiler rust)) (depends-on . ("ISA-RATIONAL"))))
+   (not-a-pair))))"#,
+    )
+    .expect("should be able to write the tasks file");
+
+    let (mut child, port) = spawn_sexpr_server();
+
+    let sync = request_with_retry(
+        port,
+        &format!(r#"(request (id 1) (op sync-tasks) (from "opencode") (file "{}"))"#, tasks_path.display()),
+    );
+    let complete = request_with_retry(
+        port,
+        r#"(request (id 2) (op complete-task) (from "opencode") (task "ISA-RATIONAL"))"#,
+    );
+    let nba = request_with_retry(
+        port,
+        r#"(request (id 3) (op next-best-action) (from "opencode") (capabilities (compiler rust)))"#,
+    );
+    child.kill().expect("should be able to stop the server");
+    std::fs::remove_file(&tasks_path).ok();
+
+    assert!(
+        sync.contains("(status ok)")
+            && sync.contains("ISA-RATIONAL")
+            && sync.contains("CML-RATIONAL")
+            && sync.contains("not a dotted pair"),
+        "sync-tasks should import the plan and warn on the malformed entry: {sync}"
+    );
+    assert!(
+        complete.contains("(status ok)"),
+        "completing ISA-RATIONAL should succeed: {complete}"
+    );
+    assert!(
+        nba.contains("CML-RATIONAL") && !nba.contains("ISA-RATIONAL"),
+        "an agent with (compiler rust) should be steered to the now-unblocked CML-RATIONAL, not the verilog-only ISA-RATIONAL: {nba}"
+    );
+}

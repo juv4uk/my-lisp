@@ -1,0 +1,22 @@
+; tasks.my — durable task plan for the my-lisp agent, per
+; docs/swarm-autonomy.md (P2P on one server: this file is this repo's
+; plan of record; sync it into the shared 127.0.0.1:9999 registry with
+; the sync-tasks op after edits and after any server restart).
+;
+; Data only — same flat-alist convention as ecosystem-status.my.
+; `done . t` only when real in-repo evidence exists (durability rule:
+; file first, pointer later). Re-sync after editing.
+
+((kind . tasks-my)
+ (tasks .
+  (("SWARM-P2P-CLIENT" . ((priority . 0.9) (capabilities . (lisp docs rust))
+                          (done . t)))
+   ("SWARM-P2P-SYNC" . ((priority . 0.9) (capabilities . (lisp docs rust))
+                        (done . t)))
+   ("SWARM-P2P-DOC" . ((priority . 0.8) (capabilities . (docs))
+                       (done . t)))
+   ("SWARM-P2P-HEARTBEAT" . ((priority . 0.7) (capabilities . (lisp docs))
+                             (depends-on . ("SWARM-P2P-SYNC"))))
+   ("SWARM-P2P-ROLLOUT" . ((priority . 0.7) (capabilities . (docs lisp))
+                           (depends-on . ("SWARM-P2P-DOC"))
+                           (done . t))))))
