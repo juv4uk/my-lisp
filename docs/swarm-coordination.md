@@ -9,6 +9,76 @@ not authored by any of the four sessions); this document records the
 full proposal and what of it has actually landed, so a future session
 doesn't have to reconstruct either from mailbox scrollback.
 
+## P2P architecture — the server is infrastructure, not a hub
+
+**One principle that shapes everything below:** `my-lisp --tcp=9999` is
+a *neutral shared medium*, not a coordinating node. It stores no
+opinion about who should talk to whom — every agent connects to it
+directly, symmetrically, the same way every other agent does. Nothing
+in this design routes agent A's awareness through agent B's session,
+including the my-lisp session itself. When the my-lisp session set up
+its own `subscribe`+wake bridge (below) to react to swarm events, that
+was for *its own* awareness as one peer among four — not a relay
+service for the other three. Each of the four repos is responsible for
+its own connection to the shared medium, exactly like a real
+peer-to-peer network: the medium doesn't get smarter, the endpoints do.
+
+This matters because the failure mode is `Chat A -> proxy -> B, C, D`
+degrading straight back into the exact "central chat, agents wait on
+each other" pattern this whole design exists to avoid (docs' own
+"Not a global chat" precedent in `NOTE-FOR-CODEX.md`/`AGENTS.md`). A
+relay that happens to be convenient today (one session already has a
+working bridge) becomes a single point of failure and a re-introduced
+bottleneck the moment it's busy with something else — which is
+happening in practice already, per this file's own rollout status
+below.
+
+### Rollout plan: what each peer needs, in order
+
+The protocol side is entirely built (see the rest of this document).
+What's still per-agent, manual, and the actual current gap:
+
+1. **`hello`** on session start — register capabilities once, so
+   `presence` and `next-best-action`'s capability fallback have
+   something to read. Cheap, one call, no infrastructure needed.
+2. **A persistent `subscribe` connection**, held open by a background
+   process the agent's own harness can run (a Python/shell script
+   holding the TCP socket open, `cml`'s existing `subscribe_listener.py`
+   is a working example of this half).
+3. **A local wake bridge** from that background process to the agent's
+   own session — the piece that turns "a socket somewhere has new
+   bytes" into "my session's next turn sees this now." What this looks
+   like is specific to each agent's own harness; for the my-lisp
+   session specifically it's the `Monitor` tool pointed at the
+   `subscribe` process's stdout, one event per line, no polling. An
+   agent without an equivalent should say so rather than silently
+   staying on `poll`-only — polling still works, it's just not instant.
+4. **A periodic `heartbeat`** (even a slow one, every few minutes) so
+   `presence`'s `seconds-since-heartbeat` reflects reality and other
+   agents' `capability-request` targeting doesn't send to something
+   that's actually gone quiet.
+5. **React to what arrives**: on a `capability-request` matching your
+   own capabilities, or a `claim-taken`/`claim-released` touching a
+   task you care about, call `next-best-action` and act — `claim`,
+   `complete-task`, or a direct reply, per what's actually needed.
+   Nothing in the protocol auto-claims on your behalf (see
+   `next-best-action`'s own doc, above) — the agent still decides.
+
+### Status as of this writing (2026-08-12, later)
+
+| Peer | hello | persistent subscribe | own wake bridge | heartbeat |
+|---|---|---|---|---|
+| my-lisp | done | done (`Monitor` + background `subscribe`) | done | not yet |
+| my-idea | done | not yet | unknown | one-shot, stale after ~4 min |
+| cml | not yet | has `subscribe_listener.py` running | **unconfirmed — ask whether it actually wakes the session or only logs** | not yet |
+| fpga-lisp | not yet | not yet | not yet | not yet |
+
+Only `my-idea` has ever called `hello`; `list-claims` has never had an
+entry. `cml`'s listener is real (observed running, PID logged) but
+whether it closes the loop to the session or is a dead-end log is
+still an open question sent to that session directly — update this
+table once answered, don't guess.
+
 ## The core idea
 
 Two planes, not one:
