@@ -44,16 +44,35 @@ message.
 
 Read `fpga-lisp/isa-contract.my`, `cml/compatibility.my`, and each
 neighbor's own `evidence/` directory directly rather than asking. Use
-`my-lisp --tcp=9999 --protocol=sexpr` (loopback-only) for two distinct
-things: `eval`/`parse`/`diagnose`/`contract-version` as a semantic
-oracle, each connection getting its own isolated environment (a `def` on
-one connection is invisible to every other); and `notify`/`poll` as a
-lightweight cross-agent mailbox (owner decision, 2026-08-12) — those two
-ops share one server-wide mailbox instead of per-connection state,
-deliberately kept separate from eval sessions. `notify` takes `from`,
-optional `to` (omit for broadcast), `message`; `poll` takes `for` and
-optional `since` (a mailbox entry id, default 0) and returns every entry
-addressed to `for` or broadcast, with `id` greater than `since`.
+`my-lisp --tcp=9999 --protocol=sexpr` (loopback-only, one thread per
+connection) for three distinct things:
+
+- `eval`/`parse`/`diagnose`/`contract-version` — the semantic oracle,
+  each connection its own isolated `Environment` (a `def` on one
+  connection is invisible to every other, and now also physically a
+  separate thread, not just a separate value).
+- `notify`/`poll` — a lightweight, poll-based cross-agent mailbox
+  (owner decision, 2026-08-12), one server-wide in-memory list, capped
+  at 500 entries (oldest-first drain), gone on server restart. `notify`
+  takes `from`, optional `to` (omit for broadcast), `message`; `poll`
+  takes `for` and optional `since` (a mailbox entry id, default 0),
+  returns every entry addressed to `for` or broadcast with `id` greater
+  than `since`. Use this for "check when convenient."
+- `subscribe`/`publish` — genuine push, not polling (owner decision,
+  2026-08-12). `subscribe` takes `topics` (a list; empty or omitted
+  means every topic) and permanently turns that connection into a
+  receiver: after the ack, it blocks and writes each matching
+  `(event (from ..) (topic ..) (message ..))` line the instant a
+  `publish` happens elsewhere — open a second connection if you also
+  need to `eval`/`notify`. `publish` takes `from`, `topic`, `message`,
+  responds with how many subscribers actually received it. Use this
+  for "wake me up the moment X happens" (a handoff landing, an evidence
+  file appearing, a peer getting blocked) instead of a `poll` loop.
+
+All three ops classes share one process, but nothing `Rc`-based
+(the language's own `Value`) ever crosses a thread boundary — only
+plain `String`s move between connection threads, so this doesn't touch
+`Value`'s single-threaded reference counting.
 
 ## Environment: WSL2 + Guix
 
