@@ -214,18 +214,31 @@ direct unblock-impact, that's the trigger to add it back as a separate
 term — not before, since an unused knob nobody can validate is worse
 than an honest, working two-term score.
 
-### `capability-request` / temporary coalitions
+### `capability-request` / temporary coalitions — built (commit `28f4498`)
 
 ```lisp
-(capability-request (from cml-1) (task CML-42)
-                     (needs waveform-debug) (context EVID-FAIL-91))
+(request (id 1) (op capability-request) (from "cml") (task "CML-42")
+         (needs "waveform-debug") (context "RTL trace unclear on EVID-FAIL-91"))
+-> (response (id 1) (status ok) (value
+     ((matching-agents ("fpga-lisp")) (elevated-task "HELP:waveform-debug:CML-42"))))
 ```
 
-The broker (or every subscriber) checks it against declared
-capabilities (from `hello`) and the matching agent's own
-`next-best-action` score for unrelated work drops relative to helping.
-Depends on both presence/heartbeat and capability declarations
-existing first.
+Rather than inventing a separate matching/notification engine, this
+reuses the two pieces already built: `presence` to find who has the
+capability, and `define-task` to make helping them the obviously
+correct `next-best-action` — the auto-created `HELP:<needs>:<task>`
+task has priority `10.0` (well above anything a repo would normally
+hand-define), so it doesn't merely nudge the matching agent's score
+for unrelated work downward (the proposal's original framing), it
+outranks essentially everything else outright. Delivery is
+belt-and-braces: `publish`ed on topic `capability-request` for instant
+push to anyone subscribed, *and* left in `notify`'s mailbox regardless,
+so an agent that isn't currently `subscribe`d still finds it on its
+next `poll`. Manually verified: only the agent whose `hello`-declared
+capabilities actually include `needs` is matched (an agent with
+unrelated capabilities is correctly excluded), the request lands in
+`poll`, and the elevated task appears first in that agent's own
+`next-best-action`.
 
 ### Local autonomy within hard boundaries
 

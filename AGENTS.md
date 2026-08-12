@@ -106,7 +106,27 @@ connection) for three distinct things:
   is how many other not-yet-done tasks list this one in `depends-on`.
   In-memory, non-persistent.
 
-All six ops classes share one process, but nothing `Rc`-based
+- `capability-request` — temporary coalition formation (owner decision,
+  2026-08-12). Takes `from`, optional `task`, `needs` (a capability
+  name), optional `context`. Finds every `presence`-registered agent
+  whose `capabilities` include `needs`, delivers the request to them
+  both ways (`publish`ed on the `capability-request` topic for anyone
+  `subscribe`d, and left in their `notify` mailbox regardless so a
+  non-subscribed agent still sees it on the next `poll`), and
+  auto-`define-task`s `HELP:<needs>:<task-or-from>` at priority 10.0
+  requiring exactly `needs` — surfaces at the top of that agent's own
+  `next-best-action` without a separate matching engine. Response
+  reports `matching-agents` found and the `elevated-task` id.
+
+**Every op above resets to empty on server restart** — restarting
+after a deploy wipes `notify`'s mailbox, active `subscribe`s,
+`claim`/`presence`/task state all at once. Don't treat any of it as a
+place to relay durable content (a full proposal, a design doc): write
+that to a file (`NOTE-*.md`, `docs/`) first, then send only a short
+pointer through `notify`/`publish` — the pointer surviving a restart
+costs nothing; the content wouldn't have.
+
+All seven ops classes share one process, but nothing `Rc`-based
 (the language's own `Value`) ever crosses a thread boundary — only
 plain `String`s move between connection threads, so this doesn't touch
 `Value`'s single-threaded reference counting.
