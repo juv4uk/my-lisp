@@ -298,6 +298,26 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   round-tripping derived state, and dynamic membership (voter quorum +
   worker join via gossip + `status`) — spawning real `swarm-node` child
   processes and talking to them over real TCP, not mocking anything.
+- **M0.10** — done: active heartbeat + stale-peer detection (closes
+  `SWARM-P2P-HEARTBEAT` and the "presence is just raw TCP, no active
+  liveness check" gap noted after M0.9). Every 5s (`HEARTBEAT_INTERVAL`)
+  each node pings every connected peer with `(heartbeat (node ..) (epoch
+  ..))`; receiving *any* message (heartbeat or otherwise) from a peer
+  updates a `last_seen` timestamp for it. A peer silent for more than 20s
+  (`STALE_PEER_TIMEOUT`) has its connection forcibly closed — closing
+  (not just noting) matters, since that's what actually triggers M0.7's
+  reconnect-with-backoff loop to redial and re-handshake. Without this, a
+  half-open connection (peer process died without a clean FIN, or a
+  network partition) could sit unnoticed indefinitely if there was
+  nothing new to write to it — plain TCP writes only fail once the kernel
+  actually detects the break, which can take far longer than 20s.
+
+  Verified two ways: (1) two nodes idle for 25s (past the 20s timeout)
+  stay connected, proving heartbeats are what's keeping `last_seen`
+  fresh, not that nothing was checked; (2) one node frozen with `SIGSTOP`
+  (socket stays open, process can't respond) gets detected as silent and
+  disconnected by its peer within ~30s, with the peer's `info` log
+  showing the close and — on reconnect — a fresh re-handshake.
 - Migration: `:9999` keeps running throughout so cml/fpga-lisp/my-idea
   aren't blocked; they migrate their coordination traffic to `swarm-node`
   on their own schedule per "Migrating off `:9999` for coordination" above

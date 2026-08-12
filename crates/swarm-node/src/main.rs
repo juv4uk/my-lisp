@@ -41,6 +41,17 @@ const VOTE_TIMEOUT: Duration = Duration::from_millis(1500);
 /// undercut by its own promise expiring first; bounds how long a task can
 /// get stuck if a proposer dies mid-vote without completing or retrying.
 const PROMISE_TTL: Duration = Duration::from_secs(5);
+/// How often each node pings every currently-connected peer with a
+/// `heartbeat` message.
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
+/// A peer we haven't heard *anything* from (heartbeat or otherwise) in
+/// this long is considered stale and its connection is forcibly closed —
+/// closing it (rather than just noting it) is what actually triggers
+/// `spawn_connect`'s retry loop to redial and re-handshake, since a
+/// half-open TCP connection (peer process died without a clean FIN, or a
+/// network partition) can otherwise sit unnoticed far longer than a
+/// stalled write would take to fail.
+const STALE_PEER_TIMEOUT: Duration = Duration::from_secs(20);
 
 struct Node {
     identity: Identity,
@@ -75,6 +86,9 @@ struct Node {
     /// A voter now refuses to vote yes again for a task/generation it's
     /// already promised, until that promise expires (`PROMISE_TTL`).
     promised: Mutex<HashMap<String, (u64, Instant)>>,
+    /// Last time we received *any* message (heartbeat or otherwise) from
+    /// each connected peer — see `HEARTBEAT_INTERVAL`/`STALE_PEER_TIMEOUT`.
+    last_seen: Mutex<HashMap<String, Instant>>,
 }
 
 impl Node {
@@ -157,11 +171,14 @@ fn main() -> std::io::Result<()> {
         bootstrap_expected: args.connect.len(),
         caught_up_with: Mutex::new(HashSet::new()),
         promised: Mutex::new(HashMap::new()),
+        last_seen: Mutex::new(HashMap::new()),
     });
 
     for addr in &args.connect {
         spawn_connect(&node, addr.clone());
     }
+
+    spawn_heartbeat(&node);
 
     let listener = TcpListener::bind(("127.0.0.1", args.port))?;
     for incoming in listener.incoming() {
@@ -222,6 +239,50 @@ fn send(stream: &mut TcpStream, msg: &Sexp) {
     let _ = stream.write_all(line.as_bytes());
 }
 
+/// Background liveness maintenance (M0.10, `SWARM-P2P-HEARTBEAT`): every
+/// `HEARTBEAT_INTERVAL`, ping every connected peer and forcibly close any
+/// connection we haven't heard *anything* from in `STALE_PEER_TIMEOUT`.
+/// TCP alone can leave a half-open connection (the peer's process died
+/// without a clean FIN, or a network partition) sitting unnoticed for a
+/// long time if there's nothing new to write on it — this bounds that to
+/// roughly `STALE_PEER_TIMEOUT`. Closing (not just noting) a stale
+/// connection matters: `spawn_connect`'s retry loop only redials once
+/// `handle_connection` actually returns, which only happens once the
+/// socket is genuinely closed.
+fn spawn_heartbeat(node: &Arc<Node>) {
+    let node = node.clone();
+    thread::spawn(move || loop {
+        thread::sleep(HEARTBEAT_INTERVAL);
+
+        let beat = Sexp::list(vec![
+            Sexp::atom("heartbeat"),
+            Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)]),
+            Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
+        ]);
+        broadcast_to_peers(&node, &beat);
+
+        let now = Instant::now();
+        let stale: Vec<String> = node
+            .last_seen
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(_, seen)| now.duration_since(**seen) > STALE_PEER_TIMEOUT)
+            .map(|(id, _)| id.clone())
+            .collect();
+        if stale.is_empty() {
+            continue;
+        }
+        let mut peers = node.peers.lock().unwrap();
+        for id in &stale {
+            if let Some(stream) = peers.remove(id) {
+                warn!("swarm-node: peer {id} silent for over {STALE_PEER_TIMEOUT:?}, closing connection");
+                let _ = stream.shutdown(std::net::Shutdown::Both);
+            }
+        }
+    });
+}
+
 fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
     let peer_addr = stream.peer_addr().map(|a| a.to_string()).unwrap_or_default();
     let reader_stream = match stream.try_clone() {
@@ -258,6 +319,9 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
         };
         if line.trim().is_empty() {
             continue;
+        }
+        if let Some(id) = &peer_node_id {
+            node.last_seen.lock().unwrap().insert(id.clone(), Instant::now());
         }
         let msg = match sexpr::parse(&line) {
             Ok(m) => m,
@@ -298,6 +362,10 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             }
             Some("peer-list") => {
                 handle_peer_list(&node, &msg);
+            }
+            Some("heartbeat") => {
+                // last_seen was already touched above for any message from a
+                // known peer; a heartbeat carries no further action.
             }
             Some("sync-hello") => {
                 handle_sync_hello(&node, &msg, &mut stream);
@@ -371,6 +439,7 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
     }
     if let Some(id) = peer_node_id {
         node.peers.lock().unwrap().remove(&id);
+        node.last_seen.lock().unwrap().remove(&id);
         info!("swarm-node: connection to {id} closed");
     }
 }
@@ -381,6 +450,7 @@ fn register_peer(node: &Arc<Node>, their_node: &str, stream: &mut TcpStream, the
     if let Ok(clone) = stream.try_clone() {
         node.peers.lock().unwrap().insert(their_node.to_string(), clone);
     }
+    node.last_seen.lock().unwrap().insert(their_node.to_string(), Instant::now());
     if their_port != 0 {
         let is_new = node
             .peer_addrs
