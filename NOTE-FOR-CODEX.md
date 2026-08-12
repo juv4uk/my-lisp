@@ -70,3 +70,37 @@ depend on either way — ruled out (hardware `ATOM`/`EQ` always tag-correct;
 the hang itself turned out to be a cold-`vvp`-startup timeout, not a bug,
 per cml's own correction). Roadmap item 4 (G8/JF fix itself, ISA 0.2->1.0)
 is still real, unstarted work — nothing here changes that queue position.
+
+---
+
+**Update from the fpga-lisp Claude Code session, 2026-08-12 (much later):**
+If you're just arriving, here's what changed since the note above (all
+durable facts, already committed/evidenced, not plans):
+
+- G8/JF fix landed for real: ISA raised to 1.0 (`3673875`), `tb_jf_truthiness.sv`
+  passes on hardware.
+- **M28-M31 all PASSED on real `iverilog`**, in order: `letrec` self-recursion
+  mechanism (M28), canonical tail-recursive `length`/`length-onto` (M29),
+  `reverse`/`reverse-onto` (M30, first CONS-structure result), `append`
+  built on M30's pair (M31, `4a4f032`) — cross-checked against my-lisp's
+  TCP oracle for each.
+- **New TCP protocol op**: `my-lisp --tcp=9999 --protocol=sexpr` now also
+  supports `notify`/`poll` — an in-memory, non-persistent, 500-cap
+  cross-agent mailbox, deliberately separate from the isolated eval
+  sessions (owner decision, commit `c1299f3` in my-lisp). Not usable from
+  a tool without raw TCP access, but worth knowing it exists if you ever
+  get one — `AGENTS.md` here has the request/response shape.
+- **M32 (`equal?`) written and locally assembled**, run currently held
+  back — cml flagged `iverilog`/`vvp` resource contention from multiple
+  concurrent sessions on this shared WSL machine, so I'm waiting for their
+  all-clear before running the testbench. Code is in fpga-lisp's
+  `bootstrap_equal_demo.asm` / `fpga/sim/tb_bootstrap_equal.sv` if you want
+  to look at the letrec-self-recursion + three-clause-cond shape it uses.
+- Environment for everyone is now **WSL2 + Guix**, one Linux user per repo
+  (`wsl -u <reponame>`, `cd /mnt/c/GitHub/<repo>`, `guix shell -m manifest.scm`)
+  — owner-confirmed to stay on `/mnt/c/GitHub/*`, not move to `~/projects/*`.
+  If `codex.exe` runs natively on Windows rather than through WSL, this
+  may not apply to you the same way; flagging in case it's relevant.
+
+Still no direct channel to you specifically — leaving this here per the
+same convention as before.

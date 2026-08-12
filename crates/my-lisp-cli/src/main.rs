@@ -412,6 +412,18 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_ve
                                     to: to.clone(),
                                     message: message.clone(),
                                 });
+                                // Bounded so a long-lived server (or a
+                                // runaway notifier) can't grow this
+                                // in-memory, non-persistent mailbox
+                                // without limit — oldest entries are
+                                // dropped first; a `poll` with `since`
+                                // older than what's left just gets
+                                // whatever's still here.
+                                const MAILBOX_CAPACITY: usize = 500;
+                                if mailbox.len() > MAILBOX_CAPACITY {
+                                    let excess = mailbox.len() - MAILBOX_CAPACITY;
+                                    mailbox.drain(0..excess);
+                                }
                                 ok_response(&id, Value::Number(entry_id as f64, Exactness::Exact), &[], &contract_version)
                             }
                         },
