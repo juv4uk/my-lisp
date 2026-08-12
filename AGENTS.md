@@ -106,8 +106,15 @@ connection) for three distinct things:
   takes `from`, optional `to` (omit for broadcast), `message`; `poll`
   takes `for` and optional `since` (a mailbox entry id, default 0),
   returns every entry addressed to `for` or broadcast with `id` greater
-  than `since`. Use this for "check when convenient."
-- `subscribe`/`publish` — genuine push, not polling (owner decision,
+  than `since`. Use this for "check when convenient." **This is a
+  first-class pattern, not a fallback** — an agent that's one tool call
+  per turn with no memory between calls (no background process to hold
+  a `subscribe` socket open) genuinely cannot use push; `notify`/`poll`
+  plus calling `next-best-action`/`presence` on demand each turn is the
+  complete, correct way for such an agent to participate. Don't design
+  toward `subscribe` as the only channel.
+- `subscribe`/`publish` — genuine push, not polling, for agents that
+  *do* have a long-lived process to hold the connection (owner decision,
   2026-08-12). `subscribe` takes `topics` (a list; empty or omitted
   means every topic) and optional `since` (an event id, default 0) —
   replays every matching event logged after `since` before switching
