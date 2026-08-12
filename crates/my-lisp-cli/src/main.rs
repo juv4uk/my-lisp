@@ -1122,7 +1122,7 @@ fn handle_sexpr_connection(
                                                         .map(|v| list_of_atoms(&v))
                                                         .unwrap_or_default();
                                                     let file_done = dotted_alist_lookup(props_value, "done").and_then(|v| bool_from_value(&v));
-                                                    let (is_new_task, existing_done) = {
+                                                    let (is_new_task, _existing_done) = {
                                                         let mut task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
                                                         let new = !task_state.tasks.contains_key(&task_id);
                                                         let existing_done = task_state.tasks.get(&task_id).map(|t| t.done).unwrap_or(false);
@@ -1148,6 +1148,124 @@ fn handle_sexpr_connection(
                                                     Value::list([
                                                         Value::Symbol("warnings".into()),
                                                         Value::list(warnings.into_iter().map(|warning| Value::String(warning.as_str().into()))),
+                                                    ]),
+                                                ]);
+                                                ok_response(&id, value, &[], &contract_version)
+                                            }
+                                        },
+                                    }
+                                }
+                            },
+                        },
+                    },
+                    // Auto-derives claimable tasks from
+                    // `ecosystem-status.my`'s `next-milestone.per-repo`
+                    // alist — the prose "what cml/fpga-lisp/my-idea
+                    // should each do next" the file already carries by
+                    // hand, turned into a `HELP:`-style task per repo
+                    // without redundantly retyping it via `define-task`.
+                    // One task per `per-repo` entry, id
+                    // `MILESTONE:<name>:<repo>`, `capabilities` set to
+                    // exactly `(repo)` — the convention this creates:
+                    // include your own repo name in `hello`'s
+                    // `capabilities` (e.g. `cml` declares `(compiler rust
+                    // cml)`) so this task surfaces specifically to that
+                    // repo's own agent, not everyone. Priority fixed at
+                    // 5.0 — well above hand-defined tasks, since this is
+                    // the ecosystem's one pinned current milestone, not
+                    // routine work. The task registry only stores an id
+                    // and scoring inputs, not the description itself
+                    // (same shape `define-task` always had) — the
+                    // `task-created` event's `message` carries the prose
+                    // once, at creation, but `next-best-action` results
+                    // are just ids; read `ecosystem-status.my` itself for
+                    // the actual instructions, same as any other task
+                    // requires reading its own definition somewhere.
+                    Some("sync-milestone") => match &file {
+                        None => error_response(&id, "invalid-form", "op `sync-milestone` requires a `file` field", &contract_version),
+                        Some(path) => match fs::read_to_string(path) {
+                            Err(e) => error_response(&id, "io-error", &format!("cannot read `{path}`: {e}"), &contract_version),
+                            Ok(content) => match parse(&content) {
+                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                                Ok(ast) if ast.len() != 1 => error_response(
+                                    &id,
+                                    "invalid-form",
+                                    "op `sync-milestone` expects a single top-level form (one flat alist) in the file",
+                                    &contract_version,
+                                ),
+                                Ok(_) => {
+                                    let quoted_file = format!("(quote {content})");
+                                    let rendered = parse(&quoted_file).ok().and_then(|q| {
+                                        eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
+                                    });
+                                    match rendered {
+                                        None => error_response(
+                                            &id,
+                                            "parse-error",
+                                            "file parsed but could not be rendered as data",
+                                            &contract_version,
+                                        ),
+                                        Some(file_value) => match dotted_alist_lookup(&file_value, "next-milestone") {
+                                            None => error_response(
+                                                &id,
+                                                "invalid-form",
+                                                "file must contain a `(next-milestone . ...)` alist key",
+                                                &contract_version,
+                                            ),
+                                            Some(milestone_value) => {
+                                                let milestone_name = dotted_alist_lookup(&milestone_value, "name")
+                                                    .and_then(|v| atom_string(&v))
+                                                    .unwrap_or_else(|| "milestone".to_string());
+                                                let mut defined: Vec<String> = Vec::new();
+                                                let mut warnings: Vec<String> = Vec::new();
+                                                match dotted_alist_lookup(&milestone_value, "per-repo") {
+                                                    None => warnings.push("next-milestone has no `per-repo` key".to_string()),
+                                                    Some(per_repo_value) => {
+                                                        for entry in list_items(&per_repo_value) {
+                                                            let Value::Pair(repo_value, description_value) = &entry else {
+                                                                warnings.push("a per-repo entry is not a dotted pair (repo . description)".to_string());
+                                                                continue;
+                                                            };
+                                                            let Some(repo) = atom_string(repo_value) else {
+                                                                warnings.push("a per-repo key is neither a string nor a symbol".to_string());
+                                                                continue;
+                                                            };
+                                                            let description = description_value.to_string();
+                                                            let task_id = format!("MILESTONE:{milestone_name}:{repo}");
+                                                            let is_new_task = {
+                                                                let mut task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
+                                                                let new = !task_state.tasks.contains_key(&task_id);
+                                                                let existing_done = task_state.tasks.get(&task_id).map(|t| t.done).unwrap_or(false);
+                                                                task_state.tasks.insert(task_id.clone(), TaskDef {
+                                                                    priority: 5.0,
+                                                                    capabilities: vec![repo.clone()],
+                                                                    depends_on: Vec::new(),
+                                                                    done: existing_done,
+                                                                });
+                                                                new
+                                                            };
+                                                            if is_new_task {
+                                                                let publisher = from.clone().unwrap_or_else(|| "unknown".to_string());
+                                                                broadcast_event(
+                                                                    broker,
+                                                                    &publisher,
+                                                                    "task-created",
+                                                                    &format!("task {task_id} defined via sync-milestone: {description}"),
+                                                                );
+                                                            }
+                                                            defined.push(task_id);
+                                                        }
+                                                    }
+                                                }
+                                                let value = Value::list([
+                                                    Value::list([Value::Symbol("milestone".into()), Value::String(milestone_name.as_str().into())]),
+                                                    Value::list([
+                                                        Value::Symbol("defined".into()),
+                                                        Value::list(defined.into_iter().map(|t| Value::String(t.as_str().into()))),
+                                                    ]),
+                                                    Value::list([
+                                                        Value::Symbol("warnings".into()),
+                                                        Value::list(warnings.into_iter().map(|w| Value::String(w.as_str().into()))),
                                                     ]),
                                                 ]);
                                                 ok_response(&id, value, &[], &contract_version)
