@@ -80,14 +80,26 @@ stale/recovered node is rejected once superseded.
 (sync-events (from fpga-1) (range 992 1047) (events ...))
 ```
 
-Peers are configured statically for v0.1 (no DHT needed at 4 nodes):
+Peers do not need to be configured statically. A node advertises its own
+`listen-port` in `peer-hello`/`peer-welcome`, and any node that learns a new
+peer's address (directly or via `peer-list` gossip) shares it with everyone
+it's already connected to. A brand-new agent joining the swarm needs exactly
+one `--connect` to any single existing member:
 
-```lisp
-(peers ((my-lisp-1 "127.0.0.1" 9101)
-        (cml-1     "127.0.0.1" 9102)
-        (fpga-1    "127.0.0.1" 9103)
-        (my-idea-1 "127.0.0.1" 9104)))
+```bash
+swarm-node --port 9105 --node-id my-agent-1 --project my-project \
+           --data-dir ~/.swarm-node/my-agent-1 --connect 127.0.0.1:9101
 ```
+
+...and it, and every node already in the mesh, ends up fully connected to
+it — no need to know every other member's address up front, and no need to
+restart or reconfigure existing nodes. To avoid two nodes racing to dial
+each other over the same discovered address, only the lexicographically
+lower `node-id` in a pair initiates the connection; the other waits to be
+connected to. `peer-list` announcements fire once per newly-learned peer, to
+every already-connected peer except the one just announced — this is what
+lets a node that joined *before* another one existed still learn about it
+later, not just at its own connect time.
 
 Causal ordering uses a Lamport clock (`local = max(local, received) + 1`),
 not wall-clock time — WSL/Windows clocks drift enough to matter for
@@ -122,6 +134,13 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   task is rejected, completing with the wrong generation is rejected
   `STALE`, completing with the right one succeeds, and a claim on an
   already-completed task is rejected.
+
+- **M0.2.1** — done: gossip peer discovery (`listen-port` advertised in
+  handshake, `peer-list` messages), so a new agent joins with a single
+  `--connect` to any existing member instead of needing every peer address
+  up front. Validated: node C, connected only to A, is automatically
+  connected to node B (which joined earlier, also only connected to A)
+  within ~1s, with no explicit `--connect 127.0.0.1:9402` on either side.
 
   Known M0.2 simplification, deliberately deferred: two *concurrent*
   proposals for the same task are not mutually excluded before voting — in

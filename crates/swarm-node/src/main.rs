@@ -1,10 +1,17 @@
-//! swarm-node — M0.1 of docs/swarm-mesh-v2.md.
+//! swarm-node — see docs/swarm-mesh-v2.md.
 //!
 //! A separate binary from `my-lisp`'s `:9999` semantic oracle: this is the
-//! *coordination plane*, not the *semantic plane*. Scope for M0.1 only:
-//! persistent event journal, node-id + epoch, peer handshake, sequence
-//! numbers, anti-entropy sync, deterministic derived state from replayed
-//! events. No claim/quorum/consensus yet — that is M0.2.
+//! *coordination plane*, not the *semantic plane*. M0.1: persistent event
+//! journal, node-id + epoch, peer handshake, sequence numbers, anti-entropy
+//! sync, deterministic derived state from replayed events. M0.2: quorum
+//! claim + fencing generation for exclusive task ownership. M0.2.1: gossip
+//! peer discovery — a new node only needs one `--connect` to an existing
+//! member and learns (and dials) the rest of the mesh on its own.
+//!
+//! To join an already-running swarm from a brand-new agent, run e.g.:
+//!   swarm-node --port 9105 --node-id my-agent-1 --project my-project \
+//!              --data-dir ~/.swarm-node/my-agent-1 --connect 127.0.0.1:9101
+//! No other flags, no need to know every other member's address up front.
 
 mod journal;
 mod sexpr;
@@ -12,7 +19,7 @@ mod state;
 
 use journal::{Event, Identity, Journal};
 use sexpr::Sexp;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -27,9 +34,19 @@ const VOTE_TIMEOUT: Duration = Duration::from_millis(1500);
 struct Node {
     identity: Identity,
     project: String,
+    listen_port: u16,
     journal: Mutex<Journal>,
     lamport: AtomicU64,
     peers: Mutex<HashMap<String, TcpStream>>,
+    /// `node-id -> (ip, listen-port)` for every peer we've ever handshaken
+    /// with or heard about via gossip — the address book that lets a
+    /// freshly-joined node reach the rest of the mesh through just one
+    /// `--connect`.
+    peer_addrs: Mutex<HashMap<String, (String, u16)>>,
+    /// `ip:port` strings currently being dialed, so gossip from several
+    /// peers about the same newly-joined node doesn't race into duplicate
+    /// outbound connection attempts.
+    dialing: Mutex<HashSet<String>>,
     /// Votes for an in-flight `claim-task` proposal, keyed by `task:generation`.
     pending_votes: Mutex<HashMap<String, mpsc::Sender<bool>>>,
 }
@@ -98,21 +115,17 @@ fn main() -> std::io::Result<()> {
     let node = Arc::new(Node {
         identity,
         project: args.project,
+        listen_port: args.port,
         journal: Mutex::new(journal),
         lamport: AtomicU64::new(lamport_start),
         peers: Mutex::new(HashMap::new()),
+        peer_addrs: Mutex::new(HashMap::new()),
+        dialing: Mutex::new(HashSet::new()),
         pending_votes: Mutex::new(HashMap::new()),
     });
 
     for addr in &args.connect {
-        let node = node.clone();
-        let addr = addr.clone();
-        thread::spawn(move || {
-            match TcpStream::connect(&addr) {
-                Ok(stream) => handle_connection(node, stream, true),
-                Err(e) => eprintln!("swarm-node: could not connect to {addr}: {e}"),
-            }
-        });
+        spawn_connect(&node, addr.clone());
     }
 
     let listener = TcpListener::bind(("127.0.0.1", args.port))?;
@@ -130,6 +143,27 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
+/// Dials `addr` ("ip:port") on a background thread and runs the normal
+/// handshake as initiator. De-duplicates against addresses already being
+/// dialed so gossip about the same peer arriving from multiple directions
+/// doesn't open redundant sockets.
+fn spawn_connect(node: &Arc<Node>, addr: String) {
+    {
+        let mut dialing = node.dialing.lock().unwrap();
+        if !dialing.insert(addr.clone()) {
+            return;
+        }
+    }
+    let node = node.clone();
+    thread::spawn(move || {
+        match TcpStream::connect(&addr) {
+            Ok(stream) => handle_connection(node.clone(), stream, true),
+            Err(e) => eprintln!("swarm-node: could not connect to {addr}: {e}"),
+        }
+        node.dialing.lock().unwrap().remove(&addr);
+    });
+}
+
 fn send(stream: &mut TcpStream, msg: &Sexp) {
     let line = format!("{}\n", msg.to_text());
     let _ = stream.write_all(line.as_bytes());
@@ -145,6 +179,8 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
         }
     };
 
+    let peer_ip = peer_addr.rsplit_once(':').map(|(ip, _)| ip.to_string()).unwrap_or_else(|| peer_addr.clone());
+
     if initiator {
         send(
             &mut stream,
@@ -154,6 +190,7 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                 Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)]),
                 Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
                 Sexp::list(vec![Sexp::atom("project"), Sexp::atom(&node.project)]),
+                Sexp::list(vec![Sexp::atom("listen-port"), Sexp::atom(node.listen_port.to_string())]),
             ]),
         );
         send_sync_hello(&node, &mut stream);
@@ -180,6 +217,7 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("peer-hello") => {
                 let their_node = msg.field_atom("node").unwrap_or("unknown").to_string();
                 let their_epoch = msg.field_atom("epoch").unwrap_or("0");
+                let their_port: u16 = msg.field_atom("listen-port").and_then(|s| s.parse().ok()).unwrap_or(0);
                 eprintln!("swarm-node: peer-hello from {their_node} epoch={their_epoch}");
                 send(
                     &mut stream,
@@ -189,21 +227,24 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                         Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
                         Sexp::list(vec![Sexp::atom("swarm-id"), Sexp::atom("my-lisp-ecosystem")]),
                         Sexp::list(vec![Sexp::atom("protocol"), Sexp::atom("swarm/1")]),
+                        Sexp::list(vec![Sexp::atom("listen-port"), Sexp::atom(node.listen_port.to_string())]),
                     ]),
                 );
                 send_sync_hello(&node, &mut stream);
-                if let Ok(clone) = stream.try_clone() {
-                    node.peers.lock().unwrap().insert(their_node.clone(), clone);
-                }
+                register_peer(&node, &their_node, &mut stream, &peer_ip, their_port);
+                send_peer_list(&node, &their_node, &mut stream);
                 peer_node_id = Some(their_node);
             }
             Some("peer-welcome") => {
                 let their_node = msg.field_atom("node").unwrap_or("unknown").to_string();
+                let their_port: u16 = msg.field_atom("listen-port").and_then(|s| s.parse().ok()).unwrap_or(0);
                 eprintln!("swarm-node: peer-welcome from {their_node}");
-                if let Ok(clone) = stream.try_clone() {
-                    node.peers.lock().unwrap().insert(their_node.clone(), clone);
-                }
+                register_peer(&node, &their_node, &mut stream, &peer_ip, their_port);
+                send_peer_list(&node, &their_node, &mut stream);
                 peer_node_id = Some(their_node);
+            }
+            Some("peer-list") => {
+                handle_peer_list(&node, &msg);
             }
             Some("sync-hello") => {
                 handle_sync_hello(&node, &msg, &mut stream);
@@ -246,6 +287,94 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
     if let Some(id) = peer_node_id {
         node.peers.lock().unwrap().remove(&id);
         eprintln!("swarm-node: connection to {id} closed");
+    }
+}
+
+/// Records a freshly-handshaken peer: keeps its live stream for broadcast
+/// and, if it told us its listen port, its dialable address for gossip.
+fn register_peer(node: &Arc<Node>, their_node: &str, stream: &mut TcpStream, their_ip: &str, their_port: u16) {
+    if let Ok(clone) = stream.try_clone() {
+        node.peers.lock().unwrap().insert(their_node.to_string(), clone);
+    }
+    if their_port != 0 {
+        let is_new = node
+            .peer_addrs
+            .lock()
+            .unwrap()
+            .insert(their_node.to_string(), (their_ip.to_string(), their_port))
+            .is_none();
+        if is_new {
+            announce_peer(node, their_node, their_ip, their_port);
+        }
+    }
+}
+
+/// Tells every *other* currently-connected peer about a node that just
+/// joined, so gossip reaches nodes that connected before the newcomer
+/// existed and would otherwise never learn about it.
+fn announce_peer(node: &Arc<Node>, new_id: &str, new_ip: &str, new_port: u16) {
+    let announcement = Sexp::list(vec![
+        Sexp::atom("peer-list"),
+        Sexp::list(vec![
+            Sexp::atom("peers"),
+            Sexp::list(vec![Sexp::list(vec![Sexp::atom(new_id), Sexp::atom(new_ip), Sexp::atom(new_port.to_string())])]),
+        ]),
+    ]);
+    let mut peers = node.peers.lock().unwrap();
+    let mut dead = Vec::new();
+    let line = format!("{}\n", announcement.to_text());
+    for (peer_id, stream) in peers.iter_mut() {
+        if peer_id == new_id {
+            continue;
+        }
+        if stream.write_all(line.as_bytes()).is_err() {
+            dead.push(peer_id.clone());
+        }
+    }
+    for id in dead {
+        peers.remove(&id);
+    }
+}
+
+/// Shares everything we know about the mesh (minus the recipient itself)
+/// so a node that joined through just one `--connect` learns the rest of
+/// the members and can reach full mesh on its own.
+fn send_peer_list(node: &Arc<Node>, recipient_id: &str, stream: &mut TcpStream) {
+    let entries: Vec<Sexp> = node
+        .peer_addrs
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|(id, _)| id.as_str() != recipient_id)
+        .map(|(id, (ip, port))| Sexp::list(vec![Sexp::atom(id), Sexp::atom(ip), Sexp::atom(port.to_string())]))
+        .collect();
+    if entries.is_empty() {
+        return;
+    }
+    send(stream, &Sexp::list(vec![Sexp::atom("peer-list"), Sexp::list(vec![Sexp::atom("peers"), Sexp::list(entries)])]));
+}
+
+/// Auto-connects to newly-learned peers. Only the lexicographically lower
+/// node-id in a pair dials out, so gossip reaching both sides doesn't open
+/// two redundant connections for the same pair.
+fn handle_peer_list(node: &Arc<Node>, msg: &Sexp) {
+    let entries: &[Sexp] = match msg.field("peers").and_then(|f| f.first()) {
+        Some(Sexp::List(items)) => items,
+        _ => &[],
+    };
+    for entry in entries {
+        let Sexp::List(fields) = entry else { continue };
+        let (Some(Sexp::Atom(id)), Some(Sexp::Atom(ip)), Some(Sexp::Atom(port))) = (fields.first(), fields.get(1), fields.get(2)) else { continue };
+        let Ok(port) = port.parse::<u16>() else { continue };
+        if id == &node.identity.node_id {
+            continue;
+        }
+        node.peer_addrs.lock().unwrap().insert(id.clone(), (ip.clone(), port));
+        let already_connected = node.peers.lock().unwrap().contains_key(id);
+        if !already_connected && node.identity.node_id < *id {
+            eprintln!("swarm-node: learned of {id} at {ip}:{port} via gossip, dialing");
+            spawn_connect(node, format!("{ip}:{port}"));
+        }
     }
 }
 
