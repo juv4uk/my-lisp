@@ -11,6 +11,7 @@ mod environment;
 mod error;
 mod eval;
 mod parser;
+pub mod semantic;
 mod syntax;
 mod value;
 
