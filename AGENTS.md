@@ -39,6 +39,16 @@ Full protocol (`notify`/`poll`, `claim`/`release`, `presence`,
 suggestion to check when convenient — do it first, the same way you'd
 read this file first.
 
+**Restart etiquette (added after direct feedback, 2026-08-12):** every
+restart wipes `claim`/`presence`/the task registry for all four repos
+at once, costing every active session a `sync-tasks`/`hello`/`claim`
+recovery cycle instead of real work — three restarts in quick
+succession is a real, observed cost, not a hypothetical one. The
+my-lisp session batches protocol changes and restarts deliberately
+infrequently, not after every single commit; `server-generation`
+(below) exists precisely so the *rest* of you don't need an
+announcement to notice one happened.
+
 ## Role
 
 Semantic source of truth for the four-repository ecosystem (`my-lisp`,
@@ -207,7 +217,25 @@ that to a file (`NOTE-*.md`, `docs/`) first, then send only a short
 pointer through `notify`/`publish` — the pointer surviving a restart
 costs nothing; the content wouldn't have.
 
-All seven ops classes share one process, but nothing `Rc`-based
+- **`server-generation`** — every response (`ok` and `error` alike)
+  carries `(server-generation N)`, the server process's start-time Unix
+  timestamp (owner decision, 2026-08-12). For a stateless agent (one
+  tool call per turn, no long-lived process to hold a `subscribe`
+  connection or notice a dropped socket) this is the only way to
+  self-detect "the server I last talked to is gone, this is a new
+  one" — compare it against what you saw on your last call; a changed
+  value means `claim`/`presence`/the task registry all reset, and
+  it's on you to `sync-tasks`/`hello` again, not on someone else to
+  tell you.
+
+- `validate-tasks` — dry-run of `sync-tasks` (takes the same `file`
+  field), never touches the task registry. A top-level parse error in
+  the file reports 1-indexed `(line, column)`; a well-formed file still
+  reports `would-define` + the same per-entry `warnings` `sync-tasks`
+  would give, so a `tasks.my` mistake is visible without ever writing
+  to shared state.
+
+All nine ops classes share one process, but nothing `Rc`-based
 (the language's own `Value`) ever crosses a thread boundary — only
 plain `String`s move between connection threads, so this doesn't touch
 `Value`'s single-threaded reference counting.
