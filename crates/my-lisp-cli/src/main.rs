@@ -258,6 +258,53 @@ struct ClaimTable {
     holders: std::collections::HashMap<String, String>,
 }
 
+/// One agent's registered presence — `hello` inserts/overwrites it,
+/// `heartbeat` refreshes `last_seen`/`task`, `presence` reads the whole
+/// table. `last_seen` is a plain `Instant` (`Copy`, `Send`, no `Rc`), so
+/// this crosses thread boundaries the same safe way everything else in
+/// this file does. No automatic eviction — a stale entry just reports a
+/// large `seconds-since-heartbeat` in `presence`, so callers decide their
+/// own liveness threshold rather than the server silently deciding one.
+struct PresenceEntry {
+    project: Option<String>,
+    capabilities: Vec<String>,
+    task: Option<String>,
+    last_seen: std::time::Instant,
+}
+
+#[derive(Default)]
+struct PresenceTable {
+    agents: std::collections::HashMap<String, PresenceEntry>,
+}
+
+fn presence_entry_to_value(agent: &str, entry: &PresenceEntry) -> Value {
+    Value::list([
+        Value::list([Value::Symbol("agent".into()), Value::String(agent.into())]),
+        Value::list([
+            Value::Symbol("project".into()),
+            match &entry.project {
+                Some(project) => Value::String(project.as_str().into()),
+                None => Value::Nil,
+            },
+        ]),
+        Value::list([
+            Value::Symbol("capabilities".into()),
+            Value::list(entry.capabilities.iter().map(|c| Value::Symbol(c.as_str().into()))),
+        ]),
+        Value::list([
+            Value::Symbol("task".into()),
+            match &entry.task {
+                Some(task) => Value::String(task.as_str().into()),
+                None => Value::Nil,
+            },
+        ]),
+        Value::list([
+            Value::Symbol("seconds-since-heartbeat".into()),
+            Value::Number(entry.last_seen.elapsed().as_secs_f64(), Exactness::Inexact),
+        ]),
+    ])
+}
+
 fn mailbox_entry_to_value(entry: &MailboxEntry) -> Value {
     Value::list([
         Value::list([Value::Symbol("id".into()), Value::Number(entry.id as f64, Exactness::Exact)]),
@@ -324,6 +371,7 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec<String>, c
     let mailbox: Arc<Mutex<MailboxState>> = Arc::new(Mutex::new(MailboxState::default()));
     let broker: Arc<Mutex<Broker>> = Arc::new(Mutex::new(Broker::default()));
     let claims: Arc<Mutex<ClaimTable>> = Arc::new(Mutex::new(ClaimTable::default()));
+    let presence: Arc<Mutex<PresenceTable>> = Arc::new(Mutex::new(PresenceTable::default()));
 
     for stream in listener.incoming() {
         let stream = match stream {
@@ -334,8 +382,9 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec<String>, c
         let mailbox = Arc::clone(&mailbox);
         let broker = Arc::clone(&broker);
         let claims = Arc::clone(&claims);
+        let presence = Arc::clone(&presence);
         thread::spawn(move || {
-            handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker, &claims);
+            handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker, &claims, &presence);
         });
     }
 }
@@ -349,6 +398,7 @@ fn handle_sexpr_connection(
     mailbox: &Arc<Mutex<MailboxState>>,
     broker: &Arc<Mutex<Broker>>,
     claims: &Arc<Mutex<ClaimTable>>,
+    presence: &Arc<Mutex<PresenceTable>>,
 ) {
     let contract_version = Value::list([
         Value::Number(contract_major, Exactness::Exact),
@@ -409,6 +459,8 @@ fn handle_sexpr_connection(
                 let mut topic: Option<String> = None;
                 let mut topics: Vec<String> = Vec::new();
                 let mut task: Option<String> = None;
+                let mut project: Option<String> = None;
+                let mut capabilities: Vec<String> = Vec::new();
                 for field in fields.iter().skip(1) {
                     let kv = list_items(field);
                     let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
@@ -469,6 +521,21 @@ fn handle_sexpr_connection(
                                 if let Value::String(s) = val {
                                     task = Some(s.to_string());
                                 }
+                            }
+                            "project" => {
+                                if let Value::String(s) = val {
+                                    project = Some(s.to_string());
+                                }
+                            }
+                            "capabilities" => {
+                                capabilities = list_items(val)
+                                    .into_iter()
+                                    .filter_map(|item| match &item {
+                                        Value::String(s) => Some(s.to_string()),
+                                        Value::Symbol(s) => Some(s.to_string()),
+                                        _ => None,
+                                    })
+                                    .collect();
                             }
                             _ => {}
                         }
@@ -680,6 +747,57 @@ fn handle_sexpr_connection(
                                     Value::list([Value::Symbol("agent".into()), Value::String(holder.as_str().into())]),
                                 ])
                             })
+                            .collect();
+                        ok_response(&id, Value::list(entries), &[], &contract_version)
+                    }
+                    // `hello`/`heartbeat` both write the same table —
+                    // `hello` is just the first heartbeat, with an
+                    // optional `project`/`capabilities` attached. Neither
+                    // requires the other to have been called first,
+                    // deliberately: an agent that only ever calls
+                    // `heartbeat` still shows up in `presence`, just
+                    // without capability info until it sends a `hello`.
+                    Some(op_name @ ("hello" | "heartbeat")) => match &from {
+                        None => error_response(&id, "invalid-form", &format!("op `{op_name}` requires a `from` field"), &contract_version),
+                        Some(from) => {
+                            let mut presence_state = presence.lock().unwrap_or_else(|e| e.into_inner());
+                            let entry = presence_state.agents.entry(from.clone()).or_insert_with(|| PresenceEntry {
+                                project: None,
+                                capabilities: Vec::new(),
+                                task: None,
+                                last_seen: std::time::Instant::now(),
+                            });
+                            entry.last_seen = std::time::Instant::now();
+                            if let Some(task) = &task {
+                                entry.task = Some(task.clone());
+                            }
+                            if op_name == "hello" {
+                                if project.is_some() {
+                                    entry.project = project.clone();
+                                }
+                                if !capabilities.is_empty() {
+                                    entry.capabilities = capabilities.clone();
+                                }
+                            }
+                            let peers: Vec<Value> = presence_state
+                                .agents
+                                .iter()
+                                .filter(|(agent, _)| *agent != from)
+                                .map(|(agent, entry)| presence_entry_to_value(agent, entry))
+                                .collect();
+                            ok_response(&id, Value::list(peers), &[], &contract_version)
+                        }
+                    },
+                    // Read-only snapshot of every registered agent,
+                    // including staleness (`seconds-since-heartbeat`) so
+                    // the caller judges liveness itself rather than the
+                    // server silently evicting anyone.
+                    Some("presence") => {
+                        let presence_state = presence.lock().unwrap_or_else(|e| e.into_inner());
+                        let entries: Vec<Value> = presence_state
+                            .agents
+                            .iter()
+                            .map(|(agent, entry)| presence_entry_to_value(agent, entry))
                             .collect();
                         ok_response(&id, Value::list(entries), &[], &contract_version)
                     }
