@@ -6,6 +6,7 @@ members = [
     "crates/my-lisp", "crates/my-lisp-cli",
     "crates/my-lisp-literate",
     "crates/my-lisp-wasm",
+    "crates/swarm-node",
 ]
 
 # Use a single shared lock-file at the workspace root.
