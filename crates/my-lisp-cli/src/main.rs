@@ -873,20 +873,51 @@ fn handle_sexpr_connection(
                     }
                     // Compare-and-swap under one lock acquisition: a
                     // `claim` only succeeds if `task` has no holder yet,
-                    // or `from` already holds it (idempotent re-claim) —
-                    // two agents racing for the same task can never both
-                    // see success. `value` is `t` on success, or the
-                    // current holder's name (a string) if someone else
-                    // already has it, so the loser knows who to wait on
-                    // or `publish` a `need` at.
+                    // or `from` already holds it (idempotent re-claim), or
+                    // the current holder's `presence` heartbeat is stale
+                    // past `STALE_CLAIM_SECS` — a claim held by an agent
+                    // that's gone quiet shouldn't block the task forever.
+                    // `None` in `presence` (holder never called `hello`)
+                    // is deliberately treated as "can't tell, don't steal"
+                    // rather than "stale" — reclaim is an opt-in safety
+                    // net for agents that heartbeat, not a way to bypass
+                    // the claim guarantee for agents that never registered.
+                    // Two agents racing for the same task can still never
+                    // both see success. `value` is `t` on success, or the
+                    // current (still-live) holder's name if someone else
+                    // already has it, so the loser knows who to wait on or
+                    // `publish` a `need` at.
                     Some("claim") => match (&task, &from) {
                         (None, _) => error_response(&id, "invalid-form", "op `claim` requires a `task` field", &contract_version),
                         (_, None) => error_response(&id, "invalid-form", "op `claim` requires a `from` field", &contract_version),
                         (Some(task), Some(from)) => {
+                            const STALE_CLAIM_SECS: f64 = 300.0;
                             let mut claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
-                            match claim_state.holders.get(task) {
-                                Some(holder) if holder == from => ok_response(&id, Value::Bool(true), &[], &contract_version),
-                                Some(holder) => ok_response(&id, Value::String(holder.as_str().into()), &[], &contract_version),
+                            match claim_state.holders.get(task).cloned() {
+                                Some(holder) if &holder == from => ok_response(&id, Value::Bool(true), &[], &contract_version),
+                                Some(holder) => {
+                                    let is_stale = {
+                                        let presence_state = presence.lock().unwrap_or_else(|e| e.into_inner());
+                                        presence_state
+                                            .agents
+                                            .get(&holder)
+                                            .map(|entry| entry.last_seen.elapsed().as_secs_f64() > STALE_CLAIM_SECS)
+                                            .unwrap_or(false)
+                                    };
+                                    if is_stale {
+                                        claim_state.holders.insert(task.clone(), from.clone());
+                                        drop(claim_state);
+                                        broadcast_event(
+                                            broker,
+                                            from,
+                                            "claim-stale-reclaimed",
+                                            &format!("{from} reclaimed {task} from stale holder {holder} (no heartbeat for over {STALE_CLAIM_SECS}s)"),
+                                        );
+                                        ok_response(&id, Value::Bool(true), &[], &contract_version)
+                                    } else {
+                                        ok_response(&id, Value::String(holder.as_str().into()), &[], &contract_version)
+                                    }
+                                }
                                 None => {
                                     claim_state.holders.insert(task.clone(), from.clone());
                                     drop(claim_state);
