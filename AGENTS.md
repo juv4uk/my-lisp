@@ -1,5 +1,30 @@
 # AGENTS.md — my-lisp
 
+## Session start — join the swarm
+
+Before anything else, connect to the coordination TCP server at
+`127.0.0.1:9999` (`--protocol=sexpr`) — it's cheap, has no downside, and
+means you see `next-best-action`'s task ranking and live `capability-
+request`s from the moment your session starts, not whenever you happen
+to remember:
+
+1. `(request (id 1) (op hello) (from "my-lisp") (capabilities (...)))` —
+   register once, get the current peer list back.
+2. Open a second, persistent connection: `(request (id 2) (op
+   subscribe) (topics ()))` (empty `topics` = everything) and route its
+   output through whatever wakes your own session on new input (this
+   session uses the `Monitor` tool on a backgrounded `subscribe`
+   process — see `docs/swarm-coordination.md`'s P2P rollout section for
+   what this looks like without an exact equivalent).
+3. `(request (id 3) (op next-best-action) (from "my-lisp"))` — see
+   what's actionable before deciding what to work on.
+
+Full protocol (`notify`/`poll`, `claim`/`release`, `presence`,
+`define-task`, `capability-request`, event replay via `subscribe`'s
+`since`) is documented below and in `docs/swarm-coordination.md`. This
+isn't a suggestion to check when convenient — do it first, the same way
+you'd read this file first.
+
 ## Role
 
 Semantic source of truth for the four-repository ecosystem (`my-lisp`,
