@@ -81,7 +81,18 @@ connection) for three distinct things:
   coordination hint about who's working on what *right now*, not the
   durable record of what got done (that's still `evidence/`).
 
-All four ops classes share one process, but nothing `Rc`-based
+- `hello`/`heartbeat`/`presence` — agent registry (owner decision,
+  2026-08-12). `hello` takes `from`, optional `project`, optional
+  `capabilities` (a list) — registers/refreshes the agent and returns
+  the current peer list (excluding yourself). `heartbeat` takes `from`
+  and optional `task` — refreshes liveness and current task, same
+  peer-list response; no ordering requirement between `hello` and
+  `heartbeat`, an agent that only ever heartbeats still shows up.
+  `presence` (no fields) returns every registered agent's `project`,
+  `capabilities`, `task`, and `seconds-since-heartbeat` — no automatic
+  eviction, judge staleness yourself. In-memory, non-persistent.
+
+All five ops classes share one process, but nothing `Rc`-based
 (the language's own `Value`) ever crosses a thread boundary — only
 plain `String`s move between connection threads, so this doesn't touch
 `Value`'s single-threaded reference counting.

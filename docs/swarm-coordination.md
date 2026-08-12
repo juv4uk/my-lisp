@@ -121,18 +121,31 @@ dependency-satisfied need-published)`; `my-idea` to everything
 would mostly be a *convention* the four repos agree on, not a protocol
 change, plus maybe validation that `topic` is one of a known set.
 
-### Presence / heartbeat
+### Presence / heartbeat — built (commit `46f414d`)
 
 ```lisp
-(hello (agent cml-1) (project cml)
-       (capabilities compiler rust lowering testing iverilog))
-(welcome (peers (my-lisp-1 fpga-1 my-idea-1)) (events-since ...) ...)
-(heartbeat (agent cml-1) (working-on CML-LENGTH-001))
+(request (id 1) (op hello) (from "cml") (project "cml")
+         (capabilities (compiler rust lowering)))
+-> (response (id 1) (status ok) (value (peer-list-excluding-self ...)))
+
+(request (id 2) (op heartbeat) (from "cml") (task "CML-LENGTH-001"))
+-> same peer-list response shape
+
+(request (id 3) (op presence))
+-> (response (id 3) (status ok) (value
+     (((agent "cml") (project "cml") (capabilities (compiler rust lowering))
+       (task "CML-LENGTH-001") (seconds-since-heartbeat 12.3)) ...)))
 ```
 
-Would need new ops (`hello`, `heartbeat`) and a presence table in the
-broker (parallel to the subscriber list), plus a liveness timeout to
-age out agents that stopped heartbeating. Not built.
+Deliberately no ordering requirement between `hello` and `heartbeat` —
+an agent that only ever calls `heartbeat` still shows up in `presence`,
+just without `capabilities`/`project` until it sends a `hello`. No
+automatic eviction of stale entries: `presence` reports
+`seconds-since-heartbeat` and leaves the liveness threshold to the
+caller, rather than the server silently deciding one and hiding an
+agent that's merely slow. This is exactly the capability-declaration
+piece `next-best-action` scoring (below) needs — not built itself yet,
+but the registry it would read `capabilities` from now exists.
 
 ### `next-best-action` self-organization
 
