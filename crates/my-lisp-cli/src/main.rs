@@ -354,6 +354,11 @@ struct TaskDef {
     capabilities: Vec<String>,
     depends_on: Vec<String>,
     done: bool,
+    /// Optional prose — what the task actually is, so `next-best-action`/
+    /// `list-claims` results are self-contained instead of forcing a
+    /// second lookup (a durable file, an old `task-created` event) just
+    /// to find out what a ranked task id means.
+    description: Option<String>,
 }
 
 #[derive(Default)]
@@ -597,6 +602,7 @@ fn handle_sexpr_connection(
                 let mut depends_on: Vec<String> = Vec::new();
                 let mut needs: Option<String> = None;
                 let mut context: Option<String> = None;
+                let mut description: Option<String> = None;
                 let mut file: Option<String> = None;
                 for field in fields.iter().skip(1) {
                     let kv = list_items(field);
@@ -699,6 +705,11 @@ fn handle_sexpr_connection(
                             "context" => {
                                 if let Value::String(s) = val {
                                     context = Some(s.to_string());
+                                }
+                            }
+                            "description" => {
+                                if let Value::String(s) = val {
+                                    description = Some(s.to_string());
                                 }
                             }
                             "file" => {
@@ -953,13 +964,22 @@ fn handle_sexpr_connection(
                     // already spoken for before claiming.
                     Some("list-claims") => {
                         let claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
+                        let task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
                         let entries: Vec<Value> = claim_state
                             .holders
                             .iter()
                             .map(|(task, holder)| {
+                                let description = task_state.tasks.get(task).and_then(|def| def.description.clone());
                                 Value::list([
                                     Value::list([Value::Symbol("task".into()), Value::String(task.as_str().into())]),
                                     Value::list([Value::Symbol("agent".into()), Value::String(holder.as_str().into())]),
+                                    Value::list([
+                                        Value::Symbol("description".into()),
+                                        match description {
+                                            Some(d) => Value::String(d.as_str().into()),
+                                            None => Value::Nil,
+                                        },
+                                    ]),
                                 ])
                             })
                             .collect();
@@ -1031,11 +1051,13 @@ fn handle_sexpr_connection(
                             let mut task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
                             let is_new_task = !task_state.tasks.contains_key(task);
                             let done = task_state.tasks.get(task).map(|t| t.done).unwrap_or(false);
+                            let existing_description = task_state.tasks.get(task).and_then(|t| t.description.clone());
                             task_state.tasks.insert(task.clone(), TaskDef {
                                 priority: priority.unwrap_or(1.0),
                                 capabilities: capabilities.clone(),
                                 depends_on: depends_on.clone(),
                                 done,
+                                description: description.clone().or(existing_description),
                             });
                             drop(task_state);
                             if is_new_task {
@@ -1153,15 +1175,18 @@ fn handle_sexpr_connection(
                                                         .map(|v| list_of_atoms(&v))
                                                         .unwrap_or_default();
                                                     let file_done = dotted_alist_lookup(props_value, "done").and_then(|v| bool_from_value(&v));
+                                                    let file_description = dotted_alist_lookup(props_value, "description").and_then(|v| atom_string(&v));
                                                     let (is_new_task, _existing_done) = {
                                                         let mut task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
                                                         let new = !task_state.tasks.contains_key(&task_id);
                                                         let existing_done = task_state.tasks.get(&task_id).map(|t| t.done).unwrap_or(false);
+                                                        let existing_description = task_state.tasks.get(&task_id).and_then(|t| t.description.clone());
                                                         task_state.tasks.insert(task_id.clone(), TaskDef {
                                                             priority,
                                                             capabilities,
                                                             depends_on,
                                                             done: file_done.unwrap_or(existing_done),
+                                                            description: file_description.or(existing_description),
                                                         });
                                                         (new, existing_done)
                                                     };
@@ -1272,6 +1297,7 @@ fn handle_sexpr_connection(
                                                                     capabilities: vec![repo.clone()],
                                                                     depends_on: Vec::new(),
                                                                     done: existing_done,
+                                                                    description: Some(description.clone()),
                                                                 });
                                                                 new
                                                             };
@@ -1339,7 +1365,7 @@ fn handle_sexpr_connection(
                             };
                             let task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
                             let claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
-                            let mut ranked: Vec<(String, f64)> = task_state
+                            let mut ranked: Vec<(String, f64, Option<String>)> = task_state
                                 .tasks
                                 .iter()
                                 .filter(|(_, def)| !def.done)
@@ -1361,14 +1387,21 @@ fn handle_sexpr_connection(
                                         .values()
                                         .filter(|other| !other.done && other.depends_on.contains(task_id))
                                         .count() as f64;
-                                    (task_id.clone(), def.priority * (1.0 + unblock_impact))
+                                    (task_id.clone(), def.priority * (1.0 + unblock_impact), def.description.clone())
                                 })
                                 .collect();
                             ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-                            let value = Value::list(ranked.into_iter().map(|(task_id, score)| {
+                            let value = Value::list(ranked.into_iter().map(|(task_id, score, description)| {
                                 Value::list([
                                     Value::list([Value::Symbol("task".into()), Value::String(task_id.as_str().into())]),
                                     Value::list([Value::Symbol("score".into()), Value::Number(score, Exactness::Inexact)]),
+                                    Value::list([
+                                        Value::Symbol("description".into()),
+                                        match description {
+                                            Some(d) => Value::String(d.as_str().into()),
+                                            None => Value::Nil,
+                                        },
+                                    ]),
                                 ])
                             }));
                             ok_response(&id, value, &[], &contract_version)
@@ -1447,6 +1480,7 @@ fn handle_sexpr_connection(
                                     capabilities: vec![needs.clone()],
                                     depends_on: Vec::new(),
                                     done,
+                                    description: Some(request_message.clone()),
                                 });
                             }
 
