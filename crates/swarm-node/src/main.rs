@@ -174,10 +174,21 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
+const RECONNECT_INITIAL_BACKOFF: Duration = Duration::from_millis(500);
+const RECONNECT_MAX_BACKOFF: Duration = Duration::from_secs(30);
+
 /// Dials `addr` ("ip:port") on a background thread and runs the normal
-/// handshake as initiator. De-duplicates against addresses already being
-/// dialed so gossip about the same peer arriving from multiple directions
-/// doesn't open redundant sockets.
+/// handshake as initiator, retrying with capped exponential backoff for as
+/// long as the process lives — whether the first attempt fails outright or
+/// a previously-established connection drops later (e.g. the peer at that
+/// address restarted). De-duplicates against addresses already being
+/// dialed/held so gossip about the same peer arriving from multiple
+/// directions doesn't spawn a second retry loop for it.
+///
+/// This closes real restart-churn pain: before this, a `--connect` (or a
+/// gossip-discovered peer) was dialed exactly once at startup, so *any*
+/// restart of the node on the other end silently and permanently dropped
+/// that link until someone manually restarted this side too.
 fn spawn_connect(node: &Arc<Node>, addr: String) {
     {
         let mut dialing = node.dialing.lock().unwrap();
@@ -187,11 +198,18 @@ fn spawn_connect(node: &Arc<Node>, addr: String) {
     }
     let node = node.clone();
     thread::spawn(move || {
-        match TcpStream::connect(&addr) {
-            Ok(stream) => handle_connection(node.clone(), stream, true),
-            Err(e) => eprintln!("swarm-node: could not connect to {addr}: {e}"),
+        let mut backoff = RECONNECT_INITIAL_BACKOFF;
+        loop {
+            match TcpStream::connect(&addr) {
+                Ok(stream) => {
+                    handle_connection(node.clone(), stream, true);
+                    backoff = RECONNECT_INITIAL_BACKOFF; // connection lasted a while, reset
+                }
+                Err(e) => eprintln!("swarm-node: could not connect to {addr}: {e}, retrying in {backoff:?}"),
+            }
+            thread::sleep(backoff);
+            backoff = (backoff * 2).min(RECONNECT_MAX_BACKOFF);
         }
-        node.dialing.lock().unwrap().remove(&addr);
     });
 }
 

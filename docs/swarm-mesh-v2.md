@@ -252,6 +252,17 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   the other correctly failed quorum (1/2, its votes not counted) — no
   split-brain, no manual timing coordination needed to trigger the correct
   outcome.
+- **M0.7** — done: automatic reconnect with capped exponential backoff
+  (500ms, doubling to a 30s cap) for every dialed address — both
+  `--connect` bootstrap targets and gossip-discovered peers. Before this,
+  a link was dialed exactly once; if the node on the other end restarted,
+  the connection dropped permanently until someone manually restarted
+  *this* side too. That's real pain that happened during migration
+  (restarting `my-lisp-1` for M0.6 silently dropped every other agent's
+  connection to it, with no automatic recovery) and exactly the kind of
+  restart-churn cost fpga-lisp had already flagged. Verified: node B loses
+  its connection to node A, A comes back ~1s later, B reconnects entirely
+  on its own with zero intervention.
 - Migration: `:9999` keeps running throughout so cml/fpga-lisp/my-idea
   aren't blocked; they migrate their coordination traffic to `swarm-node`
   on their own schedule per "Migrating off `:9999` for coordination" above
