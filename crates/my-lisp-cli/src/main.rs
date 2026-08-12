@@ -241,6 +241,23 @@ struct Broker {
     next_subscriber_id: u64,
 }
 
+/// `claim`/`release`'s shared state — a task id maps to the agent name
+/// holding it, or is absent if unclaimed. `claim` is compare-and-swap in
+/// spirit: it only succeeds if the task has no holder yet (or the caller
+/// already holds it, so a re-`claim` is idempotent), all under one lock
+/// acquisition, so two agents racing for the same task can never both
+/// win. Same rendered-`String`-only rule as the mailbox/broker — this
+/// only ever stores plain task-id/agent-name strings, never a `Value`.
+/// In-memory, non-persistent, gone on server restart — same as the
+/// mailbox and broker, and for the same reason: this is a coordination
+/// hint (who's working on what *right now*), not the durable record of
+/// what got done. A completed task's actual evidence still belongs in
+/// `evidence/`, not here.
+#[derive(Default)]
+struct ClaimTable {
+    holders: std::collections::HashMap<String, String>,
+}
+
 fn mailbox_entry_to_value(entry: &MailboxEntry) -> Value {
     Value::list([
         Value::list([Value::Symbol("id".into()), Value::Number(entry.id as f64, Exactness::Exact)]),
@@ -306,6 +323,7 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec<String>, c
     let allowed = Arc::new(allowed);
     let mailbox: Arc<Mutex<MailboxState>> = Arc::new(Mutex::new(MailboxState::default()));
     let broker: Arc<Mutex<Broker>> = Arc::new(Mutex::new(Broker::default()));
+    let claims: Arc<Mutex<ClaimTable>> = Arc::new(Mutex::new(ClaimTable::default()));
 
     for stream in listener.incoming() {
         let stream = match stream {
@@ -315,8 +333,9 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec<String>, c
         let allowed = Arc::clone(&allowed);
         let mailbox = Arc::clone(&mailbox);
         let broker = Arc::clone(&broker);
+        let claims = Arc::clone(&claims);
         thread::spawn(move || {
-            handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker);
+            handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker, &claims);
         });
     }
 }
@@ -329,6 +348,7 @@ fn handle_sexpr_connection(
     contract_minor: f64,
     mailbox: &Arc<Mutex<MailboxState>>,
     broker: &Arc<Mutex<Broker>>,
+    claims: &Arc<Mutex<ClaimTable>>,
 ) {
     let contract_version = Value::list([
         Value::Number(contract_major, Exactness::Exact),
@@ -388,6 +408,7 @@ fn handle_sexpr_connection(
                 let mut since: u64 = 0;
                 let mut topic: Option<String> = None;
                 let mut topics: Vec<String> = Vec::new();
+                let mut task: Option<String> = None;
                 for field in fields.iter().skip(1) {
                     let kv = list_items(field);
                     let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
@@ -443,6 +464,11 @@ fn handle_sexpr_connection(
                                         _ => None,
                                     })
                                     .collect();
+                            }
+                            "task" => {
+                                if let Value::String(s) = val {
+                                    task = Some(s.to_string());
+                                }
                             }
                             _ => {}
                         }
@@ -599,6 +625,63 @@ fn handle_sexpr_connection(
                         let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
                         broker_state.subscribers.retain(|s| s.id != subscriber_id);
                         break;
+                    }
+                    // Compare-and-swap under one lock acquisition: a
+                    // `claim` only succeeds if `task` has no holder yet,
+                    // or `from` already holds it (idempotent re-claim) —
+                    // two agents racing for the same task can never both
+                    // see success. `value` is `t` on success, or the
+                    // current holder's name (a string) if someone else
+                    // already has it, so the loser knows who to wait on
+                    // or `publish` a `need` at.
+                    Some("claim") => match (&task, &from) {
+                        (None, _) => error_response(&id, "invalid-form", "op `claim` requires a `task` field", &contract_version),
+                        (_, None) => error_response(&id, "invalid-form", "op `claim` requires a `from` field", &contract_version),
+                        (Some(task), Some(from)) => {
+                            let mut claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
+                            match claim_state.holders.get(task) {
+                                Some(holder) if holder == from => ok_response(&id, Value::Bool(true), &[], &contract_version),
+                                Some(holder) => ok_response(&id, Value::String(holder.as_str().into()), &[], &contract_version),
+                                None => {
+                                    claim_state.holders.insert(task.clone(), from.clone());
+                                    ok_response(&id, Value::Bool(true), &[], &contract_version)
+                                }
+                            }
+                        }
+                    },
+                    // Only the current holder can release; releasing an
+                    // unclaimed or already-your-own-released task is a
+                    // no-op success (idempotent), same spirit as `claim`.
+                    Some("release") => match (&task, &from) {
+                        (None, _) => error_response(&id, "invalid-form", "op `release` requires a `task` field", &contract_version),
+                        (_, None) => error_response(&id, "invalid-form", "op `release` requires a `from` field", &contract_version),
+                        (Some(task), Some(from)) => {
+                            let mut claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
+                            match claim_state.holders.get(task) {
+                                Some(holder) if holder != from => ok_response(&id, Value::String(holder.as_str().into()), &[], &contract_version),
+                                _ => {
+                                    claim_state.holders.remove(task);
+                                    ok_response(&id, Value::Bool(true), &[], &contract_version)
+                                }
+                            }
+                        }
+                    },
+                    // Read-only: every currently-held claim, so an agent
+                    // computing its own next-best-action can see what's
+                    // already spoken for before claiming.
+                    Some("list-claims") => {
+                        let claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
+                        let entries: Vec<Value> = claim_state
+                            .holders
+                            .iter()
+                            .map(|(task, holder)| {
+                                Value::list([
+                                    Value::list([Value::Symbol("task".into()), Value::String(task.as_str().into())]),
+                                    Value::list([Value::Symbol("agent".into()), Value::String(holder.as_str().into())]),
+                                ])
+                            })
+                            .collect();
+                        ok_response(&id, Value::list(entries), &[], &contract_version)
                     }
                     Some(other) => error_response(&id, "invalid-form", &format!("unknown op `{other}`"), &contract_version),
                     None => error_response(&id, "invalid-form", "request is missing an `op` field", &contract_version),
