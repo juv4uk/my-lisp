@@ -242,6 +242,23 @@ fn line_col_at(source: &str, byte_offset: usize) -> (usize, usize) {
     (line, col)
 }
 
+/// A relative `file` path (`sync-tasks`/`sync-milestone`/`validate-tasks`)
+/// resolves against *this server process's* working directory, not the
+/// caller's — a trap a caller can walk straight into with no error:
+/// the read succeeds, just against whatever file happens to exist at
+/// that relative path on the server's side, silently syncing the wrong
+/// data. Rejecting anything non-absolute turns that into a clear error
+/// instead of a quiet mismatch.
+fn require_absolute_path(path: &str) -> Result<(), String> {
+    if std::path::Path::new(path).is_absolute() {
+        Ok(())
+    } else {
+        Err(format!(
+            "`file` must be an absolute path — `{path}` would resolve against this server's own working directory, not the caller's, and silently read the wrong file"
+        ))
+    }
+}
+
 fn server_generation() -> u64 {
     *SERVER_GENERATION.get_or_init(|| {
         std::time::SystemTime::now()
@@ -1030,6 +1047,56 @@ fn handle_sexpr_connection(
                             .collect();
                         ok_response(&id, Value::list(entries), &[], &contract_version)
                     }
+                    // Full, unfiltered dump of every `define-task`d task —
+                    // the debugging counterpart to `next-best-action`,
+                    // which deliberately hides anything excluded (wrong
+                    // capability, unmet dependency, already claimed by
+                    // someone else, already done). Without this there's
+                    // no way to tell "the task doesn't exist" from "it
+                    // exists but next-best-action filtered it for a
+                    // reason" — direct feedback this ambiguity cost real
+                    // debugging time. Includes `done` and, for each still
+                    // held, the current holder — cross-referencing
+                    // `list-claims` shouldn't be necessary just to see
+                    // the whole board.
+                    Some("list-tasks") => {
+                        let task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
+                        let claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
+                        let entries: Vec<Value> = task_state
+                            .tasks
+                            .iter()
+                            .map(|(task_id, def)| {
+                                Value::list([
+                                    Value::list([Value::Symbol("task".into()), Value::String(task_id.as_str().into())]),
+                                    Value::list([Value::Symbol("priority".into()), Value::Number(def.priority, Exactness::Inexact)]),
+                                    Value::list([
+                                        Value::Symbol("capabilities".into()),
+                                        Value::list(def.capabilities.iter().map(|c| Value::Symbol(c.as_str().into()))),
+                                    ]),
+                                    Value::list([
+                                        Value::Symbol("depends-on".into()),
+                                        Value::list(def.depends_on.iter().map(|d| Value::String(d.as_str().into()))),
+                                    ]),
+                                    Value::list([Value::Symbol("done".into()), Value::Bool(def.done)]),
+                                    Value::list([
+                                        Value::Symbol("claimed-by".into()),
+                                        match claim_state.holders.get(task_id) {
+                                            Some(holder) => Value::String(holder.as_str().into()),
+                                            None => Value::Nil,
+                                        },
+                                    ]),
+                                    Value::list([
+                                        Value::Symbol("description".into()),
+                                        match &def.description {
+                                            Some(d) => Value::String(d.as_str().into()),
+                                            None => Value::Nil,
+                                        },
+                                    ]),
+                                ])
+                            })
+                            .collect();
+                        ok_response(&id, Value::list(entries), &[], &contract_version)
+                    }
                     // `hello`/`heartbeat` both write the same table —
                     // `hello` is just the first heartbeat, with an
                     // optional `project`/`capabilities` attached. Neither
@@ -1150,6 +1217,9 @@ fn handle_sexpr_connection(
                     // before it ever reaches the shared server-wide state.
                     Some("validate-tasks") => match &file {
                         None => error_response(&id, "invalid-form", "op `validate-tasks` requires a `file` field", &contract_version),
+                        Some(path) if require_absolute_path(path).is_err() => {
+                            error_response(&id, "invalid-form", &require_absolute_path(path).unwrap_err(), &contract_version)
+                        }
                         Some(path) => match fs::read_to_string(path) {
                             Err(e) => error_response(&id, "io-error", &format!("cannot read `{path}`: {e}"), &contract_version),
                             Ok(content) => match parse(&content) {
@@ -1248,6 +1318,9 @@ fn handle_sexpr_connection(
                     // one typo doesn't silently drop the whole board.
                     Some("sync-tasks") => match &file {
                         None => error_response(&id, "invalid-form", "op `sync-tasks` requires a `file` field", &contract_version),
+                        Some(path) if require_absolute_path(path).is_err() => {
+                            error_response(&id, "invalid-form", &require_absolute_path(path).unwrap_err(), &contract_version)
+                        }
                         Some(path) => match fs::read_to_string(path) {
                             Err(e) => error_response(&id, "io-error", &format!("cannot read `{path}`: {e}"), &contract_version),
                             Ok(content) => match parse(&content) {
@@ -1377,6 +1450,9 @@ fn handle_sexpr_connection(
                     // requires reading its own definition somewhere.
                     Some("sync-milestone") => match &file {
                         None => error_response(&id, "invalid-form", "op `sync-milestone` requires a `file` field", &contract_version),
+                        Some(path) if require_absolute_path(path).is_err() => {
+                            error_response(&id, "invalid-form", &require_absolute_path(path).unwrap_err(), &contract_version)
+                        }
                         Some(path) => match fs::read_to_string(path) {
                             Err(e) => error_response(&id, "io-error", &format!("cannot read `{path}`: {e}"), &contract_version),
                             Ok(content) => match parse(&content) {
