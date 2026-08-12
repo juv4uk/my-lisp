@@ -277,6 +277,25 @@ struct PresenceTable {
     agents: std::collections::HashMap<String, PresenceEntry>,
 }
 
+/// A `define-task`d unit of work — the machine-readable task list
+/// `docs/swarm-coordination.md`'s `next-best-action` scoring needs.
+/// `depends_on` names other task ids that must be `complete-task`d
+/// first; a task with any unsatisfied dependency is excluded from
+/// `next-best-action`'s ranking entirely (claiming it would just block
+/// immediately). `capabilities` is what an agent needs to even be
+/// considered for it — empty means anyone qualifies.
+struct TaskDef {
+    priority: f64,
+    capabilities: Vec<String>,
+    depends_on: Vec<String>,
+    done: bool,
+}
+
+#[derive(Default)]
+struct TaskTable {
+    tasks: std::collections::HashMap<String, TaskDef>,
+}
+
 fn presence_entry_to_value(agent: &str, entry: &PresenceEntry) -> Value {
     Value::list([
         Value::list([Value::Symbol("agent".into()), Value::String(agent.into())]),
@@ -372,6 +391,7 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec<String>, c
     let broker: Arc<Mutex<Broker>> = Arc::new(Mutex::new(Broker::default()));
     let claims: Arc<Mutex<ClaimTable>> = Arc::new(Mutex::new(ClaimTable::default()));
     let presence: Arc<Mutex<PresenceTable>> = Arc::new(Mutex::new(PresenceTable::default()));
+    let tasks: Arc<Mutex<TaskTable>> = Arc::new(Mutex::new(TaskTable::default()));
 
     for stream in listener.incoming() {
         let stream = match stream {
@@ -383,8 +403,9 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec<String>, c
         let broker = Arc::clone(&broker);
         let claims = Arc::clone(&claims);
         let presence = Arc::clone(&presence);
+        let tasks = Arc::clone(&tasks);
         thread::spawn(move || {
-            handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker, &claims, &presence);
+            handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker, &claims, &presence, &tasks);
         });
     }
 }
@@ -399,6 +420,7 @@ fn handle_sexpr_connection(
     broker: &Arc<Mutex<Broker>>,
     claims: &Arc<Mutex<ClaimTable>>,
     presence: &Arc<Mutex<PresenceTable>>,
+    tasks: &Arc<Mutex<TaskTable>>,
 ) {
     let contract_version = Value::list([
         Value::Number(contract_major, Exactness::Exact),
@@ -461,6 +483,8 @@ fn handle_sexpr_connection(
                 let mut task: Option<String> = None;
                 let mut project: Option<String> = None;
                 let mut capabilities: Vec<String> = Vec::new();
+                let mut priority: Option<f64> = None;
+                let mut depends_on: Vec<String> = Vec::new();
                 for field in fields.iter().skip(1) {
                     let kv = list_items(field);
                     let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
@@ -529,6 +553,21 @@ fn handle_sexpr_connection(
                             }
                             "capabilities" => {
                                 capabilities = list_items(val)
+                                    .into_iter()
+                                    .filter_map(|item| match &item {
+                                        Value::String(s) => Some(s.to_string()),
+                                        Value::Symbol(s) => Some(s.to_string()),
+                                        _ => None,
+                                    })
+                                    .collect();
+                            }
+                            "priority" => {
+                                if let Value::Number(n, _) = val {
+                                    priority = Some(*n);
+                                }
+                            }
+                            "depends-on" => {
+                                depends_on = list_items(val)
                                     .into_iter()
                                     .filter_map(|item| match &item {
                                         Value::String(s) => Some(s.to_string()),
@@ -801,6 +840,114 @@ fn handle_sexpr_connection(
                             .collect();
                         ok_response(&id, Value::list(entries), &[], &contract_version)
                     }
+                    // Registers or redefines a task's scoring inputs.
+                    // Redefining an existing task keeps its `done` status
+                    // (changing priority/capabilities/deps shouldn't
+                    // un-complete it) — only `complete-task` sets `done`.
+                    Some("define-task") => match &task {
+                        None => error_response(&id, "invalid-form", "op `define-task` requires a `task` field", &contract_version),
+                        Some(task) => {
+                            let mut task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
+                            let done = task_state.tasks.get(task).map(|t| t.done).unwrap_or(false);
+                            task_state.tasks.insert(task.clone(), TaskDef {
+                                priority: priority.unwrap_or(1.0),
+                                capabilities: capabilities.clone(),
+                                depends_on: depends_on.clone(),
+                                done,
+                            });
+                            ok_response(&id, Value::Bool(true), &[], &contract_version)
+                        }
+                    },
+                    // Marks a task done and drops its claim (if any) —
+                    // deliberately does NOT require the caller to be the
+                    // current holder: a task can legitimately get
+                    // completed by someone other than whoever claimed it
+                    // (a handoff), and this registry is a coordination
+                    // hint, not an access-control system. The durable
+                    // "who actually did it" record still belongs in
+                    // evidence/, same as everything else here.
+                    Some("complete-task") => match &task {
+                        None => error_response(&id, "invalid-form", "op `complete-task` requires a `task` field", &contract_version),
+                        Some(task) => {
+                            let mut task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
+                            match task_state.tasks.get_mut(task) {
+                                None => error_response(&id, "invalid-form", &format!("no such task `{task}` — define-task it first"), &contract_version),
+                                Some(def) => {
+                                    def.done = true;
+                                    let mut claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
+                                    claim_state.holders.remove(task);
+                                    ok_response(&id, Value::Bool(true), &[], &contract_version)
+                                }
+                            }
+                        }
+                    },
+                    // `score = priority × capability-match × (1 +
+                    // unblock-impact)`, per docs/swarm-coordination.md.
+                    // capability-match is a hard gate here, not a
+                    // fraction: a task naming capabilities the caller
+                    // doesn't have is excluded outright, not merely
+                    // down-ranked — claiming work you can't actually do
+                    // isn't a "lower-priority" outcome, it's not an
+                    // option. unblock-impact counts how many *other*,
+                    // not-yet-done tasks list this one in `depends-on` —
+                    // finishing a task blocking 5 others outranks one
+                    // blocking none, all else equal. A task with any
+                    // unsatisfied dependency, already `done`, or already
+                    // claimed by someone else is excluded entirely —
+                    // it's not actionable yet or not available.
+                    // `capabilities` may be passed explicitly; if not,
+                    // falls back to whatever the caller's last `hello`
+                    // registered in `presence`.
+                    Some("next-best-action") => match &from {
+                        None => error_response(&id, "invalid-form", "op `next-best-action` requires a `from` field", &contract_version),
+                        Some(from) => {
+                            let caller_capabilities: Vec<String> = if !capabilities.is_empty() {
+                                capabilities.clone()
+                            } else {
+                                let presence_state = presence.lock().unwrap_or_else(|e| e.into_inner());
+                                presence_state
+                                    .agents
+                                    .get(from)
+                                    .map(|entry| entry.capabilities.clone())
+                                    .unwrap_or_default()
+                            };
+                            let task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
+                            let claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
+                            let mut ranked: Vec<(String, f64)> = task_state
+                                .tasks
+                                .iter()
+                                .filter(|(_, def)| !def.done)
+                                .filter(|(task_id, _)| {
+                                    claim_state.holders.get(*task_id).is_none_or(|holder| holder == from)
+                                })
+                                .filter(|(_, def)| {
+                                    def.depends_on.iter().all(|dep| {
+                                        task_state.tasks.get(dep).map(|d| d.done).unwrap_or(true)
+                                    })
+                                })
+                                .filter(|(_, def)| {
+                                    def.capabilities.is_empty()
+                                        || def.capabilities.iter().all(|needed| caller_capabilities.contains(needed))
+                                })
+                                .map(|(task_id, def)| {
+                                    let unblock_impact = task_state
+                                        .tasks
+                                        .values()
+                                        .filter(|other| !other.done && other.depends_on.contains(task_id))
+                                        .count() as f64;
+                                    (task_id.clone(), def.priority * (1.0 + unblock_impact))
+                                })
+                                .collect();
+                            ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                            let value = Value::list(ranked.into_iter().map(|(task_id, score)| {
+                                Value::list([
+                                    Value::list([Value::Symbol("task".into()), Value::String(task_id.as_str().into())]),
+                                    Value::list([Value::Symbol("score".into()), Value::Number(score, Exactness::Inexact)]),
+                                ])
+                            }));
+                            ok_response(&id, value, &[], &contract_version)
+                        }
+                    },
                     Some(other) => error_response(&id, "invalid-form", &format!("unknown op `{other}`"), &contract_version),
                     None => error_response(&id, "invalid-form", "request is missing an `op` field", &contract_version),
                 };
