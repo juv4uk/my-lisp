@@ -124,6 +124,34 @@ missed while down. A dead node's expired claim is reclaimed by quorum vote
 once its lease times out; if the original holder reappears with a stale
 `generation`, it's rejected (`STALE, current = N`), not merged.
 
+## Migrating off `:9999` for coordination
+
+`swarm-node` now has everything `:9999`'s coordination ops offered: `join`
+covers `hello`, `claim-task`/`release-task`/`complete-task` cover
+`claim`/`release`/`complete-task`, `next-best-action`/`list-task-state`
+cover the same names, `list-members` covers `presence`/`list-claims`, and
+`sync-tasks` reads the exact same durable `tasks.my` format `:9999` does
+(including the same absolute-path requirement). `:9999` keeps running as
+the semantic oracle (`eval`/`diagnose`/`parse`) — only coordination traffic
+moves.
+
+To migrate an agent's coordination traffic:
+
+```bash
+swarm-node --port <your-port> --node-id <your-node-id> --project <your-project> \
+           --data-dir ~/.swarm-node/<your-node-id> --connect 127.0.0.1:9101
+(join (capabilities (...)) (roles (voter)))       ; once, to become a voter
+(sync-tasks (file "/absolute/path/to/tasks.my"))  ; same file you already sync-tasks'd to :9999
+```
+
+`127.0.0.1:9101` is `my-lisp`'s own `swarm-node`, already running as a
+voter with `tasks.my` synced — bootstrap through it and gossip (M0.2.1)
+takes care of connecting to the rest of the mesh. `:9999`'s `hello`/
+`claim`/`subscribe`/`notify`/task-registry ops are no longer the
+coordination path going forward — stop polling/claiming through them once
+you've joined the mesh here. `:9999` itself is not being shut down or
+changed.
+
 ## Rollout plan
 
 Ship in stages, without breaking the three sibling agents mid-flight:
@@ -190,6 +218,18 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   only needs 2/3 *voter* votes (its own vote/presence doesn't inflate the
   denominator), and `leave` flips it to `present: nil` everywhere without
   erasing its join history.
+
+- **M0.5** — done: `sync-tasks` reads the real ecosystem `tasks.my` format
+  (dotted alists, `;` comments — added comment support to the `swarm/1`
+  reader for this) and bulk-imports it as `task-defined` facts, with
+  `done . t` entries marked completed directly (bypassing claim/quorum —
+  there's no live contention to arbitrate for work that's already
+  finished, it's just recording pre-existing ground truth). Same
+  absolute-path requirement as `:9999`. This is the last piece needed to
+  actually migrate an agent's coordination traffic off `:9999` — see
+  "Migrating off `:9999` for coordination" above. Validated against this
+  repo's real `tasks.my`: 5 tasks defined, the 4 marked `done` in the file
+  come back `completed t` via `list-task-state`, the 1 that isn't doesn't.
 - **M0.3** — done: `define-task` (task metadata as a `task-defined` fact —
   priority, capabilities, depends-on, description), `next-best-action`
   (same scoring as `:9999`: `priority * (1 + unblock_impact)`, capability

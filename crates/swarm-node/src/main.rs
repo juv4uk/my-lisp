@@ -16,6 +16,7 @@
 mod journal;
 mod sexpr;
 mod state;
+mod tasks_file;
 
 use journal::{Event, Identity, Journal};
 use sexpr::Sexp;
@@ -316,6 +317,9 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             }
             Some("list-members") => {
                 handle_list_members(&node, &mut stream);
+            }
+            Some("sync-tasks") => {
+                handle_sync_tasks(&node, &msg, &mut stream);
             }
             other => {
                 eprintln!("swarm-node: unrecognized message head {other:?} from {peer_addr}");
@@ -1013,6 +1017,99 @@ fn handle_leave(node: &Arc<Node>, stream: &mut TcpStream) {
         }
         Err(e) => send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("journal append failed: {e}"))])),
     }
+}
+
+/// Same lesson as `:9999`'s `sync-tasks`/`sync-milestone`/`validate-tasks`:
+/// a relative path resolves against *this process's* cwd, not the
+/// caller's, and would silently sync whatever unrelated file happens to
+/// exist there. Rejected outright.
+fn require_absolute_path(path: &str) -> Result<(), String> {
+    if std::path::Path::new(path).is_absolute() {
+        Ok(())
+    } else {
+        Err(format!(
+            "`file` must be an absolute path — `{path}` would resolve against this node's own working directory, not the caller's, and silently read the wrong file"
+        ))
+    }
+}
+
+/// Local client op: `(sync-tasks (file "/absolute/path/to/tasks.my"))`.
+/// Reads the same durable `tasks.my` format `:9999` reads, and emits a
+/// `task-defined` fact per entry (plus a `task-completed` fact for any
+/// entry already marked `done` — bulk-importing pre-existing ground truth
+/// from durable evidence bypasses the live claim/quorum flow entirely,
+/// since there's no real-time contention to arbitrate for work that's
+/// already finished).
+fn handle_sync_tasks(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    let Some(path) = msg.field_atom("file") else {
+        send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string("sync-tasks requires a `file` field")]));
+        return;
+    };
+    if let Err(e) = require_absolute_path(path) {
+        send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(e)]));
+        return;
+    }
+    let text = match std::fs::read_to_string(path) {
+        Ok(t) => t,
+        Err(e) => {
+            send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("could not read `{path}`: {e}"))]));
+            return;
+        }
+    };
+    let tasks = match tasks_file::parse_tasks_file(&text) {
+        Ok(t) => t,
+        Err(e) => {
+            send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("parse error in `{path}`: {e}"))]));
+            return;
+        }
+    };
+
+    let mut defined = 0;
+    let mut completed = 0;
+    for t in &tasks {
+        let mut fields = vec![
+            Sexp::list(vec![Sexp::atom("task"), Sexp::atom(&t.id)]),
+            Sexp::list(vec![Sexp::atom("priority"), Sexp::atom(t.priority.to_string())]),
+            Sexp::list(vec![Sexp::atom("capabilities"), Sexp::list(t.capabilities.iter().map(Sexp::atom).collect())]),
+            Sexp::list(vec![Sexp::atom("depends-on"), Sexp::list(t.depends_on.iter().map(Sexp::atom).collect())]),
+        ];
+        if let Some(d) = &t.description {
+            fields.push(Sexp::list(vec![Sexp::atom("description"), Sexp::string(d)]));
+        }
+        let payload = Sexp::list(fields);
+        if append_local_fact(node, "task-defined", payload).is_ok() {
+            defined += 1;
+        }
+        if t.done {
+            let journal = node.journal.lock().unwrap();
+            let generation = state::task_state(&journal, &t.id).generation;
+            drop(journal);
+            if append_task_fact(node, "task-completed", &t.id, generation).is_ok() {
+                completed += 1;
+            }
+        }
+    }
+    send(
+        stream,
+        &Sexp::list(vec![
+            Sexp::atom("ok"),
+            Sexp::list(vec![Sexp::atom("defined"), Sexp::atom(defined.to_string())]),
+            Sexp::list(vec![Sexp::atom("marked-done"), Sexp::atom(completed.to_string())]),
+        ]),
+    );
+}
+
+/// Shared by `sync-tasks` and (indirectly) `define-task`: append an
+/// arbitrary fact to our own journal and gossip it like any other event.
+fn append_local_fact(node: &Arc<Node>, typ: &str, payload: Sexp) -> std::io::Result<Event> {
+    let lamport = node.tick_lamport(0);
+    let mut journal = node.journal.lock().unwrap();
+    let seq = journal.next_seq(&node.identity.node_id);
+    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: typ.to_string(), payload };
+    journal.append(event.clone())?;
+    drop(journal);
+    broadcast_event(node, &event, None);
+    Ok(event)
 }
 
 fn handle_list_members(node: &Arc<Node>, stream: &mut TcpStream) {

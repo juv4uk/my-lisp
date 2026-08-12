@@ -74,9 +74,21 @@ pub fn parse(input: &str) -> Result<Sexp, String> {
     Ok(value)
 }
 
+/// Skips whitespace and `;`-to-end-of-line comments — needed to read
+/// `tasks.my`-style durable files, which use the same comment convention
+/// as the rest of this ecosystem's `.my` data files.
 fn skip_ws(chars: &[char], pos: &mut usize) {
-    while *pos < chars.len() && chars[*pos].is_whitespace() {
-        *pos += 1;
+    loop {
+        while *pos < chars.len() && chars[*pos].is_whitespace() {
+            *pos += 1;
+        }
+        if *pos < chars.len() && chars[*pos] == ';' {
+            while *pos < chars.len() && chars[*pos] != '\n' {
+                *pos += 1;
+            }
+            continue;
+        }
+        break;
     }
 }
 
