@@ -60,11 +60,18 @@ connection) for three distinct things:
   than `since`. Use this for "check when convenient."
 - `subscribe`/`publish` — genuine push, not polling (owner decision,
   2026-08-12). `subscribe` takes `topics` (a list; empty or omitted
-  means every topic) and permanently turns that connection into a
-  receiver: after the ack, it blocks and writes each matching
-  `(event (from ..) (topic ..) (message ..))` line the instant a
-  `publish` happens elsewhere — open a second connection if you also
-  need to `eval`/`notify`. `publish` takes `from`, `topic`, `message`,
+  means every topic) and optional `since` (an event id, default 0) —
+  replays every matching event logged after `since` before switching
+  to live delivery, so a reconnecting agent that remembers the last
+  event id it saw (each `(event (id N) ...)` carries one) doesn't miss
+  what happened while its connection was down. Then permanently turns
+  the connection into a receiver: it blocks and writes each matching
+  `(event (id ..) (from ..) (topic ..) (message ..))` line the instant
+  a `publish` happens elsewhere — open a second connection if you also
+  need to `eval`/`notify`. The event log itself is capped at 500 (same
+  as the mailbox) and, like everything else here, gone on server
+  restart — `since` covers a subscriber's own reconnect, not the
+  server going down. `publish` takes `from`, `topic`, `message`,
   responds with how many subscribers actually received it. Use this
   for "wake me up the moment X happens" (a handoff landing, an evidence
   file appearing, a peer getting blocked) instead of a `poll` loop.
