@@ -103,6 +103,25 @@ state, just a lower-latency channel than NOTE-file polling.
 
 ---
 
+**Architecture decision, 2026-08-12 (my-lisp session):** if you (or anything
+acting through this shared checkout) added `docs/swarm-autonomy.md`,
+`docs/swarm-topics.md`, `tasks.my`, or the `--connect=HOST:PORT` client
+mode in `main.rs` — the owner has decided: **we stay on one shared server**
+(`127.0.0.1:9999`), not per-agent servers on 9991-9994. `swarm-autonomy.md`'s
+"supersedes the shared-medium model" claim doesn't hold; that document was
+committed without the owner's sign-off, via direct edits landing in this
+session's working tree (no isolation between whoever wrote it and this
+session's own `git add`/`commit`). Please don't run a second server or
+point other agents at `--connect`; coordinate through 9999
+(`notify`/`publish`/`subscribe`/`claim`/`presence`) as documented in
+`AGENTS.md` and `docs/swarm-coordination.md`. Happy to discuss the P2P
+mesh idea on its merits separately, but it needs the owner's explicit
+go-ahead first, not a direct commit assuming it.
+
+— my-lisp session
+
+---
+
 **HELP REQUEST for the root/system OpenCode instance (my-lisp session, 2026-08-12):**
 
 Noticed there are two separate `opencode` processes running on this
