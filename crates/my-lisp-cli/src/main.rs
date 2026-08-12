@@ -296,6 +296,39 @@ struct TaskTable {
     tasks: std::collections::HashMap<String, TaskDef>,
 }
 
+/// Shared by `publish`, `capability-request`, and every op that
+/// auto-publishes a lifecycle event (`claim`/`release`/`hello`/
+/// `define-task`, below) — one delivery path so `subscribe`rs never see
+/// a different envelope shape depending on who triggered the event.
+/// Returns how many subscribers actually received it.
+fn broadcast_event(broker: &Arc<Mutex<Broker>>, from: &str, topic: &str, message: &str) -> u32 {
+    let event_text = Value::list([
+        Value::Symbol("event".into()),
+        Value::list([Value::Symbol("from".into()), Value::String(from.into())]),
+        Value::list([Value::Symbol("topic".into()), Value::String(topic.into())]),
+        Value::list([Value::Symbol("message".into()), Value::String(message.into())]),
+    ])
+    .to_string();
+    let mut delivered = 0u32;
+    let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
+    broker_state.subscribers.retain(|subscriber| {
+        if !subscriber.topics.is_empty() && !subscriber.topics.iter().any(|t| t == topic) {
+            return true;
+        }
+        match subscriber.sender.send(event_text.clone()) {
+            Ok(()) => {
+                delivered += 1;
+                true
+            }
+            // The subscriber's connection thread is gone (client
+            // disconnected) — drop it here too, rather than leaking a
+            // dead entry forever.
+            Err(_) => false,
+        }
+    });
+    delivered
+}
+
 fn presence_entry_to_value(agent: &str, entry: &PresenceEntry) -> Value {
     Value::list([
         Value::list([Value::Symbol("agent".into()), Value::String(agent.into())]),
@@ -681,30 +714,7 @@ fn handle_sexpr_connection(
                         (_, None, _) => error_response(&id, "invalid-form", "op `publish` requires a `topic` field", &contract_version),
                         (_, _, None) => error_response(&id, "invalid-form", "op `publish` requires a `message` field", &contract_version),
                         (Some(from), Some(topic), Some(message)) => {
-                            let event_text = Value::list([
-                                Value::Symbol("event".into()),
-                                Value::list([Value::Symbol("from".into()), Value::String(from.as_str().into())]),
-                                Value::list([Value::Symbol("topic".into()), Value::String(topic.as_str().into())]),
-                                Value::list([Value::Symbol("message".into()), Value::String(message.as_str().into())]),
-                            ])
-                            .to_string();
-                            let mut delivered = 0u32;
-                            let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
-                            broker_state.subscribers.retain(|subscriber| {
-                                if !subscriber.topics.is_empty() && !subscriber.topics.iter().any(|t| t == topic) {
-                                    return true;
-                                }
-                                match subscriber.sender.send(event_text.clone()) {
-                                    Ok(()) => {
-                                        delivered += 1;
-                                        true
-                                    }
-                                    // The subscriber's connection thread is gone
-                                    // (client disconnected) — drop it here too,
-                                    // rather than leaking a dead entry forever.
-                                    Err(_) => false,
-                                }
-                            });
+                            let delivered = broadcast_event(broker, from, topic, message);
                             ok_response(&id, Value::Number(delivered as f64, Exactness::Exact), &[], &contract_version)
                         }
                     },
@@ -764,6 +774,8 @@ fn handle_sexpr_connection(
                                 Some(holder) => ok_response(&id, Value::String(holder.as_str().into()), &[], &contract_version),
                                 None => {
                                     claim_state.holders.insert(task.clone(), from.clone());
+                                    drop(claim_state);
+                                    broadcast_event(broker, from, "claim-taken", &format!("{from} claimed {task}"));
                                     ok_response(&id, Value::Bool(true), &[], &contract_version)
                                 }
                             }
@@ -780,7 +792,11 @@ fn handle_sexpr_connection(
                             match claim_state.holders.get(task) {
                                 Some(holder) if holder != from => ok_response(&id, Value::String(holder.as_str().into()), &[], &contract_version),
                                 _ => {
-                                    claim_state.holders.remove(task);
+                                    let was_held = claim_state.holders.remove(task).is_some();
+                                    drop(claim_state);
+                                    if was_held {
+                                        broadcast_event(broker, from, "claim-released", &format!("{from} released {task}"));
+                                    }
                                     ok_response(&id, Value::Bool(true), &[], &contract_version)
                                 }
                             }
@@ -814,6 +830,7 @@ fn handle_sexpr_connection(
                         None => error_response(&id, "invalid-form", &format!("op `{op_name}` requires a `from` field"), &contract_version),
                         Some(from) => {
                             let mut presence_state = presence.lock().unwrap_or_else(|e| e.into_inner());
+                            let is_new_agent = !presence_state.agents.contains_key(from);
                             let entry = presence_state.agents.entry(from.clone()).or_insert_with(|| PresenceEntry {
                                 project: None,
                                 capabilities: Vec::new(),
@@ -838,6 +855,10 @@ fn handle_sexpr_connection(
                                 .filter(|(agent, _)| *agent != from)
                                 .map(|(agent, entry)| presence_entry_to_value(agent, entry))
                                 .collect();
+                            drop(presence_state);
+                            if op_name == "hello" && is_new_agent {
+                                broadcast_event(broker, from, "agent-joined", &format!("{from} joined"));
+                            }
                             ok_response(&id, Value::list(peers), &[], &contract_version)
                         }
                     },
@@ -862,6 +883,7 @@ fn handle_sexpr_connection(
                         None => error_response(&id, "invalid-form", "op `define-task` requires a `task` field", &contract_version),
                         Some(task) => {
                             let mut task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
+                            let is_new_task = !task_state.tasks.contains_key(task);
                             let done = task_state.tasks.get(task).map(|t| t.done).unwrap_or(false);
                             task_state.tasks.insert(task.clone(), TaskDef {
                                 priority: priority.unwrap_or(1.0),
@@ -869,6 +891,11 @@ fn handle_sexpr_connection(
                                 depends_on: depends_on.clone(),
                                 done,
                             });
+                            drop(task_state);
+                            if is_new_task {
+                                let publisher = from.clone().unwrap_or_else(|| "unknown".to_string());
+                                broadcast_event(broker, &publisher, "task-created", &format!("task {task} defined"));
+                            }
                             ok_response(&id, Value::Bool(true), &[], &contract_version)
                         }
                     },
@@ -1002,22 +1029,7 @@ fn handle_sexpr_connection(
                                 }
                             );
 
-                            let event_text = Value::list([
-                                Value::Symbol("event".into()),
-                                Value::list([Value::Symbol("from".into()), Value::String(from.as_str().into())]),
-                                Value::list([Value::Symbol("topic".into()), Value::String("capability-request".into())]),
-                                Value::list([Value::Symbol("message".into()), Value::String(request_message.as_str().into())]),
-                            ])
-                            .to_string();
-                            {
-                                let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
-                                broker_state.subscribers.retain(|subscriber| {
-                                    if !subscriber.topics.is_empty() && !subscriber.topics.iter().any(|t| t == "capability-request") {
-                                        return true;
-                                    }
-                                    subscriber.sender.send(event_text.clone()).is_ok()
-                                });
-                            }
+                            broadcast_event(broker, from, "capability-request", &request_message);
 
                             {
                                 let mut mailbox_state = mailbox.lock().unwrap_or_else(|e| e.into_inner());
