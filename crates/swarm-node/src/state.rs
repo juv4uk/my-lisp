@@ -4,6 +4,7 @@
 
 use crate::journal::{Event, Journal};
 use crate::sexpr::Sexp;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct TaskState {
@@ -155,4 +156,46 @@ pub fn next_best_action(journal: &Journal, capabilities: &[String]) -> Option<(S
     let def = task_def(journal, &best.task)?;
     let ts = task_state(journal, &best.task);
     Some((best.task, def, ts))
+}
+
+/// M0.4: membership as facts, not a mutable table. `agent-joined` records
+/// (or updates) a node's declared capabilities/roles; `agent-left` marks it
+/// absent without erasing its history. Distinct from `presence` (main.rs),
+/// which is live connection state — membership is "has this node ever
+/// declared itself part of the swarm and what can it do", independent of
+/// whether it happens to be connected to *this* node right now.
+#[derive(Debug, Clone, Default)]
+pub struct Member {
+    pub capabilities: Vec<String>,
+    pub roles: Vec<String>,
+    pub present: bool,
+}
+
+pub fn is_voter(member: &Member) -> bool {
+    member.roles.iter().any(|r| r == "voter")
+}
+
+pub fn membership(journal: &Journal) -> HashMap<String, Member> {
+    let mut members: HashMap<String, Member> = HashMap::new();
+    for ev in &journal.events {
+        match ev.typ.as_str() {
+            "agent-joined" => {
+                let Some(node) = ev.payload.field_atom("node") else { continue };
+                let capabilities = string_list(&ev.payload, "capabilities");
+                let mut roles = string_list(&ev.payload, "roles");
+                if roles.is_empty() {
+                    roles.push("worker".to_string());
+                }
+                members.insert(node.to_string(), Member { capabilities, roles, present: true });
+            }
+            "agent-left" => {
+                let Some(node) = ev.payload.field_atom("node") else { continue };
+                if let Some(m) = members.get_mut(node) {
+                    m.present = false;
+                }
+            }
+            _ => {}
+        }
+    }
+    members
 }

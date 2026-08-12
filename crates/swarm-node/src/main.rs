@@ -47,8 +47,21 @@ struct Node {
     /// peers about the same newly-joined node doesn't race into duplicate
     /// outbound connection attempts.
     dialing: Mutex<HashSet<String>>,
-    /// Votes for an in-flight `claim-task` proposal, keyed by `task:generation`.
-    pending_votes: Mutex<HashMap<String, mpsc::Sender<bool>>>,
+    /// Votes for an in-flight `claim-task` proposal, keyed by `task:generation`,
+    /// carrying `(voter-node-id, vote)` so a tally can filter to actual voters.
+    pending_votes: Mutex<HashMap<String, mpsc::Sender<(String, bool)>>>,
+    /// How many `--connect` bootstrap addresses we were started with; 0
+    /// means we're the first node and are trivially caught up.
+    bootstrap_expected: usize,
+    /// Node ids we've received a definitive sync answer from (either
+    /// `sync-events` or `sync-complete`) since startup — see `synced()`.
+    caught_up_with: Mutex<HashSet<String>>,
+}
+
+impl Node {
+    fn synced(&self) -> bool {
+        self.bootstrap_expected == 0 || !self.caught_up_with.lock().unwrap().is_empty()
+    }
 }
 
 impl Node {
@@ -122,6 +135,8 @@ fn main() -> std::io::Result<()> {
         peer_addrs: Mutex::new(HashMap::new()),
         dialing: Mutex::new(HashSet::new()),
         pending_votes: Mutex::new(HashMap::new()),
+        bootstrap_expected: args.connect.len(),
+        caught_up_with: Mutex::new(HashSet::new()),
     });
 
     for addr in &args.connect {
@@ -252,6 +267,11 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("sync-events") => {
                 handle_sync_events(&node, &msg);
             }
+            Some("sync-complete") => {
+                if let Some(from) = msg.field_atom("from") {
+                    mark_caught_up(&node, from);
+                }
+            }
             Some("push-event") => {
                 handle_push_event(&node, &msg);
             }
@@ -287,6 +307,15 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             }
             Some("presence") => {
                 handle_presence(&node, &mut stream);
+            }
+            Some("join") => {
+                handle_join(&node, &msg, &mut stream);
+            }
+            Some("leave") => {
+                handle_leave(&node, &mut stream);
+            }
+            Some("list-members") => {
+                handle_list_members(&node, &mut stream);
             }
             other => {
                 eprintln!("swarm-node: unrecognized message head {other:?} from {peer_addr}");
@@ -442,6 +471,13 @@ fn handle_sync_hello(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
                 Sexp::list(vec![Sexp::atom("events"), Sexp::list(missing_events)]),
             ]),
         );
+    } else {
+        // Nothing missing is still a definitive answer — the requester needs
+        // *some* reply to know it has fully caught up, not just silence.
+        send(
+            stream,
+            &Sexp::list(vec![Sexp::atom("sync-complete"), Sexp::list(vec![Sexp::atom("from"), Sexp::atom(&node.identity.node_id)])]),
+        );
     }
 }
 
@@ -465,6 +501,20 @@ fn handle_sync_events(node: &Arc<Node>, msg: &Sexp) {
     }
     if applied > 0 {
         eprintln!("swarm-node: applied {applied} event(s) from anti-entropy sync");
+    }
+    if let Some(from) = msg.field_atom("from") {
+        mark_caught_up(node, from);
+    }
+}
+
+/// A definitive sync answer from `from_node` (whether or not it carried any
+/// events) means we're no longer in the "still discovering the swarm's
+/// history" state — see `Node::synced` and the `claim-task` gate on it.
+fn mark_caught_up(node: &Arc<Node>, from_node: &str) {
+    let was_synced = node.synced();
+    node.caught_up_with.lock().unwrap().insert(from_node.to_string());
+    if !was_synced && node.synced() {
+        eprintln!("swarm-node: caught up with the swarm via {from_node}, ready to claim work");
     }
 }
 
@@ -603,18 +653,33 @@ fn handle_claim_proposal(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 fn handle_claim_vote(node: &Arc<Node>, msg: &Sexp) {
     let task = msg.field_atom("task").unwrap_or("");
     let generation = msg.field_atom("generation").unwrap_or("0");
+    let voter = msg.field_atom("voter").unwrap_or("").to_string();
     let vote = msg.field_atom("vote") == Some("yes");
     let key = format!("{task}:{generation}");
     if let Some(tx) = node.pending_votes.lock().unwrap().get(&key) {
-        let _ = tx.send(vote);
+        let _ = tx.send((voter, vote));
     }
 }
 
 /// Local client op: `(claim-task (task <id>))`. Proposes the next generation
 /// to all currently connected peers and only commits (appends
-/// `claim-committed` to our own journal) once a majority of the total known
-/// nodes (self included) have voted yes within `VOTE_TIMEOUT`.
+/// `claim-committed` to our own journal) once a majority of the *voter*
+/// nodes (self included, if self is a voter) have voted yes within
+/// `VOTE_TIMEOUT`. If no membership has been declared via `join` yet
+/// (`state::membership` is empty), falls back to treating every connected
+/// peer as a voter — this keeps a bare mesh with no explicit roles working
+/// exactly as before M0.4 introduced the voter/worker distinction.
 fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    if !node.synced() {
+        send(
+            stream,
+            &Sexp::list(vec![
+                Sexp::atom("error"),
+                Sexp::string("not yet caught up with the swarm (still syncing with peers) — retry shortly"),
+            ]),
+        );
+        return;
+    }
     let Some(task) = msg.field_atom("task") else {
         send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string("claim-task requires a `task` field")]));
         return;
@@ -622,6 +687,7 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 
     let journal = node.journal.lock().unwrap();
     let current = state::task_state(&journal, task);
+    let membership = state::membership(&journal);
     drop(journal);
 
     if current.completed {
@@ -639,14 +705,22 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         return;
     }
 
+    let declared_voters: HashSet<String> = membership.iter().filter(|(_, m)| m.present && state::is_voter(m)).map(|(id, _)| id.clone()).collect();
+    let connected: Vec<String> = node.peers.lock().unwrap().keys().cloned().collect();
+    let (voting_peers, self_votes): (Vec<String>, usize) = if declared_voters.is_empty() {
+        // No membership declared anywhere yet: legacy behavior, everyone connected counts.
+        (connected, 1)
+    } else {
+        let self_is_voter = declared_voters.contains(&node.identity.node_id);
+        (connected.into_iter().filter(|id| declared_voters.contains(id)).collect(), if self_is_voter { 1 } else { 0 })
+    };
+    let total_nodes = (voting_peers.len() + self_votes).max(1);
+    let quorum = total_nodes / 2 + 1;
+
     let generation = current.generation + 1;
     let key = format!("{task}:{generation}");
-    let (tx, rx) = mpsc::channel::<bool>();
+    let (tx, rx) = mpsc::channel::<(String, bool)>();
     node.pending_votes.lock().unwrap().insert(key.clone(), tx);
-
-    let peer_count = node.peers.lock().unwrap().len();
-    let total_nodes = peer_count + 1; // + self
-    let quorum = total_nodes / 2 + 1;
 
     broadcast_to_peers(
         node,
@@ -658,20 +732,22 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         ]),
     );
 
-    let mut yes_votes = 1; // self
-    let mut responses = 0;
+    let mut yes_votes = self_votes;
+    let mut counted_responses = 0;
     let deadline = Instant::now() + VOTE_TIMEOUT;
-    while yes_votes < quorum && responses < peer_count {
+    while yes_votes < quorum && counted_responses < voting_peers.len() {
         let remaining = deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
             break;
         }
         match rx.recv_timeout(remaining) {
-            Ok(true) => {
-                yes_votes += 1;
-                responses += 1;
+            Ok((voter, vote)) if voting_peers.contains(&voter) => {
+                counted_responses += 1;
+                if vote {
+                    yes_votes += 1;
+                }
             }
-            Ok(false) => responses += 1,
+            Ok(_) => {} // vote from a non-voter (or unknown sender): not tallied
             Err(_) => break,
         }
     }
@@ -700,7 +776,7 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             &Sexp::list(vec![
                 Sexp::atom("error"),
                 Sexp::string(format!(
-                    "quorum not reached for `{task}` generation {generation}: {yes_votes}/{quorum} needed (of {total_nodes} known nodes)"
+                    "quorum not reached for `{task}` generation {generation}: {yes_votes}/{quorum} needed (of {total_nodes} voter nodes)"
                 )),
             ]),
         );
@@ -836,7 +912,11 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 /// highest-scoring unclaimed, uncompleted, dependency-satisfied task whose
 /// required capabilities are a subset of the caller's. Capability mismatch
 /// is a hard gate (excluded, not down-ranked) — matches the `:9999` design.
+/// If `capabilities` is omitted, falls back to this node's own declared
+/// capabilities from `join` (M0.4) rather than an empty set — a joined
+/// agent shouldn't have to repeat its capabilities on every request.
 fn handle_next_best_action(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    let journal = node.journal.lock().unwrap();
     let capabilities = match msg.field("capabilities").and_then(|f| f.first()) {
         Some(Sexp::List(items)) => items
             .iter()
@@ -845,9 +925,8 @@ fn handle_next_best_action(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream)
                 _ => None,
             })
             .collect(),
-        _ => Vec::new(),
+        _ => state::membership(&journal).get(&node.identity.node_id).map(|m| m.capabilities.clone()).unwrap_or_default(),
     };
-    let journal = node.journal.lock().unwrap();
     let best = state::next_best_action(&journal, &capabilities);
     drop(journal);
     match best {
@@ -883,4 +962,76 @@ fn handle_presence(node: &Arc<Node>, stream: &mut TcpStream) {
         stream,
         &Sexp::list(vec![Sexp::atom("presence"), Sexp::list(ids.into_iter().map(Sexp::atom).collect())]),
     );
+}
+
+/// Local client op: `(join (capabilities (a b)) (roles (worker)))`.
+/// Declares this agent's capabilities/roles as an `agent-joined` fact — a
+/// durable, replicated statement of "I am part of this swarm and here is
+/// what I can do", independent of any one connection. Roles default to
+/// `(worker)` when omitted; only a node with an explicit `voter` role
+/// counts toward `claim-task` quorum (see `handle_claim_task`).
+fn handle_join(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    let capabilities = msg.field("capabilities").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
+    let roles = msg.field("roles").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![Sexp::atom("worker")]));
+    let payload = Sexp::list(vec![
+        Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)]),
+        Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
+        Sexp::list(vec![Sexp::atom("capabilities"), capabilities]),
+        Sexp::list(vec![Sexp::atom("roles"), roles]),
+    ]);
+    let lamport = node.tick_lamport(0);
+    let mut journal = node.journal.lock().unwrap();
+    let seq = journal.next_seq(&node.identity.node_id);
+    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "agent-joined".to_string(), payload };
+    match journal.append(event.clone()) {
+        Ok(()) => {
+            drop(journal);
+            send(stream, &Sexp::list(vec![Sexp::atom("ok"), Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)])]));
+            broadcast_event(node, &event, None);
+        }
+        Err(e) => send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("journal append failed: {e}"))])),
+    }
+}
+
+/// Local client op: `(leave)`. Records `agent-left` — membership history is
+/// kept, not erased, matching the immutable-facts philosophy; `present`
+/// just flips to false in the derived view.
+fn handle_leave(node: &Arc<Node>, stream: &mut TcpStream) {
+    let payload = Sexp::list(vec![
+        Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)]),
+        Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
+    ]);
+    let lamport = node.tick_lamport(0);
+    let mut journal = node.journal.lock().unwrap();
+    let seq = journal.next_seq(&node.identity.node_id);
+    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "agent-left".to_string(), payload };
+    match journal.append(event.clone()) {
+        Ok(()) => {
+            drop(journal);
+            send(stream, &Sexp::list(vec![Sexp::atom("ok"), Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)])]));
+            broadcast_event(node, &event, None);
+        }
+        Err(e) => send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("journal append failed: {e}"))])),
+    }
+}
+
+fn handle_list_members(node: &Arc<Node>, stream: &mut TcpStream) {
+    let journal = node.journal.lock().unwrap();
+    let members = state::membership(&journal);
+    drop(journal);
+    let mut ids: Vec<&String> = members.keys().collect();
+    ids.sort();
+    let entries: Vec<Sexp> = ids
+        .into_iter()
+        .map(|id| {
+            let m = &members[id];
+            Sexp::list(vec![
+                Sexp::list(vec![Sexp::atom("node"), Sexp::atom(id)]),
+                Sexp::list(vec![Sexp::atom("present"), Sexp::atom(if m.present { "t" } else { "nil" })]),
+                Sexp::list(vec![Sexp::atom("roles"), Sexp::list(m.roles.iter().map(Sexp::atom).collect())]),
+                Sexp::list(vec![Sexp::atom("capabilities"), Sexp::list(m.capabilities.iter().map(Sexp::atom).collect())]),
+            ])
+        })
+        .collect();
+    send(stream, &Sexp::list(vec![Sexp::atom("members"), Sexp::list(entries)]));
 }

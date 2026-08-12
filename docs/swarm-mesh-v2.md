@@ -101,6 +101,16 @@ every already-connected peer except the one just announced — this is what
 lets a node that joined *before* another one existed still learn about it
 later, not just at its own connect time.
 
+Connecting is only network-level reachability, though — a node should still
+announce itself to the swarm before doing any work:
+
+```lisp
+(join (capabilities (rust compiler testing)) (roles (worker)))
+```
+
+This is what makes the node visible in `list-members` and eligible for
+`next-best-action` scoring against its declared capabilities (M0.4).
+
 Causal ordering uses a Lamport clock (`local = max(local, received) + 1`),
 not wall-clock time — WSL/Windows clocks drift enough to matter for
 ordering, though timestamps are still stored for humans to read.
@@ -149,6 +159,37 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   its own timeout/cleanup and wasn't worth the complexity before real usage
   shows it matters (single-writer-per-task in the current 4-agent swarm
   makes true concurrent proposals unlikely in practice).
+
+- **M0.4** — done: dynamic membership. A node no longer needs to be one of
+  a fixed, known-in-advance set:
+  - `join` / `leave` — `agent-joined`/`agent-left` facts declaring a node's
+    `capabilities` and `roles` (default `(worker)`). Membership is derived
+    from these facts (`list-members`), the same "same facts -> same
+    reducer -> same state" rule as everything else, distinct from live
+    `presence` (main.rs derives that from open connections, not the log,
+    since "up right now" is inherently ephemeral).
+  - **voter/worker split for quorum**: only nodes that declared a `voter`
+    role count toward `claim-task`'s majority-vote denominator. A worker
+    can still `claim-task`/`complete-task`/read everything, it just isn't
+    counted when tallying votes — adding workers no longer makes consensus
+    more expensive. If no membership has been declared at all (nobody's
+    called `join`), quorum falls back to "every connected peer counts",
+    preserving M0.2's original behavior for a bare mesh.
+  - **catch-up-before-work**: `claim-task` is rejected with "not yet caught
+    up with the swarm" until a node has received a definitive sync answer
+    (`sync-events`, or the new `sync-complete` when there was nothing
+    missing) from at least one bootstrap peer — a node that joined mid-way
+    through the swarm's history can't claim work off a stale/empty picture
+    of the world. (`sync-complete` had to be added because the previous
+    protocol only replied when there *was* something to send, leaving a
+    fully-caught-up node with no signal to distinguish "nothing missing"
+    from "still waiting.")
+
+  Validated: a worker joins an already-running 3-voter mesh through one
+  `--connect`, is visible in `list-members` on every node, its own claim
+  only needs 2/3 *voter* votes (its own vote/presence doesn't inflate the
+  denominator), and `leave` flips it to `present: nil` everywhere without
+  erasing its join history.
 - **M0.3** — done: `define-task` (task metadata as a `task-defined` fact —
   priority, capabilities, depends-on, description), `next-best-action`
   (same scoring as `:9999`: `priority * (1 + unblock_impact)`, capability
