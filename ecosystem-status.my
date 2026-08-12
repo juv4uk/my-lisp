@@ -19,90 +19,71 @@
 ; й у language-contract.my/isa-contract.my/compatibility.my.
 
 ((kind . ecosystem-status)
- (as-of . "2026-08-11")
+ (as-of . "2026-08-12")
+ (task-board-note .
+  "The `current-task` field per repository below IS the task board — read
+   it before starting work so effort isn't duplicated, update your own
+   repo's entry (and `as-of`) when your task changes. Not a live feed:
+   a snapshot, refreshed by hand, same as the rest of this file. For
+   anything time-sensitive faster than a hand-edit, use notify/poll on
+   the my-lisp TCP oracle (127.0.0.1:9999, --protocol=sexpr) — but a
+   mailbox ping is a hint to re-read this file or an evidence/ record,
+   never itself the durable fact.")
  (repositories .
   ((my-lisp .
     ((role . semantic-source-of-truth)
      (language-contract . (1 0))
      (exactness-model . fully-implemented)
      (blocking-others . nil)
-     (rust-toolchain-on-this-machine . (installed 1 97 1))
-     (msvc-linker-status . working-after-disk-freed)
-     (gnu-toolchain-status . flaky-shared-rustup-default-with-cml-use-msvc-instead)
-     (tcp-repl . (flag "--tcp[=PORT]" commit "1a9dd63" bind "127.0.0.1-only"
-                   isolation-fix "c762a0c" logging "8c1631a"
-                   note "each connection gets its own fresh Environment::root(), not a shared mutable Session — a connection's def is invisible to every other connection; every expression logged to stderr with peer address"))))
+     (rust-toolchain-on-this-machine . (guix rust 1 93 0))
+     (environment . "WSL2 + Guix, shared profile /var/guix/profiles/shared/guix-profile, per-repo Linux user (wsl -u my-lisp), working dir stays /mnt/c/GitHub/my-lisp — owner-confirmed, not ~/projects or ~/src")
+     (channels-scm . "channels.scm at repo root, pins guix commit 5375f33 (verified: cargo build/test --workspace clean under it)")
+     (tcp-repl . (flag "--tcp[=PORT]" protocol-flag "--protocol=sexpr"
+                   note "each connection gets its own fresh Environment::root() for eval/parse/diagnose — a connection's def is invisible to every other connection. notify/poll (commit c1299f3) are the one exception: a single server-wide in-memory mailbox, 500-entry cap, non-persistent, separate from the isolated eval sessions"))
+     (open-item . "crates/my-lisp-cli/tests/cli.rs: 4 sexpr_protocol_* tests still #[ignore]d — ConnectionRefused, root cause unknown, confirmed NOT Windows/WSL/DrvFs/libtest-in-general, isolated to that specific test binary (commit 4eb85ce documents what's been ruled out)")
+     (current-task . "infra/coordination support (guix toolchain, TCP oracle protocol, channels.scm/evidence schema) — no open product work on the language itself right now")))
    (fpga-lisp .
     ((role . hardware-implementation)
      (isa-contract . (1 0))
-     (evidence . "evidence/G5/fpga-lisp/ and evidence/G8/fpga-lisp/ in the fpga-lisp repo, not duplicated here — see evidence/README.md's protocol")
-     (hardware-verified-milestones . (m01 . m27))
-     (m28-status . passed-real-iverilog-run)
-     (m28-commit . "447ee0e")
-     (m28-fix-commit . "7542682")
-     (m29-status . passed-real-iverilog-run)
-     (m29-commit . "cec7889")
-     (m29-note . "canonical tail-recursive length/length-onto — bootstraps reverse/append/map from core.my")
-     (m28-m29-root-cause . "not the letrec/SETCDR mechanism — that worked correctly from the start. The two demo files' test data (a b c) was passed unquoted into a call position, so it was evaluated as code: 'a looked up as an operator, unbound lookup fell through to NIL, CAR(NIL) hit a type error, and halted with garbage registers — which read as the wrong result (a stray symbol) and was first misdiagnosed as a call-stack imbalance bug. Every earlier bootstrap demo had correctly quoted its test data; these two didn't. Fixed by quoting '(a b c) in both files. Re-run confirmed: M28 PASSED (sim time 115224960), M29 PASSED (sim time 121180340), R9=TAG:FIXNUM VAL:3 in both.")
-     (ci-commit . "9e9ea06")
-     (ci-status . green)
-     (conformance-my-running . nil)
+     (evidence . "evidence/G5/fpga-lisp/, evidence/G8/fpga-lisp/ in the fpga-lisp repo — see evidence/README.md's protocol; M28-M32 results reported via mailbox as of this writing, not yet filed as evidence/ records")
+     (hardware-verified-milestones . (m01 . m32))
+     (m28-m29-m30-m31 . "letrec self-recursion (M28), canonical tail-recursive length/length-onto (M29), reverse/reverse-onto — first real CONS-structure result (M30), append built on M30 (M31, commit 4a4f032) — all PASSED on real iverilog, cross-checked against the my-lisp TCP oracle")
+     (m32 . "equal? — PASSED on real iverilog first try (commit 4a218fb): (equal? '(p . q) '(p . q)) => t via structural, not pointer, equality across two separately-allocated cons cells")
      (open-blocker . nil)
-     (open-blocker-note . "letrec-in-closures (plan item 24) resolved — M28/M29 both pass on real iverilog now that the actual bug (unquoted test data, not the mechanism) was found and fixed")
-     (isa-representational-gaps . (no-inexact-numbers no-rationals no-string-tag))))
+     (isa-representational-gaps . (no-inexact-numbers no-rationals no-string-tag))
+     (current-task . "M32 equal? just landed (32/32 milestones); next unclear as of this writing — check mailbox/NOTE-FROM-MY-LISP.md for latest")))
    (cml .
     ((role . aot-compiler)
      (compiler-version . (0 1 0))
-     (tested-my-lisp-sha . "ed10151")
-     (tested-fpga-lisp-sha . "01bb01a")
-     (tier-1-fixtures . (29 . 34))
-     (equal-status . merged-fixed-and-now-genuinely-verified)
-     (equal-commit . "6b884a8")
-     (equal-fix-commit . "4565549")
-     (equal-regression-1 . "register-clobber in cons/eq/equal? — a nested call overwrote the caller's R1; fixed af64449, verified on (cons 'a 'b)")
-     (equal-regression-2-was-a-false-alarm . "RETRACTED by cml, twice in a row: the reported 'hang' on real hardware was cold vvp startup taking 30-45s+ for this machine on a ~50-60-instruction binary, combined with too-short wall-clock timeouts (20-60s) cutting the run off before it finished. With 90-180s timeouts, cml_equal genuinely completes and returns TAG:4 VAL:1 (TRUE) correctly. Bit-traced via register-dump probes — matched hand-trace exactly, no bug in JF/G8 or R11 call-stack balance. Committed 2371a04, equal? back in supported/working. Lesson: on this machine, always budget cold-start vvp latency before concluding a hang from a short timeout")
-     (defmacro-status . merged-fixed-and-now-genuinely-verified)
-     (defmacro-commit . "a8e6cdf")
-     (tier-1-skips-remaining . 0)
-     (tier-1-fixtures-passing . 24)
-     (ci-status . was-falsely-reported-green-now-corrected)
-     (ci-false-positive-note . "all 8 CI runs on master from 6b884a8 onward actually FAILURE — cml first checked via WebFetch on the GitHub Actions HTML page, which misreported success; installing iverilog+python3 locally and running for real failed immediately on (equal? '(p . 0) (cons 'p 0)) with UnknownSymbol; root cause was the test harness's static_error() unknown-operator table not updated when equal? was added — the compiler itself always compiled equal? correctly, only the harness's static check was wrong; fixed in 4565549, status doc corrected in 3f2c8d7. Lesson recorded ecosystem-wide: verify CI via the REST API (conclusion field on /actions/runs) not the HTML Actions page")
-     (ci-created-without-user-confirmation . t)
-     (compatibility-my-updated . "b2c52c2")
-     (compatibility-my-note . "pipeline now includes macro-expand; supported now includes equal?/defmacro; conformance is 34 tagged tier-1, 9 skipped, all one inexact-number gap")
-     (testing-docs . "docs/testing.md (218e461), trilingual, linked from README")
-     (agents-md . "b347c03")
-     (tcp-repl-connected . t)
+     (recursive-def-status . resolved)
+     (recursive-def-fix . "compile_cond was using R4 (the ENV register) as a scratch register for its NIL-check, silently clobbering the environment on every cond — fixed commit e73f93a; self-recursive (def count (lambda (n) (cond ((eq n 0) 99) (t (count (+ n -1)))))) now returns 99 on real iverilog")
+     (length-e2e . "actively running as of this writing (tb_cml_e2e.sv, my-lisp -> cml -> fpga-lisp, the ecosystem's pinned next-milestone target) — result not yet confirmed back to my-lisp session; check mailbox/evidence/length/ once it lands")
+     (equal-status . merged-fixed-and-verified)
+     (defmacro-status . merged-fixed-and-verified)
      (documented-limitations . (no-inexact-numbers no-rationals no-canonical-strings
-                                 no-more-than-eight-call-arguments))))
+                                 no-more-than-eight-call-arguments))
+     (current-task . "confirm+file length_e2e result as evidence/length/cml/<sha>.my and evidence/length/fpga-lisp/<sha>.my once the run completes")))
    (my-idea .
     ((role . observer-and-ide)
      (joined-ecosystem-sync . "2026-08-11")
      (depends-on-my-lisp-via . (cargo-git-dependency git-submodule))
-     (revision-sync-risk . manual-only-no-ci-invariant)
-     (planned-feature . system-observatory)))))
+     (revision-sync-risk . "embedded external/my-lisp submodule pinned at a possibly-different SHA than the live TCP oracle's my-lisp build or cml's tested-my-lisp-sha — no automated check; UI should ideally surface all three SHAs and flag semantic-contract mismatch vs. mere revision drift")
+     (evidence-matrix-fixture-drill-down . "live, commit 3dc7121 — click a requirement row for source+expected/actual/commit/note per implementation")
+     (current-task . "cargo check --workspace was rustc-version-blocked (darling/icu/time/zbus/plist all need >=1.86-1.88), unblocked now that guix rust is 1.93.0 — retry and report")))))
  (open-blockers .
-  ((letrec-in-fpga-lisp-closures .
-    "RESOLVED (7542682) — M28/M29 both PASSED on real iverilog; the letrec/SETCDR mechanism itself was correct throughout, the bug was unquoted test data in two demo files, not the mechanism")
-   (no-ecosystem-ci-until-now .
-    "cml's CI (created unilaterally 2026-08-11 before user confirmation arrived) was first reported green via a since-debunked HTML-page check, then found genuinely FAILURE on all 8 runs, root-caused (stale unknown-operator table in the test harness, not the compiler) and fixed in 4565549 — equal?/defmacro are now actually machine-verified, not just reported as such")
-   (verify-ci-via-rest-api-not-html .
-    "cml's WebFetch on github.com/.../actions misreported a failing run as success; the REST API's `conclusion` field (api.github.com/repos/.../actions/runs?head_sha=...) is the reliable source — applies to any repo in this ecosystem checking CI status, not just cml")
+  ((cli-rs-connectionrefused .
+    "crates/my-lisp-cli/tests/cli.rs, 4 sexpr_protocol_* tests. Confirmed NOT Windows Firewall/Defender, NOT WSL2/DrvFs-vs-native-fs, NOT cargo test/libtest in general (a minimal standalone repro crate with the identical spawn/banner/retry pattern against the same child binary always succeeds first try, in and out of libtest). Isolated to this one test binary specifically. True root cause still open — see the block comment above the four #[ignore]d tests, commit 4eb85ce.")
    (isa-no-inexact-rational-string .
-    "representational gap, not an implementation gap; blocks my-lisp's stated core purpose (exact rational arithmetic) from ever reaching fpga-lisp until isa-contract.my adds tags/encoding for it")
-   (m28-manual-verification-was-wrong .
-    "fpga-lisp's M28 (447ee0e) was reported manually-verified-passing but its first real iverilog run returns the param symbol instead of FIXNUM 3 — a lesson that manual trace is not a substitute for the simulator, applies equally to any 'verified by inspection' claim from any repo in this ecosystem")))
- (pending-user-decisions .
-  ((cml-ci-after-the-fact . "accept cml's unilateral CI creation, or have it reverted?")))
+    "representational gap, not an implementation gap; blocks my-lisp's stated core purpose (exact rational arithmetic) from ever reaching fpga-lisp until isa-contract.my adds tags/encoding for it — needs a representation contract before any RTL/cml lowering work, not an ad-hoc format invented mid-implementation")))
  (next-milestone .
   ((name . pinned-end-to-end-length)
-   (goal . "one real, non-trivial my-lisp program (length, not a single CAR) proven identical end-to-end: my-lisp interpreter result == cml-compiled fpga-lisp result, on a pinned SHA triple, with the comparison itself automated (not a manually-eyeballed register dump) and the result surfaced as evidence in my-idea, not just a green CI badge")
-   (why . "user's own assessment after reviewing this session's history: cross-agent coordination (AGENTS.md, NOTE-*, status docs) is supporting infrastructure, not the product — risk of 'documentation about documentation' commits crowding out actual product work. This is the concrete next product step, not another status file")
+   (status . "in progress — cml running the actual pipeline as of this writing, not yet confirmed complete")
+   (goal . "one real, non-trivial my-lisp program (length) proven identical end-to-end: my-lisp interpreter result == cml-compiled fpga-lisp result, on a pinned SHA triple, comparison automated, result surfaced as evidence — not a manually-eyeballed register dump or a green CI badge")
    (per-repo .
-    ((my-lisp . "expose the interpreter result for `length` on a fixed input as the oracle value — this is already what tests/fixtures/conformance.my's tier-1 fixtures are for; no new work needed here unless cml/fpga-lisp need a different entry point")
-     (cml . "compile that same `length` fixture to fpga-lisp ISA on a pinned my-lisp SHA, keep the binary/assembly reproducible — scoped by cml itself: the compiler currently has zero support for named self/mutually-recursive `def` (only lambda/let/cond/primitives/quote), so this milestone requires implementing that first, automating what fpga-lisp hand-assembled for M28/M29 (placeholder-pair + SETCDR backpatch), not just pointing the existing compiler at a new fixture")
-     (fpga-lisp . "run the compiled binary on real iverilog, decode the result structurally (not raw register dump)")
-     (my-idea . "one panel: source -> compiled instructions -> execution -> decoded result -> oracle match, PASS/FAIL, not a text dump")))
-   (anti-pattern-to-avoid . "no more NOTE-*.md proliferation or 'agent X replied to agent Y' commits — coordinate this milestone through this one field and normal commits that actually touch code")))
+    ((my-lisp . "done — tests/fixtures/conformance.my's tier-1 fixtures already expose the oracle value; no further work needed unless cml/fpga-lisp need a different entry point")
+     (cml . "in progress — recursive def resolved (e73f93a), length_e2e run underway via tb_cml_e2e.sv")
+     (fpga-lisp . "waiting on cml's run to land, then decode the result structurally and confirm")
+     (my-idea . "not started — one panel: source -> compiled instructions -> execution -> decoded result -> oracle match, PASS/FAIL")))
+   (anti-pattern-to-avoid . "no more NOTE-*.md proliferation or 'agent X replied to agent Y' commits — coordinate through this file's current-task fields and normal commits that actually touch code")))
  (how-to-refresh .
-  "Ask the four-point status request from docs/ecosystem-sync.md via the CCD session-management message tool, then hand-update this file's relevant repositories/open-blockers entries. Keep docs/ecosystem-sync.md and ecosystem-status.md's prose in sync with this file's facts."))
+  "Before starting new work, read this file's current-task fields. When your own repo's task changes, hand-update your repository's current-task entry and this file's as-of date directly (or notify the my-lisp session to do it if you can't write here) — don't let it go stale the way it did between 2026-08-11 and 2026-08-12 (recursive-def and M28-M32 status both drifted out of date here while very much current in mailbox/NOTE-* traffic)."))
