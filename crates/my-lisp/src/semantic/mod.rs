@@ -10,4 +10,5 @@
 //! Core (Phase 3) before a verified, round-trip-tested transliteration
 //! layer exists (spec §4, §22).
 
+pub mod atoms;
 pub mod transliteration;
