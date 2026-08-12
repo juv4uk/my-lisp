@@ -19,11 +19,19 @@ to remember:
 3. `(request (id 3) (op next-best-action) (from "my-lisp"))` — see
    what's actionable before deciding what to work on.
 
+The mesh you run against is **P2P, not a hub**: every agent runs its
+own server on its own port (my-lisp `--tcp=9991`, cml `9992`,
+fpga-lisp `9993`, my-idea `9994`), and peers are reached directly via
+`--connect=HOST:PORT` — see `docs/swarm-autonomy.md` for the full loop
+(sync your own `tasks.my`, query peers, notify them). `9999` is the
+legacy shared oracle; new work targets the per-peer ports.
+
 Full protocol (`notify`/`poll`, `claim`/`release`, `presence`,
-`define-task`, `capability-request`, event replay via `subscribe`'s
-`since`) is documented below and in `docs/swarm-coordination.md`. This
-isn't a suggestion to check when convenient — do it first, the same way
-you'd read this file first.
+`define-task`, `capability-request`, `sync-tasks`, event replay via
+`subscribe`'s `since`) is documented below and in
+`docs/swarm-coordination.md` + `docs/swarm-autonomy.md`. This isn't a
+suggestion to check when convenient — do it first, the same way you'd
+read this file first.
 
 ## Role
 
@@ -145,6 +153,23 @@ connection) for three distinct things:
   else is excluded outright, not merely down-ranked. `unblock-impact`
   is how many other not-yet-done tasks list this one in `depends-on`.
   In-memory, non-persistent.
+
+- `sync-tasks`/`sync-milestone` — bridge durable files into the
+  in-memory task registry, so `next-best-action` has something to score
+  without every repo's own `define-task` calls re-typing what a
+  git-tracked file already says. `sync-tasks` takes `file`, expects a
+  `((tasks . (("id" . ((priority . N) (capabilities . (...))
+  (depends-on . (...)) (done . t-or-nil))) ...)))` shape — upserts each
+  listed task, preserving `done` unless the file overrides it, leaves
+  tasks *not* listed alone. `sync-milestone` takes `file`, reads
+  `ecosystem-status.my`'s own `next-milestone.per-repo` alist directly
+  (no new file format) and defines one `MILESTONE:<name>:<repo>` task
+  per entry at priority 5.0 with `capabilities (repo)` — the convention
+  this creates is including your own repo name in `hello`'s
+  `capabilities` so this surfaces specifically to you. Neither op
+  reads a description back through `next-best-action` (that only
+  returns task ids + scores) — the task-created event's `message`
+  carries the prose once, at creation; otherwise read the source file.
 
 - `capability-request` — temporary coalition formation (owner decision,
   2026-08-12). Takes `from`, optional `task`, `needs` (a capability
