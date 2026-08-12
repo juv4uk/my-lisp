@@ -208,6 +208,49 @@ fn bool_from_value(value: &Value) -> Option<bool> {
     }
 }
 
+/// Set once, at this process's first response, to the wall-clock second
+/// it started — not persisted, not synced, just a number that's
+/// guaranteed different after any restart. Exists for exactly one
+/// reason: a *stateless* client (one tool call per turn, no long-lived
+/// process to hold a `subscribe` connection or notice a dropped socket)
+/// has no other way to detect "the server I last talked to is gone and
+/// this is a new one" — everything else in this protocol (`claim`,
+/// `presence`, the task registry) resets silently on restart, and
+/// polling alone can't distinguish "nothing changed" from "everything
+/// I knew was wiped." Carried on every response so any single call
+/// reveals it, without a dedicated op to ask.
+static SERVER_GENERATION: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+
+/// 1-indexed (line, column) for a byte offset into `source` — turns a
+/// `LanguageError`'s `span.start` (a raw byte position) into something
+/// a human or agent can actually jump to in an editor, for
+/// `validate-tasks`'s error reporting.
+fn line_col_at(source: &str, byte_offset: usize) -> (usize, usize) {
+    let mut line = 1usize;
+    let mut col = 1usize;
+    for (i, ch) in source.char_indices() {
+        if i >= byte_offset {
+            break;
+        }
+        if ch == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
+}
+
+fn server_generation() -> u64 {
+    *SERVER_GENERATION.get_or_init(|| {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    })
+}
+
 /// `output` carries every `print`/`println`-style side-effect line the
 /// evaluated expression produced, in order — dropping it (the first cut
 /// of this protocol did) silently discards real program output, which is
@@ -223,6 +266,7 @@ fn ok_response(id: &Value, value: Value, output: &[String], contract_version: &V
             Value::list(output.iter().map(|line| Value::String(line.as_str().into()))),
         ]),
         Value::list([Value::Symbol("contract-version".into()), contract_version.clone()]),
+        Value::list([Value::Symbol("server-generation".into()), Value::Number(server_generation() as f64, Exactness::Exact)]),
     ])
 }
 
@@ -234,6 +278,7 @@ fn error_response(id: &Value, kind: &str, message: &str, contract_version: &Valu
         Value::list([Value::Symbol("kind".into()), Value::Symbol(kind.into())]),
         Value::list([Value::Symbol("message".into()), Value::String(message.into())]),
         Value::list([Value::Symbol("contract-version".into()), contract_version.clone()]),
+        Value::list([Value::Symbol("server-generation".into()), Value::Number(server_generation() as f64, Exactness::Exact)]),
     ])
 }
 
@@ -1089,6 +1134,99 @@ fn handle_sexpr_connection(
                                 }
                             }
                         }
+                    },
+                    // Dry-run of `sync-tasks` (below): same file, same
+                    // parsing, same per-entry checks, but never touches
+                    // the task registry — no lock acquisition on `tasks`,
+                    // no `task-created` events. Written because a
+                    // malformed `tasks.my` (an extra paren, a typo'd key)
+                    // used to be found by trial and error against the
+                    // live registry; this reports a top-level parse
+                    // error's exact 1-indexed `(line . N) (column . N)`
+                    // (from the same `LanguageError` `span` `sync-tasks`
+                    // already gets, just not previously surfaced as a
+                    // position) plus every per-entry warning `sync-tasks`
+                    // would have produced, so a syntax mistake is visible
+                    // before it ever reaches the shared server-wide state.
+                    Some("validate-tasks") => match &file {
+                        None => error_response(&id, "invalid-form", "op `validate-tasks` requires a `file` field", &contract_version),
+                        Some(path) => match fs::read_to_string(path) {
+                            Err(e) => error_response(&id, "io-error", &format!("cannot read `{path}`: {e}"), &contract_version),
+                            Ok(content) => match parse(&content) {
+                                Err(e) => {
+                                    let (line, column) = line_col_at(&content, e.span.start);
+                                    error_response(
+                                        &id,
+                                        error_kind_symbol(&e.kind),
+                                        &format!("{} (line {line}, column {column})", e.message),
+                                        &contract_version,
+                                    )
+                                }
+                                Ok(ast) if ast.len() != 1 => error_response(
+                                    &id,
+                                    "invalid-form",
+                                    "op `validate-tasks` expects a single top-level form (one flat alist) in the file",
+                                    &contract_version,
+                                ),
+                                Ok(_) => {
+                                    let quoted_file = format!("(quote {content})");
+                                    let rendered = parse(&quoted_file).ok().and_then(|q| {
+                                        eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
+                                    });
+                                    match rendered {
+                                        None => error_response(
+                                            &id,
+                                            "parse-error",
+                                            "file parsed but could not be rendered as data",
+                                            &contract_version,
+                                        ),
+                                        Some(file_value) => match dotted_alist_lookup(&file_value, "tasks") {
+                                            None => error_response(
+                                                &id,
+                                                "invalid-form",
+                                                "validate-tasks file must contain a `(tasks . ...)` alist key",
+                                                &contract_version,
+                                            ),
+                                            Some(tasks_value) => {
+                                                let mut would_define: Vec<String> = Vec::new();
+                                                let mut warnings: Vec<String> = Vec::new();
+                                                for entry in list_items(&tasks_value) {
+                                                    let Value::Pair(task_id_value, props_value) = &entry else {
+                                                        warnings.push("a task entry is not a dotted pair (task-id . props)".to_string());
+                                                        continue;
+                                                    };
+                                                    let Some(task_id) = atom_string(task_id_value) else {
+                                                        warnings.push("a task id is neither a string nor a symbol".to_string());
+                                                        continue;
+                                                    };
+                                                    if task_id.is_empty() {
+                                                        warnings.push("a task id is empty".to_string());
+                                                        continue;
+                                                    }
+                                                    if let Some(priority_value) = dotted_alist_lookup(props_value, "priority") {
+                                                        if !matches!(priority_value, Value::Number(_, _)) {
+                                                            warnings.push(format!("task `{task_id}`: `priority` is not a number"));
+                                                        }
+                                                    }
+                                                    would_define.push(task_id);
+                                                }
+                                                let value = Value::list([
+                                                    Value::list([
+                                                        Value::Symbol("would-define".into()),
+                                                        Value::list(would_define.into_iter().map(|task_id| Value::String(task_id.as_str().into()))),
+                                                    ]),
+                                                    Value::list([
+                                                        Value::Symbol("warnings".into()),
+                                                        Value::list(warnings.into_iter().map(|warning| Value::String(warning.as_str().into()))),
+                                                    ]),
+                                                ]);
+                                                ok_response(&id, value, &[], &contract_version)
+                                            }
+                                        },
+                                    }
+                                }
+                            },
+                        },
                     },
                     // Imports the durable task plan from a `tasks.my`
                     // flat-alist file (same data convention as
