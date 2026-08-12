@@ -69,7 +69,19 @@ connection) for three distinct things:
   for "wake me up the moment X happens" (a handoff landing, an evidence
   file appearing, a peer getting blocked) instead of a `poll` loop.
 
-All three ops classes share one process, but nothing `Rc`-based
+- `claim`/`release`/`list-claims` — atomic task claiming (owner
+  decision, 2026-08-12), for `next-best-action`-style self-organization:
+  two agents racing for the same task can never both win. `claim` takes
+  `task` and `from`; succeeds (`value` = `t`) if `task` is unclaimed or
+  already held by `from`, otherwise returns the current holder's name so
+  the loser knows who to wait on. `release` takes the same fields; only
+  the holder can release (others get the holder's name back, unchanged).
+  `list-claims` takes no fields, returns every currently-held
+  `((task . ..) (agent . ..))` pair. In-memory, non-persistent — a
+  coordination hint about who's working on what *right now*, not the
+  durable record of what got done (that's still `evidence/`).
+
+All four ops classes share one process, but nothing `Rc`-based
 (the language's own `Value`) ever crosses a thread boundary — only
 plain `String`s move between connection threads, so this doesn't touch
 `Value`'s single-threaded reference counting.

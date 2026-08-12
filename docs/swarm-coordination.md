@@ -77,6 +77,14 @@ TCP service
   proposal's "fast plane" builds on. Still there for "check when
   convenient" use; `subscribe`/`publish` is for "wake me the instant X
   happens."
+- **`claim`/`release`/`list-claims`** (commit `b752952`) — atomic task
+  claiming, compare-and-swap under one lock acquisition so two agents
+  racing for the same task can never both win. This is the piece
+  `next-best-action` self-organization (below) actually needs to be
+  safe; scoring which task to claim is still unbuilt, but the claim
+  primitive itself no longer is. Manually verified: a second agent's
+  claim on an already-held task is rejected and told the current
+  holder's name.
 - Concurrency-safety note for whoever extends this: `Value` (the
   language's own data) is `Rc`-based, not `Send`. Nothing `Rc`-based
   crosses a thread boundary in the current implementation — each
@@ -138,15 +146,16 @@ score = priority × capability-match × unblock-impact × dependency-centrality
 ```
 
 An agent atomically claims the top-scored task; others automatically
-pick the next since the claimed one drops out of contention. Needs:
-a machine-readable task list with declared dependencies (partially
-what `ecosystem-status.my`'s `current-task`/`next-milestone` fields
-are, but not structured enough for a score function yet), an atomic
-claim mechanism (a `claim`/`release` op with compare-and-swap
-semantics, so two agents racing for the same task don't both win), and
-capability declarations per agent (from `hello`, above). None of this
-exists yet — `ecosystem-status.my` is still hand-updated, not
-machine-computed.
+pick the next since the claimed one drops out of contention. The
+atomic claim primitive itself now exists (`claim`/`release`, above) —
+what's still missing: a machine-readable task list with declared
+dependencies (partially what `ecosystem-status.my`'s
+`current-task`/`next-milestone` fields are, but not structured enough
+for a score function yet, and not wired to `claim` at all — an agent
+could `claim` a task id today, but nothing yet derives that id from
+`ecosystem-status.my` or scores it against alternatives), the score
+function itself, and capability declarations per agent (from `hello`,
+above).
 
 ### `capability-request` / temporary coalitions
 
