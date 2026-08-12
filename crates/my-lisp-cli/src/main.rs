@@ -485,6 +485,8 @@ fn handle_sexpr_connection(
                 let mut capabilities: Vec<String> = Vec::new();
                 let mut priority: Option<f64> = None;
                 let mut depends_on: Vec<String> = Vec::new();
+                let mut needs: Option<String> = None;
+                let mut context: Option<String> = None;
                 for field in fields.iter().skip(1) {
                     let kv = list_items(field);
                     let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
@@ -575,6 +577,18 @@ fn handle_sexpr_connection(
                                         _ => None,
                                     })
                                     .collect();
+                            }
+                            "needs" => {
+                                needs = match val {
+                                    Value::String(s) => Some(s.to_string()),
+                                    Value::Symbol(s) => Some(s.to_string()),
+                                    _ => None,
+                                };
+                            }
+                            "context" => {
+                                if let Value::String(s) = val {
+                                    context = Some(s.to_string());
+                                }
                             }
                             _ => {}
                         }
@@ -945,6 +959,107 @@ fn handle_sexpr_connection(
                                     Value::list([Value::Symbol("score".into()), Value::Number(score, Exactness::Inexact)]),
                                 ])
                             }));
+                            ok_response(&id, value, &[], &contract_version)
+                        }
+                    },
+                    // Forms a temporary coalition around a stuck agent's
+                    // unmet need. Three things happen atomically from the
+                    // caller's point of view: (1) every `presence`-
+                    // registered agent whose `capabilities` include
+                    // `needs` gets the request pushed instantly if
+                    // they're `subscribe`d to the `capability-request`
+                    // topic, and (2) gets it left in their `notify`
+                    // mailbox regardless, so a non-subscribed agent
+                    // still sees it on its next `poll`; (3) a task named
+                    // `HELP:<needs>:<task-or-from>` is auto-`define-task`d
+                    // at high priority requiring exactly `needs`, so it
+                    // surfaces at the top of `next-best-action` for any
+                    // agent with that capability — the "system sees fpga
+                    // offers waveform-debug" step from the proposal,
+                    // done via the scoring machinery already built
+                    // rather than a separate matching engine.
+                    Some("capability-request") => match (&from, &needs) {
+                        (None, _) => error_response(&id, "invalid-form", "op `capability-request` requires a `from` field", &contract_version),
+                        (_, None) => error_response(&id, "invalid-form", "op `capability-request` requires a `needs` field", &contract_version),
+                        (Some(from), Some(needs)) => {
+                            let matching: Vec<String> = {
+                                let presence_state = presence.lock().unwrap_or_else(|e| e.into_inner());
+                                presence_state
+                                    .agents
+                                    .iter()
+                                    .filter(|(agent, entry)| *agent != from && entry.capabilities.iter().any(|c| c == needs))
+                                    .map(|(agent, _)| agent.clone())
+                                    .collect()
+                            };
+
+                            let task_ref = task.clone().unwrap_or_default();
+                            let request_message = format!(
+                                "capability-request from {from}: needs `{needs}`{}{}",
+                                if task_ref.is_empty() { String::new() } else { format!(" for task {task_ref}") },
+                                match &context {
+                                    Some(c) if !c.is_empty() => format!(" — {c}"),
+                                    _ => String::new(),
+                                }
+                            );
+
+                            let event_text = Value::list([
+                                Value::Symbol("event".into()),
+                                Value::list([Value::Symbol("from".into()), Value::String(from.as_str().into())]),
+                                Value::list([Value::Symbol("topic".into()), Value::String("capability-request".into())]),
+                                Value::list([Value::Symbol("message".into()), Value::String(request_message.as_str().into())]),
+                            ])
+                            .to_string();
+                            {
+                                let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
+                                broker_state.subscribers.retain(|subscriber| {
+                                    if !subscriber.topics.is_empty() && !subscriber.topics.iter().any(|t| t == "capability-request") {
+                                        return true;
+                                    }
+                                    subscriber.sender.send(event_text.clone()).is_ok()
+                                });
+                            }
+
+                            {
+                                let mut mailbox_state = mailbox.lock().unwrap_or_else(|e| e.into_inner());
+                                for agent in &matching {
+                                    mailbox_state.next_id += 1;
+                                    let entry_id = mailbox_state.next_id;
+                                    mailbox_state.entries.push(MailboxEntry {
+                                        id: entry_id,
+                                        from: from.clone(),
+                                        to: Some(agent.clone()),
+                                        message: request_message.clone(),
+                                    });
+                                }
+                                const MAILBOX_CAPACITY: usize = 500;
+                                if mailbox_state.entries.len() > MAILBOX_CAPACITY {
+                                    let excess = mailbox_state.entries.len() - MAILBOX_CAPACITY;
+                                    mailbox_state.entries.drain(0..excess);
+                                }
+                            }
+
+                            let elevated_task_id = format!(
+                                "HELP:{needs}:{}",
+                                if task_ref.is_empty() { from.clone() } else { task_ref.clone() }
+                            );
+                            {
+                                let mut task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
+                                let done = task_state.tasks.get(&elevated_task_id).map(|t| t.done).unwrap_or(false);
+                                task_state.tasks.insert(elevated_task_id.clone(), TaskDef {
+                                    priority: 10.0,
+                                    capabilities: vec![needs.clone()],
+                                    depends_on: Vec::new(),
+                                    done,
+                                });
+                            }
+
+                            let value = Value::list([
+                                Value::list([
+                                    Value::Symbol("matching-agents".into()),
+                                    Value::list(matching.iter().map(|a| Value::String(a.as_str().into()))),
+                                ]),
+                                Value::list([Value::Symbol("elevated-task".into()), Value::String(elevated_task_id.as_str().into())]),
+                            ]);
                             ok_response(&id, value, &[], &contract_version)
                         }
                     },
