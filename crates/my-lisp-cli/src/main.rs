@@ -5,9 +5,12 @@ use rustyline::DefaultEditor;
 use std::env;
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
-use std::net::{Ipv4Addr, TcpListener};
+use std::net::{Ipv4Addr, TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process;
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 /// `~/.my-lisp-history`, if a home directory can be found. REPL history
 /// persistence is best-effort: without a home directory (or if writing
@@ -208,6 +211,36 @@ struct MailboxEntry {
     message: String,
 }
 
+/// `notify`/`poll`'s shared state, now behind a `Mutex` since
+/// `run_tcp_repl_sexpr` handles connections concurrently (one OS thread
+/// per connection) rather than one at a time — see that function's own
+/// doc comment for why threading was safe to add despite `Value`'s `Rc`
+/// (never shared across threads; only plain, `Send`-safe `String`s cross
+/// the thread boundary, via this struct and `Subscriber::sender`).
+#[derive(Default)]
+struct MailboxState {
+    entries: Vec<MailboxEntry>,
+    next_id: u64,
+}
+
+/// One `subscribe`d connection's live channel — `publish` looks up every
+/// `Subscriber` whose `topics` is empty (subscribed to everything) or
+/// contains the published topic, and sends the already-rendered event
+/// text (a plain `String`, not a `Value`) down `sender`. The connection's
+/// own thread blocks on the matching `Receiver`, writing each event to
+/// its socket as it arrives — genuine push, not polling.
+struct Subscriber {
+    id: u64,
+    topics: Vec<String>,
+    sender: mpsc::Sender<String>,
+}
+
+#[derive(Default)]
+struct Broker {
+    subscribers: Vec<Subscriber>,
+    next_subscriber_id: u64,
+}
+
 fn mailbox_entry_to_value(entry: &MailboxEntry) -> Value {
     Value::list([
         Value::list([Value::Symbol("id".into()), Value::Number(entry.id as f64, Exactness::Exact)]),
@@ -241,14 +274,25 @@ fn error_kind_symbol(kind: &ErrorKind) -> &'static str {
 /// (status ..) ..)` out, every time, so `cml`/`fpga-lisp`/`my-idea` can
 /// parse a response without guessing whether a given line is a value, an
 /// error, or REPL chrome. Op set: `eval`, `parse`, `diagnose`,
-/// `contract-version` for semantic-oracle use (same per-connection
-/// isolation as the human REPL — a `def` on one connection is invisible
-/// to every other), plus `notify`/`poll` for lightweight agent-to-agent
-/// coordination (owner decision, 2026-08-12) — those two share one
-/// mailbox across every connection instead of per-connection state,
-/// deliberately kept separate from eval sessions so the oracle's
-/// isolation guarantee still holds for `eval`/`parse`/`diagnose`.
-fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_version: Value) {
+/// `contract-version` for semantic-oracle use; `notify`/`poll` for
+/// short-lived, poll-based agent mailbox; `subscribe`/`publish` for
+/// genuine push (owner decision, 2026-08-12) — a `subscribe`d connection
+/// blocks and receives `(event ...)` lines the instant a matching
+/// `publish` happens on any other connection, not on the next poll.
+///
+/// One OS thread per accepted connection (changed from strictly
+/// sequential handling to make `subscribe` possible — a subscriber has
+/// to block waiting for events while other connections keep working).
+/// Each thread builds its own `Session`/`Environment` locally and never
+/// shares it — `Value`'s `Rc`-based sharing (non-atomic refcounts) would
+/// be unsound across threads, so nothing `Rc`-based ever crosses a
+/// thread boundary here: `contract_version` is rebuilt fresh per
+/// connection from two plain `f64`s, and the mailbox/broker only ever
+/// pass already-`to_string()`-rendered `String`s between threads, never
+/// a live `Value`. The isolation guarantee (`eval`/`parse`/`diagnose`
+/// state invisible across connections) is now also physical (separate
+/// threads), not just logical (separate `Environment`s in one thread).
+fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec<String>, contract_major: f64, contract_minor: f64) {
     let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, port)) {
         Ok(listener) => listener,
         Err(err) => {
@@ -259,199 +303,315 @@ fn run_tcp_repl_sexpr(port: u16, core_lib: &str, allowed: &[String], contract_ve
     let actual_port = listener.local_addr().map(|a| a.port()).unwrap_or(port);
     eprintln!("my-lisp TCP REPL v{} (sexpr protocol) listening on 127.0.0.1:{actual_port}", env!("CARGO_PKG_VERSION"));
 
-    // Shared across every connection this process ever accepts — connections
-    // are handled one at a time (no threads), so plain `Vec`s need no lock.
-    let mut mailbox: Vec<MailboxEntry> = Vec::new();
-    let mut next_mailbox_id: u64 = 1;
+    let allowed = Arc::new(allowed);
+    let mailbox: Arc<Mutex<MailboxState>> = Arc::new(Mutex::new(MailboxState::default()));
+    let broker: Arc<Mutex<Broker>> = Arc::new(Mutex::new(Broker::default()));
 
     for stream in listener.incoming() {
-        let mut stream = match stream {
+        let stream = match stream {
             Ok(stream) => stream,
             Err(_) => continue,
         };
-        let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_else(|_| "?".into());
-        eprintln!("TCP REPL: connection from {peer}");
+        let allowed = Arc::clone(&allowed);
+        let mailbox = Arc::clone(&mailbox);
+        let broker = Arc::clone(&broker);
+        thread::spawn(move || {
+            handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker);
+        });
+    }
+}
 
-        let environment = if allowed.is_empty() {
-            Environment::root()
-        } else {
-            Environment::root().with_process_allowlist(allowed.to_vec())
-        };
-        let mut session = Session { environment };
-        if let Ok(core_ast) = parse(core_lib) {
-            let _ = eval_parsed_expressions(&core_ast, &mut session);
-        }
+fn handle_sexpr_connection(
+    mut stream: TcpStream,
+    core_lib: &str,
+    allowed: &[String],
+    contract_major: f64,
+    contract_minor: f64,
+    mailbox: &Arc<Mutex<MailboxState>>,
+    broker: &Arc<Mutex<Broker>>,
+) {
+    let contract_version = Value::list([
+        Value::Number(contract_major, Exactness::Exact),
+        Value::Number(contract_minor, Exactness::Exact),
+    ]);
 
-        let mut reader = BufReader::new(stream.try_clone().expect("clone TCP stream"));
-        let mut line = String::new();
-        loop {
-            line.clear();
-            match reader.read_line(&mut line) {
-                Ok(0) => break,
-                Ok(_) => {
-                    let trimmed = line.trim();
-                    if trimmed.is_empty() {
+    let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_else(|_| "?".into());
+    eprintln!("TCP REPL: connection from {peer}");
+
+    let environment = if allowed.is_empty() {
+        Environment::root()
+    } else {
+        Environment::root().with_process_allowlist(allowed.to_vec())
+    };
+    let mut session = Session { environment };
+    if let Ok(core_ast) = parse(core_lib) {
+        let _ = eval_parsed_expressions(&core_ast, &mut session);
+    }
+
+    let mut reader = BufReader::new(stream.try_clone().expect("clone TCP stream"));
+    let mut line = String::new();
+    loop {
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) => break,
+            Ok(_) => {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                eprintln!("TCP REPL: {peer} > {trimmed}");
+
+                // The request envelope itself is read as literal data
+                // (`quote`), never evaluated — `(op eval)` deciding to
+                // evaluate `source` is the only place code ever runs.
+                let quoted = format!("(quote {trimmed})");
+                let request = match parse(&quoted).ok().and_then(|ast| {
+                    eval_parsed_expressions(&ast, &mut session).ok().map(|r| r.value)
+                }) {
+                    Some(value) => value,
+                    None => {
+                        let resp = error_response(&Value::Nil, "parse-error", "request envelope is not a valid s-expression", &contract_version);
+                        let _ = writeln!(stream, "{resp}");
                         continue;
                     }
-                    eprintln!("TCP REPL: {peer} > {trimmed}");
+                };
 
-                    // The request envelope itself is read as literal data
-                    // (`quote`), never evaluated — `(op eval)` deciding to
-                    // evaluate `source` is the only place code ever runs.
-                    let quoted = format!("(quote {trimmed})");
-                    let request = match parse(&quoted).ok().and_then(|ast| {
-                        eval_parsed_expressions(&ast, &mut session).ok().map(|r| r.value)
-                    }) {
-                        Some(value) => value,
-                        None => {
-                            let resp = error_response(&Value::Nil, "parse-error", "request envelope is not a valid s-expression", &contract_version);
-                            let _ = writeln!(stream, "{resp}");
-                            continue;
-                        }
-                    };
-
-                    let fields = list_items(&request);
-                    // fields[0] is the `request` tag symbol itself.
-                    let mut id = Value::Nil;
-                    let mut op: Option<String> = None;
-                    let mut source: Option<String> = None;
-                    let mut from: Option<String> = None;
-                    let mut to: Option<String> = None;
-                    let mut message: Option<String> = None;
-                    let mut for_agent: Option<String> = None;
-                    let mut since: u64 = 0;
-                    for field in fields.iter().skip(1) {
-                        let kv = list_items(field);
-                        let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
-                        if let Value::Symbol(name) = key {
-                            match &**name {
-                                "id" => id = val.clone(),
-                                "op" => {
-                                    if let Value::Symbol(s) = val {
-                                        op = Some(s.to_string());
-                                    }
+                let fields = list_items(&request);
+                // fields[0] is the `request` tag symbol itself.
+                let mut id = Value::Nil;
+                let mut op: Option<String> = None;
+                let mut source: Option<String> = None;
+                let mut from: Option<String> = None;
+                let mut to: Option<String> = None;
+                let mut message: Option<String> = None;
+                let mut for_agent: Option<String> = None;
+                let mut since: u64 = 0;
+                let mut topic: Option<String> = None;
+                let mut topics: Vec<String> = Vec::new();
+                for field in fields.iter().skip(1) {
+                    let kv = list_items(field);
+                    let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
+                    if let Value::Symbol(name) = key {
+                        match &**name {
+                            "id" => id = val.clone(),
+                            "op" => {
+                                if let Value::Symbol(s) = val {
+                                    op = Some(s.to_string());
                                 }
-                                "source" => {
-                                    if let Value::String(s) = val {
-                                        source = Some(s.to_string());
-                                    }
-                                }
-                                "from" => {
-                                    if let Value::String(s) = val {
-                                        from = Some(s.to_string());
-                                    }
-                                }
-                                "to" => {
-                                    if let Value::String(s) = val {
-                                        to = Some(s.to_string());
-                                    }
-                                }
-                                "message" => {
-                                    if let Value::String(s) = val {
-                                        message = Some(s.to_string());
-                                    }
-                                }
-                                "for" => {
-                                    if let Value::String(s) = val {
-                                        for_agent = Some(s.to_string());
-                                    }
-                                }
-                                "since" => {
-                                    if let Value::Number(n, _) = val {
-                                        since = *n as u64;
-                                    }
-                                }
-                                _ => {}
                             }
-                        }
-                    }
-
-                    let response = match op.as_deref() {
-                        Some("contract-version") => ok_response(&id, contract_version.clone(), &[], &contract_version),
-                        // `parse` renders the canonical structure via the same
-                        // `quote`-and-print path the request envelope itself
-                        // uses, not Rust's `{:?}` — the caller gets my-lisp
-                        // syntax back, not this CLI's internal AST debug
-                        // format. Limited to a single top-level form, the
-                        // same arity `quote` itself has.
-                        Some("parse") => match &source {
-                            None => error_response(&id, "invalid-form", "op `parse` requires a `source` field", &contract_version),
-                            Some(src) => match parse(src) {
-                                Ok(ast) if ast.len() == 1 => {
-                                    let quoted_src = format!("(quote {src})");
-                                    match parse(&quoted_src).ok().and_then(|q| {
-                                        eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
-                                    }) {
-                                        Some(structure) => ok_response(&id, structure, &[], &contract_version),
-                                        None => error_response(&id, "parse-error", "source parsed but could not be rendered as data", &contract_version),
-                                    }
+                            "source" => {
+                                if let Value::String(s) = val {
+                                    source = Some(s.to_string());
                                 }
-                                Ok(_) => error_response(&id, "invalid-form", "op `parse` accepts exactly one top-level form", &contract_version),
-                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
-                            },
-                        },
-                        Some(op_name @ ("eval" | "diagnose")) => match &source {
-                            None => error_response(&id, "invalid-form", &format!("op `{op_name}` requires a `source` field"), &contract_version),
-                            Some(src) => match parse(src) {
-                                Ok(ast) => match eval_parsed_expressions(&ast, &mut session) {
-                                    Ok(result) => ok_response(&id, result.value, &result.output, &contract_version),
-                                    Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
-                                },
-                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
-                            },
-                        },
-                        Some("notify") => match (&from, &message) {
-                            (None, _) => error_response(&id, "invalid-form", "op `notify` requires a `from` field", &contract_version),
-                            (_, None) => error_response(&id, "invalid-form", "op `notify` requires a `message` field", &contract_version),
-                            (Some(from), Some(message)) => {
-                                let entry_id = next_mailbox_id;
-                                next_mailbox_id += 1;
-                                mailbox.push(MailboxEntry {
-                                    id: entry_id,
-                                    from: from.clone(),
-                                    to: to.clone(),
-                                    message: message.clone(),
-                                });
-                                // Bounded so a long-lived server (or a
-                                // runaway notifier) can't grow this
-                                // in-memory, non-persistent mailbox
-                                // without limit — oldest entries are
-                                // dropped first; a `poll` with `since`
-                                // older than what's left just gets
-                                // whatever's still here.
-                                const MAILBOX_CAPACITY: usize = 500;
-                                if mailbox.len() > MAILBOX_CAPACITY {
-                                    let excess = mailbox.len() - MAILBOX_CAPACITY;
-                                    mailbox.drain(0..excess);
-                                }
-                                ok_response(&id, Value::Number(entry_id as f64, Exactness::Exact), &[], &contract_version)
                             }
-                        },
-                        Some("poll") => match &for_agent {
-                            None => error_response(&id, "invalid-form", "op `poll` requires a `for` field", &contract_version),
-                            Some(for_agent) => {
-                                let matches: Vec<Value> = mailbox
-                                    .iter()
-                                    .filter(|entry| entry.id > since)
-                                    .filter(|entry| entry.to.as_deref().is_none_or(|to| to == for_agent))
-                                    .map(mailbox_entry_to_value)
+                            "from" => {
+                                if let Value::String(s) = val {
+                                    from = Some(s.to_string());
+                                }
+                            }
+                            "to" => {
+                                if let Value::String(s) = val {
+                                    to = Some(s.to_string());
+                                }
+                            }
+                            "message" => {
+                                if let Value::String(s) = val {
+                                    message = Some(s.to_string());
+                                }
+                            }
+                            "for" => {
+                                if let Value::String(s) = val {
+                                    for_agent = Some(s.to_string());
+                                }
+                            }
+                            "since" => {
+                                if let Value::Number(n, _) = val {
+                                    since = *n as u64;
+                                }
+                            }
+                            "topic" => {
+                                if let Value::String(s) = val {
+                                    topic = Some(s.to_string());
+                                }
+                            }
+                            "topics" => {
+                                topics = list_items(val)
+                                    .into_iter()
+                                    .filter_map(|item| match &item {
+                                        Value::String(s) => Some(s.to_string()),
+                                        Value::Symbol(s) => Some(s.to_string()),
+                                        _ => None,
+                                    })
                                     .collect();
-                                ok_response(&id, Value::list(matches), &[], &contract_version)
                             }
-                        },
-                        Some(other) => error_response(&id, "invalid-form", &format!("unknown op `{other}`"), &contract_version),
-                        None => error_response(&id, "invalid-form", "request is missing an `op` field", &contract_version),
-                    };
-
-                    if writeln!(stream, "{response}").is_err() {
-                        break;
+                            _ => {}
+                        }
                     }
                 }
-                Err(_) => break,
+
+                let response = match op.as_deref() {
+                    Some("contract-version") => ok_response(&id, contract_version.clone(), &[], &contract_version),
+                    // `parse` renders the canonical structure via the same
+                    // `quote`-and-print path the request envelope itself
+                    // uses, not Rust's `{:?}` — the caller gets my-lisp
+                    // syntax back, not this CLI's internal AST debug
+                    // format. Limited to a single top-level form, the
+                    // same arity `quote` itself has.
+                    Some("parse") => match &source {
+                        None => error_response(&id, "invalid-form", "op `parse` requires a `source` field", &contract_version),
+                        Some(src) => match parse(src) {
+                            Ok(ast) if ast.len() == 1 => {
+                                let quoted_src = format!("(quote {src})");
+                                match parse(&quoted_src).ok().and_then(|q| {
+                                    eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
+                                }) {
+                                    Some(structure) => ok_response(&id, structure, &[], &contract_version),
+                                    None => error_response(&id, "parse-error", "source parsed but could not be rendered as data", &contract_version),
+                                }
+                            }
+                            Ok(_) => error_response(&id, "invalid-form", "op `parse` accepts exactly one top-level form", &contract_version),
+                            Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                        },
+                    },
+                    Some(op_name @ ("eval" | "diagnose")) => match &source {
+                        None => error_response(&id, "invalid-form", &format!("op `{op_name}` requires a `source` field"), &contract_version),
+                        Some(src) => match parse(src) {
+                            Ok(ast) => match eval_parsed_expressions(&ast, &mut session) {
+                                Ok(result) => ok_response(&id, result.value, &result.output, &contract_version),
+                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                            },
+                            Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                        },
+                    },
+                    Some("notify") => match (&from, &message) {
+                        (None, _) => error_response(&id, "invalid-form", "op `notify` requires a `from` field", &contract_version),
+                        (_, None) => error_response(&id, "invalid-form", "op `notify` requires a `message` field", &contract_version),
+                        (Some(from), Some(message)) => {
+                            let mut state = mailbox.lock().unwrap_or_else(|e| e.into_inner());
+                            state.next_id += 1;
+                            let entry_id = state.next_id;
+                            state.entries.push(MailboxEntry {
+                                id: entry_id,
+                                from: from.clone(),
+                                to: to.clone(),
+                                message: message.clone(),
+                            });
+                            // Bounded so a long-lived server (or a
+                            // runaway notifier) can't grow this
+                            // in-memory, non-persistent mailbox
+                            // without limit — oldest entries are
+                            // dropped first; a `poll` with `since`
+                            // older than what's left just gets
+                            // whatever's still here.
+                            const MAILBOX_CAPACITY: usize = 500;
+                            if state.entries.len() > MAILBOX_CAPACITY {
+                                let excess = state.entries.len() - MAILBOX_CAPACITY;
+                                state.entries.drain(0..excess);
+                            }
+                            ok_response(&id, Value::Number(entry_id as f64, Exactness::Exact), &[], &contract_version)
+                        }
+                    },
+                    Some("poll") => match &for_agent {
+                        None => error_response(&id, "invalid-form", "op `poll` requires a `for` field", &contract_version),
+                        Some(for_agent) => {
+                            let state = mailbox.lock().unwrap_or_else(|e| e.into_inner());
+                            let matches: Vec<Value> = state
+                                .entries
+                                .iter()
+                                .filter(|entry| entry.id > since)
+                                .filter(|entry| entry.to.as_deref().is_none_or(|to| to == for_agent))
+                                .map(mailbox_entry_to_value)
+                                .collect();
+                            ok_response(&id, Value::list(matches), &[], &contract_version)
+                        }
+                    },
+                    // `publish` delivers to every `subscribe`d connection
+                    // whose `topics` is empty (subscribed to everything)
+                    // or contains this `topic`, then responds with how
+                    // many actually received it — visibility into
+                    // whether anyone was listening, not just an ack.
+                    Some("publish") => match (&from, &topic, &message) {
+                        (None, _, _) => error_response(&id, "invalid-form", "op `publish` requires a `from` field", &contract_version),
+                        (_, None, _) => error_response(&id, "invalid-form", "op `publish` requires a `topic` field", &contract_version),
+                        (_, _, None) => error_response(&id, "invalid-form", "op `publish` requires a `message` field", &contract_version),
+                        (Some(from), Some(topic), Some(message)) => {
+                            let event_text = Value::list([
+                                Value::Symbol("event".into()),
+                                Value::list([Value::Symbol("from".into()), Value::String(from.as_str().into())]),
+                                Value::list([Value::Symbol("topic".into()), Value::String(topic.as_str().into())]),
+                                Value::list([Value::Symbol("message".into()), Value::String(message.as_str().into())]),
+                            ])
+                            .to_string();
+                            let mut delivered = 0u32;
+                            let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
+                            broker_state.subscribers.retain(|subscriber| {
+                                if !subscriber.topics.is_empty() && !subscriber.topics.iter().any(|t| t == topic) {
+                                    return true;
+                                }
+                                match subscriber.sender.send(event_text.clone()) {
+                                    Ok(()) => {
+                                        delivered += 1;
+                                        true
+                                    }
+                                    // The subscriber's connection thread is gone
+                                    // (client disconnected) — drop it here too,
+                                    // rather than leaking a dead entry forever.
+                                    Err(_) => false,
+                                }
+                            });
+                            ok_response(&id, Value::Number(delivered as f64, Exactness::Exact), &[], &contract_version)
+                        }
+                    },
+                    // `subscribe` permanently turns this connection into a
+                    // push receiver: after the ack below, it stops reading
+                    // further requests and instead blocks on its channel,
+                    // writing each matching `publish` as an `(event ...)`
+                    // line the instant it arrives. One connection, one
+                    // purpose — a client that also wants to `eval`/`notify`
+                    // opens a second connection for that, the same way a
+                    // real pub/sub client library keeps publish and
+                    // subscribe on separate sockets.
+                    Some("subscribe") => {
+                        let (sender, receiver) = mpsc::channel::<String>();
+                        let subscriber_id = {
+                            let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
+                            broker_state.next_subscriber_id += 1;
+                            let subscriber_id = broker_state.next_subscriber_id;
+                            broker_state.subscribers.push(Subscriber {
+                                id: subscriber_id,
+                                topics: topics.clone(),
+                                sender,
+                            });
+                            subscriber_id
+                        };
+                        let ack = ok_response(&id, Value::Symbol("subscribed".into()), &[], &contract_version);
+                        if writeln!(stream, "{ack}").is_err() {
+                            let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
+                            broker_state.subscribers.retain(|s| s.id != subscriber_id);
+                            break;
+                        }
+                        eprintln!("TCP REPL: {peer} subscribed to {topics:?}, switching to push mode");
+                        for event_text in receiver.iter() {
+                            if writeln!(stream, "{event_text}").is_err() {
+                                break;
+                            }
+                        }
+                        let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
+                        broker_state.subscribers.retain(|s| s.id != subscriber_id);
+                        break;
+                    }
+                    Some(other) => error_response(&id, "invalid-form", &format!("unknown op `{other}`"), &contract_version),
+                    None => error_response(&id, "invalid-form", "request is missing an `op` field", &contract_version),
+                };
+
+                if writeln!(stream, "{response}").is_err() {
+                    break;
+                }
             }
+            Err(_) => break,
         }
-        eprintln!("TCP REPL: {peer} disconnected");
     }
+    eprintln!("TCP REPL: {peer} disconnected");
 }
 
 fn main() {
@@ -463,7 +623,11 @@ fn main() {
         .filter(|arg| !arg.starts_with("--allow-process=") && arg != "--protocol=sexpr")
         .collect();
     let allowed_for_tcp = allowed.clone();
-    let contract_version = {
+    // Plain `f64`s, not a `Value` — `run_tcp_repl_sexpr` spawns one thread
+    // per connection, and `Value`'s `Rc`-based sharing isn't `Send`; each
+    // connection rebuilds its own `contract_version` `Value` locally from
+    // these two numbers instead of cloning a shared one across threads.
+    let (contract_major, contract_minor) = {
         let contract_source = include_str!("../../../language-contract.my");
         let mut throwaway = Session { environment: Environment::root() };
         let quoted = format!("(quote {contract_source})");
@@ -474,9 +638,11 @@ fn main() {
             .and_then(|v| {
                 let major = dotted_alist_lookup(&v, "major")?;
                 let minor = dotted_alist_lookup(&v, "minor")?;
-                Some(Value::list([major, minor]))
+                let Value::Number(major, _) = major else { return None };
+                let Value::Number(minor, _) = minor else { return None };
+                Some((major, minor))
             })
-            .unwrap_or(Value::Nil)
+            .unwrap_or((0.0, 0.0))
     };
     let environment = if allowed.is_empty() {
         Environment::root()
@@ -517,7 +683,7 @@ fn main() {
                 .and_then(|p| p.parse::<u16>().ok())
                 .unwrap_or(9999);
             if sexpr_protocol {
-                run_tcp_repl_sexpr(port, core_lib, &allowed_for_tcp, contract_version);
+                run_tcp_repl_sexpr(port, core_lib, allowed_for_tcp, contract_major, contract_minor);
             } else {
                 run_tcp_repl(port, core_lib, &allowed_for_tcp);
             }
