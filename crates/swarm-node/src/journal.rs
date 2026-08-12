@@ -123,6 +123,22 @@ impl Journal {
         Ok(())
     }
 
+    /// Wholesale-replaces the on-disk log and in-memory event list — used
+    /// by compaction (`compact.rs`) to swap the full history for a smaller
+    /// equivalent set. Callers are responsible for the replacement events
+    /// being derivation-equivalent to what they replace; this method just
+    /// does the (fsync'd) file swap safely.
+    pub fn replace_all(&mut self, new_events: Vec<Event>) -> std::io::Result<()> {
+        let mut file = OpenOptions::new().create(true).write(true).truncate(true).open(&self.path)?;
+        for ev in &new_events {
+            writeln!(file, "{}", ev.to_sexp().to_text())?;
+        }
+        file.sync_data()?;
+        self.file = OpenOptions::new().create(true).append(true).open(&self.path)?;
+        self.events = new_events;
+        Ok(())
+    }
+
     pub fn has(&self, node: &str, seq: u64) -> bool {
         self.events.iter().any(|e| e.node == node && e.seq == seq)
     }

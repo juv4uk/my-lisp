@@ -13,6 +13,7 @@
 //!              --data-dir ~/.swarm-node/my-agent-1 --connect 127.0.0.1:9101
 //! No other flags, no need to know every other member's address up front.
 
+mod compact;
 mod journal;
 mod sexpr;
 mod state;
@@ -353,6 +354,9 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             }
             Some("sync-tasks") => {
                 handle_sync_tasks(&node, &msg, &mut stream);
+            }
+            Some("compact") => {
+                handle_compact(&node, &mut stream);
             }
             other => {
                 eprintln!("swarm-node: unrecognized message head {other:?} from {peer_addr}");
@@ -1156,6 +1160,34 @@ fn append_local_fact(node: &Arc<Node>, typ: &str, payload: Sexp) -> std::io::Res
     drop(journal);
     broadcast_event(node, &event, None);
     Ok(event)
+}
+
+/// Local client op: `(compact)`. Rewrites this node's own on-disk journal
+/// to the minimal set of facts that reproduces the current derived state —
+/// see `compact.rs` for the safety argument for why this can't corrupt any
+/// peer's view even though it changes what's on disk. Broadcasts nothing:
+/// peers only ever pull via `sync-hello`/`sync-events`, and after
+/// compaction that path already serves the smaller equivalent set.
+fn handle_compact(node: &Arc<Node>, stream: &mut TcpStream) {
+    let mut journal = node.journal.lock().unwrap();
+    match compact::compact(&mut journal, &node.identity.node_id) {
+        Ok((before, after)) => {
+            drop(journal);
+            eprintln!("swarm-node: compacted journal {before} -> {after} events");
+            send(
+                stream,
+                &Sexp::list(vec![
+                    Sexp::atom("ok"),
+                    Sexp::list(vec![Sexp::atom("before"), Sexp::atom(before.to_string())]),
+                    Sexp::list(vec![Sexp::atom("after"), Sexp::atom(after.to_string())]),
+                ]),
+            );
+        }
+        Err(e) => {
+            drop(journal);
+            send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("compaction failed: {e}"))]));
+        }
+    }
 }
 
 fn handle_list_members(node: &Arc<Node>, stream: &mut TcpStream) {

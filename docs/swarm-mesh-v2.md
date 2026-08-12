@@ -263,6 +263,30 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   restart-churn cost fpga-lisp had already flagged. Verified: node B loses
   its connection to node A, A comes back ~1s later, B reconnects entirely
   on its own with zero intervention.
+- **M0.8** — done: `(compact)` op, journal compaction. Every event type this
+  system has is fold-only (last-write or monotonic-generation), so a task
+  or agent's entire history can be losslessly replaced by the minimal set
+  of terminal facts that fold to the same derived state — no new event
+  kinds needed, `compact` just re-emits `task-defined`/terminal
+  ownership/`agent-joined`+`agent-left` facts under fresh sequence numbers
+  (strictly greater than any this node has ever issued, so no collision
+  risk for a peer that's already seen higher ones) and rewrites the local
+  journal to hold only those. Only a node's *own* on-disk copy is
+  compacted — this doesn't touch or renumber another node's history, and
+  doesn't require every peer to compact in lockstep. Verified: 8 events of
+  real churn (3 redefinitions of one task, claim → release → reclaim, an
+  agent join + leave) compact to 4, `list-task-state`/`list-members` are
+  byte-identical before and after, and a brand-new node that syncs
+  *against the already-compacted journal* derives the exact same world —
+  plus new work (defining and claiming another task) after compaction
+  proceeds normally, confirming the fresh sequence numbers didn't collide
+  with anything.
+
+  Deliberately not built: automatic/scheduled compaction, or compaction
+  that touches events another node originated. At current swarm scale
+  (dozens of events) there's no pressure to compact automatically —
+  `compact` is a manual, safe, on-demand tool for when a node's own
+  history grows large from churn, not a background job.
 - Migration: `:9999` keeps running throughout so cml/fpga-lisp/my-idea
   aren't blocked; they migrate their coordination traffic to `swarm-node`
   on their own schedule per "Migrating off `:9999` for coordination" above
