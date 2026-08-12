@@ -128,7 +128,12 @@ connection) for three distinct things:
   two agents racing for the same task can never both win. `claim` takes
   `task` and `from`; succeeds (`value` = `t`) if `task` is unclaimed or
   already held by `from`, otherwise returns the current holder's name so
-  the loser knows who to wait on. `release` takes the same fields; only
+  the loser knows who to wait on — unless the holder has gone quiet: if
+  its `presence` heartbeat is older than 300s, the new `claim` succeeds
+  as a reclaim instead (`claim-stale-reclaimed` published), so one agent
+  going silent doesn't lock a task forever. A holder with no `presence`
+  entry at all is *not* treated as stale (can't tell, don't steal).
+  `release` takes the same fields; only
   the holder can release (others get the holder's name back, unchanged).
   `list-claims` takes no fields, returns every currently-held
   `((task . ..) (agent . ..))` pair. In-memory, non-persistent — a
