@@ -106,15 +106,30 @@ once its lease times out; if the original holder reappears with a stale
 
 Ship in stages, without breaking the three sibling agents mid-flight:
 
-- **M0.1** (this step): `swarm-node` as a **separate binary**, `:9999`
-  untouched. Scope: persistent event journal, `node-id` + `epoch`, peer
+- **M0.1** — done (commit `eaca3b8`): `swarm-node` as a **separate binary**,
+  `:9999` untouched. Persistent event journal, `node-id` + `epoch`, peer
   handshake (`peer-hello`/`peer-welcome`), sequence numbers, anti-entropy
   sync (`sync-hello`/`sync-events`), deterministic derived state from
-  replayed events. No claim/consensus yet — read-only fact replication only.
-  Validate locally: two nodes exchange events, one restarts, catches back up
-  from disk + peers, without data loss.
-- **M0.2**: quorum claim, lease, fencing generation — exclusive task
-  ownership without split-brain.
+  replayed events. Validated with a 2-node smoke test: restart reloads from
+  disk and catches up from peers without data loss.
+- **M0.2** — done: quorum claim (`claim-task`/`claim-proposal`/`claim-vote`),
+  fencing generation (`release-task`/`complete-task` reject a stale
+  generation), derived task state (`task-state`/`list-task-state`). Majority
+  vote of currently-connected nodes (`total/2 + 1`) required to commit a
+  claim; only the winning `claim-committed` fact is ever written to the
+  journal — rejected proposals leave no trace. Validated with a 3-node smoke
+  test: claim reaches 2/3 quorum and commits, a competing claim on the same
+  task is rejected, completing with the wrong generation is rejected
+  `STALE`, completing with the right one succeeds, and a claim on an
+  already-completed task is rejected.
+
+  Known M0.2 simplification, deliberately deferred: two *concurrent*
+  proposals for the same task are not mutually excluded before voting — in
+  a genuine network partition, disjoint peer sets could theoretically both
+  reach quorum. Closing this needs a per-task in-flight-proposal lock with
+  its own timeout/cleanup and wasn't worth the complexity before real usage
+  shows it matters (single-writer-per-task in the current 4-agent swarm
+  makes true concurrent proposals unlikely in practice).
 - **M0.3**: presence/capability-matching/next-best-action reimplemented as
   derived state over the M0.1 event log, replacing the in-memory versions on
   `:9999`.
