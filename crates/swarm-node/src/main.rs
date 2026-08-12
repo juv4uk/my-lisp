@@ -31,6 +31,12 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 const VOTE_TIMEOUT: Duration = Duration::from_millis(1500);
+/// How long a voter's "I promised generation N to someone" holds before it
+/// expires and can be re-promised. Must exceed `VOTE_TIMEOUT` with margin
+/// so a proposer that's still legitimately waiting on votes doesn't get
+/// undercut by its own promise expiring first; bounds how long a task can
+/// get stuck if a proposer dies mid-vote without completing or retrying.
+const PROMISE_TTL: Duration = Duration::from_secs(5);
 
 struct Node {
     identity: Identity,
@@ -57,6 +63,14 @@ struct Node {
     /// Node ids we've received a definitive sync answer from (either
     /// `sync-events` or `sync-complete`) since startup — see `synced()`.
     caught_up_with: Mutex<HashSet<String>>,
+    /// Per-task voting promises: `task -> (generation we last voted yes
+    /// for, when)`. Closes the concurrent-proposal gap noted as deferred
+    /// in M0.2 — without this, two proposers racing for the same task
+    /// could each collect yes votes from disjoint voter sets (e.g. across
+    /// a network partition) and both reach quorum on the same generation.
+    /// A voter now refuses to vote yes again for a task/generation it's
+    /// already promised, until that promise expires (`PROMISE_TTL`).
+    promised: Mutex<HashMap<String, (u64, Instant)>>,
 }
 
 impl Node {
@@ -138,6 +152,7 @@ fn main() -> std::io::Result<()> {
         pending_votes: Mutex::new(HashMap::new()),
         bootstrap_expected: args.connect.len(),
         caught_up_with: Mutex::new(HashSet::new()),
+        promised: Mutex::new(HashMap::new()),
     });
 
     for addr in &args.connect {
@@ -619,13 +634,14 @@ fn append_task_fact(node: &Arc<Node>, typ: &str, task: &str, generation: u64) ->
 }
 
 /// A peer is asking us to vote on `(claim-proposal (task ..) (agent ..) (generation ..))`.
-/// We vote yes only if the proposed generation is exactly the next one after
-/// what we've derived locally and the task isn't already held/completed —
-/// this is the fencing check; it does not lock out a *concurrent* competing
-/// proposal for the same task (a known M0.2 simplification: two proposals in
-/// flight at once can both reach quorum on disjoint peer sets in a genuine
-/// network partition — full exclusion needs a per-task in-flight lock, left
-/// for a later iteration since it needs its own timeout/cleanup story).
+/// Two gates must both pass: the fencing check (proposed generation is
+/// exactly the next one after what we've derived locally, task not already
+/// held/completed) and the promise check (we haven't already voted yes for
+/// this task at this-or-higher generation within `PROMISE_TTL`). The promise
+/// is what actually excludes concurrent proposals — the fencing check alone
+/// only rejects proposals *after* a commit lands; two proposers racing
+/// before either commits would both pass fencing but only one can win the
+/// promise.
 fn handle_claim_proposal(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let task = msg.field_atom("task").unwrap_or("").to_string();
     let agent = msg.field_atom("agent").unwrap_or("").to_string();
@@ -635,9 +651,21 @@ fn handle_claim_proposal(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let current = state::task_state(&journal, &task);
     drop(journal);
 
-    let vote = !current.completed && current.holder.is_none() && generation == current.generation + 1;
+    let fencing_ok = !current.completed && current.holder.is_none() && generation == current.generation + 1;
+
+    let mut promises = node.promised.lock().unwrap();
+    let promise_free = match promises.get(&task) {
+        Some((promised_gen, at)) => *promised_gen < generation || at.elapsed() > PROMISE_TTL,
+        None => true,
+    };
+    let vote = fencing_ok && promise_free;
+    if vote {
+        promises.insert(task.clone(), (generation, Instant::now()));
+    }
+    drop(promises);
+
     eprintln!(
-        "swarm-node: vote {} on claim-proposal task={task} agent={agent} generation={generation} (local gen={}, holder={:?})",
+        "swarm-node: vote {} on claim-proposal task={task} agent={agent} generation={generation} (local gen={}, holder={:?}, promise_free={promise_free})",
         if vote { "YES" } else { "NO" },
         current.generation,
         current.holder

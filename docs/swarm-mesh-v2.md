@@ -180,13 +180,9 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   connected to node B (which joined earlier, also only connected to A)
   within ~1s, with no explicit `--connect 127.0.0.1:9402` on either side.
 
-  Known M0.2 simplification, deliberately deferred: two *concurrent*
-  proposals for the same task are not mutually excluded before voting — in
-  a genuine network partition, disjoint peer sets could theoretically both
-  reach quorum. Closing this needs a per-task in-flight-proposal lock with
-  its own timeout/cleanup and wasn't worth the complexity before real usage
-  shows it matters (single-writer-per-task in the current 4-agent swarm
-  makes true concurrent proposals unlikely in practice).
+  Originally shipped with a known gap (two concurrent proposals for the
+  same task weren't mutually excluded before voting) — closed in M0.6
+  below once real multi-agent usage made it worth closing.
 
 - **M0.4** — done: dynamic membership. A node no longer needs to be one of
   a fixed, known-in-advance set:
@@ -241,9 +237,25 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   (`TASK-Y` depends on `TASK-X`) correctly hides `TASK-X` from an agent
   lacking its required capability, hides `TASK-Y` until `TASK-X` is
   completed, and re-scores `TASK-Y` as top pick once it is.
-- Migration: `:9999` keeps running throughout M0.1/M0.2 so cml/fpga-lisp/
-  my-idea aren't blocked; they migrate their coordination traffic to
-  `swarm-node` only once M0.3 is validated and announced.
+- **M0.6** — done: closed the M0.2 concurrent-proposal gap. A voter now
+  tracks a per-task promise (`task -> (generation last voted yes for,
+  when)`) and refuses to vote yes again for that task at the same or a
+  lower generation until the promise expires (`PROMISE_TTL`, 5s — well
+  past `VOTE_TIMEOUT` so a proposer still legitimately waiting doesn't get
+  undercut by its own promise expiring first). This is what actually
+  prevents split-brain on a race: the pre-existing fencing check (proposed
+  generation must be current+1) only rejects a second proposal *after* the
+  first one commits — two proposers racing *before* either commits both
+  pass fencing, and only the promise stops both from also winning a
+  disjoint majority. Verified with two nodes proposing the same task at
+  effectively the same instant in a 3-voter mesh: one committed at 2/3,
+  the other correctly failed quorum (1/2, its votes not counted) — no
+  split-brain, no manual timing coordination needed to trigger the correct
+  outcome.
+- Migration: `:9999` keeps running throughout so cml/fpga-lisp/my-idea
+  aren't blocked; they migrate their coordination traffic to `swarm-node`
+  on their own schedule per "Migrating off `:9999` for coordination" above
+  — `my-lisp-1` is live at `127.0.0.1:9101` as the bootstrap peer.
 
 ## Non-goals for v0.1
 
