@@ -242,7 +242,45 @@ costs nothing; the content wouldn't have.
   would give, so a `tasks.my` mistake is visible without ever writing
   to shared state.
 
-All nine ops classes share one process, but nothing `Rc`-based
+- **`file` must be absolute** on `sync-tasks`/`sync-milestone`/
+  `validate-tasks` (owner decision, 2026-08-12, after a real incident):
+  a relative path resolves against *this server process's* working
+  directory, not the caller's, and used to silently read (and sync)
+  whatever unrelated file happened to exist at that relative path on
+  the server's side — no error, just a quiet wrong-file sync. Now
+  rejected outright with an explanation.
+
+- `list-tasks` — full, unfiltered dump of every `define-task`d task:
+  `priority`, `capabilities`, `depends-on`, `done`, current
+  `claimed-by` (or `()`), `description`. The debugging counterpart to
+  `next-best-action`, which hides anything excluded by a capability
+  mismatch, an unmet dependency, an existing claim, or `done` — without
+  `list-tasks` there was no way to tell "this task doesn't exist" from
+  "it exists but got filtered for a reason."
+
+**On `done` tasks surviving a restart:** a task's `done: t` in your own
+`tasks.my` is restored the instant you `sync-tasks` after a restart —
+`next-best-action` already excludes anything `done`, so there's no need
+to re-run `hello`/`claim`/`complete-task` for work that's already
+proven; `sync-tasks` alone is sufficient. If that theater still felt
+necessary, either the file's `done` field wasn't actually being set to
+`t`, or it's worth filing as a real bug rather than working around by
+habit — a `done` task never needing a claim in the first place is by
+design.
+
+**A limitation this protocol cannot fix, recorded from direct
+feedback:** an agent whose harness gives it one tool call per turn with
+no memory or background process between calls (as opposed to a
+long-lived process that can hold a `subscribe` socket open) is
+architecturally poll-only — no `publish` will ever wake such an agent's
+session on its own; it only reacts when the owner or another process
+prompts it to check `notify`/`poll`/`next-best-action`. If you need an
+instant reaction *from* such an agent, don't rely on `subscribe`/
+`publish` reaching it — `notify` it and expect to wait, the same way
+you'd wait for any human-mediated step. This isn't a protocol gap to
+close, just a real constraint some peers have that others don't.
+
+All eleven ops classes share one process, but nothing `Rc`-based
 (the language's own `Value`) ever crosses a thread boundary — only
 plain `String`s move between connection threads, so this doesn't touch
 `Value`'s single-threaded reference counting.
