@@ -15,9 +15,12 @@
 
 mod compact;
 mod journal;
+mod log;
 mod sexpr;
 mod state;
 mod tasks_file;
+
+use log::{log_info as info, log_warn as warn};
 
 use journal::{Event, Identity, Journal};
 use sexpr::Sexp;
@@ -120,7 +123,7 @@ fn parse_args() -> Args {
                     connect.push(v);
                 }
             }
-            other => eprintln!("swarm-node: ignoring unknown argument `{other}`"),
+            other => warn!("swarm-node: ignoring unknown argument `{other}`"),
         }
     }
     Args { port, node_id, project, data_dir, connect }
@@ -131,7 +134,7 @@ fn main() -> std::io::Result<()> {
     let identity = journal::load_or_init_identity(&args.data_dir, &args.node_id)?;
     let journal = Journal::open(&args.data_dir)?;
     let lamport_start = journal.max_lamport();
-    eprintln!(
+    info!(
         "swarm-node: node={} epoch={} project={} journal={} events={} listening on 127.0.0.1:{}",
         identity.node_id,
         identity.epoch,
@@ -165,7 +168,7 @@ fn main() -> std::io::Result<()> {
         let stream = match incoming {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("swarm-node: accept error: {e}");
+                warn!("swarm-node: accept error: {e}");
                 continue;
             }
         };
@@ -206,7 +209,7 @@ fn spawn_connect(node: &Arc<Node>, addr: String) {
                     handle_connection(node.clone(), stream, true);
                     backoff = RECONNECT_INITIAL_BACKOFF; // connection lasted a while, reset
                 }
-                Err(e) => eprintln!("swarm-node: could not connect to {addr}: {e}, retrying in {backoff:?}"),
+                Err(e) => warn!("swarm-node: could not connect to {addr}: {e}, retrying in {backoff:?}"),
             }
             thread::sleep(backoff);
             backoff = (backoff * 2).min(RECONNECT_MAX_BACKOFF);
@@ -224,7 +227,7 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
     let reader_stream = match stream.try_clone() {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("swarm-node: could not clone stream for {peer_addr}: {e}");
+            warn!("swarm-node: could not clone stream for {peer_addr}: {e}");
             return;
         }
     };
@@ -259,7 +262,7 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
         let msg = match sexpr::parse(&line) {
             Ok(m) => m,
             Err(e) => {
-                eprintln!("swarm-node: bad message from {peer_addr}: {e}");
+                warn!("swarm-node: bad message from {peer_addr}: {e}");
                 continue;
             }
         };
@@ -268,7 +271,7 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                 let their_node = msg.field_atom("node").unwrap_or("unknown").to_string();
                 let their_epoch = msg.field_atom("epoch").unwrap_or("0");
                 let their_port: u16 = msg.field_atom("listen-port").and_then(|s| s.parse().ok()).unwrap_or(0);
-                eprintln!("swarm-node: peer-hello from {their_node} epoch={their_epoch}");
+                info!("swarm-node: peer-hello from {their_node} epoch={their_epoch}");
                 send(
                     &mut stream,
                     &Sexp::list(vec![
@@ -288,7 +291,7 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("peer-welcome") => {
                 let their_node = msg.field_atom("node").unwrap_or("unknown").to_string();
                 let their_port: u16 = msg.field_atom("listen-port").and_then(|s| s.parse().ok()).unwrap_or(0);
-                eprintln!("swarm-node: peer-welcome from {their_node}");
+                info!("swarm-node: peer-welcome from {their_node}");
                 register_peer(&node, &their_node, &mut stream, &peer_ip, their_port);
                 send_peer_list(&node, &their_node, &mut stream);
                 peer_node_id = Some(their_node);
@@ -362,13 +365,13 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                 handle_compact(&node, &mut stream);
             }
             other => {
-                eprintln!("swarm-node: unrecognized message head {other:?} from {peer_addr}");
+                warn!("swarm-node: unrecognized message head {other:?} from {peer_addr}");
             }
         }
     }
     if let Some(id) = peer_node_id {
         node.peers.lock().unwrap().remove(&id);
-        eprintln!("swarm-node: connection to {id} closed");
+        info!("swarm-node: connection to {id} closed");
     }
 }
 
@@ -454,7 +457,7 @@ fn handle_peer_list(node: &Arc<Node>, msg: &Sexp) {
         node.peer_addrs.lock().unwrap().insert(id.clone(), (ip.clone(), port));
         let already_connected = node.peers.lock().unwrap().contains_key(id);
         if !already_connected && node.identity.node_id < *id {
-            eprintln!("swarm-node: learned of {id} at {ip}:{port} via gossip, dialing");
+            info!("swarm-node: learned of {id} at {ip}:{port} via gossip, dialing");
             spawn_connect(node, format!("{ip}:{port}"));
         }
     }
@@ -503,7 +506,7 @@ fn handle_sync_hello(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         }
     }
     if !missing_events.is_empty() {
-        eprintln!(
+        info!(
             "swarm-node: sending {} catch-up event(s) to {their_node}",
             missing_events.len()
         );
@@ -544,7 +547,7 @@ fn handle_sync_events(node: &Arc<Node>, msg: &Sexp) {
         }
     }
     if applied > 0 {
-        eprintln!("swarm-node: applied {applied} event(s) from anti-entropy sync");
+        info!("swarm-node: applied {applied} event(s) from anti-entropy sync");
     }
     if let Some(from) = msg.field_atom("from") {
         mark_caught_up(node, from);
@@ -558,7 +561,7 @@ fn mark_caught_up(node: &Arc<Node>, from_node: &str) {
     let was_synced = node.synced();
     node.caught_up_with.lock().unwrap().insert(from_node.to_string());
     if !was_synced && node.synced() {
-        eprintln!("swarm-node: caught up with the swarm via {from_node}, ready to claim work");
+        info!("swarm-node: caught up with the swarm via {from_node}, ready to claim work");
     }
 }
 
@@ -689,7 +692,7 @@ fn handle_claim_proposal(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     }
     drop(promises);
 
-    eprintln!(
+    info!(
         "swarm-node: vote {} on claim-proposal task={task} agent={agent} generation={generation} (local gen={}, holder={:?}, promise_free={promise_free})",
         if vote { "YES" } else { "NO" },
         current.generation,
@@ -1230,7 +1233,7 @@ fn handle_compact(node: &Arc<Node>, stream: &mut TcpStream) {
     match compact::compact(&mut journal, &node.identity.node_id) {
         Ok((before, after)) => {
             drop(journal);
-            eprintln!("swarm-node: compacted journal {before} -> {after} events");
+            info!("swarm-node: compacted journal {before} -> {after} events");
             send(
                 stream,
                 &Sexp::list(vec![
