@@ -149,9 +149,17 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   its own timeout/cleanup and wasn't worth the complexity before real usage
   shows it matters (single-writer-per-task in the current 4-agent swarm
   makes true concurrent proposals unlikely in practice).
-- **M0.3**: presence/capability-matching/next-best-action reimplemented as
-  derived state over the M0.1 event log, replacing the in-memory versions on
-  `:9999`.
+- **M0.3** — done: `define-task` (task metadata as a `task-defined` fact —
+  priority, capabilities, depends-on, description), `next-best-action`
+  (same scoring as `:9999`: `priority * (1 + unblock_impact)`, capability
+  match as a hard gate, dependencies must all be completed), and
+  `presence` — deliberately *not* derived from the event log like
+  everything else, since "is this node up right now" is inherently
+  ephemeral and would go stale the moment a node restarts; it's read live
+  from currently-open peer connections instead. Validated: a 2-task chain
+  (`TASK-Y` depends on `TASK-X`) correctly hides `TASK-X` from an agent
+  lacking its required capability, hides `TASK-Y` until `TASK-X` is
+  completed, and re-scores `TASK-Y` as top pick once it is.
 - Migration: `:9999` keeps running throughout M0.1/M0.2 so cml/fpga-lisp/
   my-idea aren't blocked; they migrate their coordination traffic to
   `swarm-node` only once M0.3 is validated and announced.

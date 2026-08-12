@@ -279,6 +279,15 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("list-task-state") => {
                 handle_list_task_state(&node, &mut stream);
             }
+            Some("define-task") => {
+                handle_define_task(&node, &msg, &mut stream);
+            }
+            Some("next-best-action") => {
+                handle_next_best_action(&node, &msg, &mut stream);
+            }
+            Some("presence") => {
+                handle_presence(&node, &mut stream);
+            }
             other => {
                 eprintln!("swarm-node: unrecognized message head {other:?} from {peer_addr}");
             }
@@ -782,4 +791,96 @@ fn handle_list_task_state(node: &Arc<Node>, stream: &mut TcpStream) {
         .collect();
     drop(journal);
     send(stream, &Sexp::list(vec![Sexp::atom("task-states"), Sexp::list(entries)]));
+}
+
+/// Local client op: `(define-task (task <id>) (priority <n>) (capabilities
+/// (a b)) (depends-on (x y)) (description "..."))`. Task metadata is a fact
+/// like everything else (`task-defined`), so it replicates the same way
+/// claims do — no separate sync path needed.
+fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    let Some(task) = msg.field_atom("task") else {
+        send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string("define-task requires a `task` field")]));
+        return;
+    };
+    let priority = msg.field_atom("priority").unwrap_or("1");
+    let capabilities = msg.field("capabilities").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
+    let depends_on = msg.field("depends-on").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
+    let description = msg.field_atom("description");
+
+    let mut payload_fields = vec![
+        Sexp::list(vec![Sexp::atom("task"), Sexp::atom(task)]),
+        Sexp::list(vec![Sexp::atom("priority"), Sexp::atom(priority)]),
+        Sexp::list(vec![Sexp::atom("capabilities"), capabilities]),
+        Sexp::list(vec![Sexp::atom("depends-on"), depends_on]),
+    ];
+    if let Some(d) = description {
+        payload_fields.push(Sexp::list(vec![Sexp::atom("description"), Sexp::string(d)]));
+    }
+    let payload = Sexp::list(payload_fields);
+
+    let lamport = node.tick_lamport(0);
+    let mut journal = node.journal.lock().unwrap();
+    let seq = journal.next_seq(&node.identity.node_id);
+    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "task-defined".to_string(), payload };
+    match journal.append(event.clone()) {
+        Ok(()) => {
+            drop(journal);
+            send(stream, &Sexp::list(vec![Sexp::atom("ok"), Sexp::list(vec![Sexp::atom("task"), Sexp::atom(task)])]));
+            broadcast_event(node, &event, None);
+        }
+        Err(e) => send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("journal append failed: {e}"))])),
+    }
+}
+
+/// Local client op: `(next-best-action (capabilities (a b)))`. Picks the
+/// highest-scoring unclaimed, uncompleted, dependency-satisfied task whose
+/// required capabilities are a subset of the caller's. Capability mismatch
+/// is a hard gate (excluded, not down-ranked) — matches the `:9999` design.
+fn handle_next_best_action(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    let capabilities = match msg.field("capabilities").and_then(|f| f.first()) {
+        Some(Sexp::List(items)) => items
+            .iter()
+            .filter_map(|i| match i {
+                Sexp::Atom(s) | Sexp::Str(s) => Some(s.clone()),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    let journal = node.journal.lock().unwrap();
+    let best = state::next_best_action(&journal, &capabilities);
+    drop(journal);
+    match best {
+        Some((task, def, ts)) => send(
+            stream,
+            &Sexp::list(vec![
+                Sexp::atom("next-best-action"),
+                Sexp::list(vec![Sexp::atom("task"), Sexp::atom(&task)]),
+                Sexp::list(vec![Sexp::atom("priority"), Sexp::atom(def.priority.to_string())]),
+                Sexp::list(vec![Sexp::atom("generation"), Sexp::atom(ts.generation.to_string())]),
+                Sexp::list(vec![
+                    Sexp::atom("description"),
+                    match &def.description {
+                        Some(d) => Sexp::string(d),
+                        None => Sexp::List(vec![]),
+                    },
+                ]),
+            ]),
+        ),
+        None => send(stream, &Sexp::list(vec![Sexp::atom("next-best-action"), Sexp::List(vec![])])),
+    }
+}
+
+/// Local client op: `(presence)`. Derived live from currently-open
+/// connections rather than the event log — unlike claims and evidence,
+/// "is this node up right now" is inherently ephemeral and shouldn't
+/// survive a restart as a stale fact, so it deliberately isn't durable.
+fn handle_presence(node: &Arc<Node>, stream: &mut TcpStream) {
+    let mut ids: Vec<String> = node.peers.lock().unwrap().keys().cloned().collect();
+    ids.push(node.identity.node_id.clone());
+    ids.sort();
+    send(
+        stream,
+        &Sexp::list(vec![Sexp::atom("presence"), Sexp::list(ids.into_iter().map(Sexp::atom).collect())]),
+    );
 }

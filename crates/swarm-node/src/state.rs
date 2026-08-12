@@ -1,13 +1,56 @@
-//! Derived task-ownership state (M0.2): computed by folding the event log,
-//! never transmitted directly — "same facts -> same reducer -> same state".
+//! Derived task-ownership state (M0.2) and task definitions + scheduling
+//! (M0.3): computed by folding the event log, never transmitted directly —
+//! "same facts -> same reducer -> same state".
 
 use crate::journal::{Event, Journal};
+use crate::sexpr::Sexp;
 
 #[derive(Debug, Clone, Default)]
 pub struct TaskState {
     pub generation: u64,
     pub holder: Option<String>,
     pub completed: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TaskDef {
+    pub priority: f64,
+    pub capabilities: Vec<String>,
+    pub depends_on: Vec<String>,
+    pub description: Option<String>,
+}
+
+/// Folds `task-defined` events for `task`, last one wins (a redefinition
+/// replaces the previous one wholesale). A concurrent conflicting redefine
+/// from two agents is a known, deliberately unhandled edge case — task
+/// metadata churns far less than claims, so it wasn't worth a generation
+/// scheme on top of the one claims already have.
+pub fn task_def(journal: &Journal, task: &str) -> Option<TaskDef> {
+    let mut def = None;
+    for ev in &journal.events {
+        if ev.typ != "task-defined" || ev.payload.field_atom("task") != Some(task) {
+            continue;
+        }
+        let priority: f64 = ev.payload.field_atom("priority").and_then(|s| s.parse().ok()).unwrap_or(1.0);
+        let capabilities = string_list(&ev.payload, "capabilities");
+        let depends_on = string_list(&ev.payload, "depends-on");
+        let description = ev.payload.field_atom("description").map(|s| s.to_string());
+        def = Some(TaskDef { priority, capabilities, depends_on, description });
+    }
+    def
+}
+
+fn string_list(payload: &Sexp, key: &str) -> Vec<String> {
+    match payload.field(key).and_then(|f| f.first()) {
+        Some(Sexp::List(items)) => items
+            .iter()
+            .filter_map(|i| match i {
+                Sexp::Atom(s) | Sexp::Str(s) => Some(s.clone()),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 /// Folds `claim-committed` / `claim-released` / `task-completed` events (in
@@ -61,9 +104,55 @@ pub fn all_task_ids(journal: &Journal) -> Vec<String> {
 
 fn event_task(ev: &Event) -> Option<String> {
     match ev.typ.as_str() {
-        "claim-committed" | "claim-released" | "task-completed" => {
+        "claim-committed" | "claim-released" | "task-completed" | "task-defined" => {
             ev.payload.field_atom("task").map(|s| s.to_string())
         }
         _ => None,
     }
+}
+
+/// A schedulable candidate: has a definition, isn't claimed or completed,
+/// and everything it depends on is completed.
+struct Candidate {
+    task: String,
+    score: f64,
+}
+
+/// `next-best-action`: mirrors the scoring already documented for the
+/// `:9999` oracle (score = priority * (1 + unblock_impact)), with
+/// capability match as a hard gate rather than a down-rank — an agent
+/// missing a required capability should never be offered a task it can't
+/// actually do. Ties broken by task id for determinism across nodes.
+pub fn next_best_action(journal: &Journal, capabilities: &[String]) -> Option<(String, TaskDef, TaskState)> {
+    let ids = all_task_ids(journal);
+    let defs: Vec<(String, TaskDef)> = ids.iter().filter_map(|id| task_def(journal, id).map(|d| (id.clone(), d))).collect();
+
+    let is_done = |task: &str| -> bool {
+        defs.iter().find(|(id, _)| id == task).map(|_| task_state(journal, task).completed).unwrap_or(false)
+    };
+
+    let mut candidates: Vec<Candidate> = Vec::new();
+    for (id, def) in &defs {
+        let ts = task_state(journal, id);
+        if ts.completed || ts.holder.is_some() {
+            continue;
+        }
+        if !def.capabilities.iter().all(|c| capabilities.contains(c)) {
+            continue;
+        }
+        if !def.depends_on.iter().all(|dep| is_done(dep)) {
+            continue;
+        }
+        let unblock_impact = defs
+            .iter()
+            .filter(|(_, other)| other.depends_on.contains(id))
+            .count() as f64;
+        candidates.push(Candidate { task: id.clone(), score: def.priority * (1.0 + unblock_impact) });
+    }
+
+    candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal).then(a.task.cmp(&b.task)));
+    let best = candidates.into_iter().next()?;
+    let def = task_def(journal, &best.task)?;
+    let ts = task_state(journal, &best.task);
+    Some((best.task, def, ts))
 }
