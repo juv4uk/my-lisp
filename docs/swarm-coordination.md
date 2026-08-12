@@ -102,24 +102,50 @@ None of this is a mandate — it's the rest of the original proposal,
 kept here so the next session (or the owner) can pick pieces
 deliberately rather than reconstructing them from a mailbox thread.
 
-### Typed event topics
+### Typed event topics — built (commit `8b42daa`)
 
-Rather than free-text `message` strings, structured event types agents
-subscribe to selectively:
+Four of the proposal's original topics are now auto-published by the
+op that causes them — no repo has to remember to separately `publish`
+after a state change it already made through another op:
 
 ```
-task-created        claim-taken         claim-released
-need-published       offer-published     evidence-created
-handoff-created       contract-changed    dependency-satisfied
-agent-joined         agent-left          agent-blocked
+claim-taken      — claim(task, from) succeeds on a previously-unclaimed task
+claim-released   — release(task, from) actually removes a held claim
+agent-joined     — hello(from, ...) registers a genuinely new agent
+                    (repeat hello, or a plain heartbeat, don't refire it)
+task-created     — define-task(task, ...) defines a task id not seen before
+                    (redefining an existing one doesn't refire it)
+capability-request — every capability-request(from, needs, ...) call
+                      (already built, see above; included here as it's
+                      the same auto-publish pattern)
 ```
 
-`cml` might `subscribe` to `(contract-changed handoff-created
-dependency-satisfied need-published)`; `my-idea` to everything
-(`*`, or an empty `topics`, already supported). The current
-`subscribe`/`publish` already supports arbitrary string topics — this
-would mostly be a *convention* the four repos agree on, not a protocol
-change, plus maybe validation that `topic` is one of a known set.
+Each still carries a free-text `message` alongside the `topic`, same
+envelope shape as a manual `publish`: `(event (from ..) (topic ..)
+(message ..))`. Manually verified: a connection subscribed to
+`(claim-taken claim-released agent-joined task-created)` receives all
+four, in order, as a separate connection does `hello` →
+`define-task` → `claim` → `release`.
+
+**Not auto-published, left as convention only** (no op in this
+protocol directly causes them — they belong to state a repo's own
+files hold, not the swarm registry):
+
+```
+need-published    offer-published    evidence-created
+handoff-created    contract-changed   dependency-satisfied
+agent-left
+```
+
+A repo that wants these should `publish` them manually at the moment
+they become true — e.g. `cml` writing `evidence/G5/cml/<sha>.my` is a
+natural place to also `(op publish) (topic evidence-created) (message
+"G5/cml/<sha>.my")`, so a `subscribe`d `my-idea` refreshes its matrix
+instantly instead of on its next poll of the filesystem.
+`agent-left` has no natural trigger at all in this design (there's no
+graceful disconnect signal, and `presence`'s `seconds-since-heartbeat`
+already covers "probably gone" without needing a discrete event) —
+listed for completeness against the original proposal, not planned.
 
 ### Presence / heartbeat — built (commit `46f414d`)
 

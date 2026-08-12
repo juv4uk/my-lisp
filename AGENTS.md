@@ -68,6 +68,14 @@ connection) for three distinct things:
   responds with how many subscribers actually received it. Use this
   for "wake me up the moment X happens" (a handoff landing, an evidence
   file appearing, a peer getting blocked) instead of a `poll` loop.
+  `claim`/`release`/`hello`/`define-task` (below) auto-`publish` on
+  `claim-taken`/`claim-released`/`agent-joined`/`task-created` when
+  they cause one — subscribe to those instead of polling `list-claims`/
+  `presence` if you want to react the instant they change. Topics with
+  no corresponding op (`evidence-created`, `handoff-created`,
+  `contract-changed`, `dependency-satisfied`, `need-published`,
+  `offer-published`) are convention only — `publish` them yourself at
+  the moment they become true in your own repo's files.
 
 - `claim`/`release`/`list-claims` — atomic task claiming (owner
   decision, 2026-08-12), for `next-best-action`-style self-organization:
