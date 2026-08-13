@@ -89,6 +89,8 @@ struct Node {
     /// Last time we received *any* message (heartbeat or otherwise) from
     /// each connected peer — see `HEARTBEAT_INTERVAL`/`STALE_PEER_TIMEOUT`.
     last_seen: Mutex<HashMap<String, Instant>>,
+    /// Process start time, for `(metrics)`'s uptime field.
+    started_at: Instant,
 }
 
 impl Node {
@@ -189,6 +191,7 @@ fn main() -> std::io::Result<()> {
         caught_up_with: Mutex::new(HashSet::new()),
         promised: Mutex::new(HashMap::new()),
         last_seen: Mutex::new(HashMap::new()),
+        started_at: Instant::now(),
     });
 
     for addr in &args.connect {
@@ -441,6 +444,9 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             }
             Some("status") => {
                 handle_status(&node, &mut stream);
+            }
+            Some("metrics") => {
+                handle_metrics(&node, &mut stream);
             }
             Some("join") => {
                 handle_join(&node, &msg, &mut stream);
@@ -1196,6 +1202,32 @@ fn handle_status(node: &Arc<Node>, stream: &mut TcpStream) {
             presence,
             members_sexp,
             tasks_sexp,
+        ]),
+    );
+}
+
+/// Local client op: `(metrics)`. A handful of small, fixed fields meant
+/// to be polled repeatedly and diffed/graphed over time (e.g. by
+/// `SWARM-STATUS-DASHBOARD`) — deliberately lighter than `(status)`,
+/// which re-serializes the full task/member list on every call and gets
+/// more expensive as the swarm grows. No new derived-state computation
+/// beyond what `(status)`/`(presence)` already do; this just bundles the
+/// cheap scalar facts on their own.
+fn handle_metrics(node: &Arc<Node>, stream: &mut TcpStream) {
+    let event_count = node.journal.lock().unwrap().events.len();
+    let peer_count = node.peers.lock().unwrap().len();
+    let uptime_secs = node.started_at.elapsed().as_secs();
+
+    send(
+        stream,
+        &Sexp::list(vec![
+            Sexp::atom("metrics"),
+            Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)]),
+            Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
+            Sexp::list(vec![Sexp::atom("uptime-secs"), Sexp::atom(uptime_secs.to_string())]),
+            Sexp::list(vec![Sexp::atom("event-count"), Sexp::atom(event_count.to_string())]),
+            Sexp::list(vec![Sexp::atom("peer-count"), Sexp::atom(peer_count.to_string())]),
+            Sexp::list(vec![Sexp::atom("synced"), Sexp::atom(if node.synced() { "t" } else { "nil" })]),
         ]),
     );
 }

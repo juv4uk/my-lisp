@@ -257,3 +257,23 @@ fn rejects_duplicate_node_id_claim_from_a_second_connection() {
     let presence = request(port_a, "(presence)");
     assert!(presence.contains("node-b"), "real node-b should still be present after a rejected spoof attempt: {presence}");
 }
+
+#[test]
+fn metrics_reports_event_count_peer_count_and_synced() {
+    let base = alloc_ports(2);
+    let (port_a, port_b) = (base, base + 1);
+
+    let _a = spawn(port_a, "node-a", &data_dir("metrics-a"), None);
+    request(port_a, "(emit (type evidence-created) (payload (artifact \"x.my\")))");
+    request(port_a, "(emit (type evidence-created) (payload (artifact \"y.my\")))");
+
+    let _b = spawn(port_b, "node-b", &data_dir("metrics-b"), Some(port_a));
+    eventually(port_a, "(metrics)", Duration::from_secs(2), |r| r.contains("(peer-count 1)"));
+
+    let metrics = request(port_a, "(metrics)");
+    assert!(metrics.starts_with("(metrics"), "metrics op malformed: {metrics}");
+    assert!(metrics.contains("(event-count 2)"), "expected 2 events after 2 emits: {metrics}");
+    assert!(metrics.contains("(peer-count 1)"), "expected 1 connected peer (node-b): {metrics}");
+    assert!(metrics.contains("(synced t)"), "node-a with no --connect should be trivially synced: {metrics}");
+    assert!(metrics.contains("(node node-a)"), "metrics should report the caller's own node-id: {metrics}");
+}

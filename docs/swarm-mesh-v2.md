@@ -381,6 +381,15 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   different socket — gets no `peer-welcome` reply, and node-a's
   `presence` still shows the real node-b afterward, unevicted.
 
+- **M0.13** — done: `(metrics)` op. `(status)` bundles `presence` +
+  `list-members` + `list-task-state` and re-serializes the full task/
+  member list on every call — fine for a human checking in occasionally,
+  wasteful for something polling repeatedly to graph trends (like
+  `SWARM-STATUS-DASHBOARD`). `(metrics)` is a handful of fixed scalar
+  fields instead: `uptime-secs`, `event-count`, `peer-count`, `synced`.
+  Verified: after 2 `emit`s and a second node connecting,
+  `event-count` reads 2 and `peer-count` reads 1.
+
 ## Non-goals for v0.1
 
 No Raft, no DHT, no dynamic peer discovery — the mesh is 4 known localhost
