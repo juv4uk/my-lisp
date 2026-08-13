@@ -1,14 +1,28 @@
-//! Semantic Atom Registry — Sanskrit migration Phase 2
-//! (docs/sanskrit-semantic-migration.md §3).
+//! Semantic Atom Registry — Sanskrit migration Phase 2/3
+//! (docs/sanskrit-semantic-migration.md §3, §18, §4).
 //!
-//! The single authoritative source of semantic atoms. Deliberately
-//! minimal for Phase 2: this delivers the *registry mechanism* (the
-//! `Atom` shape + lookup API) proven against the spec's own worked
-//! example (`DHATU_DA`, §0/§3), not the full populated vocabulary —
-//! populating the 12-dhātu core with exact per-atom semantics (§18) is
-//! `SANSKRIT-P3-DHATU-CORE`'s job, and the six kāraka roles are
-//! `SANSKRIT-P4-KARAKA-LAYER`'s. Keeping that boundary is what spec §34
-//! means by "не виконувати всі фази одним commit".
+//! The single authoritative source of semantic atoms. Phase 2 delivered
+//! the *registry mechanism* proven against the spec's own worked example
+//! (`DHATU_DA`); this (Phase 3, `SANSKRIT-P3-DHATU-CORE`) populates the
+//! full 12-dhātu core with exact per-atom semantics per spec §18. The six
+//! kāraka roles are still `SANSKRIT-P4-KARAKA-LAYER`'s job — keeping that
+//! boundary is what spec §34 means by "не виконувати всі фази одним
+//! commit".
+//!
+//! Every dhātu's `slp1`/`gaṇa`/lexicographic sense here is doubly
+//! sourced, not invented: cross-checked against `my-lisp-panini`'s
+//! `panini/registry/dhatu/*.yaml` (itself verified against
+//! `vidyut-prakriya/data/dhatupatha.tsv`, the Vidyut project's structured
+//! Dhātupāṭha — see that repo's `panini/research/dhatupatha-verification.md`
+//! and `docs/sanskrit-lexicon-verification.md` in *this* repo, which
+//! independently verified the same 12 roots against Monier-Williams-
+//! derived web sources before `my-lisp-panini`'s registry existed). Where
+//! sources agreed (all 12), that is the sense filed below; the *chosen
+//! programming-language operational meaning* per root (spec §4: "Мова
+//! програмування повинна вибрати чітку operational semantics") is this
+//! task's own judgment call, informed by but not dictated by the
+//! lexicographic sense — a Sanskrit root's classical senses are a
+//! starting point, not a specification.
 //!
 //! The load-bearing design rule from spec §3: **the semantic `id` is the
 //! identity, never the SLP1 spelling.** `DHATU_DA -> dA` is correct;
@@ -16,6 +30,12 @@
 //! bytecode/ABI stability to orthography, which spec §3 exists to avoid.
 //! `atoms_test_no_identity_is_its_own_spelling` below enforces this
 //! mechanically, not just as a doc comment.
+//!
+//! `status: Experimental` on every entry below is deliberate, not an
+//! oversight: spec §18's full field shape (required/optional roles as
+//! actual kāraka references, not prose) can't be finalized until
+//! `SANSKRIT-P4-KARAKA-LAYER` exists to reference. Promoting to `Stable`
+//! is P4's job, not this one's.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AtomCategory {
@@ -65,20 +85,144 @@ pub struct Atom {
     pub status: AtomStatus,
 }
 
-/// The registry. Deliberately one entry for Phase 2 — the spec's own
-/// worked example, reused end-to-end by `SANSKRIT-P4`'s planned first
-/// vertical slice (`docs/sanskrit-semantic-migration.md` §0, §35).
-pub const REGISTRY: &[Atom] = &[Atom {
-    id: "DHATU_DA",
-    slp1: "dA",
-    iast: "dā",
-    devanagari: "दा",
-    category: AtomCategory::Dhatu,
-    gloss: "give",
-    semantics: "transfer an entity from an agent (kartṛ) toward a recipient (sampradāna); required role karman, optional kartṛ/sampradāna — see spec §18 for the full field shape once SANSKRIT-P3 vets this beyond the worked example",
-    aliases: &["give", "transfer", "send"],
-    status: AtomStatus::Experimental,
-}];
+/// The 12-dhātu experimental core (spec §4), each gaṇa/sense doubly
+/// sourced (see module docs). `semantics` follows spec §18's shape as
+/// prose for now (required roles / optional roles / effects / purity) —
+/// real `Karaka`-typed fields are P4's job once that type exists.
+pub const REGISTRY: &[Atom] = &[
+    Atom {
+        id: "DHATU_KF",
+        slp1: "kf",
+        iast: "kṛ",
+        devanagari: "कृ",
+        category: AtomCategory::Dhatu,
+        gloss: "make",
+        semantics: "construct or perform: bring a new entity or action into being. required role: karman (what is made/done). optional roles: kartf (agent), karaRa (means/instrument). effects: typically constructive (allocation/construction of a value); purity: pure when karman denotes a value being constructed, impure when karman denotes an external action being performed — gaRa 8 (tanAdi) per panini/registry/dhatu/kf.yaml, cross-verified docs/sanskrit-lexicon-verification.md",
+        aliases: &["make", "create", "construct"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_GAM",
+        slp1: "gam",
+        iast: "gam",
+        devanagari: "गम्",
+        category: AtomCategory::Dhatu,
+        gloss: "go",
+        semantics: "transition: move an entity from one state, location, or position in a sequence to another. required role: kartf (what transitions — gam is classically intransitive, the mover is the agent, not a separate object). optional roles: apAdAna (starting point), aDikaraRa (destination/target state). effects: state/position transition, no value construction; purity: pure for a logical/data-structure transition (e.g. iterator advance), impure for a transition with external effect (e.g. process/control transfer). gaRa 1 (BvAdi)",
+        aliases: &["go", "next", "advance"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_DA",
+        slp1: "dA",
+        iast: "dā",
+        devanagari: "दा",
+        category: AtomCategory::Dhatu,
+        gloss: "give",
+        semantics: "transfer an entity from an agent (kartṛ) toward a recipient (sampradāna); required role karman, optional kartṛ/sampradāna — see spec §18 for the full field shape once SANSKRIT-P3 vets this beyond the worked example",
+        aliases: &["give", "transfer", "send"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_GRAH",
+        slp1: "grah",
+        iast: "grah",
+        devanagari: "ग्रह्",
+        category: AtomCategory::Dhatu,
+        gloss: "take",
+        semantics: "acquire: bind a reference to, or take possession of, an entity. required role: karman (what is acquired). optional roles: kartf (agent), apAdAna (source it is taken from — the counterpart of dA's sampradAna). effects: acquisition of a reference/resource, may allocate a binding; purity: context dependent (pure if binding an already-existing value, impure if acquiring an external resource, e.g. a lock or handle). gaRa 9 (kryAdi)",
+        aliases: &["take", "acquire", "grab"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_JNA",
+        slp1: "jYA",
+        iast: "jñā",
+        devanagari: "ज्ञा",
+        category: AtomCategory::Dhatu,
+        gloss: "know",
+        semantics: "cognize: query or introspect knowledge about a value's nature, without altering it. required role: karman (what is known/queried). optional roles: kartf (the one who knows). effects: none — read-only cognition; purity: pure, always (this is the classification-predicate family, e.g. a type test). deliberately distinct from eval per SANSKRIT-P1-DESIGN-DECISIONS, which explicitly ruled jYA must NOT be reused for eval's execute-an-expression sense (a separate root, chosen later, not yet assigned). gaRa 9 (kryAdi) — engineer-1's original reference and panini/registry/dhatu/jYA.yaml both note jYA appears under multiple gaRa/homonyms in the primary Dhatupatha; the gaRa-9 \"know\" sense is the one filed here, matching the docs/sanskrit-lexicon-verification.md finding",
+        aliases: &["know?", "type-of"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_DRS",
+        slp1: "dfS",
+        iast: "dṛś",
+        devanagari: "दृश्",
+        category: AtomCategory::Dhatu,
+        gloss: "see",
+        semantics: "observe: inspect a value already in hand, without retrieving it from an external source (contrast paW, which implies retrieval from a source/medium). required role: karman (what is observed). optional roles: kartf (observer). effects: none — pure observation of existing state; purity: pure, always. gaRa 1 (BvAdi)",
+        aliases: &["view", "inspect"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_SRU",
+        slp1: "Sru",
+        iast: "śru",
+        devanagari: "श्रु",
+        category: AtomCategory::Dhatu,
+        gloss: "hear",
+        semantics: "receive: accept an incoming value or message from an external channel. required role: karman (what is received). optional roles: apAdAna (the sender/channel). effects: input/receipt; purity: impure when the channel is genuinely external (network, user input), pure only in a degenerate/testing sense. gaRa cited as 5 (svAdi) in this registry, though docs/sanskrit-lexicon-verification.md and panini/research/dhatupatha-verification.md both flag the primary Dhatupatha (Sru\\, 01.1092) actually shows gaRa 1 (BvAdi) for this root — an open discrepancy neither project has resolved yet, noted here rather than silently picking one",
+        aliases: &["receive", "listen"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_VAC",
+        slp1: "vac",
+        iast: "vac",
+        devanagari: "वच्",
+        category: AtomCategory::Dhatu,
+        gloss: "say",
+        semantics: "express: emit a value as output or declare a statement. required role: karman (what is said). optional roles: kartf (speaker), sampradAna (listener/recipient of the output). effects: output/emission; purity: context dependent per SANSKRIT-P1-DESIGN-DECISIONS's ruling — shares this dhAtu family with write-to-string (pure, no I/O) and print (impure, displays to a user), distinguished by context/purity metadata, not by separate roots. gaRa 2 (adAdi)",
+        aliases: &["say", "print", "write-to-string"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_LIKH",
+        slp1: "liK",
+        iast: "likh",
+        devanagari: "लिख्",
+        category: AtomCategory::Dhatu,
+        gloss: "write",
+        semantics: "inscribe: persist a value into a durable medium. required role: karman (what is written). optional roles: kartf (writer), aDikaraRa (the medium/location written to). effects: mutation of durable state; purity: impure, always — inscription is inherently side-effecting, unlike vac's context-dependent purity. gaRa 6 (tudAdi)",
+        aliases: &["write-file", "persist"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_PATH",
+        slp1: "paW",
+        iast: "paṭh",
+        devanagari: "पठ्",
+        category: AtomCategory::Dhatu,
+        gloss: "read",
+        semantics: "retrieve: obtain a value from a durable medium or external source (contrast dfS, pure observation of a value already in hand). required role: karman (what is read) or aDikaraRa (the source read from). effects: retrieval, possibly I/O; purity: context dependent — pure if the source is immutable/already-materialized, impure if the source is external/mutable (a file, a stream). gaRa 1 (BvAdi)",
+        aliases: &["read-file", "load"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_STHA",
+        slp1: "sTA",
+        iast: "sthā",
+        devanagari: "स्था",
+        category: AtomCategory::Dhatu,
+        gloss: "stand",
+        semantics: "persist-in-place: an entity continues to exist/hold at a given location or in a given state, without being transferred or transformed (contrast gam, a transition away from where something is). required role: kartf (what stands/persists) or aDikaraRa (where it stands). effects: none beyond asserting continued existence; purity: pure as an assertion, though the binding it describes may itself be mutable elsewhere. gaRa 1 (BvAdi)",
+        aliases: &["persist-at", "resident"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "DHATU_BHU",
+        slp1: "BU",
+        iast: "bhū",
+        devanagari: "भू",
+        category: AtomCategory::Dhatu,
+        gloss: "become",
+        semantics: "come into being: an entity transitions into existence or into a new fundamental nature (contrast kf, which is agent-driven construction of something else; BU is the entity's own transition into being). required role: kartf (what becomes). optional roles: karaRa (the means by which it becomes, if any). effects: existence/state transition; purity: pure when describing a value's nature (e.g. a type coercion), impure when triggering actual allocation/initialization of external state. gaRa 1 (BvAdi) — panini/registry/dhatu/BU.yaml's own gaRa/code (01.0001) is the one exact match found directly in the primary Dhatupatha among all 12 roots here, per docs/sanskrit-lexicon-verification.md",
+        aliases: &["become", "coerce-to"],
+        status: AtomStatus::Experimental,
+    },
+];
 
 pub fn by_id(id: &str) -> Option<&'static Atom> {
     REGISTRY.iter().find(|a| a.id == id)
@@ -95,6 +239,7 @@ pub fn by_alias(alias: &str) -> Option<&'static Atom> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::semantic::devanagari::slp1_to_devanagari;
     use crate::semantic::transliteration::slp1_to_iast;
 
     #[test]
@@ -123,6 +268,29 @@ mod tests {
             let computed = slp1_to_iast(atom.slp1).unwrap_or_else(|e| panic!("atom {} has invalid SLP1 `{}`: {e}", atom.id, atom.slp1));
             assert_eq!(atom.iast, computed, "atom {}'s stored IAST doesn't match Phase 1 transliteration of its SLP1 spelling", atom.id);
         }
+    }
+
+    #[test]
+    fn every_atom_devanagari_field_matches_the_phase_2_devanagari_table() {
+        // Same drift-prevention as the IAST test, for the Devanagari
+        // field added in SANSKRIT-P2-DEVANAGARI-MAPPING.
+        for atom in REGISTRY {
+            let computed = slp1_to_devanagari(atom.slp1).unwrap_or_else(|e| panic!("atom {} has invalid SLP1 `{}`: {e}", atom.id, atom.slp1));
+            assert_eq!(atom.devanagari, computed, "atom {}'s stored Devanagari doesn't match Phase 2 transliteration of its SLP1 spelling", atom.id);
+        }
+    }
+
+    #[test]
+    fn registry_has_all_twelve_spec_dhatu_candidates() {
+        // Spec §4's exact candidate list -- this test fails loudly if a
+        // future edit accidentally drops one rather than silently
+        // shrinking the core.
+        let expected_slp1 = ["kf", "gam", "dA", "grah", "jYA", "dfS", "Sru", "vac", "liK", "paW", "sTA", "BU"];
+        for slp1 in expected_slp1 {
+            assert!(by_slp1(slp1).is_some(), "spec §4 dhatu `{slp1}` is missing from the registry");
+        }
+        let dhatu_count = REGISTRY.iter().filter(|a| a.category == AtomCategory::Dhatu).count();
+        assert_eq!(dhatu_count, 12, "expected exactly the 12-dhatu core (spec §4), found {dhatu_count}");
     }
 
     #[test]
