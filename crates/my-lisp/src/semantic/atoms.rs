@@ -1,12 +1,13 @@
-//! Semantic Atom Registry — Sanskrit migration Phase 2/3
-//! (docs/sanskrit-semantic-migration.md §3, §18, §4).
+//! Semantic Atom Registry — Sanskrit migration Phase 2/3/4
+//! (docs/sanskrit-semantic-migration.md §3, §18, §4, §5).
 //!
 //! The single authoritative source of semantic atoms. Phase 2 delivered
 //! the *registry mechanism* proven against the spec's own worked example
-//! (`DHATU_DA`); this (Phase 3, `SANSKRIT-P3-DHATU-CORE`) populates the
-//! full 12-dhātu core with exact per-atom semantics per spec §18. The six
-//! kāraka roles are still `SANSKRIT-P4-KARAKA-LAYER`'s job — keeping that
-//! boundary is what spec §34 means by "не виконувати всі фази одним
+//! (`DHATU_DA`); Phase 3 (`SANSKRIT-P3-DHATU-CORE`) populated the full
+//! 12-dhātu core with exact per-atom semantics per spec §18; Phase 4
+//! (`SANSKRIT-P4-KARAKA-LAYER`, this addition) adds the six kāraka roles
+//! and `karaka.rs`'s `SemanticCall` AST type. Keeping each phase in its
+//! own commit is what spec §34 means by "не виконувати всі фази одним
 //! commit".
 //!
 //! Every dhātu's `slp1`/`gaṇa`/lexicographic sense here is doubly
@@ -211,6 +212,81 @@ pub const REGISTRY: &[Atom] = &[
         aliases: &["persist-at", "resident"],
         status: AtomStatus::Experimental,
     },
+    // -- Kāraka: the six Pāṇinian semantic roles (spec §5), added in
+    // SANSKRIT-P4-KARAKA-LAYER. Sūtra citations (P.1.4.24/32/42/45/49/54)
+    // and defining wording verified against KARAKA-REFERENCE.md, itself
+    // re-checked 2026-08-12 against the Aṣṭādhyāyī per the SANSKRIT-P2
+    // ethos (see docs/sanskrit-lexicon-verification.md, which independently
+    // confirmed all six sūtra citations against external sources before
+    // this task ran). These are ROLES, not actions — `semantics` here
+    // states each role's defining test and default vibhakti, not an
+    // operational effect the way a dhātu's does.
+    Atom {
+        id: "KARAKA_KARTR",
+        slp1: "kartf",
+        iast: "kartṛ",
+        devanagari: "कर्तृ",
+        category: AtomCategory::Karaka,
+        gloss: "agent",
+        semantics: "the independent participant (P.1.4.54 svatantraH kartA): whichever participant the speaker treats as the autonomous initiator of the action, not derived from any other role. Default vibhakti: prathamA (nominative) in the active voice; instrumental in the passive (kartR surfaces as instrumental under karmaRi prayoga, the role label itself does not change). This is the default/fallback role -- assigned only when a participant matches no more specific kAraka (spec's own ordering: apAdAna, sampradAna, karaRa, aDikaraRa, karman all take precedence; kartf is last per P.1.4.54's own position as the final rule in the kAraka section)",
+        aliases: &["agent", "actor"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "KARAKA_KARMAN",
+        slp1: "karman",
+        iast: "karman",
+        devanagari: "कर्मन्",
+        category: AtomCategory::Karaka,
+        gloss: "object",
+        semantics: "what the agent most wishes to attain through the action (P.1.4.49 kartur IpsitatamaM karma). Default vibhakti: dvitIyA (accusative); becomes the nominative subject under karmaRi prayoga (passive) -- the role label is unchanged by voice, only the surface case and verb agreement shift. A genitive nominal is explicitly never a kAraka at all (possession is outside the kAraka system) and must not be lowered to this role",
+        aliases: &["object", "patient"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "KARAKA_KARANA",
+        slp1: "karaRa",
+        iast: "karaṇa",
+        devanagari: "करण",
+        category: AtomCategory::Karaka,
+        gloss: "instrument",
+        semantics: "the most effective means by which the action is accomplished (P.1.4.42 sADakatamaM karaRam) -- 'most effective' is load-bearing: among several things instrumental to an action, only the single most direct means takes this role, not every contributing factor. Default vibhakti: tRtIyA (instrumental)",
+        aliases: &["instrument", "means"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "KARAKA_SAMPRADANA",
+        slp1: "sampradAna",
+        iast: "sampradāna",
+        devanagari: "सम्प्रदान",
+        category: AtomCategory::Karaka,
+        gloss: "recipient",
+        semantics: "the one the agent intends to be reached by the object of a giving/directed action (P.1.4.32 karmaRA yam abhipraiti sa sampradAnam). Default vibhakti: caturthI (dative). The spec's own worked example role for dA's third argument: (dA :kartf server :karman packet :sampradAna client)",
+        aliases: &["recipient", "beneficiary"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "KARAKA_APADANA",
+        slp1: "apAdAna",
+        iast: "apādāna",
+        devanagari: "अपादान",
+        category: AtomCategory::Karaka,
+        gloss: "source",
+        semantics: "the fixed point from which departure/separation takes place (P.1.4.24 Dhruvam apAye 'pAdAnam) -- 'fixed' is load-bearing: it is the stationary reference point of the separation, not whatever happens to be moving. Default vibhakti: paYcamI (ablative)",
+        aliases: &["source", "origin"],
+        status: AtomStatus::Experimental,
+    },
+    Atom {
+        id: "KARAKA_ADHIKARANA",
+        slp1: "aDikaraRa",
+        iast: "adhikaraṇa",
+        devanagari: "अधिकरण",
+        category: AtomCategory::Karaka,
+        gloss: "locus",
+        semantics: "the substratum/locus in or on which the action takes place (P.1.4.45 ADAro 'DikaraRam). Default vibhakti: saptamI (locative)",
+        aliases: &["locus", "location"],
+        status: AtomStatus::Experimental,
+    },
     Atom {
         id: "DHATU_BHU",
         slp1: "BU",
@@ -291,6 +367,16 @@ mod tests {
         }
         let dhatu_count = REGISTRY.iter().filter(|a| a.category == AtomCategory::Dhatu).count();
         assert_eq!(dhatu_count, 12, "expected exactly the 12-dhatu core (spec §4), found {dhatu_count}");
+    }
+
+    #[test]
+    fn registry_has_all_six_spec_karaka_roles() {
+        let expected_slp1 = ["kartf", "karman", "karaRa", "sampradAna", "apAdAna", "aDikaraRa"];
+        for slp1 in expected_slp1 {
+            assert!(by_slp1(slp1).is_some(), "spec §5 kāraka `{slp1}` is missing from the registry");
+        }
+        let karaka_count = REGISTRY.iter().filter(|a| a.category == AtomCategory::Karaka).count();
+        assert_eq!(karaka_count, 6, "expected exactly the six kāraka roles (spec §5), found {karaka_count}");
     }
 
     #[test]
