@@ -95,7 +95,7 @@ struct Node {
 
 impl Node {
     fn synced(&self) -> bool {
-        self.bootstrap_expected == 0 || !self.caught_up_with.lock().unwrap().is_empty()
+        self.bootstrap_expected == 0 || !self.caught_up_with.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).is_empty()
     }
 }
 
@@ -267,7 +267,7 @@ const RECONNECT_MAX_BACKOFF: Duration = Duration::from_secs(30);
 /// that link until someone manually restarted this side too.
 fn spawn_connect(node: &Arc<Node>, addr: String) {
     {
-        let mut dialing = node.dialing.lock().unwrap();
+        let mut dialing = node.dialing.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if !dialing.insert(addr.clone()) {
             return;
         }
@@ -328,7 +328,7 @@ fn spawn_heartbeat(node: &Arc<Node>) {
         if stale.is_empty() {
             continue;
         }
-        let mut peers = node.peers.lock().unwrap();
+        let mut peers = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         for id in &stale {
             if let Some(stream) = peers.remove(id) {
                 warn!("swarm-node: peer {id} silent for over {STALE_PEER_TIMEOUT:?}, closing connection");
@@ -376,7 +376,7 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             continue;
         }
         if let Some(id) = &peer_node_id {
-            node.last_seen.lock().unwrap().insert(id.clone(), Instant::now());
+            node.last_seen.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(id.clone(), Instant::now());
         }
         let msg = match sexpr::parse(&line) {
             Ok(m) => m,
@@ -504,8 +504,8 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
         }
     }
     if let Some(id) = peer_node_id {
-        node.peers.lock().unwrap().remove(&id);
-        node.last_seen.lock().unwrap().remove(&id);
+        node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).remove(&id);
+        node.last_seen.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).remove(&id);
         info!("swarm-node: connection to {id} closed");
     }
 }
@@ -527,11 +527,11 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
 /// as abandoned and allowed to be reclaimed — that's the ordinary
 /// reconnect-after-restart case, not spoofing, and must keep working.
 fn identity_already_live(node: &Arc<Node>, their_node: &str) -> bool {
-    let has_connection = node.peers.lock().unwrap().contains_key(their_node);
+    let has_connection = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).contains_key(their_node);
     if !has_connection {
         return false;
     }
-    match node.last_seen.lock().unwrap().get(their_node) {
+    match node.last_seen.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).get(their_node) {
         Some(seen) => seen.elapsed() < HEARTBEAT_INTERVAL * 2,
         None => false,
     }
@@ -541,9 +541,9 @@ fn identity_already_live(node: &Arc<Node>, their_node: &str) -> bool {
 /// and, if it told us its listen port, its dialable address for gossip.
 fn register_peer(node: &Arc<Node>, their_node: &str, stream: &mut TcpStream, their_ip: &str, their_port: u16) {
     if let Ok(clone) = stream.try_clone() {
-        node.peers.lock().unwrap().insert(their_node.to_string(), clone);
+        node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(their_node.to_string(), clone);
     }
-    node.last_seen.lock().unwrap().insert(their_node.to_string(), Instant::now());
+    node.last_seen.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(their_node.to_string(), Instant::now());
     if their_port != 0 {
         let is_new = node
             .peer_addrs
@@ -568,7 +568,7 @@ fn announce_peer(node: &Arc<Node>, new_id: &str, new_ip: &str, new_port: u16) {
             Sexp::list(vec![Sexp::list(vec![Sexp::atom(new_id), Sexp::atom(new_ip), Sexp::atom(new_port.to_string())])]),
         ]),
     ]);
-    let mut peers = node.peers.lock().unwrap();
+    let mut peers = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut dead = Vec::new();
     let line = format!("{}\n", announcement.to_text());
     for (peer_id, stream) in peers.iter_mut() {
@@ -617,8 +617,8 @@ fn handle_peer_list(node: &Arc<Node>, msg: &Sexp) {
         if id == &node.identity.node_id {
             continue;
         }
-        node.peer_addrs.lock().unwrap().insert(id.clone(), (ip.clone(), port));
-        let already_connected = node.peers.lock().unwrap().contains_key(id);
+        node.peer_addrs.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(id.clone(), (ip.clone(), port));
+        let already_connected = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).contains_key(id);
         if !already_connected && node.identity.node_id < *id {
             info!("swarm-node: learned of {id} at {ip}:{port} via gossip, dialing");
             spawn_connect(node, format!("{ip}:{port}"));
@@ -627,7 +627,7 @@ fn handle_peer_list(node: &Arc<Node>, msg: &Sexp) {
 }
 
 fn send_sync_hello(node: &Arc<Node>, stream: &mut TcpStream) {
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let seen: Vec<Sexp> = journal
         .all_node_ids()
         .into_iter()
@@ -660,7 +660,7 @@ fn handle_sync_hello(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             }
         }
     }
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut missing_events = Vec::new();
     for node_id in journal.all_node_ids() {
         let their_seen = *seen_map.get(&node_id).unwrap_or(&0);
@@ -696,7 +696,7 @@ fn handle_sync_events(node: &Arc<Node>, msg: &Sexp) {
         Some(Sexp::List(items)) => items,
         _ => &[],
     };
-    let mut journal = node.journal.lock().unwrap();
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut applied = 0;
     for ev_sexp in events {
         if let Ok(ev) = Event::from_sexp(ev_sexp) {
@@ -722,7 +722,7 @@ fn handle_sync_events(node: &Arc<Node>, msg: &Sexp) {
 /// history" state — see `Node::synced` and the `claim-task` gate on it.
 fn mark_caught_up(node: &Arc<Node>, from_node: &str) {
     let was_synced = node.synced();
-    node.caught_up_with.lock().unwrap().insert(from_node.to_string());
+    node.caught_up_with.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(from_node.to_string());
     if !was_synced && node.synced() {
         info!("swarm-node: caught up with the swarm via {from_node}, ready to claim work");
     }
@@ -731,7 +731,7 @@ fn mark_caught_up(node: &Arc<Node>, from_node: &str) {
 fn handle_push_event(node: &Arc<Node>, msg: &Sexp) {
     let Some(ev_sexp) = msg.field("event").and_then(|f| f.first()) else { return };
     let Ok(ev) = Event::from_sexp(ev_sexp) else { return };
-    let mut journal = node.journal.lock().unwrap();
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     if journal.has(&ev.node, ev.seq) {
         return;
     }
@@ -745,7 +745,7 @@ fn handle_push_event(node: &Arc<Node>, msg: &Sexp) {
 
 fn broadcast_event(node: &Arc<Node>, event: &Event, skip_origin: Option<&str>) {
     let msg = Sexp::list(vec![Sexp::atom("push-event"), Sexp::list(vec![Sexp::atom("event"), event.to_sexp()])]);
-    let mut peers = node.peers.lock().unwrap();
+    let mut peers = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut dead = Vec::new();
     for (peer_id, stream) in peers.iter_mut() {
         if Some(peer_id.as_str()) == skip_origin {
@@ -769,7 +769,7 @@ fn handle_emit(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     };
     let payload = msg.field("payload").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
     let lamport = node.tick_lamport(0);
-    let mut journal = node.journal.lock().unwrap();
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let seq = journal.next_seq(&node.identity.node_id);
     let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: typ.to_string(), payload };
     match journal.append(event.clone()) {
@@ -791,7 +791,7 @@ fn handle_emit(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 }
 
 fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp) {
-    let mut peers = node.peers.lock().unwrap();
+    let mut peers = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut dead = Vec::new();
     let line = format!("{}\n", msg.to_text());
     for (peer_id, stream) in peers.iter_mut() {
@@ -815,7 +815,7 @@ fn append_task_fact(node: &Arc<Node>, typ: &str, task: &str, generation: u64) ->
         Sexp::list(vec![Sexp::atom("generation"), Sexp::atom(generation.to_string())]),
     ]);
     let lamport = node.tick_lamport(0);
-    let mut journal = node.journal.lock().unwrap();
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let seq = journal.next_seq(&node.identity.node_id);
     let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: typ.to_string(), payload };
     journal.append(event.clone())?;
@@ -838,13 +838,13 @@ fn handle_claim_proposal(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let agent = msg.field_atom("agent").unwrap_or("").to_string();
     let generation: u64 = msg.field_atom("generation").and_then(|s| s.parse().ok()).unwrap_or(0);
 
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let current = state::task_state(&journal, &task);
     drop(journal);
 
     let fencing_ok = !current.completed && current.holder.is_none() && generation == current.generation + 1;
 
-    let mut promises = node.promised.lock().unwrap();
+    let mut promises = node.promised.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let promise_free = match promises.get(&task) {
         Some((promised_gen, at)) => *promised_gen < generation || at.elapsed() > PROMISE_TTL,
         None => true,
@@ -879,7 +879,7 @@ fn handle_claim_vote(node: &Arc<Node>, msg: &Sexp) {
     let voter = msg.field_atom("voter").unwrap_or("").to_string();
     let vote = msg.field_atom("vote") == Some("yes");
     let key = format!("{task}:{generation}");
-    if let Some(tx) = node.pending_votes.lock().unwrap().get(&key) {
+    if let Some(tx) = node.pending_votes.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).get(&key) {
         let _ = tx.send((voter, vote));
     }
 }
@@ -908,7 +908,7 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         return;
     };
 
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let current = state::task_state(&journal, task);
     let membership = state::membership(&journal);
     drop(journal);
@@ -929,7 +929,7 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     }
 
     let declared_voters: HashSet<String> = membership.iter().filter(|(_, m)| m.present && state::is_voter(m)).map(|(id, _)| id.clone()).collect();
-    let connected: Vec<String> = node.peers.lock().unwrap().keys().cloned().collect();
+    let connected: Vec<String> = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).keys().cloned().collect();
     let (voting_peers, self_votes): (Vec<String>, usize) = if declared_voters.is_empty() {
         // No membership declared anywhere yet: legacy behavior, everyone connected counts.
         (connected, 1)
@@ -943,7 +943,7 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let generation = current.generation + 1;
     let key = format!("{task}:{generation}");
     let (tx, rx) = mpsc::channel::<(String, bool)>();
-    node.pending_votes.lock().unwrap().insert(key.clone(), tx);
+    node.pending_votes.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(key.clone(), tx);
 
     broadcast_to_peers(
         node,
@@ -974,7 +974,7 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             Err(_) => break,
         }
     }
-    node.pending_votes.lock().unwrap().remove(&key);
+    node.pending_votes.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).remove(&key);
 
     if yes_votes >= quorum {
         match append_task_fact(node, "claim-committed", task, generation) {
@@ -1031,7 +1031,7 @@ fn release_or_complete(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream, fac
         return;
     };
 
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let current = state::task_state(&journal, task);
     drop(journal);
 
@@ -1076,14 +1076,14 @@ fn handle_task_state(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string("task-state requires a `task` field")]));
         return;
     };
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let s = state::task_state(&journal, task);
     drop(journal);
     send(stream, &task_state_sexp(task, &s));
 }
 
 fn handle_list_task_state(node: &Arc<Node>, stream: &mut TcpStream) {
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let entries: Vec<Sexp> = state::all_task_ids(&journal)
         .iter()
         .map(|task| task_state_sexp(task, &state::task_state(&journal, task)))
@@ -1118,7 +1118,7 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let payload = Sexp::list(payload_fields);
 
     let lamport = node.tick_lamport(0);
-    let mut journal = node.journal.lock().unwrap();
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let seq = journal.next_seq(&node.identity.node_id);
     let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "task-defined".to_string(), payload };
     match journal.append(event.clone()) {
@@ -1139,7 +1139,7 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 /// capabilities from `join` (M0.4) rather than an empty set — a joined
 /// agent shouldn't have to repeat its capabilities on every request.
 fn handle_next_best_action(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let capabilities = match msg.field("capabilities").and_then(|f| f.first()) {
         Some(Sexp::List(items)) => items
             .iter()
@@ -1182,7 +1182,7 @@ fn handle_presence(node: &Arc<Node>, stream: &mut TcpStream) {
 }
 
 fn presence_sexp(node: &Arc<Node>) -> Sexp {
-    let mut ids: Vec<String> = node.peers.lock().unwrap().keys().cloned().collect();
+    let mut ids: Vec<String> = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).keys().cloned().collect();
     ids.push(node.identity.node_id.clone());
     ids.sort();
     Sexp::list(vec![Sexp::atom("presence"), Sexp::list(ids.into_iter().map(Sexp::atom).collect())])
@@ -1195,7 +1195,7 @@ fn presence_sexp(node: &Arc<Node>) -> Sexp {
 fn handle_status(node: &Arc<Node>, stream: &mut TcpStream) {
     let presence = presence_sexp(node);
 
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let members = state::membership(&journal);
     let mut member_ids: Vec<&String> = members.keys().collect();
     member_ids.sort();
@@ -1249,7 +1249,7 @@ fn handle_status(node: &Arc<Node>, stream: &mut TcpStream) {
 /// beyond what `(status)`/`(presence)` already do; this just bundles the
 /// cheap scalar facts on their own.
 fn handle_metrics(node: &Arc<Node>, stream: &mut TcpStream) {
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let event_count = journal.events.len();
     // Report the *directory* the operator passed as --data-dir, not the
     // events.log file path itself — that's what a `--data-dir <this>` on
@@ -1258,7 +1258,7 @@ fn handle_metrics(node: &Arc<Node>, stream: &mut TcpStream) {
     // node's --data-dir was never recorded anywhere).
     let data_dir = journal.path().parent().map(|p| p.display().to_string()).unwrap_or_else(|| journal.path().display().to_string());
     drop(journal);
-    let peer_count = node.peers.lock().unwrap().len();
+    let peer_count = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).len();
     let uptime_secs = node.started_at.elapsed().as_secs();
 
     send(
@@ -1292,7 +1292,7 @@ fn handle_join(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         Sexp::list(vec![Sexp::atom("roles"), roles]),
     ]);
     let lamport = node.tick_lamport(0);
-    let mut journal = node.journal.lock().unwrap();
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let seq = journal.next_seq(&node.identity.node_id);
     let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "agent-joined".to_string(), payload };
     match journal.append(event.clone()) {
@@ -1314,7 +1314,7 @@ fn handle_leave(node: &Arc<Node>, stream: &mut TcpStream) {
         Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
     ]);
     let lamport = node.tick_lamport(0);
-    let mut journal = node.journal.lock().unwrap();
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let seq = journal.next_seq(&node.identity.node_id);
     let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "agent-left".to_string(), payload };
     match journal.append(event.clone()) {
@@ -1389,7 +1389,7 @@ fn handle_sync_tasks(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             defined += 1;
         }
         if t.done {
-            let journal = node.journal.lock().unwrap();
+            let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             let generation = state::task_state(&journal, &t.id).generation;
             drop(journal);
             if append_task_fact(node, "task-completed", &t.id, generation).is_ok() {
@@ -1411,7 +1411,7 @@ fn handle_sync_tasks(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 /// arbitrary fact to our own journal and gossip it like any other event.
 fn append_local_fact(node: &Arc<Node>, typ: &str, payload: Sexp) -> std::io::Result<Event> {
     let lamport = node.tick_lamport(0);
-    let mut journal = node.journal.lock().unwrap();
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let seq = journal.next_seq(&node.identity.node_id);
     let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: typ.to_string(), payload };
     journal.append(event.clone())?;
@@ -1427,7 +1427,7 @@ fn append_local_fact(node: &Arc<Node>, typ: &str, payload: Sexp) -> std::io::Res
 /// peers only ever pull via `sync-hello`/`sync-events`, and after
 /// compaction that path already serves the smaller equivalent set.
 fn handle_compact(node: &Arc<Node>, stream: &mut TcpStream) {
-    let mut journal = node.journal.lock().unwrap();
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     match compact::compact(&mut journal, &node.identity.node_id) {
         Ok((before, after)) => {
             drop(journal);
@@ -1449,7 +1449,7 @@ fn handle_compact(node: &Arc<Node>, stream: &mut TcpStream) {
 }
 
 fn handle_list_members(node: &Arc<Node>, stream: &mut TcpStream) {
-    let journal = node.journal.lock().unwrap();
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let members = state::membership(&journal);
     drop(journal);
     let mut ids: Vec<&String> = members.keys().collect();
@@ -1467,4 +1467,36 @@ fn handle_list_members(node: &Arc<Node>, stream: &mut TcpStream) {
         })
         .collect();
     send(stream, &Sexp::list(vec![Sexp::atom("members"), Sexp::list(entries)]));
+}
+
+#[cfg(test)]
+mod poison_recovery_tests {
+    use std::sync::{Arc, Mutex};
+    use std::thread;
+
+    /// Every shared-state `Mutex` in this file is locked with
+    /// `.lock().unwrap_or_else(|poisoned| poisoned.into_inner())` rather
+    /// than a bare `.lock().unwrap()` — a panic in one connection-handling
+    /// thread while holding a lock must not cascade into every other
+    /// thread's subsequent `.lock()` call also panicking (a bare
+    /// `.unwrap()` would propagate the `PoisonError` and do exactly that).
+    /// This test proves the pattern actually recovers, independent of any
+    /// specific `Node` field.
+    #[test]
+    fn lock_unwrap_or_else_into_inner_survives_a_poisoning_panic() {
+        let shared = Arc::new(Mutex::new(0u32));
+        let poisoning = Arc::clone(&shared);
+        let handle = thread::spawn(move || {
+            let mut guard = poisoning.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            *guard = 1;
+            panic!("simulated handler panic while holding the lock");
+        });
+        assert!(handle.join().is_err(), "the spawned thread should have panicked");
+        assert!(shared.is_poisoned(), "the mutex should now be poisoned");
+
+        // A bare `.lock().unwrap()` here would itself panic, cascading the
+        // failure into this thread too — the whole point of the fix.
+        let guard = shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        assert_eq!(*guard, 1, "the write made before the panic should still be visible");
+    }
 }
