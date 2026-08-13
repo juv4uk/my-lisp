@@ -19,6 +19,7 @@
 //! geändert.
 
 mod core;
+mod digest;
 mod file_io;
 mod io;
 mod process;
@@ -29,6 +30,7 @@ pub(super) use core::{
     evaluate_car, evaluate_cdr, evaluate_cond, evaluate_cons, evaluate_defmacro,
     evaluate_definition, evaluate_eq, exact_arity, quoted,
 };
+pub(super) use digest::evaluate_sha256_hex;
 pub(super) use file_io::{
     evaluate_read_file, evaluate_read_file_bytes, evaluate_write_file, evaluate_write_file_bytes,
 };
