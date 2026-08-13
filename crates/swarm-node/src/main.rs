@@ -1249,7 +1249,15 @@ fn handle_status(node: &Arc<Node>, stream: &mut TcpStream) {
 /// beyond what `(status)`/`(presence)` already do; this just bundles the
 /// cheap scalar facts on their own.
 fn handle_metrics(node: &Arc<Node>, stream: &mut TcpStream) {
-    let event_count = node.journal.lock().unwrap().events.len();
+    let journal = node.journal.lock().unwrap();
+    let event_count = journal.events.len();
+    // Report the *directory* the operator passed as --data-dir, not the
+    // events.log file path itself — that's what a `--data-dir <this>` on
+    // a restart actually needs (SWARM-NODE-DATA-DIR-DISCOVERY: this
+    // replaces having to `find / -name events.log` blind when a running
+    // node's --data-dir was never recorded anywhere).
+    let data_dir = journal.path().parent().map(|p| p.display().to_string()).unwrap_or_else(|| journal.path().display().to_string());
+    drop(journal);
     let peer_count = node.peers.lock().unwrap().len();
     let uptime_secs = node.started_at.elapsed().as_secs();
 
@@ -1263,6 +1271,7 @@ fn handle_metrics(node: &Arc<Node>, stream: &mut TcpStream) {
             Sexp::list(vec![Sexp::atom("event-count"), Sexp::atom(event_count.to_string())]),
             Sexp::list(vec![Sexp::atom("peer-count"), Sexp::atom(peer_count.to_string())]),
             Sexp::list(vec![Sexp::atom("synced"), Sexp::atom(if node.synced() { "t" } else { "nil" })]),
+            Sexp::list(vec![Sexp::atom("data-dir"), Sexp::string(data_dir)]),
         ]),
     );
 }

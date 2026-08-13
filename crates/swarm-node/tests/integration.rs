@@ -263,7 +263,8 @@ fn metrics_reports_event_count_peer_count_and_synced() {
     let base = alloc_ports(2);
     let (port_a, port_b) = (base, base + 1);
 
-    let _a = spawn(port_a, "node-a", &data_dir("metrics-a"), None);
+    let dir_a = data_dir("metrics-a");
+    let _a = spawn(port_a, "node-a", &dir_a, None);
     request(port_a, "(emit (type evidence-created) (payload (artifact \"x.my\")))");
     request(port_a, "(emit (type evidence-created) (payload (artifact \"y.my\")))");
 
@@ -276,6 +277,12 @@ fn metrics_reports_event_count_peer_count_and_synced() {
     assert!(metrics.contains("(peer-count 1)"), "expected 1 connected peer (node-b): {metrics}");
     assert!(metrics.contains("(synced t)"), "node-a with no --connect should be trivially synced: {metrics}");
     assert!(metrics.contains("(node node-a)"), "metrics should report the caller's own node-id: {metrics}");
+    let dir_a_str = dir_a.to_string_lossy().replace('\\', "/");
+    let metrics_normalized = metrics.replace('\\', "/");
+    assert!(
+        metrics_normalized.contains(&*dir_a_str),
+        "metrics should report the node's own --data-dir ({dir_a_str}), got: {metrics}"
+    );
 }
 
 #[test]
