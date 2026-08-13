@@ -1080,6 +1080,35 @@ IDE:
 
 semantic-core v0.1 вважається готовим, коли:
 
+**Progress summary (`DOCS-SANSKRIT-SPEC-PROGRESS-SUMMARY`, updated as phases
+land — see commit citations for the ground truth, not this table):**
+
+| # | Checkbox | Status | Evidence |
+|---|---|---|---|
+| 1 | canonical SLP1 policy визначено | ✅ done | `transliteration.rs` module doc; spec §1 |
+| 2 | SLP1 validator існує | 🟡 partial | `slp1_to_devanagari`/`slp1_to_iast` reject unknown chars (functional validation via error), no standalone "just validate" API |
+| 3 | SLP1 -> IAST converter існує | ✅ done | `transliteration.rs`, commit `23aecec` |
+| 4 | IAST -> SLP1 converter існує | ✅ done | `transliteration.rs`, commit `23aecec` |
+| 5 | round-trip tests проходять | ✅ done | 9 tests in `transliteration.rs`, 8 in `devanagari.rs` |
+| 6 | Semantic Atom Registry створено | ✅ done | `atoms.rs`, commit `f7cfba3` |
+| 7 | semantic atoms мають stable IDs | ✅ done | `id ≠ slp1` enforced by test, commit `f7cfba3` |
+| 8 | мінімальний dhātu vocabulary реалізовано | ✅ done | 12 dhātu, `atoms.rs`, commit `7a115d2` |
+| 9 | мінімальний kāraka vocabulary реалізовано | ✅ done | 6 kāraka + `SemanticCall`, commit `bd24f79` |
+| 10 | parser resolve-ить SLP1 до semantic ID | ❌ not done | design proposed (`docs/sanskrit-p5-parser-design.md`, commit `278ffa0`), not implemented — `SANSKRIT-P5-AST-SEMANTIC-IDS` |
+| 11 | AST не залежить від IAST | 🟡 vacuously true | `SemanticCall` itself has no IAST dependency, but nothing yet *produces* one from real parsed source (depends on #10) |
+| 12 | runtime не залежить від IAST/Devanāgarī | 🟡 vacuously true | `eval/mod.rs` untouched by the migration so far — true because nothing's wired in yet, not yet a tested guarantee |
+| 13 | IDE може показати IAST | ❌ not done | `SANSKRIT-P7-IDE-HOVER` not started |
+| 14 | hover показує linguistic + semantic metadata | ❌ not done | `SANSKRIT-P7-IDE-HOVER` not started |
+| 15 | compatibility layer підтримує старий код | ❌ not done | mapping enumerated (`docs/sanskrit-p6-alias-enumeration.md`, commit `fefeaae`: only 4 of 15 builtins map cleanly), `alias_table` itself not implemented |
+| 16 | документація містить SLP1 + IAST | ✅ done | every atom entry in `atoms.rs`; this spec's own worked examples |
+| 17 | semantic vocabulary має version | ❌ not done | no `semantic-core v0.1`-style version tag exists anywhere in code or the registry — a real gap, not yet even tracked as its own task |
+| 18 | існують end-to-end tests | 🟡 partial | extensive component-level tests (43 across the `semantic` module as of `bd24f79`) including both spec worked examples (§0/§35, §36) built directly; no true source-text→parse→resolve→eval pipeline test yet, since #10 isn't done |
+
+**Tally: 9 done, 4 partial/vacuous, 5 not done**, out of 18. Phases 0-4
+complete; P5 has a design (not code); P6 has an enumeration (not code);
+P7-P10 not started. The vocabulary-versioning gap (#17) surfaced by this
+summary is new — not previously tracked as its own task.
+
 - [ ] визначено canonical SLP1 policy
 - [ ] існує SLP1 validator
 - [ ] існує SLP1 -> IAST converter
