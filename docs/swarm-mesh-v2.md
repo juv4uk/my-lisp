@@ -197,6 +197,60 @@ on, and `(claim-task (task ...))` / `(complete-task (task ...) (generation
 reconnect on either side restarting, gossip picking up new peers, heart-
 beat detecting a dead connection) happens without further action from you.
 
+## Remote deployment playbook (updating a node on a real remote server)
+
+The local-onboarding checklist above assumes a dev machine with a known,
+already-set-up checkout. Updating `node-1` on a real remote box
+(a bare DigitalOcean droplet, `100.113.68.50` via Tailscale) for the
+first time surfaced several gotchas that checklist doesn't cover —
+recorded here while fresh, from the actual session, not reconstructed
+after the fact:
+
+1. **A stale local diff can block `git pull` outright.** The remote box
+   had an uncommitted hand-patch to `crates/swarm-node/src/main.rs`
+   (someone had hardcoded `TcpListener::bind(("0.0.0.0", ...))` locally
+   before `--bind` existed upstream). `git pull` refused to fast-forward
+   until that was resolved. Don't blindly `git checkout -- <file>` to
+   discard it, though — check `git diff` first; it might be a real,
+   still-needed local fix, not something already superseded upstream (in
+   this case it *was* already superseded — `--bind` from M0.11 does the
+   same thing properly — but that's not guaranteed in general).
+2. **The running process may not show its own arguments in `ps aux`.**
+   `node-1` was running as `/usr/local/bin/swarm-node` with an empty
+   argument list visible in `ps aux` — meaning it had actually been
+   started with *no* flags at all (matching its own defaults: node-id
+   `node-1`, project `unknown`). A `pkill -f "swarm-node --port 9101"`
+   pattern silently matches nothing against a process like that; it just
+   doesn't kill anything, with no error. Confirm the process is actually
+   dead afterward (`ss -tlnp | grep <port>`) rather than trusting `pkill`
+   exited 0.
+3. **Locate `--data-dir` before restarting, don't guess it.** If the
+   node was ever started without an explicit `--data-dir`, the journal
+   lives at a relative `.swarm-node` under wherever the process's
+   working directory happened to be at the time — which is *not*
+   necessarily obvious from the outside. `find / -maxdepth 4 -name
+   events.log 2>/dev/null` locates it reliably; restarting with the
+   wrong (or a fresh) `--data-dir` silently starts a brand-new identity
+   with an empty journal instead of resuming the real one.
+4. **Verify the port is free before restarting**, not just that the
+   process you tried to kill is gone — something else could already be
+   using it, or the kill could have failed silently as in point 2.
+   `AddrInUse` on the new process's startup is the honest failure mode
+   here; a leftover process quietly still running on the port is not.
+5. **Confirm the restart actually picked up the new code** from the
+   other side, not just locally — e.g. `(metrics)` over the wire showing
+   the expected `event-count` (proof the journal survived) and no
+   `ignoring unknown argument` warnings in the new process's own log
+   (proof the binary that's running is actually the one you just built,
+   not a stale one at a different path like point 2's `/usr/local/bin`
+   copy).
+
+None of this needs new tooling — it's exactly what a systemd unit
+(`SWARM-NODE-SYSTEMD-SERVICE`) and a dedicated non-root user
+(`SWARM-NODE-ROOT-USER-CONCERN`) would make far less error-prone, on a
+node meant to run unattended for a long time. Both are documented as
+separate, not-yet-done follow-ups rather than solved here.
+
 ## Rollout plan
 
 Ship in stages, without breaking the three sibling agents mid-flight:
