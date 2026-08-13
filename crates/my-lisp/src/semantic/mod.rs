@@ -11,4 +11,5 @@
 //! layer exists (spec §4, §22).
 
 pub mod atoms;
+pub mod devanagari;
 pub mod transliteration;
