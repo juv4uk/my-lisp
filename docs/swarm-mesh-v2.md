@@ -455,6 +455,29 @@ Ship in stages, without breaking the three sibling agents mid-flight:
     is a plain append-only text file. Building that automation is left
     for if/when it's actually requested, not preemptively.
 
+- **SWARM-NODE-QUORUM-SIZE-POLICY** — decision recorded, no code change.
+  `claim-task` quorum is `total_voters/2 + 1` (simple majority) with no
+  cap or alternative policy. The swarm grew from 4 to 6 nodes across 2
+  machines in a single day; worth asking whether that keeps being the
+  right default as voter count keeps growing.
+
+  **Decision: keep simple majority, no change.** This isn't a stopgap —
+  it's the standard choice for exactly this reason. Majority quorum's
+  fault tolerance *improves* in absolute terms as the voter count N
+  grows (it tolerates up to `floor((N-1)/2)` simultaneous voter
+  failures/unavailability, a growing number), and — unlike a fixed
+  committee — it needs no separate membership-change protocol of its own
+  (a fixed committee's own membership would need *its* consensus
+  mechanism to change safely, the same class of problem Raft's cluster
+  reconfiguration solves, and building that preemptively for a 6-node
+  swarm would be solving a problem that doesn't exist yet). The real cost
+  as N grows is latency/availability, not correctness: every claim needs
+  a majority of *all* voters reachable within `VOTE_TIMEOUT`, so more
+  voters means more chances one of them is offline or slow at claim time.
+  That's a genuine tradeoff worth revisiting, but only once it's an
+  *observed* problem at a much larger N (dozens of voters, not single
+  digits) — not something to design around speculatively now.
+
 ## Non-goals for v0.1
 
 No Raft, no DHT, no dynamic peer discovery — the mesh is 4 known localhost
