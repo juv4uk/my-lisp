@@ -82,6 +82,8 @@ cargo test --workspace
 
 `my-lisp` began inside a broader IDE project, [`my-idea`](https://github.com/juv4uk/my-idea), and was extracted here to stand on its own. A second implementation of the same language — a from-scratch Lisp-machine HDL core, `fpga-lisp` — is developed as a separate, parallel repository. A previously-planned third implementation (a C core for embedded targets) was dropped by explicit decision; two independent implementations is the current commitment.
 
+A fifth sibling repository, [`my-lisp-panini`](https://github.com/juv4uk/my-lisp-panini), researches Pāṇini's Sanskrit grammar (*Aṣṭādhyāyī*) as a formal system in its own right, producing the `panini-foundation` that this repo's own Sanskrit semantic-atom migration (`docs/sanskrit-semantic-migration.md`, the `SANSKRIT-P*` tasks) draws on. It does not touch `my-lisp` until its own machine-model gate review is complete — see that repo's `AGENTS.md` for the full research mandate.
+
 ## Українська
 
 `my-lisp` — це Lisp, побудований навколо семи примітивів Маккарті — `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond` — плюс мінімальне семантичне ядро, потрібне для розгортання всього іншого: `lambda`, `def`, `defmacro`. Усе, що можна вивести з цього ядра, написане самою my-lisp ([`lib/core.my`](lib/core.my)), а не додане як Rust built-in. Повне обґрунтування — [`docs/language-core.md`](docs/language-core.md).
@@ -144,6 +146,8 @@ cargo test --workspace
 
 `my-lisp` починалась усередині ширшого IDE-проєкту [`my-idea`](https://github.com/juv4uk/my-idea) й була виділена сюди, щоб існувати самостійно. Друга реалізація тієї ж мови — HDL-ядро Lisp-машини з нуля, `fpga-lisp` — розробляється як окремий, паралельний репозиторій. Раніше запланована третя реалізація (C-ядро для embedded-цілей) прибрана свідомим рішенням; дві незалежні реалізації — поточне зобов'язання.
 
+П'ятий сестринський репозиторій, [`my-lisp-panini`](https://github.com/juv4uk/my-lisp-panini), досліджує санскритську граматику Паніні (*Aṣṭādhyāyī*) як формальну систему саму по собі, виробляючи `panini-foundation`, на яку спирається власна санскритська семантична міграція цього репозиторію (`docs/sanskrit-semantic-migration.md`, задачі `SANSKRIT-P*`). Він не торкається `my-lisp`, доки не завершено власний machine-model gate review — повний дослідницький мандат дивись у `AGENTS.md` того репозиторію.
+
 ## Deutsch
 
 `my-lisp` ist ein Lisp, aufgebaut um McCarthys sieben Primitive — `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond` — plus den minimalen semantischen Kern, der zum Bootstrap von allem anderen nötig ist: `lambda`, `def`, `defmacro`. Alles, was aus diesem Kern ableitbar ist, ist in my-lisp selbst geschrieben ([`lib/core.my`](lib/core.my)), nicht als Rust-Built-in hinzugefügt. Vollständige Begründung: [`docs/language-core.md`](docs/language-core.md).
@@ -205,6 +209,8 @@ cargo test --workspace
 - [`docs/versioning.md`](docs/versioning.md) — warum die Versionshistorie dieses Repos so aussieht.
 
 `my-lisp` begann innerhalb eines größeren IDE-Projekts, [`my-idea`](https://github.com/juv4uk/my-idea), und wurde hierher ausgelagert, um eigenständig zu bestehen. Eine zweite Implementierung derselben Sprache — ein von Grund auf neuer HDL-Kern für eine Lisp-Maschine, `fpga-lisp` — wird als separates, paralleles Repository entwickelt. Ein zuvor geplanter dritter Kern (ein C-Kern für Embedded-Ziele) wurde durch bewusste Entscheidung gestrichen; zwei unabhängige Implementierungen sind die aktuelle Verpflichtung.
+
+Ein fünftes Schwester-Repository, [`my-lisp-panini`](https://github.com/juv4uk/my-lisp-panini), erforscht Pāṇinis Sanskrit-Grammatik (*Aṣṭādhyāyī*) als eigenständiges formales System und erzeugt das `panini-foundation`, auf dem die eigene Sanskrit-Semantik-Migration dieses Repos (`docs/sanskrit-semantic-migration.md`, die `SANSKRIT-P*`-Aufgaben) aufbaut. Es berührt `my-lisp` erst, wenn das eigene Machine-Model-Gate-Review abgeschlossen ist — das vollständige Forschungsmandat steht in der `AGENTS.md` jenes Repos.
 
 ## License · Ліцензія · Lizenz
 

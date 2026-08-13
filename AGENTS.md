@@ -55,6 +55,12 @@ Semantic source of truth for the four-repository ecosystem (`my-lisp`,
 `fpga-lisp`, `cml`, `my-idea`). Defines what a my-lisp program means; every
 other repository must match this, not the reverse.
 
+A fifth sibling, `my-lisp-panini`, researches Pāṇinian Sanskrit grammar as
+a formal system feeding this repo's `SANSKRIT-P*` semantic-atom migration
+(`docs/sanskrit-semantic-migration.md`) — but it is not part of the
+match-the-contract relationship above; it does not touch `my-lisp` at all
+until its own machine-model gate review passes (see its `AGENTS.md`).
+
 ## Authoritative files
 
 - `language-contract.my` — the versioned semantic contract (currently 1.0).
