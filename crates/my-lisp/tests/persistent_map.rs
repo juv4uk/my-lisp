@@ -2,10 +2,10 @@
 //! written in my-lisp itself (PLAN.md item 15). Loads lib/core.my (for
 //! `second`/`third`/`not`/`append`) and lib/persistent-map.my into one
 //! session, same as a user loading both from a REPL.
-//! Перевіряє lib/persistent-map.my — AVL-збалансовану персистентну мапу,
-//! написану самою my-lisp (PLAN.md, пункт 15). Завантажує lib/core.my
-//! (заради `second`/`third`/`not`/`append`) і lib/persistent-map.my в одну
-//! сесію, так само як користувач з REPL.
+//! Pereviriaie lib/persistent-map.my — AVL-zbalansovanu persystentnu mapu,
+//! napysanu samoiu my-lisp (PLAN.md, punkt 15). Zavantazhuie lib/core.my
+//! (zarady `second`/`third`/`not`/`append`) i lib/persistent-map.my v odnu
+//! sesiiu, tak samo yak korystuvach z REPL.
 //! Prüft lib/persistent-map.my — die AVL-balancierte persistente Map, in
 //! my-lisp selbst geschrieben (PLAN.md, Punkt 15). Lädt lib/core.my (wegen
 //! `second`/`third`/`not`/`append`) und lib/persistent-map.my in eine
@@ -92,13 +92,13 @@ fn map_to_list_returns_keys_in_sorted_order() {
 /// rotations keep it at the theoretical minimum for 7 nodes, height 3
 /// (`ceil(log2(8))`) — verified live before this test was written, not
 /// assumed from the rotation code looking plausible.
-/// Сама суть вибору збалансованого дерева замість звичайного BST: сім
-/// ключів, вставлених уже у відсортованому порядку — підручниковий
-/// найгірший випадок для незбалансованого дерева (вироджується в
-/// зв'язаний список, висота 7). AVL-ротації тримають теоретичний мінімум
-/// для 7 вузлів, висоту 3 (`ceil(log2(8))`) — перевірено живо перед
-/// написанням цього тесту, не припущено з того, що код ротацій виглядає
-/// правдоподібно.
+/// Sama sut vyboru zbalansovanoho dereva zamist zvychainoho BST: sim
+/// kliuchiv, vstavlenykh uzhe u vidsortovanomu poriadku — pidruchnykovyi
+/// naihirshyi vypadok dlia nezbalansovanoho dereva (vyrodzhuietsia v
+/// zviazanyi spysok, vysota 7). AVL-rotatsii trymaiut teoretychnyi minimum
+/// dlia 7 vuzliv, vysotu 3 (`ceil(log2(8))`) — perevireno zhyvo pered
+/// napysanniam tsoho testu, ne prypushcheno z toho, shcho kod rotatsii vyhliadaie
+/// pravdopodibno.
 #[test]
 fn sorted_insertion_order_stays_balanced_instead_of_degenerating_into_a_list() {
     let source = r#"

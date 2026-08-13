@@ -1,13 +1,13 @@
 //! Exercises lib/unify.my — the unification primitive written in my-lisp
-//! itself (see PLAN.md, Крок 9, item 3): the pattern-matching engine under
+//! itself (see PLAN.md, Krok 9, item 3): the pattern-matching engine under
 //! backward-chaining/Prolog-style symbolic reasoning, in the spirit of
 //! McCarthy's 1958 "Advice Taker". Loads lib/core.my (for `second`) and
 //! lib/unify.my into one session, same as a user loading both from a REPL.
-//! Перевіряє lib/unify.my — примітив unification, написаний самою my-lisp
-//! (див. PLAN.md, Крок 9, пункт 3): механізм зіставлення з шаблоном під
-//! backward-chaining/Prolog-подібними символьними міркуваннями, у дусі
-//! "Advice Taker" Маккарті 1958 року. Завантажує lib/core.my (заради
-//! `second`) і lib/unify.my в одну сесію, так само як користувач з REPL.
+//! Pereviriaie lib/unify.my — prymityv unification, napysanyi samoiu my-lisp
+//! (dyv. PLAN.md, Krok 9, punkt 3): mekhanizm zistavlennia z shablonom pid
+//! backward-chaining/Prolog-podibnymy symvolnymy mirkuvanniamy, u dusi
+//! "Advice Taker" Makkarti 1958 roku. Zavantazhuie lib/core.my (zarady
+//! `second`) i lib/unify.my v odnu sesiiu, tak samo yak korystuvach z REPL.
 //! Prüft lib/unify.my — das in my-lisp selbst geschriebene
 //! Unifikations-Primitiv (siehe PLAN.md, Schritt 9, Punkt 3): die
 //! Mustervergleichs-Engine unter Backward-Chaining-/Prolog-artigem

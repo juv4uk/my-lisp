@@ -6,14 +6,14 @@
 //! `Session`/`Environment` per thread, no `Rc` crosses a thread boundary,
 //! same as any two independent my-lisp processes talking over a real
 //! socket would be.
-//! Перевіряє TCP-примітиви (PLAN.md, пункт 21): tcp-connect/tcp-listen/
-//! tcp-accept/tcp-read/tcp-write/tcp-close. Вихідна/клієнтська половина
-//! "спілкуватись з іншими AI-системами" (принцип 3, поширений на LLM
-//! API/інших агентів) і вхідна/серверна половина (прийом з'єднань від
-//! інших агентів). Кожен тест запускає сервер на власному OS-потоці —
-//! окремі `Session`/`Environment` на потік, жоден `Rc` не перетинає межу
-//! потоку, так само як два незалежні процеси my-lisp, що спілкуються через
-//! реальний сокет.
+//! Pereviriaie TCP-prymityvy (PLAN.md, punkt 21): tcp-connect/tcp-listen/
+//! tcp-accept/tcp-read/tcp-write/tcp-close. Vykhidna/kliientska polovyna
+//! "spilkuvatys z inshymy AI-systemamy" (pryntsyp 3, poshyrenyi na LLM
+//! API/inshykh ahentiv) i vkhidna/serverna polovyna (pryiom ziednan vid
+//! inshykh ahentiv). Kozhen test zapuskaie server na vlasnomu OS-pototsi —
+//! okremi `Session`/`Environment` na potik, zhoden `Rc` ne peretynaie mezhu
+//! potoku, tak samo yak dva nezalezhni protsesy my-lisp, shcho spilkuiutsia cherez
+//! realnyi soket.
 
 use my_lisp::{eval_program, ErrorKind, Session, Value};
 use std::io::{Read, Write};
@@ -23,9 +23,9 @@ use std::thread;
 /// Grabs a free port by binding to port 0 and reading back what the OS
 /// assigned, then immediately releasing it — avoids hardcoding a port
 /// number that could collide with another test or a real service.
-/// Займає вільний порт, прибіндившись до порту 0 і зчитавши призначений
-/// ОС номер, тоді одразу звільняє його — уникає жорстко закодованого
-/// номера порту, який міг би зіткнутися з іншим тестом чи реальним сервісом.
+/// Zaimaie vilnyi port, prybindyvshys do portu 0 i zchytavshy pryznachenyi
+/// OS nomer, todi odrazu zvilniaie yoho — unykaie zhorstko zakodovanoho
+/// nomera portu, yakyi mih by zitknutysia z inshym testom chy realnym servisom.
 /// Runs a client-side my-lisp program, retrying the whole thing a few
 /// times if it fails — a guard against exactly one kind of flakiness,
 /// not a general retry-until-it-works: the server thread's `tcp-listen`
@@ -34,15 +34,15 @@ use std::thread;
 /// (296 tests, real thread contention) a fixed short sleep isn't always
 /// enough. Each retry is a fresh `tcp-connect` attempt; the server's
 /// single `tcp-accept` call just waits longer, unaffected either way.
-/// Запускає клієнтську my-lisp-програму, повторюючи все кілька разів у
-/// разі провалу — захист саме від одного виду нестабільності, не
-/// загальний "повторюй, поки не спрацює": `tcp-listen` серверного потоку
-/// потребує миті, щоб реально забіндитись і почати приймати з'єднання
-/// після повернення з `thread::spawn`, і під повністю паралельним
-/// прогоном `cargo test` (296 тестів, реальна конкуренція за потоки)
-/// фіксований короткий сон не завжди достатній. Кожна повторна спроба —
-/// свіжий виклик `tcp-connect`; єдиний виклик `tcp-accept` сервера просто
-/// чекає довше, байдуже в обох випадках.
+/// Zapuskaie kliientsku my-lisp-prohramu, povtoriuiuchy vse kilka raziv u
+/// razi provalu — zakhyst same vid odnoho vydu nestabilnosti, ne
+/// zahalnyi "povtoriui, poky ne spratsiuie": `tcp-listen` servernoho potoku
+/// potrebuie myti, shchob realno zabindytys i pochaty pryimaty ziednannia
+/// pislia povernennia z `thread::spawn`, i pid povnistiu paralelnym
+/// prohonom `cargo test` (296 testiv, realna konkurentsiia za potoky)
+/// fiksovanyi korotkyi son ne zavzhdy dostatnii. Kozhna povtorna sproba —
+/// svizhyi vyklyk `tcp-connect`; yedynyi vyklyk `tcp-accept` servera prosto
+/// chekaie dovshe, baiduzhe v obokh vypadkakh.
 fn eval_client_with_retry(
     source: &str,
     session: &mut Session,
@@ -60,12 +60,12 @@ fn eval_client_with_retry(
             // successful connect) must not retry — a second connection
             // attempt would race a server that already accepted-and-
             // exited on the first one, trading a clear failure for a hang.
-            // Лише провал `tcp-connect` безпечно повторювати: єдиний
-            // `tcp-accept` сервера в цьому випадку ще нічого не спожив.
-            // Будь-яка інша помилка (напр. щось провалилось *після*
-            // успішного підключення) не має повторюватись — друга спроба
-            // з'єднання змагалася б із сервером, що вже прийняв і завершився
-            // на першому, міняючи чітку помилку на зависання.
+            // Lyshe proval `tcp-connect` bezpechno povtoriuvaty: yedynyi
+            // `tcp-accept` servera v tsomu vypadku shche nichoho ne spozhyv.
+            // Bud-yaka insha pomylka (napr. shchos provalylos *pislia*
+            // uspishnoho pidkliuchennia) ne maie povtoriuvatys — druha sproba
+            // ziednannia zmahalasia b iz serverom, shcho vzhe pryiniav i zavershyvsia
+            // na pershomu, miniaiuchy chitku pomylku na zavysannia.
             Err(error) if error.message.contains("tcp-connect:") => last_error = Some(error),
             Err(error) => return Err(error),
         }
@@ -110,10 +110,10 @@ fn client_and_server_exchange_one_message_each_way() {
         // the thread boundary, the same way any two real my-lisp processes
         // would only ever exchange bytes over the socket, never a shared
         // in-memory `Value`.
-        // `Value` огортає `Rc`, який не `Send` — значення, що повертає
-        // потік, мусить бути, тож тут конвертація в `String` перед межею
-        // потоку, так само як два реальні процеси my-lisp обмінювались би
-        // лише байтами через сокет, ніколи спільним `Value` у пам'яті.
+        // `Value` ohortaie `Rc`, yakyi ne `Send` — znachennia, shcho povertaie
+        // potik, musyt buty, tozh tut konvertatsiia v `String` pered mezheiu
+        // potoku, tak samo yak dva realni protsesy my-lisp obminiuvalys by
+        // lyshe baitamy cherez soket, nikoly spilnym `Value` u pamiati.
         eval_program(&source, &mut session)
             .expect("server-side program should evaluate without error")
             .value
@@ -124,10 +124,10 @@ fn client_and_server_exchange_one_message_each_way() {
     // client tries to connect — tcp-connect fails named (not silently)
     // if it loses this race, which would make the test's own failure
     // message point straight at the real cause instead of a hang.
-    // Дає серверу момент прибіндитись і почати слухати, перш ніж клієнт
-    // спробує підключитись — tcp-connect провалюється названо (не
-    // мовчки), якщо програє цю гонку, тож власне повідомлення про
-    // провал тесту вкаже прямо на реальну причину, не на зависання.
+    // Daie serveru moment prybindytys i pochaty slukhaty, persh nizh kliient
+    // sprobuie pidkliuchytys — tcp-connect provaliuietsia nazvano (ne
+    // movchky), yakshcho prohraie tsiu honku, tozh vlasne povidomlennia pro
+    // proval testu vkazhe priamo na realnu prychynu, ne na zavysannia.
     thread::sleep(std::time::Duration::from_millis(200));
 
     let mut client_session = Session::default();
@@ -151,10 +151,10 @@ fn client_and_server_exchange_one_message_each_way() {
     // `Value::to_string()` is the `write`/`prin1` form (quoted, escaped —
     // see value.rs's `Display`), not the raw text, so a `Value::String`
     // round-trips as `"hello from client"` with literal quote characters.
-    // `Value::to_string()` — це форма `write`/`prin1` (у лапках,
-    // екранована — див. `Display` у value.rs), не сирий текст, тож
-    // `Value::String` повертається як `"hello from client"` із буквальними
-    // символами лапок.
+    // `Value::to_string()` — tse forma `write`/`prin1` (u lapkakh,
+    // ekranovana — dyv. `Display` u value.rs), ne syryi tekst, tozh
+    // `Value::String` povertaietsia yak `"hello from client"` iz bukvalnymy
+    // symvolamy lapok.
     let server_saw = server.join().expect("server thread should not panic");
     assert_eq!(server_saw, "\"hello from client\"");
 }
@@ -299,9 +299,9 @@ fn tcp_connect_to_a_closed_port_fails_named_not_silently() {
     // A port grabbed and immediately released by free_port() above is very
     // likely to have nothing listening on it in the brief window before
     // the OS could reassign it — connecting there should fail cleanly.
-    // Порт, зайнятий і одразу звільнений `free_port()` вище, з високою
-    // ймовірністю не має нічого, що слухає, у короткому вікні до того, як
-    // ОС могла б перепризначити його — з'єднання туди має провалитись чисто.
+    // Port, zainiatyi i odrazu zvilnenyi `free_port()` vyshche, z vysokoiu
+    // ymovirnistiu ne maie nichoho, shcho slukhaie, u korotkomu vikni do toho, yak
+    // OS mohla b perepryznachyty yoho — ziednannia tudy maie provalytys chysto.
     let port = free_port();
     let mut session = Session::default();
     let source = format!(r#"(tcp-connect "127.0.0.1" {port})"#);

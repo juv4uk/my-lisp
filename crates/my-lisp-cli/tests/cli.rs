@@ -1,14 +1,14 @@
 //! Integration tests for the `my-lisp` CLI binary.
-//! Інтеграційні тести для CLI-бінарника `my-lisp`.
+//! Intehratsiini testy dlia CLI-binarnyka `my-lisp`.
 //! Integrationstests für die `my-lisp`-CLI-Binärdatei.
 //!
 //! These exercise the compiled binary as a black box (argv in, stdout/stderr/exit
 //! code out) instead of calling internal functions directly, since main.rs itself
 //! has no unit-testable functions — the behavior lives in argument handling and I/O.
-//! Вони перевіряють скомпільований бінарник як чорну скриньку (argv на вході,
-//! stdout/stderr/код виходу на виході), а не викликають внутрішні функції напряму,
-//! бо main.rs не має власних функцій для unit-тестів — поведінка живе в обробці
-//! аргументів та I/O.
+//! Vony pereviriaiut skompilovanyi binarnyk yak chornu skrynku (argv na vkhodi,
+//! stdout/stderr/kod vykhodu na vykhodi), a ne vyklykaiut vnutrishni funktsii napriamu,
+//! bo main.rs ne maie vlasnykh funktsii dlia unit-testiv — povedinka zhyve v obrobtsi
+//! arhumentiv ta I/O.
 //! Sie prüfen die kompilierte Binärdatei als Black Box (argv als Eingabe,
 //! stdout/stderr/Exit-Code als Ausgabe) statt interne Funktionen direkt aufzurufen,
 //! da main.rs selbst keine unit-testbaren Funktionen besitzt — das Verhalten steckt
@@ -104,9 +104,9 @@ fn running_a_missing_file_reports_a_read_error() {
 fn repl_history_persists_across_separate_sessions() {
     // Isolate HOME/USERPROFILE per test run so this doesn't read or write the
     // real user's ~/.my-lisp-history, and so parallel test runs don't collide.
-    // Ізолюємо HOME/USERPROFILE для кожного запуску тесту, щоб не читати й не
-    // писати в реальний ~/.my-lisp-history користувача, і щоб паралельні
-    // запуски тестів не конфліктували.
+    // Izoliuiemo HOME/USERPROFILE dlia kozhnoho zapusku testu, shchob ne chytaty y ne
+    // pysaty v realnyi ~/.my-lisp-history korystuvacha, i shchob paralelni
+    // zapusky testiv ne konfliktuvaly.
     // Isoliert HOME/USERPROFILE pro Testlauf, damit weder das echte
     // ~/.my-lisp-history des Nutzers gelesen/geschrieben wird noch parallele
     // Testläufe kollidieren.
@@ -184,8 +184,8 @@ fn read_with_no_arguments_reads_one_line_from_real_stdin() {
 fn core_lib_is_preloaded_before_running_a_file() {
     // lib/core.my defines `identity`; if the CLI stopped injecting core.my this
     // would fail with an "unknown symbol" evaluation error instead of returning 5.
-    // lib/core.my визначає `identity`; якби CLI перестав вставляти core.my, це б
-    // провалилось помилкою "unknown symbol" замість повернення 5.
+    // lib/core.my vyznachaie `identity`; yakby CLI perestav vstavliaty core.my, tse b
+    // provalylos pomylkoiu "unknown symbol" zamist povernennia 5.
     // lib/core.my definiert `identity`; würde die CLI core.my nicht mehr einspeisen,
     // schlüge dies mit einem "unknown symbol"-Fehler fehl statt 5 zurückzugeben.
     let dir = std::env::temp_dir();
@@ -205,9 +205,9 @@ fn argv_carries_everything_after_the_filename() {
     // *argv* (PLAN.md item 21's follow-up, for scripts/release.my taking a
     // version on the command line) is whatever follows the filename, as a
     // my-lisp list of strings — not parsed as code, just passed through.
-    // *argv* (продовження PLAN.md, пункту 21, для scripts/release.my, яка
-    // бере версію з командного рядка) — усе, що йде після імені файлу, як
-    // my-lisp-список рядків — не парситься як код, лише передається як є.
+    // *argv* (prodovzhennia PLAN.md, punktu 21, dlia scripts/release.my, yaka
+    // bere versiiu z komandnoho riadka) — use, shcho yde pislia imeni failu, yak
+    // my-lisp-spysok riadkiv — ne parsytsia yak kod, lyshe peredaietsia yak ye.
     let dir = std::env::temp_dir();
     let path = dir.join("my-lisp-cli-test-argv.my");
     std::fs::write(&path, "*argv*").expect("should write temp file");

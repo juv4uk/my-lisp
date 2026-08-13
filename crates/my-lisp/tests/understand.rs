@@ -1,10 +1,10 @@
 //! Exercises lib/understand.my — the controlled-natural-language bridge from
 //! a fixed-shape word list to a knowledge clause, per private/lisp-to-knowledge.md
 //! §6. No string primitives involved: input is already a word list, not text.
-//! Перевіряє lib/understand.my — місток контрольованої природної мови від
-//! списку слів фіксованої форми до знаннєвого clause, за
-//! private/lisp-to-knowledge.md §6. Без рядкових примітивів: вхід — уже
-//! список слів, не текст.
+//! Pereviriaie lib/understand.my — mistok kontrolovanoi pryrodnoi movy vid
+//! spysku sliv fiksovanoi formy do znannievoho clause, za
+//! private/lisp-to-knowledge.md §6. Bez riadkovykh prymityviv: vkhid — uzhe
+//! spysok sliv, ne tekst.
 //! Prüft lib/understand.my — die Brücke kontrollierter natürlicher Sprache
 //! von einer Wortliste fester Form zu einem Wissens-Clause, gemäß
 //! private/lisp-to-knowledge.md §6. Ohne String-Primitive: die Eingabe ist

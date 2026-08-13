@@ -428,11 +428,11 @@ fn lambda_reports_invalid_parameters_and_arity() {
 /// keyword — `(a b . rest)` (dotted list, reusing the same reader support
 /// added earlier for data literals), a bare symbol (zero fixed params,
 /// every argument), and the existing `(a b)` (exact arity, unchanged).
-/// Варіативні параметри (2026-08-09, продовження пункту 8 з PLAN.md): три
-/// форми, спільні для родини Lisp, не ключове слово `&rest` одного
-/// діалекту — `(a b . rest)` (dotted-список, та сама підтримка reader'а,
-/// додана раніше для літералів даних), голий символ (нуль фіксованих
-/// параметрів, кожен аргумент), і наявний `(a b)` (точна арність, без змін).
+/// Variatyvni parametry (2026-08-09, prodovzhennia punktu 8 z PLAN.md): try
+/// formy, spilni dlia rodyny Lisp, ne kliuchove slovo `&rest` odnoho
+/// dialektu — `(a b . rest)` (dotted-spysok, ta sama pidtrymka readera,
+/// dodana ranishe dlia literaliv danykh), holyi symvol (nul fiksovanykh
+/// parametriv, kozhen arhument), i naiavnyi `(a b)` (tochna arnist, bez zmin).
 #[test]
 fn dotted_lambda_list_binds_extra_arguments_as_a_rest_list() {
     assert_eq!(
@@ -480,13 +480,13 @@ fn variadic_defmacro_binds_unevaluated_rest_arguments() {
 /// `print` real `prin1`/`write` semantics (Common Lisp/Scheme's own
 /// convention for the "read-back-safe" print function): escape `"`, `\`,
 /// `\n`, `\t`.
-/// `Display`/`print` раніше писали `"{value}"` без жодного екранування —
-/// рядок з буквальною `"` мовчки ламав `read ∘ print = identity`
-/// (надрукований текст не читався назад коректно: закривався зарано на
-/// вбудованій лапці). Знайдено 2026-08-09 під час написання тулінгу, що
-/// друкує дані фікстур із реальними лапками. Виправлено наданням `print`
-/// справжньої семантики `prin1`/`write` (власна конвенція Common
-/// Lisp/Scheme для "безпечної для read" функції друку): екранувати `"`,
+/// `Display`/`print` ranishe pysaly `"{value}"` bez zhodnoho ekranuvannia —
+/// riadok z bukvalnoiu `"` movchky lamav `read ∘ print = identity`
+/// (nadrukovanyi tekst ne chytavsia nazad korektno: zakryvavsia zarano na
+/// vbudovanii laptsi). Znaideno 2026-08-09 pid chas napysannia tulinhu, shcho
+/// drukuie dani fikstur iz realnymy lapkamy. Vypravleno nadanniam `print`
+/// spravzhnoi semantyky `prin1`/`write` (vlasna konventsiia Common
+/// Lisp/Scheme dlia "bezpechnoi dlia read" funktsii druku): ekranuvaty `"`,
 /// `\`, `\n`, `\t`.
 #[test]
 fn print_escapes_embedded_quotes_and_backslashes_so_read_can_reconstruct_the_string() {
@@ -511,11 +511,11 @@ fn print_escapes_embedded_quotes_and_backslashes_so_read_can_reconstruct_the_str
 /// pair `print` (fixed above) is the other half of: raw text, no quotes or
 /// escapes, for output meant for a person or reassembled as literal source
 /// text (e.g. a tool generating new .my files), never re-parsed as data.
-/// `princ` — «princ»/«display»-половина класичної Lisp-пари функцій друку,
-/// другу половину якої складає полагоджений вище `print`: сирий текст, без
-/// лапок і екранування, для виводу, призначеного людині чи повторному
-/// складанню як буквальний сирцевий текст (напр. інструмент, що генерує
-/// новий `.my`-файл), ніколи не для повторного парсингу як даних.
+/// `princ` — «princ»/«display»-polovyna klasychnoi Lisp-pary funktsii druku,
+/// druhu polovynu yakoi skladaie polahodzhenyi vyshche `print`: syryi tekst, bez
+/// lapok i ekranuvannia, dlia vyvodu, pryznachenoho liudyni chy povtornomu
+/// skladanniu yak bukvalnyi syrtsevyi tekst (napr. instrument, shcho heneruie
+/// novyi `.my`-fail), nikoly ne dlia povtornoho parsynhu yak danykh.
 #[test]
 fn princ_outputs_a_string_raw_without_quotes_or_escapes() {
     let mut session = Session::default();
@@ -550,11 +550,11 @@ fn princ_and_print_render_symbols_and_numbers_identically() {
 /// args args))` expresses it exactly — G4/G5's own filter ("can the
 /// existing core already say this?") applied to the Rust surface itself,
 /// not just to `.my` code.
-/// `list` раніше був спеціальною формою Rust; перенесено в `lib/core.my`
-/// того самого дня, коли додано варіативні параметри lambda, бо `(def list
-/// (lambda args args))` виражає це точно — той самий фільтр G4/G5 ("чи
-/// наявне ядро вже може це сказати?"), застосований до самого Rust-шару,
-/// не лише до `.my`-коду.
+/// `list` ranishe buv spetsialnoiu formoiu Rust; pereneseno v `lib/core.my`
+/// toho samoho dnia, koly dodano variatyvni parametry lambda, bo `(def list
+/// (lambda args args))` vyrazhaie tse tochno — toi samyi filtr G4/G5 ("chy
+/// naiavne yadro vzhe mozhe tse skazaty?"), zastosovanyi do samoho Rust-sharu,
+/// ne lyshe do `.my`-kodu.
 #[test]
 fn list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin() {
     let mut session = Session::default();
@@ -596,18 +596,18 @@ fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
 /// not `serde_json`; the fixture file no longer needs a foreign format to
 /// stay implementation-independent, it needs my-lisp's own reader, which
 /// every conforming implementation already has by definition.
-/// tests/fixtures/conformance.my — незалежний від реалізації контракт
-/// (див. CLAUDE.md): будь-яка майбутня реалізація my-lisp — C, HDL, що
-/// завгодно — має відтворювати ці результати, щойно правильно реалізує сім
-/// примітивів і lambda/def/defmacro, бо все, що над ними (включно з
-/// lib/core.my), — звичайний my-lisp-код, не Rust. Попереднє завантаження
-/// core.my тут дозволяє фікстурам напряму його використовувати замість
-/// дублювання покриття stdlib. Записано як my-lisp-дані (2026-08-09,
-/// перенесено з JSON), тож цей тест читає файл через `parse` — той самий
-/// reader, крізь який проходить будь-яка my-lisp-програма — не через
-/// `serde_json`; файлу фікстур більше не потрібен чужий формат, щоб
-/// лишатись незалежним від реалізації, йому потрібен власний reader
-/// my-lisp, який будь-яка конформна реалізація вже має за визначенням.
+/// tests/fixtures/conformance.my — nezalezhnyi vid realizatsii kontrakt
+/// (dyv. CLAUDE.md): bud-yaka maibutnia realizatsiia my-lisp — C, HDL, shcho
+/// zavhodno — maie vidtvoriuvaty tsi rezultaty, shchoino pravylno realizuie sim
+/// prymityviv i lambda/def/defmacro, bo vse, shcho nad nymy (vkliuchno z
+/// lib/core.my), — zvychainyi my-lisp-kod, ne Rust. Poperednie zavantazhennia
+/// core.my tut dozvoliaie fiksturam napriamu yoho vykorystovuvaty zamist
+/// dubliuvannia pokryttia stdlib. Zapysano yak my-lisp-dani (2026-08-09,
+/// pereneseno z JSON), tozh tsei test chytaie fail cherez `parse` — toi samyi
+/// reader, kriz yakyi prokhodyt bud-yaka my-lisp-prohrama — ne cherez
+/// `serde_json`; failu fikstur bilshe ne potriben chuzhyi format, shchob
+/// lyshatys nezalezhnym vid realizatsii, yomu potriben vlasnyi reader
+/// my-lisp, yakyi bud-yaka konformna realizatsiia vzhe maie za vyznachenniam.
 #[test]
 fn conformance_tests_from_my() {
     let forms = parse(include_str!("../../../tests/fixtures/conformance.my"))
@@ -832,16 +832,16 @@ fn a_dotted_pair_used_directly_as_code_is_an_invalid_form() {
 /// test turns that into a loud, immediate failure instead. Both files are
 /// my-lisp data now (2026-08-09, moved off JSON), so this test parses them
 /// the same way `conformance_tests_from_my` does above, not via serde_json.
-/// `my-lisp-constitution.my` — це *згенерована проекція* над
-/// `tests/fixtures/conformance.my` (перегенеровує `scripts/build-constitution.my`)
-/// — та сама форма "одне джерело + проекція", яку `*knowledge-journal*`
-/// з `lib/knowledge.my` використовує для рантайм-стану, застосована тут до
-/// документації. Цей тест — примусова CI-половина того патерну: якщо хтось
-/// додасть фікстуру в `conformance.my` і забуде перегенерувати, ці два
-/// файли мовчки розійдуться — цей тест перетворює це на негайний, гучний
-/// провал. Обидва файли тепер my-lisp-дані (2026-08-09, перенесено з JSON),
-/// тож цей тест парсить їх так само, як `conformance_tests_from_my` вище,
-/// не через `serde_json`.
+/// `my-lisp-constitution.my` — tse *zhenerovana proektsiia* nad
+/// `tests/fixtures/conformance.my` (perehenerovuie `scripts/build-constitution.my`)
+/// — ta sama forma "odne dzherelo + proektsiia", yaku `*knowledge-journal*`
+/// z `lib/knowledge.my` vykorystovuie dlia rantaim-stanu, zastosovana tut do
+/// dokumentatsii. Tsei test — prymusova CI-polovyna toho paternu: yakshcho khtos
+/// dodast fiksturu v `conformance.my` i zabude pereheneruvaty, tsi dva
+/// faily movchky roziidutsia — tsei test peretvoriuie tse na nehainyi, huchnyi
+/// proval. Obydva faily teper my-lisp-dani (2026-08-09, pereneseno z JSON),
+/// tozh tsei test parsyt yikh tak samo, yak `conformance_tests_from_my` vyshche,
+/// ne cherez `serde_json`.
 #[test]
 fn constitution_my_stays_in_sync_with_conformance_my() {
     let conformance = parse(include_str!("../../../tests/fixtures/conformance.my"))
@@ -907,18 +907,18 @@ fn constitution_my_stays_in_sync_with_conformance_my() {
 /// load, still prove one real fact, and that Tier 3 hasn't silently shrunk
 /// below a floor. If the floor is intentionally being lowered, lower this
 /// assertion explicitly — don't let it drift unnoticed.
-/// Принцип проєкту 3 ("реалізувати розумну машину") свідомо не має
-/// відповідника серед G/S аксіом у `docs/language-core-axioms.md` — аксіома
-/// це твердження про мову, цей принцип — твердження про те, чому проєкт
-/// існує, і це різні категорії навмисно. Але це означає, що ніщо в самому
-/// мовному контракті не помітить, якщо `lib/unify.my`/`lib/reason.my` тихо
-/// видалять, або покриття Рівня 3 з часом зменшиться — ерозію впіймає лише
-/// той, хто випадково згадає подивитись. Цей тест — процесна гарантія, не
-/// семантична: він не перевіряє, що означають `unify`/`reason` (це роблять
-/// `tests/unify.rs`/`tests/reason.rs`), лише що вони й досі існують,
-/// завантажуються, доводять один реальний факт, і що Рівень 3 мовчки не
-/// просів нижче межі. Якщо межу свідомо знижують — знизити цю перевірку
-/// явно, не дати їй розмитись непоміченою.
+/// Pryntsyp proiektu 3 ("realizuvaty rozumnu mashynu") svidomo ne maie
+/// vidpovidnyka sered G/S aksiom u `docs/language-core-axioms.md` — aksioma
+/// tse tverdzhennia pro movu, tsei pryntsyp — tverdzhennia pro te, chomu proiekt
+/// isnuie, i tse rizni katehorii navmysno. Ale tse oznachaie, shcho nishcho v samomu
+/// movnomu kontrakti ne pomityt, yakshcho `lib/unify.my`/`lib/reason.my` tykho
+/// vydaliat, abo pokryttia Rivnia 3 z chasom zmenshytsia — eroziiu vpiimaie lyshe
+/// toi, khto vypadkovo zhadaie podyvytys. Tsei test — protsesna harantiia, ne
+/// semantychna: vin ne pereviriaie, shcho oznachaiut `unify`/`reason` (tse robliat
+/// `tests/unify.rs`/`tests/reason.rs`), lyshe shcho vony y dosi isnuiut,
+/// zavantazhuiutsia, dovodiat odyn realnyi fakt, i shcho Riven 3 movchky ne
+/// prosiv nyzhche mezhi. Yakshcho mezhu svidomo znyzhuiut — znyzyty tsiu perevirku
+/// yavno, ne daty yii rozmytys nepomichenoiu.
 #[test]
 fn symbolic_reasoning_layer_stays_loaded_and_tested() {
     let mut session = Session::default();
@@ -967,15 +967,15 @@ fn symbolic_reasoning_layer_stays_loaded_and_tested() {
 /// never silently redefine `cons`'s meaning." The default session (every
 /// `conformance.my` fixture) stays unbounded — this is opt-in, not a new
 /// default limit on the reference implementation.
-/// S3 назвав `OutOfMemory` у власному тексті до того, як категорія
-/// існувала в коді (знайдено під час аудиту аксіом перед ратифікацією,
-/// 2026-08-09) — цей тест робить її реальною: опційна межа на кількість
-/// cons-комірок, що імітує справді обмежену купу (власний приклад S3,
-/// "4096 cons-комірок на FPGA") без потреби в реальному залізі, щоб
-/// перевірити твердження "обмежені реалізації провалюються названо,
-/// ніколи не переозначають сенс `cons` мовчки". Типова сесія (кожна
-/// фікстура `conformance.my`) лишається необмеженою — це опційно, не нова
-/// типова межа для еталонної реалізації.
+/// S3 nazvav `OutOfMemory` u vlasnomu teksti do toho, yak katehoriia
+/// isnuvala v kodi (znaideno pid chas audytu aksiom pered ratyfikatsiieiu,
+/// 2026-08-09) — tsei test robyt yii realnoiu: optsiina mezha na kilkist
+/// cons-komirok, shcho imituie spravdi obmezhenu kupu (vlasnyi pryklad S3,
+/// "4096 cons-komirok na FPGA") bez potreby v realnomu zalizi, shchob
+/// pereviryty tverdzhennia "obmezheni realizatsii provaliuiutsia nazvano,
+/// nikoly ne pereoznachaiut sens `cons` movchky". Typova sesiia (kozhna
+/// fikstura `conformance.my`) lyshaietsia neobmezhenoiu — tse optsiino, ne nova
+/// typova mezha dlia etalonnoi realizatsii.
 #[test]
 fn cons_respects_an_opt_in_resource_limit_and_fails_named_not_silently() {
     let mut session = Session {
@@ -1004,11 +1004,11 @@ fn cons_stays_unbounded_by_default_matching_every_conformance_fixture() {
 /// bit-length cap on exact arithmetic results. Never falls back to an
 /// inexact approximation past the limit (that would violate S1, not
 /// satisfy it) — it fails named instead.
-/// Та сама форма, що й межа `cons` вище, для власного названого прикладу
-/// `S1` (`NumericOverflow`) замість `S3` (`OutOfMemory`) — опційна межа в
-/// бітах на результати точної арифметики. Ніколи не відкочується до
-/// неточного наближення за межею (це порушило б S1, не задовольнило б
-/// його) — натомість провалюється названо.
+/// Ta sama forma, shcho y mezha `cons` vyshche, dlia vlasnoho nazvanoho prykladu
+/// `S1` (`NumericOverflow`) zamist `S3` (`OutOfMemory`) — optsiina mezha v
+/// bitakh na rezultaty tochnoi aryfmetyky. Nikoly ne vidkochuietsia do
+/// netochnoho nablyzhennia za mezheiu (tse porushylo b S1, ne zadovolnylo b
+/// yoho) — natomist provaliuietsia nazvano.
 #[test]
 fn arithmetic_respects_an_opt_in_numeric_bit_limit_and_fails_named_not_silently() {
     let mut session = Session {

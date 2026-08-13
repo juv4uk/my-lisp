@@ -1,9 +1,9 @@
 //! Exercises lib/reason.my — the symbolic inference engine written in my-lisp
 //! itself, fulfilling the Advice Taker vision of deriving new facts from rules.
 //! Loads core, unify, and reason into one session.
-//! Перевіряє lib/reason.my — рушій символьного висновку, написаний самою
-//! my-lisp, що втілює бачення Advice Taker щодо виведення фактів з правил.
-//! Завантажує core, unify та reason в одну сесію.
+//! Pereviriaie lib/reason.my — rushii symvolnoho vysnovku, napysanyi samoiu
+//! my-lisp, shcho vtiliuie bachennia Advice Taker shchodo vyvedennia faktiv z pravyl.
+//! Zavantazhuie core, unify ta reason v odnu sesiiu.
 //! Prüft lib/reason.my — die symbolische Inferenz-Engine, geschrieben in
 //! my-lisp selbst, die die Advice-Taker-Vision erfüllt. Lädt core, unify
 //! und reason in eine Sitzung.

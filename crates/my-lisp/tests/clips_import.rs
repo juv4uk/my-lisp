@@ -4,11 +4,11 @@
 //! Center origin of CLIPS itself. Real CLIPS source parses cleanly as
 //! ordinary my-lisp data via `read`/`quote` — no dedicated tokenizer or
 //! string primitives needed.
-//! Перевіряє lib/clips-import.my — Крок 1 універсального(-уватого)
-//! імпортера зі старих символьних AI-систем: CLIPS `deffacts` (факти без
-//! змінних). Справжній CLIPS-код чисто парситься як звичайні my-lisp дані
-//! через `read`/`quote` — без окремого токенізатора чи рядкових
-//! примітивів.
+//! Pereviriaie lib/clips-import.my — Krok 1 universalnoho(-uvatoho)
+//! importera zi starykh symvolnykh AI-system: CLIPS `deffacts` (fakty bez
+//! zminnykh). Spravzhnii CLIPS-kod chysto parsytsia yak zvychaini my-lisp dani
+//! cherez `read`/`quote` — bez okremoho tokenizatora chy riadkovykh
+//! prymityviv.
 //! Prüft lib/clips-import.my — Schritt 1 eines universell(-ähnlichen)
 //! Importers für alte symbolische KI-Systeme: CLIPS' `deffacts` (Fakten
 //! ohne Variablen). Echter CLIPS-Quellcode parst sauber als gewöhnliche

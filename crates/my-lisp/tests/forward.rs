@@ -1,7 +1,7 @@
 //! Exercises lib/forward.my — Step 1 of a CLIPS-style forward-chaining rule
 //! engine: one working-memory list, one rule fired against one fact.
-//! Перевіряє lib/forward.my — Крок 1 forward-chaining рушія в стилі CLIPS:
-//! один список working memory, одне правило проти одного факту.
+//! Pereviriaie lib/forward.my — Krok 1 forward-chaining rushiia v styli CLIPS:
+//! odyn spysok working memory, odne pravylo proty odnoho faktu.
 //! Prüft lib/forward.my — Schritt 1 einer CLIPS-artigen
 //! Forward-Chaining-Regel-Engine: eine Working-Memory-Liste, eine Regel
 //! gegen einen Fakt angewendet.

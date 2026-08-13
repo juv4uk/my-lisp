@@ -318,8 +318,8 @@ fn tell_knowledge_and_defmodule_contributions_to_the_same_module_both_survive() 
 // --- guarded Advice Taker ingestion ------------------------------------
 // Accepted input mutates the journal; rejected and conflicting input do not.
 // Absence of a fact is never treated as its explicit negation.
-// Прийнятий ввід змінює журнал; відхилений і конфліктний — ні. Відсутність
-// факту ніколи не вважається його явним запереченням.
+// Pryiniatyi vvid zminiuie zhurnal; vidkhylenyi i konfliktnyi — ni. Vidsutnist
+// faktu nikoly ne vvazhaietsia yoho yavnym zaperechenniam.
 // Akzeptierte Eingabe ändert das Journal; abgelehnte und widersprüchliche
 // Eingabe nicht. Das Fehlen eines Fakts gilt nie als explizite Verneinung.
 

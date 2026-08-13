@@ -1,7 +1,7 @@
 //! End-to-end Advice Taker boundary: controlled words become validated
 //! knowledge, inference proves an answer, and narration explains it.
-//! Наскрізна межа Advice Taker: контрольовані слова стають перевіреним
-//! знанням, inference доводить відповідь, а narration пояснює її.
+//! Naskrizna mezha Advice Taker: kontrolovani slova staiut perevirenym
+//! znanniam, inference dovodyt vidpovid, a narration poiasniuie yii.
 //! Durchgängige Advice-Taker-Grenze: kontrollierte Wörter werden zu
 //! geprüftem Wissen, Inferenz beweist eine Antwort und Narration erklärt sie.
 

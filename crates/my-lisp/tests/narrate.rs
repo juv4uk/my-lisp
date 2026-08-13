@@ -1,8 +1,8 @@
 //! Exercises lib/narrate.my — the "structure -> text" half of the bridge
 //! from private/lisp-to-knowledge.md §6, the reverse of lib/understand.my's
 //! "text -> structure" half.
-//! Перевіряє lib/narrate.my — половину мосту "структура -> текст" з
-//! private/lisp-to-knowledge.md §6, обернену до "текст -> структура" з
+//! Pereviriaie lib/narrate.my — polovynu mostu "struktura -> tekst" z
+//! private/lisp-to-knowledge.md §6, obernenu do "tekst -> struktura" z
 //! lib/understand.my.
 //! Prüft lib/narrate.my — die Hälfte "Struktur -> Text" der Brücke aus
 //! private/lisp-to-knowledge.md §6, das Gegenstück zu "Text -> Struktur"

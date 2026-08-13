@@ -1,11 +1,11 @@
 //! Exercises lib/meta-eval.my — the metacircular evaluator written in
-//! my-lisp itself (see PLAN.md, Крок 9, item 1). Loads lib/core.my (for
+//! my-lisp itself (see PLAN.md, Krok 9, item 1). Loads lib/core.my (for
 //! `second`/`third`) and lib/meta-eval.my into one session, then runs
 //! `(my-eval (read "...") env)` the same way a user would from a REPL.
-//! Перевіряє lib/meta-eval.my — метациркулярний evaluator, написаний
-//! самою my-lisp (див. PLAN.md, Крок 9, пункт 1). Завантажує lib/core.my
-//! (заради `second`/`third`) і lib/meta-eval.my в одну сесію, тоді
-//! запускає `(my-eval (read "...") env)` так само, як користувач з REPL.
+//! Pereviriaie lib/meta-eval.my — metatsyrkuliarnyi evaluator, napysanyi
+//! samoiu my-lisp (dyv. PLAN.md, Krok 9, punkt 1). Zavantazhuie lib/core.my
+//! (zarady `second`/`third`) i lib/meta-eval.my v odnu sesiiu, todi
+//! zapuskaie `(my-eval (read "...") env)` tak samo, yak korystuvach z REPL.
 //! Prüft lib/meta-eval.my — den metazirkulären Evaluator, geschrieben in
 //! my-lisp selbst (siehe PLAN.md, Schritt 9, Punkt 1). Lädt lib/core.my
 //! (wegen `second`/`third`) und lib/meta-eval.my in eine Sitzung, führt
