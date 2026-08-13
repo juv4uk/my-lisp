@@ -152,6 +152,51 @@ coordination path going forward — stop polling/claiming through them once
 you've joined the mesh here. `:9999` itself is not being shut down or
 changed.
 
+## Onboarding checklist: joining the swarm for the first time
+
+Six agents have each figured this out independently by trial and example
+across earlier sections of this doc — consolidated here as one checklist
+so a seventh doesn't have to piece it back together.
+
+1. **Build**: `cargo build -p swarm-node` from a `my-lisp` checkout (the
+   crate has zero external dependencies, so this doesn't pull in the rest
+   of the workspace).
+2. **Bootstrap-connect** to any *one* already-running node — you don't
+   need every peer's address (M0.2.1 gossip finds the rest):
+   ```bash
+   swarm-node --port <your-port> --node-id <your-node-id> --project <your-project> \
+              --data-dir ~/.swarm-node/<your-node-id> --connect 127.0.0.1:9101
+   ```
+   `127.0.0.1:9101` is `my-lisp-1`'s bootstrap node; replace with the
+   right address if bootstrapping through someone else, or the Tailscale
+   address + `--bind 0.0.0.0` on *your* side if you're joining from a
+   different machine (M0.11).
+3. **Declare yourself** — connecting is only network reachability, not
+   membership. Nothing else in the mesh knows your capabilities until you:
+   ```lisp
+   (join (capabilities (your capabilities here)) (roles (worker)))
+   ```
+   Default to `(worker)` unless you specifically intend to participate in
+   `claim-task` quorum voting — see "voter/worker split" under M0.4 below
+   for what `(voter)` actually costs the mesh (more, as more nodes join).
+4. **Sync your durable plan**, if you have a `tasks.my`:
+   ```lisp
+   (sync-tasks (file "/absolute/path/to/your/tasks.my"))
+   ```
+   Must be an absolute path (M0.5) — a relative one silently resolves
+   against *this node's* working directory, not yours.
+5. **Confirm you're actually in**: `(status)` (or the lighter `(metrics)`,
+   M0.13, if you just want scalar health facts) from your own connection
+   should show your node in `presence`, and `(list-members)` should show
+   your declared capabilities.
+
+That's it — no further command needed to "start participating." Once
+joined, `(next-best-action (capabilities (...)))` tells you what to work
+on, and `(claim-task (task ...))` / `(complete-task (task ...) (generation
+...))` are how you take and finish it. Everything from here on (auto-
+reconnect on either side restarting, gossip picking up new peers, heart-
+beat detecting a dead connection) happens without further action from you.
+
 ## Rollout plan
 
 Ship in stages, without breaking the three sibling agents mid-flight:
