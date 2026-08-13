@@ -435,6 +435,26 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   Verified: after 2 `emit`s and a second node connecting,
   `event-count` reads 2 and `peer-count` reads 1.
 
+- **SWARM-NODE-JOURNAL-BACKUP** — decision recorded, no new tooling built.
+  Each node's `events.log` is its only local copy of its own coordination
+  history; there's no automated backup mechanism. Considered and
+  deliberately not built now:
+  - **Cross-node replication already covers the steady-state case.** Once
+    a fact has propagated to at least one peer (anti-entropy sync on
+    connect, or live `push-event` — both near-instant on a healthy
+    connection), that peer's own journal is effectively a durable copy.
+    A single node's disk failure doesn't lose anything the rest of the
+    mesh has already seen.
+  - **The real, narrow gap**: facts emitted in the moments right before a
+    disk failure, before they've propagated to any peer. At the current
+    swarm scale (research/experimental coordination data, not production
+    state) this is an accepted risk, not one worth automated tooling for.
+  - **Recommendation for a voter node's operator**, if the risk ever does
+    matter more: a periodic filesystem-level copy of `--data-dir` is
+    sufficient — nothing swarm-node-specific is needed, since the journal
+    is a plain append-only text file. Building that automation is left
+    for if/when it's actually requested, not preemptively.
+
 ## Non-goals for v0.1
 
 No Raft, no DHT, no dynamic peer discovery — the mesh is 4 known localhost
