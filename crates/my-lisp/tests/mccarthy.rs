@@ -1355,3 +1355,141 @@ fn process_run_wrong_arity_is_an_arity_error() {
         .expect_err("process-run with one argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Arity);
 }
+
+// --- load (special_forms/io.rs) -------------------------------------------
+// Reads a file and evaluates each top-level form in it, returning the last
+// value — untested anywhere else in this suite despite read-file/write-file
+// and read/eval each having their own dedicated coverage above.
+
+#[test]
+fn load_evaluates_every_form_in_a_file_and_returns_the_last_value() {
+    let path = std::env::temp_dir().join("my-lisp-load-round-trip.my");
+    let path_str = path.to_str().unwrap().replace('\\', "/");
+    std::fs::write(&path, "(def x 1) (def y 2) (+ x y)").unwrap();
+
+    let result = eval_program(&format!(r#"(load "{path_str}")"#), &mut Session::default())
+        .expect("load should evaluate the file and return the last form's value");
+    assert_eq!(result.value, Value::Number(3.0, Exactness::Exact));
+
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn load_definitions_are_visible_in_the_calling_environment() {
+    let path = std::env::temp_dir().join("my-lisp-load-definitions.my");
+    let path_str = path.to_str().unwrap().replace('\\', "/");
+    std::fs::write(&path, "(def loaded-value 99)").unwrap();
+
+    let mut session = Session::default();
+    eval_program(&format!(r#"(load "{path_str}")"#), &mut session).expect("load should succeed");
+    let result = eval_program("loaded-value", &mut session)
+        .expect("a definition made by load should be visible afterward");
+    assert_eq!(result.value, Value::Number(99.0, Exactness::Exact));
+
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn load_rejects_a_non_string_path() {
+    let error = eval_program("(load 42)", &mut Session::default())
+        .expect_err("a non-string path must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn load_wrong_arity_is_an_arity_error() {
+    let error = eval_program("(load)", &mut Session::default())
+        .expect_err("load with no arguments must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
+
+#[test]
+fn load_a_missing_file_fails_named_not_panics() {
+    let error = eval_program(
+        r#"(load "my-lisp-load-does-not-exist-anywhere.my")"#,
+        &mut Session::default(),
+    )
+    .expect_err("loading a nonexistent file must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+}
+
+// --- car / cdr / cons / cond error paths (special_forms/core.rs) ---------
+// The happy paths for these are exercised constantly throughout this suite
+// via ordinary list code; the type/arity/malformed-clause error paths are
+// not, despite being exactly where a regression would silently start
+// panicking instead of returning a named LanguageError.
+
+#[test]
+fn car_on_a_non_pair_fails_named_not_panics() {
+    let error = eval_program("(car 42)", &mut Session::default())
+        .expect_err("car on a non-pair must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn car_on_the_empty_list_fails_named_not_panics() {
+    let error = eval_program("(car '())", &mut Session::default())
+        .expect_err("car on the empty list must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn cdr_on_a_non_pair_fails_named_not_panics() {
+    let error = eval_program("(cdr 42)", &mut Session::default())
+        .expect_err("cdr on a non-pair must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn car_wrong_arity_is_an_arity_error() {
+    let error = eval_program("(car 1 2)", &mut Session::default())
+        .expect_err("car with two arguments must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
+
+#[test]
+fn cons_wrong_arity_is_an_arity_error() {
+    let error = eval_program("(cons 1)", &mut Session::default())
+        .expect_err("cons with one argument must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
+
+#[test]
+fn eq_rejects_non_atom_arguments() {
+    let error = eval_program("(eq '(1 2) '(1 2))", &mut Session::default())
+        .expect_err("eq on two non-atom lists must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn cond_rejects_a_clause_that_is_not_a_list() {
+    let error = eval_program("(cond 42)", &mut Session::default())
+        .expect_err("a non-list cond clause must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+}
+
+#[test]
+fn cond_rejects_a_clause_with_the_wrong_number_of_parts() {
+    let error = eval_program("(cond (t 1 2))", &mut Session::default())
+        .expect_err("a cond clause with three parts must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+}
+
+#[test]
+fn cond_with_no_matching_clause_returns_nil() {
+    assert_eq!(eval("(cond (() 1) (() 2))"), Value::Nil);
+}
+
+#[test]
+fn def_rejects_a_non_symbol_name() {
+    let error = eval_program("(def 42 1)", &mut Session::default())
+        .expect_err("def with a non-symbol name must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+}
+
+#[test]
+fn defmacro_wrong_arity_is_an_arity_error() {
+    let error = eval_program("(defmacro only-a-name)", &mut Session::default())
+        .expect_err("defmacro with only a name must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Arity);
+}
