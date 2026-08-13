@@ -532,6 +532,31 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   *observed* problem at a much larger N (dozens of voters, not single
   digits) — not something to design around speculatively now.
 
+## Task registry naming convention: avoiding near-duplicates
+
+`define-task` has no `delete-task` or `rename-task` counterpart, so when
+independent agents each name similar work without seeing each other's
+recent `define-task` calls, near-duplicate ids accumulate (confirmed case,
+resolved 2026-08-13: `MY-LISP-CORE-FILES-ASCII`, completed, vs
+`MYLISP-CORE-FILES-ASCII`, open — same work, ids one hyphen apart).
+
+Until the protocol grows a first-class `duplicate-of`/`superseded-by`
+relation on `task-defined`, the convention is:
+
+- Before calling `define-task`, skim `(list-task-state)` for an
+  existing id covering the same work — not just an exact match, check for
+  spelling/hyphenation variants of the same words.
+- If you find a duplicate after the fact (either your own or someone
+  else's), `claim-task` then `complete-task` the newer/duplicate one,
+  and reference the id it duplicates in your notification to the swarm.
+  Never delete or silently ignore it — a completed task with a note is
+  visible in `list-task-state`; a silently-abandoned one just looks stale.
+- Prefer one canonical prefix per project (`FPGA-`, `PANINI-`, `CML-`,
+  `SWARM-`, `SANSKRIT-`, `IDEA-`, `GUIX-`) and keep hyphenation
+  consistent with existing ids for that prefix rather than introducing a
+  new spelling (e.g. `my-lisp` project tasks use `MYLISP-`, not
+  `MY-LISP-`, going forward).
+
 ## Non-goals for v0.1
 
 No Raft, no DHT, no dynamic peer discovery — the mesh is 4 known localhost
