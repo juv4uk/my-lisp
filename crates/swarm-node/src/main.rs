@@ -145,6 +145,7 @@ fn parse_args() -> Args {
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         match arg.as_str() {
+            "--help" | "-h" => print_usage_and_exit(),
             "--port" => port = it.next().and_then(|v| v.parse().ok()).unwrap_or(port),
             "--node-id" => node_id = it.next().unwrap_or(node_id),
             "--project" => project = it.next().unwrap_or(project),
@@ -159,6 +160,40 @@ fn parse_args() -> Args {
         }
     }
     Args { port, node_id, project, data_dir, connect, bind }
+}
+
+/// `--help`/`-h` must exit before touching the network or filesystem at
+/// all — the bug this fixes (`SWARM-NODE-HELP-FLAG-BUG`) was that an
+/// unrecognized-looking `--help` fell through to `other => warn!(...)`
+/// and then the process kept going and actually started a real node
+/// under every default (relative `.swarm-node` data-dir, port 9101,
+/// node-id `node-1`) — confirmed live: running `--help` while port 9101
+/// was already in use crashed with `AddrInUse` instead of showing help,
+/// and with the port free it would have silently joined/started a real
+/// node under those defaults instead.
+fn print_usage_and_exit() -> ! {
+    println!(
+        "swarm-node — P2P coordination-plane node (see docs/swarm-mesh-v2.md)\n\
+         \n\
+         USAGE:\n\
+         \x20\x20swarm-node [OPTIONS]\n\
+         \n\
+         OPTIONS:\n\
+         \x20\x20--port <PORT>          Listen port (default: 9101)\n\
+         \x20\x20--node-id <ID>         Stable node identity (default: node-1 — change this)\n\
+         \x20\x20--project <NAME>       Project label reported in handshakes (default: unknown)\n\
+         \x20\x20--data-dir <PATH>      Journal/identity directory (default: .swarm-node — prefer an\n\
+         \x20\x20                       absolute path, e.g. ~/.swarm-node/<node-id>; a relative one\n\
+         \x20\x20                       resolves against wherever this process happens to be started)\n\
+         \x20\x20--bind <ADDRESS>       Interface to listen on (default: 127.0.0.1, localhost-only;\n\
+         \x20\x20                       pass 0.0.0.0 or a specific interface IP for cross-machine use)\n\
+         \x20\x20--connect <HOST:PORT>  Bootstrap peer to dial on startup (repeatable; one is enough,\n\
+         \x20\x20                       gossip discovers the rest of the mesh)\n\
+         \x20\x20--help, -h             Show this message and exit\n\
+         \n\
+         See docs/swarm-mesh-v2.md's onboarding checklist for a full first-join walkthrough."
+    );
+    std::process::exit(0);
 }
 
 fn main() -> std::io::Result<()> {

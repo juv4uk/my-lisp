@@ -277,3 +277,20 @@ fn metrics_reports_event_count_peer_count_and_synced() {
     assert!(metrics.contains("(synced t)"), "node-a with no --connect should be trivially synced: {metrics}");
     assert!(metrics.contains("(node node-a)"), "metrics should report the caller's own node-id: {metrics}");
 }
+
+#[test]
+fn help_flag_prints_usage_and_exits_without_starting_a_server() {
+    // Regression test for SWARM-NODE-HELP-FLAG-BUG: --help used to fall
+    // through to the unknown-argument warning and then start a real
+    // server under every default anyway.
+    for flag in ["--help", "-h"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_swarm-node"))
+            .arg(flag)
+            .output()
+            .unwrap_or_else(|e| panic!("failed to run swarm-node {flag}: {e}"));
+        assert!(output.status.success(), "swarm-node {flag} should exit 0, got {:?}", output.status);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("USAGE"), "{flag} output should contain usage text, got: {stdout}");
+        assert!(!stdout.contains("listening on"), "{flag} must not start a server: {stdout}");
+    }
+}
