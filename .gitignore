@@ -24,3 +24,7 @@ node_modules
 # Standalone Web HTML (згенерований артефакт)
 # Standalone Web HTML (generiertes Artefakt)
 /my-lisp-cli-web.html
+
+# Local swarm-node runtime data (event journal, node identity) when run
+# with a relative --data-dir from the repo root -- never source-controlled.
+/.swarm-node/
