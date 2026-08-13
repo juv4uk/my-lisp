@@ -116,6 +116,20 @@ struct Args {
     project: String,
     data_dir: PathBuf,
     connect: Vec<String>,
+    /// Interface to listen on. Defaults to `127.0.0.1` (unchanged,
+    /// localhost-only behavior) so existing single-machine setups keep
+    /// working exactly as before; pass `0.0.0.0` (or a specific interface
+    /// IP, e.g. a Tailscale address) to accept connections from other
+    /// machines. Not validated/firewalled by swarm-node itself — whatever
+    /// network the bind address is reachable from is who can talk to this
+    /// node, so this is a deliberate, explicit opt-in, not a new default.
+    /// (No separate "advertise" address is needed: gossip already learns
+    /// a peer's dialable address from the observed source IP of its
+    /// connection — correct as-is for direct-routing overlays like
+    /// Tailscale, which don't rewrite addresses in transit. A NAT'd
+    /// deployment where the observed IP isn't reachable would need that
+    /// as a later addition, not preemptively built for an unconfirmed case.)
+    bind: String,
 }
 
 fn parse_args() -> Args {
@@ -124,6 +138,7 @@ fn parse_args() -> Args {
     let mut project = "unknown".to_string();
     let mut data_dir = PathBuf::from(".swarm-node");
     let mut connect = Vec::new();
+    let mut bind = "127.0.0.1".to_string();
 
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
@@ -132,6 +147,7 @@ fn parse_args() -> Args {
             "--node-id" => node_id = it.next().unwrap_or(node_id),
             "--project" => project = it.next().unwrap_or(project),
             "--data-dir" => data_dir = it.next().map(PathBuf::from).unwrap_or(data_dir),
+            "--bind" => bind = it.next().unwrap_or(bind),
             "--connect" => {
                 if let Some(v) = it.next() {
                     connect.push(v);
@@ -140,7 +156,7 @@ fn parse_args() -> Args {
             other => warn!("swarm-node: ignoring unknown argument `{other}`"),
         }
     }
-    Args { port, node_id, project, data_dir, connect }
+    Args { port, node_id, project, data_dir, connect, bind }
 }
 
 fn main() -> std::io::Result<()> {
@@ -149,12 +165,13 @@ fn main() -> std::io::Result<()> {
     let journal = Journal::open(&args.data_dir)?;
     let lamport_start = journal.max_lamport();
     info!(
-        "swarm-node: node={} epoch={} project={} journal={} events={} listening on 127.0.0.1:{}",
+        "swarm-node: node={} epoch={} project={} journal={} events={} listening on {}:{}",
         identity.node_id,
         identity.epoch,
         args.project,
         journal.path().display(),
         journal.events.len(),
+        args.bind,
         args.port
     );
 
@@ -180,7 +197,7 @@ fn main() -> std::io::Result<()> {
 
     spawn_heartbeat(&node);
 
-    let listener = TcpListener::bind(("127.0.0.1", args.port))?;
+    let listener = TcpListener::bind((args.bind.as_str(), args.port))?;
     for incoming in listener.incoming() {
         let stream = match incoming {
             Ok(s) => s,
