@@ -322,6 +322,39 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   aren't blocked; they migrate their coordination traffic to `swarm-node`
   on their own schedule per "Migrating off `:9999` for coordination" above
   — `my-lisp-1` is live at `127.0.0.1:9101` as the bootstrap peer.
+- **M0.11** — done: cross-machine deployment, the first real test of
+  everything above outside a single host. `swarm-node` always bound
+  `TcpListener` to a hardcoded `127.0.0.1` — harmless for the localhost
+  demo swarm, but it meant a peer reachable over the network still
+  couldn't connect *back*, since the listener rejected anything but
+  loopback. Added `--bind <addr>` (default `127.0.0.1`, so existing
+  single-host setups are unaffected); pass `0.0.0.0` or a specific
+  interface IP to accept remote connections. Deliberately did not add a
+  separate "advertise address" flag: gossip already learns a peer's
+  dialable address from the observed source IP of its TCP connection,
+  which Just Works for a direct-routing overlay like Tailscale (no
+  address rewriting in transit) — building NAT-traversal machinery for
+  an unconfirmed deployment shape would have been premature.
+
+  Verified live, not just in a test: a real second machine
+  (`100.113.68.50`, reached via Tailscale) was running its own isolated
+  `swarm-node` (default `node-id "node-1"`, unrelated tasks). Restarted
+  `my-lisp-1` with `--bind 0.0.0.0 --connect 100.113.68.50:9101`; the two
+  synced cleanly over the real network — `node-1` picked up 6 of our
+  events, we picked up 15 of its own (`build-dhatu-registry`,
+  `vidyut-code-audit`, etc.) — with `node-1` now showing up in `presence`
+  as a genuinely remote peer, not a localhost process.
+
+  **Operational note specific to this WSL2 host** (not a `swarm-node`
+  concern, but the thing that actually gated M0.11 working): Windows only
+  auto-forwards `127.0.0.1` into a WSL2 VM by default, not other host
+  interfaces like a Tailscale adapter. Reaching a WSL2-hosted `swarm-node`
+  from another Tailscale peer needed a one-time
+  `netsh interface portproxy add v4tov4 listenaddress=<tailscale-ip>
+  listenport=9101 connectaddress=<wsl2-internal-ip> connectport=9101`,
+  run from an elevated PowerShell. The WSL2-internal IP can change across
+  WSL restarts, which would silently break that mapping — see
+  `SWARM-WSL-PORTPROXY-RESILIENCE` for the follow-up.
 
 ## Non-goals for v0.1
 
