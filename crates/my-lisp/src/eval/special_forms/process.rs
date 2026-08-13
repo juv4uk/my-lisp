@@ -28,14 +28,14 @@ pub(crate) fn evaluate_process_run(
     let Value::String(ref program) = program_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "process-run expects a string program name · process-run очікує рядок-ім'я програми · process-run erwartet einen String-Programmnamen",
+            "process-run expects a string program name · process-run ochikuie riadok-imia prohramy · process-run erwartet einen String-Programmnamen",
             arguments[0].span,
         ));
     };
     if !environment.is_process_allowed(program) {
         return Err(LanguageError::new(
             ErrorKind::InvalidForm,
-            format!("process-run: {program} is not on this session's allowlist · process-run: {program} немає в allowlist цієї сесії · process-run: {program} steht nicht auf der Allowlist dieser Sitzung"),
+            format!("process-run: {program} is not on this session's allowlist · process-run: {program} nemaie v allowlist tsiiei sesii · process-run: {program} steht nicht auf der Allowlist dieser Sitzung"),
             span,
         ));
     }
@@ -59,7 +59,7 @@ fn expect_string_list(value: &Value, span: Span) -> Result<Vec<String>, Language
                 let Value::String(ref text) = **head else {
                     return Err(LanguageError::new(
                         ErrorKind::Type,
-                        "process-run expects a list of strings for its second argument · process-run очікує список рядків другим аргументом · process-run erwartet eine Liste von Zeichenketten als zweites Argument",
+                        "process-run expects a list of strings for its second argument · process-run ochikuie spysok riadkiv druhym arhumentom · process-run erwartet eine Liste von Zeichenketten als zweites Argument",
                         span,
                     ));
                 };
@@ -69,7 +69,7 @@ fn expect_string_list(value: &Value, span: Span) -> Result<Vec<String>, Language
             _ => {
                 return Err(LanguageError::new(
                     ErrorKind::Type,
-                    "process-run expects a proper list of strings for its second argument · process-run очікує правильний список рядків другим аргументом · process-run erwartet eine echte Liste von Zeichenketten als zweites Argument",
+                    "process-run expects a proper list of strings for its second argument · process-run ochikuie pravylnyi spysok riadkiv druhym arhumentom · process-run erwartet eine echte Liste von Zeichenketten als zweites Argument",
                     span,
                 ))
             }

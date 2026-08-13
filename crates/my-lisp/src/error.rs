@@ -16,30 +16,30 @@ pub enum ErrorKind {
     /// lets a session opt into one — for testing what a genuinely bounded
     /// implementation (an FPGA, an embedded C core) must do: fail named
     /// and loud, never silently redefine `cons`'s meaning.
-    /// Влучено обмеження ресурсу, не логічна помилка — власний приклад S3
-    /// ("4096 cons-комірок на FPGA") назвав цю категорію до того, як вона
-    /// існувала в коді (знайдено під час аудиту аксіом перед ратифікацією,
-    /// 2026-08-09). Rust-реалізація не має *типової* межі (купа довільної
-    /// точності), але `Environment::with_cons_limit` дозволяє сесії
-    /// увімкнути її — для перевірки, що справді обмежена реалізація
-    /// (FPGA, embedded C-ядро) мусить робити: провалюватись названо й
-    /// гучно, ніколи не переозначати сенс `cons` мовчки.
+    /// Vlucheno obmezhennia resursu, ne lohichna pomylka — vlasnyi pryklad S3
+    /// ("4096 cons-komirok na FPGA") nazvav tsiu katehoriiu do toho, yak vona
+    /// isnuvala v kodi (znaideno pid chas audytu aksiom pered ratyfikatsiieiu,
+    /// 2026-08-09). Rust-realizatsiia ne maie *typovoi* mezhi (kupa dovilnoi
+    /// tochnosti), ale `Environment::with_cons_limit` dozvoliaie sesii
+    /// uvimknuty yii — dlia perevirky, shcho spravdi obmezhena realizatsiia
+    /// (FPGA, embedded C-yadro) musyt robyty: provaliuvatys nazvano y
+    /// huchno, nikoly ne pereoznachaty sens `cons` movchky.
     OutOfMemory,
     /// Same shape as `OutOfMemory`, for numeric magnitude instead of heap
     /// space — S1's own example named it before it existed too.
     /// `Environment::with_numeric_bit_limit` opts a session into a bit-length
     /// cap on exact arithmetic results; past it, the operation fails named,
     /// it never silently approximates.
-    /// Та сама форма, що й `OutOfMemory`, для числової величини замість
-    /// купи — власний приклад S1 теж назвав це до того, як існувало в коді.
-    /// `Environment::with_numeric_bit_limit` вмикає для сесії межу в бітах
-    /// на результати точної арифметики; за нею операція провалюється
-    /// названо, ніколи не наближає мовчки.
+    /// Ta sama forma, shcho y `OutOfMemory`, dlia chyslovoi velychyny zamist
+    /// kupy — vlasnyi pryklad S1 tezh nazvav tse do toho, yak isnuvalo v kodi.
+    /// `Environment::with_numeric_bit_limit` vmykaie dlia sesii mezhu v bitakh
+    /// na rezultaty tochnoi aryfmetyky; za neiu operatsiia provaliuietsia
+    /// nazvano, nikoly ne nablyzhaie movchky.
     NumericOverflow,
 }
 
 /// Structured errors let the IDE underline the exact source range later.
-/// Структурована помилка дозволить IDE підкреслити точне місце в коді.
+/// Strukturovana pomylka dozvolyt IDE pidkreslyty tochne mistse v kodi.
 /// Strukturierte Fehler ermöglichen der IDE später, den genauen Quellbereich zu markieren.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LanguageError {
@@ -62,7 +62,7 @@ impl fmt::Display for LanguageError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "{} · at / позиція / Stelle {}..{}",
+            "{} · at / pozytsiia / Stelle {}..{}",
             self.message, self.span.start, self.span.end
         )
     }
@@ -74,9 +74,9 @@ impl LanguageError {
     /// 1-indexed (line, column) of the span's start, counted in chars (not
     /// bytes) so multi-byte UTF-8 source — Cyrillic identifiers included —
     /// still lines up visually with the caret in `render`.
-    /// 1-індексовані (рядок, стовпець) початку діапазону, пораховані в
-    /// символах (не байтах), щоб багатобайтовий UTF-8-код — включно з
-    /// кириличними ідентифікаторами — все одно збігався з "^" у `render`.
+    /// 1-indeksovani (riadok, stovpets) pochatku diapazonu, porakhovani v
+    /// symvolakh (ne baitakh), shchob bahatobaitovyi UTF-8-kod — vkliuchno z
+    /// kyrylychnymy identyfikatoramy — vse odno zbihavsia z "^" u `render`.
     /// 1-indizierte (Zeile, Spalte) des Span-Starts, gezählt in Zeichen
     /// (nicht Bytes), damit mehrbyteiger UTF-8-Quellcode — auch kyrillische
     /// Bezeichner — visuell mit dem "^" in `render` übereinstimmt.
@@ -98,9 +98,9 @@ impl LanguageError {
     /// A human-readable, rustc-style rendering: the message, a
     /// line:column location, the offending source line, and a caret
     /// underline spanning the error's width on that line.
-    /// Людяне, у стилі rustc, подання: повідомлення, місце у форматі
-    /// рядок:стовпець, вихідний рядок коду та підкреслення "^" на ширину
-    /// помилки в цьому рядку.
+    /// Liudiane, u styli rustc, podannia: povidomlennia, mistse u formati
+    /// riadok:stovpets, vykhidnyi riadok kodu ta pidkreslennia "^" na shyrynu
+    /// pomylky v tsomu riadku.
     /// Eine menschenlesbare Darstellung im rustc-Stil: die Meldung, ein
     /// Zeile:Spalte-Ort, die betroffene Quellzeile und eine
     /// "^"-Unterstreichung über die Breite des Fehlers in dieser Zeile.
@@ -115,7 +115,7 @@ impl LanguageError {
         let indent = " ".repeat(gutter.len());
         let caret = " ".repeat(column.saturating_sub(1)) + &"^".repeat(span_chars);
         format!(
-            "{message}\n{indent} --> line/рядок/Zeile {line}:{column}\n{indent} |\n{gutter} | {line_text}\n{indent} | {caret}",
+            "{message}\n{indent} --> line/riadok/Zeile {line}:{column}\n{indent} |\n{gutter} | {line_text}\n{indent} | {caret}",
             message = self.message,
         )
     }
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn line_col_counts_chars_not_bytes_across_newlines() {
-        let source = "(def a 1)\n(car а)"; // second line uses Cyrillic а (2 bytes)
+        let source = "(def a 1)\n(car a)"; // second line uses Cyrillic a (2 bytes)
         let error = LanguageError::new(ErrorKind::Type, "boom", Span { start: 15, end: 17 });
         assert_eq!(error.line_col(source), (2, 6));
     }

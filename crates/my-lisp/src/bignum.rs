@@ -6,14 +6,14 @@
 //! third-party implementation of it — schoolbook algorithms, kept simple
 //! and correct, not optimized for cryptographic-scale numbers this
 //! language has no use for.
-//! Маленьке, написане вручну ціле число довільної точності зі знаком,
-//! використовується лише `Rational` (див. `value.rs`). Навмисно не
-//! crate-залежність: цей крейт лишається на нульовій кількості
-//! залежностей (див. capability-free контракт у docs/language-core.md), а
-//! "Rust, що робить низькорівневий числовий алгоритм, у якому він
-//! особливо сильний" не вимагає підтягування стороньої реалізації —
-//! шкільні алгоритми, прості й коректні, не оптимізовані під числа
-//! криптографічного масштабу, яким ця мова не знаходить застосування.
+//! Malenke, napysane vruchnu tsile chyslo dovilnoi tochnosti zi znakom,
+//! vykorystovuietsia lyshe `Rational` (dyv. `value.rs`). Navmysno ne
+//! crate-zalezhnist: tsei kreit lyshaietsia na nulovii kilkosti
+//! zalezhnostei (dyv. capability-free kontrakt u docs/language-core.md), a
+//! "Rust, shcho robyt nyzkorivnevyi chyslovyi alhorytm, u yakomu vin
+//! osoblyvo sylnyi" ne vymahaie pidtiahuvannia storonoi realizatsii —
+//! shkilni alhorytmy, prosti y korektni, ne optymizovani pid chysla
+//! kryptohrafichnoho masshtabu, yakym tsia mova ne znakhodyt zastosuvannia.
 //! Eine kleine, von Hand geschriebene Ganzzahl beliebiger Genauigkeit mit
 //! Vorzeichen, nur von `Rational` verwendet (siehe `value.rs`). Bewusst
 //! keine Crate-Abhängigkeit: dieses Crate bleibt bei null Abhängigkeiten
@@ -30,8 +30,8 @@ use std::str::FromStr;
 
 /// Unsigned magnitude: little-endian base-2^32 limbs, no trailing zero limbs
 /// (an empty vec is the canonical representation of zero).
-/// Беззнакова величина: little-endian лімби бази 2^32, без кінцевих
-/// нульових ліmбів (порожній vec — канонічне представлення нуля).
+/// Bezznakova velychyna: little-endian limby bazy 2^32, bez kintsevykh
+/// nulovykh limbiv (porozhnii vec — kanonichne predstavlennia nulia).
 /// Vorzeichenlose Größe: Little-Endian-Limbs zur Basis 2^32, keine
 /// abschließenden Null-Limbs (ein leerer Vec ist die kanonische
 /// Darstellung von Null).
@@ -165,11 +165,11 @@ impl Magnitude {
     /// repeated subtraction) and simple enough to read and trust. This
     /// language has no performance requirement that would justify anything
     /// more sophisticated (see the header comment).
-    /// Шкільне бінарне довге ділення — O(bit_len^2), не найшвидший
-    /// алгоритм, що існує, але коректний незалежно від розміру частки (на
-    /// відміну від повторного віднімання) і достатньо простий, щоб читати
-    /// й довіряти. Ця мова не має вимоги швидкодії, яка виправдала б щось
-    /// складніше (див. header-коментар).
+    /// Shkilne binarne dovhe dilennia — O(bit_len^2), ne naishvydshyi
+    /// alhorytm, shcho isnuie, ale korektnyi nezalezhno vid rozmiru chastky (na
+    /// vidminu vid povtornoho vidnimannia) i dostatno prostyi, shchob chytaty
+    /// y doviriaty. Tsia mova ne maie vymohy shvydkodii, yaka vypravdala b shchos
+    /// skladnishe (dyv. header-komentar).
     /// Schulbuch-Binärlangdivision — O(bit_len^2), nicht der schnellste
     /// existierende Algorithmus, aber korrekt unabhängig von der Größe des
     /// Quotienten (anders als wiederholte Subtraktion) und einfach genug,
@@ -243,11 +243,11 @@ impl fmt::Display for Magnitude {
 /// always represented with `negative: false` so that `PartialEq`/`Eq` (both
 /// derived) and `Magnitude`'s empty-vec zero stay a single canonical form —
 /// there's no separate "negative zero" this type could accidentally produce.
-/// Ціле число довільної точності зі знаком: знак плюс величина. Нуль
-/// завжди представлений з `negative: false`, тож `PartialEq`/`Eq` (обидва
-/// derived) і порожній-vec нуль `Magnitude` лишаються єдиною канонічною
-/// формою — немає окремого "від'ємного нуля", який цей тип міг би
-/// випадково виробити.
+/// Tsile chyslo dovilnoi tochnosti zi znakom: znak plius velychyna. Nul
+/// zavzhdy predstavlenyi z `negative: false`, tozh `PartialEq`/`Eq` (obydva
+/// derived) i porozhnii-vec nul `Magnitude` lyshaiutsia yedynoiu kanonichnoiu
+/// formoiu — nemaie okremoho "vidiemnoho nulia", yakyi tsei typ mih by
+/// vypadkovo vyrobyty.
 /// Eine Ganzzahl beliebiger Genauigkeit mit Vorzeichen: Vorzeichen plus
 /// Größe. Null wird immer mit `negative: false` dargestellt, sodass
 /// `PartialEq`/`Eq` (beide derived) und `Magnitude`s leerer-Vec-Null eine
@@ -287,11 +287,11 @@ impl BigInt {
     /// (`Environment::with_numeric_bit_limit`), never in ordinary
     /// arithmetic. The reference Rust implementation stays unbounded by
     /// default (see `docs/language-core-axioms.md`'s S1).
-    /// Ширина величини в бітах (знак ігнорується), `0` для самого нуля —
-    /// використовується лише для примусового *опційного* числового
-    /// обмеження ресурсу (`Environment::with_numeric_bit_limit`), ніколи в
-    /// звичайній арифметиці. Еталонна Rust-реалізація лишається
-    /// необмеженою за замовчуванням (див. S1 у `docs/language-core-axioms.md`).
+    /// Shyryna velychyny v bitakh (znak ihnoruietsia), `0` dlia samoho nulia —
+    /// vykorystovuietsia lyshe dlia prymusovoho *optsiinoho* chyslovoho
+    /// obmezhennia resursu (`Environment::with_numeric_bit_limit`), nikoly v
+    /// zvychainii aryfmetytsi. Etalonna Rust-realizatsiia lyshaietsia
+    /// neobmezhenoiu za zamovchuvanniam (dyv. S1 u `docs/language-core-axioms.md`).
     pub fn bit_length(&self) -> usize {
         match self.magnitude.0.last() {
             None => 0,
@@ -344,12 +344,12 @@ impl BigInt {
     /// reduction and exact-division-by-gcd, always works with either
     /// non-negative operands or a remainder it discards, so the rounding
     /// direction on negative operands is never actually observed.
-    /// Ділення з відкиданням (залишок бере знак діленого, так само як
-    /// вбудовані `/`/`%` Rust для цілих) — єдиний виклик, скорочення GCD і
-    /// точне ділення на gcd у `Rational`, завжди працює або з невід'ємними
-    /// операндами, або з залишком, який відкидається, тож напрям
-    /// округлення для від'ємних операндів насправді ніколи не
-    /// спостерігається.
+    /// Dilennia z vidkydanniam (zalyshok bere znak dilenoho, tak samo yak
+    /// vbudovani `/`/`%` Rust dlia tsilykh) — yedynyi vyklyk, skorochennia GCD i
+    /// tochne dilennia na gcd u `Rational`, zavzhdy pratsiuie abo z nevidiemnymy
+    /// operandamy, abo z zalyshkom, yakyi vidkydaietsia, tozh napriam
+    /// okruhlennia dlia vidiemnykh operandiv naspravdi nikoly ne
+    /// sposterihaietsia.
     /// Abschneidende Division (Rest übernimmt das Vorzeichen des
     /// Dividenden, genau wie Rusts eigene `/`/`%` bei Ganzzahlen) — der
     /// einzige Aufrufer, die GGT-Reduktion und exakte Division durch den
@@ -401,9 +401,9 @@ impl BigInt {
     /// Euclidean algorithm via `div_rem`; both inputs are used through
     /// their absolute value, so the result is always non-negative,
     /// matching the convention `Rational`'s reduction step expects.
-    /// Алгоритм Евкліда через `div_rem`; обидва входи використовуються
-    /// через свій модуль, тож результат завжди невід'ємний, відповідно до
-    /// конвенції, якої очікує крок скорочення `Rational`.
+    /// Alhorytm Evklida cherez `div_rem`; obydva vkhody vykorystovuiutsia
+    /// cherez svii modul, tozh rezultat zavzhdy nevidiemnyi, vidpovidno do
+    /// konventsii, yakoi ochikuie krok skorochennia `Rational`.
     /// Euklidischer Algorithmus über `div_rem`; beide Eingaben werden über
     /// ihren Absolutwert verwendet, daher ist das Ergebnis immer
     /// nichtnegativ, passend zur Konvention, die der Reduktionsschritt von

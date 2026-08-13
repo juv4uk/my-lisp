@@ -10,14 +10,14 @@ use std::{cell::RefCell, cmp::Ordering, fmt, net::TcpListener, net::TcpStream, r
 /// docs/language-core.md). `denominator` is always positive and the
 /// fraction always reduced — the invariant `from_big` maintains on every
 /// construction path.
-/// Скорочений точний дріб, яким володіє runtime мови, на основі власноруч
-/// написаного `BigInt` у `bignum.rs` — "точний" не має числової стелі,
-/// окрім доступної пам'яті. Rust робить цей низькорівневий числовий
-/// алгоритм так само, як уже робив обмежену `i64`-версію, яку це замінило;
-/// сама my-lisp ніколи не розширює арифметичний примітив (див.
-/// docs/language-core.md). `denominator` завжди додатний, а дріб завжди
-/// скорочений — інваріант, який `from_big` підтримує на кожному шляху
-/// побудови.
+/// Skorochenyi tochnyi drib, yakym volodiie runtime movy, na osnovi vlasnoruch
+/// napysanoho `BigInt` u `bignum.rs` — "tochnyi" ne maie chyslovoi steli,
+/// okrim dostupnoi pamiati. Rust robyt tsei nyzkorivnevyi chyslovyi
+/// alhorytm tak samo, yak uzhe robyv obmezhenu `i64`-versiiu, yaku tse zaminylo;
+/// sama my-lisp nikoly ne rozshyriuie aryfmetychnyi prymityv (dyv.
+/// docs/language-core.md). `denominator` zavzhdy dodatnyi, a drib zavzhdy
+/// skorochenyi — invariant, yakyi `from_big` pidtrymuie na kozhnomu shliakhu
+/// pobudovy.
 /// Ein gekürzter exakter Bruch im Besitz der Sprachlaufzeit, basierend auf
 /// dem von Hand geschriebenen `BigInt` in `bignum.rs` — "exakt" hat keine
 /// numerische Obergrenze außer dem verfügbaren Speicher. Rust erledigt
@@ -42,8 +42,8 @@ impl Ord for Rational {
     fn cmp(&self, other: &Self) -> Ordering {
         // Denominators are always positive (see `from_big`), so comparing by
         // cross-multiplication is exact — no float involved, no rounding.
-        // Знаменники завжди додатні (див. `from_big`), тож порівняння
-        // хрест-навхрест точне — без float, без округлення.
+        // Znamennyky zavzhdy dodatni (dyv. `from_big`), tozh porivniannia
+        // khrest-navkhrest tochne — bez float, bez okruhlennia.
         // Nenner sind immer positiv (siehe `from_big`), daher ist der
         // Vergleich per Kreuzmultiplikation exakt — kein Float, keine Rundung.
         self.numerator
@@ -59,8 +59,8 @@ impl Rational {
 
     /// Parses a `numerator/denominator` literal directly as arbitrary-precision
     /// integers, for source tokens too large for `i64` (see `parser.rs`).
-    /// Парсить літерал `чисельник/знаменник` напряму як цілі довільної
-    /// точності, для токенів коду, завеликих для `i64` (див. `parser.rs`).
+    /// Parsyt literal `chyselnyk/znamennyk` napriamu yak tsili dovilnoi
+    /// tochnosti, dlia tokeniv kodu, zavelykykh dlia `i64` (dyv. `parser.rs`).
     /// Parst ein `Zähler/Nenner`-Literal direkt als beliebig genaue Ganzzahlen,
     /// für Quelltoken, die zu groß für `i64` sind (siehe `parser.rs`).
     pub fn from_literal(numerator: &str, denominator: &str) -> Option<Self> {
@@ -104,9 +104,9 @@ impl Rational {
 
     /// The wider of numerator/denominator bit width — see `BigInt::bit_length`
     /// for why this exists (an opt-in resource-limit check, not ordinary use).
-    /// Ширша з двох величин чисельника/знаменника в бітах — див.
-    /// `BigInt::bit_length`, чому це існує (опційна перевірка обмеження
-    /// ресурсу, не звичайне використання).
+    /// Shyrsha z dvokh velychyn chyselnyka/znamennyka v bitakh — dyv.
+    /// `BigInt::bit_length`, chomu tse isnuie (optsiina perevirka obmezhennia
+    /// resursu, ne zvychaine vykorystannia).
     pub fn bit_length(&self) -> usize {
         self.numerator.bit_length().max(self.denominator.bit_length())
     }
@@ -166,13 +166,13 @@ impl Rational {
     /// losing precision doing so. Anything bigger stays `Value::Rational` (see
     /// `Display`, which omits `/1` for whole numbers) rather than risk exactly
     /// the silent-approximation the exact-number principle forbids.
-    /// `Some(n)`, лише якщо це ціле значення *і* влазить в `i64` в межах
-    /// 2^53-діапазону точних цілих `f64` — єдиний випадок, коли `exact_value`
-    /// у `crates/my-lisp/src/eval/arithmetic.rs` може косметично друкувати
-    /// через `Value::Number` замість `Value::Rational`, не втрачаючи точність.
-    /// Усе більше лишається `Value::Rational` (див. `Display`, що пропускає
-    /// `/1` для цілих чисел), а не ризикує саме тим тихим наближенням, яке
-    /// забороняє принцип точних чисел.
+    /// `Some(n)`, lyshe yakshcho tse tsile znachennia *i* vlazyt v `i64` v mezhakh
+    /// 2^53-diapazonu tochnykh tsilykh `f64` — yedynyi vypadok, koly `exact_value`
+    /// u `crates/my-lisp/src/eval/arithmetic.rs` mozhe kosmetychno drukuvaty
+    /// cherez `Value::Number` zamist `Value::Rational`, ne vtrachaiuchy tochnist.
+    /// Use bilshe lyshaietsia `Value::Rational` (dyv. `Display`, shcho propuskaie
+    /// `/1` dlia tsilykh chysel), a ne ryzykuie same tym tykhym nablyzhenniam, yake
+    /// zaboroniaie pryntsyp tochnykh chysel.
     /// `Some(n)` nur, wenn dieser exakte Wert eine ganze Zahl ist *und* als
     /// `i64` innerhalb von `f64`s 2^53-Bereich exakter Ganzzahlen darstellbar
     /// — der eine Fall, in dem `exact_value` in
@@ -202,7 +202,7 @@ impl fmt::Display for Rational {
 }
 
 /// A closure keeps executable forms together with their lexical environment.
-/// Замикання зберігає виконувані форми разом із їхнім лексичним середовищем.
+/// Zamykannia zberihaie vykonuvani formy razom iz yikhnim leksychnym seredovyshchem.
 /// Eine Closure bewahrt ausführbare Formen zusammen mit ihrer lexikalischen Umgebung auf.
 #[derive(Clone, Debug)]
 pub struct Closure {
@@ -210,9 +210,9 @@ pub struct Closure {
     /// The dotted-list/bare-symbol rest parameter, if any — bound to a list
     /// of every argument past `parameters.len()`. `None` means the closure
     /// takes exactly `parameters.len()` arguments, no more.
-    /// Варіативний параметр (dotted-list/голий символ), якщо є — зв'язується
-    /// зі списком усіх аргументів понад `parameters.len()`. `None` означає,
-    /// що замикання приймає точно `parameters.len()` аргументів, не більше.
+    /// Variatyvnyi parametr (dotted-list/holyi symvol), yakshcho ye — zviazuietsia
+    /// zi spyskom usikh arhumentiv ponad `parameters.len()`. `None` oznachaie,
+    /// shcho zamykannia pryimaie tochno `parameters.len()` arhumentiv, ne bilshe.
     /// Der variadische Rest-Parameter (Dotted-List/nacktes Symbol), falls
     /// vorhanden — gebunden an eine Liste aller Argumente über
     /// `parameters.len()` hinaus. `None` bedeutet, die Closure nimmt genau
@@ -223,7 +223,7 @@ pub struct Closure {
 }
 
 /// Runtime data is independent of the parser and any host representation.
-/// Дані виконання не залежать від парсера та представлення у хост-системі.
+/// Dani vykonannia ne zalezhat vid parsera ta predstavlennia u khost-systemi.
 /// Laufzeitdaten sind unabhängig vom Parser und von jeder Host-Darstellung.
 #[derive(Clone, Debug)]
 pub enum Value {
@@ -246,25 +246,25 @@ pub enum Value {
     /// genuinely advances its position — there is no persistent,
     /// side-effect-free way to model "the next unread byte of a live
     /// network connection."
-    /// Відкрите TCP-з'єднання (PLAN.md, пункт 21) — вихідна/клієнтська
-    /// половина "спілкуватись з іншими AI-системами", принцип 3, поширений
-    /// на зовнішніх агентів/LLM API. Непрозорий handle host-можливості, та
-    /// сама категорія, що вже займають `read-file`/`write-file` — не
-    /// видима користувачу мутабельна *дані* в сенсі item 16 (ніщо тут не
-    /// дає програмі мутувати звичайне зв'язування), лише ресурс, яким хост
-    /// керує від імені мови. `RefCell`, бо читання/запис у потік справді
-    /// просуває його позицію — немає постійного, без-побічно-ефектного
-    /// способу змоделювати "наступний непрочитаний байт живого мережевого
-    /// з'єднання".
+    /// Vidkryte TCP-ziednannia (PLAN.md, punkt 21) — vykhidna/kliientska
+    /// polovyna "spilkuvatys z inshymy AI-systemamy", pryntsyp 3, poshyrenyi
+    /// na zovnishnikh ahentiv/LLM API. Neprozoryi handle host-mozhlyvosti, ta
+    /// sama katehoriia, shcho vzhe zaimaiut `read-file`/`write-file` — ne
+    /// vydyma korystuvachu mutabelna *dani* v sensi item 16 (nishcho tut ne
+    /// daie prohrami mutuvaty zvychaine zviazuvannia), lyshe resurs, yakym khost
+    /// keruie vid imeni movy. `RefCell`, bo chytannia/zapys u potik spravdi
+    /// prosuvaie yoho pozytsiiu — nemaie postiinoho, bez-pobichno-efektnoho
+    /// sposobu zmodeliuvaty "nastupnyi neprochytanyi bait zhyvoho merezhevoho
+    /// ziednannia".
     TcpConnection(Rc<RefCell<TcpStream>>),
     /// A listening TCP socket (PLAN.md item 21) — the inbound-server half:
     /// lets my-lisp accept connections from other agents, not just call
     /// out to them. No `RefCell` needed — `TcpListener::accept` takes
     /// `&self`, it doesn't need to mutate the listener itself.
-    /// TCP-сокет, що слухає (PLAN.md, пункт 21) — вхідна/серверна
-    /// половина: дозволяє my-lisp приймати з'єднання від інших агентів, не
-    /// лише звертатись до них. `RefCell` не потрібен — `TcpListener::accept`
-    /// бере `&self`, не потребує мутувати сам listener.
+    /// TCP-soket, shcho slukhaie (PLAN.md, punkt 21) — vkhidna/serverna
+    /// polovyna: dozvoliaie my-lisp pryimaty ziednannia vid inshykh ahentiv, ne
+    /// lyshe zvertatys do nykh. `RefCell` ne potriben — `TcpListener::accept`
+    /// bere `&self`, ne potrebuie mutuvaty sam listener.
     TcpListener(Rc<TcpListener>),
 }
 
@@ -277,10 +277,10 @@ impl PartialEq for Value {
             // A): (eq 3 3.0) is () because these are different values in the
             // model, even though (= 3 3.0) is t (same magnitude). See `=` in
             // arithmetic.rs for the magnitude-only comparison.
-            // Exactness — частина ідентичності числа (PLAN.md, пункт 10,
-            // шлях A): (eq 3 3.0) дає (), бо це різні значення в моделі,
-            // хоча (= 3 3.0) дає t (та сама величина). Див. `=` в
-            // arithmetic.rs для порівняння лише за величиною.
+            // Exactness — chastyna identychnosti chysla (PLAN.md, punkt 10,
+            // shliakh A): (eq 3 3.0) daie (), bo tse rizni znachennia v modeli,
+            // khocha (= 3 3.0) daie t (ta sama velychyna). Dyv. `=` v
+            // arithmetic.rs dlia porivniannia lyshe za velychynoiu.
             (Value::Number(left, left_exactness), Value::Number(right, right_exactness)) => {
                 left == right && left_exactness == right_exactness
             }
@@ -291,14 +291,14 @@ impl PartialEq for Value {
                 left_head == right_head && left_tail == right_tail
             }
             // Functions have identity: two separately created closures are not equal.
-            // Функції мають ідентичність: два окремо створені замикання не є рівними.
+            // Funktsii maiut identychnist: dva okremo stvoreni zamykannia ne ye rivnymy.
             // Funktionen besitzen Identität: Zwei getrennt erzeugte Closures sind nicht gleich.
             (Value::Closure(left), Value::Closure(right)) => Rc::ptr_eq(left, right),
             (Value::Macro(left), Value::Macro(right)) => Rc::ptr_eq(left, right),
             // Same identity rule as Closure/Macro — a resource handle is
             // itself, not a value with structural equality.
-            // Те саме правило ідентичності, що й Closure/Macro — handle
-            // ресурсу — це він сам, не значення зі структурною рівністю.
+            // Te same pravylo identychnosti, shcho y Closure/Macro — handle
+            // resursu — tse vin sam, ne znachennia zi strukturnoiu rivnistiu.
             (Value::TcpConnection(left), Value::TcpConnection(right)) => Rc::ptr_eq(left, right),
             (Value::TcpListener(left), Value::TcpListener(right)) => Rc::ptr_eq(left, right),
             _ => false,
@@ -343,16 +343,16 @@ impl Value {
     /// through `read`, so it keeps quoting — `princ` exists for output
     /// that's meant to be read by a person or reassembled as raw text
     /// (e.g. a tool that emits new .my source), never re-parsed as data.
-    /// «princ»/«display»-половина класичної Lisp-пари функцій друку
-    /// (Common Lisp `princ`, Scheme `display`): вивід для людини, без
-    /// лапок і екранування навколо рядків — на відміну від `Display`/
-    /// `to_string` вище, що є «prin1»/«write»-половиною (читається назад
-    /// через `read`, рядки в лапках і екрановані). Жодна не замінює іншу;
-    /// `print` (примітив цього крейта, на основі `Display`) має коректно
-    /// читатись назад через `read`, тож зберігає лапки — `princ` існує для
-    /// виводу, призначеного людині чи повторному складанню як сирий текст
-    /// (напр. інструмент, що видає новий `.my`-сирцевий код), ніколи не
-    /// для повторного парсингу як даних.
+    /// «princ»/«display»-polovyna klasychnoi Lisp-pary funktsii druku
+    /// (Common Lisp `princ`, Scheme `display`): vyvid dlia liudyny, bez
+    /// lapok i ekranuvannia navkolo riadkiv — na vidminu vid `Display`/
+    /// `to_string` vyshche, shcho ye «prin1»/«write»-polovynoiu (chytaietsia nazad
+    /// cherez `read`, riadky v lapkakh i ekranovani). Zhodna ne zaminiuie inshu;
+    /// `print` (prymityv tsoho kreita, na osnovi `Display`) maie korektno
+    /// chytatys nazad cherez `read`, tozh zberihaie lapky — `princ` isnuie dlia
+    /// vyvodu, pryznachenoho liudyni chy povtornomu skladanniu yak syryi tekst
+    /// (napr. instrument, shcho vydaie novyi `.my`-syrtsevyi kod), nikoly ne
+    /// dlia povtornoho parsynhu yak danykh.
     pub fn to_princ_string(&self) -> String {
         render(self, false)
     }
@@ -362,11 +362,11 @@ impl Value {
 /// semantics) and `Value::to_princ_string` (`quote_strings: false`, raw —
 /// `princ`/`display` semantics). One recursive walk, one flag, so the two
 /// output modes can never silently diverge on anything but string handling.
-/// Спільне для `Display` (`quote_strings: true`, з екрануванням —
-/// семантика `prin1`/`write`) і `Value::to_princ_string` (`quote_strings:
-/// false`, сирий вивід — семантика `princ`/`display`). Один рекурсивний
-/// обхід, один прапорець, тож два режими виводу не можуть мовчки розійтись
-/// у чомусь, крім обробки рядків.
+/// Spilne dlia `Display` (`quote_strings: true`, z ekranuvanniam —
+/// semantyka `prin1`/`write`) i `Value::to_princ_string` (`quote_strings:
+/// false`, syryi vyvid — semantyka `princ`/`display`). Odyn rekursyvnyi
+/// obkhid, odyn praporets, tozh dva rezhymy vyvodu ne mozhut movchky roziitys
+/// u chomus, krim obrobky riadkiv.
 fn render(value: &Value, quote_strings: bool) -> String {
     match value {
         Value::Nil => "()".to_string(),
@@ -377,11 +377,11 @@ fn render(value: &Value, quote_strings: bool) -> String {
         // would silently erase the written-with-a-decimal-point intent this
         // whole redesign exists to preserve — force at least one decimal
         // digit so an inexact number always prints as inexact.
-        // Rust's `{}` для f64 друкує ціле число на кшталт 3.0 як "3", що
-        // мовчки стерло б саме той намір "написано з крапкою", заради
-        // якого існує весь цей редизайн — примусово друкувати щонайменше
-        // одну десяткову цифру, щоб неточне число завжди друкувалось як
-        // неточне.
+        // Rust's `{}` dlia f64 drukuie tsile chyslo na kshtalt 3.0 yak "3", shcho
+        // movchky sterlo b same toi namir "napysano z krapkoiu", zarady
+        // yakoho isnuie ves tsei redyzain — prymusovo drukuvaty shchonaimenshe
+        // odnu desiatkovu tsyfru, shchob netochne chyslo zavzhdy drukuvalos yak
+        // netochne.
         Value::Number(number, Exactness::Inexact) => {
             if number.fract() == 0.0 && number.is_finite() {
                 format!("{number:.1}")

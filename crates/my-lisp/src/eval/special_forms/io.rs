@@ -70,7 +70,7 @@ pub(crate) fn evaluate_read(
     if arguments.len() > 1 {
         return Err(LanguageError::new(
             ErrorKind::Arity,
-            "read expects zero or one arguments · read очікує нуль або один аргумент · read erwartet null oder ein Argument",
+            "read expects zero or one arguments · read ochikuie nul abo odyn arhument · read erwartet null oder ein Argument",
             span,
         ));
     }
@@ -84,7 +84,7 @@ pub(crate) fn evaluate_read(
             _ => {
                 return Err(LanguageError::new(
                     ErrorKind::Type,
-                    "read expects a string · read очікує рядок · read erwartet eine Zeichenkette",
+                    "read expects a string · read ochikuie riadok · read erwartet eine Zeichenkette",
                     argument.span,
                 ))
             }
@@ -101,7 +101,7 @@ pub(crate) fn evaluate_read(
         Err(expressions) => Err(LanguageError::new(
             ErrorKind::InvalidForm,
             format!(
-                "read expects exactly one expression, found {} · read очікує рівно один вираз, знайдено {} · read erwartet genau einen Ausdruck, gefunden {}",
+                "read expects exactly one expression, found {} · read ochikuie rivno odyn vyraz, znaideno {} · read erwartet genau einen Ausdruck, gefunden {}",
                 expressions.len(), expressions.len(), expressions.len()
             ),
             span,
@@ -127,7 +127,7 @@ fn read_stdin_line(span: Span) -> Result<String, LanguageError> {
     std::io::stdin().lock().read_line(&mut line).map_err(|error| {
         LanguageError::new(
             ErrorKind::InvalidForm,
-            format!("read: failed to read from stdin · read: не вдалось прочитати stdin · read: Lesen von stdin fehlgeschlagen: {error}"),
+            format!("read: failed to read from stdin · read: ne vdalos prochytaty stdin · read: Lesen von stdin fehlgeschlagen: {error}"),
             span,
         )
     })?;
@@ -138,7 +138,7 @@ fn read_stdin_line(span: Span) -> Result<String, LanguageError> {
 fn read_stdin_line(span: Span) -> Result<String, LanguageError> {
     Err(LanguageError::new(
         ErrorKind::InvalidForm,
-        "read: interactive stdin is not available in this build · read: інтерактивний stdin недоступний у цій збірці · read: interaktives stdin ist in diesem Build nicht verfügbar",
+        "read: interactive stdin is not available in this build · read: interaktyvnyi stdin nedostupnyi u tsii zbirtsi · read: interaktives stdin ist in diesem Build nicht verfügbar",
         span,
     ))
 }
@@ -181,7 +181,7 @@ pub(crate) fn evaluate_read_all(
     let Value::String(ref text) = evaluated else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "read-all expects a string · read-all очікує рядок · read-all erwartet eine Zeichenkette",
+            "read-all expects a string · read-all ochikuie riadok · read-all erwartet eine Zeichenkette",
             span,
         ));
     };
@@ -202,7 +202,7 @@ pub(crate) fn evaluate_load(
     let Value::String(ref path) = evaluated else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "load expects a string path · load очікує рядок-шлях · load erwartet einen String-Pfad",
+            "load expects a string path · load ochikuie riadok-shliakh · load erwartet einen String-Pfad",
             span,
         ));
     };

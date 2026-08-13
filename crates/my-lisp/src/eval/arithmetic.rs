@@ -1,5 +1,5 @@
 //! Exact/inexact numeric handling for `+`, `-`, `*`, and `/`.
-//! Обробка точних/неточних чисел для `+`, `-`, `*` та `/`.
+//! Obrobka tochnykh/netochnykh chysel dlia `+`, `-`, `*` ta `/`.
 //! Verarbeitung exakter/inexakter Zahlen für `+`, `-`, `*` und `/`.
 
 use super::evaluate;
@@ -14,7 +14,7 @@ pub(super) fn evaluate_arithmetic(
     if operator == "-" && arguments.is_empty() {
         return Err(LanguageError::new(
             ErrorKind::Arity,
-            "- expects at least one argument · - очікує щонайменше один аргумент · - erwartet mindestens ein Argument",
+            "- expects at least one argument · - ochikuie shchonaimenshe odyn arhument · - erwartet mindestens ein Argument",
             span,
         ));
     }
@@ -24,7 +24,7 @@ pub(super) fn evaluate_arithmetic(
         .collect::<Result<Vec<_>, _>>()?;
 
     // Exact integers and rationals stay exact. One inexact operand deliberately makes the result inexact.
-    // Точні цілі та раціональні лишаються точними. Один неточний операнд навмисно робить результат неточним.
+    // Tochni tsili ta ratsionalni lyshaiutsia tochnymy. Odyn netochnyi operand navmysno robyt rezultat netochnym.
     // Exakte Ganz- und rationale Zahlen bleiben exakt. Ein unexakter Operand macht das Ergebnis bewusst unexakt.
     if values
         .iter()
@@ -72,10 +72,10 @@ pub(super) fn evaluate_arithmetic(
 // it isn't `Copy` — neither is `Numeric` anymore. Both accessor methods
 // below take `&self` and clone on the way out where an owned `Rational` is
 // needed, rather than moving out of borrowed slice/vec elements.
-// `Rational` огортає heap-allocated `BigRational` (довільна точність), тож
-// не `Copy` — так само й `Numeric`. Обидва методи-акцесори нижче беруть
-// `&self` і клонують на виході там, де потрібен власний `Rational`, замість
-// переміщення з позичених елементів slice/vec.
+// `Rational` ohortaie heap-allocated `BigRational` (dovilna tochnist), tozh
+// ne `Copy` — tak samo y `Numeric`. Obydva metody-aktsesory nyzhche berut
+// `&self` i klonuiut na vykhodi tam, de potriben vlasnyi `Rational`, zamist
+// peremishchennia z pozychenykh elementiv slice/vec.
 // `Rational` umschließt ein heap-allokiertes `BigRational` (beliebige
 // Genauigkeit), daher ist es nicht `Copy` — `Numeric` auch nicht mehr.
 // Beide Zugriffsmethoden unten nehmen `&self` und klonen beim Herausgeben,
@@ -108,10 +108,10 @@ fn numeric_value(value: Value, span: Span) -> Result<Numeric, LanguageError> {
     // `Value` has a custom `Drop` impl (iterative, for stack-safe deep-list
     // drop — see `value.rs`), which forbids partially moving a field out of
     // a match on it by value.
-    // Матчить на `&value`, не `value`, і клонує `Rational`: `Value` має
-    // власний `Drop` (ітеративний, для stack-safe drop глибоких списків —
-    // див. `value.rs`), який забороняє частково переміщувати поле з
-    // `match` за значенням.
+    // Matchyt na `&value`, ne `value`, i klonuie `Rational`: `Value` maie
+    // vlasnyi `Drop` (iteratyvnyi, dlia stack-safe drop hlybokykh spyskiv —
+    // dyv. `value.rs`), yakyi zaboroniaie chastkovo peremishchuvaty pole z
+    // `match` za znachenniam.
     // Matcht auf `&value`, nicht `value`, und klont das `Rational` heraus:
     // `Value` hat einen eigenen `Drop`-Impl (iterativ, für stack-sicheres
     // Droppen tiefer Listen — siehe `value.rs`), der ein teilweises
@@ -122,16 +122,16 @@ fn numeric_value(value: Value, span: Span) -> Result<Numeric, LanguageError> {
         // Path A) instead of re-guessing exactness from `fract() == 0.0` —
         // an exact `Value::Number` is always integral by construction (see
         // `exact_value` below), so converting straight to `i64` is safe.
-        // Читає тег, який уже встановив reader/арифметика (PLAN.md, пункт
-        // 10, шлях A), замість того щоб заново вгадувати exactness через
-        // `fract() == 0.0` — точний `Value::Number` завжди цілий за
-        // побудовою (див. `exact_value` нижче), тож пряма конверсія в
-        // `i64` безпечна.
+        // Chytaie teh, yakyi uzhe vstanovyv reader/aryfmetyka (PLAN.md, punkt
+        // 10, shliakh A), zamist toho shchob zanovo vhaduvaty exactness cherez
+        // `fract() == 0.0` — tochnyi `Value::Number` zavzhdy tsilyi za
+        // pobudovoiu (dyv. `exact_value` nyzhche), tozh priama konversiia v
+        // `i64` bezpechna.
         Value::Number(number, Exactness::Exact) => Ok(Numeric::Exact(Rational::integer(*number as i64))),
         Value::Number(number, Exactness::Inexact) => Ok(Numeric::Inexact(*number)),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
-            "arithmetic expects numbers · арифметика очікує числа · Arithmetik erwartet Zahlen",
+            "arithmetic expects numbers · aryfmetyka ochikuie chysla · Arithmetik erwartet Zahlen",
             span,
         )),
     }
@@ -147,7 +147,7 @@ fn exact_value(value: Rational) -> Value {
 fn arithmetic_overflow(span: Span) -> LanguageError {
     LanguageError::new(
         ErrorKind::InvalidForm,
-        "exact arithmetic overflow · переповнення точної арифметики · Überlauf der exakten Arithmetik",
+        "exact arithmetic overflow · perepovnennia tochnoi aryfmetyky · Überlauf der exakten Arithmetik",
         span,
     )
 }
@@ -158,19 +158,19 @@ fn arithmetic_overflow(span: Span) -> LanguageError {
 /// default (see S1's own open note on arbitrary precision). Checked after
 /// computing an exact result, never used to fall back to an inexact
 /// approximation — that would violate S1, not satisfy it.
-/// Застосовує *опційну* числову межу ресурсу (`Environment::with_numeric_bit_limit`)
-/// — нічого не робить, якщо ця сесія її не налаштувала, що є типовим для
-/// кожної фікстури `conformance.my` й Rust-реалізації (див. власну
-/// відкриту примітку S1 про довільну точність). Перевіряється після
-/// обчислення точного результату, ніколи не використовується, щоб
-/// відкотитись до неточного наближення — це порушило б S1, не
-/// задовольнило б його.
+/// Zastosovuie *optsiinu* chyslovu mezhu resursu (`Environment::with_numeric_bit_limit`)
+/// — nichoho ne robyt, yakshcho tsia sesiia yii ne nalashtuvala, shcho ye typovym dlia
+/// kozhnoi fikstury `conformance.my` y Rust-realizatsii (dyv. vlasnu
+/// vidkrytu prymitku S1 pro dovilnu tochnist). Pereviriaietsia pislia
+/// obchyslennia tochnoho rezultatu, nikoly ne vykorystovuietsia, shchob
+/// vidkotytys do netochnoho nablyzhennia — tse porushylo b S1, ne
+/// zadovolnylo b yoho.
 fn check_numeric_limit(environment: &Environment, result: &Rational, span: Span) -> Result<(), LanguageError> {
     if let Some(limit) = environment.numeric_bit_limit() {
         if result.bit_length() > limit {
             return Err(LanguageError::new(
                 ErrorKind::NumericOverflow,
-                "exact arithmetic result exceeds the configured bit-length limit · точний результат арифметики перевищує налаштовану межу в бітах · exaktes Arithmetikergebnis überschreitet die konfigurierte Bitlängengrenze",
+                "exact arithmetic result exceeds the configured bit-length limit · tochnyi rezultat aryfmetyky perevyshchuie nalashtovanu mezhu v bitakh · exaktes Arithmetikergebnis überschreitet die konfigurierte Bitlängengrenze",
                 span,
             ));
         }
@@ -186,7 +186,7 @@ pub(super) fn evaluate_division(
     if arguments.is_empty() {
         return Err(LanguageError::new(
             ErrorKind::Arity,
-            "/ expects at least one argument · / очікує щонайменше один аргумент · / erwartet mindestens ein Argument",
+            "/ expects at least one argument · / ochikuie shchonaimenshe odyn arhument · / erwartet mindestens ein Argument",
             span,
         ));
     }
@@ -199,21 +199,21 @@ pub(super) fn evaluate_division(
             Value::Number(number, Exactness::Exact) => Ok(Rational::integer(*number as i64)),
             _ => Err(LanguageError::new(
                 ErrorKind::Type,
-                "/ expects exact integers or rational numbers · / очікує точні цілі або раціональні числа · / erwartet exakte Ganz- oder rationale Zahlen",
+                "/ expects exact integers or rational numbers · / ochikuie tochni tsili abo ratsionalni chysla · / erwartet exakte Ganz- oder rationale Zahlen",
                 argument.span,
             )),
         }
     });
     // The empty-arguments case is rejected above, but the iterator is re-derived here
     // rather than trusting that earlier check, so a future reorder cannot turn this into a panic.
-    // Порожній список аргументів відхиляється вище, але ітератор тут перевіряється
-    // окремо, тож майбутнє перевпорядкування коду не перетвориться на паніку.
+    // Porozhnii spysok arhumentiv vidkhyliaietsia vyshche, ale iterator tut pereviriaietsia
+    // okremo, tozh maibutnie perevporiadkuvannia kodu ne peretvorytsia na paniku.
     // Der Fall leerer Argumente wird oben abgelehnt, aber der Iterator wird hier erneut
     // geprüft, sodass eine spätere Umordnung dies nicht in einen Panic verwandeln kann.
     let Some(first) = values.next() else {
         return Err(LanguageError::new(
             ErrorKind::Arity,
-            "/ expects at least one argument · / очікує щонайменше один аргумент · / erwartet mindestens ein Argument",
+            "/ expects at least one argument · / ochikuie shchonaimenshe odyn arhument · / erwartet mindestens ein Argument",
             span,
         ));
     };
@@ -238,11 +238,11 @@ pub(super) fn evaluate_division(
 /// `Ord`, no float involved); one inexact operand makes the whole comparison
 /// inexact. Chained like `(< 1 2 3)`: true iff each operand compares against
 /// the next in order, same as Scheme/Racket's variadic comparisons.
-/// `<`, `>`, `=` дотримуються того самого правила exact/inexact,
-/// що й `+`/`-`/`*`: якщо всі операнди точні, порівняння точне (`Ord` для
-/// `Rational`, без float); один неточний операнд робить усе порівняння
-/// неточним. Ланцюгове, як `(< 1 2 3)`: істина, якщо кожен операнд
-/// порівнюється з наступним по порядку — як варіативні порівняння в
+/// `<`, `>`, `=` dotrymuiutsia toho samoho pravyla exact/inexact,
+/// shcho y `+`/`-`/`*`: yakshcho vsi operandy tochni, porivniannia tochne (`Ord` dlia
+/// `Rational`, bez float); odyn netochnyi operand robyt use porivniannia
+/// netochnym. Lantsiuhove, yak `(< 1 2 3)`: istyna, yakshcho kozhen operand
+/// porivniuietsia z nastupnym po poriadku — yak variatyvni porivniannia v
 /// Scheme/Racket.
 /// `<`, `>`, `=` folgen derselben exakt/inexakt-Promotionsregel
 /// wie `+`/`-`/`*`: sind alle Operanden exakt, ist der Vergleich exakt
@@ -259,7 +259,7 @@ pub(super) fn evaluate_comparison(
     if arguments.is_empty() {
         return Err(LanguageError::new(
             ErrorKind::Arity,
-            format!("{operator} expects at least one argument · {operator} очікує щонайменше один аргумент · {operator} erwartet mindestens ein Argument"),
+            format!("{operator} expects at least one argument · {operator} ochikuie shchonaimenshe odyn arhument · {operator} erwartet mindestens ein Argument"),
             span,
         ));
     }
@@ -295,7 +295,7 @@ fn compare<T: PartialOrd>(operator: &str, left: T, right: T) -> bool {
 fn division_error(span: Span) -> LanguageError {
     LanguageError::new(
         ErrorKind::InvalidForm,
-        "division by zero or rational overflow · ділення на нуль або переповнення дробу · Division durch null oder Bruchüberlauf",
+        "division by zero or rational overflow · dilennia na nul abo perepovnennia drobu · Division durch null oder Bruchüberlauf",
         span,
     )
 }

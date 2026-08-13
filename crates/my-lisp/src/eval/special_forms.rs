@@ -4,12 +4,12 @@
 //! by category rather than kept as one file, since this used to be the
 //! single largest file in the crate. `eval/mod.rs` still calls everything
 //! as `special_forms::evaluate_x`; only the internal layout changed.
-//! Примітиви Маккарті (`eq`, `car`, `cdr`, `cons`, `cond`, помічник `quote`),
-//! а також `def`, `defmacro`, `list` і host-примітиви (I/O, файли, TCP,
-//! підпроцеси, рядкові операції) — розкладені за категоріями по
-//! підмодулях, а не в одному файлі, яким цей файл раніше був найбільшим у
-//! крейті. `eval/mod.rs` і далі викликає все як `special_forms::evaluate_x`;
-//! змінилось лише внутрішнє розташування.
+//! Prymityvy Makkarti (`eq`, `car`, `cdr`, `cons`, `cond`, pomichnyk `quote`),
+//! a takozh `def`, `defmacro`, `list` i host-prymityvy (I/O, faily, TCP,
+//! pidprotsesy, riadkovi operatsii) — rozkladeni za katehoriiamy po
+//! pidmoduliakh, a ne v odnomu faili, yakym tsei fail ranishe buv naibilshym u
+//! kreiti. `eval/mod.rs` i dali vyklykaie vse yak `special_forms::evaluate_x`;
+//! zminylos lyshe vnutrishnie roztashuvannia.
 //! Die McCarthy-Primitive (`eq`, `car`, `cdr`, `cons`, `cond`, Helfer für `quote`),
 //! sowie `def`, `defmacro`, `list` und die Host-Capability-Primitive (I/O,
 //! Dateien, TCP, Subprozesse, String-Operationen) — nach Kategorie auf

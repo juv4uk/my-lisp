@@ -1,9 +1,9 @@
 //! Independent, capability-free core of the my-lisp language.
-//! Незалежне ядро мови my-lisp без доступу до можливостей операційної системи.
+//! Nezalezhne yadro movy my-lisp bez dostupu do mozhlyvostei operatsiinoi systemy.
 //! Unabhängiger Sprachkern von my-lisp ohne Zugriff auf Betriebssystemfunktionen.
 //!
 //! The crate deliberately knows nothing about Tauri, files, the network, or UI.
-//! Крейт навмисно нічого не знає про Tauri, файли, мережу чи інтерфейс.
+//! Kreit navmysno nichoho ne znaie pro Tauri, faily, merezhu chy interfeis.
 //! Das Crate kennt bewusst weder Tauri noch Dateien, Netzwerk oder Benutzeroberfläche.
 
 mod bignum;

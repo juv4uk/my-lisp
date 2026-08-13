@@ -23,7 +23,7 @@ pub(crate) fn evaluate_string_append(
     let Value::String(ref left) = left_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "string-append expects two strings · string-append очікує два рядки · string-append erwartet zwei Zeichenketten",
+            "string-append expects two strings · string-append ochikuie dva riadky · string-append erwartet zwei Zeichenketten",
             span,
         ));
     };
@@ -31,7 +31,7 @@ pub(crate) fn evaluate_string_append(
     let Value::String(ref right) = right_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "string-append expects two strings · string-append очікує два рядки · string-append erwartet zwei Zeichenketten",
+            "string-append expects two strings · string-append ochikuie dva riadky · string-append erwartet zwei Zeichenketten",
             span,
         ));
     };
@@ -54,7 +54,7 @@ pub(crate) fn evaluate_string_less_than(
     let Value::String(ref left) = left_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "string<? expects two strings · string<? очікує два рядки · string<? erwartet zwei Zeichenketten",
+            "string<? expects two strings · string<? ochikuie dva riadky · string<? erwartet zwei Zeichenketten",
             span,
         ));
     };
@@ -62,7 +62,7 @@ pub(crate) fn evaluate_string_less_than(
     let Value::String(ref right) = right_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "string<? expects two strings · string<? очікує два рядки · string<? erwartet zwei Zeichenketten",
+            "string<? expects two strings · string<? ochikuie dva riadky · string<? erwartet zwei Zeichenketten",
             span,
         ));
     };
@@ -97,7 +97,7 @@ pub(crate) fn evaluate_symbol_to_string(
         Value::Symbol(ref symbol) => Ok(Value::String(symbol.clone())),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
-            "symbol->string expects a symbol · symbol->string очікує символ · symbol->string erwartet ein Symbol",
+            "symbol->string expects a symbol · symbol->string ochikuie symvol · symbol->string erwartet ein Symbol",
             span,
         )),
     }
@@ -113,7 +113,7 @@ pub(crate) fn evaluate_string_to_symbol(
         Value::String(ref text) => Ok(Value::Symbol(text.clone())),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
-            "string->symbol expects a string · string->symbol очікує рядок · string->symbol erwartet eine Zeichenkette",
+            "string->symbol expects a string · string->symbol ochikuie riadok · string->symbol erwartet eine Zeichenkette",
             span,
         )),
     }
@@ -132,13 +132,13 @@ pub(crate) fn evaluate_string_first(
             Some(character) => Ok(Value::String(Rc::from(character.to_string().as_str()))),
             None => Err(LanguageError::new(
                 ErrorKind::Type,
-                "string-first expects a non-empty string · string-first очікує непорожній рядок · string-first erwartet eine nicht leere Zeichenkette",
+                "string-first expects a non-empty string · string-first ochikuie neporozhnii riadok · string-first erwartet eine nicht leere Zeichenkette",
                 span,
             )),
         },
         _ => Err(LanguageError::new(
             ErrorKind::Type,
-            "string-first expects a string · string-first очікує рядок · string-first erwartet eine Zeichenkette",
+            "string-first expects a string · string-first ochikuie riadok · string-first erwartet eine Zeichenkette",
             span,
         )),
     }
@@ -159,7 +159,7 @@ pub(crate) fn evaluate_string_rest(
             if characters.next().is_none() {
                 return Err(LanguageError::new(
                     ErrorKind::Type,
-                    "string-rest expects a non-empty string · string-rest очікує непорожній рядок · string-rest erwartet eine nicht leere Zeichenkette",
+                    "string-rest expects a non-empty string · string-rest ochikuie neporozhnii riadok · string-rest erwartet eine nicht leere Zeichenkette",
                     span,
                 ));
             }
@@ -167,7 +167,7 @@ pub(crate) fn evaluate_string_rest(
         }
         _ => Err(LanguageError::new(
             ErrorKind::Type,
-            "string-rest expects a string · string-rest очікує рядок · string-rest erwartet eine Zeichenkette",
+            "string-rest expects a string · string-rest ochikuie riadok · string-rest erwartet eine Zeichenkette",
             span,
         )),
     }

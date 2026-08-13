@@ -23,7 +23,7 @@ pub(crate) fn evaluate_tcp_connect(
     let Value::String(ref host) = host_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "tcp-connect expects a string host · tcp-connect очікує рядок-хост · tcp-connect erwartet einen String-Host",
+            "tcp-connect expects a string host · tcp-connect ochikuie riadok-khost · tcp-connect erwartet einen String-Host",
             arguments[0].span,
         ));
     };
@@ -58,7 +58,7 @@ pub(crate) fn evaluate_tcp_accept(
     let Value::TcpListener(ref listener) = listener_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "tcp-accept expects a TCP listener · tcp-accept очікує TCP-listener · tcp-accept erwartet einen TCP-Listener",
+            "tcp-accept expects a TCP listener · tcp-accept ochikuie TCP-listener · tcp-accept erwartet einen TCP-Listener",
             arguments[0].span,
         ));
     };
@@ -78,7 +78,7 @@ pub(crate) fn evaluate_tcp_read(
     let Value::TcpConnection(ref connection) = connection_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "tcp-read expects a TCP connection · tcp-read очікує TCP-з'єднання · tcp-read erwartet eine TCP-Verbindung",
+            "tcp-read expects a TCP connection · tcp-read ochikuie TCP-ziednannia · tcp-read erwartet eine TCP-Verbindung",
             arguments[0].span,
         ));
     };
@@ -98,7 +98,7 @@ pub(crate) fn evaluate_tcp_write(
     let Value::TcpConnection(ref connection) = connection_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "tcp-write expects a TCP connection · tcp-write очікує TCP-з'єднання · tcp-write erwartet eine TCP-Verbindung",
+            "tcp-write expects a TCP connection · tcp-write ochikuie TCP-ziednannia · tcp-write erwartet eine TCP-Verbindung",
             arguments[0].span,
         ));
     };
@@ -106,7 +106,7 @@ pub(crate) fn evaluate_tcp_write(
     let Value::String(ref content) = content_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "tcp-write expects a string as its second argument · tcp-write очікує рядок другим аргументом · tcp-write erwartet eine Zeichenkette als zweites Argument",
+            "tcp-write expects a string as its second argument · tcp-write ochikuie riadok druhym arhumentom · tcp-write erwartet eine Zeichenkette als zweites Argument",
             arguments[1].span,
         ));
     };
@@ -127,7 +127,7 @@ pub(crate) fn evaluate_tcp_close(
     let Value::TcpConnection(ref connection) = connection_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "tcp-close expects a TCP connection · tcp-close очікує TCP-з'єднання · tcp-close erwartet eine TCP-Verbindung",
+            "tcp-close expects a TCP connection · tcp-close ochikuie TCP-ziednannia · tcp-close erwartet eine TCP-Verbindung",
             arguments[0].span,
         ));
     };
@@ -140,14 +140,14 @@ fn expect_port(expr: &Expr, environment: &Environment) -> Result<u16, LanguageEr
     let Value::Number(port, _) = value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "expected a port number · очікувався номер порту · erwartete eine Portnummer",
+            "expected a port number · ochikuvavsia nomer portu · erwartete eine Portnummer",
             expr.span,
         ));
     };
     if port.fract() != 0.0 || port < 0.0 || port > u16::MAX as f64 {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "port must be an integer between 0 and 65535 · порт має бути цілим числом від 0 до 65535 · Port muss eine Ganzzahl zwischen 0 und 65535 sein",
+            "port must be an integer between 0 and 65535 · port maie buty tsilym chyslom vid 0 do 65535 · Port muss eine Ganzzahl zwischen 0 und 65535 sein",
             expr.span,
         ));
     }

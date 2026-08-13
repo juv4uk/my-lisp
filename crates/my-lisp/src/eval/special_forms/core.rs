@@ -16,13 +16,13 @@ pub(crate) fn evaluate_definition(
     let ExprKind::Symbol(name) = &arguments[0].kind else {
         return Err(LanguageError::new(
             ErrorKind::InvalidForm,
-            "def expects a symbol name · def очікує назву-символ · def erwartet einen Symbolnamen",
+            "def expects a symbol name · def ochikuie nazvu-symvol · def erwartet einen Symbolnamen",
             arguments[0].span,
         ));
     };
     let value = evaluate(&arguments[1], environment)?;
     // The shared lexical frame makes recursive definitions visible to their closure after binding.
-    // Спільний лексичний фрейм робить рекурсивне визначення видимим замиканню після зв’язування.
+    // Spilnyi leksychnyi freim robyt rekursyvne vyznachennia vydymym zamykanniu pislia zv’yazuvannia.
     // Der gemeinsame lexikalische Frame macht rekursive Definitionen nach der Bindung für ihre Closure sichtbar.
     environment.define(name.clone(), value.clone());
     Ok(value)
@@ -36,14 +36,14 @@ pub(crate) fn evaluate_defmacro(
     if arguments.len() < 2 {
         return Err(LanguageError::new(
             ErrorKind::Arity,
-            "defmacro expects a name, parameters, and a body · defmacro очікує назву, параметри й тіло · defmacro erwartet einen Namen, Parameter und einen Rumpf",
+            "defmacro expects a name, parameters, and a body · defmacro ochikuie nazvu, parametry y tilo · defmacro erwartet einen Namen, Parameter und einen Rumpf",
             span,
         ));
     }
     let ExprKind::Symbol(name) = &arguments[0].kind else {
         return Err(LanguageError::new(
             ErrorKind::InvalidForm,
-            "defmacro expects a symbol name · defmacro очікує назву-символ · defmacro erwartet einen Symbolnamen",
+            "defmacro expects a symbol name · defmacro ochikuie nazvu-symvol · defmacro erwartet einen Symbolnamen",
             arguments[0].span,
         ));
     };
@@ -67,7 +67,7 @@ pub(crate) fn evaluate_eq(
     if !left.is_atom() || !right.is_atom() {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "eq expects two atoms · eq очікує два атоми · eq erwartet zwei Atome",
+            "eq expects two atoms · eq ochikuie dva atomy · eq erwartet zwei Atome",
             span,
         ));
     }
@@ -84,7 +84,7 @@ pub(crate) fn evaluate_car(
         Value::Pair(ref head, _) => Ok((**head).clone()),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
-            "car expects a non-empty list · car очікує непорожній список · car erwartet eine nicht leere Liste",
+            "car expects a non-empty list · car ochikuie neporozhnii spysok · car erwartet eine nicht leere Liste",
             span,
         )),
     }
@@ -100,7 +100,7 @@ pub(crate) fn evaluate_cdr(
         Value::Pair(_, ref tail) => Ok((**tail).clone()),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
-            "cdr expects a non-empty list · cdr очікує непорожній список · cdr erwartet eine nicht leere Liste",
+            "cdr expects a non-empty list · cdr ochikuie neporozhnii spysok · cdr erwartet eine nicht leere Liste",
             span,
         )),
     }
@@ -117,7 +117,7 @@ pub(crate) fn evaluate_cons(
     if environment.try_alloc_cons().is_err() {
         return Err(LanguageError::new(
             ErrorKind::OutOfMemory,
-            "cons: resource limit reached · cons: досягнуто межі ресурсу · cons: Ressourcengrenze erreicht",
+            "cons: resource limit reached · cons: dosiahnuto mezhi resursu · cons: Ressourcengrenze erreicht",
             span,
         ));
     }
@@ -133,14 +133,14 @@ pub(crate) fn evaluate_cond(
         let ExprKind::List(parts) = &clause.kind else {
             return Err(LanguageError::new(
                 ErrorKind::InvalidForm,
-                "cond expects list clauses · cond очікує списки-умови · cond erwartet Listenklauseln",
+                "cond expects list clauses · cond ochikuie spysky-umovy · cond erwartet Listenklauseln",
                 clause.span,
             ));
         };
         if parts.len() != 2 {
             return Err(LanguageError::new(
                 ErrorKind::InvalidForm,
-                "cond expects (test expression) clauses · cond очікує умови (перевірка вираз) · cond erwartet Klauseln der Form (Test Ausdruck)",
+                "cond expects (test expression) clauses · cond ochikuie umovy (perevirka vyraz) · cond erwartet Klauseln der Form (Test Ausdruck)",
                 clause.span,
             ));
         }
@@ -150,7 +150,7 @@ pub(crate) fn evaluate_cond(
     }
     if clauses.is_empty() {
         // The span is retained for future strict empty-cond diagnostics.
-        // Діапазон збережено для майбутньої строгої діагностики порожнього `cond`.
+        // Diapazon zberezheno dlia maibutnoi strohoi diahnostyky porozhnoho `cond`.
         // Der Bereich bleibt für eine künftige strikte Diagnose eines leeren `cond` erhalten.
         let _ = span;
     }
@@ -169,7 +169,7 @@ pub(crate) fn exact_arity(
     Err(LanguageError::new(
         ErrorKind::Arity,
         format!(
-            "{operator}: expected / очікувалося / erwartet {expected}; received / отримано / erhalten {}",
+            "{operator}: expected / ochikuvalosia / erwartet {expected}; received / otrymano / erhalten {}",
             arguments.len()
         ),
         span,

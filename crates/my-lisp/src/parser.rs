@@ -42,7 +42,7 @@ impl Parser<'_> {
         match self.peek() {
             Some('(') => self.list(start),
             Some(')') => Err(self.error(
-                "unexpected closing parenthesis · неочікувана закривна дужка · unerwartete schließende Klammer",
+                "unexpected closing parenthesis · neochikuvana zakryvna duzhka · unerwartete schließende Klammer",
                 start,
                 start + 1,
             )),
@@ -50,7 +50,7 @@ impl Parser<'_> {
             Some('"') => self.string(start),
             Some(_) => self.atom(start),
             None => Err(self.error(
-                "expected an expression · очікувався вираз · Ausdruck erwartet",
+                "expected an expression · ochikuvavsia vyraz · Ausdruck erwartet",
                 start,
                 start,
             )),
@@ -58,7 +58,7 @@ impl Parser<'_> {
     }
 
     /// Reader sugar is normalized here, so the evaluator only needs `quote`.
-    /// Синтаксичний цукор нормалізується тут, тому обчислювачу достатньо `quote`.
+    /// Syntaksychnyi tsukor normalizuietsia tut, tomu obchysliuvachu dostatno `quote`.
     /// Reader-Syntaxzucker wird hier normalisiert, sodass der Evaluator nur `quote` benötigt.
     fn quoted(&mut self, start: usize) -> Result<Expr, LanguageError> {
         self.bump();
@@ -100,7 +100,7 @@ impl Parser<'_> {
                     if is_dot_symbol(&item) {
                         if items.is_empty() {
                             return Err(self.error(
-                                "unexpected '.' with nothing before it · неочікувана '.' без нічого перед нею · unerwartetes '.' ohne vorangehenden Ausdruck",
+                                "unexpected '.' with nothing before it · neochikuvana '.' bez nichoho pered neiu · unerwartetes '.' ohne vorangehenden Ausdruck",
                                 item.span.start,
                                 item.span.end,
                             ));
@@ -108,7 +108,7 @@ impl Parser<'_> {
                         self.skip_ignored();
                         if matches!(self.peek(), None | Some(')')) {
                             return Err(self.error(
-                                "expected an expression after '.' · очікувався вираз після '.' · Ausdruck nach '.' erwartet",
+                                "expected an expression after '.' · ochikuvavsia vyraz pislia '.' · Ausdruck nach '.' erwartet",
                                 self.cursor,
                                 self.cursor,
                             ));
@@ -121,7 +121,7 @@ impl Parser<'_> {
                                 Ok(dotted_list(items, tail, start, self.cursor))
                             }
                             _ => Err(self.error(
-                                "expected ')' after a dotted pair's tail · очікувалась ')' після хвоста dotted-пари · ')' nach dem Ende eines Dotted Pair erwartet",
+                                "expected ')' after a dotted pair's tail · ochikuvalas ')' pislia khvosta dotted-pary · ')' nach dem Ende eines Dotted Pair erwartet",
                                 self.cursor,
                                 self.cursor,
                             )),
@@ -131,7 +131,7 @@ impl Parser<'_> {
                 }
                 None => {
                     return Err(self.error(
-                        "unclosed list · незакритий список · nicht geschlossene Liste",
+                        "unclosed list · nezakrytyi spysok · nicht geschlossene Liste",
                         start,
                         self.cursor,
                     ))
@@ -163,7 +163,7 @@ impl Parser<'_> {
                     Some(other) => value.push(other),
                     None => {
                         return Err(self.error(
-                            "unfinished string escape · незавершена escape-послідовність · unvollständige Escape-Sequenz",
+                            "unfinished string escape · nezavershena escape-poslidovnist · unvollständige Escape-Sequenz",
                             start,
                             self.cursor,
                         ))
@@ -173,7 +173,7 @@ impl Parser<'_> {
             }
         }
         Err(self.error(
-            "unclosed string · незакритий рядок · nicht geschlossene Zeichenkette",
+            "unclosed string · nezakrytyi riadok · nicht geschlossene Zeichenkette",
             start,
             self.cursor,
         ))
@@ -190,10 +190,10 @@ impl Parser<'_> {
         // `Rational::from_literal` parses arbitrary-precision numerator/denominator
         // text directly (see bignum.rs) — a token like `123456789012345678901/2`,
         // far too big for `i64`, is still an exact rational literal, not a symbol.
-        // `Rational::from_literal` парсить текст чисельника/знаменника довільної
-        // точності напряму (див. bignum.rs) — токен на кшталт
-        // `123456789012345678901/2`, завеликий для `i64`, усе одно точний
-        // раціональний літерал, не символ.
+        // `Rational::from_literal` parsyt tekst chyselnyka/znamennyka dovilnoi
+        // tochnosti napriamu (dyv. bignum.rs) — token na kshtalt
+        // `123456789012345678901/2`, zavelykyi dlia `i64`, use odno tochnyi
+        // ratsionalnyi literal, ne symvol.
         // `Rational::from_literal` parst Zähler-/Nenner-Text beliebiger Genauigkeit
         // direkt (siehe bignum.rs) — ein Token wie `123456789012345678901/2`, viel
         // zu groß für `i64`, ist weiterhin ein exaktes rationales Literal, kein Symbol.
@@ -203,12 +203,12 @@ impl Parser<'_> {
         // number," so a future `3e0`/`1.2e3` is inexact without needing a
         // decimal point, and `3.0`/`3.00`/`3.000` are all the same inexact
         // value regardless of trailing zeros.
-        // Цілий літерал → exact; десятковий чи літерал в експоненційній
-        // нотації → inexact (PLAN.md, пункт 10, шлях A) — правило дивиться
-        // на *синтаксис* написання ('.', 'e'/'E'), не на те, чи значення
-        // випадково ціле, тож майбутній `3e0`/`1.2e3` буде inexact без
-        // потреби в десятковій крапці, а `3.0`/`3.00`/`3.000` — те саме
-        // inexact значення незалежно від кількості нулів наприкінці.
+        // Tsilyi literal → exact; desiatkovyi chy literal v eksponentsiinii
+        // notatsii → inexact (PLAN.md, punkt 10, shliakh A) — pravylo dyvytsia
+        // na *syntaksys* napysannia ('.', 'e'/'E'), ne na te, chy znachennia
+        // vypadkovo tsile, tozh maibutnii `3e0`/`1.2e3` bude inexact bez
+        // potreby v desiatkovii kraptsi, a `3.0`/`3.00`/`3.000` — te same
+        // inexact znachennia nezalezhno vid kilkosti nuliv naprykintsi.
         let exactness = |text: &str| {
             if text.contains(['.', 'e', 'E']) {
                 Exactness::Inexact
@@ -322,8 +322,8 @@ mod tests {
     fn zero_denominator_falls_back_to_a_plain_symbol() {
         // `1/0` is not a valid Rational (see value::Rational::new), so the reader
         // treats it as an ordinary symbol instead of failing the whole parse.
-        // `1/0` не є коректним Rational (див. value::Rational::new), тому reader
-        // трактує його як звичайний символ, а не провалює весь парсинг.
+        // `1/0` ne ye korektnym Rational (dyv. value::Rational::new), tomu reader
+        // traktuie yoho yak zvychainyi symvol, a ne provaliuie ves parsynh.
         // `1/0` ist kein gültiges Rational (siehe value::Rational::new), daher
         // behandelt der Reader es als gewöhnliches Symbol statt das Parsing scheitern zu lassen.
         assert!(matches!(parse_one("1/0").kind, ExprKind::Symbol(s) if &*s == "1/0"));
@@ -451,8 +451,8 @@ mod tests {
 
     #[test]
     fn unicode_symbols_and_comments_are_supported() {
-        let expressions = parse("; коментар\nпривіт").expect("should parse");
-        assert!(matches!(&expressions[0].kind, ExprKind::Symbol(s) if &**s == "привіт"));
+        let expressions = parse("; komentar\npryvit").expect("should parse");
+        assert!(matches!(&expressions[0].kind, ExprKind::Symbol(s) if &**s == "pryvit"));
     }
 
     #[test]

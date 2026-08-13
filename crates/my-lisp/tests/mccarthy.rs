@@ -414,7 +414,7 @@ fn lambda_is_a_first_class_value() {
 fn lambda_reports_invalid_parameters_and_arity() {
     let duplicate = eval_program("(lambda (x x) x)", &mut Session::default()).unwrap_err();
     assert_eq!(duplicate.kind, ErrorKind::InvalidForm);
-    assert!(duplicate.message.contains("повторний параметр"));
+    assert!(duplicate.message.contains("povtornyi parametr"));
 
     let invalid = eval_program("(lambda (1) 1)", &mut Session::default()).unwrap_err();
     assert_eq!(invalid.kind, ErrorKind::InvalidForm);

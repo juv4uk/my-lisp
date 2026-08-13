@@ -29,7 +29,7 @@ pub(crate) fn evaluate_read_file(
     let Value::String(ref path) = evaluated else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "read-file expects a string path · read-file очікує рядок-шлях · read-file erwartet einen String-Pfad",
+            "read-file expects a string path · read-file ochikuie riadok-shliakh · read-file erwartet einen String-Pfad",
             span,
         ));
     };
@@ -47,7 +47,7 @@ pub(crate) fn evaluate_write_file(
     let Value::String(ref path) = path_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "write-file expects a string path · write-file очікує рядок-шлях · write-file erwartet einen String-Pfad",
+            "write-file expects a string path · write-file ochikuie riadok-shliakh · write-file erwartet einen String-Pfad",
             span,
         ));
     };
@@ -55,7 +55,7 @@ pub(crate) fn evaluate_write_file(
     let Value::String(ref content) = content_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "write-file expects a string as its second argument · write-file очікує рядок другим аргументом · write-file erwartet eine Zeichenkette als zweites Argument",
+            "write-file expects a string as its second argument · write-file ochikuie riadok druhym arhumentom · write-file erwartet eine Zeichenkette als zweites Argument",
             span,
         ));
     };
@@ -81,7 +81,7 @@ pub(crate) fn evaluate_write_file_bytes(
     let Value::String(ref path) = path_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "write-file-bytes expects a string path · write-file-bytes очікує рядок-шлях · write-file-bytes erwartet einen String-Pfad",
+            "write-file-bytes expects a string path · write-file-bytes ochikuie riadok-shliakh · write-file-bytes erwartet einen String-Pfad",
             span,
         ));
     };
@@ -105,7 +105,7 @@ pub(crate) fn evaluate_read_file_bytes(
     let Value::String(ref path) = evaluated else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "read-file-bytes expects a string path · read-file-bytes очікує рядок-шлях · read-file-bytes erwartet einen String-Pfad",
+            "read-file-bytes expects a string path · read-file-bytes ochikuie riadok-shliakh · read-file-bytes erwartet einen String-Pfad",
             span,
         ));
     };
@@ -127,14 +127,14 @@ fn expect_byte_list(value: &Value, span: Span) -> Result<Vec<u8>, LanguageError>
                 let Value::Number(number, _) = **head else {
                     return Err(LanguageError::new(
                         ErrorKind::Type,
-                        "write-file-bytes expects a list of integers 0-255 · write-file-bytes очікує список цілих чисел 0-255 · write-file-bytes erwartet eine Liste von Ganzzahlen 0-255",
+                        "write-file-bytes expects a list of integers 0-255 · write-file-bytes ochikuie spysok tsilykh chysel 0-255 · write-file-bytes erwartet eine Liste von Ganzzahlen 0-255",
                         span,
                     ));
                 };
                 if number.fract() != 0.0 || !(0.0..=255.0).contains(&number) {
                     return Err(LanguageError::new(
                         ErrorKind::Type,
-                        "write-file-bytes expects each element to be an integer between 0 and 255 · write-file-bytes очікує, щоб кожен елемент був цілим числом від 0 до 255 · write-file-bytes erwartet, dass jedes Element eine Ganzzahl zwischen 0 und 255 ist",
+                        "write-file-bytes expects each element to be an integer between 0 and 255 · write-file-bytes ochikuie, shchob kozhen element buv tsilym chyslom vid 0 do 255 · write-file-bytes erwartet, dass jedes Element eine Ganzzahl zwischen 0 und 255 ist",
                         span,
                     ));
                 }
@@ -144,7 +144,7 @@ fn expect_byte_list(value: &Value, span: Span) -> Result<Vec<u8>, LanguageError>
             _ => {
                 return Err(LanguageError::new(
                     ErrorKind::Type,
-                    "write-file-bytes expects a proper list of integers 0-255 · write-file-bytes очікує правильний список цілих чисел 0-255 · write-file-bytes erwartet eine echte Liste von Ganzzahlen 0-255",
+                    "write-file-bytes expects a proper list of integers 0-255 · write-file-bytes ochikuie pravylnyi spysok tsilykh chysel 0-255 · write-file-bytes erwartet eine echte Liste von Ganzzahlen 0-255",
                     span,
                 ))
             }

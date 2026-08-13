@@ -21,14 +21,14 @@ struct Frame {
 /// document. `None` (the default, via `root()`) means unbounded — the
 /// Rust reference implementation's own choice, not a claim every future
 /// implementation must match (see S1's open note).
-/// Опційні межі ресурсу для однієї сесії, спільні для кожного
-/// `Environment` у її лексичному дереві (той самий патерн, що й у
-/// транскрипту виводу) — додано 2026-08-09, щоб власні названі приклади
-/// S1/S3 (`NumericOverflow`, `OutOfMemory`) стали реальними, перевіряними
-/// категоріями, не лише словами в документі. `None` (типово, через
-/// `root()`) означає необмежено — власний вибір Rust-реалізації, не
-/// твердження, що кожна майбутня реалізація мусить це повторити (див.
-/// відкриту примітку в S1).
+/// Optsiini mezhi resursu dlia odniiei sesii, spilni dlia kozhnoho
+/// `Environment` u yii leksychnomu derevi (toi samyi patern, shcho y u
+/// transkryptu vyvodu) — dodano 2026-08-09, shchob vlasni nazvani pryklady
+/// S1/S3 (`NumericOverflow`, `OutOfMemory`) staly realnymy, perevirianymy
+/// katehoriiamy, ne lyshe slovamy v dokumenti. `None` (typovo, cherez
+/// `root()`) oznachaie neobmezheno — vlasnyi vybir Rust-realizatsii, ne
+/// tverdzhennia, shcho kozhna maibutnia realizatsiia musyt tse povtoryty (dyv.
+/// vidkrytu prymitku v S1).
 #[derive(Debug, Default)]
 struct Limits {
     cons_limit: Option<usize>,
@@ -45,17 +45,17 @@ struct Limits {
     /// those exact program names, never a shell string — the host (e.g.
     /// `my-lisp-cli --allow-process=git`) decides the allowlist, a my-lisp
     /// program itself can never grant itself this.
-    /// `None` (типово, через `root()`) означає, що `process-run` завжди
-    /// провалюється названо — протилежний типовий стан до
-    /// `cons_limit`/`numeric_bit_limit` (ті типово *необмежені*, цей типово
-    /// *вимкнений*), бо виконання процесу — категорійно більша можливість,
-    /// ніж межа ресурсу: разом із вхідною мережею, яку дає сесії
-    /// `tcp-accept` (PLAN.md, пункт 21), необмежений `process-run` дав би
-    /// віддаленому учаснику шлях до довільного виконання команд через
-    /// my-lisp-програму. `Some(programs)` вмикає для сесії запуск лише цих
-    /// точних імен програм, ніколи не рядок shell — хост (напр.
-    /// `my-lisp-cli --allow-process=git`) вирішує allowlist, my-lisp-програма
-    /// сама ніколи не може дозволити це собі.
+    /// `None` (typovo, cherez `root()`) oznachaie, shcho `process-run` zavzhdy
+    /// provaliuietsia nazvano — protylezhnyi typovyi stan do
+    /// `cons_limit`/`numeric_bit_limit` (ti typovo *neobmezheni*, tsei typovo
+    /// *vymknenyi*), bo vykonannia protsesu — katehoriino bilsha mozhlyvist,
+    /// nizh mezha resursu: razom iz vkhidnoiu merezheiu, yaku daie sesii
+    /// `tcp-accept` (PLAN.md, punkt 21), neobmezhenyi `process-run` dav by
+    /// viddalenomu uchasnyku shliakh do dovilnoho vykonannia komand cherez
+    /// my-lisp-prohramu. `Some(programs)` vmykaie dlia sesii zapusk lyshe tsykh
+    /// tochnykh imen prohram, nikoly ne riadok shell — khost (napr.
+    /// `my-lisp-cli --allow-process=git`) vyrishuie allowlist, my-lisp-prohrama
+    /// sama nikoly ne mozhe dozvolyty tse sobi.
     process_allowlist: Option<Vec<String>>,
 }
 
@@ -78,12 +78,12 @@ impl Environment {
     /// Simulates a genuinely bounded heap (an FPGA with 4096 cons cells,
     /// S3's own example) without needing real hardware to test the claim
     /// "bounded implementations fail named, never silently redefine `cons`."
-    /// Вмикає для цієї сесії максимальну кількість `cons`-виділень — понад
-    /// неї `cons` повертає `ErrorKind::OutOfMemory` замість успіху. Імітує
-    /// справді обмежену купу (FPGA з 4096 cons-комірками, власний приклад
-    /// S3) без потреби в реальному залізі, щоб перевірити твердження
-    /// "обмежені реалізації провалюються названо, ніколи не переозначають
-    /// сенс `cons` мовчки".
+    /// Vmykaie dlia tsiiei sesii maksymalnu kilkist `cons`-vydilen — ponad
+    /// nei `cons` povertaie `ErrorKind::OutOfMemory` zamist uspikhu. Imituie
+    /// spravdi obmezhenu kupu (FPGA z 4096 cons-komirkamy, vlasnyi pryklad
+    /// S3) bez potreby v realnomu zalizi, shchob pereviryty tverdzhennia
+    /// "obmezheni realizatsii provaliuiutsia nazvano, nikoly ne pereoznachaiut
+    /// sens `cons` movchky".
     pub fn with_cons_limit(self, limit: usize) -> Self {
         self.2.borrow_mut().cons_limit = Some(limit);
         self
@@ -93,11 +93,11 @@ impl Environment {
     /// results — past it, `+`/`-`/`*`/`/` return `ErrorKind::NumericOverflow`
     /// instead of continuing to compute (never falling back to an inexact
     /// approximation — that would violate S1, not satisfy it).
-    /// Вмикає для цієї сесії максимальну ширину в бітах для результатів
-    /// точної арифметики — понад неї `+`/`-`/`*`/`/` повертають
-    /// `ErrorKind::NumericOverflow` замість продовження обчислення (ніколи
-    /// не відкочуючись до неточного наближення — це порушило б S1, не
-    /// задовольнило б його).
+    /// Vmykaie dlia tsiiei sesii maksymalnu shyrynu v bitakh dlia rezultativ
+    /// tochnoi aryfmetyky — ponad nei `+`/`-`/`*`/`/` povertaiut
+    /// `ErrorKind::NumericOverflow` zamist prodovzhennia obchyslennia (nikoly
+    /// ne vidkochuiuchys do netochnoho nablyzhennia — tse porushylo b S1, ne
+    /// zadovolnylo b yoho).
     pub fn with_numeric_bit_limit(self, limit: usize) -> Self {
         self.2.borrow_mut().numeric_bit_limit = Some(limit);
         self
@@ -109,11 +109,11 @@ impl Environment {
     /// unbounded. Only a host embedding the interpreter calls this (e.g.
     /// `my-lisp-cli`'s `--allow-process` flag); nothing in the language
     /// itself can reach it.
-    /// Вмикає для сесії `process-run`, обмежений точно іменами програм у
-    /// `programs` — див. власний коментар `Limits::process_allowlist` про
-    /// те, чому це типово повністю вимкнено, не необмежено. Викликає лише
-    /// хост, що вбудовує інтерпретатор (напр. прапор `--allow-process` у
-    /// `my-lisp-cli`); нічого в самій мові не може до цього дотягнутись.
+    /// Vmykaie dlia sesii `process-run`, obmezhenyi tochno imenamy prohram u
+    /// `programs` — dyv. vlasnyi komentar `Limits::process_allowlist` pro
+    /// te, chomu tse typovo povnistiu vymkneno, ne neobmezheno. Vyklykaie lyshe
+    /// khost, shcho vbudovuie interpretator (napr. prapor `--allow-process` u
+    /// `my-lisp-cli`); nichoho v samii movi ne mozhe do tsoho dotiahnutys.
     pub fn with_process_allowlist(self, programs: Vec<String>) -> Self {
         self.2.borrow_mut().process_allowlist = Some(programs);
         self
@@ -122,9 +122,9 @@ impl Environment {
     /// Called by `cons` before allocating; `Err(())` means the configured
     /// limit (if any) is already reached. No-op (always `Ok`) when this
     /// session never opted into a limit.
-    /// Викликається `cons` перед виділенням; `Err(())` означає, що
-    /// налаштована межа (якщо є) уже досягнута. Нічого не робить (завжди
-    /// `Ok`), якщо ця сесія ніколи не вмикала межу.
+    /// Vyklykaietsia `cons` pered vydilenniam; `Err(())` oznachaie, shcho
+    /// nalashtovana mezha (yakshcho ye) uzhe dosiahnuta. Nichoho ne robyt (zavzhdy
+    /// `Ok`), yakshcho tsia sesiia nikoly ne vmykala mezhu.
     pub(crate) fn try_alloc_cons(&self) -> Result<(), ()> {
         let mut limits = self.2.borrow_mut();
         if let Some(limit) = limits.cons_limit {
@@ -137,7 +137,7 @@ impl Environment {
     }
 
     /// The configured numeric bit-width cap, if this session opted into one.
-    /// Налаштована межа ширини числа в бітах, якщо ця сесія її ввімкнула.
+    /// Nalashtovana mezha shyryny chysla v bitakh, yakshcho tsia sesiia yii vvimknula.
     pub(crate) fn numeric_bit_limit(&self) -> Option<usize> {
         self.2.borrow().numeric_bit_limit
     }
@@ -146,10 +146,10 @@ impl Environment {
     /// `program` is exactly one of the names it listed — no substring
     /// match, no path resolution tricks, an allowed name must match in
     /// full.
-    /// `false`, якщо ця сесія не викликала `with_process_allowlist` *або*
-    /// `program` не є точно одним з перелічених там імен — без часткового
-    /// збігу, без хитрощів із роздільною здатністю шляху, дозволене ім'я
-    /// має збігатись повністю.
+    /// `false`, yakshcho tsia sesiia ne vyklykala `with_process_allowlist` *abo*
+    /// `program` ne ye tochno odnym z perelichenykh tam imen — bez chastkovoho
+    /// zbihu, bez khytroshchiv iz rozdilnoiu zdatnistiu shliakhu, dozvolene imia
+    /// maie zbihatys povnistiu.
     pub(crate) fn is_process_allowed(&self, program: &str) -> bool {
         match &self.2.borrow().process_allowlist {
             Some(programs) => programs.iter().any(|allowed| allowed == program),
@@ -161,10 +161,10 @@ impl Environment {
     /// It shares the parent's output sink (the second field, cloned as the
     /// same `Rc`, not reinitialized) so `print` inside a closure body still
     /// lands in the one session-wide transcript rather than a per-call one.
-    /// Дочірній фрейм стане майбутньою лексичною межею, яку зберігатиме
-    /// замикання. Він ділить sink виводу батька (друге поле, клонується як
-    /// той самий `Rc`, не переініціалізується), тож `print` усередині тіла
-    /// замикання все одно потрапляє в один спільний на сесію транскрипт.
+    /// Dochirnii freim stane maibutnoiu leksychnoiu mezheiu, yaku zberihatyme
+    /// zamykannia. Vin dilyt sink vyvodu batka (druhe pole, klonuietsia yak
+    /// toi samyi `Rc`, ne pereinitsializuietsia), tozh `print` useredyni tila
+    /// zamykannia vse odno potrapliaie v odyn spilnyi na sesiiu transkrypt.
     /// Ein untergeordneter Frame ist die künftige lexikalische Grenze einer
     /// Closure. Er teilt sich die Ausgabesenke des Elternteils (das zweite
     /// Feld, als derselbe `Rc` geklont, nicht neu initialisiert), sodass
@@ -183,8 +183,8 @@ impl Environment {
 
     /// Appends a line to the session-wide output transcript, shared by every
     /// `Environment` in this session's lexical tree (root and all closures).
-    /// Додає рядок до транскрипту виводу, спільного на всю сесію — його
-    /// поділяють усі `Environment` у лексичному дереві цієї сесії.
+    /// Dodaie riadok do transkryptu vyvodu, spilnoho na vsiu sesiiu — yoho
+    /// podiliaiut usi `Environment` u leksychnomu derevi tsiiei sesii.
     /// Hängt eine Zeile an das sitzungsweite Ausgabetranskript an, das sich
     /// jede `Environment` im lexikalischen Baum dieser Sitzung teilt.
     pub fn print(&self, line: String) {
@@ -192,7 +192,7 @@ impl Environment {
     }
 
     /// A snapshot of everything `print` has produced so far in this session.
-    /// Знімок усього, що `print` уже вивів у цій сесії.
+    /// Znimok usoho, shcho `print` uzhe vyviv u tsii sesii.
     /// Ein Schnappschuss von allem, was `print` in dieser Sitzung bisher ausgegeben hat.
     pub fn output_snapshot(&self) -> Vec<String> {
         self.1.borrow().clone()
@@ -263,8 +263,8 @@ mod tests {
     fn child_definitions_do_not_leak_into_the_parent() {
         // Lexical scoping requires that a child frame's bindings stay local:
         // a closure's parameters must never become visible outside its call.
-        // Лексичний скоуп вимагає, щоб зв’язування дочірнього фрейму лишались
-        // локальними: параметри замикання не повинні ставати видимими зовні виклику.
+        // Leksychnyi skoup vymahaie, shchob zv’yazuvannia dochirnoho freimu lyshalys
+        // lokalnymy: parametry zamykannia ne povynni stavaty vydymymy zovni vyklyku.
         // Lexikalischer Scope verlangt, dass Bindungen eines Kind-Frames lokal
         // bleiben: Parameter einer Closure dürfen außerhalb ihres Aufrufs nie sichtbar werden.
         let root = Environment::root();

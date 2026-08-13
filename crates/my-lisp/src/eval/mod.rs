@@ -1,15 +1,15 @@
 //! Evaluator entry points and the special-form dispatcher.
-//! Точки входу evaluator і диспетчер спеціальних форм.
+//! Tochky vkhodu evaluator i dyspetcher spetsialnykh form.
 //! Einstiegspunkte des Evaluators und der Sonderformen-Dispatcher.
 //!
 //! The evaluator is split by concern: this module owns the trampoline loop and
 //! dispatch table, `arithmetic` owns exact/inexact number handling, `special_forms`
 //! owns the McCarthy primitives plus `def`/`defmacro`/`cond`, and `closures` owns
 //! `lambda` construction and function/macro application.
-//! Evaluator розділено за відповідальністю: цей модуль володіє циклом trampoline
-//! та таблицею диспетчеризації, `arithmetic` — точними/неточними числами,
-//! `special_forms` — примітивами Маккарті та `def`/`defmacro`/`cond`, а `closures` —
-//! побудовою `lambda` і застосуванням функцій/макросів.
+//! Evaluator rozdileno za vidpovidalnistiu: tsei modul volodiie tsyklom trampoline
+//! ta tablytseiu dyspetcheryzatsii, `arithmetic` — tochnymy/netochnymy chyslamy,
+//! `special_forms` — prymityvamy Makkarti ta `def`/`defmacro`/`cond`, a `closures` —
+//! pobudovoiu `lambda` i zastosuvanniam funktsii/makrosiv.
 //! Der Evaluator ist nach Zuständigkeit aufgeteilt: dieses Modul besitzt die
 //! Trampolin-Schleife und die Dispatch-Tabelle, `arithmetic` die exakte/inexakte
 //! Zahlenverarbeitung, `special_forms` die McCarthy-Primitive sowie `def`/`defmacro`/
@@ -42,7 +42,7 @@ pub fn eval_parsed_expressions(
 }
 
 /// Evaluates source string by parsing it and running the resulting expressions.
-/// Обчислює сирцевий рядок через парсинг та виконання отриманих виразів.
+/// Obchysliuie syrtsevyi riadok cherez parsynh ta vykonannia otrymanykh vyraziv.
 /// Wertet den Quelltext durch Parsing und Ausführung der Ausdrücke aus.
 pub fn eval_program(source: &str, session: &mut Session) -> Result<EvalResult, LanguageError> {
     let expressions = parse(source)?;
@@ -92,7 +92,7 @@ pub(crate) fn evaluate_step(
         ExprKind::Symbol(symbol) => environment.get(symbol).map(EvalStep::Value).ok_or_else(|| {
             LanguageError::new(
                 ErrorKind::UnknownSymbol,
-                format!("unknown symbol · невідомий символ · unbekanntes Symbol: {symbol}"),
+                format!("unknown symbol · nevidomyi symvol · unbekanntes Symbol: {symbol}"),
                 expression.span,
             )
         }),
@@ -100,7 +100,7 @@ pub(crate) fn evaluate_step(
         ExprKind::List(items) => evaluate_list(items, environment, expression.span),
         ExprKind::Pair(_, _) => Err(LanguageError::new(
             ErrorKind::InvalidForm,
-            "a dotted pair is not executable code · dotted-пара не є виконуваним кодом · ein Dotted Pair ist kein ausführbarer Code",
+            "a dotted pair is not executable code · dotted-para ne ye vykonuvanym kodom · ein Dotted Pair ist kein ausführbarer Code",
             expression.span,
         )),
     }
@@ -113,7 +113,7 @@ fn evaluate_list(
 ) -> Result<EvalStep, LanguageError> {
     let arguments = &items[1..];
     // Special forms stay explicit because they control which arguments are evaluated.
-    // Спеціальні форми лишаються явними, бо вони керують обчисленням аргументів.
+    // Spetsialni formy lyshaiutsia yavnymy, bo vony keruiut obchyslenniam arhumentiv.
     // Sonderformen bleiben explizit, weil sie die Auswertung ihrer Argumente steuern.
     match items[0].kind.as_symbol() {
         Some("quote") => {
@@ -218,8 +218,8 @@ fn evaluate_list(
         Some("/") => arithmetic::evaluate_division(arguments, environment, span).map(EvalStep::Value),
         // Binding the operator symbol in the pattern avoids re-deriving it with
         // an `.expect()`, so a future refactor of `as_symbol` cannot turn this into a panic.
-        // Захоплення символа оператора прямо в патерні уникає повторного `.expect()`,
-        // тож майбутня зміна `as_symbol` не зможе перетворити це на паніку.
+        // Zakhoplennia symvola operatora priamo v paterni unykaie povtornoho `.expect()`,
+        // tozh maibutnia zmina `as_symbol` ne zmozhe peretvoryty tse na paniku.
         // Das Binden des Operator-Symbols im Pattern vermeidet ein erneutes `.expect()`,
         // sodass eine spätere Änderung an `as_symbol` dies nicht zu einem Panic machen kann.
         Some(operator @ ("+" | "-" | "*")) => {

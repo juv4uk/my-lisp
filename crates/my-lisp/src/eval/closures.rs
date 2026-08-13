@@ -1,5 +1,5 @@
 //! `lambda` construction and applying closures/macros to arguments.
-//! Побудова `lambda` та застосування замикань/макросів до аргументів.
+//! Pobudova `lambda` ta zastosuvannia zamykan/makrosiv do arhumentiv.
 //! Bau von `lambda` und Anwendung von Closures/Makros auf Argumente.
 
 use super::{evaluate, special_forms::quoted, EvalStep};
@@ -14,14 +14,14 @@ use std::{collections::HashSet, rc::Rc};
 /// ordinary `ExprKind::Symbol`, the second as nested `ExprKind::Pair` (the
 /// same dotted-pair reader support added earlier for data literals),
 /// exactly the shapes `parser.rs` already produces — no new parser syntax.
-/// Розбирає lambda-list, що має три форми, спільні для родини Lisp (не
-/// ключове слово `&rest` одного діалекту): `(a b)` — точно два фіксовані
-/// параметри, без rest; `(a b . rest)` — dotted-список, `rest` зв'язується
-/// з усіма аргументами понад `a`/`b`; голий символ `args` — нуль фіксованих
-/// параметрів, кожен аргумент зв'язується з `args`. Третя форма читається як
-/// звичайний `ExprKind::Symbol`, друга — як вкладений `ExprKind::Pair` (та
-/// сама підтримка dotted-pair reader'а, додана раніше для літералів даних) —
-/// саме ті форми, які `parser.rs` уже й так виробляє, без нового синтаксису.
+/// Rozbyraie lambda-list, shcho maie try formy, spilni dlia rodyny Lisp (ne
+/// kliuchove slovo `&rest` odnoho dialektu): `(a b)` — tochno dva fiksovani
+/// parametry, bez rest; `(a b . rest)` — dotted-spysok, `rest` zviazuietsia
+/// z usima arhumentamy ponad `a`/`b`; holyi symvol `args` — nul fiksovanykh
+/// parametriv, kozhen arhument zviazuietsia z `args`. Tretia forma chytaietsia yak
+/// zvychainyi `ExprKind::Symbol`, druha — yak vkladenyi `ExprKind::Pair` (ta
+/// sama pidtrymka dotted-pair readera, dodana ranishe dlia literaliv danykh) —
+/// same ti formy, yaki `parser.rs` uzhe y tak vyrobliaie, bez novoho syntaksysu.
 fn parse_lambda_list(expr: &Expr) -> Result<(Vec<Rc<str>>, Option<Rc<str>>), LanguageError> {
     match &expr.kind {
         ExprKind::Symbol(name) => Ok((Vec::new(), Some(name.clone()))),
@@ -32,14 +32,14 @@ fn parse_lambda_list(expr: &Expr) -> Result<(Vec<Rc<str>>, Option<Rc<str>>), Lan
                 let ExprKind::Symbol(name) = &parameter.kind else {
                     return Err(LanguageError::new(
                         ErrorKind::InvalidForm,
-                        "lambda parameter must be a symbol · параметр lambda має бути символом · lambda-Parameter muss ein Symbol sein",
+                        "lambda parameter must be a symbol · parametr lambda maie buty symvolom · lambda-Parameter muss ein Symbol sein",
                         parameter.span,
                     ));
                 };
                 if !unique.insert(name.clone()) {
                     return Err(LanguageError::new(
                         ErrorKind::InvalidForm,
-                        format!("duplicate lambda parameter · повторний параметр lambda · doppelter lambda-Parameter: {name}"),
+                        format!("duplicate lambda parameter · povtornyi parametr lambda · doppelter lambda-Parameter: {name}"),
                         parameter.span,
                     ));
                 }
@@ -57,14 +57,14 @@ fn parse_lambda_list(expr: &Expr) -> Result<(Vec<Rc<str>>, Option<Rc<str>>), Lan
                         let ExprKind::Symbol(name) = &head.kind else {
                             return Err(LanguageError::new(
                                 ErrorKind::InvalidForm,
-                                "lambda parameter must be a symbol · параметр lambda має бути символом · lambda-Parameter muss ein Symbol sein",
+                                "lambda parameter must be a symbol · parametr lambda maie buty symvolom · lambda-Parameter muss ein Symbol sein",
                                 head.span,
                             ));
                         };
                         if !unique.insert(name.clone()) {
                             return Err(LanguageError::new(
                                 ErrorKind::InvalidForm,
-                                format!("duplicate lambda parameter · повторний параметр lambda · doppelter lambda-Parameter: {name}"),
+                                format!("duplicate lambda parameter · povtornyi parametr lambda · doppelter lambda-Parameter: {name}"),
                                 head.span,
                             ));
                         }
@@ -75,7 +75,7 @@ fn parse_lambda_list(expr: &Expr) -> Result<(Vec<Rc<str>>, Option<Rc<str>>), Lan
                         if !unique.insert(name.clone()) {
                             return Err(LanguageError::new(
                                 ErrorKind::InvalidForm,
-                                format!("duplicate lambda parameter · повторний параметр lambda · doppelter lambda-Parameter: {name}"),
+                                format!("duplicate lambda parameter · povtornyi parametr lambda · doppelter lambda-Parameter: {name}"),
                                 current.span,
                             ));
                         }
@@ -84,7 +84,7 @@ fn parse_lambda_list(expr: &Expr) -> Result<(Vec<Rc<str>>, Option<Rc<str>>), Lan
                     _ => {
                         return Err(LanguageError::new(
                             ErrorKind::InvalidForm,
-                            "rest parameter must be a symbol · rest-параметр має бути символом · Rest-Parameter muss ein Symbol sein",
+                            "rest parameter must be a symbol · rest-parametr maie buty symvolom · Rest-Parameter muss ein Symbol sein",
                             current.span,
                         ))
                     }
@@ -94,7 +94,7 @@ fn parse_lambda_list(expr: &Expr) -> Result<(Vec<Rc<str>>, Option<Rc<str>>), Lan
         }
         _ => Err(LanguageError::new(
             ErrorKind::InvalidForm,
-            "lambda parameters must be a list, dotted list, or symbol · параметри lambda мають бути списком, dotted-списком або символом · lambda-Parameter müssen eine Liste, Dotted-Liste oder ein Symbol sein",
+            "lambda parameters must be a list, dotted list, or symbol · parametry lambda maiut buty spyskom, dotted-spyskom abo symvolom · lambda-Parameter müssen eine Liste, Dotted-Liste oder ein Symbol sein",
             expr.span,
         )),
     }
@@ -108,7 +108,7 @@ pub(super) fn create_lambda(
     if arguments.len() < 2 {
         return Err(LanguageError::new(
             ErrorKind::Arity,
-            "lambda expects parameters and a body · lambda очікує параметри й тіло · lambda erwartet Parameter und einen Rumpf",
+            "lambda expects parameters and a body · lambda ochikuie parametry y tilo · lambda erwartet Parameter und einen Rumpf",
             span,
         ));
     }
@@ -123,8 +123,8 @@ pub(super) fn create_lambda(
 
 /// Shared by `apply`/`apply_macro`: exact arity when there's no rest
 /// parameter, "at least this many" when there is.
-/// Спільне для `apply`/`apply_macro`: точна арність, якщо нема rest-
-/// параметра, "щонайменше стільки" — якщо є.
+/// Spilne dlia `apply`/`apply_macro`: tochna arnist, yakshcho nema rest-
+/// parametra, "shchonaimenshe stilky" — yakshcho ye.
 fn check_arity(
     label: &str,
     fixed: usize,
@@ -137,14 +137,14 @@ fn check_arity(
         return Ok(());
     }
     let expected = if has_rest {
-        format!("at least / щонайменше / mindestens {fixed}")
+        format!("at least / shchonaimenshe / mindestens {fixed}")
     } else {
         fixed.to_string()
     };
     Err(LanguageError::new(
         ErrorKind::Arity,
         format!(
-            "{label}: expected / очікувалося / erwartet {expected}; received / отримано / erhalten {received}"
+            "{label}: expected / ochikuvalosia / erwartet {expected}; received / otrymano / erhalten {received}"
         ),
         span,
     ))
@@ -159,14 +159,14 @@ pub(super) fn apply(
     let Value::Closure(ref closure) = function else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "expression is not callable · вираз не можна викликати · Ausdruck ist nicht aufrufbar",
+            "expression is not callable · vyraz ne mozhna vyklykaty · Ausdruck ist nicht aufrufbar",
             span,
         ));
     };
     check_arity("lambda", closure.parameters.len(), closure.rest.is_some(), arguments.len(), span)?;
 
     // Arguments belong to the caller; parameters belong to the captured lexical frame.
-    // Аргументи належать виклику, а параметри — захопленому лексичному фрейму.
+    // Arhumenty nalezhat vyklyku, a parametry — zakhoplenomu leksychnomu freimu.
     // Argumente gehören zum Aufrufer, Parameter zum erfassten lexikalischen Frame.
     let local_environment = closure.environment.child();
     for (parameter, argument) in closure.parameters.iter().zip(arguments.iter()) {
@@ -182,7 +182,7 @@ pub(super) fn apply(
     }
     let last = last_body_expression(&closure.body, &local_environment, span)?;
     // Tail positions become data for the evaluator loop instead of recursive Rust calls.
-    // Хвостові позиції стають даними для циклу evaluator, а не рекурсивними викликами Rust.
+    // Khvostovi pozytsii staiut danymy dlia tsyklu evaluator, a ne rekursyvnymy vyklykamy Rust.
     // Tail-Positionen werden zu Daten für die Evaluator-Schleife statt zu rekursiven Rust-Aufrufen.
     Ok(EvalStep::TailCall {
             expression: last.clone(),
@@ -194,10 +194,10 @@ pub(super) fn apply(
 /// the last one for the caller to evaluate in tail position. `create_lambda` always
 /// builds a non-empty body, but this returns a `LanguageError` instead of panicking
 /// so a future invariant change degrades gracefully rather than crashing the process.
-/// Виконує всі вирази тіла, крім останнього, заради побічних ефектів, і повертає
-/// останній, щоб виклик обчислив його в хвостовій позиції. `create_lambda` завжди
-/// будує непорожнє тіло, але тут повертається `LanguageError`, а не паніка, щоб
-/// майбутня зміна інваріанту деградувала плавно, а не аварійно завершувала процес.
+/// Vykonuie vsi vyrazy tila, krim ostannoho, zarady pobichnykh efektiv, i povertaie
+/// ostannii, shchob vyklyk obchyslyv yoho v khvostovii pozytsii. `create_lambda` zavzhdy
+/// buduie neporozhnie tilo, ale tut povertaietsia `LanguageError`, a ne panika, shchob
+/// maibutnia zmina invariantu dehraduvala plavno, a ne avariino zavershuvala protses.
 /// Führt alle Rumpf-Ausdrücke außer dem letzten wegen ihrer Seiteneffekte aus und
 /// gibt den letzten für die Auswertung in Tail-Position zurück. `create_lambda` baut
 /// stets einen nicht leeren Rumpf, dennoch wird hier ein `LanguageError` statt eines
@@ -210,7 +210,7 @@ fn last_body_expression<'a>(
     let Some((last, leading)) = body.split_last() else {
         return Err(LanguageError::new(
             ErrorKind::InvalidForm,
-            "lambda body must not be empty · тіло lambda не може бути порожнім · lambda-Rumpf darf nicht leer sein",
+            "lambda body must not be empty · tilo lambda ne mozhe buty porozhnim · lambda-Rumpf darf nicht leer sein",
             span,
         ));
     };
@@ -255,9 +255,9 @@ pub(super) fn apply_macro(
 // `pub(super)`, not private: `special_forms::evaluate_eval` reuses this same
 // data->code conversion for `eval`, rather than duplicating the cons-cell
 // walk that macro expansion already needed.
-// `pub(super)`, не приватна: `special_forms::evaluate_eval` перевикористовує
-// це саме перетворення дані->код для `eval`, замість дублювання обходу
-// cons-комірок, який уже був потрібен для розгортання макросів.
+// `pub(super)`, ne pryvatna: `special_forms::evaluate_eval` perevykorystovuie
+// tse same peretvorennia dani->kod dlia `eval`, zamist dubliuvannia obkhodu
+// cons-komirok, yakyi uzhe buv potriben dlia rozhortannia makrosiv.
 // `pub(super)`, nicht privat: `special_forms::evaluate_eval` nutzt dieselbe
 // Daten->Code-Umwandlung für `eval` wieder, statt den Cons-Zellen-Durchlauf
 // zu duplizieren, den die Makro-Expansion bereits brauchte.
@@ -283,7 +283,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
                     _ => {
                         return Err(LanguageError::new(
                             ErrorKind::InvalidForm,
-                            "macros must return proper lists · макроси повинні повертати правильні списки · Makros müssen korrekte Listen zurückgeben",
+                            "macros must return proper lists · makrosy povynni povertaty pravylni spysky · Makros müssen korrekte Listen zurückgeben",
                             span,
                         ))
                     }
@@ -294,7 +294,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
         Value::Closure(_) | Value::Macro(_) => {
             return Err(LanguageError::new(
                 ErrorKind::InvalidForm,
-                "macros cannot return closures or macros · макроси не можуть повертати замикання або макроси · Makros dürfen keine Closures oder Makros zurückgeben",
+                "macros cannot return closures or macros · makrosy ne mozhut povertaty zamykannia abo makrosy · Makros dürfen keine Closures oder Makros zurückgeben",
                 span,
             ))
         }
@@ -303,15 +303,15 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
         // same reason: quoting/macro-expanding one would need to fabricate
         // code that could recreate a specific open TCP resource, which
         // isn't a thing this language can express.
-        // Жоден синтаксис не представляє живе з'єднання/listener — та сама
-        // логіка межі можливостей, що й для Closure/Macro вище, з тієї
-        // самої причини: quote/розгортання макроса на цьому значенні
-        // означало б вигадати код, що відтворив би конкретний відкритий
-        // TCP-ресурс, — це не те, що ця мова може виразити.
+        // Zhoden syntaksys ne predstavliaie zhyve ziednannia/listener — ta sama
+        // lohika mezhi mozhlyvostei, shcho y dlia Closure/Macro vyshche, z tiiei
+        // samoi prychyny: quote/rozhortannia makrosa na tsomu znachenni
+        // oznachalo b vyhadaty kod, shcho vidtvoryv by konkretnyi vidkrytyi
+        // TCP-resurs, — tse ne te, shcho tsia mova mozhe vyrazyty.
         Value::TcpConnection(_) | Value::TcpListener(_) => {
             return Err(LanguageError::new(
                 ErrorKind::InvalidForm,
-                "macros cannot return TCP connections or listeners · макроси не можуть повертати TCP-з'єднання чи listener · Makros dürfen keine TCP-Verbindungen oder Listener zurückgeben",
+                "macros cannot return TCP connections or listeners · makrosy ne mozhut povertaty TCP-ziednannia chy listener · Makros dürfen keine TCP-Verbindungen oder Listener zurückgeben",
                 span,
             ))
         }
