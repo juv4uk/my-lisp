@@ -356,6 +356,31 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   WSL restarts, which would silently break that mapping — see
   `SWARM-WSL-PORTPROXY-RESILIENCE` for the follow-up.
 
+- **M0.12** — done: duplicate-identity rejection (cheap partial mitigation
+  for the node-id spoofing gap M0.11 made real — Tailscale authenticates
+  which *device* is on the tailnet, but nothing in the protocol itself
+  tied a claimed `node-id` to that device). A `peer-hello`/`peer-welcome`
+  claiming a `node-id` that already has a demonstrably-live connection
+  (traffic within `2 * HEARTBEAT_INTERVAL`) is now refused — no
+  `peer-welcome` reply, connection just idles — instead of silently
+  overwriting the existing entry, which is what would previously have let
+  a second connection hijack an existing voter's identity mid-session and
+  start voting as them. A *stale* entry (no traffic within that window) is
+  still reclaimable, since that's the ordinary reconnect-after-restart
+  case, not spoofing, and must keep working exactly as before.
+
+  This is explicitly not the full fix — it stops a naive same-id
+  connection from displacing a live one, not a cryptographically verified
+  identity. The originally-deferred `node-id = hash(public-key)` work
+  (noted since the M0.4 design discussion as "not critical on localhost")
+  is still open, tracked as `SWARM-NODE-IDENTITY-VERIFICATION`'s
+  full-fix follow-up.
+
+  Verified: a real node-b joins node-a normally; a second, separate raw
+  connection then sends `peer-hello` claiming `node node-b` from a
+  different socket — gets no `peer-welcome` reply, and node-a's
+  `presence` still shows the real node-b afterward, unevicted.
+
 ## Non-goals for v0.1
 
 No Raft, no DHT, no dynamic peer discovery — the mesh is 4 known localhost

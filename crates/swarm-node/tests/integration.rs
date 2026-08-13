@@ -227,3 +227,33 @@ fn dynamic_membership_voter_quorum_and_status() {
     assert!(status.starts_with("(status"), "status op malformed: {status}");
     assert!(status.contains("(synced t)"), "node-a should report itself synced: {status}");
 }
+
+#[test]
+fn rejects_duplicate_node_id_claim_from_a_second_connection() {
+    let base = alloc_ports(2);
+    let (port_a, port_b) = (base, base + 1);
+
+    let _a = spawn(port_a, "node-a", &data_dir("dup-a"), None);
+    let _b = spawn(port_b, "node-b", &data_dir("dup-b"), Some(port_a));
+    // Confirm the real node-b is live on A before trying to impersonate it.
+    eventually(port_a, "(presence)", Duration::from_secs(2), |r| r.contains("node-b"));
+
+    // A raw connection claiming to already-live node-b's identity, from
+    // somewhere that is NOT the real node-b -- simulates a spoofing
+    // attempt (or a genuine but confused duplicate) rather than a normal
+    // reconnect. Must get no peer-welcome back.
+    let mut spoof = TcpStream::connect(("127.0.0.1", port_a)).unwrap();
+    spoof.set_read_timeout(Some(Duration::from_millis(500))).unwrap();
+    writeln!(spoof, "(peer-hello (protocol swarm/1) (node node-b) (epoch 0) (project spoof) (listen-port 0))").unwrap();
+    let mut reply = String::new();
+    let mut reader = BufReader::new(&spoof);
+    let read_result = reader.read_line(&mut reply);
+    assert!(
+        read_result.is_err() || reply.trim().is_empty(),
+        "spoofed peer-hello for an already-live node-id should get no peer-welcome reply, got: {reply:?}"
+    );
+
+    // The real node-b must still be the one registered -- not evicted.
+    let presence = request(port_a, "(presence)");
+    assert!(presence.contains("node-b"), "real node-b should still be present after a rejected spoof attempt: {presence}");
+}

@@ -352,6 +352,10 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                 let their_node = msg.field_atom("node").unwrap_or("unknown").to_string();
                 let their_epoch = msg.field_atom("epoch").unwrap_or("0");
                 let their_port: u16 = msg.field_atom("listen-port").and_then(|s| s.parse().ok()).unwrap_or(0);
+                if identity_already_live(&node, &their_node) {
+                    warn!("swarm-node: rejecting peer-hello claiming node-id `{their_node}` from {peer_addr} -- that id already has a live connection (possible duplicate identity / spoofing attempt)");
+                    continue;
+                }
                 info!("swarm-node: peer-hello from {their_node} epoch={their_epoch}");
                 send(
                     &mut stream,
@@ -372,6 +376,10 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("peer-welcome") => {
                 let their_node = msg.field_atom("node").unwrap_or("unknown").to_string();
                 let their_port: u16 = msg.field_atom("listen-port").and_then(|s| s.parse().ok()).unwrap_or(0);
+                if identity_already_live(&node, &their_node) {
+                    warn!("swarm-node: rejecting peer-welcome claiming node-id `{their_node}` from {peer_addr} -- that id already has a live connection (possible duplicate identity / spoofing attempt)");
+                    continue;
+                }
                 info!("swarm-node: peer-welcome from {their_node}");
                 register_peer(&node, &their_node, &mut stream, &peer_ip, their_port);
                 send_peer_list(&node, &their_node, &mut stream);
@@ -458,6 +466,33 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
         node.peers.lock().unwrap().remove(&id);
         node.last_seen.lock().unwrap().remove(&id);
         info!("swarm-node: connection to {id} closed");
+    }
+}
+
+/// Cheap partial mitigation for node-id spoofing (SWARM-NODE-IDENTITY-
+/// VERIFICATION): Tailscale authenticates which *device* is on the
+/// tailnet, but nothing in our own protocol ties a claimed `node-id` to
+/// that device — before M0.11's real cross-machine deployment this
+/// didn't matter (only localhost processes we already trusted could ever
+/// claim an id), now it does. This can't verify identity cryptographically
+/// (that needs the deferred node-id = hash(public-key) work), but it
+/// closes the cheapest version of the hole: a second connection claiming
+/// an id that already has a demonstrably-live connection (recent
+/// `last_seen`) is refused rather than silently overwriting it — silently
+/// overwriting is what would let a spoofed peer hijack an existing
+/// voter's identity mid-session and start voting as them.
+///
+/// A stale entry (no traffic within `2 * HEARTBEAT_INTERVAL`) is treated
+/// as abandoned and allowed to be reclaimed — that's the ordinary
+/// reconnect-after-restart case, not spoofing, and must keep working.
+fn identity_already_live(node: &Arc<Node>, their_node: &str) -> bool {
+    let has_connection = node.peers.lock().unwrap().contains_key(their_node);
+    if !has_connection {
+        return false;
+    }
+    match node.last_seen.lock().unwrap().get(their_node) {
+        Some(seen) => seen.elapsed() < HEARTBEAT_INTERVAL * 2,
+        None => false,
     }
 }
 
