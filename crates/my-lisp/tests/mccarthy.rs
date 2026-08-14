@@ -1123,6 +1123,50 @@ fn write_file_wrong_arity_is_an_arity_error() {
     assert_eq!(error.kind, ErrorKind::Arity);
 }
 
+// --- read-dir --------------------------------------------------------------
+// The directory-listing counterpart to read-file, added so a My Lisp
+// program can load a whole registry directory (e.g. the dhātu YAML files
+// under panini/registry/dhatu/) instead of hard-coding a file list.
+// Returns entry names as a list of strings, in filesystem order, unfiltered.
+
+#[test]
+fn read_dir_lists_the_files_it_wrote() {
+    let dir = std::env::temp_dir().join("my-lisp-read-dir-test");
+    std::fs::create_dir_all(&dir).expect("temp dir should be creatable");
+    let a = dir.join("alpha.yaml");
+    let b = dir.join("beta.yaml");
+    std::fs::write(&a, "canonical: alpha\n").ok();
+    std::fs::write(&b, "canonical: beta\n").ok();
+
+    let dir_str = dir.to_str().expect("temp path should be valid UTF-8").replace('\\', "/");
+    let mut session = Session::default();
+    let result = eval_program(&format!(r#"(read-dir "{dir_str}")"#), &mut session)
+        .expect("read-dir should list the directory");
+    let names = result
+        .value
+        .to_string()
+        .replace('(', "")
+        .replace(')', "");
+    assert!(names.contains("alpha.yaml"), "alpha.yaml should be listed, got {names}");
+    assert!(names.contains("beta.yaml"), "beta.yaml should be listed, got {names}");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn read_dir_rejects_a_missing_directory() {
+    let error = eval_program(r#"(read-dir "/definitely/not/a/real/my-lisp-dir")"#, &mut Session::default())
+        .expect_err("read-dir on a missing directory must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+}
+
+#[test]
+fn read_dir_rejects_a_non_string_path() {
+    let error = eval_program(r#"(read-dir 42)"#, &mut Session::default())
+        .expect_err("read-dir with a non-string path must fail named, not panic");
+    assert_eq!(error.kind, ErrorKind::Type);
+}
+
 // --- write-file-bytes / read-file-bytes (PLAN.md item 22) -----------------
 // The byte-level counterpart to write-file/read-file: write-file can only
 // ever produce valid UTF-8 (Value::String wraps &str), so a byte like 0xff

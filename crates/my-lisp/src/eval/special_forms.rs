@@ -32,7 +32,8 @@ pub(super) use core::{
 };
 pub(super) use digest::evaluate_sha256_hex;
 pub(super) use file_io::{
-    evaluate_read_file, evaluate_read_file_bytes, evaluate_write_file, evaluate_write_file_bytes,
+    evaluate_read_dir, evaluate_read_file, evaluate_read_file_bytes, evaluate_write_file,
+    evaluate_write_file_bytes,
 };
 pub(super) use io::{
     evaluate_eval, evaluate_load, evaluate_princ, evaluate_print, evaluate_read,

@@ -161,6 +161,9 @@ fn evaluate_list(
         Some("read-file") => {
             special_forms::evaluate_read_file(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("read-dir") => {
+            special_forms::evaluate_read_dir(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("write-file") => {
             special_forms::evaluate_write_file(arguments, environment, span).map(EvalStep::Value)
         }

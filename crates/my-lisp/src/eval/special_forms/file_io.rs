@@ -37,6 +37,35 @@ pub(crate) fn evaluate_read_file(
     Ok(Value::String(Rc::from(contents.as_str())))
 }
 
+/// `(read-dir path)` — the directory-listing counterpart to `read-file`,
+/// needed to load a whole registry directory (e.g. the dhātu YAML files
+/// under `panini/registry/dhatu/`) from inside My Lisp itself rather than
+/// hard-coding a file list. Returns the directory's entry names as a list
+/// of strings, in filesystem order, without filtering; the caller decides
+/// which names to keep (e.g. the `*.yaml` suffix). Reads the directory
+/// only; it does not recurse and does not stat entries.
+pub(crate) fn evaluate_read_dir(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("read-dir", arguments, 1, span)?;
+    let evaluated = evaluate(&arguments[0], environment)?;
+    let Value::String(ref path) = evaluated else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "read-dir expects a string path · read-dir ochikuie riadok-shliakh · read-dir erwartet einen String-Pfad",
+            span,
+        ));
+    };
+    let entries = read_dir(path, span)?;
+    Ok(Value::list(
+        entries
+            .into_iter()
+            .map(|name| Value::String(Rc::from(name))),
+    ))
+}
+
 pub(crate) fn evaluate_write_file(
     arguments: &[Expr],
     environment: &Environment,
@@ -170,6 +199,40 @@ pub(crate) fn read_file(_path: &str, span: Span) -> Result<String, LanguageError
     Err(LanguageError::new(
         ErrorKind::InvalidForm,
         "load: file system access is not available in this build",
+        span,
+    ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn read_dir(path: &str, span: Span) -> Result<Vec<String>, LanguageError> {
+    let reader = std::fs::read_dir(path).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("read-dir: failed to read directory {path}: {error}"),
+            span,
+        )
+    })?;
+    let mut entries = Vec::new();
+    for entry in reader {
+        match entry {
+            Ok(entry) => entries.push(entry.file_name().to_string_lossy().into_owned()),
+            Err(error) => {
+                return Err(LanguageError::new(
+                    ErrorKind::InvalidForm,
+                    format!("read-dir: failed to read an entry in {path}: {error}"),
+                    span,
+                ))
+            }
+        }
+    }
+    Ok(entries)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn read_dir(_path: &str, span: Span) -> Result<Vec<String>, LanguageError> {
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        "read-dir: file system access is not available in this build",
         span,
     ))
 }
