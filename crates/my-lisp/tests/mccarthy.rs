@@ -709,6 +709,14 @@ impl Lcg {
         }
         Value::list(items)
     }
+    fn next_string_list(&mut self, max_len: usize) -> Value {
+        let len = (self.next() as usize) % max_len;
+        let mut items = Vec::with_capacity(len);
+        for _ in 0..len {
+            items.push(Value::String(self.next_string(10).into()));
+        }
+        Value::list(items)
+    }
 }
 
 fn alist_list<'a>(entries: &'a [Expr], key: &str) -> Option<&'a [Expr]> {
@@ -753,12 +761,18 @@ fn property_tests_from_my() {
         for iteration in 0..100 {
             let mut session = Session::default();
             eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+            eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
+            eval_program(include_str!("../../../lib/persistent-map.my"), &mut session).unwrap();
+            eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
+            eval_program(include_str!("../../../lib/world.my"), &mut session).unwrap();
+            eval_program(include_str!("../../../tests/fixtures/properties-helpers.my"), &mut session).unwrap();
 
             for (i, &t) in type_strings.iter().enumerate() {
                 let val = match t {
                     "int" => Value::Number(lcg.next_int() as f64, Exactness::Exact),
                     "string" => Value::String(lcg.next_string(10).into()),
                     "list" => lcg.next_list(10),
+                    "string-list" => lcg.next_string_list(10),
                     _ => panic!("Unknown type: {}", t),
                 };
                 session.environment.define(param_names[i], val);
