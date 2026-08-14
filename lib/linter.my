@@ -51,6 +51,22 @@
 ; 5. Hidden globals: Identify free variables that are not explicitly passed as arguments
 ; (simplified: just collect all symbols used as variables that aren't in standard core)
 ; A true global dependency checker requires walking `let` and `lambda` bindings.
+(def collect-free-vars-let*
+  (lambda (bindings body bound-vars)
+    (cond
+      ((equal? bindings '()) (collect-free-vars body bound-vars))
+      (t (let ((b-name (symbol->string (car (car bindings))))
+               (b-val (second (car bindings))))
+           (append (collect-free-vars b-val bound-vars)
+                   (collect-free-vars-let* (cdr bindings) body (cons b-name bound-vars))))))))
+
+(def collect-free-vars-letrec
+  (lambda (bindings body bound-vars)
+    (let ((all-names (map (lambda (b) (symbol->string (car b))) bindings)))
+      (let ((new-bound (append all-names bound-vars)))
+        (append (reduce append '() (map (lambda (b) (collect-free-vars (second b) new-bound)) bindings))
+                (collect-free-vars body new-bound))))))
+
 (def collect-free-vars
   (lambda (ast bound-vars)
     (cond
@@ -59,21 +75,43 @@
          ((symbol? ast)
           (cond
             ((member? (symbol->string ast) bound-vars) '())
-            ((member? (symbol->string ast) '("t" "def" "defmacro" "lambda" "cond" "quote" "list" "car" "cdr" "cons" "eq" "atom" "+" "-" "*" "/" "<" ">" "=" "<=" ">=" "print" "read" "eval")) '())
+            ((member? (symbol->string ast) '("t" "def" "defmacro" "lambda" "let" "let*" "letrec" "cond" "quote" "list" "car" "cdr" "cons" "eq" "atom" "+" "-" "*" "/" "<" ">" "=" "<=" ">=" "print" "read" "eval")) '())
             (t (list ast))))
          (t '())))
-      ((eq (car ast) 'quote) '())
-      ((eq (car ast) 'lambda)
+      ((equal? (car ast) 'quote) '())
+      ((equal? (car ast) 'lambda)
        (let ((params (car (cdr ast)))
              (body (car (cdr (cdr ast)))))
          (collect-free-vars body (append (map (lambda (p) (symbol->string p)) params) bound-vars))))
-      ((eq (car ast) 'let)
-       ; Simplified let: only considers basic let
+      ((equal? (car ast) 'defmacro)
+       (let ((params (car (cdr (cdr ast))))
+             (body (car (cdr (cdr (cdr ast))))))
+         (collect-free-vars body (append (map (lambda (p) (symbol->string p)) params) bound-vars))))
+      ((equal? (car ast) 'let)
+       (cond
+         ((symbol? (car (cdr ast)))
+          ; Named let
+          (let ((name (symbol->string (car (cdr ast))))
+                (bindings (car (cdr (cdr ast))))
+                (body (car (cdr (cdr (cdr ast))))))
+            (let ((new-bound (cons name (append (map (lambda (b) (symbol->string (car b))) bindings) bound-vars))))
+              (append (reduce append '() (map (lambda (b) (collect-free-vars (second b) bound-vars)) bindings))
+                      (collect-free-vars body new-bound)))))
+         (t
+          ; Basic let
+          (let ((bindings (car (cdr ast)))
+                (body (car (cdr (cdr ast)))))
+            (let ((new-bound (append (map (lambda (b) (symbol->string (car b))) bindings) bound-vars)))
+              (append (reduce append '() (map (lambda (b) (collect-free-vars (second b) bound-vars)) bindings))
+                      (collect-free-vars body new-bound)))))))
+      ((equal? (car ast) 'let*)
        (let ((bindings (car (cdr ast)))
              (body (car (cdr (cdr ast)))))
-         (let ((new-bound (append (map (lambda (b) (symbol->string (car b))) bindings) bound-vars)))
-           (append (reduce append '() (map (lambda (b) (collect-free-vars (second b) bound-vars)) bindings))
-                   (collect-free-vars body new-bound)))))
+         (collect-free-vars-let* bindings body bound-vars)))
+      ((equal? (car ast) 'letrec)
+       (let ((bindings (car (cdr ast)))
+             (body (car (cdr (cdr ast)))))
+         (collect-free-vars-letrec bindings body bound-vars)))
       (t (append (collect-free-vars (car ast) bound-vars)
                  (collect-free-vars (cdr ast) bound-vars))))))
 

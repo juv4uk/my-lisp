@@ -30,3 +30,19 @@
   (expr . "(lint-globals '(lambda (x y) (+ x y z)))")
   (expected . "(z)")
 )
+(
+  (expr . "(lint-globals '(let* ((x 1) (y x)) (+ x y z)))")
+  (expected . "(z)")
+)
+(
+  (expr . "(lint-globals '(letrec ((even? (lambda (n) (odd? n))) (odd? (lambda (n) (even? n)))) (even? z)))")
+  (expected . "(z)")
+)
+(
+  (expr . "(lint-globals '(let loop ((n 10)) (cond ((= n 0) z) (t (loop (- n 1))))))")
+  (expected . "(z)")
+)
+(
+  (expr . "(lint-globals '(defmacro m (a b) (+ a b c)))")
+  (expected . "(c)")
+)
