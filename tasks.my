@@ -1,10 +1,10 @@
-; tasks.my — durable task plan for the my-lisp agent, per
+; tasks.my вЂ” durable task plan for the my-lisp agent, per
 ; docs/swarm-autonomy.md (P2P on one server: this file is this repo's
 ; plan of record; sync it into the shared 127.0.0.1:9999 registry with
 ; the sync-tasks op after edits and after any server restart).
 ;
-; Data only — same flat-alist convention as ecosystem-status.my.
-; `done . t` only when real in-repo evidence exists (durability rule:
+; Data only вЂ” same flat-alist convention as ecosystem-status.my.
+; done . t only when real in-repo evidence exists (durability rule:
 ; file first, pointer later). Re-sync after editing.
 
 ((kind . tasks-my)
@@ -19,4 +19,12 @@
                              (depends-on . ("SWARM-P2P-SYNC"))))
    ("SWARM-P2P-ROLLOUT" . ((priority . 0.7) (capabilities . (docs lisp))
                            (depends-on . ("SWARM-P2P-DOC"))
-                           (done . t))))))
+                           (done . t)))
+   ("SWARM-REMOTE-ORACLE-RESTART" . ((priority . 0.9) (capabilities . (ops rust))
+                                     (description . "Restart semantic oracle service on the droplet (100.113.68.50:9999)")))
+   ("SWARM-NODE-SYSTEMD-SERVICE" . ((priority . 0.8) (capabilities . (ops))
+                                    (description . "Create a systemd supervisor for swarm-node on the droplet.")))
+   ("SWARM-REMOTE-USER-ISOLATION" . ((priority . 0.8) (capabilities . (ops))
+                                     (description . "Implement per-agent user isolation on the droplet.")))
+   ("SWARM-AUTH-PEER-IDENTITY" . ((priority . 0.7) (capabilities . (rust crypto))
+                                  (description . "Implement authenticated peer identity (M0.11 spoofing gap)."))))))
