@@ -48,7 +48,7 @@
      (evidence . "evidence/G5/fpga-lisp/, evidence/G8/fpga-lisp/ in the fpga-lisp repo — see evidence/README.md's protocol; M28-M32 results reported via mailbox as of this writing, not yet filed as evidence/ records")
      (hardware-verified-milestones . (m01 . m32))
      (m28-m29-m30-m31 . "letrec self-recursion (M28), canonical tail-recursive length/length-onto (M29), reverse/reverse-onto — first real CONS-structure result (M30), append built on M30 (M31, commit 4a4f032) — all PASSED on real iverilog, cross-checked against the my-lisp TCP oracle")
-     (m32 . "equal? — PASSED on real iverilog first try (commit 4a218fb): (equal? '(p . q) '(p . q)) => t via structural, not pointer, equality across two separately-allocated cons cells")
+     (m32 . "equal? — PASSED on real iverilog first try (commit 4a218fb): (equal? (quote (p . q)) (quote (p . q))) => t via structural, not pointer, equality across two separately-allocated cons cells")
      (open-blocker . nil)
      (isa-representational-gaps . (no-inexact-numbers no-rationals no-string-tag))
      (current-task . "M32 equal? just landed (32/32 milestones); next unclear as of this writing — check mailbox/NOTE-FROM-MY-LISP.md for latest")))
@@ -84,6 +84,6 @@
      (cml . "in progress — recursive def resolved (e73f93a), length_e2e run underway via tb_cml_e2e.sv")
      (fpga-lisp . "waiting on cml's run to land, then decode the result structurally and confirm")
      (my-idea . "not started — one panel: source -> compiled instructions -> execution -> decoded result -> oracle match, PASS/FAIL")))
-   (anti-pattern-to-avoid . "no more NOTE-*.md proliferation or 'agent X replied to agent Y' commits — coordinate through this file's current-task fields and normal commits that actually touch code")))
+   (anti-pattern-to-avoid . "no more NOTE-*.md proliferation or (quote agent) X replied to agent Y' commits — coordinate through this file's current-task fields and normal commits that actually touch code")))
  (how-to-refresh .
   "Before starting new work, read this file's current-task fields. When your own repo's task changes, hand-update your repository's current-task entry and this file's as-of date directly (or notify the my-lisp session to do it if you can't write here) — don't let it go stale the way it did between 2026-08-11 and 2026-08-12 (recursive-def and M28-M32 status both drifted out of date here while very much current in mailbox/NOTE-* traffic)."))

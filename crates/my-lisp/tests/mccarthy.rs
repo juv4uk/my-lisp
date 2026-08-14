@@ -200,7 +200,7 @@ fn eval_closes_the_read_eval_loop_by_hand() {
 fn eval_looks_up_a_quoted_symbol_in_the_calling_environment() {
     let mut session = Session::default();
     eval_program("(def x 5)", &mut session).unwrap();
-    let result = eval_program("(eval 'x)", &mut session).unwrap();
+    let result = eval_program("(eval (quote x))", &mut session).unwrap();
     assert_eq!(result.value, Value::Number(5.0, Exactness::Exact));
 }
 
@@ -216,7 +216,7 @@ fn print_inside_a_closure_shares_the_root_sessions_output() {
     // Environment::child() must share the parent's output sink (not start a
     // fresh one per call frame), or `print` inside a lambda body would be
     // invisible to the caller's EvalResult.output.
-    let source = "((lambda () (print 'inside) 'done))";
+    let source = "((lambda () (print (quote inside)) (quote done)))";
     let result = eval_program(source, &mut Session::default()).unwrap();
     assert_eq!(result.value, Value::Symbol("done".into()));
     assert_eq!(result.output, vec!["inside".to_string()]);
@@ -228,7 +228,7 @@ fn tail_recursion_uses_constant_rust_stack() {
     let mut definitions = (0..depth - 1)
         .map(|index| format!("(def step-{index} (lambda () (step-{})))", index + 1))
         .collect::<Vec<_>>();
-    definitions.push(format!("(def step-{} (lambda () 'done))", depth - 1));
+    definitions.push(format!("(def step-{} (lambda () (quote done)))", depth - 1));
     let source = format!("{} (step-0)", definitions.join(" "));
     assert_eq!(eval(&source), Value::Symbol("done".into()));
 }
@@ -238,13 +238,13 @@ fn bootstrap_library_is_written_and_executed_in_my_lisp() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     assert_eq!(
-        eval_program("(second '(radio antenna))", &mut session)
+        eval_program("(second (quote (radio antenna)))", &mut session)
             .unwrap()
             .value,
         Value::Symbol("antenna".into())
     );
     assert_eq!(
-        eval_program("(not '())", &mut session).unwrap().value,
+        eval_program("(not (quote ()))", &mut session).unwrap().value,
         Value::Bool(true)
     );
 }
@@ -256,20 +256,20 @@ fn bootstrap_library_provides_list_utilities() {
     let run = |source: &str, session: &mut Session| {
         eval_program(source, session).unwrap().value.to_string()
     };
-    assert_eq!(run("(length '(radio antenna signal))", &mut session), "3");
-    assert_eq!(run("(length '())", &mut session), "0");
-    assert_eq!(run("(reverse '(1 2 3))", &mut session), "(3 2 1)");
-    assert_eq!(run("(append '(1 2) '(3 4))", &mut session), "(1 2 3 4)");
+    assert_eq!(run("(length (quote (radio antenna signal)))", &mut session), "3");
+    assert_eq!(run("(length (quote ()))", &mut session), "0");
+    assert_eq!(run("(reverse (quote (1 2 3)))", &mut session), "(3 2 1)");
+    assert_eq!(run("(append (quote (1 2)) (quote (3 4)))", &mut session), "(1 2 3 4)");
     assert_eq!(
-        run("(map (lambda (x) (+ x 1)) '(1 2 3))", &mut session),
+        run("(map (lambda (x) (+ x 1)) (quote (1 2 3)))", &mut session),
         "(2 3 4)"
     );
     assert_eq!(
-        run("(filter (lambda (x) (eq x 2)) '(1 2 3 2))", &mut session),
+        run("(filter (lambda (x) (eq x 2)) (quote (1 2 3 2)))", &mut session),
         "(2 2)"
     );
     assert_eq!(
-        run("(reduce (lambda (acc x) (+ acc x)) 0 '(1 2 3 4))", &mut session),
+        run("(reduce (lambda (acc x) (+ acc x)) 0 (quote (1 2 3 4)))", &mut session),
         "10"
     );
 }
@@ -308,62 +308,62 @@ fn bootstrap_library_provides_deep_structural_equality() {
     let run = |source: &str, session: &mut Session| {
         eval_program(source, session).unwrap().value.to_string()
     };
-    assert_eq!(run("(equal? '(1 2 3) '(1 2 3))", &mut session), "t");
-    assert_eq!(run("(equal? '(1 2 3) '(1 2 4))", &mut session), "()");
+    assert_eq!(run("(equal? (quote (1 2 3)) (quote (1 2 3)))", &mut session), "t");
+    assert_eq!(run("(equal? (quote (1 2 3)) (quote (1 2 4)))", &mut session), "()");
     assert_eq!(
-        run("(equal? '(1 (2 3) 4) '(1 (2 3) 4))", &mut session),
+        run("(equal? (quote (1 (2 3) 4)) (quote (1 (2 3) 4)))", &mut session),
         "t"
     );
-    assert_eq!(run("(equal? '() '())", &mut session), "t");
-    assert_eq!(run("(equal? 'radio 'radio)", &mut session), "t");
+    assert_eq!(run("(equal? (quote ()) (quote ()))", &mut session), "t");
+    assert_eq!(run("(equal? (quote radio) (quote radio))", &mut session), "t");
     // Different lengths, and an atom compared against a compound term —
     // neither should ever reach `eq` with a non-atom operand.
-    assert_eq!(run("(equal? '(1 2) '(1 2 3))", &mut session), "()");
-    assert_eq!(run("(equal? 5 '(5))", &mut session), "()");
-    assert_eq!(run("(equal? '(1 2) 5)", &mut session), "()");
+    assert_eq!(run("(equal? (quote (1 2)) (quote (1 2 3)))", &mut session), "()");
+    assert_eq!(run("(equal? 5 (quote (5)))", &mut session), "()");
+    assert_eq!(run("(equal? (quote (1 2)) 5)", &mut session), "()");
 }
 
 #[test]
 fn reader_supports_unicode_comments_and_quote_sugar() {
     let expressions = parse("; коментар\n'радіо").unwrap();
     assert_eq!(expressions.len(), 1);
-    assert_eq!(eval("'радіо"), Value::Symbol("радіо".into()));
+    assert_eq!(eval("(quote радіо)"), Value::Symbol("радіо".into()));
 }
 
 #[test]
 fn implements_mccarthys_seven_primitives() {
     assert_eq!(eval("(quote radio)"), Value::Symbol("radio".into()));
-    assert_eq!(eval("(atom 'radio)"), Value::Bool(true));
-    assert_eq!(eval("(atom '())"), Value::Bool(true));
-    assert_eq!(eval("(atom '(radio antenna))"), Value::Bool(false));
-    assert_eq!(eval("(eq 'radio 'radio)"), Value::Bool(true));
-    assert_eq!(eval("(eq 'radio 'antenna)"), Value::Bool(false));
+    assert_eq!(eval("(atom (quote radio))"), Value::Bool(true));
+    assert_eq!(eval("(atom (quote ()))"), Value::Bool(true));
+    assert_eq!(eval("(atom (quote (radio antenna)))"), Value::Bool(false));
+    assert_eq!(eval("(eq (quote radio) (quote radio))"), Value::Bool(true));
+    assert_eq!(eval("(eq (quote radio) (quote antenna))"), Value::Bool(false));
     assert_eq!(
-        eval("(car '(radio antenna))"),
+        eval("(car (quote (radio antenna)))"),
         Value::Symbol("radio".into())
     );
     assert_eq!(
-        eval("(cdr '(radio antenna))"),
+        eval("(cdr (quote (radio antenna)))"),
         Value::list([Value::Symbol("antenna".into())])
     );
     assert_eq!(
-        eval("(cons 'radio '(antenna))"),
+        eval("(cons (quote radio) (quote (antenna)))"),
         Value::list([
             Value::Symbol("radio".into()),
             Value::Symbol("antenna".into())
         ])
     );
     assert_eq!(
-        eval("(cond (() 'wrong) (t 'right))"),
+        eval("(cond (() (quote wrong)) (t (quote right)))"),
         Value::Symbol("right".into())
     );
 }
 
 #[test]
 fn reports_structured_errors_with_source_spans() {
-    let error = eval_program("(car '())", &mut Session::default()).unwrap_err();
+    let error = eval_program("(car (quote ()))", &mut Session::default()).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Type);
-    assert_eq!((error.span.start, error.span.end), (0, 9));
+    assert_eq!((error.span.start, error.span.end), (0, 16));
 
     let parse_error = parse("(cons 'a").unwrap_err();
     assert_eq!(parse_error.kind, ErrorKind::Parse);
@@ -387,7 +387,7 @@ fn lambda_captures_lexical_environment_and_keeps_parameters_local() {
         .define("station", Value::Symbol("radio".into()));
 
     let result = eval_program(
-        "((lambda (suffix) (cons station suffix)) '(antenna))",
+        "((lambda (suffix) (cons station suffix)) (quote (antenna)))",
         &mut session,
     )
     .unwrap();
@@ -405,7 +405,7 @@ fn lambda_captures_lexical_environment_and_keeps_parameters_local() {
 #[test]
 fn lambda_is_a_first_class_value() {
     assert_eq!(
-        eval("((lambda (apply-once) (apply-once 'radio)) (lambda (x) (cons x '())))"),
+        eval("((lambda (apply-once) (apply-once (quote radio))) (lambda (x) (cons x (quote ()))))"),
         Value::list([Value::Symbol("radio".into())])
     );
 }
@@ -462,7 +462,7 @@ fn variadic_lambda_still_requires_its_fixed_parameters() {
 fn variadic_defmacro_binds_unevaluated_rest_arguments() {
     let mut session = Session::default();
     let result = eval_program(
-        "(defmacro my-list items (cons 'quote (cons items '()))) (my-list 1 2 3)",
+        "(defmacro my-list items (cons (quote quote) (cons items (quote ())))) (my-list 1 2 3)",
         &mut session,
     )
     .unwrap();
@@ -532,7 +532,7 @@ fn princ_outputs_a_string_raw_without_quotes_or_escapes() {
 #[test]
 fn princ_and_print_render_symbols_and_numbers_identically() {
     assert_eq!(
-        eval_program("(princ 'radio)", &mut Session::default())
+        eval_program("(princ (quote radio))", &mut Session::default())
             .unwrap()
             .output,
         vec!["radio".to_string()]
@@ -793,9 +793,9 @@ fn property_tests_from_my() {
 
 #[test]
 fn symbol_to_string_and_back_round_trips() {
-    assert_eq!(eval("(symbol->string 'planet)").to_string(), "\"planet\"");
+    assert_eq!(eval("(symbol->string (quote planet))").to_string(), "\"planet\"");
     assert_eq!(
-        eval("(string->symbol (symbol->string 'planet))").to_string(),
+        eval("(string->symbol (symbol->string (quote planet)))").to_string(),
         "planet"
     );
 }
@@ -803,7 +803,7 @@ fn symbol_to_string_and_back_round_trips() {
 #[test]
 fn string_first_returns_a_one_character_string() {
     assert_eq!(
-        eval("(string-first (symbol->string '?x))").to_string(),
+        eval("(string-first (symbol->string (quote ?x)))").to_string(),
         "\"?\""
     );
 }
@@ -811,7 +811,7 @@ fn string_first_returns_a_one_character_string() {
 #[test]
 fn string_rest_drops_exactly_the_first_character() {
     assert_eq!(
-        eval("(string-rest (symbol->string '?x))").to_string(),
+        eval("(string-rest (symbol->string (quote ?x)))").to_string(),
         "\"x\""
     );
 }
@@ -828,7 +828,7 @@ fn read_all_parses_every_top_level_form_as_data() {
 
 #[test]
 fn read_all_rejects_a_non_string() {
-    let error = eval_program("(read-all '(a b))", &mut Session::default())
+    let error = eval_program("(read-all (quote (a b)))", &mut Session::default())
         .expect_err("expected a Type error");
     assert_eq!(error.kind, ErrorKind::Type);
 }
@@ -836,7 +836,7 @@ fn read_all_rejects_a_non_string() {
 #[test]
 fn string_predicate_distinguishes_strings_from_other_atoms() {
     assert_eq!(eval("(string? \"hello\")").to_string(), "t");
-    assert_eq!(eval("(string? 'hello)").to_string(), "()");
+    assert_eq!(eval("(string? (quote hello))").to_string(), "()");
     assert_eq!(eval("(string? 5)").to_string(), "()");
 }
 
@@ -845,7 +845,7 @@ fn symbol_predicate_is_a_my_lisp_function_not_a_rust_builtin() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     assert_eq!(
-        eval_program("(symbol? 'hello)", &mut session)
+        eval_program("(symbol? (quote hello))", &mut session)
             .unwrap()
             .value,
         Value::Bool(true)
@@ -861,7 +861,7 @@ fn symbol_predicate_is_a_my_lisp_function_not_a_rust_builtin() {
         Value::Nil
     );
     assert_eq!(
-        eval_program("(symbol? '(hello))", &mut session)
+        eval_program("(symbol? (quote (hello)))", &mut session)
             .unwrap()
             .value,
         Value::Nil
@@ -876,7 +876,7 @@ fn symbol_predicate_is_a_my_lisp_function_not_a_rust_builtin() {
         Value::Bool(true)
     );
     assert_eq!(
-        eval_program("(symbol? 'hello)", &mut Session::default())
+        eval_program("(symbol? (quote hello))", &mut Session::default())
             .unwrap_err()
             .kind,
         ErrorKind::UnknownSymbol
@@ -903,7 +903,7 @@ fn string_rest_rejects_an_empty_string() {
 // --- dotted pairs: read ∘ print must be identity ------------------------
 // Before this, `'(p . 0)` read as a *proper* 3-element list containing the
 // literal symbol `.` in the middle — not a real dotted pair — even though
-// the printer renders a genuine `(cons 'p 0)` with exactly that same text.
+// the printer renders a genuine `(cons (quote p) 0)` with exactly that same text.
 // The two structures printed identically but were never `equal?`. This is
 // exactly the P2 axiom violation flagged while discussing
 // `my-lisp-constitution.json`: every value must round-trip through
@@ -920,28 +920,28 @@ fn eval_with_core(source: &str) -> Value {
 #[test]
 fn a_quoted_dotted_pair_literal_equals_the_cons_it_prints_as() {
     assert_eq!(
-        eval_with_core("(equal? '(p . 0) (cons 'p 0))").to_string(),
+        eval_with_core("(equal? (quote (p . 0)) (cons (quote p) 0))").to_string(),
         "t"
     );
 }
 
 #[test]
 fn read_of_a_printed_dotted_pair_reconstructs_the_same_structure() {
-    // The literal round-trip: `(cons 'p 0)` prints as the text "(p . 0)"
+    // The literal round-trip: `(cons (quote p) 0)` prints as the text "(p . 0)"
     // (see value.rs's `write_pair`); feeding that exact text back through
     // `read` must reconstruct something `equal?` to the original cons cell.
     assert_eq!(
-        eval_with_core(r#"(equal? (read "(p . 0)") (cons 'p 0))"#).to_string(),
+        eval_with_core(r#"(equal? (read "(p . 0)") (cons (quote p) 0))"#).to_string(),
         "t"
     );
 }
 
 #[test]
 fn a_multi_element_dotted_list_reads_as_nested_pairs() {
-    assert_eq!(eval("'(a b . c)").to_string(), "(a b . c)");
-    assert_eq!(eval("(car '(a b . c))").to_string(), "a");
-    assert_eq!(eval("(car (cdr '(a b . c)))").to_string(), "b");
-    assert_eq!(eval("(cdr (cdr '(a b . c)))").to_string(), "c");
+    assert_eq!(eval("(quote (a b . c))").to_string(), "(a b . c)");
+    assert_eq!(eval("(car (quote (a b . c)))").to_string(), "a");
+    assert_eq!(eval("(car (cdr (quote (a b . c))))").to_string(), "b");
+    assert_eq!(eval("(cdr (cdr (quote (a b . c))))").to_string(), "c");
 }
 
 #[test]
@@ -986,7 +986,7 @@ fn constitution_my_stays_in_sync_with_conformance_my() {
             let ExprKind::List(items) = &form.kind else {
                 return None;
             };
-            // `(print (cons 'fixture fixture))` in build-constitution.my
+            // `(print (cons (quote fixture) fixture))` in build-constitution.my
             // prints as `(fixture (expr . ...) (expected . ...) ...)` — the
             // fixture alist's own entries spliced in as `cons`'s tail, not
             // wrapped in a nested list, since `fixture` here is already a
@@ -1061,7 +1061,7 @@ fn symbolic_reasoning_layer_stays_loaded_and_tested() {
         .expect("lib/reason.my should load — the symbolic reasoning layer must stay present");
 
     let result = eval_program(
-        "(let ((rules '(((parent alice bob))))) (reason '(parent alice bob) rules))",
+        "(let ((rules (quote (((parent alice bob)))))) (reason (quote (parent alice bob)) rules))",
         &mut session,
     )
     .expect("reason should still actually prove a fact, not just load without error");
@@ -1203,11 +1203,11 @@ fn write_file_then_read_file_round_trips_the_same_content() {
 #[test]
 fn write_to_string_round_trips_structured_data_without_printing() {
     let mut session = Session::default();
-    let result = eval_program(r#"(write-to-string '(package "radio" 3/2))"#, &mut session)
+    let result = eval_program(r#"(write-to-string (quote (package "radio" 3/2)))"#, &mut session)
         .expect("structured data should serialize");
     assert_eq!(result.value, Value::String(r#"(package "radio" 3/2)"#.into()));
     assert!(result.output.is_empty());
-    let reread = eval_program(r#"(read (write-to-string '(package "radio" 3/2)))"#, &mut session)
+    let reread = eval_program(r#"(read (write-to-string (quote (package "radio" 3/2))))"#, &mut session)
         .expect("serialized data should read back");
     assert_eq!(reread.value.to_string(), r#"(package "radio" 3/2)"#);
 }
@@ -1311,7 +1311,7 @@ fn write_file_bytes_then_read_file_bytes_round_trips_non_utf8_bytes() {
     let path_str = path.to_str().expect("temp path should be valid UTF-8").replace('\\', "/");
     // 255 and 254 are not valid standalone UTF-8 bytes — this is the exact
     // case write-file (String-based) cannot represent.
-    let source = format!(r#"(write-file-bytes "{path_str}" '(0 1 2 255 65 254))"#);
+    let source = format!(r#"(write-file-bytes "{path_str}" (quote (0 1 2 255 65 254)))"#);
     let mut session = Session::default();
     let result = eval_program(&source, &mut session).expect("write-file-bytes should succeed");
     assert_eq!(
@@ -1334,7 +1334,7 @@ fn write_file_bytes_then_read_file_bytes_round_trips_non_utf8_bytes() {
 
 #[test]
 fn write_file_bytes_rejects_a_non_string_path() {
-    let error = eval_program(r#"(write-file-bytes 42 '(1 2 3))"#, &mut Session::default())
+    let error = eval_program(r#"(write-file-bytes 42 (quote (1 2 3)))"#, &mut Session::default())
         .expect_err("a non-string path must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
 }
@@ -1348,14 +1348,14 @@ fn write_file_bytes_rejects_a_non_list_second_argument() {
 
 #[test]
 fn write_file_bytes_rejects_an_out_of_range_element() {
-    let error = eval_program(r#"(write-file-bytes "path-does-not-matter.bin" '(1 256 3))"#, &mut Session::default())
+    let error = eval_program(r#"(write-file-bytes "path-does-not-matter.bin" (quote (1 256 3)))"#, &mut Session::default())
         .expect_err("an element above 255 must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
 }
 
 #[test]
 fn write_file_bytes_rejects_a_negative_element() {
-    let error = eval_program(r#"(write-file-bytes "path-does-not-matter.bin" '(1 -1 3))"#, &mut Session::default())
+    let error = eval_program(r#"(write-file-bytes "path-does-not-matter.bin" (quote (1 -1 3)))"#, &mut Session::default())
         .expect_err("a negative element must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
 }
@@ -1478,7 +1478,7 @@ fn process_run_succeeds_for_an_explicitly_allowed_program() {
     let Value::String(ref stdout) = **stdout else {
         panic!("stdout should be a string");
     };
-    assert!(stdout.contains("git version"), "expected stdout to contain 'git version', got {stdout:?}");
+    assert!(stdout.contains("git version"), "expected stdout to contain (quote git) version', got {stdout:?}");
 }
 
 #[test]
@@ -1603,7 +1603,7 @@ fn car_on_a_non_pair_fails_named_not_panics() {
 
 #[test]
 fn car_on_the_empty_list_fails_named_not_panics() {
-    let error = eval_program("(car '())", &mut Session::default())
+    let error = eval_program("(car (quote ()))", &mut Session::default())
         .expect_err("car on the empty list must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
 }
@@ -1631,7 +1631,7 @@ fn cons_wrong_arity_is_an_arity_error() {
 
 #[test]
 fn eq_rejects_non_atom_arguments() {
-    let error = eval_program("(eq '(1 2) '(1 2))", &mut Session::default())
+    let error = eval_program("(eq (quote (1 2)) (quote (1 2)))", &mut Session::default())
         .expect_err("eq on two non-atom lists must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
 }

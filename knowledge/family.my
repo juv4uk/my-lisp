@@ -4,7 +4,7 @@
 ;; itself documents in its own header comment ("standardizing apart ...
 ;; allows for recursive logic!") — this domain uses `ancestor` specifically
 ;; to exercise that, not just add more toy facts.
-(defmodule family '(
+(defmodule family (quote (
   ;; Facts — a small family tree, three generations
   ((parent tom bob))
   ((parent tom liz))
@@ -22,4 +22,4 @@
   ;; grandparent above. This is the actual point of the domain.
   ((ancestor (var x) (var y)) (parent (var x) (var y)))
   ((ancestor (var x) (var y)) (parent (var x) (var z)) (ancestor (var z) (var y)))
-))
+)))

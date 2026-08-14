@@ -48,14 +48,14 @@
 
 (def reason
   (lambda (goal rules)
-    (prove-goal goal rules '() rules 0)))
+    (prove-goal goal rules (quote ()) rules 0)))
 
 ; Proves a single goal against a list of rules, accumulating successful substitutions and proof trees.
 ; Returns a list of `(subst proof)` pairs.
 (def prove-goal
   (lambda (goal rules subst all-rules depth)
     (cond
-      ((atom rules) '())
+      ((atom rules) (quote ()))
       (t (append 
            (prove-rule goal (car rules) subst all-rules depth)
            (prove-goal goal (cdr rules) subst all-rules depth))))))
@@ -65,13 +65,13 @@
   (lambda (term depth)
     (cond
       ((atom term) term)
-      ((var? term) (list 'var (cons (second term) depth)))
+      ((var? term) (list (quote var) (cons (second term) depth)))
       (t (cons (rename-vars (car term) depth) (rename-vars (cdr term) depth))))))
 
 (def map-proofs
   (lambda (f lst)
     (cond
-      ((atom lst) '())
+      ((atom lst) (quote ()))
       (t (cons (f (car lst)) (map-proofs f (cdr lst)))))))
 
 ; Tries to unify the goal with the head of a single rule, then proves its body.
@@ -80,11 +80,11 @@
     (let ((renamed-rule (rename-vars rule depth)))
       (let ((new-subst (unify goal (car renamed-rule) subst)))
         (cond
-          ((failed-subst? new-subst) '())
+          ((failed-subst? new-subst) (quote ()))
           (t (let ((body-results (prove-goals (cdr renamed-rule) new-subst all-rules (+ depth 1))))
                (map-proofs (lambda (res) 
                              (list (car res) 
-                                   (list 'proved goal (car renamed-rule) (cadr res)))) 
+                                   (list (quote proved) goal (car renamed-rule) (cadr res)))) 
                            body-results))))))))
 
 ; Proves a conjunction (list) of goals sequentially, threading substitutions
@@ -127,7 +127,7 @@
 ; Reihenfolge zu dem, was diese Funktion vor diesem Refactoring lieferte.
 (def prove-goals
   (lambda (goals subst all-rules depth)
-    (thread-conjunction goals (list subst '())
+    (thread-conjunction goals (list subst (quote ()))
       (lambda (goal state) (prove-goal-state goal state all-rules depth)))))
 
 (def prove-goal-state
@@ -135,19 +135,19 @@
     (let ((subst (car state))
           (proofs (second state)))
       (cond
-        ((eq (car goal) 'not)
+        ((eq (car goal) (quote not))
          (let ((not-result (prove-goal (second goal) all-rules subst all-rules depth)))
            (cond
              ((atom not-result)
               ; The inner goal failed, so `not` succeeds!
-              (list (list subst (append proofs (list (list 'proved-not (second goal)))))))
-             (t '()))))
+              (list (list subst (append proofs (list (list (quote proved-not) (second goal)))))))
+             (t (quote ())))))
         (t (map-goal-results (prove-goal goal all-rules subst all-rules depth) proofs))))))
 
 (def map-goal-results
   (lambda (results proofs)
     (cond
-      ((atom results) '())
+      ((atom results) (quote ()))
       (t (cons (list (car (car results)) (append proofs (list (second (car results)))))
                 (map-goal-results (cdr results) proofs))))))
 
@@ -159,36 +159,36 @@
 (def explain-proof-node
   (lambda (node level)
     (cond
-      ((eq (car node) 'proved)
-       (let* ((_2 (print 'Proved:))
+      ((eq (car node) (quote proved))
+       (let* ((_2 (print (quote Proved:)))
               (_3 (print (second node)))
-              (_4 (print 'using))
-              (_5 (print 'rule:))
+              (_4 (print (quote using)))
+              (_5 (print (quote rule:)))
               (_6 (print (third node))))
          (explain-proof-list (cadddr node) (+ level 1))))
-      ((eq (car node) 'proved-not)
-       (let* ((_2 (print 'Proved))
-              (_3 (print 'by))
-              (_4 (print 'failure:))
-              (_5 (print 'not))
+      ((eq (car node) (quote proved-not))
+       (let* ((_2 (print (quote Proved)))
+              (_3 (print (quote by)))
+              (_4 (print (quote failure:)))
+              (_5 (print (quote not)))
               (_6 (print (second node))))
-         '()))
-      (t '()))))
+         (quote ())))
+      (t (quote ())))))
 
 (def explain-proof-list
   (lambda (nodes level)
     (cond
-      ((atom nodes) '())
+      ((atom nodes) (quote ()))
       (t (let* ((_1 (print-indent level))
-                (_2 (print '|-))
+                (_2 (print (quote |-)))
                 (_3 (explain-proof-node (car nodes) level)))
            (explain-proof-list (cdr nodes) level))))))
 
 (def print-indent
   (lambda (level)
     (cond
-      ((eq level 0) '())
-      (t (let ((_ (print '..)))
+      ((eq level 0) (quote ()))
+      (t (let ((_ (print (quote ..))))
            (print-indent (- level 1)))))))
 
 ; `reason` returning an empty list is ambiguous by itself: it could mean "known
@@ -218,10 +218,10 @@
     (let ((results (reason goal rules)))
       (cond
         ((atom results)
-         (let* ((_1 (print 'Cannot))
-                (_2 (print 'prove:))
+         (let* ((_1 (print (quote Cannot)))
+                (_2 (print (quote prove:)))
                 (_3 (print goal)))
-           '()))
+           (quote ())))
         (t (explain-proof (second (car results))))))))
 
 ; A growing knowledge tree can silently become "dead" (Cyc-style write-only
@@ -263,14 +263,14 @@
 (def count-usage
   (lambda (node)
     (cond
-      ((eq (car node) 'proved)
+      ((eq (car node) (quote proved))
        (add-usage (cons (third node) 1) (count-usage-list (cadddr node))))
-      (t '()))))
+      (t (quote ())))))
 
 (def count-usage-list
   (lambda (nodes)
     (cond
-      ((atom nodes) '())
+      ((atom nodes) (quote ()))
       (t (merge-usage (count-usage (car nodes)) (count-usage-list (cdr nodes)))))))
 
 ; --- statement provenance ------------------------------------------------
@@ -304,21 +304,21 @@
 (def source-of
   (lambda (node)
     (cond
-      ((atom (cadddr node)) 'fact)
-      (t 'rule))))
+      ((atom (cadddr node)) (quote fact))
+      (t (quote rule)))))
 
 (def provenance
   (lambda (node)
     (cond
-      ((eq (car node) 'proved)
-       (list 'statement (second node)
-             (list 'source (source-of node))
-             (list 'rule (third node))
-             (list 'derived-from (provenance-list (cadddr node)))))
-      (t (list 'statement (second node) (list 'source 'not-proved))))))
+      ((eq (car node) (quote proved))
+       (list (quote statement) (second node)
+             (list (quote source) (source-of node))
+             (list (quote rule) (third node))
+             (list (quote derived-from) (provenance-list (cadddr node)))))
+      (t (list (quote statement) (second node) (list (quote source) (quote not-proved)))))))
 
 (def provenance-list
   (lambda (nodes)
     (cond
-      ((atom nodes) '())
+      ((atom nodes) (quote ()))
       (t (cons (provenance (car nodes)) (provenance-list (cdr nodes)))))))

@@ -46,7 +46,7 @@
 ; через `symbol->string`, ту саму конверсію, яку `describe` та інші вже
 ; вимагають в lib/knowledge.my.
 
-(def map-empty '())
+(def map-empty (quote ()))
 
 (def node-key (lambda (n) (car n)))
 (def node-value (lambda (n) (second n)))
@@ -129,7 +129,7 @@
 (def map-insert
   (lambda (key value tree)
     (cond
-      ((atom tree) (make-balanced-node key value '() '()))
+      ((atom tree) (make-balanced-node key value (quote ()) (quote ())))
       ((eq key (node-key tree))
        (make-balanced-node key value (node-left tree) (node-right tree)))
       ((string<? key (node-key tree))
@@ -153,7 +153,7 @@
 (def map-get
   (lambda (key tree)
     (cond
-      ((atom tree) '())
+      ((atom tree) (quote ()))
       ((eq key (node-key tree)) (list (node-value tree)))
       ((string<? key (node-key tree)) (map-get key (node-left tree)))
       (t (map-get key (node-right tree))))))
@@ -168,7 +168,7 @@
 (def map->list
   (lambda (tree)
     (cond
-      ((atom tree) '())
+      ((atom tree) (quote ()))
       (t (append (map->list (node-left tree))
                  (cons (cons (node-key tree) (node-value tree))
                        (map->list (node-right tree))))))))

@@ -9,7 +9,7 @@
     (cond
       ((atom l) t)
       ((atom (cdr l)) t)
-      ((string<? (car (car (cdr l))) (car (car l))) '())
+      ((string<? (car (car (cdr l))) (car (car l))) (quote ()))
       (t (map-keys-sorted? (cdr l))))))
 
 (def fib

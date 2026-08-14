@@ -66,7 +66,7 @@
 
 (def insert-sorted
   (lambda (sym sorted)
-    (insert-sorted-onto sym '() sorted)))
+    (insert-sorted-onto sym (quote ()) sorted)))
 
 (def sort-symbols-onto
   (lambda (remaining sorted)
@@ -76,19 +76,19 @@
 
 (def sort-symbols
   (lambda (symbols)
-    (sort-symbols-onto symbols '())))
+    (sort-symbols-onto symbols (quote ()))))
 
 (def print-table-onto
   (lambda (symbols id)
     (cond
-      ((atom symbols) '())
+      ((atom symbols) (quote ()))
       (t ((lambda ()
             (print (cons (symbol->string (car symbols)) id))
             (print-table-onto (cdr symbols) (+ id 1))))))))
 
 (def core-forms (read-all (read-file "lib/core.my")))
-(def all-symbols (collect-all-symbols core-forms '()))
+(def all-symbols (collect-all-symbols core-forms (quote ())))
 (def sorted-symbols (sort-symbols all-symbols))
 
 (print-table-onto sorted-symbols 0)
-'()
+(quote ())

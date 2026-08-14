@@ -72,8 +72,8 @@
 (def strip-article
   (lambda (words)
     (cond
-      ((eq (car words) 'a) (cdr words))
-      ((eq (car words) 'an) (cdr words))
+      ((eq (car words) (quote a)) (cdr words))
+      ((eq (car words) (quote an)) (cdr words))
       (t words))))
 
 (def understand-is
@@ -90,12 +90,12 @@
   (lambda (words)
     (let ((subject-class (second words))
           (property (cadddr words)))
-      (list (list 'has (list 'var 'w) property)
-            (list subject-class (list 'var 'w))))))
+      (list (list (quote has) (list (quote var) (quote w)) property)
+            (list subject-class (list (quote var) (quote w)))))))
 
 (def understand
   (lambda (words)
     (cond
-      ((eq (car words) 'all) (understand-universal words))
-      ((eq (second words) 'is) (understand-is words))
+      ((eq (car words) (quote all)) (understand-universal words))
+      ((eq (second words) (quote is)) (understand-is words))
       (t (understand-relation words)))))

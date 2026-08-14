@@ -18,7 +18,7 @@
 ;; both passed clean in this repo under it.
 
 (list (channel
-        (name 'guix)
+        (name (quote guix))
         (url "https://git.guix.gnu.org/guix.git")
         (branch "master")
         (commit

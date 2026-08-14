@@ -1727,7 +1727,7 @@ fn handle_sexpr_connection(
 /// stdout. This is the peer side of the mesh topology in
 /// docs/swarm-autonomy.md — every agent runs its own server, and agents
 /// talk to each other directly through this primitive, no shared hub:
-/// `printf '%s\n' '(request (op notify) (from "me") (to "you") (message "hi"))' |
+/// `printf (quote %s)\n' '(request (op notify) (from "me") (to "you") (message "hi"))' |
 ///   my-lisp --connect=127.0.0.1:9992`.
 fn run_client(address: &str) {
     let mut stream = match TcpStream::connect(address) {

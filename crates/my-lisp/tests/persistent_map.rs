@@ -48,7 +48,7 @@ fn absent_key_is_not_confused_with_a_stored_nil_value() {
     // exists specifically so a legitimately-stored `()` value is
     // distinguishable from "not found" — both print differently here.
     let source = r#"
-        (def m (map-insert "a" '() map-empty))
+        (def m (map-insert "a" (quote ()) map-empty))
         (list (map-get "a" m) (map-get "z" m) (map-contains? "a" m) (map-contains? "z" m))
     "#;
     assert_eq!(eval_map(source), "((()) () t ())");

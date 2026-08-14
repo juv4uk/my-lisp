@@ -35,7 +35,7 @@ fn eval_import(source: &str) -> String {
 fn clips_deffacts_becomes_zero_condition_clauses() {
     // A real CLIPS `deffacts` block, read as data rather than evaluated.
     let source = r#"
-        (clips-import '((deffacts initial-facts (planet earth) (planet mars) (star sun))))
+        (clips-import (quote ((deffacts initial-facts (planet earth) (planet mars) (star sun)))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -48,10 +48,10 @@ fn clips_import_skips_unsupported_forms_without_erroring() {
     // deffunction isn't supported (no step covers it) — a mixed file
     // still imports whatever it can, rather than failing the whole import.
     let source = r#"
-        (clips-import '(
+        (clips-import (quote (
             (deffacts initial-facts (planet earth))
             (deffunction square (?x) (* ?x ?x))
-        ))
+        )))
     "#;
     assert_eq!(eval_import(source), "(((planet earth)))");
 }
@@ -59,7 +59,7 @@ fn clips_import_skips_unsupported_forms_without_erroring() {
 #[test]
 fn clips_defrule_converts_question_mark_variables_to_var_terms() {
     let source = r#"
-        (clips-import '((defrule mass-rule (planet ?x) => (assert (has-mass ?x)))))
+        (clips-import (quote ((defrule mass-rule (planet ?x) => (assert (has-mass ?x))))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -72,7 +72,7 @@ fn clips_defrule_leaves_non_variable_arguments_untouched() {
     // A CLIPS fact argument can be a plain symbol or a number, not just a
     // `?`-prefixed variable — clips-var? must not choke on either.
     let source = r#"
-        (clips-import '((defrule hot (temperature 98) => (assert (alert critical)))))
+        (clips-import (quote ((defrule hot (temperature 98) => (assert (alert critical))))))
     "#;
     assert_eq!(eval_import(source), "(((alert critical) (temperature 98)))");
 }
@@ -80,9 +80,9 @@ fn clips_defrule_leaves_non_variable_arguments_untouched() {
 #[test]
 fn clips_defrule_with_multiple_conditions_converts_all_of_them() {
     let source = r#"
-        (clips-import '((defrule grandparent-rule
+        (clips-import (quote ((defrule grandparent-rule
                            (parent ?x ?z) (parent ?z ?y)
-                           => (assert (grandparent ?x ?y)))))
+                           => (assert (grandparent ?x ?y))))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -93,7 +93,7 @@ fn clips_defrule_with_multiple_conditions_converts_all_of_them() {
 #[test]
 fn clips_defrule_with_no_asserts_imports_as_no_clauses() {
     let source = r#"
-        (clips-import '((defrule broken (planet ?x) => (printout t "hello"))))
+        (clips-import (quote ((defrule broken (planet ?x) => (printout t "hello")))))
     "#;
     assert_eq!(eval_import(source), "()");
 }
@@ -104,8 +104,8 @@ fn clips_defrule_strips_a_docstring_before_its_conditions() {
     // land in the condition list as a stray, never-matching pattern,
     // silently killing the whole rule.
     let source = r#"
-        (clips-import '((defrule mass-rule "explains why planets have mass"
-                           (planet ?x) => (assert (has-mass ?x)))))
+        (clips-import (quote ((defrule mass-rule "explains why planets have mass"
+                           (planet ?x) => (assert (has-mass ?x))))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -116,8 +116,8 @@ fn clips_defrule_strips_a_docstring_before_its_conditions() {
 #[test]
 fn clips_defrule_strips_a_declare_salience_before_its_conditions() {
     let source = r#"
-        (clips-import '((defrule mass-rule (declare (salience 10))
-                           (planet ?x) => (assert (has-mass ?x)))))
+        (clips-import (quote ((defrule mass-rule (declare (salience 10))
+                           (planet ?x) => (assert (has-mass ?x))))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -128,8 +128,8 @@ fn clips_defrule_strips_a_declare_salience_before_its_conditions() {
 #[test]
 fn clips_defrule_strips_both_docstring_and_declare_together() {
     let source = r#"
-        (clips-import '((defrule mass-rule "docstring" (declare (salience 10))
-                           (planet ?x) => (assert (has-mass ?x)))))
+        (clips-import (quote ((defrule mass-rule "docstring" (declare (salience 10))
+                           (planet ?x) => (assert (has-mass ?x))))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -166,7 +166,7 @@ fn clips_defrule_with_a_multi_fact_assert_produces_one_clause_per_fact() {
     // (assert (number 0) (number 1) (number 2)) is one assert, three
     // facts — found on a genuine external .clp file, not guessed.
     let source = r#"
-        (clips-import '((defrule init (foo) => (assert (number 0) (number 1) (number 2)))))
+        (clips-import (quote ((defrule init (foo) => (assert (number 0) (number 1) (number 2))))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -200,7 +200,7 @@ fn clips_defrule_with_multiple_asserts_produces_one_clause_per_assert() {
     // (converted) condition list — logically equivalent to CLIPS firing
     // all N assertions together whenever the shared conditions hold.
     let source = r#"
-        (clips-import '((defrule two-asserts (planet ?x) => (assert (a ?x)) (assert (b ?x)))))
+        (clips-import (quote ((defrule two-asserts (planet ?x) => (assert (a ?x)) (assert (b ?x))))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -211,12 +211,12 @@ fn clips_defrule_with_multiple_asserts_produces_one_clause_per_assert() {
 #[test]
 fn clips_import_mixes_deffacts_and_defrule_into_one_usable_module() {
     let source = r#"
-        (def imported (clips-import '(
+        (def imported (clips-import (quote (
             (deffacts init (planet earth))
             (defrule mass-rule (planet ?x) => (assert (has-mass ?x)))
-        )))
+        ))))
         (defmodule imported-astro imported)
-        (forward-in 'imported-astro)
+        (forward-in (quote imported-astro))
     "#;
     assert_eq!(
         eval_import(source),
@@ -232,7 +232,7 @@ fn clips_import_file_reads_and_imports_a_real_clp_file() {
     let source = r#"
         (def imported (clips-import-file "../../tests/fixtures/astronomy.clp"))
         (defmodule imported-astro imported)
-        (forward-in 'imported-astro)
+        (forward-in (quote imported-astro))
     "#;
     assert_eq!(
         eval_import(source),
@@ -249,12 +249,12 @@ fn clips_defrule_with_a_not_condition_imports_and_runs_correctly() {
     // exactly the right fact: tweety (animal, not penguin) becomes a
     // bird; pingu (a penguin) does not.
     let source = r#"
-        (def imported (clips-import '(
+        (def imported (clips-import (quote (
             (deffacts init (animal tweety) (animal pingu) (penguin pingu))
             (defrule bird-rule (animal ?x) (not (penguin ?x)) => (assert (bird ?x)))
-        )))
+        ))))
         (defmodule zoo imported)
-        (forward-in 'zoo)
+        (forward-in (quote zoo))
     "#;
     assert_eq!(
         eval_import(source),
@@ -268,8 +268,8 @@ fn clips_defrule_with_printout_alongside_assert_still_imports_the_assert() {
     // to import as no clauses at all, silently dropping a perfectly
     // representable assertion just because printout sat next to it.
     let source = r#"
-        (clips-import '((defrule mass-rule (planet ?x)
-            => (printout t "found planet " ?x crlf) (assert (has-mass ?x)))))
+        (clips-import (quote ((defrule mass-rule (planet ?x)
+            => (printout t "found planet " ?x crlf) (assert (has-mass ?x))))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -283,7 +283,7 @@ fn clips_defrule_with_retract_still_imports_as_no_clauses() {
     // project's set-of-facts model has no equivalent for — still
     // disqualifying, unlike the harmless printout above.
     let source = r#"
-        (clips-import '((defrule broken (planet ?x) => (retract ?x) (assert (has-mass ?x)))))
+        (clips-import (quote ((defrule broken (planet ?x) => (retract ?x) (assert (has-mass ?x))))))
     "#;
     assert_eq!(eval_import(source), "()");
 }
@@ -291,10 +291,10 @@ fn clips_defrule_with_retract_still_imports_as_no_clauses() {
 #[test]
 fn clips_deftemplate_converts_named_slots_to_positional_order() {
     let source = r#"
-        (clips-import '(
+        (clips-import (quote (
             (deftemplate reading (slot sensor) (slot value))
             (deffacts init (reading (value 98) (sensor probe1)))
-        ))
+        )))
     "#;
     assert_eq!(eval_import(source), "(((reading probe1 98)))");
 }
@@ -302,10 +302,10 @@ fn clips_deftemplate_converts_named_slots_to_positional_order() {
 #[test]
 fn clips_deftemplate_slot_order_holds_regardless_of_slot_order_in_the_fact() {
     let source = r#"
-        (clips-import '(
+        (clips-import (quote (
             (deftemplate reading (slot sensor) (slot value))
             (deffacts init (reading (sensor probe1) (value 98)))
-        ))
+        )))
     "#;
     assert_eq!(eval_import(source), "(((reading probe1 98)))");
 }
@@ -313,12 +313,12 @@ fn clips_deftemplate_slot_order_holds_regardless_of_slot_order_in_the_fact() {
 #[test]
 fn clips_deftemplate_applies_inside_defrule_conditions_and_conclusions() {
     let source = r#"
-        (clips-import '(
+        (clips-import (quote (
             (deftemplate reading (slot sensor) (slot value))
             (defrule hot-rule (reading (sensor ?s) (value 98))
                 => (assert (alert (sensor ?s))))
             (deftemplate alert (slot sensor))
-        ))
+        )))
     "#;
     assert_eq!(
         eval_import(source),
@@ -329,13 +329,13 @@ fn clips_deftemplate_applies_inside_defrule_conditions_and_conclusions() {
 #[test]
 fn clips_deftemplate_works_end_to_end_through_forward_in() {
     let source = r#"
-        (def imported (clips-import '(
+        (def imported (clips-import (quote (
             (deftemplate reading (slot sensor) (slot value))
             (deffacts init (reading (sensor probe1) (value 98)))
             (defrule hot-rule (reading (sensor ?s) (value 98)) => (assert (alert ?s)))
-        )))
+        ))))
         (defmodule sensors imported)
-        (forward-in 'sensors)
+        (forward-in (quote sensors))
     "#;
     assert_eq!(
         eval_import(source),
@@ -350,14 +350,14 @@ fn clips_deftemplate_converts_facts_nested_inside_or() {
     // named slots converted to positional form, silently never matching
     // anything.
     let source = r#"
-        (def imported (clips-import '(
+        (def imported (clips-import (quote (
             (deftemplate cat (slot name))
             (deftemplate dog (slot name))
             (deffacts init (cat (name tom)) (dog (name rex)))
             (defrule pet-rule (or (cat (name ?x)) (dog (name ?x))) => (assert (pet ?x)))
-        )))
+        ))))
         (defmodule zoo imported)
-        (forward-in 'zoo)
+        (forward-in (quote zoo))
     "#;
     assert_eq!(
         eval_import(source),
@@ -369,9 +369,9 @@ fn clips_deftemplate_converts_facts_nested_inside_or() {
 fn clips_import_result_feeds_straight_into_defmodule() {
     // The whole point: no hand-editing step between import and use.
     let source = r#"
-        (def imported-clauses (clips-import '((deffacts initial-facts (planet earth) (star sun)))))
+        (def imported-clauses (clips-import (quote ((deffacts initial-facts (planet earth) (star sun))))))
         (defmodule imported imported-clauses)
-        (reason-in 'imported '(planet earth))
+        (reason-in (quote imported) (quote (planet earth)))
     "#;
     assert_eq!(
         eval_import(source),
@@ -389,10 +389,10 @@ fn clips_deftemplate_name_is_matched_regardless_of_a_defmodule_qualifier() {
     // referring to it must be compared with the `defmodule::` prefix
     // stripped, or the named-slot conversion silently never fires.
     let source = r#"
-        (clips-import '(
+        (clips-import (quote (
             (deftemplate QUESTIONS::question (slot attribute) (slot text))
             (deffacts init (question (attribute color) (text "what color?")))
-        ))
+        )))
     "#;
     assert_eq!(
         eval_import(source),
@@ -409,10 +409,10 @@ fn clips_condition_slot_with_no_value_does_not_crash_the_importer() {
     // "car expects a non-empty list" the first time a real file used this
     // shorthand.
     let source = r#"
-        (clips-import '(
+        (clips-import (quote (
             (deftemplate question (slot attribute) (multislot precursors))
             (defrule ask (question (attribute ?a) (precursors)) => (assert (asked ?a)))
-        ))
+        )))
     "#;
     assert_eq!(
         eval_import(source),
@@ -459,7 +459,7 @@ fn clips_import_stays_stack_safe_on_a_deffacts_block_with_many_facts() {
         facts.push_str(&format!("(number {i})"));
     }
     let source = format!(
-        r#"(clips-import '((deffacts many (goal x)) (deffacts nums {facts})))"#
+        r#"(clips-import (quote ((deffacts many (goal x)) (deffacts nums {facts}))))"#
     );
     let imported = eval_import(&source);
     assert!(
@@ -634,13 +634,13 @@ fn clips_defrule_with_an_exists_condition_imports_and_converts_its_template() {
     // (same lesson Step 13 taught for `not`/`or`/`and`), so a named-slot
     // fact nested inside it gets converted to positional form too.
     let source = r#"
-        (clips-import '(
+        (clips-import (quote (
             (deftemplate unsolved (slot row) (slot column))
             (defrule wait-for-more
                 (rank (value ?last))
                 (exists (unsolved (row ?r) (column ?c)))
                 =>
-                (assert (rank (value done))))))
+                (assert (rank (value done)))))))
     "#;
     assert_eq!(
         eval_import(source),
@@ -651,10 +651,10 @@ fn clips_defrule_with_an_exists_condition_imports_and_converts_its_template() {
 #[test]
 fn clips_defrule_with_a_forall_condition_imports_correctly() {
     let source = r#"
-        (clips-import '((defrule all-checked
+        (clips-import (quote ((defrule all-checked
             (forall (item ?x) (checked ?x))
             =>
-            (assert (done)))))
+            (assert (done))))))
     "#;
     assert_eq!(
         eval_import(source),

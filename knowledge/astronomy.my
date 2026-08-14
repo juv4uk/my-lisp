@@ -1,5 +1,5 @@
 ;; knowledge/astronomy.my
-(defmodule astronomy '(
+(defmodule astronomy (quote (
   ;; Facts
   ((planet earth))
   ((planet mars))
@@ -7,4 +7,4 @@
 
   ;; Rules
   ((orbits (var p) (var s)) (planet (var p)) (star (var s)))
-))
+)))

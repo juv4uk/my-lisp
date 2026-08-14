@@ -27,7 +27,7 @@ fn eval_understand(source: &str) -> String {
 #[test]
 fn understand_is_a_produces_a_class_membership_fact() {
     assert_eq!(
-        eval_understand("(understand '(earth is a planet))"),
+        eval_understand("(understand (quote (earth is a planet)))"),
         "((planet earth))"
     );
 }
@@ -35,7 +35,7 @@ fn understand_is_a_produces_a_class_membership_fact() {
 #[test]
 fn understand_is_without_article_produces_the_same_fact() {
     assert_eq!(
-        eval_understand("(understand '(earth is round))"),
+        eval_understand("(understand (quote (earth is round)))"),
         "((round earth))"
     );
 }
@@ -43,7 +43,7 @@ fn understand_is_without_article_produces_the_same_fact() {
 #[test]
 fn understand_subject_verb_object_produces_a_relation_fact() {
     assert_eq!(
-        eval_understand("(understand '(earth orbits sun))"),
+        eval_understand("(understand (quote (earth orbits sun)))"),
         "((orbits earth sun))"
     );
 }
@@ -51,7 +51,7 @@ fn understand_subject_verb_object_produces_a_relation_fact() {
 #[test]
 fn understand_all_have_produces_a_universal_rule() {
     assert_eq!(
-        eval_understand("(understand '(all planet have mass))"),
+        eval_understand("(understand (quote (all planet have mass)))"),
         "((has (var w) mass) (planet (var w)))"
     );
 }
@@ -61,10 +61,10 @@ fn understand_output_is_usable_directly_as_a_reason_rule() {
     // The whole point of `understand` is to feed straight into the existing
     // reasoning engine without hand-editing — no separate translation step.
     let source = r#"
-        (let ((fact1 (understand '(earth is a planet)))
-              (rule1 (understand '(all planet have mass))))
+        (let ((fact1 (understand (quote (earth is a planet))))
+              (rule1 (understand (quote (all planet have mass)))))
              (let ((rules (list rule1 fact1)))
-                  (length (reason '(has earth mass) rules))))
+                  (length (reason (quote (has earth mass)) rules))))
     "#;
     assert_eq!(eval_understand(source), "1");
 }

@@ -17,7 +17,7 @@ fn eval_world(source: &str) -> String {
 #[test]
 fn empty_world_is_an_ordinary_first_class_value() {
     assert_eq!(eval_world("(world? (empty-world))"), "t");
-    assert_eq!(eval_world("(world? '(not-a-world))"), "()");
+    assert_eq!(eval_world("(world? (quote (not-a-world)))"), "()");
 }
 
 #[test]
@@ -26,9 +26,9 @@ fn tell_returns_a_new_world_without_changing_the_old_one() {
         eval_world(
             r#"
             (let ((before (empty-world)))
-              (let ((after (world-tell before 'zoo '((has-fur cat)))))
-                (list (world-clauses before 'zoo)
-                      (world-clauses after 'zoo))))
+              (let ((after (world-tell before (quote zoo) (quote ((has-fur cat))))))
+                (list (world-clauses before (quote zoo))
+                      (world-clauses after (quote zoo)))))
             "#
         ),
         "(() (((has-fur cat))))"
@@ -41,7 +41,7 @@ fn each_world_keeps_its_immediate_parent() {
         eval_world(
             r#"
             (let ((before (empty-world)))
-              (let ((after (world-tell before 'zoo '((has-fur cat)))))
+              (let ((after (world-tell before (quote zoo) (quote ((has-fur cat))))))
                 (equal? before (world-parent after))))
             "#
         ),
@@ -55,11 +55,11 @@ fn later_versions_preserve_every_earlier_snapshot() {
         eval_world(
             r#"
             (let ((w0 (empty-world)))
-              (let ((w1 (world-tell w0 'zoo '((has-fur cat)))))
-                (let ((w2 (world-tell w1 'zoo '((has-fur dog)))))
-                  (list (world-clauses w0 'zoo)
-                        (world-clauses w1 'zoo)
-                        (world-clauses w2 'zoo)))))
+              (let ((w1 (world-tell w0 (quote zoo) (quote ((has-fur cat))))))
+                (let ((w2 (world-tell w1 (quote zoo) (quote ((has-fur dog))))))
+                  (list (world-clauses w0 (quote zoo))
+                        (world-clauses w1 (quote zoo))
+                        (world-clauses w2 (quote zoo))))))
             "#
         ),
         "(() (((has-fur cat))) (((has-fur dog)) ((has-fur cat))))"
@@ -71,12 +71,12 @@ fn defmodule_compatibility_wrapper_uses_the_world_transition() {
     assert_eq!(
         eval_world(
             r#"
-            (let ((clauses '(((planet earth)) ((star sun)))))
+            (let ((clauses (quote (((planet earth)) ((star sun))))))
               (let ((expected
                       (world-journal
                         (world-tell-all
-                          (make-world '() *knowledge-journal* '())
-                          'space
+                          (make-world (quote ()) *knowledge-journal* (quote ()))
+                          (quote space)
                           clauses))))
                 ((lambda ()
                    (defmodule space clauses)
@@ -92,8 +92,8 @@ fn defmodule_after_world_load_keeps_legacy_reason_in_behavior() {
     assert_eq!(
         eval_world(
             r#"
-            (defmodule space '(((planet earth))))
-            (reason-in 'space '(planet earth))
+            (defmodule space (quote (((planet earth)))))
+            (reason-in (quote space) (quote (planet earth)))
             "#
         ),
         "((() (proved (planet earth) (planet earth) ())))"
@@ -105,9 +105,9 @@ fn repeated_compatible_defmodule_calls_still_accumulate() {
     assert_eq!(
         eval_world(
             r#"
-            (defmodule space '(((planet earth))))
-            (defmodule space '(((planet mars))))
-            (module-clauses-now 'space)
+            (defmodule space (quote (((planet earth)))))
+            (defmodule space (quote (((planet mars)))))
+            (module-clauses-now (quote space))
             "#
         ),
         "(((planet mars)) ((planet earth)))"
@@ -119,13 +119,13 @@ fn tell_knowledge_compatibility_wrapper_uses_the_world_transition() {
     assert_eq!(
         eval_world(
             r#"
-            (defmodule space '(((planet earth))))
-            (def clauses '(((planet mars))))
+            (defmodule space (quote (((planet earth)))))
+            (def clauses (quote (((planet mars)))))
             (def expected-journal
               (world-journal
                 (world-tell-all
-                  (make-world '() *knowledge-journal* '())
-                  'space
+                  (make-world (quote ()) *knowledge-journal* (quote ()))
+                  (quote space)
                   clauses)))
             (tell-knowledge space clauses)
             (equal? *knowledge-journal* expected-journal)
@@ -140,9 +140,9 @@ fn conflicting_tell_knowledge_keeps_the_legacy_journal_unchanged() {
     assert_eq!(
         eval_world(
             r#"
-            (defmodule space '(((not (planet earth)))))
+            (defmodule space (quote (((not (planet earth))))))
             (let ((before *knowledge-journal*))
-              (list (tell-knowledge space '(((planet earth))))
+              (list (tell-knowledge space (quote (((planet earth)))))
                     (equal? before *knowledge-journal*)))
             "#
         ),
@@ -155,16 +155,16 @@ fn retract_knowledge_compatibility_wrapper_uses_the_world_transition() {
     assert_eq!(
         eval_world(
             r#"
-            (defmodule space '(((planet earth))))
+            (defmodule space (quote (((planet earth)))))
             (def expected-journal
               (world-journal
                 (world-retract
-                  (make-world '() *knowledge-journal* '())
-                  'space
-                  '((planet earth)))))
-            (retract-knowledge space '((planet earth)))
+                  (make-world (quote ()) *knowledge-journal* (quote ()))
+                  (quote space)
+                  (quote ((planet earth))))))
+            (retract-knowledge space (quote ((planet earth))))
             (list (equal? *knowledge-journal* expected-journal)
-                  (reason-in 'space '(planet earth)))
+                  (reason-in (quote space) (quote (planet earth))))
             "#
         ),
         "(t ())"
@@ -176,8 +176,8 @@ fn advise_compatibility_wrapper_commits_only_the_accepted_world() {
     assert_eq!(
         eval_world(
             r#"
-            (list (advise space '((planet earth)))
-                  (reason-in 'space '(planet earth)))
+            (list (advise space (quote ((planet earth))))
+                  (reason-in (quote space) (quote (planet earth))))
             "#
         ),
         "((accepted (module space) (knowledge ((planet earth)))) ((() (proved (planet earth) (planet earth) ()))))"
@@ -189,9 +189,9 @@ fn advise_compatibility_wrapper_preserves_journal_on_conflict() {
     assert_eq!(
         eval_world(
             r#"
-            (defmodule space '(((not (planet earth)))))
+            (defmodule space (quote (((not (planet earth))))))
             (def before *knowledge-journal*)
-            (def decision (advise space '((planet earth))))
+            (def decision (advise space (quote ((planet earth)))))
             (list (car decision) (equal? before *knowledge-journal*))
             "#
         ),
@@ -209,7 +209,7 @@ fn advise_compatibility_argument_is_evaluated_once() {
               (advise space
                 (second
                   (list (def *evaluation-count* (+ *evaluation-count* 1))
-                        '((planet earth))))))
+                        (quote ((planet earth)))))))
             (list *evaluation-count* (car decision))
             "#
         ),
@@ -224,10 +224,10 @@ fn advise_all_compatibility_wrapper_keeps_atomic_world_transition() {
             r#"
             (def decision
               (advise-all space
-                '(((star sun))
-                  ((planet earth) (star sun)))))
+                (quote (((star sun))
+                  ((planet earth) (star sun))))))
             (list (car decision)
-                  (length (module-clauses-now 'space)))
+                  (length (module-clauses-now (quote space))))
             "#
         ),
         "(accepted 2)"
@@ -240,7 +240,7 @@ fn advise_all_compatibility_wrapper_rolls_back_invalid_batch() {
         eval_world(
             r#"
             (def before *knowledge-journal*)
-            (def decision (advise-all space '(((planet earth)) malformed)))
+            (def decision (advise-all space (quote (((planet earth)) malformed))))
             (list (car decision) (equal? before *knowledge-journal*))
             "#
         ),
@@ -258,7 +258,7 @@ fn advise_all_compatibility_argument_is_evaluated_once() {
               (advise-all space
                 (second
                   (list (def *evaluation-count* (+ *evaluation-count* 1))
-                        '(((planet earth)))))))
+                        (quote (((planet earth))))))))
             (list *evaluation-count* (car decision))
             "#
         ),
@@ -272,9 +272,9 @@ fn package_import_compatibility_wrapper_commits_the_accepted_world() {
         eval_world(
             r#"
             (def package
-              (make-knowledge-package 'space '(((planet earth)))))
+              (make-knowledge-package (quote space) (quote (((planet earth))))))
             (list (car (import-knowledge-package package))
-                  (car (reason-in 'space '(planet earth))))
+                  (car (reason-in (quote space) (quote (planet earth)))))
             "#
         ),
         "(accepted (() (proved (planet earth) (planet earth) ())))"
@@ -288,10 +288,10 @@ fn package_import_compatibility_wrapper_preserves_journal_on_rejection() {
             r#"
             (def before *knowledge-journal*)
             (def package
-              '((format . my-lisp-knowledge)
+              (quote ((format . my-lisp-knowledge)
                 (version 99 0)
                 (module . space)
-                (clauses . (((planet earth))))))
+                (clauses . (((planet earth)))))))
             (def decision (import-knowledge-package package))
             (list (car decision) (equal? before *knowledge-journal*))
             "#
@@ -305,10 +305,10 @@ fn package_import_compatibility_wrapper_preserves_journal_on_conflict() {
     assert_eq!(
         eval_world(
             r#"
-            (defmodule space '(((not (planet earth)))))
+            (defmodule space (quote (((not (planet earth))))))
             (def before *knowledge-journal*)
             (def package
-              (make-knowledge-package 'space '(((planet earth)))))
+              (make-knowledge-package (quote space) (quote (((planet earth))))))
             (def decision (import-knowledge-package package))
             (list (car decision) (equal? before *knowledge-journal*))
             "#
@@ -328,7 +328,7 @@ fn package_import_compatibility_argument_is_evaluated_once() {
                 (second
                   (list (def *evaluation-count* (+ *evaluation-count* 1))
                         (make-knowledge-package
-                          'space '(((planet earth))))))))
+                          (quote space) (quote (((planet earth)))))))))
             (list *evaluation-count* (car decision))
             "#
         ),
@@ -342,11 +342,11 @@ fn retract_creates_history_instead_of_erasing_it() {
         eval_world(
             r#"
             (let ((w0 (empty-world)))
-              (let ((w1 (world-tell w0 'zoo '((has-fur cat)))))
-                (let ((w2 (world-retract w1 'zoo '((has-fur cat)))))
-                  (list (world-clauses w1 'zoo)
-                        (world-clauses w2 'zoo)
-                        (world-module-known? w2 'zoo)))))
+              (let ((w1 (world-tell w0 (quote zoo) (quote ((has-fur cat))))))
+                (let ((w2 (world-retract w1 (quote zoo) (quote ((has-fur cat))))))
+                  (list (world-clauses w1 (quote zoo))
+                        (world-clauses w2 (quote zoo))
+                        (world-module-known? w2 (quote zoo))))))
             "#
         ),
         "((((has-fur cat))) () t)"
@@ -359,11 +359,11 @@ fn independent_branches_can_grow_from_the_same_world() {
         eval_world(
             r#"
             (let ((root (empty-world)))
-              (let ((cats (world-tell root 'zoo '((has-fur cat))))
-                    (dogs (world-tell root 'zoo '((has-fur dog)))))
-                (list (world-clauses cats 'zoo)
-                      (world-clauses dogs 'zoo)
-                      (world-clauses root 'zoo))))
+              (let ((cats (world-tell root (quote zoo) (quote ((has-fur cat)))))
+                    (dogs (world-tell root (quote zoo) (quote ((has-fur dog))))))
+                (list (world-clauses cats (quote zoo))
+                      (world-clauses dogs (quote zoo))
+                      (world-clauses root (quote zoo)))))
             "#
         ),
         "((((has-fur cat))) (((has-fur dog))) ())"
@@ -376,14 +376,14 @@ fn backward_reasoning_reads_the_selected_world_snapshot() {
         eval_world(
             r#"
             (let ((w0 (empty-world)))
-              (let ((w1 (world-tell w0 'family '((parent tom bob)))))
-                (let ((w2 (world-retract w1 'family '((parent tom bob)))))
+              (let ((w1 (world-tell w0 (quote family) (quote ((parent tom bob))))))
+                (let ((w2 (world-retract w1 (quote family) (quote ((parent tom bob))))))
                   (list (cond
-                          ((atom (reason-in-world w1 'family '(parent tom bob))) 'no)
-                          (t 'yes))
+                          ((atom (reason-in-world w1 (quote family) (quote (parent tom bob)))) (quote no))
+                          (t (quote yes)))
                         (cond
-                          ((atom (reason-in-world w2 'family '(parent tom bob))) 'no)
-                          (t 'yes))))))
+                          ((atom (reason-in-world w2 (quote family) (quote (parent tom bob)))) (quote no))
+                          (t (quote yes)))))))
             "#
         ),
         "(yes no)"
@@ -396,20 +396,20 @@ fn backward_reasoning_keeps_independent_branches_isolated() {
         eval_world(
             r#"
             (let ((root (empty-world)))
-              (let ((cats (world-tell root 'zoo '((likes alice cats))))
-                    (dogs (world-tell root 'zoo '((likes alice dogs)))))
+              (let ((cats (world-tell root (quote zoo) (quote ((likes alice cats)))))
+                    (dogs (world-tell root (quote zoo) (quote ((likes alice dogs))))))
                 (list (cond
-                        ((atom (reason-in-world cats 'zoo '(likes alice cats))) 'no)
-                        (t 'yes))
+                        ((atom (reason-in-world cats (quote zoo) (quote (likes alice cats)))) (quote no))
+                        (t (quote yes)))
                       (cond
-                        ((atom (reason-in-world cats 'zoo '(likes alice dogs))) 'no)
-                        (t 'yes))
+                        ((atom (reason-in-world cats (quote zoo) (quote (likes alice dogs)))) (quote no))
+                        (t (quote yes)))
                       (cond
-                        ((atom (reason-in-world dogs 'zoo '(likes alice dogs))) 'no)
-                        (t 'yes))
+                        ((atom (reason-in-world dogs (quote zoo) (quote (likes alice dogs)))) (quote no))
+                        (t (quote yes)))
                       (cond
-                        ((atom (reason-in-world dogs 'zoo '(likes alice cats))) 'no)
-                        (t 'yes)))))
+                        ((atom (reason-in-world dogs (quote zoo) (quote (likes alice cats)))) (quote no))
+                        (t (quote yes))))))
             "#
         ),
         "(yes no yes no)"
@@ -422,12 +422,12 @@ fn forward_reasoning_materializes_only_the_selected_world() {
         eval_world(
             r#"
             (let ((w0 (empty-world)))
-              (let ((w1 (world-tell w0 'physics '((has-mass apple)))))
-                (let ((w2 (world-tell w1 'physics
-                                      '((attracted-by-gravity (var x))
-                                        (has-mass (var x))))))
-                  (list (forward-in-world w1 'physics)
-                        (forward-in-world w2 'physics)))))
+              (let ((w1 (world-tell w0 (quote physics) (quote ((has-mass apple))))))
+                (let ((w2 (world-tell w1 (quote physics)
+                                      (quote ((attracted-by-gravity (var x))
+                                        (has-mass (var x)))))))
+                  (list (forward-in-world w1 (quote physics))
+                        (forward-in-world w2 (quote physics))))))
             "#
         ),
         "(((has-mass apple)) ((attracted-by-gravity apple) (has-mass apple)))"
@@ -437,11 +437,11 @@ fn forward_reasoning_materializes_only_the_selected_world() {
 #[test]
 fn world_reasoning_reports_an_unknown_module_without_global_fallback() {
     assert_eq!(
-        eval_world("(reason-in-world (empty-world) 'missing '(fact x))"),
+        eval_world("(reason-in-world (empty-world) (quote missing) (quote (fact x)))"),
         "Module-not-found"
     );
     assert_eq!(
-        eval_world("(forward-in-world (empty-world) 'missing)"),
+        eval_world("(forward-in-world (empty-world) (quote missing))"),
         "Module-not-found"
     );
 }
@@ -452,13 +452,13 @@ fn advise_world_accepts_into_a_new_queryable_world() {
         eval_world(
             r#"
             (let ((before (empty-world)))
-              (let ((result (advise-world before 'astronomy '((planet venus)))))
+              (let ((result (advise-world before (quote astronomy) (quote ((planet venus))))))
                 (let ((after (second result)))
                   (list (car (car result))
-                        (world-clauses before 'astronomy)
+                        (world-clauses before (quote astronomy))
                         (cond
-                          ((atom (reason-in-world after 'astronomy '(planet venus))) 'no)
-                          (t 'yes))))))
+                          ((atom (reason-in-world after (quote astronomy) (quote (planet venus)))) (quote no))
+                          (t (quote yes)))))))
             "#
         ),
         "(accepted () yes)"
@@ -471,10 +471,10 @@ fn advise_world_rejection_returns_the_unchanged_world() {
         eval_world(
             r#"
             (let ((before (empty-world)))
-              (let ((result (advise-world before 'astronomy '(planet venus))))
+              (let ((result (advise-world before (quote astronomy) (quote (planet venus)))))
                 (list (car (car result))
                       (equal? before (second result))
-                      (world-module-known? (second result) 'astronomy))))
+                      (world-module-known? (second result) (quote astronomy)))))
             "#
         ),
         "(rejected t ())"
@@ -487,12 +487,12 @@ fn advise_world_conflict_preserves_the_existing_snapshot() {
         eval_world(
             r#"
             (let ((w1 (world-tell (empty-world)
-                                  'astronomy
-                                  '((not (planet pluto))))))
-              (let ((result (advise-world w1 'astronomy '((planet pluto)))))
+                                  (quote astronomy)
+                                  (quote ((not (planet pluto)))))))
+              (let ((result (advise-world w1 (quote astronomy) (quote ((planet pluto))))))
                 (list (car (car result))
                       (equal? w1 (second result))
-                      (world-clauses (second result) 'astronomy))))
+                      (world-clauses (second result) (quote astronomy)))))
             "#
         ),
         "(conflict t (((not (planet pluto)))))"
@@ -504,12 +504,12 @@ fn advise_world_does_not_read_the_global_knowledge_journal() {
     assert_eq!(
         eval_world(
             r#"
-            (advise astronomy '((not (planet mars))))
+            (advise astronomy (quote ((not (planet mars)))))
             (let ((result (advise-world (empty-world)
-                                        'astronomy
-                                        '((planet mars)))))
+                                        (quote astronomy)
+                                        (quote ((planet mars))))))
               (list (car (car result))
-                    (world-clauses (second result) 'astronomy)))
+                    (world-clauses (second result) (quote astronomy))))
             "#
         ),
         "(accepted (((planet mars))))"
@@ -525,16 +525,16 @@ fn advise_all_world_accepts_one_atomic_dependent_batch() {
               (let ((result
                       (advise-all-world
                         before
-                        'astronomy
-                        '(((planet earth))
-                          ((has-mass (var x)) (planet (var x)))))))
+                        (quote astronomy)
+                        (quote (((planet earth))
+                          ((has-mass (var x)) (planet (var x))))))))
                 (let ((after (second result)))
                   (list (car (car result))
-                        (world-clauses before 'astronomy)
+                        (world-clauses before (quote astronomy))
                         (cond
-                          ((atom (reason-in-world after 'astronomy
-                                                 '(has-mass earth))) 'no)
-                          (t 'yes))
+                          ((atom (reason-in-world after (quote astronomy)
+                                                 (quote (has-mass earth)))) (quote no))
+                          (t (quote yes)))
                         (equal? before (world-parent after))))))
             "#
         ),
@@ -549,11 +549,11 @@ fn advise_all_world_rejects_the_whole_malformed_batch() {
             r#"
             (let ((before (empty-world)))
               (let ((result
-                      (advise-all-world before 'astronomy
-                                        '(((planet earth)) (planet mars)))))
+                      (advise-all-world before (quote astronomy)
+                                        (quote (((planet earth)) (planet mars))))))
                 (list (car (car result))
                       (equal? before (second result))
-                      (world-module-known? (second result) 'astronomy))))
+                      (world-module-known? (second result) (quote astronomy)))))
             "#
         ),
         "(rejected t ())"
@@ -566,7 +566,7 @@ fn advise_all_world_rejects_an_empty_batch_without_a_new_world() {
         eval_world(
             r#"
             (let ((before (empty-world)))
-              (let ((result (advise-all-world before 'astronomy '())))
+              (let ((result (advise-all-world before (quote astronomy) (quote ()))))
                 (list (car (car result))
                       (second (second (car result)))
                       (equal? before (second result)))))
@@ -585,11 +585,11 @@ fn advise_all_world_detects_internal_conflict_without_partial_writes() {
               (let ((result
                       (advise-all-world
                         before
-                        'astronomy
-                        '(((planet pluto)) ((not (planet pluto)))))))
+                        (quote astronomy)
+                        (quote (((planet pluto)) ((not (planet pluto))))))))
                 (list (car (car result))
                       (equal? before (second result))
-                      (world-module-known? (second result) 'astronomy))))
+                      (world-module-known? (second result) (quote astronomy)))))
             "#
         ),
         "(conflict t ())"
@@ -601,13 +601,13 @@ fn advise_all_world_ignores_conflicts_in_the_global_journal() {
     assert_eq!(
         eval_world(
             r#"
-            (advise astronomy '((not (planet mars))))
+            (advise astronomy (quote ((not (planet mars)))))
             (let ((result
                     (advise-all-world (empty-world)
-                                      'astronomy
-                                      '(((planet mars))))))
+                                      (quote astronomy)
+                                      (quote (((planet mars)))))))
               (list (car (car result))
-                    (world-clauses (second result) 'astronomy)))
+                    (world-clauses (second result) (quote astronomy))))
             "#
         ),
         "(accepted (((planet mars))))"
@@ -619,12 +619,12 @@ fn world_package_export_reads_the_selected_snapshot_only() {
     assert_eq!(
         eval_world(
             r#"
-            (let ((w1 (world-tell (empty-world) 'astronomy '((planet earth)))))
-              (let ((w2 (world-tell w1 'astronomy '((planet mars)))))
+            (let ((w1 (world-tell (empty-world) (quote astronomy) (quote ((planet earth))))))
+              (let ((w2 (world-tell w1 (quote astronomy) (quote ((planet mars))))))
                 (list (knowledge-package-field
-                        'clauses (make-world-knowledge-package w1 'astronomy))
+                        (quote clauses) (make-world-knowledge-package w1 (quote astronomy)))
                       (knowledge-package-field
-                        'clauses (make-world-knowledge-package w2 'astronomy)))))
+                        (quote clauses) (make-world-knowledge-package w2 (quote astronomy))))))
             "#
         ),
         "((((planet earth))) (((planet mars)) ((planet earth))))"
@@ -639,17 +639,17 @@ fn world_package_import_atomically_creates_a_queryable_child() {
             (let ((before (empty-world)))
               (let ((package
                       (make-knowledge-package
-                        'astronomy
-                        '(((planet earth))
-                          ((has-mass (var x)) (planet (var x)))))))
+                        (quote astronomy)
+                        (quote (((planet earth))
+                          ((has-mass (var x)) (planet (var x))))))))
                 (let ((result (import-knowledge-package-world before package)))
                   (let ((after (second result)))
                     (list (car (car result))
                           (equal? before (world-parent after))
                           (cond
-                            ((atom (reason-in-world after 'astronomy
-                                                   '(has-mass earth))) 'no)
-                            (t 'yes)))))))
+                            ((atom (reason-in-world after (quote astronomy)
+                                                   (quote (has-mass earth)))) (quote no))
+                            (t (quote yes))))))))
             "#
         ),
         "(accepted t yes)"
@@ -665,10 +665,10 @@ fn world_package_import_rejects_unsupported_versions_without_transition() {
             (def result
               (import-knowledge-package-world
                 before
-                '((format . my-lisp-knowledge)
+                (quote ((format . my-lisp-knowledge)
                   (version 1 0)
                   (module . astronomy)
-                  (clauses . (((planet earth)))))))
+                  (clauses . (((planet earth))))))))
             (list (car (car result))
                   (second (second (car result)))
                   (equal? before (second result)))
@@ -685,15 +685,15 @@ fn world_package_import_conflict_preserves_the_target_snapshot() {
             r#"
             (let ((before
                     (world-tell (empty-world)
-                                'astronomy
-                                '((not (planet pluto))))))
+                                (quote astronomy)
+                                (quote ((not (planet pluto)))))))
               (let ((package
-                      (make-knowledge-package 'astronomy
-                                              '(((planet pluto))))))
+                      (make-knowledge-package (quote astronomy)
+                                              (quote (((planet pluto)))))))
                 (let ((result (import-knowledge-package-world before package)))
                   (list (car (car result))
                         (equal? before (second result))
-                        (world-clauses (second result) 'astronomy)))))
+                        (world-clauses (second result) (quote astronomy))))))
             "#
         ),
         "(conflict t (((not (planet pluto)))))"
@@ -706,16 +706,16 @@ fn exported_snapshot_can_seed_an_independent_world_branch() {
         eval_world(
             r#"
             (let ((source
-                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
-              (let ((package (make-world-knowledge-package source 'zoo)))
+                    (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))))
+              (let ((package (make-world-knowledge-package source (quote zoo))))
                 (let ((target (second
                                 (import-knowledge-package-world
                                   (empty-world) package))))
                   (let ((target-grown
-                          (world-tell target 'zoo '((has-fur dog)))))
-                    (list (world-clauses source 'zoo)
-                          (world-clauses target 'zoo)
-                          (world-clauses target-grown 'zoo))))))
+                          (world-tell target (quote zoo) (quote ((has-fur dog))))))
+                    (list (world-clauses source (quote zoo))
+                          (world-clauses target (quote zoo))
+                          (world-clauses target-grown (quote zoo)))))))
             "#
         ),
         "((((has-fur cat))) (((has-fur cat))) (((has-fur dog)) ((has-fur cat))))"
@@ -728,8 +728,8 @@ fn world_depth_counts_transitions_from_the_root() {
         eval_world(
             r#"
             (let ((w0 (empty-world)))
-              (let ((w1 (world-tell w0 'zoo '((has-fur cat)))))
-                (let ((w2 (world-retract w1 'zoo '((has-fur cat)))))
+              (let ((w1 (world-tell w0 (quote zoo) (quote ((has-fur cat))))))
+                (let ((w2 (world-retract w1 (quote zoo) (quote ((has-fur cat))))))
                   (list (world-depth w0)
                         (world-depth w1)
                         (world-depth w2)))))
@@ -745,8 +745,8 @@ fn world_at_depth_recovers_an_exact_historical_snapshot() {
         eval_world(
             r#"
             (let ((w0 (empty-world)))
-              (let ((w1 (world-tell w0 'zoo '((has-fur cat)))))
-                (let ((w2 (world-tell w1 'zoo '((has-fur dog)))))
+              (let ((w1 (world-tell w0 (quote zoo) (quote ((has-fur cat))))))
+                (let ((w2 (world-tell w1 (quote zoo) (quote ((has-fur dog))))))
                   (list (equal? w0 (world-at-depth w2 0))
                         (equal? w1 (world-at-depth w2 1))
                         (equal? w2 (world-at-depth w2 2))))))
@@ -772,9 +772,9 @@ fn world_diff_returns_chronological_events_across_atomic_transitions() {
             (let ((w0 (empty-world)))
               (let ((w1
                       (world-tell-all
-                        w0 'zoo
-                        '(((has-fur cat)) ((has-fur dog))))))
-                (let ((w2 (world-retract w1 'zoo '((has-fur cat)))))
+                        w0 (quote zoo)
+                        (quote (((has-fur cat)) ((has-fur dog)))))))
+                (let ((w2 (world-retract w1 (quote zoo) (quote ((has-fur cat))))))
                   (world-diff w0 w2))))
             "#
         ),
@@ -788,8 +788,8 @@ fn world_diff_refuses_to_invent_a_path_between_sibling_branches() {
         eval_world(
             r#"
             (let ((root (empty-world)))
-              (let ((cats (world-tell root 'zoo '((has-fur cat))))
-                    (dogs (world-tell root 'zoo '((has-fur dog)))))
+              (let ((cats (world-tell root (quote zoo) (quote ((has-fur cat)))))
+                    (dogs (world-tell root (quote zoo) (quote ((has-fur dog))))))
                 (world-diff cats dogs)))
             "#
         ),
@@ -803,9 +803,9 @@ fn world_common_ancestor_finds_the_branch_point() {
         eval_world(
             r#"
             (let ((root (empty-world)))
-              (let ((base (world-tell root 'zoo '((animal cat)))))
-                (let ((left (world-tell base 'zoo '((has-fur cat))))
-                      (right (world-tell base 'zoo '((has-tail cat)))))
+              (let ((base (world-tell root (quote zoo) (quote ((animal cat))))))
+                (let ((left (world-tell base (quote zoo) (quote ((has-fur cat)))))
+                      (right (world-tell base (quote zoo) (quote ((has-tail cat))))))
                   (equal? base (world-common-ancestor left right)))))
             "#
         ),
@@ -819,10 +819,10 @@ fn world_common_ancestor_aligns_unequal_branch_depths() {
         eval_world(
             r#"
             (let ((root (empty-world)))
-              (let ((base (world-tell root 'zoo '((animal cat)))))
-                (let ((left1 (world-tell base 'zoo '((has-fur cat))))
-                      (right (world-tell base 'zoo '((has-tail cat)))))
-                  (let ((left2 (world-tell left1 'zoo '((likes cat milk)))))
+              (let ((base (world-tell root (quote zoo) (quote ((animal cat))))))
+                (let ((left1 (world-tell base (quote zoo) (quote ((has-fur cat)))))
+                      (right (world-tell base (quote zoo) (quote ((has-tail cat))))))
+                  (let ((left2 (world-tell left1 (quote zoo) (quote ((likes cat milk))))))
                     (equal? base (world-common-ancestor left2 right))))))
             "#
         ),
@@ -835,9 +835,9 @@ fn world_branch_diff_reports_both_chronological_deltas() {
     assert_eq!(
         eval_world(
             r#"
-            (let ((base (world-tell (empty-world) 'zoo '((animal cat)))))
-              (let ((left (world-tell base 'zoo '((has-fur cat))))
-                    (right (world-tell base 'zoo '((has-tail cat)))))
+            (let ((base (world-tell (empty-world) (quote zoo) (quote ((animal cat))))))
+              (let ((left (world-tell base (quote zoo) (quote ((has-fur cat)))))
+                    (right (world-tell base (quote zoo) (quote ((has-tail cat))))))
                 (let ((comparison (world-branch-diff left right)))
                   (list (second (second comparison))
                         (second (third comparison))))))
@@ -853,12 +853,12 @@ fn reconstructed_equal_worlds_have_no_branch_delta() {
         eval_world(
             r#"
             (let ((source
-                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
+                    (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))))
               (let ((copy
                       (second
                         (import-knowledge-package-world
                           (empty-world)
-                          (make-world-knowledge-package source 'zoo)))))
+                          (make-world-knowledge-package source (quote zoo))))))
                 (let ((comparison (world-branch-diff source copy)))
                   (list (second (second comparison))
                         (second (third comparison))))))
@@ -873,8 +873,8 @@ fn equal_knowledge_has_the_same_canonical_content_address() {
     assert_eq!(
         eval_world(
             r#"
-            (eq (knowledge-content-address '((planet earth)))
-                (knowledge-content-address '((planet earth))))
+            (eq (knowledge-content-address (quote ((planet earth))))
+                (knowledge-content-address (quote ((planet earth)))))
             "#
         ),
         "t"
@@ -886,8 +886,8 @@ fn different_knowledge_has_a_different_content_address() {
     assert_eq!(
         eval_world(
             r#"
-            (eq (knowledge-content-address '((planet earth)))
-                (knowledge-content-address '((planet mars))))
+            (eq (knowledge-content-address (quote ((planet earth))))
+                (knowledge-content-address (quote ((planet mars)))))
             "#
         ),
         "()"
@@ -900,7 +900,7 @@ fn knowledge_content_addresses_round_trip_to_the_same_structure() {
         eval_world(
             r#"
             (let ((knowledge
-                    '((has-mass (var x)) (planet (var x)))))
+                    (quote ((has-mass (var x)) (planet (var x))))))
               (equal? knowledge
                       (read (knowledge-content-address knowledge))))
             "#
@@ -915,12 +915,12 @@ fn independently_reconstructed_worlds_have_the_same_content_address() {
         eval_world(
             r#"
             (let ((source
-                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
+                    (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))))
               (let ((copy
                       (second
                         (import-knowledge-package-world
                           (empty-world)
-                          (make-world-knowledge-package source 'zoo)))))
+                          (make-world-knowledge-package source (quote zoo))))))
                 (eq (world-content-address source)
                     (world-content-address copy))))
             "#
@@ -935,15 +935,15 @@ fn equal_current_clauses_do_not_erase_distinct_world_histories() {
         eval_world(
             r#"
             (let ((direct
-                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
+                    (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))))
               (let ((told
-                      (world-tell (empty-world) 'zoo '((has-fur cat)))))
+                      (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))))
                 (let ((retracted
-                        (world-retract told 'zoo '((has-fur cat)))))
+                        (world-retract told (quote zoo) (quote ((has-fur cat))))))
                   (let ((retold
-                          (world-tell retracted 'zoo '((has-fur cat)))))
-                    (list (equal? (world-clauses direct 'zoo)
-                                  (world-clauses retold 'zoo))
+                          (world-tell retracted (quote zoo) (quote ((has-fur cat))))))
+                    (list (equal? (world-clauses direct (quote zoo))
+                                  (world-clauses retold (quote zoo)))
                           (eq (world-content-address direct)
                               (world-content-address retold)))))))
             "#

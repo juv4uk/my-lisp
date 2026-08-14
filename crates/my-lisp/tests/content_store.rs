@@ -21,7 +21,7 @@ fn stored_knowledge_is_retrievable_by_its_canonical_address() {
     assert_eq!(
         eval_store(
             r#"
-            (let ((knowledge '((planet earth))))
+            (let ((knowledge (quote ((planet earth)))))
               (let ((store (content-store-put (empty-content-store) knowledge)))
                 (content-store-get store (knowledge-content-address knowledge))))
             "#
@@ -35,7 +35,7 @@ fn inserting_equal_content_twice_does_not_grow_the_store() {
     assert_eq!(
         eval_store(
             r#"
-            (let ((knowledge '((planet earth))))
+            (let ((knowledge (quote ((planet earth)))))
               (let ((once (content-store-put (empty-content-store) knowledge)))
                 (let ((twice (content-store-put once knowledge)))
                   (list (content-store-size once)
@@ -51,8 +51,8 @@ fn different_content_occupies_different_addresses() {
     assert_eq!(
         eval_store(
             r#"
-            (let ((earth '((planet earth)))
-                  (mars '((planet mars))))
+            (let ((earth (quote ((planet earth))))
+                  (mars (quote ((planet mars)))))
               (let ((store (content-store-put
                              (content-store-put (empty-content-store) earth)
                              mars)))
@@ -73,12 +73,12 @@ fn reconstructed_equal_worlds_deduplicate_in_the_store() {
         eval_store(
             r#"
             (let ((source
-                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
+                    (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))))
               (let ((copy
                       (second
                         (import-knowledge-package-world
                           (empty-world)
-                          (make-world-knowledge-package source 'zoo)))))
+                          (make-world-knowledge-package source (quote zoo))))))
                 (let ((store
                         (content-store-put-world
                           (content-store-put-world (empty-content-store) source)
@@ -96,19 +96,19 @@ fn worlds_with_equal_projection_but_different_history_remain_distinct() {
         eval_store(
             r#"
             (let ((direct
-                    (world-tell (empty-world) 'zoo '((has-fur cat)))))
+                    (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))))
               (let ((retold
                       (world-tell
                         (world-retract
-                          (world-tell (empty-world) 'zoo '((has-fur cat)))
-                          'zoo '((has-fur cat)))
-                        'zoo '((has-fur cat)))))
+                          (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))
+                          (quote zoo) (quote ((has-fur cat))))
+                        (quote zoo) (quote ((has-fur cat))))))
                 (let ((store
                         (content-store-put-world
                           (content-store-put-world (empty-content-store) direct)
                           retold)))
-                  (list (equal? (world-clauses direct 'zoo)
-                                (world-clauses retold 'zoo))
+                  (list (equal? (world-clauses direct (quote zoo))
+                                (world-clauses retold (quote zoo)))
                         (content-store-size store)))))
             "#
         ),

@@ -64,7 +64,7 @@ fn running_a_source_file_prints_its_result() {
 fn running_a_file_with_an_evaluation_error_exits_nonzero() {
     let dir = std::env::temp_dir();
     let path = dir.join("my-lisp-cli-test-eval-error.my");
-    std::fs::write(&path, "(car '())").expect("should write temp file");
+    std::fs::write(&path, "(car (quote ()))").expect("should write temp file");
 
     let output = my_lisp().arg(&path).output().expect("binary should run");
     let _ = std::fs::remove_file(&path);

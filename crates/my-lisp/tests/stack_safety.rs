@@ -45,8 +45,8 @@ fn core_lib_list_utilities_stay_stack_safe_on_a_long_list() {
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     let source = r#"
         (def build (lambda (n acc) (cond ((eq n 0) acc) (t (build (- n 1) (cons n acc))))))
-        (def big (build 100000 '()))
-        (length (map (lambda (x) (+ x 1)) (filter (lambda (x) (> x 50000)) (append big '()))))
+        (def big (build 100000 (quote ())))
+        (length (map (lambda (x) (+ x 1)) (filter (lambda (x) (> x 50000)) (append big (quote ())))))
     "#;
     let result = eval_program(source, &mut session).unwrap();
     assert_eq!(result.value, Value::Number(50000.0, Exactness::Exact));
@@ -89,18 +89,18 @@ fn symbol_table_sort_stays_stack_safe() {
               ((string<? (symbol->string sym) (symbol->string (car after)))
                (reverse-onto before (cons sym after)))
               (t (insert-sorted-onto sym (cons (car after) before) (cdr after))))))
-        (def insert-sorted (lambda (sym sorted) (insert-sorted-onto sym '() sorted)))
+        (def insert-sorted (lambda (sym sorted) (insert-sorted-onto sym (quote ()) sorted)))
         (def sort-symbols-onto
           (lambda (remaining sorted)
             (cond
               ((atom remaining) sorted)
               (t (sort-symbols-onto (cdr remaining) (insert-sorted (car remaining) sorted))))))
-        (def sort-symbols (lambda (symbols) (sort-symbols-onto symbols '())))
+        (def sort-symbols (lambda (symbols) (sort-symbols-onto symbols (quote ()))))
     "#;
     eval_program(helpers, &mut session).unwrap();
 
     let core_forms_source = format!(
-        r#"(length (sort-symbols (collect-all-symbols (read-all {:?}) '())))"#,
+        r#"(length (sort-symbols (collect-all-symbols (read-all {:?}) (quote ()))))"#,
         include_str!("../../../lib/core.my")
     );
     let result = eval_program(&core_forms_source, &mut session).unwrap();

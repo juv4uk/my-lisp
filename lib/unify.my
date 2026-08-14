@@ -60,7 +60,7 @@
 
 (def logic-var
   (lambda (name)
-    (list 'var name)))
+    (list (quote var) name)))
 
 ; Guards the `eq` with `(atom (car term))` first: `term` reaching the final
 ; branch is already known non-atom, but its `car` can itself be a compound
@@ -81,9 +81,9 @@
 (def var?
   (lambda (term)
     (cond
-      ((atom term) '())
-      ((atom (car term)) (eq (car term) 'var))
-      (t '()))))
+      ((atom term) (quote ()))
+      ((atom (car term)) (eq (car term) (quote var)))
+      (t (quote ())))))
 
 ; subst is an alist of (name . term) pairs, keyed by the variable's
 ; name — never by the `(var name)` pair itself. We use `equal?` instead
@@ -131,22 +131,22 @@
 (def unify
   (lambda (a b subst)
     (cond
-      ((failed-subst? subst) 'fail)
+      ((failed-subst? subst) (quote fail))
       (t (unify-walked (walk a subst) (walk b subst) subst)))))
 
 (def failed-subst?
   (lambda (subst)
     (cond
-      ((atom subst) (eq subst 'fail))
-      (t '()))))
+      ((atom subst) (eq subst (quote fail)))
+      (t (quote ())))))
 
 (def unify-walked
   (lambda (a b subst)
     (cond
       ((var? a) (unify-var a b subst))
       ((var? b) (unify-var b a subst))
-      ((atom a) (cond ((atom b) (cond ((eq a b) subst) (t 'fail))) (t 'fail)))
-      ((atom b) 'fail)
+      ((atom a) (cond ((atom b) (cond ((eq a b) subst) (t (quote fail)))) (t (quote fail))))
+      ((atom b) (quote fail))
       (t (unify (cdr a) (cdr b) (unify (car a) (car b) subst))))))
 
 (def occurs-check
@@ -154,7 +154,7 @@
     (let ((resolved (walk term subst)))
       (cond
         ((var? resolved) (equal? (second variable) (second resolved)))
-        ((atom resolved) '())
+        ((atom resolved) (quote ()))
         (t (cond
              ((occurs-check variable (car resolved) subst) t)
              (t (occurs-check variable (cdr resolved) subst))))))))
@@ -166,7 +166,7 @@
        (cond
          ((equal? (second variable) (second term)) subst)
          (t (extend-subst variable term subst))))
-      ((occurs-check variable term subst) 'fail)
+      ((occurs-check variable term subst) (quote fail))
       (t (extend-subst variable term subst)))))
 
 ; Fully resolves every variable in `term` (recursively, through chained
@@ -243,6 +243,6 @@
 (def thread-conjunction-branches
   (lambda (remaining try-one states)
     (cond
-      ((atom states) '())
+      ((atom states) (quote ()))
       (t (append (thread-conjunction remaining (car states) try-one)
                   (thread-conjunction-branches remaining try-one (cdr states)))))))

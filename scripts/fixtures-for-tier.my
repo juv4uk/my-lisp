@@ -35,17 +35,17 @@
 
 (def fixture-tier
   (lambda (fixture)
-    (cdr (assoc 'tier fixture))))
+    (cdr (assoc (quote tier) fixture))))
 
 (def print-matching
   (lambda (remaining)
     (cond
-      ((atom remaining) '())
+      ((atom remaining) (quote ()))
       (t ((lambda ()
             (cond
               ((eq (fixture-tier (car remaining)) target-tier)
                (print (car remaining)))
-              (t '()))
+              (t (quote ())))
             (print-matching (cdr remaining))))))))
 
 (print-matching (read-all (read-file "tests/fixtures/conformance.my")))

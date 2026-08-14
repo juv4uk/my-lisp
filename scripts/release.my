@@ -82,7 +82,7 @@
               exit-code)))))))
 
 (def tests
-  (process-run "cargo" '("test" "--workspace")))
+  (process-run "cargo" (quote ("test" "--workspace"))))
 
 (cond
   ((eq (car tests) 0)
@@ -99,6 +99,6 @@
             (cond
               ((eq (car push-result) 0)
                (print (string-append (string-append "Released " *release-version*) ".")))
-              (t 'push-failed)))))
-        (t 'tag-failed)))))
+              (t (quote push-failed))))))
+        (t (quote tag-failed))))))
   (t (report-and-exit-if-failed "cargo test --workspace" tests)))

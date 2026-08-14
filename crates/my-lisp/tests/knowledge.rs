@@ -29,7 +29,7 @@ fn eval_knowledge(source: &str) -> String {
 fn test_defmodule_and_reason_in() {
     let source = r#"
         (load-knowledge "../../knowledge/family.my")
-        (let ((results (reason-in 'family '(parent tom (var x)))))
+        (let ((results (reason-in (quote family) (quote (parent tom (var x))))))
              ;; We expect the first proof result to bind (x . bob)
              (car (car results)))
     "#;
@@ -40,7 +40,7 @@ fn test_defmodule_and_reason_in() {
 fn test_defmodule_and_reason_in_physics() {
     let source = r#"
         (load-knowledge "../../knowledge/physics.my")
-        (let ((results (reason-in 'physics '(has-mass (var x)))))
+        (let ((results (reason-in (quote physics) (quote (has-mass (var x))))))
              ;; We expect the first proof result to bind (x . apple)
              (car (car results)))
     "#;
@@ -50,7 +50,7 @@ fn test_defmodule_and_reason_in_physics() {
 #[test]
 fn test_reason_in_unknown_module() {
     let source = r#"
-        (reason-in 'biology '(is-alive cell))
+        (reason-in (quote biology) (quote (is-alive cell)))
     "#;
     assert_eq!(eval_knowledge(source), "Module-not-found");
 }
@@ -59,7 +59,7 @@ fn test_reason_in_unknown_module() {
 fn test_forward_in_materializes_every_derivable_fact_in_a_module() {
     let source = r#"
         (load-knowledge "../../knowledge/family.my")
-        (forward-in 'family)
+        (forward-in (quote family))
     "#;
     // family.my's `ancestor` is recursive (base case: direct parent; recursive
     // case: parent of an ancestor) — this list includes transitive facts like
@@ -76,7 +76,7 @@ fn test_forward_in_materializes_every_derivable_fact_in_a_module() {
 fn test_forward_in_materializes_every_derivable_fact_in_astronomy() {
     let source = r#"
         (load-knowledge "../../knowledge/astronomy.my")
-        (forward-in 'astronomy)
+        (forward-in (quote astronomy))
     "#;
     assert_eq!(
         eval_knowledge(source),
@@ -87,7 +87,7 @@ fn test_forward_in_materializes_every_derivable_fact_in_astronomy() {
 #[test]
 fn test_forward_in_unknown_module() {
     let source = r#"
-        (forward-in 'biology)
+        (forward-in (quote biology))
     "#;
     assert_eq!(eval_knowledge(source), "Module-not-found");
 }
@@ -96,7 +96,7 @@ fn test_forward_in_unknown_module() {
 fn test_forward_in_chains_a_recursive_rule_through_its_own_prior_output() {
     let source = r#"
         (load-knowledge "../../knowledge/family.my")
-        (reason-in 'family '(ancestor tom jim))
+        (reason-in (quote family) (quote (ancestor tom jim)))
     "#;
     // grandparent alone (a fixed one-hop rule) cannot reach `jim` from `tom`
     // (three parent-hops away: tom -> bob -> pat -> jim); only the
@@ -110,7 +110,7 @@ fn test_forward_in_chains_a_recursive_rule_through_its_own_prior_output() {
 fn test_family_module() {
     let source = r#"
         (load-knowledge "../../knowledge/family.my")
-        (let ((results (reason-in 'family '(grandparent tom ann))))
+        (let ((results (reason-in (quote family) (quote (grandparent tom ann)))))
              ;; The result contains the bindings used during the proof, including rule variables
              (car (car results)))
     "#;
@@ -121,7 +121,7 @@ fn test_family_module() {
 fn test_forward_in_chains_multiple_rules_in_physics() {
     let source = r#"
         (load-knowledge "../../knowledge/physics.my")
-        (forward-in 'physics)
+        (forward-in (quote physics))
     "#;
     assert_eq!(
         eval_knowledge(source),
@@ -133,7 +133,7 @@ fn test_forward_in_chains_multiple_rules_in_physics() {
 fn test_astronomy_module() {
     let source = r#"
         (load-knowledge "../../knowledge/astronomy.my")
-        (let ((results (reason-in 'astronomy '(orbits earth sun))))
+        (let ((results (reason-in (quote astronomy) (quote (orbits earth sun)))))
              ;; The result contains the bindings used during the proof, including rule variables
              (car (car results)))
     "#;
@@ -144,7 +144,7 @@ fn test_astronomy_module() {
 fn test_describe_collects_every_fact_about_a_symbol_astronomy() {
     let source = r#"
         (load-knowledge "../../knowledge/astronomy.my")
-        (describe 'earth 'astronomy)
+        (describe (quote earth) (quote astronomy))
     "#;
     // `earth` appears in one fact (`(planet earth)`); the `orbits` rule is not
     // a fact, so it is excluded even though `earth` could satisfy it.
@@ -155,7 +155,7 @@ fn test_describe_collects_every_fact_about_a_symbol_astronomy() {
 fn test_describe_symbol_with_no_facts_astronomy() {
     let source = r#"
         (load-knowledge "../../knowledge/astronomy.my")
-        (describe 'pluto 'astronomy)
+        (describe (quote pluto) (quote astronomy))
     "#;
     assert_eq!(eval_knowledge(source), "()");
 }
@@ -164,7 +164,7 @@ fn test_describe_symbol_with_no_facts_astronomy() {
 fn test_describe_collects_every_fact_about_a_symbol() {
     let source = r#"
         (load-knowledge "../../knowledge/family.my")
-        (describe 'jim 'family)
+        (describe (quote jim) (quote family))
     "#;
     // `jim` appears in one fact (`(parent pat jim)`); the `grandparent`/
     // `ancestor` rules are not facts, so they're excluded even though `jim`
@@ -175,7 +175,7 @@ fn test_describe_collects_every_fact_about_a_symbol() {
 #[test]
 fn test_describe_unknown_module() {
     let source = r#"
-        (describe 'earth 'biology)
+        (describe (quote earth) (quote biology))
     "#;
     assert_eq!(eval_knowledge(source), "Module-not-found");
 }
@@ -184,7 +184,7 @@ fn test_describe_unknown_module() {
 fn test_describe_symbol_with_no_facts() {
     let source = r#"
         (load-knowledge "../../knowledge/family.my")
-        (describe 'ringo 'family)
+        (describe (quote ringo) (quote family))
     "#;
     assert_eq!(eval_knowledge(source), "()");
 }
@@ -201,13 +201,13 @@ fn test_record_usage_accumulates_across_separate_queries() {
     // built with `cons`/`list` rather than a quoted `'(x . 0)` literal: the
     // reader has no dotted-pair syntax (a literal `.` parses as an ordinary
     // symbol), even though the printer renders real dotted pairs that way —
-    // so a quoted `(x . 0)` and an actual `(cons 'x 0)` are not `equal?`.
+    // so a quoted `(x . 0)` and an actual `(cons (quote x) 0)` are not `equal?`.
     let source = r#"
         (load-knowledge "../../knowledge/family.my")
-        (def rule-key (list 'grandparent (list 'var (cons 'x 0)) (list 'var (cons 'y 0))))
-        (def results-1 (reason-in 'family '(grandparent tom ann)))
+        (def rule-key (list (quote grandparent) (list (quote var) (cons (quote x) 0)) (list (quote var) (cons (quote y) 0))))
+        (def results-1 (reason-in (quote family) (quote (grandparent tom ann))))
         (record-usage! (second (car results-1)))
-        (def results-2 (reason-in 'family '(grandparent tom pat)))
+        (def results-2 (reason-in (quote family) (quote (grandparent tom pat))))
         (record-usage! (second (car results-2)))
         (usage-of rule-key)
     "#;
@@ -220,10 +220,10 @@ fn test_record_usage_accumulates_across_separate_queries() {
 fn test_record_usage_accumulates_across_separate_queries_astronomy() {
     let source = r#"
         (load-knowledge "../../knowledge/astronomy.my")
-        (def rule-key (list 'orbits (list 'var (cons 'p 0)) (list 'var (cons 's 0))))
-        (def results-1 (reason-in 'astronomy '(orbits earth sun)))
+        (def rule-key (list (quote orbits) (list (quote var) (cons (quote p) 0)) (list (quote var) (cons (quote s) 0))))
+        (def results-1 (reason-in (quote astronomy) (quote (orbits earth sun))))
         (record-usage! (second (car results-1)))
-        (def results-2 (reason-in 'astronomy '(orbits mars sun)))
+        (def results-2 (reason-in (quote astronomy) (quote (orbits mars sun))))
         (record-usage! (second (car results-2)))
         (usage-of rule-key)
     "#;
@@ -235,7 +235,7 @@ fn test_record_usage_accumulates_across_separate_queries_astronomy() {
 #[test]
 fn test_usage_of_unrecorded_rule_is_zero() {
     let source = r#"
-        (usage-of (list 'grandparent (list 'var (cons 'x 0)) (list 'var (cons 'y 0))))
+        (usage-of (list (quote grandparent) (list (quote var) (cons (quote x) 0)) (list (quote var) (cons (quote y) 0))))
     "#;
     assert_eq!(eval_knowledge(source), "0");
 }
@@ -249,9 +249,9 @@ fn test_usage_of_unrecorded_rule_is_zero() {
 #[test]
 fn retract_knowledge_removes_a_fact_the_module_can_no_longer_prove() {
     let source = r#"
-        (defmodule zoo '(((has-fur cat)) ((has-fur dog))))
-        (retract-knowledge zoo '((has-fur cat)))
-        (reason-in 'zoo '(has-fur cat))
+        (defmodule zoo (quote (((has-fur cat)) ((has-fur dog)))))
+        (retract-knowledge zoo (quote ((has-fur cat))))
+        (reason-in (quote zoo) (quote (has-fur cat)))
     "#;
     assert_eq!(eval_knowledge(source), "()");
 }
@@ -259,9 +259,9 @@ fn retract_knowledge_removes_a_fact_the_module_can_no_longer_prove() {
 #[test]
 fn retract_knowledge_leaves_the_rest_of_the_module_intact() {
     let source = r#"
-        (defmodule zoo '(((has-fur cat)) ((has-fur dog))))
-        (retract-knowledge zoo '((has-fur cat)))
-        (car (car (reason-in 'zoo '(has-fur dog))))
+        (defmodule zoo (quote (((has-fur cat)) ((has-fur dog)))))
+        (retract-knowledge zoo (quote ((has-fur cat))))
+        (car (car (reason-in (quote zoo) (quote (has-fur dog)))))
     "#;
     assert_eq!(eval_knowledge(source), "()");
 }
@@ -274,15 +274,15 @@ fn a_module_retracted_down_to_nothing_is_still_a_known_module() {
     // has since been retracted" — the second case still isn't
     // `Module-not-found`, it's a known module with an empty clause list.
     let source = r#"
-        (defmodule zoo '(((has-fur cat))))
-        (retract-knowledge zoo '((has-fur cat)))
-        (reason-in 'zoo '(has-fur cat))
+        (defmodule zoo (quote (((has-fur cat)))))
+        (retract-knowledge zoo (quote ((has-fur cat))))
+        (reason-in (quote zoo) (quote (has-fur cat)))
     "#;
     assert_eq!(eval_knowledge(source), "()");
     let describe_source = r#"
-        (defmodule zoo '(((has-fur cat))))
-        (retract-knowledge zoo '((has-fur cat)))
-        (describe 'cat 'zoo)
+        (defmodule zoo (quote (((has-fur cat)))))
+        (retract-knowledge zoo (quote ((has-fur cat))))
+        (describe (quote cat) (quote zoo))
     "#;
     // `describe` returning `()` (an empty fact list, not the symbol
     // `Module-not-found`) is the proof the module is still known.
@@ -296,10 +296,10 @@ fn defmodule_called_twice_for_the_same_name_accumulates_instead_of_replacing() {
     // an append-only journal never discards what an earlier call told it,
     // so both calls' clauses are visible together.
     let source = r#"
-        (defmodule zoo '(((has-fur cat))))
-        (defmodule zoo '(((has-fur dog))))
-        (list (car (car (reason-in 'zoo '(has-fur cat))))
-              (car (car (reason-in 'zoo '(has-fur dog)))))
+        (defmodule zoo (quote (((has-fur cat)))))
+        (defmodule zoo (quote (((has-fur dog)))))
+        (list (car (car (reason-in (quote zoo) (quote (has-fur cat)))))
+              (car (car (reason-in (quote zoo) (quote (has-fur dog))))))
     "#;
     assert_eq!(eval_knowledge(source), "(() ())");
 }
@@ -307,10 +307,10 @@ fn defmodule_called_twice_for_the_same_name_accumulates_instead_of_replacing() {
 #[test]
 fn tell_knowledge_and_defmodule_contributions_to_the_same_module_both_survive() {
     let source = r#"
-        (defmodule zoo '(((has-fur cat))))
-        (tell-knowledge zoo '(((has-fur dog))))
-        (list (car (car (reason-in 'zoo '(has-fur cat))))
-              (car (car (reason-in 'zoo '(has-fur dog)))))
+        (defmodule zoo (quote (((has-fur cat)))))
+        (tell-knowledge zoo (quote (((has-fur dog)))))
+        (list (car (car (reason-in (quote zoo) (quote (has-fur cat)))))
+              (car (car (reason-in (quote zoo) (quote (has-fur dog))))))
     "#;
     assert_eq!(eval_knowledge(source), "(() ())");
 }
@@ -327,8 +327,8 @@ fn tell_knowledge_and_defmodule_contributions_to_the_same_module_both_survive() 
 fn advise_accepts_a_valid_fact_and_makes_it_queryable() {
     let source = r#"
         (list
-          (advise astronomy '((planet venus)))
-          (car (car (reason-in 'astronomy '(planet venus)))))
+          (advise astronomy (quote ((planet venus))))
+          (car (car (reason-in (quote astronomy) (quote (planet venus))))))
     "#;
     assert_eq!(
         eval_knowledge(source),
@@ -339,9 +339,9 @@ fn advise_accepts_a_valid_fact_and_makes_it_queryable() {
 #[test]
 fn advise_accepts_a_valid_rule_and_reason_uses_it() {
     let source = r#"
-        (advise astronomy '((planet earth)))
-        (advise astronomy '((has-mass (var x)) (planet (var x))))
-        (car (car (reason-in 'astronomy '(has-mass earth))))
+        (advise astronomy (quote ((planet earth))))
+        (advise astronomy (quote ((has-mass (var x)) (planet (var x)))))
+        (car (car (reason-in (quote astronomy) (quote (has-mass earth)))))
     "#;
     assert_eq!(eval_knowledge(source), "(((x . 0) . earth))");
 }
@@ -350,8 +350,8 @@ fn advise_accepts_a_valid_rule_and_reason_uses_it() {
 fn advise_rejects_malformed_clause_without_creating_a_module() {
     let source = r#"
         (list
-          (advise astronomy '(planet venus))
-          (reason-in 'astronomy '(planet venus)))
+          (advise astronomy (quote (planet venus)))
+          (reason-in (quote astronomy) (quote (planet venus))))
     "#;
     assert_eq!(
         eval_knowledge(source),
@@ -362,7 +362,7 @@ fn advise_rejects_malformed_clause_without_creating_a_module() {
 #[test]
 fn advise_rejects_a_malformed_logic_variable() {
     assert_eq!(
-        eval_knowledge("(advise astronomy '((planet (var))))"),
+        eval_knowledge("(advise astronomy (quote ((planet (var)))))"),
         "(rejected (reason invalid-clause) (input ((planet (var)))))"
     );
 }
@@ -370,11 +370,11 @@ fn advise_rejects_a_malformed_logic_variable() {
 #[test]
 fn advise_reports_an_explicit_conflict_without_recording_it() {
     let source = r#"
-        (advise astronomy '((not (planet pluto))))
-        (def result (advise astronomy '((planet pluto))))
+        (advise astronomy (quote ((not (planet pluto)))))
+        (def result (advise astronomy (quote ((planet pluto)))))
         (list (car result)
               (second (third result))
-              (reason-in 'astronomy '(planet pluto)))
+              (reason-in (quote astronomy) (quote (planet pluto))))
     "#;
     assert_eq!(eval_knowledge(source), "(conflict (not (planet pluto)) ())");
 }
@@ -382,7 +382,7 @@ fn advise_reports_an_explicit_conflict_without_recording_it() {
 #[test]
 fn advise_does_not_confuse_absence_with_explicit_negation() {
     assert_eq!(
-        eval_knowledge("(advise astronomy '((planet neptune)))"),
+        eval_knowledge("(advise astronomy (quote ((planet neptune))))"),
         "(accepted (module astronomy) (knowledge ((planet neptune))))"
     );
 }
@@ -392,9 +392,9 @@ fn advise_all_accepts_a_batch_atomically_and_rules_use_the_whole_batch() {
     let source = r#"
         (list
           (advise-all astronomy
-            '(((planet earth))
-              ((has-mass (var x)) (planet (var x)))))
-          (car (car (reason-in 'astronomy '(has-mass earth)))))
+            (quote (((planet earth))
+              ((has-mass (var x)) (planet (var x))))))
+          (car (car (reason-in (quote astronomy) (quote (has-mass earth))))))
     "#;
     assert_eq!(
         eval_knowledge(source),
@@ -406,8 +406,8 @@ fn advise_all_accepts_a_batch_atomically_and_rules_use_the_whole_batch() {
 fn advise_all_rejects_the_whole_batch_when_one_clause_is_malformed() {
     let source = r#"
         (list
-          (car (advise-all astronomy '(((planet earth)) (planet mars))))
-          (reason-in 'astronomy '(planet earth)))
+          (car (advise-all astronomy (quote (((planet earth)) (planet mars)))))
+          (reason-in (quote astronomy) (quote (planet earth))))
     "#;
     assert_eq!(eval_knowledge(source), "(rejected Module-not-found)");
 }
@@ -415,8 +415,8 @@ fn advise_all_rejects_the_whole_batch_when_one_clause_is_malformed() {
 #[test]
 fn advise_all_rejects_an_empty_batch_without_creating_a_module() {
     let source = r#"
-        (list (advise-all astronomy '())
-              (reason-in 'astronomy '(planet earth)))
+        (list (advise-all astronomy (quote ()))
+              (reason-in (quote astronomy) (quote (planet earth))))
     "#;
     assert_eq!(
         eval_knowledge(source),
@@ -429,8 +429,8 @@ fn advise_all_detects_an_internal_explicit_conflict_without_writing() {
     let source = r#"
         (list
           (car (advise-all astronomy
-                 '(((planet pluto)) ((not (planet pluto))))))
-          (reason-in 'astronomy '(planet pluto)))
+                 (quote (((planet pluto)) ((not (planet pluto)))))))
+          (reason-in (quote astronomy) (quote (planet pluto))))
     "#;
     assert_eq!(eval_knowledge(source), "(conflict Module-not-found)");
 }
@@ -440,10 +440,10 @@ fn advise_all_detects_a_conflict_derived_by_the_proposed_rules() {
     let source = r#"
         (list
           (car (advise-all astronomy
-                 '(((planet pluto))
+                 (quote (((planet pluto))
                    ((not (dwarf pluto)))
-                   ((dwarf (var x)) (planet (var x))))))
-          (reason-in 'astronomy '(planet pluto)))
+                   ((dwarf (var x)) (planet (var x)))))))
+          (reason-in (quote astronomy) (quote (planet pluto))))
     "#;
     assert_eq!(eval_knowledge(source), "(conflict Module-not-found)");
 }
@@ -452,11 +452,11 @@ fn advise_all_detects_a_conflict_derived_by_the_proposed_rules() {
 fn advise_all_detects_a_conflict_activated_across_existing_and_new_knowledge() {
     let source = r#"
         (defmodule astronomy
-          '(((not (has-mass pluto)))
-            ((has-mass (var x)) (planet (var x)))))
+          (quote (((not (has-mass pluto)))
+            ((has-mass (var x)) (planet (var x))))))
         (list
-          (car (advise-all astronomy '(((planet pluto)))))
-          (reason-in 'astronomy '(planet pluto)))
+          (car (advise-all astronomy (quote (((planet pluto))))))
+          (reason-in (quote astronomy) (quote (planet pluto))))
     "#;
     assert_eq!(eval_knowledge(source), "(conflict ())");
 }
@@ -464,7 +464,7 @@ fn advise_all_detects_a_conflict_activated_across_existing_and_new_knowledge() {
 #[test]
 fn knowledge_package_constructor_has_the_versioned_interchange_shape() {
     assert_eq!(
-        eval_knowledge("(make-knowledge-package 'astronomy '(((planet earth))))"),
+        eval_knowledge("(make-knowledge-package (quote astronomy) (quote (((planet earth)))))"),
         "((format . my-lisp-knowledge) (version 0 1) (module . astronomy) (clauses ((planet earth))))"
     );
 }
@@ -473,13 +473,13 @@ fn knowledge_package_constructor_has_the_versioned_interchange_shape() {
 fn import_knowledge_package_atomically_installs_valid_data() {
     let source = r#"
         (def package
-          '((format . my-lisp-knowledge)
+          (quote ((format . my-lisp-knowledge)
             (version 0 1)
             (module . astronomy)
             (clauses . (((planet earth))
-                        ((has-mass (var x)) (planet (var x)))))))
+                        ((has-mass (var x)) (planet (var x))))))))
         (list (car (import-knowledge-package package))
-              (car (car (reason-in 'astronomy '(has-mass earth)))))
+              (car (car (reason-in (quote astronomy) (quote (has-mass earth))))))
     "#;
     assert_eq!(eval_knowledge(source), "(accepted (((x . 0) . earth)))");
 }
@@ -488,12 +488,12 @@ fn import_knowledge_package_atomically_installs_valid_data() {
 fn import_knowledge_package_rejects_an_unsupported_version_without_writing() {
     let source = r#"
         (def package
-          '((format . my-lisp-knowledge)
+          (quote ((format . my-lisp-knowledge)
             (version 1 0)
             (module . astronomy)
-            (clauses . (((planet earth))))))
+            (clauses . (((planet earth)))))))
         (list (knowledge-package-decision package)
-              (reason-in 'astronomy '(planet earth)))
+              (reason-in (quote astronomy) (quote (planet earth))))
     "#;
     assert_eq!(
         eval_knowledge(source),
@@ -504,9 +504,9 @@ fn import_knowledge_package_rejects_an_unsupported_version_without_writing() {
 #[test]
 fn import_knowledge_package_rejects_a_malformed_envelope_without_writing() {
     let source = r#"
-        (def package '((format . my-lisp-knowledge) broken-entry))
+        (def package (quote ((format . my-lisp-knowledge) broken-entry)))
         (list (knowledge-package-decision package)
-              (reason-in 'astronomy '(planet earth)))
+              (reason-in (quote astronomy) (quote (planet earth))))
     "#;
     assert_eq!(
         eval_knowledge(source),
@@ -519,7 +519,7 @@ fn import_knowledge_file_reads_the_data_only_example() {
     let source = r#"
         (list
           (car (import-knowledge-file "../../knowledge/examples/astronomy-package.my"))
-          (car (car (reason-in 'astronomy-exchange '(has-mass earth)))))
+          (car (car (reason-in (quote astronomy-exchange) (quote (has-mass earth))))))
     "#;
     assert_eq!(eval_knowledge(source), "(accepted (((x . 0) . earth)))");
 }
@@ -529,11 +529,11 @@ fn write_knowledge_package_round_trips_through_file_import() {
     let path = std::env::temp_dir().join("my-lisp-knowledge-package.my");
     let path_str = path.to_str().unwrap().replace('\\', "/");
     let source = format!(r#"
-        (write-knowledge-package "{path_str}" 'exchange
-          '(((planet earth))
-            ((has-mass (var x)) (planet (var x)))))
+        (write-knowledge-package "{path_str}" (quote exchange)
+          (quote (((planet earth))
+            ((has-mass (var x)) (planet (var x))))))
         (list (car (import-knowledge-file "{path_str}"))
-              (car (car (reason-in 'exchange '(has-mass earth)))))
+              (car (car (reason-in (quote exchange) (quote (has-mass earth))))))
     "#);
     assert_eq!(eval_knowledge(&source), "(accepted (((x . 0) . earth)))");
     std::fs::remove_file(path).ok();
@@ -544,7 +544,7 @@ fn write_knowledge_package_rejects_invalid_data_before_creating_a_file() {
     let path = std::env::temp_dir().join("my-lisp-invalid-package.my");
     std::fs::remove_file(&path).ok();
     let path_str = path.to_str().unwrap().replace('\\', "/");
-    let source = format!(r#"(write-knowledge-package "{path_str}" 'exchange '())"#);
+    let source = format!(r#"(write-knowledge-package "{path_str}" (quote exchange) (quote ()))"#);
     assert_eq!(eval_knowledge(&source), "(rejected (reason invalid-batch) (input ()))");
     assert!(!path.exists());
 }

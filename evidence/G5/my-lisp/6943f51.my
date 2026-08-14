@@ -1,5 +1,5 @@
 (evidence
-  (fixture . "(length '(radio antenna signal))")
+  (fixture . "(length (quote (radio antenna signal)))")
   (requirement . G5)
   (implementation . my-lisp)
   (commit . "6943f51afcdcd9bf41bf083e1a7ae2cd5aedbd3c")

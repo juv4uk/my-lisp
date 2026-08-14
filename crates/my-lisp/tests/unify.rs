@@ -29,18 +29,18 @@ fn eval_unify(source: &str) -> String {
 
 #[test]
 fn identical_atoms_unify_with_an_unchanged_substitution() {
-    assert_eq!(eval_unify("(unify 'radio 'radio '())"), "()");
+    assert_eq!(eval_unify("(unify (quote radio) (quote radio) (quote ()))"), "()");
 }
 
 #[test]
 fn different_atoms_fail_to_unify() {
-    assert_eq!(eval_unify("(unify 'radio 'antenna '())"), "fail");
+    assert_eq!(eval_unify("(unify (quote radio) (quote antenna) (quote ()))"), "fail");
 }
 
 #[test]
 fn a_variable_unifies_with_and_resolves_to_an_atom() {
     assert_eq!(
-        eval_unify("(apply-subst (logic-var 'x) (unify (logic-var 'x) 'antenna '()))"),
+        eval_unify("(apply-subst (logic-var (quote x)) (unify (logic-var (quote x)) (quote antenna) (quote ())))"),
         "antenna"
     );
 }
@@ -51,7 +51,7 @@ fn structural_unification_extracts_a_binding_from_a_compound_term() {
     // against the fact (parent alice bob) should bind ?x to alice.
     assert_eq!(
         eval_unify(
-            "(apply-subst (logic-var 'x) (unify (list 'parent (logic-var 'x) 'bob) (list 'parent 'alice 'bob) '()))"
+            "(apply-subst (logic-var (quote x)) (unify (list (quote parent) (logic-var (quote x)) (quote bob)) (list (quote parent) (quote alice) (quote bob)) (quote ())))"
         ),
         "alice"
     );
@@ -60,7 +60,7 @@ fn structural_unification_extracts_a_binding_from_a_compound_term() {
 #[test]
 fn structural_mismatch_fails() {
     assert_eq!(
-        eval_unify("(unify (list 'a 'b) (list 'a 'c) '())"),
+        eval_unify("(unify (list (quote a) (quote b)) (list (quote a) (quote c)) (quote ()))"),
         "fail"
     );
 }
@@ -71,7 +71,7 @@ fn chained_variable_bindings_resolve_transitively() {
     // must walk the whole chain, not stop after one dereference.
     assert_eq!(
         eval_unify(
-            "(apply-subst (logic-var 'y) (unify (list (logic-var 'x) (logic-var 'y)) (list 'radio (logic-var 'x)) '()))"
+            "(apply-subst (logic-var (quote y)) (unify (list (logic-var (quote x)) (logic-var (quote y))) (list (quote radio) (logic-var (quote x))) (quote ())))"
         ),
         "radio"
     );
@@ -82,7 +82,7 @@ fn unifying_a_variable_with_itself_creates_no_binding() {
     // Also the case that would loop forever if unify-var didn't special-case
     // same-name variable-variable unification (var bound to itself).
     assert_eq!(
-        eval_unify("(apply-subst (logic-var 'x) (unify (logic-var 'x) (logic-var 'x) '()))"),
+        eval_unify("(apply-subst (logic-var (quote x)) (unify (logic-var (quote x)) (logic-var (quote x)) (quote ())))"),
         "(var x)"
     );
 }
@@ -91,7 +91,7 @@ fn unifying_a_variable_with_itself_creates_no_binding() {
 fn apply_subst_resolves_every_variable_in_a_compound_query() {
     assert_eq!(
         eval_unify(
-            "(apply-subst (list 'parent (logic-var 'x) (logic-var 'y)) (unify (list 'parent (logic-var 'x) (logic-var 'y)) (list 'parent 'alice 'bob) '()))"
+            "(apply-subst (list (quote parent) (logic-var (quote x)) (logic-var (quote y))) (unify (list (quote parent) (logic-var (quote x)) (logic-var (quote y))) (list (quote parent) (quote alice) (quote bob)) (quote ())))"
         ),
         "(parent alice bob)"
     );
@@ -104,7 +104,7 @@ fn var_predicate_does_not_crash_on_a_nested_compound_subterm() {
     // itself a list, and `eq` requires atoms. Caught by hand-testing before
     // this test existed — kept here so it can't silently regress.
     assert_eq!(
-        eval_unify("(var? (list (logic-var 'x) 'bob))"),
+        eval_unify("(var? (list (logic-var (quote x)) (quote bob)))"),
         "()"
     );
 }
@@ -112,7 +112,7 @@ fn var_predicate_does_not_crash_on_a_nested_compound_subterm() {
 #[test]
 fn occurs_check_prevents_infinite_structures() {
     let source = r#"
-        (let ((subst (unify (logic-var 'x) (list 'f (logic-var 'x)) '())))
+        (let ((subst (unify (logic-var (quote x)) (list (quote f) (logic-var (quote x))) (quote ()))))
              subst)
     "#;
     assert_eq!(eval_unify(source), "fail");
@@ -127,10 +127,10 @@ fn thread_conjunction_finds_every_combination_satisfying_all_conditions() {
     // than only indirectly through its two consumers.
     let source = r#"
         (thread-conjunction
-          (list (logic-var 'x) (logic-var 'y))
-          '()
+          (list (logic-var (quote x)) (logic-var (quote y)))
+          (quote ())
           (lambda (condition subst)
-            (map (lambda (candidate) (unify condition candidate subst)) '(a b))))
+            (map (lambda (candidate) (unify condition candidate subst)) (quote (a b)))))
     "#;
     // Two conditions, two candidates each, no shared variables between
     // them: 2 * 2 = 4 independent combinations, each binding x and y.
@@ -144,13 +144,13 @@ fn thread_conjunction_finds_every_combination_satisfying_all_conditions() {
 fn thread_conjunction_returns_no_results_when_a_condition_cannot_be_satisfied() {
     let source = r#"
         (thread-conjunction
-          (list 'a 'z)
-          '()
+          (list (quote a) (quote z))
+          (quote ())
           (lambda (condition subst)
-            (filter (lambda (result) (eq (failed-subst? result) '()))
-                    (map (lambda (candidate) (unify condition candidate subst)) '(a b)))))
+            (filter (lambda (result) (eq (failed-subst? result) (quote ())))
+                    (map (lambda (candidate) (unify condition candidate subst)) (quote (a b))))))
     "#;
-    // The second condition ('z) never unifies with 'a or 'b, so every
+    // The second condition ((quote z)) never unifies with 'a or 'b, so every
     // branch started by the first condition dead-ends.
     assert_eq!(eval_unify(source), "()");
 }

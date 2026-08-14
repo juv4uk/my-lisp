@@ -22,8 +22,8 @@ fn eval_forward(source: &str) -> String {
 #[test]
 fn fire_rule_produces_a_new_fact_when_the_pattern_matches() {
     let source = r#"
-        (fire-rule (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
-                   '(planet earth))
+        (fire-rule (list (list (quote planet) (logic-var (quote x))) (list (quote has-mass) (logic-var (quote x))))
+                   (quote (planet earth)))
     "#;
     assert_eq!(eval_forward(source), "(has-mass earth)");
 }
@@ -31,8 +31,8 @@ fn fire_rule_produces_a_new_fact_when_the_pattern_matches() {
 #[test]
 fn fire_rule_returns_no_match_when_the_pattern_fails() {
     let source = r#"
-        (fire-rule (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
-                   '(star sun))
+        (fire-rule (list (list (quote planet) (logic-var (quote x))) (list (quote has-mass) (logic-var (quote x))))
+                   (quote (star sun)))
     "#;
     assert_eq!(eval_forward(source), "no-match");
 }
@@ -40,8 +40,8 @@ fn fire_rule_returns_no_match_when_the_pattern_fails() {
 #[test]
 fn fire_rule_on_facts_collects_new_facts_and_drops_non_matches() {
     let source = r#"
-        (fire-rule-on-facts (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
-                             (list '(planet earth) '(star sun) '(planet mars)))
+        (fire-rule-on-facts (list (list (quote planet) (logic-var (quote x))) (list (quote has-mass) (logic-var (quote x))))
+                             (list (quote (planet earth)) (quote (star sun)) (quote (planet mars))))
     "#;
     assert_eq!(eval_forward(source), "((has-mass earth) (has-mass mars))");
 }
@@ -49,8 +49,8 @@ fn fire_rule_on_facts_collects_new_facts_and_drops_non_matches() {
 #[test]
 fn fire_rule_on_facts_returns_empty_list_when_nothing_matches() {
     let source = r#"
-        (fire-rule-on-facts (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
-                             (list '(star sun) '(moon luna)))
+        (fire-rule-on-facts (list (list (quote planet) (logic-var (quote x))) (list (quote has-mass) (logic-var (quote x))))
+                             (list (quote (star sun)) (quote (moon luna))))
     "#;
     assert_eq!(eval_forward(source), "()");
 }
@@ -58,10 +58,10 @@ fn fire_rule_on_facts_returns_empty_list_when_nothing_matches() {
 #[test]
 fn fire_rule_on_working_memory_reads_the_global_fact_list() {
     let source = r#"
-        (assert-fact! '(planet earth))
-        (assert-fact! '(star sun))
-        (assert-fact! '(planet mars))
-        (fire-rule-on-working-memory (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x))))
+        (assert-fact! (quote (planet earth)))
+        (assert-fact! (quote (star sun)))
+        (assert-fact! (quote (planet mars)))
+        (fire-rule-on-working-memory (list (list (quote planet) (logic-var (quote x))) (list (quote has-mass) (logic-var (quote x)))))
     "#;
     assert_eq!(eval_forward(source), "((has-mass mars) (has-mass earth))");
 }
@@ -70,9 +70,9 @@ fn fire_rule_on_working_memory_reads_the_global_fact_list() {
 fn fire_rules_on_facts_applies_every_rule_and_collects_all_results() {
     let source = r#"
         (fire-rules-on-facts
-          (list (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
-                (list (list 'star (logic-var 'x)) (list 'has-mass (logic-var 'x))))
-          (list '(planet earth) '(star sun) '(moon luna)))
+          (list (list (list (quote planet) (logic-var (quote x))) (list (quote has-mass) (logic-var (quote x))))
+                (list (list (quote star) (logic-var (quote x))) (list (quote has-mass) (logic-var (quote x)))))
+          (list (quote (planet earth)) (quote (star sun)) (quote (moon luna))))
     "#;
     assert_eq!(eval_forward(source), "((has-mass earth) (has-mass sun))");
 }
@@ -80,11 +80,11 @@ fn fire_rules_on_facts_applies_every_rule_and_collects_all_results() {
 #[test]
 fn fire_rules_on_working_memory_reads_the_global_fact_list() {
     let source = r#"
-        (assert-fact! '(planet earth))
-        (assert-fact! '(star sun))
+        (assert-fact! (quote (planet earth)))
+        (assert-fact! (quote (star sun)))
         (fire-rules-on-working-memory
-          (list (list (list 'planet (logic-var 'x)) (list 'has-mass (logic-var 'x)))
-                (list (list 'star (logic-var 'x)) (list 'has-mass (logic-var 'x)))))
+          (list (list (list (quote planet) (logic-var (quote x))) (list (quote has-mass) (logic-var (quote x))))
+                (list (list (quote star) (logic-var (quote x))) (list (quote has-mass) (logic-var (quote x))))))
     "#;
     assert_eq!(eval_forward(source), "((has-mass earth) (has-mass sun))");
 }
@@ -95,9 +95,9 @@ fn run_reaches_a_fixpoint_by_chaining_rules_across_passes() {
     // "heavy" fact only appears two passes after the initial orbits fact,
     // so this only passes if `run` actually loops to a fixpoint.
     let source = r#"
-        (run (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))
-                    (list (list 'has-mass (logic-var 'x)) (list 'heavy (logic-var 'x))))
-              (list '(orbits earth sun)))
+        (run (list (list (list (quote orbits) (logic-var (quote x)) (quote sun)) (list (quote has-mass) (logic-var (quote x))))
+                    (list (list (quote has-mass) (logic-var (quote x))) (list (quote heavy) (logic-var (quote x)))))
+              (list (quote (orbits earth sun))))
     "#;
     assert_eq!(
         eval_forward(source),
@@ -108,8 +108,8 @@ fn run_reaches_a_fixpoint_by_chaining_rules_across_passes() {
 #[test]
 fn run_does_not_loop_forever_when_a_rule_reproduces_an_existing_fact() {
     let source = r#"
-        (run (list (list (list 'planet (logic-var 'x)) (list 'planet (logic-var 'x))))
-              (list '(planet earth)))
+        (run (list (list (list (quote planet) (logic-var (quote x))) (list (quote planet) (logic-var (quote x)))))
+              (list (quote (planet earth))))
     "#;
     assert_eq!(eval_forward(source), "((planet earth))");
 }
@@ -117,9 +117,9 @@ fn run_does_not_loop_forever_when_a_rule_reproduces_an_existing_fact() {
 #[test]
 fn assert_facts_merges_run_results_into_the_global_working_memory() {
     let source = r#"
-        (assert-fact! '(orbits earth sun))
+        (assert-fact! (quote (orbits earth sun)))
         (assert-facts!
-          (run (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x))))
+          (run (list (list (list (quote orbits) (logic-var (quote x)) (quote sun)) (list (quote has-mass) (logic-var (quote x)))))
                 *working-memory*))
         *working-memory*
     "#;
@@ -132,7 +132,7 @@ fn assert_facts_merges_run_results_into_the_global_working_memory() {
 #[test]
 fn retract_fact_removes_a_matching_fact_from_a_list() {
     let source = r#"
-        (retract-fact '(star sun) (list '(planet earth) '(star sun) '(planet mars)))
+        (retract-fact (quote (star sun)) (list (quote (planet earth)) (quote (star sun)) (quote (planet mars))))
     "#;
     assert_eq!(eval_forward(source), "((planet earth) (planet mars))");
 }
@@ -140,7 +140,7 @@ fn retract_fact_removes_a_matching_fact_from_a_list() {
 #[test]
 fn retract_fact_leaves_the_list_unchanged_when_nothing_matches() {
     let source = r#"
-        (retract-fact '(moon luna) (list '(planet earth) '(star sun)))
+        (retract-fact (quote (moon luna)) (list (quote (planet earth)) (quote (star sun))))
     "#;
     assert_eq!(eval_forward(source), "((planet earth) (star sun))");
 }
@@ -148,9 +148,9 @@ fn retract_fact_leaves_the_list_unchanged_when_nothing_matches() {
 #[test]
 fn retract_fact_bang_removes_from_the_global_working_memory() {
     let source = r#"
-        (assert-fact! '(planet earth))
-        (assert-fact! '(star sun))
-        (retract-fact! '(star sun))
+        (assert-fact! (quote (planet earth)))
+        (assert-fact! (quote (star sun)))
+        (retract-fact! (quote (star sun)))
         *working-memory*
     "#;
     assert_eq!(eval_forward(source), "((planet earth))");
@@ -162,11 +162,11 @@ fn retract_fact_bang_does_not_undo_facts_it_already_helped_derive() {
     // source fact leaves the already-derived fact behind untouched, since
     // there is no support tracking yet (that's Step 5b).
     let source = r#"
-        (assert-fact! '(orbits earth sun))
+        (assert-fact! (quote (orbits earth sun)))
         (assert-facts!
-          (run (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x))))
+          (run (list (list (list (quote orbits) (logic-var (quote x)) (quote sun)) (list (quote has-mass) (logic-var (quote x)))))
                 *working-memory*))
-        (retract-fact! '(orbits earth sun))
+        (retract-fact! (quote (orbits earth sun)))
         *working-memory*
     "#;
     assert_eq!(eval_forward(source), "((has-mass earth))");
@@ -175,7 +175,7 @@ fn retract_fact_bang_does_not_undo_facts_it_already_helped_derive() {
 #[test]
 fn assert_fact_tms_stores_an_axiom_with_no_support() {
     let source = r#"
-        (assert-fact-tms! '(orbits earth sun))
+        (assert-fact-tms! (quote (orbits earth sun)))
         *justified-memory*
     "#;
     assert_eq!(eval_forward(source), "(((orbits earth sun)))");
@@ -184,8 +184,8 @@ fn assert_fact_tms_stores_an_axiom_with_no_support() {
 #[test]
 fn run_tms_bang_derives_a_fact_with_its_support_recorded() {
     let source = r#"
-        (assert-fact-tms! '(orbits earth sun))
-        (run-tms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
+        (assert-fact-tms! (quote (orbits earth sun)))
+        (run-tms! (list (list (list (quote orbits) (logic-var (quote x)) (quote sun)) (list (quote has-mass) (logic-var (quote x))))))
         *justified-memory*
     "#;
     assert_eq!(
@@ -197,10 +197,10 @@ fn run_tms_bang_derives_a_fact_with_its_support_recorded() {
 #[test]
 fn retract_fact_tms_bang_cascades_to_everything_it_supported() {
     let source = r#"
-        (assert-fact-tms! '(orbits earth sun))
-        (run-tms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))
-                         (list (list 'has-mass (logic-var 'x)) (list 'heavy (logic-var 'x)))))
-        (retract-fact-tms! '(orbits earth sun))
+        (assert-fact-tms! (quote (orbits earth sun)))
+        (run-tms! (list (list (list (quote orbits) (logic-var (quote x)) (quote sun)) (list (quote has-mass) (logic-var (quote x))))
+                         (list (list (quote has-mass) (logic-var (quote x))) (list (quote heavy) (logic-var (quote x))))))
+        (retract-fact-tms! (quote (orbits earth sun)))
         *justified-memory*
     "#;
     // orbits(earth,sun) was retracted, which was the sole support for
@@ -212,10 +212,10 @@ fn retract_fact_tms_bang_cascades_to_everything_it_supported() {
 #[test]
 fn retract_fact_tms_bang_leaves_independently_supported_facts_alone() {
     let source = r#"
-        (assert-fact-tms! '(orbits earth sun))
-        (assert-fact-tms! '(orbits mars sun))
-        (run-tms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
-        (retract-fact-tms! '(orbits earth sun))
+        (assert-fact-tms! (quote (orbits earth sun)))
+        (assert-fact-tms! (quote (orbits mars sun)))
+        (run-tms! (list (list (list (quote orbits) (logic-var (quote x)) (quote sun)) (list (quote has-mass) (logic-var (quote x))))))
+        (retract-fact-tms! (quote (orbits earth sun)))
         *justified-memory*
     "#;
     assert_eq!(
@@ -227,7 +227,7 @@ fn retract_fact_tms_bang_leaves_independently_supported_facts_alone() {
 #[test]
 fn assert_fact_jtms_stores_an_axiom_with_an_empty_justification() {
     let source = r#"
-        (assert-fact-jtms! '(orbits earth sun))
+        (assert-fact-jtms! (quote (orbits earth sun)))
         *jtms-memory*
     "#;
     assert_eq!(eval_forward(source), "(((orbits earth sun) ()))");
@@ -236,8 +236,8 @@ fn assert_fact_jtms_stores_an_axiom_with_an_empty_justification() {
 #[test]
 fn run_jtms_bang_records_the_derivation_as_a_justification() {
     let source = r#"
-        (assert-fact-jtms! '(orbits earth sun))
-        (run-jtms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
+        (assert-fact-jtms! (quote (orbits earth sun)))
+        (run-jtms! (list (list (list (quote orbits) (logic-var (quote x)) (quote sun)) (list (quote has-mass) (logic-var (quote x))))))
         *jtms-memory*
     "#;
     assert_eq!(
@@ -249,9 +249,9 @@ fn run_jtms_bang_records_the_derivation_as_a_justification() {
 #[test]
 fn retract_fact_jtms_bang_cascades_when_the_only_justification_is_gone() {
     let source = r#"
-        (assert-fact-jtms! '(orbits earth sun))
-        (run-jtms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
-        (retract-fact-jtms! '(orbits earth sun))
+        (assert-fact-jtms! (quote (orbits earth sun)))
+        (run-jtms! (list (list (list (quote orbits) (logic-var (quote x)) (quote sun)) (list (quote has-mass) (logic-var (quote x))))))
+        (retract-fact-jtms! (quote (orbits earth sun)))
         *jtms-memory*
     "#;
     assert_eq!(eval_forward(source), "()");
@@ -264,10 +264,10 @@ fn retract_fact_jtms_bang_keeps_a_fact_with_a_surviving_independent_justificatio
     // Retracting the orbits fact should not remove it, since the axiom
     // justification survives untouched.
     let source = r#"
-        (assert-fact-jtms! '(orbits earth sun))
-        (assert-fact-jtms! '(has-mass earth))
-        (run-jtms! (list (list (list 'orbits (logic-var 'x) 'sun) (list 'has-mass (logic-var 'x)))))
-        (retract-fact-jtms! '(orbits earth sun))
+        (assert-fact-jtms! (quote (orbits earth sun)))
+        (assert-fact-jtms! (quote (has-mass earth)))
+        (run-jtms! (list (list (list (quote orbits) (logic-var (quote x)) (quote sun)) (list (quote has-mass) (logic-var (quote x))))))
+        (retract-fact-jtms! (quote (orbits earth sun)))
         *jtms-memory*
     "#;
     assert_eq!(eval_forward(source), "(((has-mass earth) ()))");
@@ -277,10 +277,10 @@ fn retract_fact_jtms_bang_keeps_a_fact_with_a_surviving_independent_justificatio
 fn fire_rule_multi_requires_every_condition_to_match_before_firing() {
     let source = r#"
         (fire-rule-multi
-          (list (list 'grandparent (logic-var 'x) (logic-var 'y))
-                (list 'parent (logic-var 'x) (logic-var 'z))
-                (list 'parent (logic-var 'z) (logic-var 'y)))
-          (list '(parent alice bob) '(parent bob charlie)))
+          (list (list (quote grandparent) (logic-var (quote x)) (logic-var (quote y)))
+                (list (quote parent) (logic-var (quote x)) (logic-var (quote z)))
+                (list (quote parent) (logic-var (quote z)) (logic-var (quote y))))
+          (list (quote (parent alice bob)) (quote (parent bob charlie))))
     "#;
     assert_eq!(eval_forward(source), "((grandparent alice charlie))");
 }
@@ -289,10 +289,10 @@ fn fire_rule_multi_requires_every_condition_to_match_before_firing() {
 fn fire_rule_multi_produces_nothing_when_one_condition_has_no_supporting_fact() {
     let source = r#"
         (fire-rule-multi
-          (list (list 'grandparent (logic-var 'x) (logic-var 'y))
-                (list 'parent (logic-var 'x) (logic-var 'z))
-                (list 'parent (logic-var 'z) (logic-var 'y)))
-          (list '(parent alice bob)))
+          (list (list (quote grandparent) (logic-var (quote x)) (logic-var (quote y)))
+                (list (quote parent) (logic-var (quote x)) (logic-var (quote z)))
+                (list (quote parent) (logic-var (quote z)) (logic-var (quote y))))
+          (list (quote (parent alice bob))))
     "#;
     assert_eq!(eval_forward(source), "()");
 }
@@ -305,10 +305,10 @@ fn run_multi_derives_the_same_conclusion_reason_would_from_the_same_rule_literal
     // not just similar-looking syntax.
     let source = r#"
         (run-multi
-          (list (list (list 'grandparent (logic-var 'x) (logic-var 'y))
-                      (list 'parent (logic-var 'x) (logic-var 'z))
-                      (list 'parent (logic-var 'z) (logic-var 'y))))
-          (list '(parent alice bob) '(parent bob charlie)))
+          (list (list (list (quote grandparent) (logic-var (quote x)) (logic-var (quote y)))
+                      (list (quote parent) (logic-var (quote x)) (logic-var (quote z)))
+                      (list (quote parent) (logic-var (quote z)) (logic-var (quote y)))))
+          (list (quote (parent alice bob)) (quote (parent bob charlie))))
     "#;
     assert_eq!(
         eval_forward(source),
@@ -323,10 +323,10 @@ fn run_multi_supports_negation_as_failure() {
     // animal, not a penguin) becomes a bird; pingu (a penguin) does not.
     let source = r#"
         (run-multi
-          (list (list (list 'bird (logic-var 'x))
-                      (list 'animal (logic-var 'x))
-                      (list 'not (list 'penguin (logic-var 'x)))))
-          (list '(animal tweety) '(animal pingu) '(penguin pingu)))
+          (list (list (list (quote bird) (logic-var (quote x)))
+                      (list (quote animal) (logic-var (quote x)))
+                      (list (quote not) (list (quote penguin) (logic-var (quote x))))))
+          (list (quote (animal tweety)) (quote (animal pingu)) (quote (penguin pingu))))
     "#;
     assert_eq!(
         eval_forward(source),
@@ -337,7 +337,7 @@ fn run_multi_supports_negation_as_failure() {
 #[test]
 fn match_negated_condition_fails_when_the_inner_pattern_matches() {
     let source = r#"
-        (match-negated-condition '(penguin pingu) (list '(penguin pingu)) '())
+        (match-negated-condition (quote (penguin pingu)) (list (quote (penguin pingu))) (quote ()))
     "#;
     assert_eq!(eval_forward(source), "()");
 }
@@ -345,7 +345,7 @@ fn match_negated_condition_fails_when_the_inner_pattern_matches() {
 #[test]
 fn match_negated_condition_succeeds_when_the_inner_pattern_does_not_match() {
     let source = r#"
-        (match-negated-condition '(penguin tweety) (list '(penguin pingu)) '())
+        (match-negated-condition (quote (penguin tweety)) (list (quote (penguin pingu))) (quote ()))
     "#;
     assert_eq!(eval_forward(source), "(())");
 }
@@ -354,9 +354,9 @@ fn match_negated_condition_succeeds_when_the_inner_pattern_does_not_match() {
 fn run_multi_supports_or_conditions() {
     let source = r#"
         (run-multi
-          (list (list (list 'pet (logic-var 'x))
-                      (list 'or (list 'cat (logic-var 'x)) (list 'dog (logic-var 'x)))))
-          (list '(cat tom) '(dog rex) '(fish nemo)))
+          (list (list (list (quote pet) (logic-var (quote x)))
+                      (list (quote or) (list (quote cat) (logic-var (quote x))) (list (quote dog) (logic-var (quote x))))))
+          (list (quote (cat tom)) (quote (dog rex)) (quote (fish nemo))))
     "#;
     assert_eq!(
         eval_forward(source),
@@ -367,7 +367,7 @@ fn run_multi_supports_or_conditions() {
 #[test]
 fn match_or_condition_unions_matches_from_every_alternative() {
     let source = r#"
-        (match-or-condition (list '(cat tom) '(dog rex)) (list '(cat tom) '(dog rex) '(fish nemo)) '())
+        (match-or-condition (list (quote (cat tom)) (quote (dog rex))) (list (quote (cat tom)) (quote (dog rex)) (quote (fish nemo))) (quote ()))
     "#;
     assert_eq!(eval_forward(source), "(() ())");
 }
@@ -375,7 +375,7 @@ fn match_or_condition_unions_matches_from_every_alternative() {
 #[test]
 fn match_or_condition_returns_nothing_when_no_alternative_matches() {
     let source = r#"
-        (match-or-condition (list '(cat tom) '(dog rex)) (list '(fish nemo)) '())
+        (match-or-condition (list (quote (cat tom)) (quote (dog rex))) (list (quote (fish nemo))) (quote ()))
     "#;
     assert_eq!(eval_forward(source), "()");
 }
@@ -384,10 +384,10 @@ fn match_or_condition_returns_nothing_when_no_alternative_matches() {
 fn run_multi_supports_and_conditions_nested_inside_or() {
     let source = r#"
         (run-multi
-          (list (list (list 'match (logic-var 'x))
-                      (list 'or (list 'and (list 'cat (logic-var 'x)) (list 'small (logic-var 'x)))
-                                (list 'dog (logic-var 'x)))))
-          (list '(cat tom) '(small tom) '(dog rex) '(cat garfield)))
+          (list (list (list (quote match) (logic-var (quote x)))
+                      (list (quote or) (list (quote and) (list (quote cat) (logic-var (quote x))) (list (quote small) (logic-var (quote x))))
+                                (list (quote dog) (logic-var (quote x))))))
+          (list (quote (cat tom)) (quote (small tom)) (quote (dog rex)) (quote (cat garfield))))
     "#;
     assert_eq!(
         eval_forward(source),
@@ -398,9 +398,9 @@ fn run_multi_supports_and_conditions_nested_inside_or() {
 #[test]
 fn match_and_condition_requires_every_sub_condition_to_match() {
     let source = r#"
-        (match-and-condition (list '(cat tom) '(small tom))
-                              (list '(cat tom) '(small tom) '(dog rex))
-                              '())
+        (match-and-condition (list (quote (cat tom)) (quote (small tom)))
+                              (list (quote (cat tom)) (quote (small tom)) (quote (dog rex)))
+                              (quote ()))
     "#;
     assert_eq!(eval_forward(source), "(())");
 }
@@ -408,9 +408,9 @@ fn match_and_condition_requires_every_sub_condition_to_match() {
 #[test]
 fn match_and_condition_fails_when_one_sub_condition_has_no_match() {
     let source = r#"
-        (match-and-condition (list '(cat tom) '(small tom))
-                              (list '(cat tom) '(dog rex))
-                              '())
+        (match-and-condition (list (quote (cat tom)) (quote (small tom)))
+                              (list (quote (cat tom)) (quote (dog rex)))
+                              (quote ()))
     "#;
     assert_eq!(eval_forward(source), "()");
 }
@@ -419,10 +419,10 @@ fn match_and_condition_fails_when_one_sub_condition_has_no_match() {
 fn run_multi_supports_test_conditions() {
     let source = r#"
         (run-multi
-          (list (list (list 'big (logic-var 'x))
-                      (list 'num (logic-var 'x))
-                      (list 'test (list '> (logic-var 'x) 5))))
-          (list '(num 3) '(num 10)))
+          (list (list (list (quote big) (logic-var (quote x)))
+                      (list (quote num) (logic-var (quote x)))
+                      (list (quote test) (list (quote >) (logic-var (quote x)) 5))))
+          (list (quote (num 3)) (quote (num 10))))
     "#;
     assert_eq!(
         eval_forward(source),
@@ -433,7 +433,7 @@ fn run_multi_supports_test_conditions() {
 #[test]
 fn match_test_condition_succeeds_when_the_expression_is_truthy() {
     let source = r#"
-        (match-test-condition (list '> 10 5) '())
+        (match-test-condition (list (quote >) 10 5) (quote ()))
     "#;
     assert_eq!(eval_forward(source), "(())");
 }
@@ -441,7 +441,7 @@ fn match_test_condition_succeeds_when_the_expression_is_truthy() {
 #[test]
 fn match_test_condition_fails_when_the_expression_is_falsy() {
     let source = r#"
-        (match-test-condition (list '> 3 5) '())
+        (match-test-condition (list (quote >) 3 5) (quote ()))
     "#;
     assert_eq!(eval_forward(source), "()");
 }
@@ -449,11 +449,11 @@ fn match_test_condition_fails_when_the_expression_is_falsy() {
 #[test]
 fn run_jtms_multi_derives_a_multi_condition_grandparent_fact() {
     let source = r#"
-        (assert-fact-jtms! '(parent alice bob))
-        (assert-fact-jtms! '(parent bob charlie))
-        (run-jtms-multi! (list (list (list 'grandparent (logic-var 'x) (logic-var 'y))
-                                      (list 'parent (logic-var 'x) (logic-var 'z))
-                                      (list 'parent (logic-var 'z) (logic-var 'y)))))
+        (assert-fact-jtms! (quote (parent alice bob)))
+        (assert-fact-jtms! (quote (parent bob charlie)))
+        (run-jtms-multi! (list (list (list (quote grandparent) (logic-var (quote x)) (logic-var (quote y)))
+                                      (list (quote parent) (logic-var (quote x)) (logic-var (quote z)))
+                                      (list (quote parent) (logic-var (quote z)) (logic-var (quote y))))))
         *jtms-memory*
     "#;
     assert_eq!(
@@ -465,12 +465,12 @@ fn run_jtms_multi_derives_a_multi_condition_grandparent_fact() {
 #[test]
 fn retract_fact_jtms_bang_cascades_through_a_multi_condition_derivation() {
     let source = r#"
-        (assert-fact-jtms! '(parent alice bob))
-        (assert-fact-jtms! '(parent bob charlie))
-        (run-jtms-multi! (list (list (list 'grandparent (logic-var 'x) (logic-var 'y))
-                                      (list 'parent (logic-var 'x) (logic-var 'z))
-                                      (list 'parent (logic-var 'z) (logic-var 'y)))))
-        (retract-fact-jtms! '(parent alice bob))
+        (assert-fact-jtms! (quote (parent alice bob)))
+        (assert-fact-jtms! (quote (parent bob charlie)))
+        (run-jtms-multi! (list (list (list (quote grandparent) (logic-var (quote x)) (logic-var (quote y)))
+                                      (list (quote parent) (logic-var (quote x)) (logic-var (quote z)))
+                                      (list (quote parent) (logic-var (quote z)) (logic-var (quote y))))))
+        (retract-fact-jtms! (quote (parent alice bob)))
         *jtms-memory*
     "#;
     assert_eq!(eval_forward(source), "(((parent bob charlie) ()))");
@@ -479,8 +479,8 @@ fn retract_fact_jtms_bang_cascades_through_a_multi_condition_derivation() {
 #[test]
 fn assert_fact_adds_to_the_global_working_memory() {
     let source = r#"
-        (assert-fact! '(planet earth))
-        (assert-fact! '(planet mars))
+        (assert-fact! (quote (planet earth)))
+        (assert-fact! (quote (planet mars)))
         *working-memory*
     "#;
     assert_eq!(eval_forward(source), "((planet mars) (planet earth))");
@@ -494,10 +494,10 @@ fn run_multi_supports_exists_conditions() {
     // derived fact, only `?c` does.
     let source = r#"
         (run-multi
-          (list (list (list 'found (logic-var 'c))
-                      (list 'cell (logic-var 'c))
-                      (list 'exists (list 'unsolved (logic-var 'u)))))
-          (list '(cell a) '(unsolved x)))
+          (list (list (list (quote found) (logic-var (quote c)))
+                      (list (quote cell) (logic-var (quote c)))
+                      (list (quote exists) (list (quote unsolved) (logic-var (quote u))))))
+          (list (quote (cell a)) (quote (unsolved x))))
     "#;
     assert_eq!(eval_forward(source), "((found a) (cell a) (unsolved x))");
 }
@@ -506,10 +506,10 @@ fn run_multi_supports_exists_conditions() {
 fn match_exists_condition_fails_when_no_fact_matches() {
     let source = r#"
         (run-multi
-          (list (list (list 'found (logic-var 'c))
-                      (list 'cell (logic-var 'c))
-                      (list 'exists (list 'unsolved (logic-var 'u)))))
-          (list '(cell a)))
+          (list (list (list (quote found) (logic-var (quote c)))
+                      (list (quote cell) (logic-var (quote c)))
+                      (list (quote exists) (list (quote unsolved) (logic-var (quote u))))))
+          (list (quote (cell a))))
     "#;
     assert_eq!(eval_forward(source), "((cell a))");
 }
@@ -521,9 +521,9 @@ fn run_multi_supports_forall_conditions() {
     // `a` and `b` are red, so the rule fires.
     let source = r#"
         (run-multi
-          (list (list (list 'all-red)
-                      (list 'forall (list 'item (logic-var 'x)) (list 'color (logic-var 'x) 'red))))
-          (list '(item a) '(item b) '(color a red) '(color b red)))
+          (list (list (list (quote all-red))
+                      (list (quote forall) (list (quote item) (logic-var (quote x))) (list (quote color) (logic-var (quote x)) (quote red)))))
+          (list (quote (item a)) (quote (item b)) (quote (color a red)) (quote (color b red))))
     "#;
     assert_eq!(
         eval_forward(source),
@@ -535,9 +535,9 @@ fn run_multi_supports_forall_conditions() {
 fn match_forall_condition_fails_when_one_candidate_does_not_satisfy_the_rest() {
     let source = r#"
         (run-multi
-          (list (list (list 'all-red)
-                      (list 'forall (list 'item (logic-var 'x)) (list 'color (logic-var 'x) 'red))))
-          (list '(item a) '(item b) '(color a red) '(color b blue)))
+          (list (list (list (quote all-red))
+                      (list (quote forall) (list (quote item) (logic-var (quote x))) (list (quote color) (logic-var (quote x)) (quote red)))))
+          (list (quote (item a)) (quote (item b)) (quote (color a red)) (quote (color b blue))))
     "#;
     assert_eq!(
         eval_forward(source),

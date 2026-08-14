@@ -34,7 +34,7 @@ The implementation-independent conformance fixture at [`tests/fixtures/conforman
 cargo test --workspace
 ```
 
-Last recorded run: 2026-08-14, Linux x86_64 (WSL2), Rust/Cargo 1.93.0 from Guix time-machine — all passing, 0 failed, 5 ignored.
+Last recorded run: 2026-08-15, Linux x86_64 (WSL2), Rust/Cargo 1.93.0 from Guix time-machine — all passing, 0 failed, 5 ignored.
 
 > [!NOTE]
 > **WSL2 `/tmp` permission caveat (swarm-node integration tests):** `crates/swarm-node/tests/integration.rs` spawns real child processes that write to `/tmp/swarm-node-itest/`. If that directory was previously created by a different Linux user (e.g. the Windows `user` account running an earlier `cargo test` session), the `my-lisp` WSL user cannot delete or create subdirectories inside it — the child process exits with `Permission denied` before it can bind its port, causing `wait_for_port` to time out. Fix: `wsl -u root -d Ubuntu -e bash -c "rm -rf /tmp/swarm-node-itest"`.

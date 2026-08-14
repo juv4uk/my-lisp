@@ -28,7 +28,7 @@ fn narrate_fact_undoes_understand_is_a() {
     // Round-trip: understand turns "earth is a planet" into a fact, and
     // narrate-fact turns that fact back into the original words.
     let source = r#"
-        (narrate-fact (car (understand '(earth is a planet))))
+        (narrate-fact (car (understand (quote (earth is a planet)))))
     "#;
     assert_eq!(eval_narrate(source), "(earth is a planet)");
 }
@@ -36,7 +36,7 @@ fn narrate_fact_undoes_understand_is_a() {
 #[test]
 fn narrate_fact_undoes_understand_relation() {
     let source = r#"
-        (narrate-fact (car (understand '(earth orbits sun))))
+        (narrate-fact (car (understand (quote (earth orbits sun)))))
     "#;
     assert_eq!(eval_narrate(source), "(earth orbits sun)");
 }
@@ -44,8 +44,8 @@ fn narrate_fact_undoes_understand_relation() {
 #[test]
 fn narrate_provenance_explains_a_bare_fact_with_no_because() {
     let source = r#"
-        (let ((rules '(((parent alice bob)))))
-             (let* ((results (reason '(parent alice bob) rules))
+        (let ((rules (quote (((parent alice bob))))))
+             (let* ((results (reason (quote (parent alice bob)) rules))
                     (proof (second (car results))))
                (narrate-provenance (provenance proof))))
     "#;
@@ -55,12 +55,12 @@ fn narrate_provenance_explains_a_bare_fact_with_no_because() {
 #[test]
 fn narrate_provenance_explains_a_derived_fact_with_because_and_and() {
     let source = r#"
-        (let ((rules '(
+        (let ((rules (quote (
                  ((grandparent (var x) (var y)) (parent (var x) (var z)) (parent (var z) (var y)))
                  ((parent alice bob))
                  ((parent bob charlie))
-               )))
-             (let* ((results (reason (list 'grandparent (logic-var 'a) (logic-var 'b)) rules))
+               ))))
+             (let* ((results (reason (list (quote grandparent) (logic-var (quote a)) (logic-var (quote b))) rules))
                     (proof (second (car results))))
                (narrate-provenance (provenance proof))))
     "#;
@@ -88,12 +88,12 @@ fn narrate_provenance_surfaces_unresolved_variables_in_a_derived_rule_head() {
     // "actually resolved after all" without a test noticing — or silently
     // get worse without anyone deciding that on purpose.
     let source = r#"
-        (let ((rules '(
+        (let ((rules (quote (
                  ((grandparent (var x) (var y)) (parent (var x) (var z)) (parent (var z) (var y)))
                  ((parent alice bob))
                  ((parent bob charlie))
-               )))
-             (let* ((results (reason (list 'grandparent (logic-var 'a) (logic-var 'b)) rules))
+               ))))
+             (let* ((results (reason (list (quote grandparent) (logic-var (quote a)) (logic-var (quote b))) rules))
                     (proof (second (car results)))
                     (narration (narrate-provenance (provenance proof))))
                ; First three words = the narrated head. If this limitation
@@ -113,7 +113,7 @@ fn narrate_provenance_surfaces_unresolved_variables_in_a_derived_rule_head() {
 #[test]
 fn assert_understand_and_narrate_are_direct_inverses_for_the_is_a_shape() {
     let source = r#"
-        (equal? '(mars is a planet) (narrate-fact (car (understand '(mars is a planet)))))
+        (equal? (quote (mars is a planet)) (narrate-fact (car (understand (quote (mars is a planet))))))
     "#;
     assert_eq!(eval_narrate(source), "t");
 }
@@ -121,9 +121,9 @@ fn assert_understand_and_narrate_are_direct_inverses_for_the_is_a_shape() {
 #[test]
 fn narrate_answer_uses_the_ground_query_and_the_real_proof_premises() {
     let source = r#"
-        (let* ((rules '(((has (var x) mass) (planet (var x)))
-                        ((planet earth))))
-               (goal '(has earth mass))
+        (let* ((rules (quote (((has (var x) mass) (planet (var x)))
+                        ((planet earth)))))
+               (goal (quote (has earth mass)))
                (proof (second (car (reason goal rules)))))
           (narrate-answer goal proof))
     "#;

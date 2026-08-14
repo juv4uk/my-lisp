@@ -265,7 +265,7 @@ mod single_pass_eval_tests {
 
     #[test]
     fn single_pass_eval_parsed_expressions_evaluates_preparsed_ast() {
-        let source = "(def x (/ 1 3)) (cons x '())";
+        let source = "(def x (/ 1 3)) (cons x (quote ()))";
         let forms = parse(source).expect("parsing should succeed");
         let mut session = Session::default();
         let result = eval_parsed_expressions(&forms, &mut session)
@@ -281,10 +281,10 @@ mod single_pass_eval_tests {
         // expansion by hand instead.
         let source = r#"
             (defmacro unless (condition body)
-                (cons 'cond
-                    (cons (cons condition (cons '() '()))
-                    (cons (cons 't (cons body '())) '()))))
-            (unless () 'success)
+                (cons (quote cond)
+                    (cons (cons condition (cons (quote ()) (quote ())))
+                    (cons (cons (quote t) (cons body (quote ()))) (quote ())))))
+            (unless () (quote success))
         "#;
         let mut session = Session::default();
         let result = eval_program(source, &mut session).expect("eval should succeed");

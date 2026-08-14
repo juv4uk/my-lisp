@@ -60,7 +60,7 @@
 (def narrate-fact
   (lambda (fact)
     (cond
-      ((= (length fact) 2) (list (second fact) 'is 'a (car fact)))
+      ((= (length fact) 2) (list (second fact) (quote is) (quote a) (car fact)))
       ((= (length fact) 3) (list (second fact) (car fact) (third fact)))
       (t fact))))
 
@@ -72,17 +72,17 @@
 (def narrate-derivation
   (lambda (derivations)
     (cond
-      ((atom derivations) '())
+      ((atom derivations) (quote ()))
       ((atom (cdr derivations)) (narrate-provenance (car derivations)))
       (t (append (narrate-provenance (car derivations))
-                  (cons 'and (narrate-derivation (cdr derivations))))))))
+                  (cons (quote and) (narrate-derivation (cdr derivations))))))))
 
 (def narrate-provenance
   (lambda (prov)
     (cond
-      ((eq (provenance-source prov) 'fact) (narrate-fact (provenance-rule prov)))
+      ((eq (provenance-source prov) (quote fact)) (narrate-fact (provenance-rule prov)))
       (t (append (narrate-fact (provenance-rule prov))
-                  (cons 'because (narrate-derivation (provenance-derived-from prov))))))))
+                  (cons (quote because) (narrate-derivation (provenance-derived-from prov))))))))
 
 ; `narrate-answer` grounds the conclusion with the caller's actual query while
 ; retaining the proof's real premises. A renamed rule head can contain
@@ -107,4 +107,4 @@
       (cond
         ((atom derivations) (narrate-fact goal))
         (t (append (narrate-fact goal)
-                   (cons 'because (narrate-derivation derivations))))))))
+                   (cons (quote because) (narrate-derivation derivations))))))))

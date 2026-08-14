@@ -94,7 +94,7 @@ mod native_wasm_crate_tests {
     #[test]
     fn wasm_crate_single_pass_produces_exact_evaluation_struct() {
         let mut session = Session::default();
-        let (result, forms) = my_lisp_literate::eval_literate("(cons (second '(radio antenna)) (cons (/ 1 3) '()))", SourceMode::PureLisp, &mut session)
+        let (result, forms) = my_lisp_literate::eval_literate("(cons (second (quote (radio antenna))) (cons (/ 1 3) (quote ())))", SourceMode::PureLisp, &mut session)
             .expect("eval_literate should succeed");
 
         let evaluation = Evaluation {
@@ -116,7 +116,7 @@ mod wasm_adapter_tests {
 
     #[wasm_bindgen_test]
     fn wasm_adapter_single_pass_preserves_exact_rationals_and_serde_boundary() {
-        let js_value = evaluate("(cons (second '(radio antenna)) (cons (/ 1 3) '()))", "my-lisp")
+        let js_value = evaluate("(cons (second (quote (radio antenna))) (cons (/ 1 3) (quote ())))", "my-lisp")
             .expect("WASM evaluation should succeed for exact values");
         let eval: Evaluation = serde_wasm_bindgen::from_value(js_value)
             .expect("should deserialize Evaluation struct from JsValue");

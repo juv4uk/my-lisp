@@ -26,10 +26,10 @@ fn eval_advice(source: &str) -> String {
 #[test]
 fn controlled_words_flow_through_advice_reason_and_narration() {
     let source = r#"
-        (advise astronomy (understand '(earth is a planet)))
-        (advise astronomy (understand '(all planet have mass)))
-        (def goal '(has earth mass))
-        (def proof (second (car (reason-in 'astronomy goal))))
+        (advise astronomy (understand (quote (earth is a planet))))
+        (advise astronomy (understand (quote (all planet have mass))))
+        (def goal (quote (has earth mass)))
+        (def proof (second (car (reason-in (quote astronomy) goal))))
         (narrate-answer goal proof)
     "#;
     assert_eq!(
@@ -41,8 +41,8 @@ fn controlled_words_flow_through_advice_reason_and_narration() {
 #[test]
 fn rejected_translation_cannot_leak_into_the_knowledge_module() {
     let source = r#"
-        (def result (advise astronomy '(planet earth)))
-        (list (car result) (reason-in 'astronomy '(planet earth)))
+        (def result (advise astronomy (quote (planet earth))))
+        (list (car result) (reason-in (quote astronomy) (quote (planet earth))))
     "#;
     assert_eq!(
         eval_advice(source),

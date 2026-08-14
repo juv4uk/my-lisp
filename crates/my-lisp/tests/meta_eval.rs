@@ -35,7 +35,7 @@ fn eval_meta_program(program_source: &str, probe_source: &str) -> String {
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
     let source = format!(
-        r#"(let ((loaded (my-eval-program (read-all "{}") '())))
+        r#"(let ((loaded (my-eval-program (read-all "{}") (quote ()))))
              (my-eval (read "{}") (car loaded)))"#,
         program_source.replace('\\', "\\\\").replace('"', "\\\""),
         probe_source.replace('\\', "\\\\").replace('"', "\\\""),
@@ -45,37 +45,37 @@ fn eval_meta_program(program_source: &str, probe_source: &str) -> String {
 
 #[test]
 fn self_evaluates_numbers_and_symbols_not_bound_in_env() {
-    assert_eq!(eval_meta("42", "'()"), "42");
-    assert_eq!(eval_meta("t", "'()"), "t");
+    assert_eq!(eval_meta("42", "(quote ())"), "42");
+    assert_eq!(eval_meta("t", "(quote ())"), "t");
 }
 
 #[test]
 fn quote_returns_data_unevaluated() {
-    assert_eq!(eval_meta("(quote radio)", "'()"), "radio");
+    assert_eq!(eval_meta("(quote radio)", "(quote ())"), "radio");
 }
 
 #[test]
 fn arithmetic_dispatches_to_the_real_primitives() {
-    assert_eq!(eval_meta("(+ 1 2)", "'()"), "3");
-    assert_eq!(eval_meta("(* 3 4)", "'()"), "12");
+    assert_eq!(eval_meta("(+ 1 2)", "(quote ())"), "3");
+    assert_eq!(eval_meta("(* 3 4)", "(quote ())"), "12");
 }
 
 #[test]
 fn cond_picks_the_first_truthy_clause() {
-    assert_eq!(eval_meta("(cond (() 1) (t 2))", "'()"), "2");
+    assert_eq!(eval_meta("(cond (() 1) (t 2))", "(quote ())"), "2");
 }
 
 #[test]
 fn list_primitives_dispatch_to_the_real_primitives() {
-    assert_eq!(eval_meta("(cons 1 (cons 2 (quote ())))", "'()"), "(1 2)");
-    assert_eq!(eval_meta("(car (cons 1 2))", "'()"), "1");
-    assert_eq!(eval_meta("(atom (quote ()))", "'()"), "t");
-    assert_eq!(eval_meta("(eq 1 1)", "'()"), "t");
+    assert_eq!(eval_meta("(cons 1 (cons 2 (quote ())))", "(quote ())"), "(1 2)");
+    assert_eq!(eval_meta("(car (cons 1 2))", "(quote ())"), "1");
+    assert_eq!(eval_meta("(atom (quote ()))", "(quote ())"), "t");
+    assert_eq!(eval_meta("(eq 1 1)", "(quote ())"), "t");
 }
 
 #[test]
 fn lambda_application_binds_parameters_and_evaluates_the_body() {
-    assert_eq!(eval_meta("((lambda (x) (+ x 1)) 5)", "'()"), "6");
+    assert_eq!(eval_meta("((lambda (x) (+ x 1)) 5)", "(quote ())"), "6");
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn multi_expression_lambda_bodies_evaluate_in_sequence_returning_the_last() {
     // (+ x y) runs and is discarded; (* x y) is the returned value — proves
     // my-eval-body actually sequences instead of only ever reading the head.
     assert_eq!(
-        eval_meta("((lambda (x y) (+ x y) (* x y)) 3 4)", "'()"),
+        eval_meta("((lambda (x y) (+ x y) (* x y)) 3 4)", "(quote ())"),
         "12"
     );
 }
@@ -93,7 +93,7 @@ fn closures_capture_free_variables_from_the_calling_env() {
     // env = ((x . 5)); the lambda only takes y, so x must resolve through
     // the captured/passed-in env, not through its own parameter list.
     assert_eq!(
-        eval_meta("((lambda (y) (+ x y)) 10)", "(cons (cons 'x 5) '())"),
+        eval_meta("((lambda (y) (+ x y)) 10)", "(cons (cons (quote x) 5) (quote ()))"),
         "15"
     );
 }
@@ -101,7 +101,7 @@ fn closures_capture_free_variables_from_the_calling_env() {
 #[test]
 fn higher_order_functions_pass_a_closure_as_an_argument() {
     assert_eq!(
-        eval_meta("((lambda (f x) (f x)) (lambda (n) (* n n)) 6)", "'()"),
+        eval_meta("((lambda (f x) (f x)) (lambda (n) (* n n)) 6)", "(quote ())"),
         "36"
     );
 }
@@ -134,9 +134,9 @@ fn defmacro_expands_before_evaluating_using_unevaluated_argument_forms() {
     assert_eq!(
         eval_meta_program(
             "(defmacro my-if (test then else) \
-             (cons 'cond (cons (cons test (cons then '())) \
-                                (cons (cons 't (cons else '())) '()))))",
-            "(my-if t 'yes 'no)"
+             (cons (quote cond) (cons (cons test (cons then (quote ()))) \
+                                (cons (cons 't (cons else (quote ()))) (quote ())))))",
+            "(my-if t (quote yes) (quote no))"
         ),
         "yes"
     );
@@ -151,15 +151,15 @@ fn defmacro_expands_before_evaluating_using_unevaluated_argument_forms() {
 fn loads_a_real_verbatim_slice_of_lib_core_my_and_runs_it_through_my_eval() {
     let core_slice = r#"
 (def identity (lambda (value) value))
-(def not (lambda (value) (cond (value '()) (t t))))
-(def pair (lambda (left right) (cons left (cons right '()))))
+(def not (lambda (value) (cond (value (quote ())) (t t))))
+(def pair (lambda (left right) (cons left (cons right (quote ())))))
 (def second (lambda (values) (car (cdr values))))
 (def third (lambda (values) (car (cdr (cdr values)))))
 "#;
-    assert_eq!(eval_meta_program(core_slice, "(second '(a b c))"), "b");
-    assert_eq!(eval_meta_program(core_slice, "(third '(a b c))"), "c");
-    assert_eq!(eval_meta_program(core_slice, "(not '())"), "t");
-    assert_eq!(eval_meta_program(core_slice, "(identity 'radio)"), "radio");
+    assert_eq!(eval_meta_program(core_slice, "(second (quote (a b c)))"), "b");
+    assert_eq!(eval_meta_program(core_slice, "(third (quote (a b c)))"), "c");
+    assert_eq!(eval_meta_program(core_slice, "(not (quote ()))"), "t");
+    assert_eq!(eval_meta_program(core_slice, "(identity (quote radio))"), "radio");
 }
 
 /// Documented, not hidden (PLAN.md item 8, mccarthy-principles.md §7): a
@@ -175,8 +175,8 @@ fn self_recursive_top_level_def_does_not_see_its_own_binding() {
     eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
     let source = r#"
         (let ((loaded (my-eval-program
-                        (read-all "(def count-down (lambda (n) (cond ((eq n 0) 'done) (t (count-down (- n 1))))))")
-                        '())))
+                        (read-all "(def count-down (lambda (n) (cond ((eq n 0) (quote done)) (t (count-down (- n 1))))))")
+                        (quote ()))))
           (my-eval (read "(count-down 3)") (car loaded)))
     "#;
     let error = eval_program(source, &mut session)

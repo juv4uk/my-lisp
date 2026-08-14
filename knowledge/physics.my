@@ -1,5 +1,5 @@
 ;; knowledge/physics.my
-(defmodule physics '(
+(defmodule physics (quote (
   ;; Rule: Anything with mass is attracted by gravity
   ((attracted-by-gravity (var x)) (has-mass (var x)))
   
@@ -8,4 +8,4 @@
 
   ;; Facts
   ((has-mass apple))
-))
+)))

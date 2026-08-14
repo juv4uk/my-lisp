@@ -46,7 +46,6 @@ impl Parser<'_> {
                 start,
                 start + 1,
             )),
-            Some('\'') => self.quoted(start),
             Some('"') => self.string(start),
             Some(_) => self.atom(start),
             None => Err(self.error(
@@ -57,27 +56,7 @@ impl Parser<'_> {
         }
     }
 
-    /// Reader sugar is normalized here, so the evaluator only needs `quote`.
-    /// Syntaksychnyi tsukor normalizuietsia tut, tomu obchysliuvachu dostatno `quote`.
-    /// Reader-Syntaxzucker wird hier normalisiert, sodass der Evaluator nur `quote` benötigt.
-    fn quoted(&mut self, start: usize) -> Result<Expr, LanguageError> {
-        self.bump();
-        let value = self.expression()?;
-        let end = value.span.end;
-        Ok(Expr {
-            span: Span { start, end },
-            kind: ExprKind::List(vec![
-                Expr {
-                    kind: ExprKind::Symbol("quote".into()),
-                    span: Span {
-                        start,
-                        end: start + 1,
-                    },
-                },
-                value,
-            ].into()),
-        })
-    }
+
 
     fn list(&mut self, start: usize) -> Result<Expr, LanguageError> {
         self.bump();
@@ -434,12 +413,15 @@ mod tests {
     }
 
     #[test]
-    fn quote_sugar_desugars_to_quote_form() {
-        let ExprKind::List(items) = parse_one("'(1 2)").kind else {
-            panic!("expected a list");
-        };
-        assert_eq!(items.len(), 2);
-        assert!(matches!(&items[0].kind, ExprKind::Symbol(s) if &**s == "quote"));
+    fn apostrophe_is_no_longer_quote_sugar_but_part_of_symbol() {
+        assert!(matches!(parse_one("'x").kind, ExprKind::Symbol(s) if &*s == "'x"));
+    }
+
+    #[test]
+    fn apostrophe_works_inside_ukrainian_identifiers() {
+        assert!(matches!(parse_one("об'єкт").kind, ExprKind::Symbol(s) if &*s == "об'єкт"));
+        assert!(matches!(parse_one("зв'язок").kind, ExprKind::Symbol(s) if &*s == "зв'язок"));
+        assert!(matches!(parse_one("п'ять").kind, ExprKind::Symbol(s) if &*s == "п'ять"));
     }
 
     #[test]

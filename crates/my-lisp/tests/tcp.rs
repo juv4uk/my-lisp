@@ -173,8 +173,8 @@ fn send_knowledge_package_transmits_one_canonical_expression_then_eof() {
     load_knowledge(&mut session);
     let source = format!(r#"
         (def connection (tcp-connect "127.0.0.1" {port}))
-        (send-knowledge-package connection 'exchange
-          '(((planet earth)) ((has-mass (var x)) (planet (var x)))))
+        (send-knowledge-package connection (quote exchange)
+          (quote (((planet earth)) ((has-mass (var x)) (planet (var x))))))
     "#);
     eval_program(&source, &mut session).unwrap();
     assert_eq!(
@@ -193,7 +193,7 @@ fn receive_knowledge_package_drains_chunks_and_atomically_imports() {
             (def listener (tcp-listen {port}))
             (def connection (tcp-accept listener))
             (receive-knowledge-package connection)
-            (car (car (reason-in 'exchange '(has-mass earth))))
+            (car (car (reason-in (quote exchange) (quote (has-mass earth)))))
         "#);
         eval_program(&source, &mut session).unwrap().value.to_string()
     });
@@ -228,7 +228,7 @@ fn framed_exchange_returns_an_accepted_receipt_to_the_sender() {
     load_knowledge(&mut client);
     let source = format!(r#"
         (def connection (tcp-connect "127.0.0.1" {port}))
-        (exchange-knowledge-package connection 'exchange '(((planet earth))))
+        (exchange-knowledge-package connection (quote exchange) (quote (((planet earth)))))
     "#);
     let receipt = eval_client_with_retry(&source, &mut client).unwrap();
     assert_eq!(receipt.value.to_string(),
@@ -243,11 +243,11 @@ fn framed_exchange_returns_conflict_and_does_not_install_the_new_fact() {
         let mut session = Session::default();
         load_knowledge(&mut session);
         let source = format!(r#"
-            (defmodule exchange '(((not (planet pluto)))))
+            (defmodule exchange (quote (((not (planet pluto))))))
             (def listener (tcp-listen {port}))
             (def connection (tcp-accept listener))
             (def decision (accept-knowledge-exchange connection))
-            (list (car decision) (reason-in 'exchange '(planet pluto)))
+            (list (car decision) (reason-in (quote exchange) (quote (planet pluto))))
         "#);
         eval_program(&source, &mut session).unwrap().value.to_string()
     });
@@ -255,7 +255,7 @@ fn framed_exchange_returns_conflict_and_does_not_install_the_new_fact() {
     load_knowledge(&mut client);
     let source = format!(r#"
         (def connection (tcp-connect "127.0.0.1" {port}))
-        (exchange-knowledge-package connection 'exchange '(((planet pluto))))
+        (exchange-knowledge-package connection (quote exchange) (quote (((planet pluto)))))
     "#);
     let receipt = eval_client_with_retry(&source, &mut client).unwrap();
     assert_eq!(receipt.value.to_string().split_whitespace().next(), Some("(conflict"));

@@ -49,7 +49,7 @@
 ;; und das wird ehrlich anerkannt. Die aktuelle Clause-Liste eines Moduls
 ;; ist jetzt eine *Projektion* über das Journal (`module-clauses-now`), auf
 ;; Anfrage berechnet, nicht irgendwo direkt gespeichert.
-(def *knowledge-journal* '())
+(def *knowledge-journal* (quote ()))
 
 ;; clauses->tell-events turns a plain clause list into one `tell` event per
 ;; clause — ordinary my-lisp, not a macro, since nothing here needs the
@@ -57,7 +57,7 @@
 ;; grow `*knowledge-journal*`) do.
 (def clauses->tell-events
   (lambda (module-name clauses)
-    (map (lambda (clause) (list 'tell module-name clause)) clauses)))
+    (map (lambda (clause) (list (quote tell) module-name clause)) clauses)))
 
 ;; defmodule registers a list of clauses under a specific module name —
 ;; same public shape as before, but now expands to pushing one `tell`
@@ -68,10 +68,10 @@
 ;; honest reading of "append-only" — nothing an earlier call told the
 ;; journal is ever quietly discarded by a later one.
 (defmacro defmodule (name rules)
-  (list 'def '*knowledge-journal*
-        (list 'append
-              (list 'clauses->tell-events (list 'quote name) rules)
-              '*knowledge-journal*)))
+  (list (quote def) (quote *knowledge-journal*)
+        (list (quote append)
+              (list (quote clauses->tell-events) (list (quote quote) name) rules)
+              (quote *knowledge-journal*))))
 
 ;; retract-knowledge is the capability the journal actually earns that the
 ;; old snapshot model never had at all: taking one clause back out of a
@@ -79,17 +79,17 @@
 ;; `rules` follows, so the caller decides whether to pass a literal or a
 ;; variable holding the clause to remove.
 (defmacro retract-knowledge (module-name clause)
-  (list 'def '*knowledge-journal*
-        (list 'cons
-              (list 'list (list 'quote 'retract) (list 'quote module-name) clause)
-              '*knowledge-journal*)))
+  (list (quote def) (quote *knowledge-journal*)
+        (list (quote cons)
+              (list (quote list) (list (quote quote) (quote retract)) (list (quote quote) module-name) clause)
+              (quote *knowledge-journal*))))
 
 ;; module-journal-events filters the whole journal down to one module's
 ;; own events, preserving their relative (newest-first) order.
 (def module-journal-events
   (lambda (module-name journal)
     (cond
-      ((atom journal) '())
+      ((atom journal) (quote ()))
       ((equal? (second (car journal)) module-name)
        (cons (car journal) (module-journal-events module-name (cdr journal))))
       (t (module-journal-events module-name (cdr journal))))))
@@ -104,7 +104,7 @@
 (def module-known?
   (lambda (module-name)
     (cond
-      ((atom (module-journal-events module-name *knowledge-journal*)) '())
+      ((atom (module-journal-events module-name *knowledge-journal*)) (quote ()))
       (t t))))
 
 ;; apply-journal-event folds one event onto a running clause list: `tell`
@@ -114,8 +114,8 @@
 (def apply-journal-event
   (lambda (clauses event)
     (cond
-      ((eq (car event) 'tell) (cons (third event) clauses))
-      ((eq (car event) 'retract) (retract-fact (third event) clauses))
+      ((eq (car event) (quote tell)) (cons (third event) clauses))
+      ((eq (car event) (quote retract)) (retract-fact (third event) clauses))
       (t clauses))))
 
 ;; module-clauses-now is the projection itself: a module's events, put
@@ -126,19 +126,19 @@
 ;; stored.
 (def module-clauses-now
   (lambda (module-name)
-    (reduce apply-journal-event '()
+    (reduce apply-journal-event (quote ())
             (reverse (module-journal-events module-name *knowledge-journal*)))))
 
 ;; load-knowledge reads a file and loads its module definition
 (defmacro load-knowledge (module-name)
-  (list 'load module-name))
+  (list (quote load) module-name))
 
 ;; reason-in queries a specific module by name
 (def reason-in
   (lambda (module-name goal)
     (cond
       ((module-known? module-name) (reason goal (module-clauses-now module-name)))
-      (t 'Module-not-found))))
+      (t (quote Module-not-found)))))
 
 ;; --- forward-chaining integration (lib/forward.my) ----------------------
 ;; `reason-in` asks a targeted question of a module (backward-chaining:
@@ -179,8 +179,8 @@
 (def forward-in
   (lambda (module-name)
     (cond
-      ((module-known? module-name) (run-multi (module-clauses-now module-name) '()))
-      (t 'Module-not-found))))
+      ((module-known? module-name) (run-multi (module-clauses-now module-name) (quote ())))
+      (t (quote Module-not-found)))))
 
 ;; check-conflict checks if the negation of the first rule's head is
 ;; provable. Retract is deliberately exempt from this check (per explicit
@@ -192,11 +192,11 @@
     (cond
       ((module-known? module-name)
        (let ((head (car (car rules))))
-         (let ((proofs (reason-in module-name (list 'not head))))
+         (let ((proofs (reason-in module-name (list (quote not) head))))
            (cond
-             ((atom proofs) '())
+             ((atom proofs) (quote ()))
              (t t)))))
-      (t '()))))
+      (t (quote ())))))
 
 ;; tell-knowledge adds new clauses to a module, creating it if it doesn't
 ;; exist yet — same conflict check as before, but on success it now pushes
@@ -204,14 +204,14 @@
 ;; snapshot; `module-clauses-now` picks up every clause any `tell-knowledge`
 ;; or `defmodule` call for this module ever contributed, in order.
 (defmacro tell-knowledge (module-name rules)
-  (list 'cond
-        (list (list 'check-conflict (list 'quote module-name) rules)
-              (list 'quote 'Conflict-detected))
-        (list 't
-              (list 'def '*knowledge-journal*
-                    (list 'append
-                          (list 'clauses->tell-events (list 'quote module-name) rules)
-                          '*knowledge-journal*)))))
+  (list (quote cond)
+        (list (list (quote check-conflict) (list (quote quote) module-name) rules)
+              (list (quote quote) (quote Conflict-detected)))
+        (list (quote t)
+              (list (quote def) (quote *knowledge-journal*)
+                    (list (quote append)
+                          (list (quote clauses->tell-events) (list (quote quote) module-name) rules)
+                          (quote *knowledge-journal*))))))
 
 ;; --- Advice ingestion boundary -----------------------------------------
 ;; `advise` is the guarded write path for knowledge from outside the trusted
@@ -243,17 +243,17 @@
   (lambda (value)
     (cond
       ((atom value)
-       (cond ((eq value '()) t) (t '())))
+       (cond ((eq value (quote ())) t) (t (quote ()))))
       (t (knowledge-proper-list? (cdr value))))))
 
 (def knowledge-terms-valid?
   (lambda (terms)
     (cond
       ((atom terms)
-       (cond ((eq terms '()) t) (t '())))
+       (cond ((eq terms (quote ())) t) (t (quote ()))))
       ((knowledge-term-valid? (car terms))
        (knowledge-terms-valid? (cdr terms)))
-      (t '()))))
+      (t (quote ())))))
 
 (def knowledge-term-valid?
   (lambda (term)
@@ -261,41 +261,41 @@
       ((atom term) t)
       ((atom (car term))
        (cond
-         ((eq (car term) 'var)
+         ((eq (car term) (quote var))
           (cond
             ((= (length term) 2) (symbol? (second term)))
-            (t '())))
+            (t (quote ()))))
          ((knowledge-proper-list? term) (knowledge-terms-valid? term))
-         (t '())))
-      (t '()))))
+         (t (quote ()))))
+      (t (quote ())))))
 
 (def knowledge-goal-valid?
   (lambda (goal)
     (cond
-      ((atom goal) '())
-      ((eq (knowledge-proper-list? goal) '()) '())
-      ((eq (symbol? (car goal)) '()) '())
-      ((eq (car goal) 'not)
+      ((atom goal) (quote ()))
+      ((eq (knowledge-proper-list? goal) (quote ())) (quote ()))
+      ((eq (symbol? (car goal)) (quote ())) (quote ()))
+      ((eq (car goal) (quote not))
        (cond
          ((= (length goal) 2) (knowledge-goal-valid? (second goal)))
-         (t '())))
+         (t (quote ()))))
       (t (knowledge-terms-valid? (cdr goal))))))
 
 (def knowledge-goals-valid?
   (lambda (goals)
     (cond
       ((atom goals)
-       (cond ((eq goals '()) t) (t '())))
+       (cond ((eq goals (quote ())) t) (t (quote ()))))
       ((knowledge-goal-valid? (car goals))
        (knowledge-goals-valid? (cdr goals)))
-      (t '()))))
+      (t (quote ())))))
 
 (def knowledge-clause-valid?
   (lambda (clause)
     (cond
-      ((atom clause) '())
-      ((eq (knowledge-proper-list? clause) '()) '())
-      ((eq (knowledge-goal-valid? (car clause)) '()) '())
+      ((atom clause) (quote ()))
+      ((eq (knowledge-proper-list? clause) (quote ())) (quote ()))
+      ((eq (knowledge-goal-valid? (car clause)) (quote ())) (quote ()))
       (t (knowledge-goals-valid? (cdr clause))))))
 
 ;; Explicit opposites operate on heads, not whole clauses: a rule and a fact
@@ -307,34 +307,34 @@
 (def opposite-knowledge-head
   (lambda (head)
     (cond
-      ((eq (car head) 'not) (second head))
-      (t (list 'not head)))))
+      ((eq (car head) (quote not)) (second head))
+      (t (list (quote not) head)))))
 
 (def advice-conflict-proof
   (lambda (module-name clause)
     (cond
       ((module-known? module-name)
        (reason-in module-name (opposite-knowledge-head (car clause))))
-      (t '()))))
+      (t (quote ())))))
 
 (def advice-decision
   (lambda (module-name clause)
     (cond
-      ((eq (symbol? module-name) '())
-       (list 'rejected (list 'reason 'invalid-module) (list 'input clause)))
-      ((eq (knowledge-clause-valid? clause) '())
-       (list 'rejected (list 'reason 'invalid-clause) (list 'input clause)))
+      ((eq (symbol? module-name) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-module)) (list (quote input) clause)))
+      ((eq (knowledge-clause-valid? clause) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-clause)) (list (quote input) clause)))
       (t
        (let ((opposite (opposite-knowledge-head (car clause)))
              (proofs (advice-conflict-proof module-name clause)))
          (cond
            ((atom proofs)
-            (list 'accepted (list 'module module-name) (list 'knowledge clause)))
+            (list (quote accepted) (list (quote module) module-name) (list (quote knowledge) clause)))
            (t
-            (list 'conflict
-                  (list 'new clause)
-                  (list 'existing opposite)
-                  (list 'proof (car proofs))))))))))
+            (list (quote conflict)
+                  (list (quote new) clause)
+                  (list (quote existing) opposite)
+                  (list (quote proof) (car proofs))))))))))
 
 ;; The accepted branch evaluates `def` in the caller's frame, then returns
 ;; the structured decision. A helper lambda would write into a disposable
@@ -346,26 +346,26 @@
 ;; strukturierte Entscheidung zurück. Eine Hilfs-Lambda würde in einen
 ;; kurzlebigen Kind-Frame schreiben; daher liegt die Sequenz im Makro selbst.
 (defmacro advise (module-name clause)
-  (list 'cond
+  (list (quote cond)
         (list
-          (list 'equal?
-                (list 'car (list 'advice-decision (list 'quote module-name) clause))
-                (list 'quote 'accepted))
-          (list 'second
-                (list 'list
-                      (list 'def '*knowledge-journal*
-                            (list 'append
-                                  (list 'clauses->tell-events
-                                        (list 'quote module-name)
-                                        (list 'list clause))
-                                  '*knowledge-journal*))
-                      (list 'list
-                            (list 'quote 'accepted)
-                            (list 'list
-                                  (list 'quote 'module)
-                                  (list 'quote module-name))
-                            (list 'list (list 'quote 'knowledge) clause)))))
-        (list 't (list 'advice-decision (list 'quote module-name) clause))))
+          (list (quote equal?)
+                (list (quote car) (list (quote advice-decision) (list (quote quote) module-name) clause))
+                (list (quote quote) (quote accepted)))
+          (list (quote second)
+                (list (quote list)
+                      (list (quote def) (quote *knowledge-journal*)
+                            (list (quote append)
+                                  (list (quote clauses->tell-events)
+                                        (list (quote quote) module-name)
+                                        (list (quote list) clause))
+                                  (quote *knowledge-journal*)))
+                      (list (quote list)
+                            (list (quote quote) (quote accepted))
+                            (list (quote list)
+                                  (list (quote quote) (quote module))
+                                  (list (quote quote) module-name))
+                            (list (quote list) (list (quote quote) (quote knowledge)) clause)))))
+        (list (quote t) (list (quote advice-decision) (list (quote quote) module-name) clause))))
 
 ;; `advise-all` is the transactional companion to `advise`. Translators often
 ;; produce several mutually dependent clauses, so validating and writing them
@@ -388,19 +388,19 @@
 (def knowledge-clauses-valid?
   (lambda (clauses)
     (cond
-      ((atom clauses) (eq clauses '()))
+      ((atom clauses) (eq clauses (quote ())))
       ((knowledge-clause-valid? (car clauses))
        (knowledge-clauses-valid? (cdr clauses)))
-      (t '()))))
+      (t (quote ())))))
 
 (def advice-negative-head-conflict
   (lambda (rules all-rules)
     (cond
-      ((atom rules) '())
+      ((atom rules) (quote ()))
       (t
        (let ((head (car (car rules))))
          (cond
-           ((eq (car head) 'not)
+           ((eq (car head) (quote not))
             (let ((positive (second head)))
               (let ((proofs (reason positive all-rules)))
                 (cond
@@ -415,7 +415,7 @@
       ((atom remaining)
        (let ((global (advice-negative-head-conflict all-rules all-rules)))
          (cond
-           ((atom global) '())
+           ((atom global) (quote ()))
            (t (list (car clauses) (car global) (third global))))))
       (t
        (let ((opposite (opposite-knowledge-head (car (car remaining)))))
@@ -428,31 +428,31 @@
 (def advice-all-decision
   (lambda (module-name clauses)
     (cond
-      ((eq (symbol? module-name) '())
-       (list 'rejected (list 'reason 'invalid-module) (list 'input clauses)))
+      ((eq (symbol? module-name) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-module)) (list (quote input) clauses)))
       ((atom clauses)
-       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
-      ((eq (knowledge-proper-list? clauses) '())
-       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
-      ((eq (knowledge-clauses-valid? clauses) '())
-       (list 'rejected (list 'reason 'invalid-clause) (list 'input clauses)))
+       (list (quote rejected) (list (quote reason) (quote invalid-batch)) (list (quote input) clauses)))
+      ((eq (knowledge-proper-list? clauses) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-batch)) (list (quote input) clauses)))
+      ((eq (knowledge-clauses-valid? clauses) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-clause)) (list (quote input) clauses)))
       (t
        (let ((existing (cond
                          ((module-known? module-name)
                           (module-clauses-now module-name))
-                         (t '()))))
+                         (t (quote ())))))
          (let ((conflict (advice-batch-conflict clauses clauses
                                                 (append clauses existing))))
            (cond
              ((atom conflict)
-              (list 'accepted
-                    (list 'module module-name)
-                    (list 'knowledge clauses)))
+              (list (quote accepted)
+                    (list (quote module) module-name)
+                    (list (quote knowledge) clauses)))
              (t
-              (list 'conflict
-                    (list 'new (car conflict))
-                    (list 'existing (second conflict))
-                    (list 'proof (third conflict)))))))))))
+              (list (quote conflict)
+                    (list (quote new) (car conflict))
+                    (list (quote existing) (second conflict))
+                    (list (quote proof) (third conflict)))))))))))
 
 ;; As with `advise`, sequencing stays in the macro so `def` updates the
 ;; caller's persistent frame rather than a helper lambda's temporary frame.
@@ -461,29 +461,29 @@
 ;; Wie bei `advise` bleibt die Sequenz im Makro, damit `def` den dauerhaften
 ;; Aufrufer-Frame statt des temporären Frames einer Hilfs-Lambda aktualisiert.
 (defmacro advise-all (module-name clauses)
-  (list 'cond
+  (list (quote cond)
         (list
-          (list 'equal?
-                (list 'car
-                      (list 'advice-all-decision
-                            (list 'quote module-name) clauses))
-                (list 'quote 'accepted))
-          (list 'second
-                (list 'list
-                      (list 'def '*knowledge-journal*
-                            (list 'append
-                                  (list 'clauses->tell-events
-                                        (list 'quote module-name) clauses)
-                                  '*knowledge-journal*))
-                      (list 'list
-                            (list 'quote 'accepted)
-                            (list 'list
-                                  (list 'quote 'module)
-                                  (list 'quote module-name))
-                            (list 'list (list 'quote 'knowledge) clauses)))))
-        (list 't
-              (list 'advice-all-decision
-                    (list 'quote module-name) clauses))))
+          (list (quote equal?)
+                (list (quote car)
+                      (list (quote advice-all-decision)
+                            (list (quote quote) module-name) clauses))
+                (list (quote quote) (quote accepted)))
+          (list (quote second)
+                (list (quote list)
+                      (list (quote def) (quote *knowledge-journal*)
+                            (list (quote append)
+                                  (list (quote clauses->tell-events)
+                                        (list (quote quote) module-name) clauses)
+                                  (quote *knowledge-journal*)))
+                      (list (quote list)
+                            (list (quote quote) (quote accepted))
+                            (list (quote list)
+                                  (list (quote quote) (quote module))
+                                  (list (quote quote) module-name))
+                            (list (quote list) (list (quote quote) (quote knowledge)) clauses)))))
+        (list (quote t)
+              (list (quote advice-all-decision)
+                    (list (quote quote) module-name) clauses))))
 
 ;; --- Versioned knowledge-package interchange ---------------------------
 ;; A package is data, never executable code:
@@ -502,50 +502,50 @@
 ;; Assoziationsliste ist für jedes S-Ausdruck-Projekt lesbar; die unabhängige
 ;; Formatversion lässt die Hülle ohne Kopplung an my-lisp- oder
 ;; Sprachvertragsversionen wachsen.
-(def *knowledge-package-version* '(0 1))
+(def *knowledge-package-version* (quote (0 1)))
 
 (def knowledge-package-entries-valid?
   (lambda (entries)
     (cond
-      ((atom entries) (eq entries '()))
-      ((atom (car entries)) '())
+      ((atom entries) (eq entries (quote ())))
+      ((atom (car entries)) (quote ()))
       ((symbol? (car (car entries)))
        (knowledge-package-entries-valid? (cdr entries)))
-      (t '()))))
+      (t (quote ())))))
 
 (def knowledge-package-field
   (lambda (name package)
     (let ((entry (assoc name package)))
-      (cond ((atom entry) '()) (t (cdr entry))))))
+      (cond ((atom entry) (quote ())) (t (cdr entry))))))
 
 (def make-knowledge-package
   (lambda (module-name clauses)
-    (list (cons 'format 'my-lisp-knowledge)
-          (cons 'version *knowledge-package-version*)
-          (cons 'module module-name)
-          (cons 'clauses clauses))))
+    (list (cons (quote format) (quote my-lisp-knowledge))
+          (cons (quote version) *knowledge-package-version*)
+          (cons (quote module) module-name)
+          (cons (quote clauses) clauses))))
 
 (def knowledge-package-decision
   (lambda (package)
     (cond
       ((atom package)
-       (list 'rejected (list 'reason 'invalid-package) (list 'input package)))
-      ((eq (knowledge-proper-list? package) '())
-       (list 'rejected (list 'reason 'invalid-package) (list 'input package)))
-      ((eq (knowledge-package-entries-valid? package) '())
-       (list 'rejected (list 'reason 'invalid-package) (list 'input package)))
-      ((eq (knowledge-package-field 'format package) 'my-lisp-knowledge)
+       (list (quote rejected) (list (quote reason) (quote invalid-package)) (list (quote input) package)))
+      ((eq (knowledge-proper-list? package) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-package)) (list (quote input) package)))
+      ((eq (knowledge-package-entries-valid? package) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-package)) (list (quote input) package)))
+      ((eq (knowledge-package-field (quote format) package) (quote my-lisp-knowledge))
        (cond
-         ((equal? (knowledge-package-field 'version package)
+         ((equal? (knowledge-package-field (quote version) package)
                   *knowledge-package-version*)
-          (advice-all-decision (knowledge-package-field 'module package)
-                               (knowledge-package-field 'clauses package)))
-         (t (list 'rejected
-                  (list 'reason 'unsupported-version)
-                  (list 'version (knowledge-package-field 'version package))))))
-      (t (list 'rejected
-               (list 'reason 'invalid-package)
-               (list 'input package))))))
+          (advice-all-decision (knowledge-package-field (quote module) package)
+                               (knowledge-package-field (quote clauses) package)))
+         (t (list (quote rejected)
+                  (list (quote reason) (quote unsupported-version))
+                  (list (quote version) (knowledge-package-field (quote version) package))))))
+      (t (list (quote rejected)
+               (list (quote reason) (quote invalid-package))
+               (list (quote input) package))))))
 
 ;; Import uses the same atomic journal update as `advise-all`. The module name
 ;; is read from data at runtime, so this is a separate macro rather than a thin
@@ -555,27 +555,27 @@
 ;; Der Import nutzt dasselbe atomare Journal-Update wie `advise-all`; der
 ;; Modulname kommt zur Laufzeit aus Daten, daher ist dies ein eigenes Makro.
 (defmacro import-knowledge-package (package)
-  (list 'cond
+  (list (quote cond)
         (list
-          (list 'equal?
-                (list 'car (list 'knowledge-package-decision package))
-                (list 'quote 'accepted))
-          (list 'second
-                (list 'list
-                      (list 'def '*knowledge-journal*
-                            (list 'append
-                                  (list 'clauses->tell-events
-                                        (list 'knowledge-package-field
-                                              (list 'quote 'module) package)
-                                        (list 'knowledge-package-field
-                                              (list 'quote 'clauses) package))
-                                  '*knowledge-journal*))
-                      (list 'knowledge-package-decision package))))
-        (list 't (list 'knowledge-package-decision package))))
+          (list (quote equal?)
+                (list (quote car) (list (quote knowledge-package-decision) package))
+                (list (quote quote) (quote accepted)))
+          (list (quote second)
+                (list (quote list)
+                      (list (quote def) (quote *knowledge-journal*)
+                            (list (quote append)
+                                  (list (quote clauses->tell-events)
+                                        (list (quote knowledge-package-field)
+                                              (list (quote quote) (quote module)) package)
+                                        (list (quote knowledge-package-field)
+                                              (list (quote quote) (quote clauses)) package))
+                                  (quote *knowledge-journal*)))
+                      (list (quote knowledge-package-decision) package))))
+        (list (quote t) (list (quote knowledge-package-decision) package))))
 
 (defmacro import-knowledge-file (path)
-  (list 'import-knowledge-package
-        (list 'read (list 'read-file path))))
+  (list (quote import-knowledge-package)
+        (list (quote read) (list (quote read-file) path))))
 
 ;; Export is deliberately a plain function: unlike import it does not mutate
 ;; the knowledge journal. It validates the module and clauses, serializes the
@@ -585,14 +585,14 @@
 (def write-knowledge-package
   (lambda (path module-name clauses)
     (cond
-      ((eq (symbol? module-name) '())
-       (list 'rejected (list 'reason 'invalid-module) (list 'input module-name)))
+      ((eq (symbol? module-name) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-module)) (list (quote input) module-name)))
       ((atom clauses)
-       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
-      ((eq (knowledge-proper-list? clauses) '())
-       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
-      ((eq (knowledge-clauses-valid? clauses) '())
-       (list 'rejected (list 'reason 'invalid-clause) (list 'input clauses)))
+       (list (quote rejected) (list (quote reason) (quote invalid-batch)) (list (quote input) clauses)))
+      ((eq (knowledge-proper-list? clauses) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-batch)) (list (quote input) clauses)))
+      ((eq (knowledge-clauses-valid? clauses) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-clause)) (list (quote input) clauses)))
       (t
        (let ((package (make-knowledge-package module-name clauses)))
          (second (list (write-file path (write-to-string package)) package)))))))
@@ -614,14 +614,14 @@
 (def send-knowledge-package
   (lambda (connection module-name clauses)
     (cond
-      ((eq (symbol? module-name) '())
-       (list 'rejected (list 'reason 'invalid-module) (list 'input module-name)))
+      ((eq (symbol? module-name) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-module)) (list (quote input) module-name)))
       ((atom clauses)
-       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
-      ((eq (knowledge-proper-list? clauses) '())
-       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
-      ((eq (knowledge-clauses-valid? clauses) '())
-       (list 'rejected (list 'reason 'invalid-clause) (list 'input clauses)))
+       (list (quote rejected) (list (quote reason) (quote invalid-batch)) (list (quote input) clauses)))
+      ((eq (knowledge-proper-list? clauses) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-batch)) (list (quote input) clauses)))
+      ((eq (knowledge-clauses-valid? clauses) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-clause)) (list (quote input) clauses)))
       (t
        (let ((package (make-knowledge-package module-name clauses)))
          (third (list (tcp-write connection (write-to-string package))
@@ -629,11 +629,11 @@
                       package)))))))
 
 (defmacro receive-knowledge-package (connection)
-  (list 'second
-        (list 'list
-              (list 'def '*received-knowledge-package*
-                    (list 'read (list 'tcp-read-to-eof connection "")))
-              (list 'import-knowledge-package '*received-knowledge-package*))))
+  (list (quote second)
+        (list (quote list)
+              (list (quote def) (quote *received-knowledge-package*)
+                    (list (quote read) (list (quote tcp-read-to-eof) connection "")))
+              (list (quote import-knowledge-package) (quote *received-knowledge-package*)))))
 
 ;; A newline-framed request/receipt protocol keeps the connection open long
 ;; enough for the receiver to answer with the structured import decision.
@@ -645,7 +645,7 @@
 (def string-through-line
   (lambda (text accumulated)
     (cond
-      ((string-empty? text) '())
+      ((string-empty? text) (quote ()))
       ((eq (string-first text) "\n") (list accumulated))
       (t (string-through-line
            (string-rest text)
@@ -655,7 +655,7 @@
   (lambda (connection accumulated)
     (let ((chunk (tcp-read connection)))
       (cond
-        ((string-empty? chunk) '())
+        ((string-empty? chunk) (quote ()))
         (t
          (let ((line (string-through-line
                        (string-append accumulated chunk) "")))
@@ -667,14 +667,14 @@
 (def exchange-knowledge-package
   (lambda (connection module-name clauses)
     (cond
-      ((eq (symbol? module-name) '())
-       (list 'rejected (list 'reason 'invalid-module) (list 'input module-name)))
+      ((eq (symbol? module-name) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-module)) (list (quote input) module-name)))
       ((atom clauses)
-       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
-      ((eq (knowledge-proper-list? clauses) '())
-       (list 'rejected (list 'reason 'invalid-batch) (list 'input clauses)))
-      ((eq (knowledge-clauses-valid? clauses) '())
-       (list 'rejected (list 'reason 'invalid-clause) (list 'input clauses)))
+       (list (quote rejected) (list (quote reason) (quote invalid-batch)) (list (quote input) clauses)))
+      ((eq (knowledge-proper-list? clauses) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-batch)) (list (quote input) clauses)))
+      ((eq (knowledge-clauses-valid? clauses) (quote ()))
+       (list (quote rejected) (list (quote reason) (quote invalid-clause)) (list (quote input) clauses)))
       (t
        (let ((package (make-knowledge-package module-name clauses)))
          (third
@@ -686,24 +686,24 @@
                (second (list (tcp-close connection) receipt))))))))))
 
 (defmacro accept-knowledge-exchange (connection)
-  (list 'second
-        (list 'list
-              (list 'def '*received-knowledge-package*
-                    (list 'read (list 'tcp-read-frame connection "")))
-              (list 'let
-                    (list (list 'decision
-                                (list 'import-knowledge-package
-                                      '*received-knowledge-package*)))
-                    (list 'second
-                          (list 'list
-                                (list 'tcp-write connection
-                                      (list 'string-append
-                                            (list 'write-to-string 'decision)
+  (list (quote second)
+        (list (quote list)
+              (list (quote def) (quote *received-knowledge-package*)
+                    (list (quote read) (list (quote tcp-read-frame) connection "")))
+              (list (quote let)
+                    (list (list (quote decision)
+                                (list (quote import-knowledge-package)
+                                      (quote *received-knowledge-package*))))
+                    (list (quote second)
+                          (list (quote list)
+                                (list (quote tcp-write) connection
+                                      (list (quote string-append)
+                                            (list (quote write-to-string) (quote decision))
                                             "\n"))
-                                (list 'second
-                                      (list 'list
-                                            (list 'tcp-close connection)
-                                            'decision))))))))
+                                (list (quote second)
+                                      (list (quote list)
+                                            (list (quote tcp-close) connection)
+                                            (quote decision)))))))))
 
 ;; --- "atom as concept entry point" ------------------------------------
 ;; A bare symbol like `earth` doesn't mean anything by itself — its meaning
@@ -721,7 +721,7 @@
 (def contains-atom?
   (lambda (item lst)
     (cond
-      ((atom lst) '())
+      ((atom lst) (quote ()))
       ((atom (car lst))
        (cond
          ((eq (car lst) item) t)
@@ -740,12 +740,12 @@
 (def collect-facts-about
   (lambda (item clauses)
     (cond
-      ((atom clauses) '())
+      ((atom clauses) (quote ()))
       (t (let ((clause (car clauses)))
            (let ((head (car clause)))
              (cond
-               ((eq (is-fact? clause) '()) (collect-facts-about item (cdr clauses)))
-               ((eq (contains-atom? item head) '()) (collect-facts-about item (cdr clauses)))
+               ((eq (is-fact? clause) (quote ())) (collect-facts-about item (cdr clauses)))
+               ((eq (contains-atom? item head) (quote ())) (collect-facts-about item (cdr clauses)))
                (t (cons head (collect-facts-about item (cdr clauses)))))))))))
 
 ;; describe returns every known fact about `item` within `module-name`,
@@ -754,7 +754,7 @@
   (lambda (item module-name)
     (cond
       ((module-known? module-name) (collect-facts-about item (module-clauses-now module-name)))
-      (t 'Module-not-found))))
+      (t (quote Module-not-found)))))
 
 ;; --- usage tracking (which knowledge is actually alive) ----------------
 ;; A per-fact/per-rule usage counter, cheap enough to make "is this module
@@ -785,11 +785,11 @@
 ;; Lambda-Aufrufs wie `prove-rule`. Deshalb ist `record-usage!` ein Makro:
 ;; es entfaltet sich zu einer `(def *usage-counts* ...)`-Form im Frame des
 ;; Aufrufers, derselbe Trick wie bei `tell-knowledge`.
-(def *usage-counts* '())
+(def *usage-counts* (quote ()))
 
 (defmacro record-usage! (proof)
-  (list 'def '*usage-counts*
-        (list 'merge-usage (list 'count-usage proof) '*usage-counts*)))
+  (list (quote def) (quote *usage-counts*)
+        (list (quote merge-usage) (list (quote count-usage) proof) (quote *usage-counts*))))
 
 (def usage-of
   (lambda (rule-head)
