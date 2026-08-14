@@ -47,6 +47,7 @@
                                    (description . "Add lint-check function with configurable thresholds (max-size, max-nesting, max-complexity, max-globals, max-effects). Expose as a CI gate: return non-zero exit when any threshold is exceeded so cargo test can fail on lint violations.")))
    ("MYLISP-LINTER-BINDING-FORMS" . ((priority . 1.0) (capabilities . (lisp))
                                       (depends-on . ("MYLISP-LINTER"))
+                                      (done . t)
                                       (description . "Extend collect-free-vars in lib/linter.my to handle let*, letrec, defmacro, and named-let binding forms so lint-globals produces no false positives on those patterns.")))
    ("MYLISP-PROPERTY-LAWS-STRUCTURES" . ((priority . 0.9) (capabilities . (lisp rust))
                                            (depends-on . ("MYLISP-PROPERTY-TESTING"))

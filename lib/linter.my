@@ -82,11 +82,15 @@
       ((equal? (car ast) 'lambda)
        (let ((params (car (cdr ast)))
              (body (car (cdr (cdr ast)))))
-         (collect-free-vars body (append (map (lambda (p) (symbol->string p)) params) bound-vars))))
+         (let ((param-names (cond ((atom params) (cond ((symbol? params) (list (symbol->string params))) (t '())))
+                                  (t (map (lambda (p) (symbol->string p)) params)))))
+           (collect-free-vars body (append param-names bound-vars)))))
       ((equal? (car ast) 'defmacro)
        (let ((params (car (cdr (cdr ast))))
              (body (car (cdr (cdr (cdr ast))))))
-         (collect-free-vars body (append (map (lambda (p) (symbol->string p)) params) bound-vars))))
+         (let ((param-names (cond ((atom params) (cond ((symbol? params) (list (symbol->string params))) (t '())))
+                                  (t (map (lambda (p) (symbol->string p)) params)))))
+           (collect-free-vars body (append param-names bound-vars)))))
       ((equal? (car ast) 'let)
        (cond
          ((symbol? (car (cdr ast)))
@@ -126,3 +130,33 @@
           (list 'complexity (lint-complexity ast))
           (list 'effects (lint-effects ast))
           (list 'free-vars (lint-globals ast)))))
+
+(def get-threshold
+  (lambda (key thresholds default)
+    (cond
+      ((equal? thresholds '()) default)
+      ((equal? (car (car thresholds)) key) (cdr (car thresholds)))
+      (t (get-threshold key (cdr thresholds) default)))))
+
+(def lint-check
+  (lambda (ast thresholds)
+    (let ((metrics (lint-all ast)))
+      (let ((size (second (car metrics)))
+            (nesting (second (second metrics)))
+            (complexity (second (third metrics)))
+            (effects (second (fourth metrics)))
+            (globals (second (fifth metrics))))
+        (append
+          (cond ((> size (get-threshold 'max-size thresholds 99999))
+                 (list (list 'size-exceeded size))) (t '()))
+          (append
+            (cond ((> nesting (get-threshold 'max-nesting thresholds 99999))
+                   (list (list 'nesting-exceeded nesting))) (t '()))
+            (append
+              (cond ((> complexity (get-threshold 'max-complexity thresholds 99999))
+                     (list (list 'complexity-exceeded complexity))) (t '()))
+              (append
+                (cond ((> (length globals) (get-threshold 'max-globals thresholds 99999))
+                       (list (list 'globals-exceeded globals))) (t '()))
+                (cond ((> (length effects) (get-threshold 'max-effects thresholds 99999))
+                       (list (list 'effects-exceeded effects))) (t '()))))))))))

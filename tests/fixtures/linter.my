@@ -46,3 +46,31 @@
   (expr . "(lint-globals '(defmacro m (a b) (+ a b c)))")
   (expected . "(c)")
 )
+(
+  (expr . "(get-threshold 'max-size '((max-size . 50)) 99)")
+  (expected . "50")
+)
+(
+  (expr . "(get-threshold 'max-nesting '((max-size . 50)) 99)")
+  (expected . "99")
+)
+(
+  (expr . "(lint-check '(def f (lambda (x y) (cond (x 1) (t 2)))) '((max-complexity . 1) (max-nesting . 10)))")
+  (expected . "((complexity-exceeded 2))")
+)
+(
+  (expr . "(lint-check '(def f (lambda (x y) (+ x y z))) '((max-globals . 0)))")
+  (expected . "((globals-exceeded (z)))")
+)
+(
+  (expr . "(lint-check '(def f (lambda () (print \"hi\"))) '((max-effects . 0)))")
+  (expected . "((effects-exceeded ((print \"hi\"))))")
+)
+(
+  (expr . "(lint-check '(def f (lambda (x) x)) '((max-size . 1)))")
+  (expected . "((size-exceeded 7))")
+)
+(
+  (expr . "(lint-check '(def f (lambda (x) x)) '((max-size . 10) (max-complexity . 5) (max-nesting . 5) (max-globals . 0) (max-effects . 0)))")
+  (expected . "()")
+)
