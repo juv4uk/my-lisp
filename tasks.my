@@ -1,9 +1,9 @@
-; tasks.my вЂ” durable task plan for the my-lisp agent, per
+; tasks.my — durable task plan for the my-lisp agent, per
 ; docs/swarm-autonomy.md (P2P on one server: this file is this repo's
 ; plan of record; sync it into the shared 127.0.0.1:9999 registry with
 ; the sync-tasks op after edits and after any server restart).
 ;
-; Data only вЂ” same flat-alist convention as ecosystem-status.my.
+; Data only — same flat-alist convention as ecosystem-status.my.
 ; done . t only when real in-repo evidence exists (durability rule:
 ; file first, pointer later). Re-sync after editing.
 
@@ -27,4 +27,12 @@
    ("SWARM-REMOTE-USER-ISOLATION" . ((priority . 0.8) (capabilities . (ops))
                                      (description . "Implement per-agent user isolation on the droplet.")))
    ("SWARM-AUTH-PEER-IDENTITY" . ((priority . 0.7) (capabilities . (rust crypto))
-                                  (description . "Implement authenticated peer identity (M0.11 spoofing gap)."))))))
+                                  (description . "Implement authenticated peer identity (M0.11 spoofing gap).")))
+   ("MYLISP-THREADING-MACRO" . ((priority . 0.8) (capabilities . (lisp))
+                                (description . "Implement threading macros (->, ->>) in lib/core.my to improve composition without deep nesting.")))
+   ("MYLISP-LINTER" . ((priority . 0.7) (capabilities . (lisp rust))
+                       (description . "Implement an initial linter in my-lisp to report size, nesting, complexity, hidden global dependencies, and effects.")))
+   ("MYLISP-PROPERTY-TESTING" . ((priority . 0.7) (capabilities . (lisp rust))
+                                 (description . "Add property/law testing infrastructure to tests/fixtures/ and the Rust test runner.")))
+   ("SWARM-WSL-CACHE-CLEANUP" . ((priority . 0.5) (capabilities . (ops))
+                                 (description . "Consolidate stray duplicate ~/.cache/my-idea-target2 (828M) per docs/swarm-build-cache-policy.md."))))))

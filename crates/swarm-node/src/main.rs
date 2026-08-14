@@ -465,6 +465,9 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("task-state") => {
                 handle_task_state(&node, &msg, &mut stream);
             }
+            Some("task-status") => {
+                handle_task_status(&node, &msg, &mut stream);
+            }
             Some("list-task-state") => {
                 handle_list_task_state(&node, &mut stream);
             }
@@ -1092,10 +1095,91 @@ fn handle_list_task_state(node: &Arc<Node>, stream: &mut TcpStream) {
     send(stream, &Sexp::list(vec![Sexp::atom("task-states"), Sexp::list(entries)]));
 }
 
+/// Local client op: `(task-status <task>)`. Cross-repo dependency view
+/// (SYNERGY-CROSS-REPO-TASK-LINKING): returns the task's state (generation,
+/// holder, completed), its definition summary (priority, capabilities), the
+/// `blocked-by` list with each blocker's own state, and a `ready` flag
+/// (t = schedulable: unclaimed, uncompleted, and every `blocked-by` /
+/// `depends-on` task is completed; nil = blocked or otherwise unavailable).
+/// Unlike `task-state`, this folds state *and* definition, so the swarm-wide
+/// link between projects' tasks is visible to every node without manual
+/// per-agent chats.
+fn handle_task_status(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    let Some(task) = msg.field_atom("task") else {
+        send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string("task-status requires a `task` field")]));
+        return;
+    };
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let def = state::task_def(&journal, task);
+    let s = state::task_state(&journal, task);
+    let blocker_states: Vec<Sexp> = def
+        .as_ref()
+        .map(|d| {
+            d.blocked_by
+                .iter()
+                .map(|b| {
+                    let bs = state::task_state(&journal, b);
+                    Sexp::list(vec![
+                        Sexp::list(vec![Sexp::atom("task"), Sexp::atom(b)]),
+                        Sexp::list(vec![Sexp::atom("completed"), Sexp::atom(if bs.completed { "t" } else { "nil" })]),
+                        Sexp::list(vec![
+                            Sexp::atom("holder"),
+                            match &bs.holder {
+                                Some(h) => Sexp::atom(h),
+                                None => Sexp::List(vec![]),
+                            },
+                        ]),
+                    ])
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let ready = match &def {
+        Some(d) => {
+            let is_done = |other: &String| state::task_state(&journal, other).completed;
+            !s.completed
+                && s.holder.is_none()
+                && d.depends_on.iter().all(is_done)
+                && d.blocked_by.iter().all(is_done)
+        }
+        None => false,
+    };
+    drop(journal);
+    let mut fields = vec![
+        Sexp::list(vec![Sexp::atom("task"), Sexp::atom(task)]),
+        Sexp::list(vec![Sexp::atom("generation"), Sexp::atom(s.generation.to_string())]),
+        Sexp::list(vec![
+            Sexp::atom("holder"),
+            match &s.holder {
+                Some(h) => Sexp::atom(h),
+                None => Sexp::List(vec![]),
+            },
+        ]),
+        Sexp::list(vec![Sexp::atom("completed"), Sexp::atom(if s.completed { "t" } else { "nil" })]),
+        Sexp::list(vec![Sexp::atom("ready"), Sexp::atom(if ready { "t" } else { "nil" })]),
+        Sexp::list(vec![
+            Sexp::atom("blocked-by"),
+            Sexp::list(match &def {
+                Some(d) => d.blocked_by.iter().map(|b| Sexp::atom(b)).collect(),
+                None => Vec::new(),
+            }),
+        ]),
+        Sexp::list(vec![Sexp::atom("blocker-states"), Sexp::list(blocker_states)]),
+        Sexp::list(vec![Sexp::atom("defined"), Sexp::atom(if def.is_some() { "t" } else { "nil" })]),
+    ];
+    if let Some(priority) = def.as_ref().map(|d| d.priority) {
+        fields.push(Sexp::list(vec![Sexp::atom("priority"), Sexp::atom(priority.to_string())]));
+    }
+    send(stream, &Sexp::list(vec![Sexp::atom("task-status"), Sexp::list(fields)]));
+}
+
 /// Local client op: `(define-task (task <id>) (priority <n>) (capabilities
-/// (a b)) (depends-on (x y)) (description "..."))`. Task metadata is a fact
-/// like everything else (`task-defined`), so it replicates the same way
-/// claims do — no separate sync path needed.
+/// (a b)) (depends-on (x y)) (blocked-by (t1 t2)) (description "..."))`.
+/// Task metadata is a fact like everything else (`task-defined`), so it
+/// replicates the same way claims do — no separate sync path needed.
+/// `blocked-by` carries cross-project dependencies (SYNERGY-CROSS-REPO-
+/// TASK-LINKING): task `<id>` waits on the named tasks being completed,
+/// visible swarm-wide via `(task-status <id>)`.
 fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let Some(task) = msg.field_atom("task") else {
         send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string("define-task requires a `task` field")]));
@@ -1104,6 +1188,7 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let priority = msg.field_atom("priority").unwrap_or("1");
     let capabilities = msg.field("capabilities").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
     let depends_on = msg.field("depends-on").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
+    let blocked_by = msg.field("blocked-by").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
     let description = msg.field_atom("description");
 
     let mut payload_fields = vec![
@@ -1111,6 +1196,7 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         Sexp::list(vec![Sexp::atom("priority"), Sexp::atom(priority)]),
         Sexp::list(vec![Sexp::atom("capabilities"), capabilities]),
         Sexp::list(vec![Sexp::atom("depends-on"), depends_on]),
+        Sexp::list(vec![Sexp::atom("blocked-by"), blocked_by]),
     ];
     if let Some(d) = description {
         payload_fields.push(Sexp::list(vec![Sexp::atom("description"), Sexp::string(d)]));

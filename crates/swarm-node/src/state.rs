@@ -18,6 +18,7 @@ pub struct TaskDef {
     pub priority: f64,
     pub capabilities: Vec<String>,
     pub depends_on: Vec<String>,
+    pub blocked_by: Vec<String>,
     pub description: Option<String>,
 }
 
@@ -35,8 +36,9 @@ pub fn task_def(journal: &Journal, task: &str) -> Option<TaskDef> {
         let priority: f64 = ev.payload.field_atom("priority").and_then(|s| s.parse().ok()).unwrap_or(1.0);
         let capabilities = string_list(&ev.payload, "capabilities");
         let depends_on = string_list(&ev.payload, "depends-on");
+        let blocked_by = string_list(&ev.payload, "blocked-by");
         let description = ev.payload.field_atom("description").map(|s| s.to_string());
-        def = Some(TaskDef { priority, capabilities, depends_on, description });
+        def = Some(TaskDef { priority, capabilities, depends_on, blocked_by, description });
     }
     def
 }
@@ -144,6 +146,9 @@ pub fn next_best_action(journal: &Journal, capabilities: &[String]) -> Option<(S
         if !def.depends_on.iter().all(|dep| is_done(dep)) {
             continue;
         }
+        if !def.blocked_by.iter().all(|blocker| is_done(blocker)) {
+            continue;
+        }
         let unblock_impact = defs
             .iter()
             .filter(|(_, other)| other.depends_on.contains(id))
@@ -198,4 +203,58 @@ pub fn membership(journal: &Journal) -> HashMap<String, Member> {
         }
     }
     members
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::journal::Event;
+
+    fn event(line: &str) -> Event {
+        Event::from_sexp(&crate::sexpr::parse(line).unwrap()).unwrap()
+    }
+
+    fn journal_from(lines: &[&str]) -> Journal {
+        let events = lines.iter().map(|l| event(l)).collect();
+        // Journal::open needs a real path; tests fold on the events list
+        // directly through the `events` field, which is public.
+        let dir = std::env::temp_dir().join(format!("swarm-node-state-test-{}", std::process::id()));
+        let mut j = Journal::open(&dir).unwrap();
+        j.events = events;
+        j
+    }
+
+    #[test]
+    fn parses_blocked_by_from_task_defined() {
+        let j = journal_from(&[
+            "(event (id n:1) (node n) (seq 1) (lamport 1) (type task-defined) \
+             (payload ((task B) (priority 0.5) (capabilities (rust)) (depends-on (D1)) (blocked-by (X Y)))))",
+        ]);
+        let def = task_def(&j, "B").unwrap();
+        assert_eq!(def.blocked_by, vec!["X".to_string(), "Y".to_string()]);
+        assert_eq!(def.depends_on, vec!["D1".to_string()]);
+    }
+
+    #[test]
+    fn blocked_by_gates_next_best_action_until_completed() {
+        let j = journal_from(&[
+            "(event (id n:1) (node n) (seq 1) (lamport 1) (type task-defined) \
+             (payload ((task BLOCKER) (priority 1.0) (capabilities (rust)))))",
+            "(event (id n:2) (node n) (seq 2) (lamport 2) (type task-defined) \
+             (payload ((task WAITER) (priority 1.0) (capabilities (rust)) (blocked-by (BLOCKER)))))",
+        ]);
+        // WAITER is blocked by an uncompleted BLOCKER -> only BLOCKER is
+        // schedulable, never WAITER.
+        assert_eq!(next_best_action(&j, &["rust".to_string()]).map(|(id, _, _)| id), Some("BLOCKER".to_string()));
+
+        // Complete the blocker (generation 1, matching a claim at gen 1).
+        let mut j = j;
+        j.events.push(event(
+            "(event (id n:3) (node n) (seq 3) (lamport 3) (type task-completed) \
+             (payload ((task BLOCKER) (agent a) (generation 1))))",
+        ));
+        // BLOCKER is itself claimed/completed; WAITER now unblocked.
+        let best = next_best_action(&j, &["rust".to_string()]);
+        assert_eq!(best.as_ref().map(|(id, _, _)| id.as_str()), Some("WAITER"));
+    }
 }
