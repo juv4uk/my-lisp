@@ -1,0 +1,32 @@
+(
+  (expr . "(lint-size 5)")
+  (expected . "1")
+)
+(
+  (expr . "(lint-size '(a b))")
+  (expected . "5")
+)
+(
+  (expr . "(lint-nesting '(a (b c) d))")
+  (expected . "2") ; (b c) is nested 1 level inside the main list... wait. A list of depth 1 has max nesting 1?
+  ; '(a) is (a . ()). Nesting(a)=0, Nesting(())=0. Nesting((a)) = max(1+0, 0) = 1.
+  ; '(a b) = (a . (b . ())). max(1+0, 1) = 1.
+  ; '(a (b c) d) = (a . ((b c) . (d . ()))).
+  ; (b c) has nesting 1. (b c) is the car of ((b c) . (d)). So 1+1 = 2! Yes, 2!
+)
+(
+  (expr . "(lint-complexity '(cond (a b) (c d)))")
+  (expected . "2")
+)
+(
+  (expr . "(lint-complexity '(def f (lambda (x) (cond (x 1) (t 2)))))")
+  (expected . "2")
+)
+(
+  (expr . "(lint-effects '(def f (lambda () (print \"hi\"))))")
+  (expected . "((print \"hi\"))")
+)
+(
+  (expr . "(lint-globals '(lambda (x y) (+ x y z)))")
+  (expected . "(z)")
+)

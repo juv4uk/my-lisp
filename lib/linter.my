@@ -1,0 +1,90 @@
+; lib/linter.my — Linter for my-lisp ASTs
+; Analyzes size, nesting, complexity, globals, and effects.
+
+(def max
+  (lambda (a b)
+    (cond
+      ((> a b) a)
+      (t b))))
+
+; 1. Size: Total number of nodes (atoms + pairs)
+(def lint-size
+  (lambda (ast)
+    (cond
+      ((atom ast) 1)
+      (t (+ 1 (+ (lint-size (car ast)) (lint-size (cdr ast))))))))
+
+; 2. Nesting: Maximum depth of pairs
+(def lint-nesting
+  (lambda (ast)
+    (cond
+      ((atom ast) 0)
+      (t (max (+ 1 (lint-nesting (car ast)))
+              (lint-nesting (cdr ast)))))))
+
+; 3. Complexity: Number of branching paths (cond clauses)
+(def lint-complexity
+  (lambda (ast)
+    (cond
+      ((atom ast) 0)
+      ((equal? (car ast) 'cond)
+       (reduce (lambda (acc clause) (+ acc (lint-complexity clause)))
+               (length (cdr ast))
+               (cdr ast)))
+      (t (+ (lint-complexity (car ast))
+            (lint-complexity (cdr ast)))))))
+
+; 4. Effects: Detect calls to side-effecting functions
+(def effectful-primitives '("print" "write-file" "process-run" "advise" "tell"))
+
+(def lint-effects
+  (lambda (ast)
+    (cond
+      ((atom ast) '())
+      ((symbol? (car ast))
+       (cond
+         ((member? (symbol->string (car ast)) effectful-primitives)
+          (cons ast (lint-effects (cdr ast))))
+         (t (append (lint-effects (car ast)) (lint-effects (cdr ast))))))
+      (t (append (lint-effects (car ast)) (lint-effects (cdr ast)))))))
+
+; 5. Hidden globals: Identify free variables that are not explicitly passed as arguments
+; (simplified: just collect all symbols used as variables that aren't in standard core)
+; A true global dependency checker requires walking `let` and `lambda` bindings.
+(def collect-free-vars
+  (lambda (ast bound-vars)
+    (cond
+      ((atom ast)
+       (cond
+         ((symbol? ast)
+          (cond
+            ((member? (symbol->string ast) bound-vars) '())
+            ((member? (symbol->string ast) '("t" "def" "defmacro" "lambda" "cond" "quote" "list" "car" "cdr" "cons" "eq" "atom" "+" "-" "*" "/" "<" ">" "=" "<=" ">=" "print" "read" "eval")) '())
+            (t (list ast))))
+         (t '())))
+      ((eq (car ast) 'quote) '())
+      ((eq (car ast) 'lambda)
+       (let ((params (car (cdr ast)))
+             (body (car (cdr (cdr ast)))))
+         (collect-free-vars body (append (map (lambda (p) (symbol->string p)) params) bound-vars))))
+      ((eq (car ast) 'let)
+       ; Simplified let: only considers basic let
+       (let ((bindings (car (cdr ast)))
+             (body (car (cdr (cdr ast)))))
+         (let ((new-bound (append (map (lambda (b) (symbol->string (car b))) bindings) bound-vars)))
+           (append (reduce append '() (map (lambda (b) (collect-free-vars (second b) bound-vars)) bindings))
+                   (collect-free-vars body new-bound)))))
+      (t (append (collect-free-vars (car ast) bound-vars)
+                 (collect-free-vars (cdr ast) bound-vars))))))
+
+(def lint-globals
+  (lambda (ast)
+    (collect-free-vars ast '())))
+
+(def lint-all
+  (lambda (ast)
+    (list (list 'size (lint-size ast))
+          (list 'nesting (lint-nesting ast))
+          (list 'complexity (lint-complexity ast))
+          (list 'effects (lint-effects ast))
+          (list 'free-vars (lint-globals ast)))))

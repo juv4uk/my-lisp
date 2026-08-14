@@ -1,0 +1,15 @@
+(
+  (name . "addition-is-commutative")
+  (types . ("int" "int"))
+  (expr . "(= (+ x y) (+ y x))")
+)
+(
+  (name . "string-append-is-associative")
+  (types . ("string" "string" "string"))
+  (expr . "(equal? (string-append x (string-append y z)) (string-append (string-append x y) z))")
+)
+(
+  (name . "reverse-reverse-is-identity")
+  (types . ("list"))
+  (expr . "(equal? (reverse (reverse x)) x)")
+)
