@@ -25,7 +25,8 @@ This repository has one test layer: the four Rust crates under `crates/`, run wi
 | `my-lisp` | `tests/advice.rs` | 2 | end-to-end `understand → advise → reason-in → narrate-answer`, including rejection without journal mutation | ok |
 | `my-lisp` | `tests/world.rs` | 54 | `lib/world.my`: immutable history and identity plus all principal legacy writers over World transitions, including atomic rollback and exactly-once evaluation of guarded macro arguments | ok |
 | `my-lisp` | `tests/content_store.rs` | 5 | `lib/content-store.my`: immutable address→content storage, retrieval, deduplication, and preservation of distinct World histories | ok |
-| **Total** | | **426** | | **426 passed, 0 failed, 0 ignored** |
+| `swarm-node` | `tests/integration.rs` | 8 | end-to-end swarm-node wire protocol over real TCP loopback: anti-entropy sync (node B joining after A already has events, receiving them on connect), live push (A emits a 3rd event that B sees without a resync call), compaction (derived state survives a journal compaction and replay), gossip peer discovery (a two-hop mesh forming from a single `--connect`), dynamic membership with voter quorum and status reporting, metrics (event count, peer count, synced flag), quorum claim fencing with stale-generation rejection, and duplicate node-id rejection from a second connection | ok |
+| **Total** | | **434** | | **434 passed, 0 failed, 5 ignored** |
 
 The implementation-independent conformance fixture at [`tests/fixtures/conformance.my`](../tests/fixtures/conformance.my) — its own format and rules are in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — is included directly into `crates/my-lisp/tests/mccarthy.rs` via `include_str!` and is exercised as part of that suite, not counted separately. The suite also pins `symbol?` as a `lib/core.my` function rather than a Rust built-in.
 
@@ -33,7 +34,10 @@ The implementation-independent conformance fixture at [`tests/fixtures/conforman
 cargo test --workspace
 ```
 
-Last recorded run: 2026-08-14, Windows x86_64-pc-windows-msvc, Rust/Cargo 1.87.0 — all passing, 0 failed, 0 ignored.
+Last recorded run: 2026-08-14, Linux x86_64 (WSL2), Rust/Cargo 1.93.0 from Guix time-machine — all passing, 0 failed, 5 ignored.
+
+> [!NOTE]
+> **WSL2 `/tmp` permission caveat (swarm-node integration tests):** `crates/swarm-node/tests/integration.rs` spawns real child processes that write to `/tmp/swarm-node-itest/`. If that directory was previously created by a different Linux user (e.g. the Windows `user` account running an earlier `cargo test` session), the `my-lisp` WSL user cannot delete or create subdirectories inside it — the child process exits with `Permission denied` before it can bind its port, causing `wait_for_port` to time out. Fix: `wsl -u root -d Ubuntu -e bash -c "rm -rf /tmp/swarm-node-itest"`.
 
 **Reader caveat resolved**: the reader previously had no dotted-pair literal syntax — `'(p . 0)` parsed `.` as an ordinary symbol, producing a 3-element proper list rather than a real dotted pair, even though the printer already rendered true dotted pairs exactly that way. Fixed 2026-08-09 (`ExprKind::Pair`, see the unit-test row above) — a quoted `'(p . 0)` and an actual `(cons 'p 0)` are now `equal?`.
 
@@ -62,7 +66,8 @@ Last recorded run: 2026-08-14, Windows x86_64-pc-windows-msvc, Rust/Cargo 1.87.0
 | `my-lisp` | `tests/advice.rs` | 2 | наскрізний `understand → advise → reason-in → narrate-answer`, включно з відхиленням без зміни журналу | ok |
 | `my-lisp` | `tests/world.rs` | 54 | `lib/world.my`: незмінна історія й identity плюс усі основні legacy writer-и над World-переходами, включно з atomic rollback і рівно одним обчисленням аргументів guarded-макросів | ok |
 | `my-lisp` | `tests/content_store.rs` | 5 | `lib/content-store.my`: незмінне зберігання address→content, отримання, дедуплікація та збереження різних історій World | ok |
-| **Разом** | | **426** | | **426 пройдено, 0 провалів, 0 пропущено** |
+| `swarm-node` | `tests/integration.rs` | 8 | наскрізний wire-протокол swarm-node над реальними TCP-петлями: anti-entropy sync (вузол B приєднується після того як A вже має події, отримує їх при підключенні), live push (A генерує 3-ю подію, B бачить її без окремого resync), compaction (derived state виживає journal compaction і replay), gossip peer discovery (mesh з двох вузлів формується з одного `--connect`), динамічне членство з voter quorum і звітуванням статусу, метрики (кількість подій, пірів, synced-прапор), quorum claim fencing зі stale-generation rejection, і відхилення дублікату node-id від другого з'єднання | ok |
+| **Разом** | | **434** | | **434 пройдено, 0 провалів, 5 пропущено** |
 
 Незалежна від реалізації conformance-фікстура [`tests/fixtures/conformance.my`](../tests/fixtures/conformance.my) — власний формат і правила описані в [`tests/fixtures/README.md`](../tests/fixtures/README.md) — підключається напряму в `crates/my-lisp/tests/mccarthy.rs` через `include_str!` і перевіряється в межах цього набору, окремо не рахується. Набір також фіксує `symbol?` як функцію `lib/core.my`, а не Rust built-in.
 
@@ -70,7 +75,10 @@ Last recorded run: 2026-08-14, Windows x86_64-pc-windows-msvc, Rust/Cargo 1.87.0
 cargo test --workspace
 ```
 
-Останній зафіксований запуск: 2026-08-14, Windows x86_64-pc-windows-msvc, Rust/Cargo 1.87.0 — усі проходять, 0 провалів, 0 пропущено.
+Останній зафіксований запуск: 2026-08-14, Linux x86_64 (WSL2), Rust/Cargo 1.93.0 із Guix time-machine — усі проходять, 0 провалів, 5 пропущено.
+
+> [!NOTE]
+> **WSL2 `/tmp` застереження (swarm-node integration):** Директорія `/tmp/swarm-node-itest/` може належати іншому Linux-користувачу (Windows `user`), перешкоджуючи `my-lisp` при видаленні/створенні піддиректорій. Виправлення: `wsl -u root -d Ubuntu -e bash -c "rm -rf /tmp/swarm-node-itest"`.
 
 **Застереження щодо reader вирішено**: reader раніше не мав синтаксису dotted-pair-літералів — `'(p . 0)` парсив `.` як звичайний символ, даючи 3-елементний власний список замість справжньої dotted pair, хоча printer уже друкував справжні dotted pairs саме так. Виправлено 2026-08-09 (`ExprKind::Pair`, див. рядок unit-тестів вище) — quoted `'(p . 0)` і реальний `(cons 'p 0)` тепер `equal?`.
 
@@ -99,7 +107,8 @@ Dieses Repository hat eine Testebene: die vier Rust-Crates unter `crates/`, ausg
 | `my-lisp` | `tests/advice.rs` | 2 | durchgängig `understand → advise → reason-in → narrate-answer`, einschließlich Ablehnung ohne Journaländerung | ok |
 | `my-lisp` | `tests/world.rs` | 54 | `lib/world.my`: unveränderliche Geschichte und Identität plus alle wesentlichen Legacy-Writer über World-Übergängen, einschließlich atomarem Rollback und genau einmaliger Auswertung geschützter Makroargumente | ok |
 | `my-lisp` | `tests/content_store.rs` | 5 | `lib/content-store.my`: unveränderliche Adresse→Inhalt-Speicherung, Abruf, Deduplizierung und Erhalt verschiedener World-Geschichten | ok |
-| **Gesamt** | | **426** | | **426 bestanden, 0 fehlgeschlagen, 0 übersprungen** |
+| `swarm-node` | `tests/integration.rs` | 8 | End-to-End Wire-Protokoll von swarm-node über echte TCP-Loopback-Sockets: Anti-Entropy-Sync (Knoten B verbindet sich, nachdem A bereits Ereignisse hat, und empfängt diese beim Verbinden), Live-Push (A emittiert ein 3. Ereignis, das B ohne expliziten Resync-Aufruf sieht), Compaction (Derived State übersteht Journal-Compaction und Replay), Gossip-Peer-Discovery (ein Zwei-Knoten-Mesh bildet sich aus einem einzigen `--connect`), dynamische Mitgliedschaft mit Voter-Quorum und Status-Reporting, Metriken (Ereignisanzahl, Peer-Anzahl, Synced-Flag), Quorum-Claim-Fencing mit Stale-Generation-Ablehnung und Ablehnung einer doppelten Node-ID von einer zweiten Verbindung | ok |
+| **Gesamt** | | **434** | | **434 bestanden, 0 fehlgeschlagen, 5 übersprungen** |
 
 Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conformance.my`](../tests/fixtures/conformance.my) — eigenes Format und eigene Regeln stehen in [`tests/fixtures/README.md`](../tests/fixtures/README.md) — wird direkt über `include_str!` in `crates/my-lisp/tests/mccarthy.rs` eingebunden und im Rahmen dieser Suite geprüft, nicht separat gezählt. Die Suite fixiert außerdem `symbol?` als Funktion aus `lib/core.my` statt als Rust-Builtin.
 
@@ -107,6 +116,9 @@ Die implementierungsunabhängige Konformitäts-Fixture [`tests/fixtures/conforma
 cargo test --workspace
 ```
 
-Letzter erfasster Lauf: 14.08.2026, Windows x86_64-pc-windows-msvc, Rust/Cargo 1.87.0 — alle bestanden, 0 fehlgeschlagen, 0 übersprungen.
+Letzter erfasster Lauf: 14.08.2026, Linux x86_64 (WSL2), Rust/Cargo 1.93.0 aus Guix time-machine — alle bestanden, 0 fehlgeschlagen, 5 übersprungen.
+
+> [!NOTE]
+> **WSL2-`/tmp`-Fallstrick (swarm-node-Integrationstests):** Das Verzeichnis `/tmp/swarm-node-itest/` kann einem anderen Linux-Benutzer gehören (z. B. dem Windows-`user`-Konto), was `my-lisp` beim Löschen/Erstellen von Unterverzeichnissen blockiert und den Kindprozess mit `Permission denied` beendet, bevor er seinen Port öffnen kann. Lösung: `wsl -u root -d Ubuntu -e bash -c "rm -rf /tmp/swarm-node-itest"`.
 
 **Reader-Falle behoben**: Der Reader kannte zuvor keine Syntax für Dotted-Pair-Literale — `'(p . 0)` parste `.` als gewöhnliches Symbol und erzeugte eine dreielementige echte Liste statt eines echten Dotted Pair, obwohl der Printer echte Dotted Pairs bereits genau so ausgab. Behoben am 2026-08-09 (`ExprKind::Pair`, siehe Unit-Test-Zeile oben) — ein quotiertes `'(p . 0)` und ein tatsächliches `(cons 'p 0)` sind jetzt `equal?`.
