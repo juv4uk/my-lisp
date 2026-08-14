@@ -79,6 +79,8 @@
             (t (list ast))))
          (t '())))
       ((equal? (car ast) 'quote) '())
+      ((equal? (car ast) 'def)
+       (collect-free-vars (car (cdr (cdr ast))) bound-vars))
       ((equal? (car ast) 'lambda)
        (let ((params (car (cdr ast)))
              (body (car (cdr (cdr ast)))))

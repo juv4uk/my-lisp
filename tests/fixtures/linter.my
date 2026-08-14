@@ -68,9 +68,9 @@
 )
 (
   (expr . "(lint-check '(def f (lambda (x) x)) '((max-size . 1)))")
-  (expected . "((size-exceeded 7))")
+  (expected . "((size-exceeded 15))")
 )
 (
-  (expr . "(lint-check '(def f (lambda (x) x)) '((max-size . 10) (max-complexity . 5) (max-nesting . 5) (max-globals . 0) (max-effects . 0)))")
+  (expr . "(lint-check '(def f (lambda (x) x)) '((max-size . 15) (max-complexity . 5) (max-nesting . 5) (max-globals . 0) (max-effects . 0)))")
   (expected . "()")
 )

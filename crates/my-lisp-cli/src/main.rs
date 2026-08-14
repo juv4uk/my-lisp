@@ -1826,6 +1826,7 @@ fn main() {
             println!("  -V, --version               Print version information");
             println!("  -h, --help                  Print help information");
             println!("  --allow-process=a,b,c        Allow (process-run) to run exactly these program names");
+            println!("  --lint                        Run the linter on the provided file and exit with non-zero if thresholds are exceeded");
             println!("  --tcp[=PORT]                 Serve the REPL over TCP on 127.0.0.1 (default port 9999) instead of stdio");
             println!("  --protocol=sexpr              With --tcp: strict (request (id) (op) (source)) / (response ...) envelope, no banner/prompt");
             println!("  --connect=HOST:PORT            P2P client: forward one sexpr request from stdin to a peer's TCP REPL, print the response");
@@ -1853,6 +1854,78 @@ fn main() {
             }
             run_client(address);
             return;
+        }
+
+        if arg == "--lint" {
+            if args.len() < 3 {
+                eprintln!("Usage: my-lisp --lint <file>");
+                process::exit(1);
+            }
+            let filename = &args[2];
+            
+            // Load linter
+            let linter_lib = include_str!("../../../lib/linter.my");
+            if let Ok(linter_ast) = parse(linter_lib) {
+                if let Err(e) = eval_parsed_expressions(&linter_ast, &mut session) {
+                    eprintln!("Error loading linter: {}", e.render(linter_lib));
+                    process::exit(1);
+                }
+            } else {
+                eprintln!("Failed to parse linter.my");
+                process::exit(1);
+            }
+
+            match fs::read_to_string(filename) {
+                Ok(source) => {
+                    let quoted_src = format!("(quote (begin {}\n))", source);
+                    match parse(&quoted_src) {
+                        Ok(q_ast) => {
+                            let target_ast = match eval_parsed_expressions(&q_ast, &mut session) {
+                                Ok(r) => r.value,
+                                Err(e) => {
+                                    eprintln!("Error evaluating quoted source: {}", e.render(&quoted_src));
+                                    process::exit(1);
+                                }
+                            };
+                            session.environment.define("*lint-target*", target_ast);
+                            
+                            let lint_call_src = "(lint-check *lint-target* (quote ((max-size . 5000) (max-nesting . 50) (max-complexity . 100) (max-globals . 500) (max-effects . 10))))";
+                            match parse(lint_call_src) {
+                                Ok(lint_ast) => {
+                                    match eval_parsed_expressions(&lint_ast, &mut session) {
+                                        Ok(result) => {
+                                            if let Value::Nil = result.value {
+                                                println!("Linter passed: {}", filename);
+                                                return;
+                                            } else {
+                                                eprintln!("Linter violations found in {}:", filename);
+                                                eprintln!("{}", result.value);
+                                                process::exit(1);
+                                            }
+                                        }
+                                        Err(e) => {
+                                            eprintln!("Error running linter: {}", e.render(lint_call_src));
+                                            process::exit(1);
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("Parse error creating lint call: {}", e.render(lint_call_src));
+                                    process::exit(1);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Parse error in {}: {}", filename, e.render(&source));
+                            process::exit(1);
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error reading file {}: {}", filename, e);
+                    process::exit(1);
+                }
+            }
         }
 
         // Run file
