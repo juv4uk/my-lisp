@@ -543,3 +543,42 @@
     (cond
       ((eq n 0) "0")
       (t (number->string-onto n "")))))
+
+; -> / ->> (thread-first / thread-last macros) — express transformation pipelines
+; without deep nesting (PLAN.md item / clean-code policy).
+; `(-> x (f y) g)` expands to `(g (f x y))`.
+; `(->> x (f y) g)` expands to `(g (f y x))`.
+; Both take advantage of the variadic lambda parameter support (a bare symbol `forms`
+; binds the whole list of arguments) available since 2026-08-09.
+;
+; -> / ->> (макроси прокидання) — виражають пайплайни перетворень без
+; глибокої вкладеності (політика clean-code).
+; `(-> x (f y) g)` розгортається в `(g (f x y))`.
+;
+; -> / ->> (Threading-Makros) — drücken Transformations-Pipelines ohne tiefe
+; Verschachtelung aus.
+(defmacro -> forms
+  (cond
+    ((atom forms) '())
+    ((atom (cdr forms)) (car forms))
+    (t (let* ((x (car forms))
+              (next (car (cdr forms)))
+              (rest (cdr (cdr forms)))
+              (step (cond ((atom next) (list next x))
+                          (t (cons (car next) (cons x (cdr next)))))))
+         (cond
+           ((atom rest) step)
+           (t (cons '-> (cons step rest))))))))
+
+(defmacro ->> forms
+  (cond
+    ((atom forms) '())
+    ((atom (cdr forms)) (car forms))
+    (t (let* ((x (car forms))
+              (next (car (cdr forms)))
+              (rest (cdr (cdr forms)))
+              (step (cond ((atom next) (list next x))
+                          (t (append next (list x))))))
+         (cond
+           ((atom rest) step)
+           (t (cons '->> (cons step rest))))))))

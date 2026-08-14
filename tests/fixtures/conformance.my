@@ -165,3 +165,10 @@
 ((expr . "(list (write-to-string 3.00) (write-to-string 1.25))") (expected . "(\"3.0\" \"1.25\")") (tier . 2) (axioms . (G6 S1)) (note . "canonical serialization: finite inexact numbers"))
 ((expr . "(list (equal? (read (write-to-string 3.00)) 3.0) (equal? (read (write-to-string 1.25)) 1.25))") (expected . "(t t)") (tier . 2) (axioms . (G6 S1)) (note . "canonical serialization round-trip: finite inexact numbers"))
 ((expr . "(cond (0 'zero-is-truthy) (t 'wrong))") (expected . "zero-is-truthy") (tier . 1) (axioms . (G8)) (role . "constitutive") (note . "canonical cross-implementation G8 gate: fixnum 0 is truthy; only Nil is the canonical false value"))
+
+((expr . "(-> 10 (+ 2) (* 3))") (expected . "36") (tier . 3) (axioms . (G5)) (note . "thread-first macro (->) unwraps forms recursively"))
+((expr . "(->> 10 (+ 2) (* 3))") (expected . "36") (tier . 3) (axioms . (G5)) (note . "thread-last macro (->>) unwraps forms recursively, placing subject last"))
+((expr . "(-> 5 (- 2))") (expected . "3") (tier . 3) (axioms . (G5)))
+((expr . "(->> 5 (- 2))") (expected . "-3") (tier . 3) (axioms . (G5)))
+((expr . "(-> 5)") (expected . "5") (tier . 3) (axioms . (G5)))
+((expr . "(->> 5)") (expected . "5") (tier . 3) (axioms . (G5)))
