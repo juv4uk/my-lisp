@@ -6,6 +6,8 @@
 //! Kreit navmysno nichoho ne znaie pro Tauri, faily, merezhu chy interfeis.
 //! Das Crate kennt bewusst weder Tauri noch Dateien, Netzwerk oder Benutzeroberfläche.
 
+pub mod layout;
+
 mod bignum;
 mod environment;
 mod error;

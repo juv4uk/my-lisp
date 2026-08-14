@@ -1,0 +1,95 @@
+use std::rc::Rc;
+use crate::value::{Value, Rational, Closure};
+use crate::Exactness;
+
+// IEEE 754 NaN boxing masks
+const MASK_EXPONENT: u64 = 0x7FF0_0000_0000_0000;
+const MASK_QNAN: u64     = 0x7FF0_0000_0000_0000; // All exponent bits 1
+
+// fpga-lisp tags (lower 32 bits, bits 28..31 are tag)
+pub const TAG_FIXNUM: u64    = 0;
+pub const TAG_CONS: u64      = 1;
+pub const TAG_SYMBOL: u64    = 2;
+pub const TAG_NIL: u64       = 3;
+pub const TAG_TRUE: u64      = 4;
+pub const TAG_PRIMITIVE: u64 = 5;
+pub const TAG_STRING: u64    = 6;
+pub const TAG_RATIONAL: u64  = 7;
+pub const TAG_CLOSURE: u64   = 8;
+pub const TAG_MACRO: u64     = 9;
+pub const TAG_TCP_CONN: u64  = 10;
+pub const TAG_TCP_LIST: u64  = 11;
+
+#[derive(Debug, Copy, Clone)]
+pub struct NanBox(pub u64);
+
+impl NanBox {
+    /// Pack a 48-bit pointer and a 4-bit tag into a 64-bit NaN-boxed value.
+    /// The pointer is split: lower 28 bits in `bits 0..27`, upper 20 bits in `bits 32..51`.
+    /// The tag is placed in `bits 28..31`, perfectly matching fpga-lisp's 32-bit ISA layout.
+    fn pack_ptr(tag: u64, ptr: u64) -> u64 {
+        let ptr_low = ptr & 0x0FFF_FFFF;
+        let ptr_high = (ptr >> 28) & 0x000F_FFFF;
+        MASK_QNAN | (ptr_high << 32) | (tag << 28) | ptr_low
+    }
+
+    /// Unpack a 48-bit pointer from a NaN-boxed value.
+    fn unpack_ptr(val: u64) -> u64 {
+        let ptr_low = val & 0x0FFF_FFFF;
+        let ptr_high = (val >> 32) & 0x000F_FFFF;
+        (ptr_high << 28) | ptr_low
+    }
+
+    fn get_tag(val: u64) -> u64 {
+        (val >> 28) & 0xF
+    }
+
+    pub fn from_value(value: &Value) -> Self {
+        match value {
+            Value::Nil => NanBox(MASK_QNAN | (TAG_NIL << 28)),
+            Value::Bool(true) => NanBox(MASK_QNAN | (TAG_TRUE << 28)),
+            Value::Bool(false) => NanBox(MASK_QNAN | (TAG_NIL << 28)), // false is nil in fpga-lisp
+            Value::Number(f, Exactness::Inexact) => NanBox(f.to_bits()),
+            Value::Number(f, Exactness::Exact) => {
+                let i = *f as i32;
+                let payload = (i as u32) & 0x0FFF_FFFF;
+                NanBox(MASK_QNAN | (TAG_FIXNUM << 28) | (payload as u64))
+            },
+            Value::Rational(r) => {
+                let ptr = r as *const Rational as u64;
+                NanBox(Self::pack_ptr(TAG_RATIONAL, ptr))
+            },
+            Value::String(s) => {
+                let ptr = Rc::as_ptr(s) as *const u8 as u64;
+                NanBox(Self::pack_ptr(TAG_STRING, ptr))
+            },
+            Value::Symbol(s) => {
+                let ptr = Rc::as_ptr(s) as *const u8 as u64;
+                NanBox(Self::pack_ptr(TAG_SYMBOL, ptr))
+            },
+            Value::Pair(h, t) => {
+                // Since my-lisp uses Rc for Pair but fpga-lisp expects a cons cell pointer.
+                // We'll pack the Pair object pointer.
+                // Note: This is an unowned reference encoding (Memory Layout Boundary only).
+                let ptr = h as *const Rc<Value> as u64;
+                NanBox(Self::pack_ptr(TAG_CONS, ptr))
+            },
+            Value::Closure(c) => {
+                let ptr = Rc::as_ptr(c) as u64;
+                NanBox(Self::pack_ptr(TAG_CLOSURE, ptr))
+            },
+            Value::Macro(m) => {
+                let ptr = Rc::as_ptr(m) as u64;
+                NanBox(Self::pack_ptr(TAG_MACRO, ptr))
+            },
+            Value::TcpConnection(c) => {
+                let ptr = Rc::as_ptr(c) as u64;
+                NanBox(Self::pack_ptr(TAG_TCP_CONN, ptr))
+            },
+            Value::TcpListener(l) => {
+                let ptr = Rc::as_ptr(l) as u64;
+                NanBox(Self::pack_ptr(TAG_TCP_LIST, ptr))
+            }
+        }
+    }
+}
