@@ -55,11 +55,11 @@ Semantic source of truth for the four-repository ecosystem (`my-lisp`,
 `fpga-lisp`, `cml`, `my-idea`). Defines what a my-lisp program means; every
 other repository must match this, not the reverse.
 
-A fifth sibling, `my-lisp-panini`, researches Pāṇinian Sanskrit grammar as
+A fifth and sixth sibling, `my-lisp-panini` and `shiva-sutras`, research Pāṇinian Sanskrit grammar as
 a formal system feeding this repo's `SANSKRIT-P*` semantic-atom migration
-(`docs/sanskrit-semantic-migration.md`) — but it is not part of the
-match-the-contract relationship above; it does not touch `my-lisp` at all
-until its own machine-model gate review passes (see its `AGENTS.md`).
+(`docs/sanskrit-semantic-migration.md`) — but they are not part of the
+match-the-contract relationship above; they do not touch `my-lisp` at all
+until their own machine-model gate reviews pass (see their `AGENTS.md` files).
 
 ## Authoritative files
 
