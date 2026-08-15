@@ -1,9 +1,9 @@
 use std::rc::Rc;
-use crate::value::{Value, Rational, Closure};
+use crate::value::{Value, Rational};
 use crate::Exactness;
 
 // IEEE 754 NaN boxing masks
-const MASK_EXPONENT: u64 = 0x7FF0_0000_0000_0000;
+
 const MASK_QNAN: u64     = 0x7FF0_0000_0000_0000; // All exponent bits 1
 
 // fpga-lisp tags (lower 32 bits, bits 28..31 are tag)
@@ -33,16 +33,6 @@ impl NanBox {
         MASK_QNAN | (ptr_high << 32) | (tag << 28) | ptr_low
     }
 
-    /// Unpack a 48-bit pointer from a NaN-boxed value.
-    fn unpack_ptr(val: u64) -> u64 {
-        let ptr_low = val & 0x0FFF_FFFF;
-        let ptr_high = (val >> 32) & 0x000F_FFFF;
-        (ptr_high << 28) | ptr_low
-    }
-
-    fn get_tag(val: u64) -> u64 {
-        (val >> 28) & 0xF
-    }
 
     pub fn from_value(value: &Value) -> Self {
         match value {
@@ -67,7 +57,7 @@ impl NanBox {
                 let ptr = Rc::as_ptr(s) as *const u8 as u64;
                 NanBox(Self::pack_ptr(TAG_SYMBOL, ptr))
             },
-            Value::Pair(h, t) => {
+            Value::Pair(h, _t) => {
                 // Since my-lisp uses Rc for Pair but fpga-lisp expects a cons cell pointer.
                 // We'll pack the Pair object pointer.
                 // Note: This is an unowned reference encoding (Memory Layout Boundary only).
