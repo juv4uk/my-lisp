@@ -81,20 +81,40 @@
               (print "Release aborted.")
               exit-code)))))))
 
-(def tests
-  (process-run "cargo" (quote ("test" "--workspace"))))
+(def *bare-version* (car *argv*))
+
+(print (string-append "Bumping Cargo.toml versions to " *bare-version* "..."))
+(def sed-pattern (string-append "s/^version = \".*\"/version = \"" *bare-version* "\"/"))
+(def bump-result
+  (process-run "sed" (list "-i" sed-pattern 
+                           "crates/my-lisp/Cargo.toml" 
+                           "crates/my-lisp-cli/Cargo.toml" 
+                           "crates/my-lisp-literate/Cargo.toml" 
+                           "crates/my-lisp-wasm/Cargo.toml")))
+
+(report-and-exit-if-failed "sed version bump" bump-result)
+
+(def tests (process-run "cargo" (quote ("test" "--workspace"))))
 
 (cond
   ((eq (car tests) 0)
    ((lambda ()
       (print "cargo test --workspace: ok")
+      
+      ;; Commit the version bump
+      (def add-result (process-run "git" (list "add" "crates/*/Cargo.toml")))
+      (report-and-exit-if-failed "git add" add-result)
+      
+      (def commit-result (process-run "git" (list "commit" "-m" (string-append "chore: bump version to " *bare-version*))))
+      ;; It's possible there are no changes if the version is the same, but we assume it bumps.
+      
       (def tag-result (process-run "git" (list "tag" *release-version*)))
       (report-and-exit-if-failed "git tag" tag-result)
       (cond
         ((eq (car tag-result) 0)
          ((lambda ()
             (def push-result
-              (process-run "git" (list "push" *release-remote* *release-version*)))
+              (process-run "git" (list "push" *release-remote* "main" *release-version*)))
             (report-and-exit-if-failed "git push" push-result)
             (cond
               ((eq (car push-result) 0)
