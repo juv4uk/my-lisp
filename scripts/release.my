@@ -83,8 +83,8 @@
 
 (def *bare-version* (car *argv*))
 
-(print (string-append "Bumping Cargo.toml versions to " *bare-version* "..."))
-(def sed-pattern (string-append "s/^version = \".*\"/version = \"" *bare-version* "\"/"))
+(print (string-append "Bumping Cargo.toml versions to " (string-append *bare-version* "...")))
+(def sed-pattern (string-append "s/^version = \".*\"/version = \"" (string-append *bare-version* "\"/")))
 (def bump-result
   (process-run "sed" (list "-i" sed-pattern 
                            "crates/my-lisp/Cargo.toml" 
