@@ -74,4 +74,10 @@
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
     (done . ())
   ))
+  ("MYLISP-DIVISION-GENERALIZED" . (
+    (priority . 9.0)
+    (capabilities . (fpga-lisp cml my-idea my-lisp-panini shiva-sutras))
+    (description . "INFO: my-lisp has generalized the `/` operator to support both exact and inexact operands per S1. It no longer fails on inexact numbers. `(/ 1 0.0)` now fails with InvalidForm, just like `(/ 1 0)`. Review your implementations to ensure they match this exact/inexact promotion behavior.")
+    (done . ())
+  ))
 )))

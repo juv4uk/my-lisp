@@ -190,42 +190,49 @@ pub(super) fn evaluate_division(
             span,
         ));
     }
-    let mut values = arguments.iter().map(|argument| {
-        let value = evaluate(argument, environment)?;
-        // Matches on `&value`: see the comment on the same pattern in
-        // `numeric_value` above.
-        match &value {
-            Value::Rational(rational) => Ok(rational.clone()),
-            Value::Number(number, Exactness::Exact) => Ok(Rational::integer(*number as i64)),
-            _ => Err(LanguageError::new(
-                ErrorKind::Type,
-                "/ expects exact integers or rational numbers · / ochikuie tochni tsili abo ratsionalni chysla · / erwartet exakte Ganz- oder rationale Zahlen",
-                argument.span,
-            )),
+    let values = arguments
+        .iter()
+        .map(|argument| numeric_value(evaluate(argument, environment)?, argument.span))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if values
+        .iter()
+        .any(|value| matches!(value, Numeric::Inexact(_)))
+    {
+        let values = values
+            .iter()
+            .map(|value| value.as_f64())
+            .collect::<Vec<_>>();
+        let mut result = values[0];
+        if arguments.len() == 1 {
+            if result == 0.0 {
+                return Err(division_error(span));
+            }
+            result = 1.0 / result;
+        } else {
+            for &divisor in &values[1..] {
+                if divisor == 0.0 {
+                    return Err(division_error(span));
+                }
+                result /= divisor;
+            }
         }
-    });
-    // The empty-arguments case is rejected above, but the iterator is re-derived here
-    // rather than trusting that earlier check, so a future reorder cannot turn this into a panic.
-    // Porozhnii spysok arhumentiv vidkhyliaietsia vyshche, ale iterator tut pereviriaietsia
-    // okremo, tozh maibutnie perevporiadkuvannia kodu ne peretvorytsia na paniku.
-    // Der Fall leerer Argumente wird oben abgelehnt, aber der Iterator wird hier erneut
-    // geprüft, sodass eine spätere Umordnung dies nicht in einen Panic verwandeln kann.
-    let Some(first) = values.next() else {
-        return Err(LanguageError::new(
-            ErrorKind::Arity,
-            "/ expects at least one argument · / ochikuie shchonaimenshe odyn arhument · / erwartet mindestens ein Argument",
-            span,
-        ));
-    };
-    let mut result = first?;
+        return Ok(Value::Number(result, Exactness::Inexact));
+    }
+
+    let exact = values
+        .iter()
+        .map(Numeric::into_exact)
+        .collect::<Vec<_>>();
+    let mut result = exact[0].clone();
     if arguments.len() == 1 {
         result = Rational::integer(1)
             .checked_div(result)
             .ok_or_else(|| division_error(span))?;
     } else {
-        for divisor in values {
+        for divisor in exact.into_iter().skip(1) {
             result = result
-                .checked_div(divisor?)
+                .checked_div(divisor)
                 .ok_or_else(|| division_error(span))?;
         }
     }
