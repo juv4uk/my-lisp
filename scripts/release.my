@@ -102,7 +102,7 @@
       (print "cargo test --workspace: ok")
       
       ;; Commit the version bump
-      (def add-result (process-run "git" (list "add" "crates/*/Cargo.toml")))
+      (def add-result (process-run "git" (list "add" "crates/*/Cargo.toml" "Cargo.lock")))
       (report-and-exit-if-failed "git add" add-result)
       
       (def commit-result (process-run "git" (list "commit" "-m" (string-append "chore: bump version to " *bare-version*))))
