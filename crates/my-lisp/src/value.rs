@@ -69,6 +69,64 @@ impl Rational {
         Self::from_big(numerator, denominator)
     }
 
+    /// Parses a decimal literal (like `0.5`, `3.14`, `1e-3`) directly into an exact
+    /// arbitrary-precision `Rational`, preserving the full mathematical value
+    /// without relying on intermediate floating-point approximations.
+    pub fn from_decimal_literal(text: &str) -> Option<Self> {
+        let text = text.to_lowercase();
+        let (base_str, exp_str) = if let Some((b, e)) = text.split_once('e') {
+            (b, Some(e))
+        } else {
+            (text.as_str(), None)
+        };
+
+        if base_str.matches('.').count() > 1 {
+            return None;
+        }
+
+        let scientific_exp: i32 = if let Some(e) = exp_str {
+            if e.is_empty() || e == "+" || e == "-" {
+                return None;
+            }
+            e.parse().ok()?
+        } else {
+            0
+        };
+
+        let (mantissa_str, decimal_exp) = if let Some((int_part, frac_part)) = base_str.split_once('.') {
+            let decimal_exp = frac_part.len() as i32;
+            let mut m = String::with_capacity(int_part.len() + frac_part.len());
+            m.push_str(int_part);
+            m.push_str(frac_part);
+            (m, decimal_exp)
+        } else {
+            (base_str.to_string(), 0)
+        };
+
+        if mantissa_str.is_empty() || mantissa_str == "-" || mantissa_str == "+" {
+            return None;
+        }
+
+        let mantissa = BigInt::from_str(&mantissa_str).ok()?;
+        let total_exp = scientific_exp.checked_sub(decimal_exp)?;
+
+        if total_exp > 100_000 || total_exp < -100_000 {
+            return None;
+        }
+
+        let mut multiplier_str = String::with_capacity((total_exp.abs() + 1) as usize);
+        multiplier_str.push('1');
+        multiplier_str.extend(std::iter::repeat('0').take(total_exp.abs() as usize));
+        
+        let power_of_10 = BigInt::from_str(&multiplier_str).ok()?;
+
+        if total_exp >= 0 {
+            Self::from_big(mantissa.mul(&power_of_10), BigInt::from_i64(1))
+        } else {
+            Self::from_big(mantissa, power_of_10)
+        }
+    }
+
     fn from_big(numerator: BigInt, denominator: BigInt) -> Option<Self> {
         if denominator.is_zero() {
             return None;

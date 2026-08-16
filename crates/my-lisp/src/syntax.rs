@@ -18,17 +18,25 @@ pub struct Expr {
 
 /// Whether a numeric value is a precise quantity or a floating-point
 /// approximation — a property of the value itself (PLAN.md item 10, Path A),
-/// not of how it happens to print. Set once at the reader (integer literal
-/// → `Exact`; decimal/exponential literal → `Inexact`) and propagated by
-/// arithmetic's promotion rule (`Exact ⊕ Exact → Exact`, anything touching
-/// `Inexact` → `Inexact`), never re-guessed from a result's shape.
+/// not of how it happens to print. Set once at the reader (every literal is
+/// exact by default — integers, `n/d` rationals, and finite decimal/scientific
+/// literals like `0.5` or `1e-3` all read as exact values per axiom S1) and
+/// propagated by arithmetic's promotion rule (`Exact ⊕ Exact → Exact`, anything
+/// touching `Inexact` → `Inexact`), never re-guessed from a result's shape.
+/// `Inexact` values currently only arise from explicit runtime sources (e.g.
+/// wall-clock timing), not from literal syntax; the future `(float ...)`
+/// operation is the intended explicit way to opt into them.
 /// Chy ye chyslove znachennia tochnoiu velychynoiu, chy nablyzhenniam iz plavaiuchoiu
 /// komoiu — vlastyvist samoho znachennia (PLAN.md, punkt 10, shliakh A), ne
-/// toho, yak vono drukuietsia. Vstanovliuietsia odyn raz u readeri (tsilyi
-/// literal → `Exact`; desiatkovyi/eksponentsiinyi literal → `Inexact`) i
-/// poshyriuietsia pravylom promotion v aryfmetytsi (`Exact ⊕ Exact → Exact`,
-/// bud-yakyi dotyk do `Inexact` → `Inexact`), nikoly ne vhaduietsia zanovo
-/// z formy rezultatu.
+/// toho, yak vono drukuietsia. Vstanovliuietsia odyn raz u readeri (kozhen
+/// literal tochnyi za zamovchuvanniam — tsili, `n/d`-ratsionalni ta skinchenni
+/// desiatkovi/eksponentsiini literaly na kshtalt `0.5` chy `1e-3` chytaiutsia
+/// yak tochni znachennia za aksiomoiu S1) i poshyriuietsia pravylom promotion v
+/// aryfmetytsi (`Exact ⊕ Exact → Exact`, bud-yakyi dotyk do `Inexact` →
+/// `Inexact`), nikoly ne vhaduietsia zanovo z formy rezultatu. Znachennia
+/// `Inexact` nyni vynykaiut lyshe z yavnykh dzherel u chasi vykonannia
+/// (napryklad, pomir chasu), ne z syntaksysu literala; maibutnia operatsiia
+/// `(float ...)` — ye zatverdzhenyi sposib svidomoho perekhodu v ne-toche.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Exactness {
     Exact,

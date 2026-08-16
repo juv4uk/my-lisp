@@ -177,47 +177,31 @@ impl Parser<'_> {
         // direkt (siehe bignum.rs) — ein Token wie `123456789012345678901/2`, viel
         // zu groß für `i64`, ist weiterhin ein exaktes rationales Literal, kein Symbol.
         // Integer literal → exact; decimal or exponential-notation literal →
-        // inexact (PLAN.md item 10, Path A) — the rule keys off literal
-        // *syntax* ('.', 'e'/'E'), not "does the value happen to be a whole
-        // number," so a future `3e0`/`1.2e3` is inexact without needing a
-        // decimal point, and `3.0`/`3.00`/`3.000` are all the same inexact
-        // value regardless of trailing zeros.
-        // Tsilyi literal → exact; desiatkovyi chy literal v eksponentsiinii
-        // notatsii → inexact (PLAN.md, punkt 10, shliakh A) — pravylo dyvytsia
-        // na *syntaksys* napysannia ('.', 'e'/'E'), ne na te, chy znachennia
-        // vypadkovo tsile, tozh maibutnii `3e0`/`1.2e3` bude inexact bez
-        // potreby v desiatkovii kraptsi, a `3.0`/`3.00`/`3.000` — te same
-        // inexact znachennia nezalezhno vid kilkosti nuliv naprykintsi.
-        let exactness = |text: &str| {
-            if text.contains(['.', 'e', 'E']) {
-                Exactness::Inexact
-            } else {
-                Exactness::Exact
-            }
-        };
         let kind = if let Some((num, den)) = token.split_once('/') {
             if let Some(r) = crate::value::Rational::from_literal(num, den) {
                 ExprKind::Rational(r)
             } else {
-                token
-                    .parse::<f64>()
-                    .map(|n| ExprKind::Number(n, exactness(token)))
-                    .unwrap_or_else(|_| ExprKind::Symbol(token.into()))
+                ExprKind::Symbol(token.into())
             }
-        } else if exactness(token) == Exactness::Exact {
+        } else if token.contains(['.', 'e', 'E']) {
+            if let Some(r) = crate::value::Rational::from_decimal_literal(token) {
+                match r.as_precise_i64() {
+                    Some(value) => ExprKind::Number(value as f64, Exactness::Exact),
+                    None => ExprKind::Rational(r),
+                }
+            } else {
+                ExprKind::Symbol(token.into())
+            }
+        } else if let Some(r) = crate::value::Rational::from_literal(token, "1") {
             // Preserve the compact f64-backed representation only where it is
             // mathematically exact; larger integer literals enter the same
             // arbitrary-precision Rational path as n/1 arithmetic results.
-            crate::value::Rational::from_literal(token, "1")
-                .map(|integer| match integer.as_precise_i64() {
-                    Some(value) => ExprKind::Number(value as f64, Exactness::Exact),
-                    None => ExprKind::Rational(integer),
-                })
-                .unwrap_or_else(|| ExprKind::Symbol(token.into()))
+            match r.as_precise_i64() {
+                Some(value) => ExprKind::Number(value as f64, Exactness::Exact),
+                None => ExprKind::Rational(r),
+            }
         } else {
-            token.parse::<f64>()
-                .map(|n| ExprKind::Number(n, Exactness::Inexact))
-                .unwrap_or_else(|_| ExprKind::Symbol(token.into()))
+            ExprKind::Symbol(token.into())
         };
         Ok(Expr {
             kind,
@@ -268,17 +252,21 @@ mod tests {
     }
 
     #[test]
-    fn parses_integers_and_floats_as_numbers() {
+    fn parses_integers_as_exact_numbers() {
         assert!(matches!(parse_one("42").kind, ExprKind::Number(n, Exactness::Exact) if n == 42.0));
-        assert!(matches!(parse_one("-3.5").kind, ExprKind::Number(n, Exactness::Inexact) if n == -3.5));
     }
 
     #[test]
-    fn integer_literal_is_exact_decimal_literal_is_inexact() {
+    fn decimal_literal_is_parsed_as_exact_rational_or_exact_integer() {
         assert!(matches!(parse_one("3").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0));
-        assert!(matches!(parse_one("3.0").kind, ExprKind::Number(n, Exactness::Inexact) if n == 3.0));
-        assert!(matches!(parse_one("3.00").kind, ExprKind::Number(n, Exactness::Inexact) if n == 3.0));
-        assert!(matches!(parse_one("3e0").kind, ExprKind::Number(n, Exactness::Inexact) if n == 3.0));
+        assert!(matches!(parse_one("3.0").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0));
+        assert!(matches!(parse_one("3.00").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0));
+        assert!(matches!(parse_one("3e0").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0));
+        
+        let ExprKind::Rational(rational) = parse_one("-3.5").kind else {
+            panic!("expected a rational literal");
+        };
+        assert_eq!(rational, crate::value::Rational::new(-7, 2).unwrap());
     }
 
     #[test]
@@ -295,6 +283,42 @@ mod tests {
             panic!("expected a rational literal");
         };
         assert_eq!(rational, crate::value::Rational::new(5, 336).unwrap());
+    }
+
+    #[test]
+    fn malformed_decimal_literals_fall_back_to_plain_symbols() {
+        for literal in [".", ".e3", "1e", "1e+", "1e-", "1.2.3", "1ee3", "--0.5", "+", "-"] {
+            assert!(
+                matches!(parse_one(literal).kind, ExprKind::Symbol(s) if &*s == literal),
+                "literal {literal:?} should be an ordinary symbol, not a number"
+            );
+        }
+    }
+
+    #[test]
+    fn decimal_literal_edge_cases_parse_as_exact_numbers() {
+        let cases: &[(&str, &str)] = &[
+            ("0.0", "0"),
+            ("-0.0", "0"),
+            (".5", "1/2"),
+            ("-.5", "-1/2"),
+            ("5.", "5"),
+            ("000.500", "1/2"),
+            ("1e3", "1000"),
+            ("1e-3", "1/1000"),
+            ("1.25e2", "125"),
+            ("1e100", "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+            ("1e-100", "1/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+        ];
+        for (literal, expected) in cases {
+            let expr = parse_one(literal);
+            let printed = match &expr.kind {
+                ExprKind::Number(n, _) => format!("{n}"),
+                ExprKind::Rational(r) => r.to_string(),
+                other => panic!("{literal:?} should be a number, got {other:?}"),
+            };
+            assert_eq!(&printed, expected, "literal {literal:?}");
+        }
     }
 
     #[test]

@@ -123,7 +123,10 @@ fn arithmetic_promotes_exact_integers_and_preserves_inexact_numbers() {
         eval("(- (/ 1 3))"),
         Value::Rational(Rational::new(-1, 3).unwrap())
     );
-    assert_eq!(eval("(+ (/ 1 2) 0.25)"), Value::Number(0.75, Exactness::Inexact));
+    assert_eq!(
+        eval("(+ (/ 1 2) 0.25)"),
+        Value::Rational(Rational::new(3, 4).unwrap())
+    );
     assert_eq!(eval("(+ (/ 1 2) (/ 1 2))"), Value::Number(1.0, Exactness::Exact));
 }
 
