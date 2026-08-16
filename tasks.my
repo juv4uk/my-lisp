@@ -24,7 +24,8 @@
     (priority . 10.0)
     (capabilities . (fpga-lisp))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . ())
+    (done . t)
+    (context . "done: all 9 fpga-lisp .my files with reader-sugar migrated to explicit (quote ...) per language-contract 2.0 — assembler.my (8), docs/reference/conformance.my (91, incl. fixture strings read via read), docs/reference/my-lisp-lib/core.my (17), docs/reference/my-lisp-lib/meta-eval.my (22), docs/equal-oracle-checklist.my (34), 4 evidence/G5/G8 fixtures (5). fixture_coverage.py's substring table updated in lockstep. Mid-token apostrophes (don't, JF's, з'явились, невід'ємних) and prose comments/strings untouched — verified 0 sugar sites remaining. Equivalence proven against the real my-lisp oracle: fixture_coverage classification identical; core.my+meta-eval.my 18/18 test exprs byte-identical output; assembler.my usage/call_demo assembly identical, bootstrap_length_demo stack-overflow identical (pre-existing documented non-functionality, unchanged); conformance.my 121/121 fixture forms structurally equal (read-all + equal? walk); evidence fixtures 4/4 PASS. CRLF endings preserved byte-for-byte.")
   ))
   ("MIGRATE-QUOTE-IDE" . (
     (priority . 10.0)
