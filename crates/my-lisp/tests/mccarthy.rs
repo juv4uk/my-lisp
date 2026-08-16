@@ -573,6 +573,23 @@ fn list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin() {
     assert_eq!(unbound.kind, ErrorKind::UnknownSymbol);
 }
 
+/// The echo fallback is an *interaction policy of the interactive REPL*, not
+/// language semantics — the evaluator itself must still report an unknown
+/// standalone symbol as `UnknownSymbol`, exactly the same as inside any form.
+/// (The REPL catches the same error and rewrites *only its own greeting*.)
+/// Echo-fallback — tse *polityka vzaiemodii interaktyvnoho REPL*, ne semantyka
+/// movy: sam evaluator musi yak ranishe vidpovidaty nevidomym symvolom
+/// `UnknownSymbol`, tochno tak samo, yak vseredyni bud-yakoi formy. (REPL
+/// lohyt toi samyi error i perepysuie lyshe *vlasne vitannia*.)
+#[test]
+fn evaluator_still_errors_on_a_lone_unknown_symbol() {
+    let error = eval_program("мама", &mut Session::default()).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::UnknownSymbol);
+
+    let error = eval_program("hello", &mut Session::default()).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::UnknownSymbol);
+}
+
 #[test]
 fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
     let mut session = Session::default();

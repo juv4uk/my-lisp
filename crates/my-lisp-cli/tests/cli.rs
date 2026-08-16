@@ -148,6 +148,64 @@ fn repl_history_persists_across_separate_sessions() {
 }
 
 #[test]
+fn repl_echoes_a_lone_unknown_symbol_as_a_greeting_not_an_error() {
+    // Isolated HOME, like repl_history_persists_across_separate_sessions.
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let dir = std::env::temp_dir().join(format!("my-lisp-cli-test-echo-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("should create temp home dir");
+
+    let mut child = my_lisp()
+        .env("HOME", &dir)
+        .env("USERPROFILE", &dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("binary should spawn");
+    child
+        .stdin
+        .take()
+        .expect("stdin should be piped")
+        .write_all("мама\nhello\nсонце\n(+ мама 1)\n(car мама)\n(quote мама)\n".as_bytes())
+        .expect("should write to stdin");
+    let output = child.wait_with_output().expect("binary should run");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Lone unknown symbols greet instead of erroring...
+    assert!(stdout.contains("echo мама"), "stdout was: {stdout:?}");
+    assert!(stdout.contains("echo hello"), "stdout was: {stdout:?}");
+    assert!(stdout.contains("echo сонце"), "stdout was: {stdout:?}");
+    // ...but the same unknown symbol inside a real form is still a named
+    // failure — the echo is an interaction policy, not a language change.
+    assert!(stderr.contains("unknown symbol"), "stderr was: {stderr:?}");
+    // A quoted symbol evaluates fine and prints itself, no echo involved.
+    assert!(stdout.contains("мама"), "stdout was: {stdout:?}");
+}
+
+/// The echo fallback must not leak into non-interactive execution: running a
+/// file whose whole content is a lone unknown symbol still fails named.
+/// Echo-fallback ne povynen proshkodzhuvaty v neinteraktyvne vykonannia:
+/// fail, чиє vsi vmist — odyn nevidomyi symvol, i dalі provaliuietsia nazvano.
+#[test]
+fn file_mode_still_errors_on_a_lone_unknown_symbol() {
+    let dir = std::env::temp_dir();
+    let path = dir.join("my-lisp-cli-test-lone-symbol.my");
+    std::fs::write(&path, "мама").expect("should write temp file");
+
+    let output = my_lisp().arg(&path).output().expect("binary should run");
+    let _ = std::fs::remove_file(&path);
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("unknown symbol"), "stderr was: {stderr:?}");
+}
+
+#[test]
 fn read_with_no_arguments_reads_one_line_from_real_stdin() {
     // Reliable in file mode, where the CLI's own stdin isn't also owned by
     // rustyline's line editor (see the caveat on read_stdin_line in

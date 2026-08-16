@@ -1,4 +1,4 @@
-use my_lisp::{eval_parsed_expressions, parse, Environment, ErrorKind, Exactness, Session, Value};
+use my_lisp::{eval_parsed_expressions, parse, Environment, ErrorKind, Exactness, ExprKind, Session, Value};
 use std::rc::Rc;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -2028,7 +2028,33 @@ fn main() {
                                     println!("{}", result.value);
                                 }
                                 Err(e) => {
-                                    eprintln!("Error: {}", e.render(line));
+                                    // Echo fallback: an interactive REPL greets an
+                                    // unknown standalone symbol with `echo <it>` instead
+                                    // of an error — an interaction policy, NOT language
+                                    // semantics. It fires only when the whole input is
+                                    // a single top-level Symbol that the evaluator
+                                    // genuinely couldn't resolve; unknown symbols inside
+                                    // real forms, and every other error kind, keep the
+                                    // exact same named failure (S2) as file execution.
+                                    // (Non-ASCII identifiers like `мама` reach this
+                                    // exactly the same way as `hello`.)
+                                    //
+                                    // Echo-fallback: interaktyvnyi REPL vitaye nevidomyi
+                                    // okremyi symvol `echo <nei>` zamist pomylky — tse
+                                    // polityka vzaiemodii, NE semantyka movy. Spraciovuie
+                                    // lyshe koly ves vkhid — odyn verkhno-rivnevyi Symbol,
+                                    // yakyi evaluator spravdi ne zmih rozviazaty; nevidomi
+                                    // symvoly vseredyni spravzhnikh form i vsi inshi vydy
+                                    // pomylok zberihaiut tochno toi samyi nazvanyi proval
+                                    // (S2), shcho i vykonannia failu.
+                                    if e.kind == ErrorKind::UnknownSymbol
+                                        && ast.len() == 1
+                                        && matches!(ast[0].kind, ExprKind::Symbol(_))
+                                    {
+                                        println!("echo {}", line);
+                                    } else {
+                                        eprintln!("Error: {}", e.render(line));
+                                    }
                                 }
                             }
                         }
