@@ -184,14 +184,30 @@ impl Parser<'_> {
                 ExprKind::Symbol(token.into())
             }
         } else if token.contains(['.', 'e', 'E']) {
-            if let Some(r) = crate::value::Rational::from_decimal_literal(token) {
-                match r.as_precise_i64() {
+            let kind = match crate::value::Rational::from_decimal_literal(token) {
+                Ok(r) => match r.as_precise_i64() {
                     Some(value) => ExprKind::Number(value as f64, Exactness::Exact),
                     None => ExprKind::Rational(r),
+                },
+                Err(crate::value::DecimalLiteralError::InvalidSyntax) => ExprKind::Symbol(token.into()),
+                Err(crate::value::DecimalLiteralError::ResourceLimitExceeded) => {
+                    // S3: a syntactically valid numeric literal must never become
+                    // an ordinary symbol just because a parser resource limit
+                    // refused to build it — that would change the token's
+                    // meaning silently. It fails named, `NumericOverflow`, the
+                    // same category runtime arithmetic uses for exact results
+                    // past `with_numeric_bit_limit`.
+                    return Err(LanguageError::new(
+                        ErrorKind::NumericOverflow,
+                        "decimal literal exponent exceeds the parser resource limit · eksponenta desiatkovoho literala perevyshchuie resursnu mezhu parsera · der Exponent des Dezimalliterals überschreitet die Ressourcengrenze des Parsers",
+                        Span {
+                            start,
+                            end: self.cursor,
+                        },
+                    ));
                 }
-            } else {
-                ExprKind::Symbol(token.into())
-            }
+            };
+            kind
         } else if let Some(r) = crate::value::Rational::from_literal(token, "1") {
             // Preserve the compact f64-backed representation only where it is
             // mathematically exact; larger integer literals enter the same
@@ -292,6 +308,61 @@ mod tests {
                 matches!(parse_one(literal).kind, ExprKind::Symbol(s) if &*s == literal),
                 "literal {literal:?} should be an ordinary symbol, not a number"
             );
+        }
+    }
+
+    /// A syntactically valid decimal literal whose exponent exceeds the parser's
+    /// resource cap must fail *named* (`NumericOverflow`), never silently become
+    /// an ordinary symbol (S3) — and it must refuse to serve as an identifier,
+    /// exactly the hole that used to let `(def 1e100001 5)` define a symbol.
+    /// Syntaksychno korektnyi desiatkovyi literal, chyia eksponenta perevyshchuie
+    /// resursnu mezhu parsera, musi provaliuvatys *nazvano* (`NumericOverflow`),
+    /// nikoly ne staiaty movchky zvychainym symvolom (S3) — i musi vidmovliatys
+    /// sluzhyty identyfikatorom, tse toi samyi otvir, yakym `(def 1e100001 5)`
+    /// ranishe vyznachav symvol.
+    #[test]
+    fn decimal_literals_past_the_resource_limit_fail_named_not_as_symbols() {
+        for literal in ["1e100001", "1e-100001"] {
+            let error = parse(literal).expect_err(&format!("{literal} should be refused"));
+            assert_eq!(
+                error.kind,
+                ErrorKind::NumericOverflow,
+                "{literal} must be NumericOverflow, not a symbol or Parse"
+            );
+            assert_eq!((error.span.start, error.span.end), (0, literal.len()));
+        }
+    }
+
+    /// `(def 1e100001 5)` must NOT define an identifier named `1e100001` — a
+    /// valid numeric literal past the resource limit is a parse failure, not a
+    /// symbol name. This is the exact regression the S3 fix closes.
+    /// `(def 1e100001 5)` NE maie vyznachaty identyfikator na imia `1e100001` —
+    /// korektnyi chyslovyi literal ponad resursnu mezhu tse proval parsera, ne
+    /// imia symvola. Tse tochno ta rehresiia, yaku zakryvaie fiks S3.
+    #[test]
+    fn a_giant_decimal_literal_cannot_serve_as_an_identifier() {
+        let error = parse("(def 1e100001 5)").expect_err("should be refused");
+        assert_eq!(error.kind, ErrorKind::NumericOverflow);
+    }
+
+    /// Exponent magnitudes comfortably below the cap must still parse. The
+    /// exact ±100000 boundary itself is deliberately *not* exercised here:
+    /// reducing `10^100000` by GCD is quadratic in the bignum's decimal
+    /// digits (see `bignum.rs`'s `div_rem`) and turns a unit test into a
+    /// minutes-long computation — the boundary behavior is already pinned by
+    /// the overflow tests above (`1e100001`/`1e-100001`) and the boundary
+    /// value itself is an internal DoS-hedge, not a contract fact.
+    /// Velychyny eksponenty, komfortno nyzhchi za mezhu, musi vse shche
+    /// parsytsia. Tochna mezha ±100000 svidomo *ne* pereviriaietsia tut:
+    /// skorochennia `10^100000` za GCD kvadratychne za desiatkovymy tsyframy
+    /// bignum (dyv. `div_rem` u `bignum.rs`) i peretvoriuie yunit-test na
+    /// bahatokhvylvynne obchyslennia — povedinka mezhovoho znachennia vzhe
+    /// zakriplena testamy overflow vyshche (`1e100001`/`1e-100001`), a same
+    /// znachennia mezhі — vnutrishnii DoS-zakhyst, ne fakt kontraktu.
+    #[test]
+    fn decimal_literals_within_the_resource_limit_still_parse() {
+        for literal in ["1e1000", "1e-1000", "1.25e1000", "1.25e-1000"] {
+            parse(literal).unwrap_or_else(|e| panic!("{literal} is within the limit, failed: {e}"));
         }
     }
 

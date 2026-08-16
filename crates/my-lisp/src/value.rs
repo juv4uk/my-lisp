@@ -32,6 +32,53 @@ pub struct Rational {
     denominator: BigInt,
 }
 
+/// Why a decimal literal didn't become a `Rational` — a typed failure so the
+/// reader never has to guess between "this isn't a number" and "this is a
+/// number we refused to build." The distinction matters because the two are
+/// observably different per S2/S3: the first is an ordinary symbol, the second
+/// must be a *named* failure, never a silent relabeling of a valid literal.
+/// Chomu desiatkovyi literal ne stav `Rational` — typizovanyi proval, shchob
+/// reader nikoly ne vhaduvav mizh "tse ne chyslo" i "tse chyslo, yake my
+/// vidmovylys buduvaty." Rozriznennia vazhlyve, bo tsi dva vypadky sposterezhu-
+/// vano rizni za S2/S3: pershyi — zvychainyi symvol, druhyi — *nazvanyi*
+/// proval, nikoly ne movchazne perekvalifikuvannia validnoho literala.
+/// Warum ein Dezimal-Literal kein `Rational` wurde — ein typisierter Fehler,
+/// damit der Reader nie raten muss zwischen "das ist keine Zahl" und "das ist
+/// eine Zahl, die wir zu bauen abgelehnt haben." Die Unterscheidung zählt,
+/// denn die beiden Fälle sind laut S2/S3 beobachtbar verschieden: ersteres ist
+/// ein gewöhnliches Symbol, letzteres ein *benannter* Fehler, niemals eine
+/// stille Umbenennung eines gültigen Literals.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DecimalLiteralError {
+    /// The token is not a well-formed decimal/exponential literal at all
+    /// (`.`, `1e`, `1e+`, `1e-`, `1.2.3`, `1ee3`, `--0.5`) — the reader keeps
+    /// the current behavior and treats it as an ordinary symbol.
+    /// Token vzahali ne ye korektnym desiatkovym/eksponentsiinym literalom
+    /// (`.`, `1e`, `1e+`, `1e-`, `1.2.3`, `1ee3`, `--0.5`) — reader zberihaie
+    /// potochnu povedinku y traktuie yoho yak zvychainyi symvol.
+    /// Das Token ist überhaupt kein wohlgeformtes Dezimal-/Exponential-Literal
+    /// (`.`, `1e`, `1e+`, `1e-`, `1.2.3`, `1ee3`, `--0.5`) — der Reader behält
+    /// das bisherige Verhalten bei und behandelt es als gewöhnliches Symbol.
+    InvalidSyntax,
+    /// The token is a syntactically valid decimal literal, but constructing it
+    /// would exceed a parser resource limit (an exponent magnitude beyond the
+    /// hardcoded ±100000 cap that bounds the `10^N` digit-string allocation).
+    /// This is the S3-shaped case: the limit must fail *named* (`NumericOverflow`),
+    /// never silently turn a valid numeric literal into an identifier.
+    /// Token — syntaksychno korektnyi desiatkovyi literal, ale yoho pobudova
+    /// perevyshchyla b resursnu mezhu parsera (velychyna eksponenty ponad
+    /// zakladenu mezhu ±100000, yaka obmezhuie alokatsiiu tsyfrovoi riadky `10^N`).
+    /// Tse vypadok formy S3: mezha musi provaliuvatys *nazvano* (`NumericOverflow`),
+    /// nikoly ne peretvoriuvaty movchky validnyi chyslovyi literal na identyfikator.
+    /// Das Token ist ein syntaktisch gültiges Dezimal-Literal, aber seine
+    /// Konstruktion würde eine Parser-Ressourcengrenze überschreiten (eine
+    /// Exponentengröße jenseits der hartkodierten ±100000-Grenze, die die
+    /// Ziffernstring-Allokation von `10^N` begrenzt). Das ist der S3-Fall: Die
+    /// Grenze muss *benannt* fehlschlagen (`NumericOverflow`), niemals ein
+    /// gültiges numerisches Literal still in einen Bezeichner verwandeln.
+    ResourceLimitExceeded,
+}
+
 impl PartialOrd for Rational {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -72,7 +119,14 @@ impl Rational {
     /// Parses a decimal literal (like `0.5`, `3.14`, `1e-3`) directly into an exact
     /// arbitrary-precision `Rational`, preserving the full mathematical value
     /// without relying on intermediate floating-point approximations.
-    pub fn from_decimal_literal(text: &str) -> Option<Self> {
+    ///
+    /// Returns a typed error instead of an untyped `None` so the reader can tell
+    /// apart two genuinely different outcomes (see `DecimalLiteralError`): text
+    /// that is not a decimal literal at all, versus a syntactically valid literal
+    /// the parser refused to build for a resource reason. The second must never
+    /// silently degrade into an ordinary symbol (S3) — that would turn a valid
+    /// numeric literal into an identifier only because of an internal limit.
+    pub fn from_decimal_literal(text: &str) -> Result<Self, DecimalLiteralError> {
         let text = text.to_lowercase();
         let (base_str, exp_str) = if let Some((b, e)) = text.split_once('e') {
             (b, Some(e))
@@ -81,14 +135,15 @@ impl Rational {
         };
 
         if base_str.matches('.').count() > 1 {
-            return None;
+            return Err(DecimalLiteralError::InvalidSyntax);
         }
 
         let scientific_exp: i32 = if let Some(e) = exp_str {
-            if e.is_empty() || e == "+" || e == "-" {
-                return None;
+            let digits = e.strip_prefix(['+', '-']).unwrap_or(e);
+            if digits.is_empty() || !digits.chars().all(|c| c.is_ascii_digit()) {
+                return Err(DecimalLiteralError::InvalidSyntax);
             }
-            e.parse().ok()?
+            e.parse().map_err(|_| DecimalLiteralError::ResourceLimitExceeded)?
         } else {
             0
         };
@@ -104,26 +159,31 @@ impl Rational {
         };
 
         if mantissa_str.is_empty() || mantissa_str == "-" || mantissa_str == "+" {
-            return None;
+            return Err(DecimalLiteralError::InvalidSyntax);
         }
 
-        let mantissa = BigInt::from_str(&mantissa_str).ok()?;
-        let total_exp = scientific_exp.checked_sub(decimal_exp)?;
+        let mantissa = BigInt::from_str(&mantissa_str)
+            .map_err(|_| DecimalLiteralError::InvalidSyntax)?;
+        let total_exp = scientific_exp
+            .checked_sub(decimal_exp)
+            .ok_or(DecimalLiteralError::ResourceLimitExceeded)?;
 
         if total_exp > 100_000 || total_exp < -100_000 {
-            return None;
+            return Err(DecimalLiteralError::ResourceLimitExceeded);
         }
 
         let mut multiplier_str = String::with_capacity((total_exp.abs() + 1) as usize);
         multiplier_str.push('1');
         multiplier_str.extend(std::iter::repeat('0').take(total_exp.abs() as usize));
-        
-        let power_of_10 = BigInt::from_str(&multiplier_str).ok()?;
+
+        let power_of_10 = BigInt::from_str(&multiplier_str)
+            .map_err(|_| DecimalLiteralError::InvalidSyntax)?;
 
         if total_exp >= 0 {
             Self::from_big(mantissa.mul(&power_of_10), BigInt::from_i64(1))
+                .ok_or(DecimalLiteralError::InvalidSyntax)
         } else {
-            Self::from_big(mantissa, power_of_10)
+            Self::from_big(mantissa, power_of_10).ok_or(DecimalLiteralError::InvalidSyntax)
         }
     }
 

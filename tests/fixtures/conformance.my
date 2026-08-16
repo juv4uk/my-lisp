@@ -40,6 +40,19 @@
 ((expr . "1e+") (error . "UnknownSymbol") (tier . 2) (axioms . (S2)))
 ((expr . "1e-") (error . "UnknownSymbol") (tier . 2) (axioms . (S2)))
 ((expr . "1.2.3") (error . "UnknownSymbol") (tier . 2) (axioms . (S2)))
+; A syntactically valid decimal literal whose exponent exceeds the parser's
+; resource cap is a *named* failure (NumericOverflow), never a silent symbol —
+; closing the S3-shaped hole where 1e100001 used to become an identifier.
+; Syntaksychno korektnyi desiatkovyi literal, chyia eksponenta perevyshchuie
+; resursnu mezhu parsera, — *nazvanyi* proval (NumericOverflow), nikoly ne
+; movchaznyi symvol — zakryvaie otvir formy S3, de 1e100001 ranishe stav identyfikatorom.
+((expr . "1e100001") (error . "NumericOverflow") (tier . 2) (axioms . (S3)))
+((expr . "1e-100001") (error . "NumericOverflow") (tier . 2) (axioms . (S3)))
+; The same refusal must hold when the literal is nested inside a form — a valid
+; numeric literal cannot be repurposed as an identifier by position in a list.
+; Ta sama vidmova musi diiaty, koly literal vkladeno v formu — korektnyi chyslovyi
+; literal ne mozhe buty pereosmyslenyi yak identyfikator cherez pozytsiiu v spysku.
+((expr . "(def 1e100001 5)") (error . "NumericOverflow") (tier . 2) (axioms . (S3)))
 ((expr . "1ee3") (error . "UnknownSymbol") (tier . 2) (axioms . (S2)))
 ((expr . "--0.5") (error . "UnknownSymbol") (tier . 2) (axioms . (S2)))
 ((expr . "+") (error . "UnknownSymbol") (tier . 2) (axioms . (S2)))
