@@ -13,9 +13,9 @@ Source files use `.my`; `.lisp` remains compatible. · Файли коду ви�
 ## Contract · Контракт · Vertrag
 
 - `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond`
-- UTF-8 symbols, comments, strings, numbers, lists, and apostrophe quote syntax
-- UTF-8-символи, коментарі, рядки, числа, списки та скорочення цитування через апостроф
-- UTF-8-Symbole, Kommentare, Zeichenketten, Zahlen, Listen und Apostroph-Kurzsyntax für Zitate
+- UTF-8 symbols, comments, strings, numbers, lists, and `(quote ...)` syntax
+- UTF-8-символи, коментарі, рядки, числа, списки та синтаксис `(quote ...)`
+- UTF-8-Symbole, Kommentare, Zeichenketten, Zahlen, Listen und `(quote ...)`-Syntax
 - structured errors with source spans · структуровані помилки з діапазонами коду · strukturierte Fehler mit Quellbereichen
 - no Tauri, filesystem, network, or UI dependency · без залежності від Tauri, файлів, мережі чи UI · keine Abhängigkeit von Tauri, Dateisystem, Netzwerk oder UI
 

@@ -31,7 +31,8 @@
     (priority . 10.0)
     (capabilities . (my-idea))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . ())
+    (done . t)
+    (context . "done: 8 files in external/my-lisp/lib/ migrated (unify, understand, knowledge, reason, narrate, meta-eval, forward, core). knowledge/physics.my and astronomy.my already clean. README.md apostrophe reference updated. 0 sugar sites remaining.")
   ))
   ("MIGRATE-QUOTE-PANINI" . (
     (priority . 10.0)
