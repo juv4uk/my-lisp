@@ -7,7 +7,7 @@
 ;;; bootstrap-бібліотеку lib/core.my (та інші *.my файли).
 ;;;
 
-(require "reader.rkt")
+(require "reader-lib.rkt")
 
 ;; -----------------------------------------------------------------
 ;; Значення my-lisp
