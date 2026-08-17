@@ -1,7 +1,6 @@
-# GitHub's Linguist doesn't know the `.my` extension yet, so my-lisp source
-# will be invisible in the repo's language stats for now. We used to map it
-# to Common-Lisp, but MyLisp is growing into its own distinct identity.
-# We explicitly tag it as MyLisp here in preparation for a future Linguist PR,
-# rather than falsely categorizing it as a Common Lisp dialect.
-*.my linguist-language=MyLisp
+# GitHub Linguist doesn't know the `.my` extension yet — it misdetected
+# .my files as CLIPS. We map to Common-Lisp (closest Lisp family language
+# Linguist recognises) until MyLisp is registered upstream via a Linguist PR.
+# *.lisp stays explicitly Common-Lisp to distinguish from Emacs-Lisp default.
+*.my linguist-language=Common-Lisp
 *.lisp linguist-language=Common-Lisp
