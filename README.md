@@ -47,6 +47,7 @@ This repository is the canonical Rust implementation:
 - [`crates/my-lisp-cli`](crates/my-lisp-cli) — the `my-lisp` binary (REPL + file runner).
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly bindings powering the browser REPL above.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — literate-Markdown source-offset mapping.
+- [`racket/`](racket/) — a `#lang my-lisp` plugin for Racket/DrRacket using the Chez Scheme JIT.
 - [`lib/core.my`](lib/core.my) — the bootstrapped standard library.
 - [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — unification and backward-chaining inference.
 - [`lib/forward.my`](lib/forward.my) — forward-chaining inference with truth maintenance.
@@ -62,6 +63,22 @@ This repository is the canonical Rust implementation:
 cargo build --workspace
 cargo test --workspace
 ```
+
+### Racket / DrRacket support
+
+The [`racket/`](racket/) directory contains a `#lang my-lisp` plugin for
+Racket (Chez Scheme backend). It matches the core semantics of the Rust
+implementation: explicit `(quote x)` (apostrophe is part of symbols),
+exact decimal literals, `t`/`()` truth values, exact division, and the
+seven McCarthy primitives. Install it locally with:
+
+```sh
+raco pkg install --link --name my-lisp racket/
+```
+
+Then open any `.my` file starting with `#lang my-lisp` in DrRacket and
+press Run, or run it from the terminal with `racket file.my`. See
+[`racket/README.md`](racket/README.md) for details.
 
 ### Docs
 
@@ -112,6 +129,7 @@ Rust надає лише те, що робить особливо добре —
 - [`crates/my-lisp-cli`](crates/my-lisp-cli) — бінарник `my-lisp` (REPL + запуск файлів).
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-біндінги для браузерного REPL вище.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — зіставлення зміщень початкового коду literate-Markdown.
+- [`racket/`](racket/) — плагін `#lang my-lisp` для Racket/DrRacket на базі Chez Scheme JIT.
 - [`lib/core.my`](lib/core.my) — bootstrapped стандартна бібліотека.
 - [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — унікація й backward-chaining висновування.
 - [`lib/forward.my`](lib/forward.my) — forward-chaining висновування з truth maintenance.
@@ -127,6 +145,23 @@ Rust надає лише те, що робить особливо добре —
 cargo build --workspace
 cargo test --workspace
 ```
+
+### Підтримка Racket / DrRacket
+
+Каталог [`racket/`](racket/) містить плагін `#lang my-lisp` для Racket (backend
+Chez Scheme). Він повторює основну семантику Rust-реалізації: явний
+`(quote x)` (апостроф — частина символу), точні десяткові літерали,
+істинні значення `t`/`()`, точне ділення та сім примітивів Маккарті.
+Локальне встановлення:
+
+```sh
+raco pkg install --link --name my-lisp racket/
+```
+
+Після цього відкрийте будь-який файл `.my`, що починається з
+`#lang my-lisp`, у DrRacket і натисніть Run, або виконайте
+`racket file.my` у терміналі. Деталі — у
+[`racket/README.md`](racket/README.md).
 
 ### Документація
 
@@ -176,6 +211,7 @@ Dieses Repository ist die kanonische Rust-Implementierung:
 - [`crates/my-lisp-cli`](crates/my-lisp-cli) — die `my-lisp`-Binärdatei (REPL + Dateiausführung).
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-Bindings für den Browser-REPL oben.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — Offset-Zuordnung von literate-Markdown-Quellcode.
+- [`racket/`](racket/) — ein `#lang my-lisp`-Plugin für Racket/DrRacket mit dem Chez-Scheme-JIT.
 - [`lib/core.my`](lib/core.my) — die gebootstrappte Standardbibliothek.
 - [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — Unifikation und Backward-Chaining-Inferenz.
 - [`lib/forward.my`](lib/forward.my) — Forward-Chaining-Inferenz mit Truth Maintenance.
@@ -191,6 +227,23 @@ Dieses Repository ist die kanonische Rust-Implementierung:
 cargo build --workspace
 cargo test --workspace
 ```
+
+### Racket / DrRacket-Unterstützung
+
+Das Verzeichnis [`racket/`](racket/) enthält ein `#lang my-lisp`-Plugin für
+Racket (Chez-Scheme-Backend). Es entspricht der Kernsemantik der
+Rust-Implementierung: explizites `(quote x)` (Apostroph ist Teil eines
+Symbols), exakte Dezimalliterale, Wahrheitswerte `t`/`()`, exakte Division
+und die sieben McCarthy-Primitive. Lokale Installation:
+
+```sh
+raco pkg install --link --name my-lisp racket/
+```
+
+Danach lässt sich jede `.my`-Datei mit der Zeile `#lang my-lisp` in
+DrRacket öffnen und mit Run ausführen, oder im Terminal mit
+`racket datei.my`. Details stehen in
+[`racket/README.md`](racket/README.md).
 
 ### Dokumentation
 

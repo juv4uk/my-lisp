@@ -34,5 +34,8 @@ node_modules
 my-lisp-bin
 span
 
+# Racket compiled bytecode
+**/compiled/
+
 # Local scratch files
 scratch/
