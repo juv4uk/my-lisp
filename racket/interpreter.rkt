@@ -10,6 +10,9 @@
 (require "reader-lib.rkt")
 (require racket/runtime-path)
 
+(define-runtime-path repo-core "../lib/core.my")
+(define-runtime-path boot-core "boot/core.my")
+
 ;; -----------------------------------------------------------------
 ;; Значення my-lisp
 ;; -----------------------------------------------------------------
@@ -96,11 +99,10 @@
     (close-input-port in)))
 
 (define (find-core-path)
-  (define here (this-expression-source-directory))
-  (define candidates
-    (list (build-path here 'up "lib" "core.my")
-          (build-path here "boot" "core.my")))
-  (findf file-exists? candidates))
+  (cond
+    [(file-exists? repo-core) repo-core]
+    [(file-exists? boot-core) boot-core]
+    [else #f]))
 
 ;; -----------------------------------------------------------------
 ;; Примітиви
