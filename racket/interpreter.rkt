@@ -8,6 +8,7 @@
 ;;;
 
 (require "reader-lib.rkt")
+(require racket/runtime-path)
 
 ;; -----------------------------------------------------------------
 ;; Значення my-lisp
