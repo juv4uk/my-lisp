@@ -159,17 +159,35 @@
 ;; -----------------------------------------------------------------
 ;; echo-політика інтерактивного REPL / DrRacket
 ;; -----------------------------------------------------------------
+;; У DrRacket/REPL одиночний нев'язаний ідентифікатор має друкувати
+;; "echo <id>" замість помилки. Проблема: у REPL нев'язаний
+;; ідентифікатор може мати "top-level placeholder" binding, тому
+;; identifier-binding повертає не-#f, а при компіляції виникає
+;; exn:fail:syntax з повідомленням "unbound identifier". Ловимо це
+;; на фазі розгортання макросу через local-expand.
+;; -----------------------------------------------------------------
+
+(begin-for-syntax
+  (define (unbound-identifier-error? exn id-stx)
+    (and (exn:fail:syntax? exn)
+         (regexp-match? #rx"unbound identifier" (exn-message exn)))))
 
 (define-syntax (my-top-interaction stx)
   (syntax-case stx ()
-    ;; Одиночний нев'язаний ідентифікатор → echo.
     [(_ . id)
      (identifier? #'id)
-     (if (identifier-binding #'id)
-         #'(#%top-interaction . id)
-         #'(begin
-             (printf "echo ~a\n" 'id)
-             (void)))]
+     (with-handlers ([exn:fail:syntax?
+                      (lambda (e)
+                        (if (unbound-identifier-error? e #'id)
+                            #'(begin
+                                (display "echo ")
+                                (displayln 'id)
+                                (void))
+                            (raise e)))])
+       ;; Спробуємо розгорнути id як вираз. Якщо це нев'язаний
+       ;; ідентифікатор — виникне syntax error, який ми ловимо вище.
+       (local-expand #'id 'expression '())
+       #'(#%top-interaction . id))]
     [(_ . form)
      #'(#%top-interaction . form)]))
 
