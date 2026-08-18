@@ -194,8 +194,8 @@
      (define clo (make-closure params body env))
      (env-define! env name (my-macro clo))
      nil]
-    [(list name params body ...)
-     (define-macro! env (list (cons name params) body ...))]
+     [(list name params body ...)
+      (define-macro! env (cons (cons name params) body))]
     [_ (error 'my-lisp "bad defmacro syntax")]))
 
 ;; -----------------------------------------------------------------
