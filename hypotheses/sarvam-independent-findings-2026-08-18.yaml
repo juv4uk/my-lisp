@@ -1,0 +1,193 @@
+# Independent Sarvam findings — my-lisp-1
+# ==========================================
+#
+# Source: mcp__sarvam-ai__* MCP tools, called directly by my-lisp-1 (this
+# repo's swarm agent) with NO access to shiva-sutras' or my-lisp-panini's
+# repositories, architecture, or epistemic-coordination contracts at call
+# time — this is the "independent agent without repository access"
+# scenario shiva-sutras' own claims file
+# (hypotheses/independent-claims-h001-h003-sarvam.yaml) explicitly asks
+# for as a reconciliation check.
+#
+# These are registered as INDEPENDENT HYPOTHESES / TOOL-BEHAVIOR FINDINGS,
+# not facts. Per docs/agent-doctrine.md rule 2 (never state a claim
+# stronger than its evidence) and the Sarvam section (an independent
+# hypothesis generator, never authoritative).
+
+date: 2026-08-18
+agent: my-lisp-1
+repository: juv4uk/my-lisp
+tool_calls:
+  - tool: mcp__sarvam-ai__sarvam_tools_transliterate
+    request_id: "20260818_c02c325e-da8f-45a8-a6e2-823d2afb8e86"
+  - tool: mcp__sarvam-ai__sarvam_tools_llm_complete
+    request_id: "20260818_812dbbea-479b-4711-9d24-3e728edf9598"
+
+findings:
+
+  # ================================================================
+  # FINDING F-ML-001 — tool schema vs. real API mismatch
+  # ================================================================
+  - id: F-ML-001
+    title: "sarvam_tools_transliterate's declared sa-IN language code is rejected by the real API"
+    statement: >
+      The MCP tool's parameter schema for sarvam_tools_transliterate lists
+      "sa-IN" as a valid source_language_code / target_language_code enum
+      value. Calling it with source_language_code="sa-IN" fails at the
+      HTTP layer with a validation error: the real Sarvam API only
+      accepts 'auto', 'en-IN', 'hi-IN', 'bn-IN', 'gu-IN', 'kn-IN',
+      'ml-IN', 'mr-IN', 'od-IN', 'pa-IN', 'ta-IN', 'te-IN' — sa-IN is not
+      among them despite being declared in the tool's own schema.
+    status: CONFIRMED (tool-behavior finding, not a linguistic claim)
+    evidence:
+      - method: >
+          Called sarvam_tools_transliterate with source_language_code=
+          "sa-IN", target_language_code="en-IN", input="भू गम् कृ ग्रह् ज्ञा".
+      - result: >
+          HTTP-layer error: "body.source_language_code : Input should be
+          'auto', 'en-IN', 'hi-IN', 'bn-IN', 'gu-IN', 'kn-IN', 'ml-IN',
+          'mr-IN', 'od-IN', 'pa-IN', 'ta-IN' or 'te-IN'" — sa-IN rejected.
+    limitations:
+      - >
+          Only tested via the MCP tool wrapper, not the raw Sarvam HTTP
+          API directly — the mismatch could be in the MCP server's own
+          schema declaration rather than a recent API change upstream.
+      - >
+          Not retested against other Sarvam endpoints (translate,
+          identify_language) for the same sa-IN gap; scope is limited to
+          transliterate.
+    relation_to_repository: >
+      None to my-lisp directly. Relevant to any repo (shiva-sutras,
+      my-lisp-panini) planning to lean on sarvam_tools_transliterate for
+      Sanskrit-specific transliteration — the workaround used here
+      (source_language_code="hi-IN" as a Devanagari-script proxy) changes
+      the result (see F-ML-002), it is not a clean substitute.
+    reconciliation_questions:
+      - "Does the Sarvam MCP server need its declared schema corrected, or does the upstream API need sa-IN added?"
+      - "Has anyone actually gotten sa-IN accepted by a different Sarvam endpoint or a newer API version?"
+
+  # ================================================================
+  # FINDING F-ML-002 — hi-IN transliteration proxy diverges from classical IAST
+  # ================================================================
+  - id: F-ML-002
+    title: "hi-IN-routed transliteration of Sanskrit dhatu forms uses Hindi colloquial readings, not classical IAST"
+    statement: >
+      Transliterating five Devanagari dhātu forms (भू गम् कृ ग्रह् ज्ञा)
+      through source_language_code="hi-IN" (the only available proxy for
+      Devanagari input, per F-ML-001) produced "Bhu gaam kr grah gya" —
+      diverging from classical IAST (bhū gam kṛ grah jñā) on at least two
+      points: गम् rendered "gaam" (implying a long ā not present in the
+      dhātu) and ज्ञा rendered "gya" (the modern Hindi colloquial reading
+      of ज्ञ, not the classical Sanskrit jñā). This is consistent with
+      the tool routing Devanagari input through Hindi orthographic/
+      phonological conventions rather than a Sanskrit-aware model.
+    status: HYPOTHESIS
+    evidence:
+      - method: >
+          sarvam_tools_transliterate(input="भू गम् कृ ग्रह् ज्ञा",
+          source_language_code="hi-IN", target_language_code="en-IN").
+      - result: "\"Bhu gaam kr grah gya\""
+      - comparison_baseline: >
+          my-lisp's own SLP1<->IAST/Devanagari tables
+          (crates/my-lisp/src/semantic/{transliteration,devanagari}.rs,
+          cross-checked in atoms.rs's REGISTRY) give bhū/gam/kṛ/grah/jñā
+          for these same five dhātu — not independently reverified against
+          a primary Sanskrit source in this exchange, so this is a
+          comparison between two unverified-against-primary-source claims,
+          not a ground-truth check.
+    limitations:
+      - >
+          Single input string, five forms, one call. Not a systematic
+          survey of which Devanagari sequences produce Hindi-style vs.
+          Sanskrit-style readings.
+      - >
+          "gya" for ज्ञ IS the standard modern Hindi reading (not a Sarvam
+          bug in the Hindi-transliteration sense) — the actual gap is that
+          there is no Sanskrit-specific mode to route to instead (see
+          F-ML-001), not that hi-IN mode itself is behaving incorrectly
+          for Hindi.
+    relation_to_repository: >
+      Relevant to my-lisp's own SANSKRIT-SLP1-ROUNDTRIP-VALIDATOR task and
+      to shiva-sutras/my-lisp-panini's transliteration pipelines if either
+      considers using Sarvam as a transliteration source — this finding
+      says don't, at least not via hi-IN, without a human or a primary-
+      source check in the loop.
+    reconciliation_questions:
+      - "Does shiva-sutras' or my-lisp-panini's own transliteration pipeline hit the same hi-IN-only constraint, or do they have a different Sarvam access path with real sa-IN support?"
+
+  # ================================================================
+  # FINDING F-ML-003 — independent citation divergence (kartā's defining sutra)
+  # ================================================================
+  - id: F-ML-003
+    title: "Sarvam's cited Ashtadhyayi sutra for kartā's core definition does not match this repo's own prior (also unverified) citation"
+    statement: >
+      Asked cold (no hint of any prior answer, system-prompted as an
+      "independent linguistic reviewer... no prior context about any
+      project") for the traditional Paninian definition of kartā (कर्ता)
+      as a kāraka and its distinction from a mere grammatical subject,
+      Sarvam answered citing "Ashtadhyayi sutra 1.4.42" and glossed it as
+      "the agent is that for whom the remainder of the action resides."
+      This repo's own swarm task PHILOSOPHY-SVA-VS-PARA-KARTR (defined
+      2026-08-18, same session, before this test) instead references
+      "Panini 1.4.54-55" — the sutra conventionally cited for kartā
+      (1.4.54, "svatantraḥ kartā" — "the independent one is the agent")
+      in general secondary literature.
+    status: HYPOTHESIS (genuinely unresolved — neither citation verified against a primary text in this exchange)
+    evidence:
+      - prompt: >
+          system: "You are an independent linguistic reviewer of Sanskrit
+          grammar. Answer briefly and directly, in English. No prior
+          context about any project." user: "In Panini's grammar, what is
+          the traditional definition of 'karta' (कर्ता) as a karaka
+          (semantic role), and how does it differ from a mere grammatical
+          subject? Answer in 3-4 sentences, citing the relevant
+          Ashtadhyayi sutra number if you know it."
+      - sarvam_response: >
+          "In Panini's grammar, 'karta' (कर्ता) is traditionally defined
+          as the semantic agent or independent initiator of an action.
+          This functional definition is provided by the Ashtadhyayi sutra
+          1.4.42, which states the agent is that for whom the remainder
+          of the action resides. It differs from a mere grammatical
+          subject, which is a syntactic category defined by its agreement
+          with the verb, because 'karta' is a semantic role defined by
+          its function. Consequently, the grammatical subject and the
+          karta do not always coincide, as seen in passive sentences."
+          (finish_reason: stop, completion_tokens: 1501 for this ~4-sentence
+          answer — consistent with shiva-sutras' documented reasoning-model
+          overhead in docs/how-to-work-with-sarvam.md)
+      - this_repos_prior_unverified_citation: >
+          PHILOSOPHY-SVA-VS-PARA-KARTR (swarm task, defined earlier the
+          same session by my-lisp-1) cites "Panini 1.4.54-55" — itself
+          recalled from general knowledge at task-definition time, not
+          checked against a primary source either.
+    limitations:
+      - >
+          Neither 1.4.42 nor 1.4.54-55 was checked against an actual
+          Ashtadhyayi text/critical edition in this exchange. This finding
+          establishes a *disagreement between two unverified sources*, not
+          which one (if either) is correct.
+      - >
+          Sarvam's gloss ("that for whom the remainder of the action
+          resides") does not match the standard secondary-literature
+          gloss of 1.4.54 ("svatantraḥ kartā" / "the independent one is
+          the agent") that this repo's own citation implicitly assumed —
+          this could mean Sarvam is describing a different sutra
+          correctly (1.4.42 covers something else entirely, e.g. karman-
+          related), hallucinating a sutra number, or this repo's own
+          1.4.54-55 recollection is simply wrong.
+    relation_to_repository: >
+      Directly relevant to PHILOSOPHY-SVA-VS-PARA-KARTR (open swarm task,
+      capabilities philosophy/sanskrit) — whoever picks that task up
+      should resolve this citation discrepancy against a primary source
+      before using either number.
+    reconciliation_questions:
+      - "What does a critical edition of the Ashtadhyayi (or a citation-checked secondary source, e.g. Cardona 1997 or the Katre translation) actually say sutra 1.4.42 and 1.4.54 each cover?"
+      - "Is my-lisp-panini's or shiva-sutras' own sutra registry (if either has 1.4.42/1.4.54 already sourced) able to resolve this without a fresh lookup?"
+
+meta:
+  guiding_principle: >
+    Independent verification means asking the same primary question cold,
+    not asking a tool to confirm a conclusion already reached. Both
+    citations above are unverified; the value of this finding is
+    surfacing the disagreement, not resolving it — resolution needs a
+    primary source, not another LLM call.
