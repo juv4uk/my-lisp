@@ -25,13 +25,17 @@
 (define-syntax (my-module-begin stx)
   (syntax-case stx ()
     [(_ . forms)
-     (define datums (map syntax->datum (syntax->list #'forms)))
-     (with-syntax ([datum-list (datum->syntax stx datums)])
-       #'(#%module-begin
-          (define module-env (make-initial-env))
-          (eval-sequence 'datum-list module-env my-eval)
-          (set-box! repl-env-box module-env)
-          (void)))]))
+     (let ([datums (map syntax->datum (syntax->list #'forms))])
+       (with-syntax ([datum-list (datum->syntax stx datums)])
+         #'(#%module-begin
+            (define module-env (make-initial-env))
+            ;; let пригнічує host-echo: #%module-begin друкує значення
+            ;; кожного top-level виразу, а результат eval-sequence є
+            ;; внутрішньою справою my-lisp, не виводом програми.
+            ;; (begin не працює — Racket flatten'ає top-level begin.)
+            (let ([_ (eval-sequence 'datum-list module-env my-eval)])
+              (set-box! repl-env-box module-env)
+              (void)))))]))
 
 ;; -----------------------------------------------------------------
 ;; top-interaction: REPL / вікно Interactions у DrRacket
@@ -51,9 +55,9 @@
 (define-syntax (my-top-interaction stx)
   (syntax-case stx ()
     [(_ . form)
-     (define datum (syntax->datum #'form))
-     (with-syntax ([d (datum->syntax stx datum)])
-       #'(run-repl-form 'd))]))
+     (let ([datum (syntax->datum #'form)])
+       (with-syntax ([d (datum->syntax stx datum)])
+         #'(run-repl-form 'd)))]))
 
 ;; -----------------------------------------------------------------
 ;; Експорт для Racket-модуля мови мови
