@@ -169,6 +169,9 @@
 
 (define (bind-args! params args new-env)
   (cond
+    ;; Дotted tail (a b . rest): решта аргументів йде у rest.
+    [(symbol? params)
+     (env-define! new-env params args)]
     [(null? params)
      (unless (null? args) (error 'my-lisp "too many arguments"))]
     [(null? args) (error 'my-lisp "too few arguments")]
