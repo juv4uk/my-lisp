@@ -9,6 +9,18 @@
 
 (require "interpreter.rkt")
 
+;; Racket's default REPL value-echo (`current-print`) prints via
+;; `print`, which prefixes quote-sugar on symbols/pairs (`'radio`,
+;; `'(1 2)`) — the Rust reference REPL never does that (`radio`,
+;; `(1 2)`). Route the REPL's own echo through the same
+;; `my-format-string` the `print` primitive uses, so entering `(quote
+;; radio)` at the REPL and calling `(print (quote radio))` show the
+;; same thing, matching the Rust CLI.
+(current-print
+ (lambda (v)
+   (unless (void? v)
+     (displayln (my-format-string v)))))
+
 ;; Спільне середовище для REPL. Ініціалізується ліниво, щоб не
 ;; завантажувати core.my, поки користувач просто відкрив файл.
 (define repl-env-box (box #f))

@@ -79,12 +79,36 @@
 (define (eq-val a b)
   (when (or (pair? a) (pair? b))
     (error 'eq "eq expects two atoms"))
-  (if (and (number? a) (number? b))
-      (if (and (= a b) (eq? (exact? a) (exact? b))) t nil)
-      (if (equal? a b) t nil)))
+  (cond
+    [(and (number? a) (number? b))
+     (if (and (= a b) (eq? (exact? a) (exact? b))) t nil)]
+    ;; Closures/macros/primitives are `#:transparent` (so `print`/error
+    ;; messages show their contents), which makes plain Racket `equal?`
+    ;; compare them structurally — two separately-created closures with
+    ;; identical params/body/env would then wrongly count as `eq`. The
+    ;; Rust reference compares functions by identity, not structure
+    ;; (`(eq (lambda (x) x) (lambda (x) x))` => `()`), same as `car`/
+    ;; `cdr`/`cons` never make two distinct allocations `eq` either.
+    [(or (my-closure? a) (my-closure? b) (my-macro? a) (my-macro? b) (my-primitive? a) (my-primitive? b))
+     (if (eq? a b) t nil)]
+    [else (if (equal? a b) t nil)]))
 
 (define (my-pred proc)
   (lambda args (if (apply proc args) t nil)))
+
+;; Canonical my-lisp printed form of a value — no Racket quote-sugar
+;; (`'radio`/`'(1 2)`), matching the Rust reference's writer. Racket's
+;; own `print` defaults to `print-as-expression #t`, which prefixes a
+;; leading quote on symbols/pairs on the assumption you're printing
+;; something meant to be pasted back as a literal expression; my-lisp's
+;; writer never does that, so both the `print`/`princ` primitives and
+;; the REPL's own value-echo (see main.rkt's `current-print`) go through
+;; this instead of calling Racket's `print` directly.
+(define (my-format-string v)
+  (define out (open-output-string))
+  (parameterize ([print-as-expression #f])
+    (write v out))
+  (get-output-string out))
 
 ;; -----------------------------------------------------------------
 ;; Читання файлів
@@ -131,19 +155,14 @@
   (env-define! e 'symbol->string (my-primitive 'symbol->string symbol->string))
   (env-define! e 'string->symbol (my-primitive 'string->symbol string->symbol))
   (env-define! e 'write-to-string
-    (my-primitive 'write-to-string
-                  (lambda (v)
-                    (define out (open-output-string))
-                    (parameterize ([print-as-expression #f])
-                      (write v out))
-                    (get-output-string out))))
+    (my-primitive 'write-to-string my-format-string))
   ;; Предикати
   (env-define! e 'number? (my-primitive 'number? (my-pred number?)))
   (env-define! e 'string? (my-primitive 'string? (my-pred string?)))
   ;; Введення-виведення
   (env-define! e 'display   (my-primitive 'display   (lambda (x) (display x) x)))
   (env-define! e 'displayln (my-primitive 'displayln (lambda (x) (displayln x) x)))
-  (env-define! e 'print     (my-primitive 'print     (lambda (x) (print x) x)))
+  (env-define! e 'print     (my-primitive 'print     (lambda (x) (display (my-format-string x)) x)))
   (env-define! e 'princ     (my-primitive 'princ     (lambda (x) (display x) x)))
   (env-define! e 'read
     (my-primitive 'read
@@ -283,6 +302,18 @@
          [(set!)
           (env-set! env (car args) (eval-loop (cadr args) env))
           nil]
+         [(eval)
+          ;; A special form, not a primitive: `(eval x)` evaluates `x`
+          ;; to get a datum, then evaluates *that datum* again — the
+          ;; second evaluation needs the caller's env, which a plain
+          ;; my-primitive (args already evaluated, no env access) can't
+          ;; see. Matches Rust's evaluate_eval (special_forms/io.rs):
+          ;; closures/macros evaluate to themselves, not through
+          ;; another round of evaluation.
+          (define datum (eval-loop (car args) env))
+          (if (or (my-closure? datum) (my-macro? datum))
+              datum
+              (eval-loop datum env))]
          [else
           (define proc (eval-loop op env))
           (cond
@@ -325,4 +356,4 @@
  ;; module / file loading
  make-initial-env run-module read-file
  ;; needed by main.rkt for REPL echo
- atom-val eq-val)
+ atom-val eq-val my-format-string)
