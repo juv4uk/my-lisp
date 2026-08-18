@@ -132,7 +132,7 @@ findings:
       "Panini 1.4.54-55" — the sutra conventionally cited for kartā
       (1.4.54, "svatantraḥ kartā" — "the independent one is the agent")
       in general secondary literature.
-    status: HYPOTHESIS (genuinely unresolved — neither citation verified against a primary text in this exchange)
+    status: RESOLVED 2026-08-18 (MYLISP-VERIFY-KARTR-SUTRA-CITATION) — Sarvam's citation was wrong, this repo's prior 1.4.54-55 was right
     evidence:
       - prompt: >
           system: "You are an independent linguistic reviewer of Sanskrit
@@ -162,27 +162,34 @@ findings:
           checked against a primary source either.
     limitations:
       - >
-          Neither 1.4.42 nor 1.4.54-55 was checked against an actual
-          Ashtadhyayi text/critical edition in this exchange. This finding
-          establishes a *disagreement between two unverified sources*, not
-          which one (if either) is correct.
-      - >
-          Sarvam's gloss ("that for whom the remainder of the action
-          resides") does not match the standard secondary-literature
-          gloss of 1.4.54 ("svatantraḥ kartā" / "the independent one is
-          the agent") that this repo's own citation implicitly assumed —
-          this could mean Sarvam is describing a different sutra
-          correctly (1.4.42 covers something else entirely, e.g. karman-
-          related), hallucinating a sutra number, or this repo's own
-          1.4.54-55 recollection is simply wrong.
+          Resolved against shiva-sutras' own gated GRETIL corpus
+          (external_data/gretil_astadhyayi.json), not an independently
+          acquired critical edition — inherits whatever provenance/
+          accuracy guarantees that corpus itself has (see shiva-sutras'
+          own SIVA-* provenance tasks for that corpus's sourcing).
+    resolution:
+      method: >
+        Grepped external_data/gretil_astadhyayi.json (shiva-sutras repo)
+        directly for both sutra numbers.
+      found:
+        "1.4.42": "sādhakatamam karaṇam — \"the most effective means is karaṇa [instrument]\" — this is karaṇa's defining sutra, NOT kartā's."
+        "1.4.54": "svatantraḥ kartā — \"the independent one is the agent\" — this repo's original citation, confirmed correct."
+        "1.4.55": "tat-prayojakaḥ hetuś ca — \"and the one who causes [the independent agent to act] is hetu\" — directly answers PHILOSOPHY-SVA-VS-PARA-KARTR's own open question about a causative/prayojaka role: hetu is 1.4.55's own term for it, already in the primary source."
+      conclusion: >
+        Sarvam's citation (1.4.42) was wrong — both the sutra number and
+        the paraphrase it gave ("that for whom the remainder of the
+        action resides") don't match 1.4.42's actual text either, so this
+        wasn't a case of Sarvam correctly describing a different sutra
+        under the wrong number — it was a genuine hallucination on both
+        the number and the content. This repo's own prior citation
+        (1.4.54-55, recalled from memory before this verification) was
+        correct.
     relation_to_repository: >
-      Directly relevant to PHILOSOPHY-SVA-VS-PARA-KARTR (open swarm task,
-      capabilities philosophy/sanskrit) — whoever picks that task up
-      should resolve this citation discrepancy against a primary source
-      before using either number.
-    reconciliation_questions:
-      - "What does a critical edition of the Ashtadhyayi (or a citation-checked secondary source, e.g. Cardona 1997 or the Katre translation) actually say sutra 1.4.42 and 1.4.54 each cover?"
-      - "Is my-lisp-panini's or shiva-sutras' own sutra registry (if either has 1.4.42/1.4.54 already sourced) able to resolve this without a fresh lookup?"
+      Resolves the open question in PHILOSOPHY-SVA-VS-PARA-KARTR directly:
+      1.4.55's hetu is the primary-source term for the
+      caution/prayojaka distinction that task asks about, not something
+      needing invention.
+    reconciliation_questions: []
 
   # ================================================================
   # FINDING F-ML-004 — follow-up on F-ML-001/F-ML-002: confirmed no
