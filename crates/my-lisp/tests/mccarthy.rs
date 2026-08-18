@@ -675,6 +675,42 @@ fn conformance_tests_from_my() {
 }
 
 #[test]
+fn macro_conformance_tests_from_my() {
+    let forms = parse(include_str!("../../../tests/fixtures/macro-conformance.my"))
+        .expect("macro-conformance.my should parse as valid my-lisp source");
+
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session)
+        .expect("lib/core.my should load before macro-conformance fixtures run");
+
+    for form in &forms {
+        let ExprKind::List(entries) = &form.kind else {
+            panic!("each top-level form in macro-conformance.my should be an alist: {form:?}");
+        };
+        let expr = alist_str(entries, "expr").expect("fixture needs an \"expr\" string");
+
+        if let Some(expected_error) = alist_str(entries, "error") {
+            let error = eval_program(expr, &mut session)
+                .expect_err(&format!("expected an error but evaluation succeeded: {expr}"));
+            assert_eq!(
+                format!("{:?}", error.kind),
+                expected_error,
+                "wrong error kind for expression: {expr}"
+            );
+            continue;
+        }
+
+        let expected =
+            alist_str(entries, "expected").expect("fixture needs an \"expected\" string (or an \"error\" string)");
+        let actual = eval_program(expr, &mut session)
+            .unwrap_or_else(|e| panic!("fixture failed: {e}\nexpr: {expr}"))
+            .value
+            .to_string();
+        assert_eq!(actual, expected, "Failed on expression: {}", expr);
+    }
+}
+
+#[test]
 fn linter_tests_from_my() {
     let forms = parse(include_str!("../../../tests/fixtures/linter.my"))
         .expect("linter.my should parse as valid my-lisp source");
