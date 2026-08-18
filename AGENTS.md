@@ -1,53 +1,43 @@
 # AGENTS.md — my-lisp
 
+See also `docs/agent-doctrine.md` — cross-repo rules (prose vs. contract
+precedence, evidence discipline, subagent/specialist-model usage) that
+apply to every sibling in this swarm, not just this repo.
+
 ## Session start — join the swarm
 
-Before anything else, connect to the coordination TCP server at
-`127.0.0.1:9999` (`--protocol=sexpr`) — it's cheap, has no downside, and
-means you see `next-best-action`'s task ranking and live `capability-
-request`s from the moment your session starts, not whenever you happen
-to remember:
+**Coordination protocol (superseded 2026-08-12, drift found and fixed
+2026-08-18 — verify this section against `docs/swarm-mesh-v2.md` before
+trusting it, prose is not authoritative):** coordination moved off the
+single `:9999` server onto `swarm-node`, a P2P journal/claim mesh — one
+process per agent, TCP `:910x`, no single point of failure, no
+restart-wipes-everything problem the old model had. See
+`docs/swarm-mesh-v2.md` for the full design, wire protocol, onboarding
+checklist, and remote-deployment playbook. In short:
 
-1. `(request (id 1) (op hello) (from "my-lisp") (capabilities (...)))` —
-   register once, get the current peer list back.
-2. Open a second, persistent connection: `(request (id 2) (op
-   subscribe) (topics ()))` (empty `topics` = everything) and route its
-   output through whatever wakes your own session on new input (this
-   session uses the `Monitor` tool on a backgrounded `subscribe`
-   process — see `docs/swarm-coordination.md`'s P2P rollout section for
-   what this looks like without an exact equivalent).
-3. `(request (id 3) (op next-best-action) (from "my-lisp"))` — see
-   what's actionable before deciding what to work on.
+1. Start (or connect to an already-running) `swarm-node --port 910x
+   --node-id <your-id> --project my-lisp --data-dir ~/.swarm-node/<your-id>
+   --connect <a-known-peer>:9101` — see the doc's "Onboarding checklist".
+2. `(join (capabilities (...)))` to register, `(list-members)` to see
+   who else is live, `(next-best-action (capabilities (...)))` to see
+   what's actionable.
+3. `(claim-task (task ...))` → do the work → `(complete-task (task ...)
+   (generation N))` → `(emit (type ...) (payload ...))` for anything
+   worth other agents knowing durably (not just a chat message).
 
-The swarm is **P2P on one server**: the `my-lisp --tcp=9999` TCP oracle
-is a neutral shared medium, not a hub — no agent relays or coordinates
-for another; every agent connects to it directly and symmetrically, and
-the coordination state it holds (mailbox, presence, claims, task
-registry) has no opinion about who should talk to whom. One-shot
-requests go through `--connect=127.0.0.1:9999` (client mode). Your own
-repo's durable plan is its git-tracked `tasks.my` — `sync-tasks` it
-into the registry after edits and after any server restart (in-memory
-swarm state resets on restart). See `docs/swarm-autonomy.md` for the
-full loop (sync → hello → next-best-action → claim → work → evidence →
-complete → update tasks.my → notify peers) and `docs/swarm-coordination.md`
-for the protocol details.
+The `my-lisp --tcp=9999 --protocol=sexpr` process is a **separate,
+still-live thing**: the semantic oracle (`eval`/`parse`/`diagnose`
+against this repo's interpreter), unrelated to coordination now. Use it
+if you need to evaluate my-lisp code remotely; don't confuse it with
+the swarm-node coordination plane above — see `docs/swarm-mesh-v2.md`'s
+"Two planes" section for exactly this distinction.
 
-Full protocol (`notify`/`poll`, `claim`/`release`, `presence`,
-`define-task`, `capability-request`, `sync-tasks`, event replay via
-`subscribe`'s `since`) is documented below and in
-`docs/swarm-coordination.md` + `docs/swarm-autonomy.md`. This isn't a
-suggestion to check when convenient — do it first, the same way you'd
-read this file first.
-
-**Restart etiquette (added after direct feedback, 2026-08-12):** every
-restart wipes `claim`/`presence`/the task registry for all four repos
-at once, costing every active session a `sync-tasks`/`hello`/`claim`
-recovery cycle instead of real work — three restarts in quick
-succession is a real, observed cost, not a hypothetical one. The
-my-lisp session batches protocol changes and restarts deliberately
-infrequently, not after every single commit; `server-generation`
-(below) exists precisely so the *rest* of you don't need an
-announcement to notice one happened.
+**Restart etiquette:** a `swarm-node` restart only affects that one
+agent's presence/in-flight claims (durable journal state survives via
+`--data-dir` and anti-entropy sync from peers on reconnect) — this is
+the whole reason for the 2026-08-12 migration away from the
+single-server model, where every restart wiped `claim`/`presence`/the
+task registry for everyone at once.
 
 ## Role
 
@@ -63,7 +53,10 @@ until their own machine-model gate reviews pass (see their `AGENTS.md` files).
 
 ## Authoritative files
 
-- `language-contract.my` — the versioned semantic contract (currently 1.0).
+- `language-contract.my` — the versioned semantic contract. **Read its
+  `(major . N) (minor . N)` cons directly** rather than trusting a
+  number written in prose anywhere (including this file) — prose drifts,
+  the file is the contract.
 - `docs/language-core-axioms.md` — the G1–G8/S1–S3 axioms the contract
   covers, with the reasoning behind each.
 - `tests/fixtures/conformance.my` — the fixture set every claim of
@@ -94,6 +87,13 @@ See `evidence/README.md` for the format. One file per
 `evidence/<id>/<implementation>/<short-sha>.my`. A durable claim ("X now
 passes/fails") gets an evidence file or a contract edit — not a status
 message.
+
+**The `notify`/`poll`/`claim`/`presence`/`define-task`/`capability-request`
+mailbox described below runs on `:9999` alongside the semantic oracle —
+it predates the swarm-node migration above and its live status hasn't
+been re-verified since. Treat `swarm-node` (`docs/swarm-mesh-v2.md`) as
+authoritative for claims/tasks/presence; if you use anything below,
+confirm it still responds before depending on it.**
 
 ## How to check neighboring repositories
 
