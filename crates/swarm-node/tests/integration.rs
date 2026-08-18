@@ -301,3 +301,50 @@ fn help_flag_prints_usage_and_exits_without_starting_a_server() {
         assert!(!stdout.contains("listening on"), "{flag} must not start a server: {stdout}");
     }
 }
+
+#[test]
+fn define_task_is_idempotent_for_an_identical_redefinition() {
+    // Regression test for SWARM-DEFINE-TASK-DEDUP: re-broadcasting the
+    // exact same define-task call (the same task/priority/capabilities/
+    // depends-on/blocked-by/description) must not append a fresh
+    // task-defined event every time — confirmed in practice 2026-08-18,
+    // the same task definition landed in a real journal three times from
+    // one peer notifying the swarm about it.
+    let port = alloc_ports(1);
+    let _a = spawn(port, "node-a", &data_dir("dedup-a"), None);
+
+    fn event_count(port: u16) -> u64 {
+        let metrics = request(port, "(metrics)");
+        let marker = "(event-count ";
+        let start = metrics.find(marker).expect("metrics should report event-count") + marker.len();
+        let rest = &metrics[start..];
+        let end = rest.find(')').expect("event-count should be closed");
+        rest[..end].parse().expect("event-count should be a number")
+    }
+
+    let define = "(define-task (task DUP) (priority 3) (capabilities (a b)) (depends-on ()) (blocked-by ()) (description \"same every time\"))";
+
+    let first = request(port, define);
+    assert!(first.starts_with("(ok"), "first define-task should succeed: {first}");
+    let after_first = event_count(port);
+
+    // Two more identical calls, as if a peer re-broadcast the same
+    // define-task (or retried after a timeout) — neither should grow the
+    // journal.
+    let second = request(port, define);
+    assert!(second.starts_with("(ok"), "repeat define-task should still report ok: {second}");
+    assert!(second.contains("(unchanged t)"), "repeat define-task should report unchanged: {second}");
+    let third = request(port, define);
+    assert!(third.contains("(unchanged t)"), "repeat define-task should report unchanged: {third}");
+
+    let after_repeats = event_count(port);
+    assert_eq!(after_first, after_repeats, "identical redefinitions must not append new events");
+
+    // A genuinely different redefinition (priority changed) must still
+    // append normally — this isn't a blanket "only define once" guard.
+    let changed = "(define-task (task DUP) (priority 5) (capabilities (a b)) (depends-on ()) (blocked-by ()) (description \"same every time\"))";
+    let fourth = request(port, changed);
+    assert!(!fourth.contains("(unchanged t)"), "a genuinely different redefinition must not be reported unchanged: {fourth}");
+    let after_change = event_count(port);
+    assert_eq!(after_repeats + 1, after_change, "a real change must append exactly one new event");
+}

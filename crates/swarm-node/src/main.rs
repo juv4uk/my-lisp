@@ -1191,6 +1191,22 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let blocked_by = msg.field("blocked-by").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
     let description = msg.field_atom("description");
 
+    fn sexp_to_string_list(s: &Sexp) -> Vec<String> {
+        match s {
+            Sexp::List(items) => items
+                .iter()
+                .filter_map(|i| match i {
+                    Sexp::Atom(s) | Sexp::Str(s) => Some(s.clone()),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+    let capabilities_list = sexp_to_string_list(&capabilities);
+    let depends_on_list = sexp_to_string_list(&depends_on);
+    let blocked_by_list = sexp_to_string_list(&blocked_by);
+
     let mut payload_fields = vec![
         Sexp::list(vec![Sexp::atom("task"), Sexp::atom(task)]),
         Sexp::list(vec![Sexp::atom("priority"), Sexp::atom(priority)]),
@@ -1203,8 +1219,32 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     }
     let payload = Sexp::list(payload_fields);
 
-    let lamport = node.tick_lamport(0);
     let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    // Idempotency guard (SWARM-DEFINE-TASK-DEDUP): a define-task whose
+    // fields exactly match the task's current projected definition is a
+    // no-op, not a fresh fact. Without this, re-broadcasting the same
+    // define-task call (a natural thing to do when notifying peers of a
+    // task, or retrying after a timeout) appends a new task-defined event
+    // every time — confirmed in practice 2026-08-18: the same
+    // SWARM-PROTOTYPE-EPISTEMIC-AUDIT definition landed in the journal
+    // three separate times from one peer. A genuinely different
+    // redefinition (any field actually changed) still appends normally —
+    // task metadata churn legitimately happens and must stay visible.
+    if let Some(existing) = state::task_def(&journal, task) {
+        let priority_val: f64 = priority.parse().unwrap_or(1.0);
+        let same = existing.priority == priority_val
+            && existing.capabilities == capabilities_list
+            && existing.depends_on == depends_on_list
+            && existing.blocked_by == blocked_by_list
+            && existing.description.as_deref() == description;
+        if same {
+            drop(journal);
+            send(stream, &Sexp::list(vec![Sexp::atom("ok"), Sexp::list(vec![Sexp::atom("task"), Sexp::atom(task)]), Sexp::list(vec![Sexp::atom("unchanged"), Sexp::atom("t")])]));
+            return;
+        }
+    }
+
+    let lamport = node.tick_lamport(0);
     let seq = journal.next_seq(&node.identity.node_id);
     let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "task-defined".to_string(), payload };
     match journal.append(event.clone()) {
