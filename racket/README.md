@@ -87,6 +87,40 @@ raco pkg remove my-lisp
 raco pkg install --link --name my-lisp racket/
 ```
 
+**Друга пастка, окрема від першої (реальний випадок, 2026-08-18):**
+`--name my-lisp` **обов'язковий**. Без нього `raco pkg install --link`
+називає пакет за basename каталогу — тобто `racket`, а не `my-lisp` —
+попри те, що колекція всередині (`info.rkt`'s `collection`) все одно
+`my-lisp`. Пакет під назвою `racket` при цьому працює ідентично (усі
+приклади з цього README виконуються нормально), тому проблема
+непомітна, доки хтось не спробує встановити `my-lisp` іншим шляхом
+(наприклад `raco pkg install --name my-lisp git://github.com/...
+racket#main`) — тоді виникає:
+
+```
+raco pkg install: packages conflict
+  package: git://github.com/.../racket#main
+  package: racket
+  module path: my-lisp/reader
+```
+
+Це не конфлікт git-джерела з чимось стороннім — це конфлікт з вашим
+власним, раніше неправильно названим локальним пакетом, який уже
+застовпив колекцію `my-lisp`. Перевірка:
+
+```sh
+raco pkg show -a | grep -i "racket \|my-lisp "
+```
+
+Якщо бачите пакет із назвою `racket`, що вказує на `racket/`-каталог
+цього репозиторію (не на вбудований дистрибутив) — видаліть і
+перевстановіть з правильним `--name`:
+
+```sh
+raco pkg remove racket
+raco pkg install --link --name my-lisp racket/
+```
+
 ## Крок 2. Запуск constitution.my у DrRacket
 
 Приклад лежить у [`examples/constitution.my`](examples/constitution.my).
