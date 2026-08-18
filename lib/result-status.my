@@ -1,0 +1,63 @@
+; result-status.my — opt-in tagged-result convention for "unknown" vs.
+; "partial" vs. "blocked" vs. "disputed" results, distinct from an
+; ordinary value and distinct from each other. See
+; docs/adr/unknown-result-semantics.md for the full design rationale.
+;
+; Not loaded by lib/core.my and not wired into reason.my/knowledge.my —
+; this is a reusable shape for any future call site that wants it,
+; opt-in only (MYLISP-UNKNOWN-RESULT-SEMANTICS-DESIGN's scope is design,
+; not adopting it everywhere).
+;
+; result-status.my — конструктори для маркованих результатів "unknown"/
+; "partial"/"blocked"/"disputed", відмінних і від звичайного значення, і
+; один від одного. Повний дизайн — docs/adr/unknown-result-semantics.md.
+; Не завантажується lib/core.my і не вбудовується в reason.my/knowledge.my
+; — це форма для майбутніх точок виклику, суто опційна.
+
+; unknown: the question was never answerable — no rules exist, no module,
+; nothing to even attempt.
+(def make-unknown
+  (lambda (reason) (list (quote unknown) reason)))
+
+; partial: a bounded search found nothing within its bound — not a proof
+; that nothing exists, only that this attempt didn't find it.
+(def make-partial
+  (lambda (value bound) (list (quote partial) value bound)))
+
+; blocked: evaluation deliberately did not proceed — an operational
+; precondition (a dependency, a resource limit) was unmet.
+(def make-blocked
+  (lambda (reason) (list (quote blocked) reason)))
+
+; disputed: two or more live, mutually exclusive proofs were found —
+; the query-result counterpart to lib/knowledge.my's check-conflict,
+; which catches this on the write path (tell-knowledge) rather than
+; the read path.
+(def make-disputed
+  (lambda (proofs) (list (quote disputed) proofs)))
+
+; result-status extracts the tag symbol from a tagged result, or ()
+; if `result` isn't one of the four tagged shapes (an ordinary value,
+; including a plain list, is not a tagged result just because it has
+; a car — result-status? below is the actual gate).
+(def result-tagged?
+  (lambda (result)
+    (cond
+      ((atom result) (quote ()))
+      ((eq (car result) (quote unknown)) t)
+      ((eq (car result) (quote partial)) t)
+      ((eq (car result) (quote blocked)) t)
+      ((eq (car result) (quote disputed)) t)
+      (t (quote ())))))
+
+(def result-status
+  (lambda (result)
+    (cond
+      ((result-tagged? result) (car result))
+      (t (quote ())))))
+
+(def result-payload
+  (lambda (result)
+    (cond
+      ((result-tagged? result) (cdr result))
+      (t (quote ())))))
