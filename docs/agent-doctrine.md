@@ -134,6 +134,18 @@ analogy — collapsing that distinction early is exactly what
 API key in an environment variable on whoever's machine holds it; never
 put it in a prompt, script argument, or committed file.
 
+**Operational how-to (access paths, the reasoning-model empty-`content`
+bug, prompt shape for real independence): see `shiva-sutras`'s
+`docs/how-to-work-with-sarvam.md`, written from direct testing
+2026-08-18 — don't re-derive this from scratch, it's already been
+worked out and verified against real API responses.** Short version of
+the one bug worth knowing before you burn a context window on it:
+`sarvam-105b` is a reasoning model whose invisible `reasoning_content`
+draws from the same `max_tokens` pool as the visible answer, so a
+capped request can return `finish_reason: "length"` with an empty
+`content` — don't set `max_tokens` for short asks, split big asks into
+several small calls instead of relying on truncation.
+
 ## One shared experiment beats many local ones
 
 If you're choosing what to work on and nothing is clearly higher
