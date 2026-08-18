@@ -1,8 +1,11 @@
 # my-lisp для Racket / DrRacket
 
 Платформенна підтримка мови **my-lisp** як повноцінного `#lang`-плагіна
-для Racket. Код компілюється вбудованим JIT-компілятором Chez Scheme
-(Racket CS, версія 8+).
+для Racket (Racket CS, версія 8+). Racket тут — **субстрат, а не
+специфікація**: вся семантика живе у власному tree-walking evaluator
+(`interpreter.rkt`), а бібліотечний код — у тому самому `lib/core.my`,
+що й для Rust-реалізації. JIT Chez Scheme компілює сам evaluator;
+my-lisp-форми виконує `my-eval`.
 
 > Важлива деталь діалекту: `quote` записується **явно** — `(quote x)` —
 > без апострофа-скорочення `'x`. У my-lisp апостроф тепер є частиною
@@ -13,12 +16,31 @@
 ```
 racket/
 ├── info.rkt          ← опис пакета для raco + реєстрація мови в DrRacket
-├── main.rkt          ← ядро: примітиви, truth-значення, exact /, defmacro, echo
-├── reader.rkt        ← reader: S-вирази, ' як символ, exact decimal literals
+├── main.rkt          ← адаптер #lang: #%module-begin / #%top-interaction, echo
+├── interpreter.rkt   ← ядро: my-eval, середовища, runtime-макроси, примітиви
+├── reader-lib.rkt    ← reader: S-вирази, ' як символ, exact decimal literals
+├── reader.rkt        ← syntax/module-reader обгортка над reader-lib
+├── boot/core.my      ← копія lib/core.my для встановленого пакета
 ├── lang/
 │   └── reader.rkt    ← точка входу, яку шукає `#lang my-lisp`
 └── README.md         ← ця інструкція
 ```
+
+## Архітектура: source is sacred
+
+`lib/core.my` — єдине джерело бібліотечної семантики для обох
+реалізацій. `interpreter.rkt` реалізує **машину** (evaluator,
+середовища, примітиви), а не бібліотечне знання: жоден алгоритм з
+`lib/*.my` не переписується у `.rkt`.
+
+Макроси — **runtime-замикання над сирими datum** (традиційна
+unhygienic модель, як у Rust-реалізації): при виклику макроса
+`my-eval` застосовує transformer до невиражених форм аргументів і
+ре-евалює результат у тому самому середовищі. Racket `syntax-case` /
+hygiene в expansion не беруть участі — `datum->syntax` живе лише на
+межі `#lang`-інтеграції (`main.rkt`). Expansion не мемоізується:
+макрос у циклі розгортається на кожній ітерації, як і в Rust-версії,
+тож кількість side-effectів збігається за конструкцією.
 
 > Чому два reader'и? Рядок `#lang X` за контрактом шукає модуль
 > `X/lang/reader`. Тому `lang/reader.rkt` — тонка обгортка, що
@@ -79,12 +101,13 @@ racket examples/constitution.my
 (/ 5.0 2)          ; ⇒ 5/2
 
 ;; Значення істини
-(if t 'yes 'no)    ; ⇒ yes
-(if () 'yes 'no)   ; ⇒ no
+(if t (quote yes) (quote no))    ; ⇒ yes
+(if () (quote yes) (quote no))   ; ⇒ no
 
-;; Класичні макроси
+;; Класичні макроси (runtime transformers; quasiquote відсутній,
+;; тож форми будуємо явно через list/cons)
 (defmacro (when test . body)
-  `(if ,test (begin ,@body)))
+  (list (quote if) test (cons (quote begin) body)))
 
 (when (atom (quote x))
   (print "x — атом"))
@@ -107,17 +130,18 @@ echo мама
 
 ## Відомі обмеження
 
-* `defmacro` реалізований як **compile-time** макрос (через
-  Racket `define-syntax`). Це достатньо для простих макросів
-  (`when`, `unless`, одноразові генератори коду), але макроси
-  bootstrap-бібліотеки `lib/core.my`, які в тілі викликають інші
-  користувацькі визначення (наприклад, `(defmacro let ...)`
-  використовує `second` та `map`), не розгортаються — їх потрібно
-  або вбудувати в `main.rkt`, або реалізовувати через повноцінний
-  runtime-розгортувач макросів.
-* Повна bootstrap-бібліотека (`lib/core.my`, `lib/reason.my` тощо)
-  ще не портована; плагін покриває Level 1/2 семантичного контракту
-  (core primitives + мова/арифметика).
+* Reader не підтримує quasiquote/unquote (як і сама мова наразі) —
+  macro transformers будують форми явно через `cons`/`list`, так само
+  як це робить `lib/core.my`.
+* За замовчуванням завантажується лише `lib/core.my`; інші
+  бібліотеки (`lib/reason.my`, `lib/unify.my` тощо) доступні через
+  `(load "шлях")`, але conformance-покриття цього порту ще не
+  зафіксоване в `evidence/`.
+* Виконання — tree-walking інтерпретація, без компіляції expanded
+  форм у Racket syntax. Це свідомий вибір fidelity-first: Chez JIT
+  прискорює evaluator, а не my-lisp-програми. Компіляція expanded
+  core-форм — можлива майбутня оптимізація, допустима лише за умови
+  проходження тих самих conformance-фікстур.
 
 ## Видалення пакета
 
