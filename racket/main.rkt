@@ -41,12 +41,23 @@
        (with-syntax ([datum-list (datum->syntax stx datums)])
          #'(#%module-begin
             (define module-env (make-initial-env))
-            ;; let пригнічує host-echo: #%module-begin друкує значення
-            ;; кожного top-level виразу, а результат eval-sequence є
-            ;; внутрішньою справою my-lisp, не виводом програми.
+            ;; let пригнічує Racket's own host-echo (#%module-begin
+            ;; would otherwise print every top-level form's value, not
+            ;; just the program's own result) — but the Rust reference
+            ;; DOES print the *last* top-level form's value when running
+            ;; a file directly (confirmed: `my-lisp file.my` with a bare
+            ;; `(/ 5 336)` prints `5/336`), so this still needs to print
+            ;; that one value explicitly through my-lisp's own writer,
+            ;; not Racket's. Silently producing no output at all for a
+            ;; script whose last form isn't wrapped in `print` was a
+            ;; real bug (found 2026-08-18): every earlier `racket
+            ;; file.my` run of a bare division looked like it "didn't
+            ;; work" for exactly this reason.
             ;; (begin не працює — Racket flatten'ає top-level begin.)
-            (let ([_ (eval-sequence 'datum-list module-env my-eval)])
+            (let ([result (eval-sequence 'datum-list module-env my-eval)])
               (set-box! repl-env-box module-env)
+              (unless (null? 'datum-list)
+                (displayln (my-format-string result)))
               (void)))))]))
 
 ;; -----------------------------------------------------------------

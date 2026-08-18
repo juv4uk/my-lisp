@@ -162,8 +162,12 @@
   ;; Введення-виведення
   (env-define! e 'display   (my-primitive 'display   (lambda (x) (display x) x)))
   (env-define! e 'displayln (my-primitive 'displayln (lambda (x) (displayln x) x)))
-  (env-define! e 'print     (my-primitive 'print     (lambda (x) (display (my-format-string x)) x)))
-  (env-define! e 'princ     (my-primitive 'princ     (lambda (x) (display x) x)))
+  ;; The Rust reference records each `print` call as one line and always
+  ;; terminates it with a newline when flushed (see io.rs's
+  ;; evaluate_print + the CLI's `println!("{}", out)` per output line) —
+  ;; `displayln`, not `display`, matches that.
+  (env-define! e 'print     (my-primitive 'print     (lambda (x) (displayln (my-format-string x)) x)))
+  (env-define! e 'princ     (my-primitive 'princ     (lambda (x) (displayln x) x)))
   (env-define! e 'read
     (my-primitive 'read
                   (case-lambda
