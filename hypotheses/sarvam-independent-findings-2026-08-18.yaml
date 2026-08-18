@@ -184,10 +184,90 @@ findings:
       - "What does a critical edition of the Ashtadhyayi (or a citation-checked secondary source, e.g. Cardona 1997 or the Katre translation) actually say sutra 1.4.42 and 1.4.54 each cover?"
       - "Is my-lisp-panini's or shiva-sutras' own sutra registry (if either has 1.4.42/1.4.54 already sourced) able to resolve this without a fresh lookup?"
 
+  # ================================================================
+  # FINDING F-ML-004 — follow-up on F-ML-001/F-ML-002: confirmed no
+  # Sanskrit mode exists, AND Sarvam's own self-description is wrong
+  # ================================================================
+  - id: F-ML-004
+    title: "Asked cold, Sarvam confirms no dedicated Sanskrit transliteration mode exists -- but its own suggested fix is itself rejected by its real API"
+    statement: >
+      Per MYLISP-SARVAM-RESOLVE-OPEN-FINDINGS (shiva-sutras-1's follow-up
+      task), asked Sarvam directly (cold, independent-reviewer framing,
+      no mention of F-ML-001/F-ML-002) whether sa-IN is supported and
+      what the correct codes for classical Sanskrit transliteration are.
+      It confirmed: "No, 'sa-IN' is not a supported language code... There
+      is no dedicated Sanskrit mode," and recommended
+      source_language_code="hi-IN", target_language_code="en-US" as the
+      workaround. This escalates F-ML-001 from "MCP schema declares a
+      code the API rejects" to CONFIRMED "no Sanskrit-aware transliteration
+      mode exists at all, and the model itself knows this" -- not merely a
+      schema-vs-API mismatch that might be an MCP wrapper bug.
+      However, the suggested target_language_code="en-US" is ALSO not in
+      the real API's accepted enum (confirmed earlier this session:
+      only 'auto','en-IN','hi-IN','bn-IN','gu-IN','kn-IN','ml-IN','mr-IN',
+      'od-IN','pa-IN','ta-IN','te-IN' are accepted -- no en-US). Sarvam's
+      own description of its own API is itself inaccurate on a checkable
+      detail, in the same answer that correctly identified the sa-IN gap.
+    status: CONFIRMED (F-ML-001/F-ML-002 escalated, and en-US rejection now directly retested)
+    evidence:
+      - prompt: >
+          system: "You are an independent technical reviewer of the Sarvam
+          API's language/transliteration capabilities. Answer briefly and
+          directly. No prior context about any project." user: "For the
+          Sarvam AI transliteration API (sarvam_tools_transliterate
+          /transliterate endpoint), which source_language_code and
+          target_language_code values, if any, are correct for classical
+          Sanskrit (not Hindi) text transliteration between Devanagari and
+          IAST/Latin script? Is 'sa-IN' supported by the actual API, or is
+          there no dedicated Sanskrit mode?"
+      - sarvam_response: >
+          "No, 'sa-IN' is not a supported language code for the Sarvam
+          transliteration API. There is no dedicated Sanskrit mode. To
+          transliterate Devanagari Sanskrit text to Latin script
+          (IAST/roman), you should use: source_language_code: hi-IN;
+          target_language_code: en-US. The API will process the Devanagari
+          text correctly, as it is the same script used for Hindi."
+          (finish_reason: stop, no max_tokens set)
+      - direct_retest: >
+          Called sarvam_tools_transliterate(input="भू",
+          source_language_code="hi-IN", target_language_code="en-US")
+          directly. Rejected at the MCP tool's own schema-validation layer
+          (before even reaching Sarvam's HTTP API): "Invalid option:
+          expected one of en-IN|hi-IN|bn-IN|ta-IN|te-IN|gu-IN|kn-IN|
+          ml-IN|mr-IN|pa-IN|od-IN|as-IN|ur-IN|ne-IN|kok-IN|ks-IN|sd-IN|
+          sa-IN|sat-IN|mni-IN|brx-IN|mai-IN|doi-IN|auto|unknown" --
+          en-US is not among them; en-IN is the only English target.
+          Confirms Sarvam's own suggested fix was wrong on a directly
+          checkable detail.
+    limitations:
+      - >
+          Still does not establish whether classical-Sanskrit-vs-Hindi
+          transliteration divergence (F-ML-002, jna -> "gya") is
+          acceptable/expected behavior for hi-IN mode or a genuine product
+          gap -- Sarvam's answer here treats hi-IN as a correct substitute
+          ("will process the Devanagari text correctly"), which directly
+          contradicts F-ML-002's finding that it does NOT produce classical
+          IAST. This is Sarvam disagreeing with its own prior behavior,
+          not this repo's interpretation.
+    relation_to_repository: >
+      Resolves MYLISP-SARVAM-RESOLVE-OPEN-FINDINGS: F-ML-001/F-ML-002 are
+      confirmed real, structural tool limitations (no Sanskrit mode), not
+      MCP-wrapper-only bugs. Any repo relying on Sarvam for Sanskrit
+      transliteration should not expect a fix to arrive as a new language
+      code -- the gap needs a workaround (post-processing hi-IN output
+      through a classical-Sanskrit-aware correction step) or a different
+      tool entirely, not a corrected API call.
+    reconciliation_questions:
+      - "Is there a non-transliterate Sarvam endpoint (e.g. the LLM chat completion itself, prompted for IAST output) that produces classical-IAST-correct results where the dedicated transliterate endpoint cannot?"
+
 meta:
   guiding_principle: >
     Independent verification means asking the same primary question cold,
     not asking a tool to confirm a conclusion already reached. Both
     citations above are unverified; the value of this finding is
     surfacing the disagreement, not resolving it — resolution needs a
-    primary source, not another LLM call.
+    primary source, not another LLM call. F-ML-004 is a second instance
+    of the same discipline: even when a tool confirms a gap in itself
+    cold, its own self-description can still be independently wrong on a
+    checkable detail (en-US) in the very same answer — asking twice
+    catches more than asking once.
