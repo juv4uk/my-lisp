@@ -64,6 +64,29 @@ raco pkg install --link --name my-lisp racket/
 raco pkg show my-lisp
 ```
 
+**Пастка (реальний випадок, 2026-08-18):** `raco pkg show` підтверджує лише
+що пакет *зареєстровано*, не звідки він фактично резолвиться. Якщо колись
+уже виконувався `raco pkg install my-lisp` **без** `--link` (наприклад,
+скопійовано з чужої інструкції), Racket мовчки скопіював файли в
+`AppData/Roaming/Racket/<версія>/pkgs/my-lisp/` (Linux/macOS:
+`~/.local/share/racket/<версія>/pkgs/`) — і відтоді будь-яка правка
+`interpreter.rkt`/`main.rkt` у репозиторії **не матиме жодного ефекту**,
+без помилки й попередження: `#lang my-lisp` продовжує тихо виконувати
+застарілу копію. Симптом — "виправлений" баг виглядає так, ніби фікс не
+застосувався. Перевірка, звідки реально резолвиться модуль:
+
+```sh
+racket -e '(displayln (collection-file-path "main.rkt" "my-lisp"))'
+```
+
+Якщо шлях веде в `AppData`/`.local/share`, а не в цей репозиторій —
+перевстановіть з посиланням:
+
+```sh
+raco pkg remove my-lisp
+raco pkg install --link --name my-lisp racket/
+```
+
 ## Крок 2. Запуск constitution.my у DrRacket
 
 Приклад лежить у [`examples/constitution.my`](examples/constitution.my).
