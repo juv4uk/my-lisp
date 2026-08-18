@@ -4,4 +4,5 @@
  (quote ("rust"
    "rust:cargo"
    "nss-certs"
-   "git")))
+   "git"
+   "racket")))
