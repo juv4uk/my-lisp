@@ -4,6 +4,18 @@ Companion to `docs/language-core-axioms.md`, not a replacement for `conformance.
 
 **Status: draft, not yet ratified.** Produced 2026-08-09 as a discussion basis, not a final classification.
 
+**STALE, confirmed 2026-08-19 (per `docs/agent-doctrine.md` rule 1 —
+prose never outranks the machine-readable source):** `tests/fixtures/conformance.my`
+has grown to 193 fixtures; the table below stops well short of that
+(last tracked in the 65–91 range) and still uses the pre-2.0 `'expr`
+quote-sugar the language contract removed. Rather than hand-maintain a
+193-row duplicate of fields `conformance.my` already carries natively
+(`tier`/`axioms`/`role`/`note` — see `tests/fixtures/README.md`), treat
+this file as a historical snapshot of the first ~91 fixtures only.
+**For the current tier/axiom of any fixture, read `conformance.my`'s
+own fields directly** — that's the actual machine-readable source this
+table was always secondary to, and it can't drift from itself.
+
 **2026-08-09, format update:** `conformance.my` moved off JSON, and the tags this table describes now live *inside* `conformance.my` itself (one flat alist per fixture, fact keys and tag keys in the same record — see `tests/fixtures/README.md`), not in a separate `conformance-tier-map.json` file. This table stays as a human-readable index; the machine-readable source of the tags is `conformance.my`'s own `tier`/`axioms`/`role`/`note` fields.
 
 | # | expr | Tier | Axiom | Note |
