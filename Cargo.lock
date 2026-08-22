@@ -154,6 +154,7 @@ name = "my-lisp-cli"
 version = "0.25.0"
 dependencies = [
  "my-lisp",
+ "my-lisp-lsp",
  "rustyline",
 ]
 
@@ -167,7 +168,7 @@ dependencies = [
 
 [[package]]
 name = "my-lisp-lsp"
-version = "0.1.0"
+version = "0.25.0"
 dependencies = [
  "my-lisp",
 ]

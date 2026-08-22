@@ -43,10 +43,29 @@ tokens, workspace indexing, AI/LLM and Yantra integration.
 
 ## Running
 
+Two equivalent entrypoints share one implementation:
+
 ```bash
-cargo build -p my-lisp-lsp
-# point your editor at: target/debug/my-lisp-lsp  (stdio transport)
+cargo build --workspace
+
+# subcommand of the main CLI binary (preferred):
+target/debug/my-lisp lsp
+
+# standalone binary (kept for now):
+target/debug/my-lisp-lsp
 ```
+
+Both speak LSP over stdio (`Content-Length` framing). stdout carries only
+framed protocol traffic; use stderr for any debug logging. Point your
+editor's LSP config at `my-lisp lsp`.
+
+## Release integration
+
+`scripts/release.my` bumps all five canonical crates together
+(`my-lisp`, `my-lisp-cli`, `my-lisp-literate`, `my-lisp-wasm`,
+`my-lisp-lsp`). The test
+`crates/my-lisp-lsp/tests/release_parity.rs` fails on version drift,
+so a crate added to one list but not the other cannot slip through.
 
 ## Tests
 

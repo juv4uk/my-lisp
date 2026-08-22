@@ -1814,6 +1814,14 @@ fn main() {
     if args.len() > 1 {
         let arg = &args[1];
         
+        // LSP mode: same stdio server as the standalone my-lisp-lsp
+        // binary, reached as a subcommand. Must run before the file-run
+        // branch below; stdout carries only framed LSP traffic.
+        if arg == "lsp" {
+            my_lisp_lsp::run_stdio();
+            return;
+        }
+
         if arg == "--version" || arg == "-V" || arg == "-v" {
             println!("my-lisp {}", env!("CARGO_PKG_VERSION"));
             return;
@@ -1823,6 +1831,7 @@ fn main() {
             println!("Usage: my-lisp [file]");
             println!("If no file is provided, starts the REPL.");
             println!("\nOptions:");
+            println!("  lsp                          Run the Language Server (LSP over stdio)");
             println!("  -V, --version               Print version information");
             println!("  -h, --help                  Print help information");
             println!("  --allow-process=a,b,c        Allow (process-run) to run exactly these program names");
