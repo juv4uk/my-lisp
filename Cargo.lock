@@ -166,6 +166,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "my-lisp-lsp"
+version = "0.1.0"
+dependencies = [
+ "my-lisp",
+]
+
+[[package]]
 name = "my-lisp-wasm"
 version = "0.24.0"
 dependencies = [

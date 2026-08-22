@@ -19,6 +19,10 @@ mod arithmetic;
 mod closures;
 mod special_forms;
 
+// Facade re-export: host adapters (LSP, CLI tooling) consume the canonical
+// JSON decoder as a plain function without going through eval.
+pub use special_forms::json::parse_json;
+
 use crate::{parse, Environment, ErrorKind, Expr, ExprKind, LanguageError, Session, Span, Value};
 
 #[derive(Clone, Debug, PartialEq)]

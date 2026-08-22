@@ -19,6 +19,7 @@ mod value;
 
 pub use environment::{Environment, Session};
 pub use error::{ErrorKind, LanguageError};
+pub use eval::parse_json;
 pub use eval::{eval_parsed_expressions, eval_program, EvalResult};
 pub use parser::parse;
 pub use syntax::{Exactness, Expr, ExprKind, Span};
