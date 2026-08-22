@@ -67,6 +67,24 @@ pub(crate) fn install(environment: &Environment) {
         division_on_values(args, args.len(), env, span)
     });
 
+    define!(environment, "env", |args: &[Value], env: &Environment, span: Span| {
+        exact_args("env", args, 0, span)?;
+        let _ = span;
+        let mut items = Vec::new();
+        for (name, value) in env.snapshot() {
+            // skip the marker boolean t's own entry noise? keep everything:
+            items.push(crate::Value::Pair(
+                std::rc::Rc::new(crate::Value::String(name)),
+                std::rc::Rc::new(value),
+            ));
+        }
+        let mut list = crate::Value::Nil;
+        for item in items.into_iter().rev() {
+            list = crate::Value::Pair(std::rc::Rc::new(item), std::rc::Rc::new(list));
+        }
+        Ok(list)
+    });
+
     for op in ["<", ">", "="] {
         define!(environment, op, move |args: &[Value], _env: &Environment, span: Span| {
             comparison_on_values(op, args, span)

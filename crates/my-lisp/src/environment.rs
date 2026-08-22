@@ -202,6 +202,30 @@ impl Environment {
         self.1.borrow().clone()
     }
 
+    /// Snapshot of every visible binding, root-first, shadowed names
+    /// resolved to their innermost value (contract 2.1: builtins live in
+    /// the environment now, so introspection is possible).
+    pub fn snapshot(&self) -> Vec<(Rc<str>, Value)> {
+        let mut frames = Vec::new();
+        let mut current = Some(self.clone());
+        while let Some(env) = current {
+            frames.push(env.0.clone());
+            current = env.0.borrow().parent.clone();
+        }
+        let mut out: Vec<(Rc<str>, Value)> = Vec::new();
+        for frame in frames.iter().rev() {
+            let f = frame.borrow();
+            for (name, value) in f.values.iter() {
+                match out.iter_mut().find(|(n, _)| n == name) {
+                    Some(slot) => slot.1 = value.clone(),
+                    None => out.push((name.clone(), value.clone())),
+                }
+            }
+        }
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out
+    }
+
     pub fn define(&self, name: impl Into<Rc<str>>, value: Value) {
         self.0.borrow_mut().values.insert(name.into(), value);
     }
