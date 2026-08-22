@@ -8,11 +8,12 @@
 //! definition, plus shutdown/exit lifecycle. Anything else answers
 //! MethodNotFound rather than pretending.
 
-use crate::analysis::{self, offset_to_position, span_text};
+use crate::analysis::{self, span_text};
 use crate::jsonout::str_lit;
 use crate::protocol::{
     self, as_array, as_i64, as_str, decode, get, publish_diagnostics, response, span_to_range,
 };
+use crate::workspace::WorkspaceIndex;
 use my_lisp::Value;
 use std::collections::HashMap;
 
@@ -23,7 +24,20 @@ const METHOD_NOT_FOUND: i64 = -32601;
 #[derive(Default)]
 pub struct Server {
     documents: HashMap<String, String>,
+    workspace: WorkspaceIndex,
 }
+
+/// Builtin names visible to the evaluator (M1: static snapshot of the
+/// core's match arms; see docs/FUNCTIONS.md). After contract 2.1 lands
+/// this list should come from the environment itself ((env) introspection)
+/// instead of being duplicated here.
+const BUILTINS: &[&str] = &[
+    "+", "-", "/", "<", "=", ">", "atom", "car", "cdr", "cond", "cons", "def",
+    "defmacro", "eq", "eval", "json-parse", "lambda", "princ", "print",
+    "quote", "read", "read-all", "sha256-hex", "string->symbol",
+    "string-append", "string-first", "string-rest", "string<?", "string?",
+    "symbol->string", "write-to-string",
+];
 
 impl Server {
     pub fn new() -> Self {
@@ -66,6 +80,7 @@ impl Server {
             "textDocument/documentSymbol" => vec![self.document_symbols(&incoming)],
             "textDocument/hover" => vec![self.hover(&incoming)],
             "textDocument/definition" => vec![self.definition(&incoming)],
+            "textDocument/completion" => vec![self.completion(&incoming)],
             _ => {
                 if incoming.id.is_some() {
                     vec![response(
@@ -85,13 +100,22 @@ impl Server {
         matches!(decode(text), Ok(incoming) if incoming.method.as_deref() == Some("exit"))
     }
 
-    fn initialize(&self, incoming: &protocol::Incoming) -> String {
-        // Capabilities list exactly what M0 implements — nothing more.
+    fn initialize(&mut self, incoming: &protocol::Incoming) -> String {
+        // M1: a workspace root turns on the cross-file index.
+        if let Some(root_uri) = incoming.params.as_ref()
+            .and_then(|p| get(p, "rootUri"))
+            .and_then(|u| as_str(Some(u)))
+            .and_then(crate::workspace::uri_to_path)
+        {
+            self.workspace.set_root(root_uri);
+        }
+        // Capabilities list exactly what is implemented — nothing more.
         let capabilities = concat!(
             "{\"textDocumentSync\":1,", // 1 = Full: simplest correct sync for M0
             "\"documentSymbolProvider\":true,",
             "\"hoverProvider\":true,",
-            "\"definitionProvider\":true}"
+            "\"definitionProvider\":true,",
+            "\"completionProvider\":{\"resolveProvider\":false}}"
         );
         let result = format!(
             "{{\"capabilities\":{capabilities},\"serverInfo\":{{\"name\":\"my-lisp-lsp\",\"version\":\"0.1.0\"}}}}"
@@ -124,7 +148,8 @@ impl Server {
         else {
             return vec![];
         };
-        self.documents.insert(uri.clone(), text);
+        self.documents.insert(uri.clone(), text.clone());
+        self.workspace.update_document(&uri, &text);
         vec![self.publish(&uri)]
     }
 
@@ -142,7 +167,8 @@ impl Server {
         let Some(text) = as_str(get(last, "text")).map(str::to_string) else {
             return vec![];
         };
-        self.documents.insert(uri.clone(), text);
+        self.documents.insert(uri.clone(), text.clone());
+        self.workspace.update_document(&uri, &text);
         vec![self.publish(&uri)]
     }
 
@@ -235,16 +261,98 @@ impl Server {
         let Some((symbol, _span)) = analysis.symbol_at(&text, offset) else {
             return response(&incoming.id, Some("null".to_string()), None);
         };
-        let Some(def) = analysis.lookup(&symbol) else {
-            return response(&incoming.id, Some("null".to_string()), None);
+        // Same-document first (M0 path), then the workspace index (M1).
+        if let Some(def) = analysis.lookup(&symbol) {
+            let result = format!(
+                "{{\"uri\":{},\"range\":{}}}",
+                str_lit(&uri),
+                span_to_range(&text, def.name_span.start, def.name_span.end)
+            );
+            return response(&incoming.id, Some(result), None);
+        }
+        if let Some(def) = self.workspace.lookup(&symbol).first() {
+            // The defining file's own text provides span→range arithmetic;
+            // using it keeps ranges correct even when line lengths differ.
+            if let Some(def_text) = self.workspace.text_of(&def.uri) {
+                let result = format!(
+                    "{{\"uri\":{},\"range\":{}}}",
+                    str_lit(&def.uri),
+                    span_to_range(def_text, def.name_span.start, def.name_span.end)
+                );
+                return response(&incoming.id, Some(result), None);
+            }
+        }
+        response(&incoming.id, Some("null".to_string()), None)
+    }
+
+    /// M1: completion = builtins + workspace/local defs, filtered by the
+    /// symbol prefix at the cursor. The builtin list is a static snapshot
+    /// (docs/FUNCTIONS.md); after contract 2.1 it should come from the
+    /// environment itself via (env) introspection instead of being
+    /// duplicated here.
+    fn completion(&self, incoming: &protocol::Incoming) -> String {
+        let Some((_, text)) = Self::uri_and_text(&incoming.params, &self.documents) else {
+            return response(&incoming.id, Some("[]".to_string()), None);
         };
-        // M0 scope: same-document resolution only.
-        let result = format!(
-            "{{\"uri\":{},\"range\":{}}}",
-            str_lit(&uri),
-            span_to_range(&text, def.name_span.start, def.name_span.end)
-        );
-        response(&incoming.id, Some(result), None)
+        let offset = Self::cursor_offset(&incoming.params, &text);
+        let prefix: String = {
+            let bytes = text.as_bytes();
+            let mut start = offset.min(bytes.len());
+            while start > 0 && is_symbol_byte(bytes[start - 1]) {
+                start -= 1;
+            }
+            text[start..offset.min(text.len())].to_string()
+        };
+
+        // label -> (detail, kind). Insertion order keeps builtins first.
+        let mut items: Vec<(String, String, u8)> = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        let consider = |label: &str,
+                            detail: &str,
+                            kind: u8,
+                            seen: &mut std::collections::HashSet<String>,
+                            items: &mut Vec<(String, String, u8)>| {
+            if !prefix.is_empty() && !label.starts_with(prefix.as_str()) {
+                return;
+            }
+            if seen.insert(label.to_string()) {
+                items.push((label.to_string(), detail.to_string(), kind));
+            }
+        };
+
+        for b in BUILTINS {
+            consider(b, "builtin", 3, &mut seen, &mut items);
+        }
+        if let Ok(analysis) = analysis::analyze(&text) {
+            for def in &analysis.defs {
+                consider(&def.name, &format!("local {}", def.kind), 3, &mut seen, &mut items);
+            }
+        }
+        for def in self.workspace.lookup_all() {
+            let file = def.uri.rsplit('/').next().unwrap_or("");
+            consider(
+                &def.name,
+                &format!("{} ({})", def.kind, file),
+                3,
+                &mut seen,
+                &mut items,
+            );
+        }
+
+        let rendered: Vec<String> = items
+            .into_iter()
+            .map(|(label, detail, kind)| {
+                format!("{{\"label\":{},\"kind\":{},\"detail\":{}}}", str_lit(&label), kind, str_lit(&detail))
+            })
+            .collect();
+        response(
+            &incoming.id,
+            Some(format!(
+                "{{\"isIncomplete\":false,\"items\":[{}]}}",
+                rendered.join(",")
+            )),
+            None,
+        )
     }
 
     /// params.position.{line,character} → byte offset into the doc text.
@@ -254,7 +362,14 @@ impl Server {
         };
         let line = as_i64(get(position, "line")).unwrap_or(0).max(0) as u32;
         let character = as_i64(get(position, "character")).unwrap_or(0).max(0) as u32;
-        let _ = offset_to_position; // mapping lives in analysis; used via position_to_offset below
         analysis::position_to_offset(text, line, character)
     }
+}
+
+fn is_symbol_byte(b: u8) -> bool {
+    b.is_ascii_alphanumeric()
+        || matches!(
+            b,
+            b'-' | b'_' | b'<' | b'>' | b'?' | b'!' | b'+' | b'*' | b'/' | b'=' | b'.'
+        )
 }

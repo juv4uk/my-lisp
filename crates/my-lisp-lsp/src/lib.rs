@@ -5,6 +5,7 @@ pub mod jsonout;
 pub mod protocol;
 pub mod server;
 pub mod transport;
+pub mod workspace;
 
 /// Convenience used by end-to-end tests: process raw JSON-RPC texts in
 /// order, collecting every outgoing message.

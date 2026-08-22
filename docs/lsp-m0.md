@@ -1,4 +1,4 @@
-# my-lisp-lsp — Language Server Protocol adapter (M0)
+# my-lisp-lsp — Language Server Protocol adapter (M0/M1)
 
 > A thin LSP adapter over the canonical my-lisp core.
 > The LSP never re-parses `.my`, never greps for definitions, never
@@ -79,8 +79,26 @@ so a crate added to one list but not the other cannot slip through.
   performs a framed initialize → initialized → shutdown → exit handshake
   over pipes, like an editor would.
 
+## M1 scope (2026-08-22)
+
+Added on the same principles (canonical parser only, nothing invented):
+
+- **Workspace index** (`workspace.rs`): `initialize` with `rootUri` scans
+  all `.my` files under the root (4 MB per-file cap, hidden dirs skipped)
+  and remembers every structurally proven definition with its file URI.
+  Open/change events refresh one document's contributions incrementally.
+- **Cross-file go-to-definition**: same-document resolution first (M0 path),
+  then the workspace index. Ranges come from the defining file's own text.
+- **Completion** (`textDocument/completion`, kind Function): builtins
+  (static snapshot of the core's match arms — see docs/FUNCTIONS.md),
+  local defs, workspace defs; filtered by the symbol prefix at the cursor.
+
 ## Known limitations
 
 - Diagnostics are parse-only; eval-time errors are not reported yet.
 - Full-document sync (simple and correct, not incremental).
-- Same-document definitions only; no workspace-wide index.
+- Completion inherits parse-only honesty: a document that fails to parse
+  contributes no definitions (visible while typing unbalanced forms).
+- The builtin completion list is a static snapshot duplicated from the
+  core's match arms; after contract 2.1 it should be derived from the
+  environment ((env)) instead.
