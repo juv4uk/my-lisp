@@ -314,7 +314,7 @@ fn spawn_heartbeat(node: &Arc<Node>) {
             Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)]),
             Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
         ]);
-        broadcast_to_peers(&node, &beat);
+        broadcast_to_peers(&node, &beat, None);
 
         let now = Instant::now();
         let stale: Vec<String> = node
@@ -799,19 +799,40 @@ fn handle_push_event(node: &Arc<Node>, msg: &Sexp) {
 
 fn broadcast_event(node: &Arc<Node>, event: &Event, skip_origin: Option<&str>) {
     let msg = Sexp::list(vec![Sexp::atom("push-event"), Sexp::list(vec![Sexp::atom("event"), event.to_sexp()])]);
-    let mut peers = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    broadcast_to_peers(node, &msg, skip_origin);
+}
+
+/// Writes `line` to every connected peer WITHOUT holding the peers lock
+/// across the socket writes (M1.1b.1 hotfix): a slow reader on the far
+/// end (e.g. a v1 peer fsyncing a catch-up flood) used to block
+/// `write_all` forever while we held the lock, wedging every other op
+/// that touches the peer table — observed live 2026-08-22 when the
+/// bootstrap stalled mid-flood and even `(metrics)` stopped answering.
+/// Streams are cloned out under the lock; each write gets a bounded
+/// timeout and a failed peer is dropped afterwards.
+fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) {
+    const PEER_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
+    let line = format!("{}\n", msg.to_text());
+    let targets: Vec<(String, std::net::TcpStream)> = {
+        let peers = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        peers
+            .iter()
+            .filter(|(id, _)| Some(id.as_str()) != skip_origin)
+            .map(|(id, s)| (id.clone(), s.try_clone().expect("peer stream try_clone")))
+            .collect()
+    };
     let mut dead = Vec::new();
-    for (peer_id, stream) in peers.iter_mut() {
-        if Some(peer_id.as_str()) == skip_origin {
-            continue;
-        }
-        let line = format!("{}\n", msg.to_text());
+    for (id, mut stream) in targets {
+        let _ = stream.set_write_timeout(Some(PEER_WRITE_TIMEOUT));
         if stream.write_all(line.as_bytes()).is_err() {
-            dead.push(peer_id.clone());
+            dead.push(id);
         }
     }
-    for id in dead {
-        peers.remove(&id);
+    if !dead.is_empty() {
+        let mut peers = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        for id in &dead {
+            peers.remove(id);
+        }
     }
 }
 
@@ -841,20 +862,6 @@ fn handle_emit(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         Err(e) => {
             send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("journal append failed: {e}"))]));
         }
-    }
-}
-
-fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp) {
-    let mut peers = node.peers.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let mut dead = Vec::new();
-    let line = format!("{}\n", msg.to_text());
-    for (peer_id, stream) in peers.iter_mut() {
-        if stream.write_all(line.as_bytes()).is_err() {
-            dead.push(peer_id.clone());
-        }
-    }
-    for id in dead {
-        peers.remove(&id);
     }
 }
 
@@ -1007,6 +1014,7 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             Sexp::list(vec![Sexp::atom("agent"), Sexp::atom(&node.identity.node_id)]),
             Sexp::list(vec![Sexp::atom("generation"), Sexp::atom(generation.to_string())]),
         ]),
+        None,
     );
 
     let mut yes_votes = self_votes;
