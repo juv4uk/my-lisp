@@ -311,3 +311,15 @@ whatever happens to be on `$PATH` outside the shell.
 A separate, parallel coordination effort (Codex as primary agent, OpenCode
 as reviewer) runs through `C:\Users\user\Documents\GitHub\docs` — read
 `docs/AGENT_MEMORY.md` there before assuming an area is untouched.
+
+## Agent Guard (M0 — PROPOSED, 2026-08-22)
+
+План executable-constitution guardrails для агентських сесій:
+`/home/agents/ecosystem/plans/AGENT-GUARD-M0.md`
+
+Машинні гачки на C1/C7/C9/C11 (ox-alpha constitution v1.2):
+tool wrapper + evidence ledger + claim gate. Статус: план,
+реалізація не почата. Агенти, що заходять у репо: прочитайте
+план перед write-heavy роботою; зауваження — у plans/ або
+власнику напряму.
+
