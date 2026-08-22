@@ -79,3 +79,84 @@ env.define("+", Value::Builtin(BuiltinFn::Add));
 рядків); прибрати head-only fallback або лишити його як швидкий
 шлях. Тест: `(reduce + 0 (list 1 2 3))`, `(map car pts)` зелені;
 повний workspace sweep обовʼязковий (C7).
+
+---
+
+## 8. ДОДАТОК v2 — уточнення після адверсаріального ревʼю
+
+*Додано Сакші (ox-alpha) за аналізом Оксі (Vyasa) від 2026-08-22.
+Усі пʼять поправок прийнято; вони уточнюють розділи 4–7, не змінюючи напрямку.*
+
+### 8.1. Єдине джерело істини (заміна наївного «зареєструвати в env»)
+
+Registry builtin'ів залишається **тільки як bootstrap-description**
+(`BuiltinSpec { name, implementation }`), з якого глобальне оточення
+заповнюється при старті. Після bootstrap **runtime authority одна —
+environment**. Head-position lookup у registry прибирається повністю.
+
+Заборонений проміжний стан:
+
+```text
+builtin registry ──┐
+                   +── два джерела істини для одного builtin
+env Value::Builtin─┘
+```
+
+Цільова архітектура:
+
+```text
+symbol lookup → environment → Value::Builtin | Value::Lambda → generic apply
+```
+
+### 8.2. Invariant 2.1
+
+```text
+Any callable that can appear in operator position may also be evaluated
+as a value and passed as an argument, unless explicitly classified as a
+special form.
+```
+
+Special forms (`quote`, `cond`, `lambda`, `def`, `defmacro`, ...) НЕ
+потрапляють у callable namespace — у них синтаксична evaluation
+семантика. Це окремий клас, і межа має бути явною в контракті.
+
+### 8.3. Acceptance matrix (тестування ПЕРЕД реалізацією)
+
+| Вираз | Очікування |
+|---|---|
+| `(+ 1 2)` | `3` |
+| `(def f +) (f 20 22)` | `42` — доводить first-classness |
+| `((if #t + -) 10 3)` | `13` — значення-оператор через гілку |
+| `((car (list + -)) 8 2)` | `10` |
+| `(reduce + 0 (list 1 2 3))` | `6` |
+| `(map car pts)` | працює |
+| `((lambda (f) (f 2 3)) +)` | `5` — builtin як аргумент вищого порядку |
+| `(42 1 2)` | error: not callable |
+| special form як value | чітко визначена контрактом поведінка (не first-class) |
+
+Порядок робіт: failing conformance tests спершу → `Value::Builtin` →
+bootstrap у env → generic application на `Value` → лише потім прибрати
+head-only fallback → workspace sweep → прогін WSM-24 драйвера.
+
+### 8.4. Shadowing семантика (рішення ДО реалізації)
+
+Пропонується і потребує ратифікації власником разом з contract 2.1:
+
+```text
+builtins bootstrap global env → звичайне лексичне shadowing дозволене
+```
+
+Тоді природно:
+
+```lisp
+((lambda (+) (+ 2 3)) (lambda (a b) (* a b)))   ;; => 6
+```
+
+Мінімум магії: builtin нічим не особливіший від будь-якого іншого
+прив'язування. Якщо власник обере protection — це окрема механіка,
+яку треба явно спроєктувати (і вона додає магію).
+
+### 8.5. Відкрите питання до власника
+
+1. Ратифікувати shadowing semantics з 8.4 (так/ні)?
+2. Contract bump 2.0 → 2.1 затвердити разом з changelog-записом з розділу 5?
