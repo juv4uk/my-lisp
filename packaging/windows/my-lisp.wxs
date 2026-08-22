@@ -24,10 +24,10 @@
     <MediaTemplate EmbedCab="yes" />
 
     <Property Id="ARPPRODUCTICON" Value="MyLispIcon" />
-    <Icon Id="MyLispIcon" SourceFile="icon.ico" />
+    <Icon Id="MyLispIcon" SourceFile="packaging/windows/icon.ico" />
 
     <Feature Id="Main" Level="1">
-      <ComponentGroupRef Id="Binaries" />
+      <ComponentRef Id="MainExe" />
     </Feature>
 
     <StandardDirectory Id="ProgramFiles64Folder">
