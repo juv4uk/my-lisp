@@ -133,7 +133,9 @@ jobs:
 
       - name: Install WiX
         shell: pwsh
-        run: dotnet tool install --global wix
+        # Pinned to v6: WiX v7 gates usage behind the OSMF EULA acceptance
+        # (WIX7015). v6 uses the same v4 schema and is EULA-free.
+        run: dotnet tool install --global wix --version 6.0.2
 
       - name: Build MSI
         shell: pwsh
