@@ -147,14 +147,14 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "my-lisp"
-version = "0.28.1"
+version = "0.29.0"
 dependencies = [
  "my-lisp-host",
 ]
 
 [[package]]
 name = "my-lisp-cli"
-version = "0.28.1"
+version = "0.29.0"
 dependencies = [
  "my-lisp",
  "my-lisp-host",
@@ -164,14 +164,14 @@ dependencies = [
 
 [[package]]
 name = "my-lisp-host"
-version = "0.28.1"
+version = "0.29.0"
 dependencies = [
  "my-lisp",
 ]
 
 [[package]]
 name = "my-lisp-literate"
-version = "0.28.1"
+version = "0.29.0"
 dependencies = [
  "my-lisp",
  "pulldown-cmark",
@@ -179,21 +179,21 @@ dependencies = [
 
 [[package]]
 name = "my-lisp-lsp"
-version = "0.28.1"
+version = "0.29.0"
 dependencies = [
  "my-lisp",
 ]
 
 [[package]]
 name = "my-lisp-semantic"
-version = "0.28.1"
+version = "0.29.0"
 dependencies = [
  "my-lisp",
 ]
 
 [[package]]
 name = "my-lisp-wasm"
-version = "0.28.1"
+version = "0.29.0"
 dependencies = [
  "my-lisp",
  "my-lisp-literate",
