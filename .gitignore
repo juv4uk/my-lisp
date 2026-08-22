@@ -39,3 +39,6 @@ span
 
 # Local scratch files
 scratch/
+
+__pycache__/
+*.pyc
