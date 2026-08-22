@@ -220,7 +220,9 @@ fn hover_msg(uri: &str, line: u32, character: u32) -> String {
 
 /// Unique temp workspace: a.my defines `foo`, b.my uses it.
 fn m1_workspace() -> std::path::PathBuf {
-    let dir: PathBuf = std::env::temp_dir().join(format!("lsp-m1-{}", std::process::id()));
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir: PathBuf = std::env::temp_dir().join(format!("lsp-m1-{}-{seq}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("a.my"), "(def foo (lambda (x) (* x x)))\n").unwrap();
@@ -300,7 +302,11 @@ fn t11_completion_offers_builtins_and_local_defs() {
 
 /// Shared 3-file workspace: defs in defs.my, usages spread across files.
 fn m2_workspace() -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("lsp-m2-{}", std::process::id()));
+    // unique per CALL: parallel tests sharing one pid raced on
+    // remove_dir_all/recreate (flaky t12/t13/t14 in full sweeps)
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("lsp-m2-{}-{seq}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("defs.my"), "(def target (lambda (x) x))\n").unwrap();
