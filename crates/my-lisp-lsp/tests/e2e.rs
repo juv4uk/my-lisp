@@ -118,9 +118,8 @@ fn t07_definition_resolves_to_correct_range() {
     let mut server = Server::new();
     let doc = "(def target (+ 1 2))\n(+ target 10)\n";
     let open = open_msg("file:///d.my", doc);
-    let goto = format!(
-        r#"{{"jsonrpc":"2.0","id":3,"method":"textDocument/definition","params":{{"textDocument":{{"uri":"file:///d.my"}},"position":{{"line":1,"character":3}}}}}}"#
-    );
+    let goto =
+        r#"{"jsonrpc":"2.0","id":3,"method":"textDocument/definition","params":{"textDocument":{"uri":"file:///d.my"},"position":{"line":1,"character":3}}}"#.to_string();
     let replies = server.feed(&[open, goto]);
     assert_eq!(replies.len(), 2);
     let r = &replies[1];

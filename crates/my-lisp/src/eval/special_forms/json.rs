@@ -53,8 +53,13 @@ pub(crate) fn evaluate_json_parse(
 /// special form above delegates here. The matching *serializer* is
 /// deliberately NOT provided — JSON output is a transport concern of each
 /// adapter, not my-lisp semantics.
+/// Maximum container nesting. Recursive descent needs a bound so deeply
+/// nested input fails named instead of overflowing the Rust stack - the
+/// same S3-shaped discipline the reader applies to numeric literals.
+const MAX_NESTING_DEPTH: u32 = 256;
+
 pub fn parse_json(text: &str) -> Result<Value, String> {
-    let mut parser = JsonParser { bytes: text.as_bytes(), pos: 0 };
+    let mut parser = JsonParser { bytes: text.as_bytes(), pos: 0, depth: 0 };
     parser.skip_ws();
     let value = parser.parse_value()?;
     parser.skip_ws();
@@ -67,6 +72,7 @@ pub fn parse_json(text: &str) -> Result<Value, String> {
 struct JsonParser<'a> {
     bytes: &'a [u8],
     pos: usize,
+    depth: u32,
 }
 
 impl<'a> JsonParser<'a> {
@@ -100,6 +106,15 @@ impl<'a> JsonParser<'a> {
         }
     }
 
+
+    fn enter(&mut self) -> Result<(), String> {
+        if self.depth >= MAX_NESTING_DEPTH {
+            return Err(self.error("nesting too deep"));
+        }
+        self.depth += 1;
+        Ok(())
+    }
+
     fn parse_value(&mut self) -> Result<Value, String> {
         match self.peek() {
             Some(b'{') => self.parse_object(),
@@ -123,6 +138,13 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse_object(&mut self) -> Result<Value, String> {
+        self.enter()?;
+        let result = self.parse_object_inner();
+        self.depth -= 1;
+        result
+    }
+
+    fn parse_object_inner(&mut self) -> Result<Value, String> {
         self.expect(b'{')?;
         let mut pairs: Vec<(Value, Value)> = Vec::new();
         self.skip_ws();
@@ -149,12 +171,20 @@ impl<'a> JsonParser<'a> {
         // `(key . value)` pair, matching language-contract.my's data convention.
         let mut alist = Value::Nil;
         for (key, value) in pairs.into_iter().rev() {
-            alist = Value::Pair(Rc::new(Value::Pair(Rc::new(key), Rc::new(value))), Rc::new(alist));
+            alist =
+                Value::Pair(Rc::new(Value::Pair(Rc::new(key), Rc::new(value))), Rc::new(alist));
         }
         Ok(alist)
     }
 
     fn parse_array(&mut self) -> Result<Value, String> {
+        self.enter()?;
+        let result = self.parse_array_inner();
+        self.depth -= 1;
+        result
+    }
+
+    fn parse_array_inner(&mut self) -> Result<Value, String> {
         self.expect(b'[')?;
         let mut items = Vec::new();
         self.skip_ws();

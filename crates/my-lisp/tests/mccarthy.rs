@@ -1332,8 +1332,7 @@ fn read_dir_lists_the_files_it_wrote() {
     let names = result
         .value
         .to_string()
-        .replace('(', "")
-        .replace(')', "");
+        .replace(['(', ')'], "");
     assert!(names.contains("alpha.yaml"), "alpha.yaml should be listed, got {names}");
     assert!(names.contains("beta.yaml"), "beta.yaml should be listed, got {names}");
 

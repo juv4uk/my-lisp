@@ -48,7 +48,7 @@ pub(super) fn evaluate_arithmetic(
 
     let exact = values
         .iter()
-        .map(Numeric::into_exact)
+        .map(Numeric::to_exact)
         .collect::<Vec<_>>();
     let result = match operator {
         "+" => exact
@@ -95,7 +95,7 @@ impl Numeric {
         }
     }
 
-    fn into_exact(&self) -> Rational {
+    fn to_exact(&self) -> Rational {
         match self {
             Self::Exact(value) => value.clone(),
             Self::Inexact(_) => unreachable!("inexact operands handled before exact arithmetic"),
@@ -222,7 +222,7 @@ pub(super) fn evaluate_division(
 
     let exact = values
         .iter()
-        .map(Numeric::into_exact)
+        .map(Numeric::to_exact)
         .collect::<Vec<_>>();
     let mut result = exact[0].clone();
     if arguments.len() == 1 {
@@ -285,7 +285,7 @@ pub(super) fn evaluate_comparison(
     } else {
         values
             .windows(2)
-            .all(|pair| compare(operator, pair[0].into_exact(), pair[1].into_exact()))
+            .all(|pair| compare(operator, pair[0].to_exact(), pair[1].to_exact()))
     };
     Ok(Value::Bool(holds))
 }

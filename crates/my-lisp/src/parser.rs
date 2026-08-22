@@ -193,13 +193,13 @@ impl Parser<'_> {
                 Err(crate::value::DecimalLiteralError::ResourceLimitExceeded) => {
                     // S3: a syntactically valid numeric literal must never become
                     // an ordinary symbol just because a parser resource limit
-                    // refused to build it — that would change the token's
+                    // refused to build it - that would change the token's
                     // meaning silently. It fails named, `NumericOverflow`, the
                     // same category runtime arithmetic uses for exact results
                     // past `with_numeric_bit_limit`.
                     return Err(LanguageError::new(
                         ErrorKind::NumericOverflow,
-                        "decimal literal exponent exceeds the parser resource limit · eksponenta desiatkovoho literala perevyshchuie resursnu mezhu parsera · der Exponent des Dezimalliterals überschreitet die Ressourcengrenze des Parsers",
+                        "decimal literal exponent exceeds the parser resource limit / eksponenta desiatkovoho literala perevyshchuie resursnu mezhu parsera / der Exponent des Dezimalliterals ueberschreitet die Ressourcengrenze des Parsers",
                         Span {
                             start,
                             end: self.cursor,
@@ -207,7 +207,13 @@ impl Parser<'_> {
                     ));
                 }
             };
-            kind
+            return Ok(Expr {
+                kind,
+                span: Span {
+                    start,
+                    end: self.cursor,
+                },
+            });
         } else if let Some(r) = crate::value::Rational::from_literal(token, "1") {
             // Preserve the compact f64-backed representation only where it is
             // mathematically exact; larger integer literals enter the same

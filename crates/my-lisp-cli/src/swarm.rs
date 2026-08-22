@@ -459,6 +459,7 @@ pub(crate) fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec
     }
 }
 
+#[allow(clippy::too_many_arguments)] // wire-protocol handler: every table is a distinct input
 fn handle_sexpr_connection(
     mut stream: TcpStream,
     core_lib: &str,

@@ -22,7 +22,14 @@ use std::{collections::HashSet, rc::Rc};
 /// zvychainyi `ExprKind::Symbol`, druha — yak vkladenyi `ExprKind::Pair` (ta
 /// sama pidtrymka dotted-pair readera, dodana ranishe dlia literaliv danykh) —
 /// same ti formy, yaki `parser.rs` uzhe y tak vyrobliaie, bez novoho syntaksysu.
-fn parse_lambda_list(expr: &Expr) -> Result<(Vec<Rc<str>>, Option<Rc<str>>), LanguageError> {
+fn parse_lambda_list(expr: &Expr) -> LambdaListResult {
+    parse_lambda_list_inner(expr)
+}
+
+type LambdaList = (Vec<Rc<str>>, Option<Rc<str>>);
+type LambdaListResult = Result<LambdaList, LanguageError>;
+
+fn parse_lambda_list_inner(expr: &Expr) -> LambdaListResult {
     match &expr.kind {
         ExprKind::Symbol(name) => Ok((Vec::new(), Some(name.clone()))),
         ExprKind::List(parameter_forms) => {

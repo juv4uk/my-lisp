@@ -109,7 +109,7 @@ fn stale_tool_evidence_cannot_back_a_later_claim() {
         (list fresh stale)
     "#;
     assert_eq!(
-        eval_with_agent(&source),
+        eval_with_agent(source),
         "(t ())",
         "fresh owned evidence must validate; stale evidence must not"
     );
@@ -238,7 +238,7 @@ fn hard_max_turns_limit_stops_endless_tool_calls() {
 /// JSON encoding (.my) round-trips through json-parse (the host primitive).
 #[test]
 fn json_encode_and_parse_round_trip() {
-    let source = format!(
+    let source =
         r#"
         (def body (build-request-body "qwen3:4b"
                     (list (list (cons (quote role) "user")
@@ -248,8 +248,7 @@ fn json_encode_and_parse_round_trip() {
           (equal? (alist-ref "model" parsed) "qwen3:4b")
           (alist-ref "content" (car (alist-ref "messages" parsed)))
           (length (alist-ref "tools" parsed)))
-        "#
-    );
+        "#.to_string();
     assert_eq!(
         eval_with_agent(&source),
         "(t \"say \\\"hi\\\"\\nnow\" 1)",

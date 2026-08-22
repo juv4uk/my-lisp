@@ -1160,7 +1160,7 @@ fn handle_task_status(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         Sexp::list(vec![
             Sexp::atom("blocked-by"),
             Sexp::list(match &def {
-                Some(d) => d.blocked_by.iter().map(|b| Sexp::atom(b)).collect(),
+                Some(d) => d.blocked_by.iter().map(Sexp::atom).collect(),
                 None => Vec::new(),
             }),
         ]),

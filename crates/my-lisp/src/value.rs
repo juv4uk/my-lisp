@@ -168,13 +168,14 @@ impl Rational {
             .checked_sub(decimal_exp)
             .ok_or(DecimalLiteralError::ResourceLimitExceeded)?;
 
-        if total_exp > 100_000 || total_exp < -100_000 {
+        if !(-100_000..=100_000).contains(&total_exp) {
             return Err(DecimalLiteralError::ResourceLimitExceeded);
         }
 
-        let mut multiplier_str = String::with_capacity((total_exp.abs() + 1) as usize);
+        let abs_exp = total_exp.unsigned_abs() as usize;
+        let mut multiplier_str = String::with_capacity(abs_exp + 1);
         multiplier_str.push('1');
-        multiplier_str.extend(std::iter::repeat('0').take(total_exp.abs() as usize));
+        multiplier_str.extend(std::iter::repeat_n('0', abs_exp));
 
         let power_of_10 = BigInt::from_str(&multiplier_str)
             .map_err(|_| DecimalLiteralError::InvalidSyntax)?;
