@@ -1,6 +1,6 @@
 [package]
 name = "my-lisp-semantic"
-version = "0.27.0"
+version = "0.28.0"
 edition = "2021"
 license = "MIT"
 description = "EXPERIMENTAL Sanskrit/Paninian semantic layer for my-lisp (not wired into the evaluator)"
