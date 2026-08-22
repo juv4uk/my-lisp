@@ -101,6 +101,11 @@ impl WorkspaceIndex {
         }
     }
 
+    /// URIs of every known document.
+    pub fn all_texts(&self) -> Vec<String> {
+        self.texts.keys().cloned().collect()
+    }
+
     /// Full text of an indexed or opened document (for span→range math).
     pub fn text_of(&self, uri: &str) -> Option<&str> {
         self.texts.get(uri).map(String::as_str)

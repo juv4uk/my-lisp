@@ -81,6 +81,8 @@ impl Server {
             "textDocument/hover" => vec![self.hover(&incoming)],
             "textDocument/definition" => vec![self.definition(&incoming)],
             "textDocument/completion" => vec![self.completion(&incoming)],
+            "textDocument/references" => vec![self.references(&incoming)],
+            "textDocument/rename" => vec![self.rename(&incoming)],
             _ => {
                 if incoming.id.is_some() {
                     vec![response(
@@ -115,7 +117,9 @@ impl Server {
             "\"documentSymbolProvider\":true,",
             "\"hoverProvider\":true,",
             "\"definitionProvider\":true,",
-            "\"completionProvider\":{\"resolveProvider\":false}}"
+            "\"completionProvider\":{\"resolveProvider\":false},",
+            "\"referencesProvider\":true,",
+            "\"renameProvider\":true}"
         );
         let result = format!(
             "{{\"capabilities\":{capabilities},\"serverInfo\":{{\"name\":\"my-lisp-lsp\",\"version\":\"0.1.0\"}}}}"
@@ -355,6 +359,166 @@ impl Server {
         )
     }
 
+    /// M2: all code references of the symbol at the cursor, across open +
+    /// indexed workspace documents. Quoted data is skipped (see
+    /// analysis::symbol_occurrences). includeDeclaration controls whether
+    /// the defining name span counts as a reference.
+    fn references(&self, incoming: &protocol::Incoming) -> String {
+        let Some((uri, text)) = Self::uri_and_text(&incoming.params, &self.documents) else {
+            return response(&incoming.id, Some("[]".to_string()), None);
+        };
+        let offset = Self::cursor_offset(&incoming.params, &text);
+        let Ok(analysis) = analysis::analyze(&text) else {
+            return response(&incoming.id, Some("[]".to_string()), None);
+        };
+        let Some((symbol, _)) = analysis.symbol_at(&text, offset) else {
+            return response(&incoming.id, Some("[]".to_string()), None);
+        };
+        let include_decl = incoming
+            .params
+            .as_ref()
+            .and_then(|p| get(p, "context"))
+            .and_then(|c| get(c, "includeDeclaration"))
+            .map(|v| match v {
+                Value::Bool(b) => *b,
+                Value::Symbol(n) => n.as_ref() == "true",
+                _ => false,
+            })
+            .unwrap_or(false);
+
+        let mut locations: Vec<String> = Vec::new();
+        let mut seen_spans: std::collections::HashSet<(String, usize)> =
+            std::collections::HashSet::new();
+
+        // Def-name spans of this symbol anywhere in this document are its
+        // declarations; without includeDeclaration they are not references.
+        let decl_spans: Vec<usize> = analysis
+            .defs
+            .iter()
+            .filter(|d| d.name == symbol)
+            .map(|d| d.name_span.start)
+            .collect();
+
+        // Declarations live wherever their def-form is; exclusion applies
+        // per-document, not just to the file the cursor sits in.
+        let _ = decl_spans;
+        let mut collect = |doc_uri: &str, doc_text: &str| {
+            if let Ok(occurrences) = analysis::symbol_occurrences(doc_text) {
+                let decl_here: Vec<usize> = if include_decl {
+                    vec![]
+                } else {
+                    analysis::analyze(doc_text)
+                        .map(|a| a.defs.iter().filter(|d| d.name == symbol)
+                             .map(|d| d.name_span.start).collect())
+                        .unwrap_or_default()
+                };
+                for occ in occurrences {
+                    if occ.name != symbol {
+                        continue;
+                    }
+                    if !include_decl && decl_here.contains(&occ.span.start) {
+                        continue;
+                    }
+                    if seen_spans.insert((doc_uri.to_string(), occ.span.start)) {
+                        locations.push(format!(
+                            "{{\"uri\":{},\"range\":{}}}",
+                            str_lit(doc_uri),
+                            span_to_range(doc_text, occ.span.start, occ.span.end)
+                        ));
+                    }
+                }
+            }
+        };
+
+        collect(&uri, &text);
+        for doc_uri in self.workspace.all_texts() {
+            if doc_uri == uri {
+                continue;
+            }
+            if let Some(t) = self.workspace.text_of(&doc_uri) {
+                collect(&doc_uri, t);
+            }
+        }
+        response(&incoming.id, Some(format!("[{}]", locations.join(","))), None)
+    }
+
+    /// M2: rename the symbol at the cursor across open + indexed documents.
+    /// newName must be a valid my-lisp symbol (charset enforced by the same
+    /// predicate completion uses); quoted data is never touched.
+    fn rename(&self, incoming: &protocol::Incoming) -> String {
+        let Some(new_name) = incoming
+            .params
+            .as_ref()
+            .and_then(|p| get(p, "newName"))
+            .and_then(|v| as_str(Some(v)))
+            .map(str::to_string)
+        else {
+            return response(
+                &incoming.id,
+                None,
+                Some((-32602, "rename requires newName".into())),
+            );
+        };
+        if !is_valid_symbol_name(&new_name) {
+            return response(
+                &incoming.id,
+                None,
+                Some((-32602, format!("invalid symbol name: {new_name}"))),
+            );
+        }
+
+        let Some((uri, text)) = Self::uri_and_text(&incoming.params, &self.documents) else {
+            return response(&incoming.id, Some("null".to_string()), None);
+        };
+        let offset = Self::cursor_offset(&incoming.params, &text);
+        let Ok(analysis) = analysis::analyze(&text) else {
+            return response(&incoming.id, Some("null".to_string()), None);
+        };
+        let Some((symbol, _)) = analysis.symbol_at(&text, offset) else {
+            return response(&incoming.id, Some("null".to_string()), None);
+        };
+
+        let mut changes: Vec<(String, Vec<String>)> = Vec::new();
+        let mut collect_edits = |doc_uri: &str, doc_text: &str| {
+            if let Ok(occurrences) = analysis::symbol_occurrences(doc_text) {
+                let edits: Vec<String> = occurrences
+                    .iter()
+                    .filter(|occ| occ.name == symbol)
+                    .map(|occ| {
+                        format!(
+                            "{{\"range\":{},\"newText\":{}}}",
+                            span_to_range(doc_text, occ.span.start, occ.span.end),
+                            str_lit(&new_name)
+                        )
+                    })
+                    .collect();
+                if !edits.is_empty() {
+                    changes.push((doc_uri.to_string(), edits));
+                }
+            }
+        };
+
+        collect_edits(&uri, &text);
+        for doc_uri in self.workspace.all_texts() {
+            if doc_uri == uri {
+                continue;
+            }
+            if let Some(t) = self.workspace.text_of(&doc_uri) {
+                collect_edits(&doc_uri, t);
+            }
+        }
+
+        let rendered: Vec<String> = changes
+            .into_iter()
+            .map(|(u, edits)| format!("{}:[{}]", str_lit(&u), edits.join(",")))
+            .collect();
+        response(
+            &incoming.id,
+            Some(format!("{{\"changes\":{{{}}}}}", rendered.join(","))),
+            None,
+        )
+    }
+
     /// params.position.{line,character} → byte offset into the doc text.
     fn cursor_offset(params: &Option<Value>, text: &str) -> usize {
         let Some(position) = params.as_ref().and_then(|p| get(p, "position")) else {
@@ -364,6 +528,12 @@ impl Server {
         let character = as_i64(get(position, "character")).unwrap_or(0).max(0) as u32;
         analysis::position_to_offset(text, line, character)
     }
+}
+
+fn is_valid_symbol_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.bytes().all(is_symbol_byte)
+        && !name.bytes().next().unwrap().is_ascii_digit()
 }
 
 fn is_symbol_byte(b: u8) -> bool {

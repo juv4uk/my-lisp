@@ -20,8 +20,9 @@ fn t01_initialize_returns_m0_capabilities() {
     assert!(r.contains("\"documentSymbolProvider\":true"), "{r}");
     assert!(r.contains("\"hoverProvider\":true"), "{r}");
     assert!(r.contains("\"definitionProvider\":true"), "{r}");
-    // Rename remains out of scope (M1 adds completion).
-    assert!(!r.to_lowercase().contains("rename"), "{r}");
+    // M1 added completion; M2 adds references+rename.
+    assert!(r.contains("\"referencesProvider\":true"), "{r}");
+    assert!(r.contains("\"renameProvider\":true"), "{r}");
     assert!(r.contains("\"completionProvider\""), "M1 completion advertised: {r}");
 }
 
@@ -160,7 +161,7 @@ fn t09_malformed_input_does_not_crash() {
     assert!(replies[0].contains("-32700"), "ParseError expected: {}", replies[0]);
     // unknown method with id → MethodNotFound; without id → silent drop
     let replies = server.feed(&[
-        r#"{"jsonrpc":"2.0","id":9,"method":"textDocument/rename","params":{}}"#.to_string(),
+        r#"{"jsonrpc":"2.0","id":9,"method":"workspace/executeCommand","params":{}}"#.to_string(),
         r#"{"jsonrpc":"2.0","method":"$/unknownNotification","params":{}}"#.to_string(),
         r#"{"jsonrpc":"2.0"}"#.to_string(),
     ]);
@@ -291,4 +292,96 @@ fn t11_completion_offers_builtins_and_local_defs() {
     let replies2 = server.feed(&[raw(&request(9, "textDocument/completion", params2))]);
     let r2 = replies2[0].as_str();
     assert!(r2.contains("\"label\":\"+\"") || r2.contains("\"+\""), "builtin + must be offered on empty prefix: {r2}");
+}
+
+// ---------------------------------------------------------------------------
+// M2: references + rename
+// ---------------------------------------------------------------------------
+
+/// Shared 3-file workspace: defs in defs.my, usages spread across files.
+fn m2_workspace() -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("lsp-m2-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("defs.my"), "(def target (lambda (x) x))\n").unwrap();
+    fs::write(dir.join("use1.my"), "(target 1)\n").unwrap();
+    // quoted occurrence must NEVER count (it is data, not a code reference)
+    fs::write(dir.join("use2.my"), "(quote target)\n(list target)\n").unwrap();
+    dir
+}
+
+#[test]
+fn t12_references_cross_file_excludes_quoted_data() {
+    let dir = m2_workspace();
+    let use1 = format!("file://{}/use1.my", dir.display());
+
+    let init = request(1, "initialize", &format!(r#"{{"rootUri":{}}}"#, json_string(&format!("file://{}", dir.display()))));
+    let open = did_open(&use1, "(target 1)\n");
+    let mut server = Server::new();
+    server.feed(&[raw(&init), raw(&open)]);
+
+    let params = format!(
+        r#"{{"textDocument":{{"uri":{}}},"position":{{"line":0,"character":1}},"context":{{"includeDeclaration":true}}}}"#,
+        json_string(&use1)
+    );
+    let replies = server.feed(&[raw(&request(5, "textDocument/references", &params))]);
+    let r = replies[0].as_str();
+
+    // Expect: def in defs.my + usage in use1.my + usage in use2.my line 2.
+    assert_eq!(3, r.matches("\"uri\"").count(), "expected 3 locations: {r}");
+    assert!(r.contains("defs.my"), "{r}");
+    assert!(!r.contains("quote") || !r.contains("(quote"), "quoted data must be excluded: {r}");
+}
+
+#[test]
+fn t13_references_exclude_declaration_when_asked() {
+    let dir = m2_workspace();
+    let use1 = format!("file://{}/use1.my", dir.display());
+    let init = request(1, "initialize", &format!(r#"{{"rootUri":{}}}"#, json_string(&format!("file://{}", dir.display()))));
+    let open = did_open(&use1, "(target 1)\n");
+    let mut server = Server::new();
+    server.feed(&[raw(&init), raw(&open)]);
+
+    let params = format!(
+        r#"{{"textDocument":{{"uri":{}}},"position":{{"line":0,"character":1}},"context":{{"includeDeclaration":false}}}}"#,
+        json_string(&use1)
+    );
+    let replies = server.feed(&[raw(&request(6, "textDocument/references", &params))]);
+    let r = replies[0].as_str();
+    assert_eq!(2, r.matches("\"uri\"").count(), "declaration excluded → 2 refs: {r}");
+}
+
+#[test]
+fn t14_rename_produces_cross_file_edits_and_validates_name() {
+    let dir = m2_workspace();
+    let use1 = format!("file://{}/use1.my", dir.display());
+    let init = request(1, "initialize", &format!(r#"{{"rootUri":{}}}"#, json_string(&format!("file://{}", dir.display()))));
+    let open = did_open(&use1, "(target 1)\n");
+    let mut server = Server::new();
+    server.feed(&[raw(&init), raw(&open)]);
+
+    // Valid rename.
+    let params = format!(
+        r#"{{"textDocument":{{"uri":{}}},"position":{{"line":0,"character":1}},"newName":"renamed-thing"}}"#,
+        json_string(&use1)
+    );
+    let replies = server.feed(&[raw(&request(7, "textDocument/rename", &params))]);
+    let r = replies[0].as_str();
+    assert!(r.contains("\"changes\""), "{r}");
+    // 3 code references: def name + use1 + use2 line 2. The quoted
+    // `(quote target)` on use2 line 1 must stay untouched — it is data.
+    assert_eq!(3, r.matches("\"newText\":\"renamed-thing\"").count(),
+        "def + 2 code usages renamed; quoted data excluded: {r}");
+    let use2_section = r.split("use2.my").nth(1).unwrap_or("");
+    assert!(use2_section.contains("\"line\":1,"), "use2 edits start at line 1: {r}");
+    assert!(r.contains("defs.my"), "{r}");
+
+    // Invalid name → error response, not a workspace edit.
+    let bad = format!(
+        r#"{{"jsonrpc":"2.0","id":8,"method":"textDocument/rename","params":{{"textDocument":{{"uri":{}}},"position":{{"line":0,"character":1}},"newName":"9bad"}}}}"#,
+        json_string(&use1)
+    );
+    let replies = server.feed(&[raw(&bad)]);
+    let r = replies[0].as_str();
+    assert!(r.contains("\"error\"") || r.contains("-32602"), "invalid name must be rejected: {r}");
 }

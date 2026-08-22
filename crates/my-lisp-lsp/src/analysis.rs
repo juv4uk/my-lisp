@@ -65,6 +65,53 @@ fn collect_defs(expressions: &[Expr]) -> Vec<DefInfo> {
     defs
 }
 
+/// One occurrence of a symbol in source code.
+#[derive(Clone, Debug)]
+pub struct SymbolOccurrence {
+    pub name: String,
+    pub span: Span,
+}
+
+/// Collect every symbol occurrence that represents a *code reference*.
+/// Subtrees under `(quote ...)` are data, not code, and are skipped —
+/// this is structurally provable from the parse tree plus the fixed set
+/// of special forms, so it stays inside the "nothing invented" boundary.
+pub fn symbol_occurrences(source: &str) -> Result<Vec<SymbolOccurrence>, LanguageError> {
+    let expressions = my_lisp::parse(source)?;
+    let mut out = Vec::new();
+    for expr in &expressions {
+        walk_symbols(expr, false, &mut out);
+    }
+    Ok(out)
+}
+
+fn walk_symbols(expr: &Expr, in_quote: bool, out: &mut Vec<SymbolOccurrence>) {
+    match &expr.kind {
+        ExprKind::Symbol(name) => {
+            if !in_quote {
+                out.push(SymbolOccurrence { name: name.to_string(), span: expr.span });
+            }
+        }
+        ExprKind::List(items) => {
+            // `(quote data)` / `'data`: the whole subtree is data. The
+            // reader-macro was removed in contract 2.0, so quote is the
+            // only form to guard here.
+            let head_is_quote = items
+                .first()
+                .map(|h| matches!(&h.kind, ExprKind::Symbol(n) if n.as_ref() == "quote"))
+                .unwrap_or(false);
+            for (i, item) in items.iter().enumerate() {
+                walk_symbols(item, in_quote || (head_is_quote && i > 0), out);
+            }
+        }
+        ExprKind::Pair(head, tail) => {
+            walk_symbols(head, in_quote, out);
+            walk_symbols(tail, in_quote, out);
+        }
+        _ => {}
+    }
+}
+
 impl Analysis {
     pub fn lookup(&self, name: &str) -> Option<&DefInfo> {
         // Last definition wins, matching the evaluator's own shadowing of

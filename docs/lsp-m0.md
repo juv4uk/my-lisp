@@ -1,4 +1,4 @@
-# my-lisp-lsp — Language Server Protocol adapter (M0/M1)
+# my-lisp-lsp — Language Server Protocol adapter (M0–M2)
 
 > A thin LSP adapter over the canonical my-lisp core.
 > The LSP never re-parses `.my`, never greps for definitions, never
@@ -102,3 +102,14 @@ Added on the same principles (canonical parser only, nothing invented):
 - The builtin completion list is a static snapshot duplicated from the
   core's match arms; after contract 2.1 it should be derived from the
   environment ((env)) instead.
+
+## M2 scope (2026-08-22)
+
+- **References** (`textDocument/references`): every code occurrence of
+  the cursor symbol across open + indexed documents.
+  `includeDeclaration` (context) is honored per-document — declarations
+  live wherever their def-form is, not only in the cursor's file.
+- **Rename** (`textDocument/rename`): WorkspaceEdit across all affected
+  files. newName validated against the my-lisp symbol charset (error
+  -32602 otherwise). Quoted data (`(quote x)` subtrees) is never touched:
+  data symbols are not code references, per analysis::symbol_occurrences.
