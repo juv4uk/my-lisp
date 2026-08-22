@@ -114,6 +114,50 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  build-msi:
+    name: my-lisp-cli · Windows MSI installer
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: cli-x86_64-pc-windows-msvc
+
+      - name: Build
+        run: cargo build --release -p my-lisp-cli --target x86_64-pc-windows-msvc
+
+      - name: Install WiX
+        shell: pwsh
+        run: dotnet tool install --global wix
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME.TrimStart('l')
+          if ($VERSION -notmatch '^\d+\.\d+\.\d+$') { throw "cannot parse version from tag '$env:GITHUB_REF_NAME'" }
+          # WiX ProductVersion must be numeric; l-prefixed tags map 1:1.
+          wix build `
+            -arch x64 `
+            -D "ProductVersion=$VERSION" `
+            -D "BinDir=target\x86_64-pc-windows-msvc\release" `
+            -out "my-lisp-cli_${VERSION}_windows_x64.msi" `
+            packaging/windows/my-lisp.wxs
+          if (-not (Test-Path "my-lisp-cli_${VERSION}_windows_x64.msi")) { throw 'MSI was not produced.' }
+
+      - name: Upload
+        uses: softprops/action-gh-release@v1
+        with:
+          files: my-lisp-cli_*_windows_x64.msi
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-web:
     name: Portable web REPL · single HTML
     needs: create-release

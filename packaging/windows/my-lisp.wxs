@@ -1,0 +1,58 @@
+<!--
+  WiX v4+ manifest for the my-lisp CLI Windows installer.
+  Збирається: wix build -D ProductVersion=<x.y.z> my-lisp.wxs
+  Встановлює my-lisp.exe у Program Files\my-lisp і додає каталог
+  до системного PATH. Наступна більша версія оновлює попередню
+  на місці (MajorUpgrade).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package
+      Name="my-lisp"
+      Manufacturer="Waldemar Sydiy M"
+      Version="$(var.ProductVersion)"
+      Scope="perMachine"
+      UpgradeCode="7C3A9E52-4B6D-4E8A-9F1D-2A5C8B7E6F41"
+      Compressed="yes"
+      Language="1033">
+
+    <!-- Newer MSI replaces any older installed version in place.
+         Нова більша версія замінює встановлену стару. -->
+    <MajorUpgrade
+        DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="ARPPRODUCTICON" Value="MyLispIcon" />
+    <Icon Id="MyLispIcon" SourceFile="icon.ico" />
+
+    <Feature Id="Main" Level="1">
+      <ComponentGroupRef Id="Binaries" />
+    </Feature>
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLDIR" Name="my-lisp">
+        <Component Id="MainExe" Guid="A1B2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6">
+          <File Id="MyLispExe"
+                Source="$(var.BinDir)\my-lisp.exe"
+                Name="my-lisp.exe"
+                KeyPath="yes"
+                Checksum="yes" />
+          <!-- Add INSTALLDIR to the SYSTEM PATH (Part="last" appends).
+               Додаємо каталог до системного PATH; при видаленні запис
+               зникає разом із компонентом. -->
+          <Environment Id="PATHENV"
+                       Name="PATH"
+                       Value="[INSTALLDIR]"
+                       Permanent="no"
+                       Part="last"
+                       Action="set"
+                       System="yes" />
+          <RemoveFolder Id="RemoveInstallDir" On="uninstall" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+  </Package>
+
+</Wix>
