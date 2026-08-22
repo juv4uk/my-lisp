@@ -20,33 +20,22 @@
 
 mod core;
 mod digest;
-mod file_io;
 mod io;
 pub mod json;
-mod process;
 mod strings;
-mod tcp;
 
 pub(super) use core::{
     evaluate_car, evaluate_cdr, evaluate_cond, evaluate_cons, evaluate_defmacro,
-    evaluate_definition, evaluate_eq, exact_arity, quoted,
+    evaluate_definition, evaluate_eq, quoted,
 };
+pub use core::exact_arity;
 pub(super) use digest::evaluate_sha256_hex;
-pub(super) use file_io::{
-    evaluate_read_dir, evaluate_read_file, evaluate_read_file_bytes, evaluate_write_file,
-    evaluate_write_file_bytes,
-};
 pub(super) use io::{
-    evaluate_eval, evaluate_load, evaluate_princ, evaluate_print, evaluate_read,
-    evaluate_read_all, evaluate_write_to_string,
+    evaluate_eval, evaluate_princ, evaluate_print, evaluate_read, evaluate_read_all,
+    evaluate_write_to_string,
 };
-pub(super) use process::evaluate_process_run;
 pub(super) use strings::{
     evaluate_string_append, evaluate_string_first, evaluate_string_less_than,
     evaluate_string_predicate, evaluate_string_rest, evaluate_string_to_symbol,
     evaluate_symbol_to_string,
-};
-pub(super) use tcp::{
-    evaluate_tcp_accept, evaluate_tcp_close, evaluate_tcp_connect, evaluate_tcp_listen,
-    evaluate_tcp_read, evaluate_tcp_write,
 };

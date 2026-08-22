@@ -1,8 +1,14 @@
 use my_lisp::{eval_program, Session};
 use std::fs;
 
+/// `read-file` is a host capability; installed here via the dev-dependency.
+fn install_read_capability() {
+    my_lisp_host::install();
+}
+
 #[test]
 fn linter_gate() {
+    install_read_capability();
     let mut session = Session::default();
     
     // Evaluate the libraries directly to load them into the environment

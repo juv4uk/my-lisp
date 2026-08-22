@@ -49,7 +49,7 @@ pub struct LanguageError {
 }
 
 impl LanguageError {
-    pub(crate) fn new(kind: ErrorKind, message: impl Into<String>, span: Span) -> Self {
+    pub fn new(kind: ErrorKind, message: impl Into<String>, span: Span) -> Self {
         Self {
             kind,
             message: message.into(),

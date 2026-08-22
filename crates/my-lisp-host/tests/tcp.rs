@@ -16,6 +16,7 @@
 //! realnyi soket.
 
 use my_lisp::{eval_program, ErrorKind, Session, Value};
+use my_lisp_host::install;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
@@ -91,6 +92,7 @@ fn load_knowledge(session: &mut Session) {
 
 #[test]
 fn client_and_server_exchange_one_message_each_way() {
+    install();
     let port = free_port();
 
     let server = thread::spawn(move || {
@@ -161,6 +163,7 @@ fn client_and_server_exchange_one_message_each_way() {
 
 #[test]
 fn send_knowledge_package_transmits_one_canonical_expression_then_eof() {
+    install();
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let server = thread::spawn(move || {
@@ -185,6 +188,7 @@ fn send_knowledge_package_transmits_one_canonical_expression_then_eof() {
 
 #[test]
 fn receive_knowledge_package_drains_chunks_and_atomically_imports() {
+    install();
     let port = free_port();
     let server = thread::spawn(move || {
         let mut session = Session::default();
@@ -213,6 +217,7 @@ fn receive_knowledge_package_drains_chunks_and_atomically_imports() {
 
 #[test]
 fn framed_exchange_returns_an_accepted_receipt_to_the_sender() {
+    install();
     let port = free_port();
     let server = thread::spawn(move || {
         let mut session = Session::default();
@@ -238,6 +243,7 @@ fn framed_exchange_returns_an_accepted_receipt_to_the_sender() {
 
 #[test]
 fn framed_exchange_returns_conflict_and_does_not_install_the_new_fact() {
+    install();
     let port = free_port();
     let server = thread::spawn(move || {
         let mut session = Session::default();
@@ -264,6 +270,7 @@ fn framed_exchange_returns_conflict_and_does_not_install_the_new_fact() {
 
 #[test]
 fn tcp_read_returns_an_empty_string_on_a_closed_connection() {
+    install();
     let port = free_port();
 
     let server = thread::spawn(move || {
@@ -296,6 +303,7 @@ fn tcp_read_returns_an_empty_string_on_a_closed_connection() {
 
 #[test]
 fn tcp_connect_to_a_closed_port_fails_named_not_silently() {
+    install();
     // A port grabbed and immediately released by free_port() above is very
     // likely to have nothing listening on it in the brief window before
     // the OS could reassign it — connecting there should fail cleanly.
@@ -312,6 +320,7 @@ fn tcp_connect_to_a_closed_port_fails_named_not_silently() {
 
 #[test]
 fn tcp_connect_rejects_a_non_string_host() {
+    install();
     let error = eval_program("(tcp-connect 42 8099)", &mut Session::default())
         .expect_err("a non-string host must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
@@ -319,6 +328,7 @@ fn tcp_connect_rejects_a_non_string_host() {
 
 #[test]
 fn tcp_connect_rejects_an_out_of_range_port() {
+    install();
     let error = eval_program(r#"(tcp-connect "127.0.0.1" 99999)"#, &mut Session::default())
         .expect_err("a port past 65535 must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
@@ -326,6 +336,7 @@ fn tcp_connect_rejects_an_out_of_range_port() {
 
 #[test]
 fn tcp_read_rejects_a_non_connection_argument() {
+    install();
     let error = eval_program(r#"(tcp-read "not a connection")"#, &mut Session::default())
         .expect_err("a non-connection argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
@@ -333,6 +344,7 @@ fn tcp_read_rejects_a_non_connection_argument() {
 
 #[test]
 fn tcp_write_returns_its_content_argument_unchanged() {
+    install();
     let port = free_port();
     let server = thread::spawn(move || {
         let mut session = Session::default();

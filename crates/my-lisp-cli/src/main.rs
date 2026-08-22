@@ -33,6 +33,9 @@ fn allowed_processes(args: &[String]) -> Vec<String> {
         .unwrap_or_default()
 }
 fn main() {
+    // The CLI is a trusted local surface: install the OS capability layer
+    // (filesystem, process-run allowlist, TCP). The core itself ships none.
+    my_lisp_host::install();
     let args: Vec<String> = env::args().collect();
     let allowed = allowed_processes(&args);
     let sexpr_protocol = args.iter().any(|a| a == "--protocol=sexpr");

@@ -191,32 +191,3 @@ pub(crate) fn evaluate_read_all(
     })?;
     Ok(Value::list(expressions.iter().map(quoted)))
 }
-
-pub(crate) fn evaluate_load(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("load", arguments, 1, span)?;
-    let evaluated = evaluate(&arguments[0], environment)?;
-    let Value::String(ref path) = evaluated else {
-        return Err(LanguageError::new(
-            ErrorKind::Type,
-            "load expects a string path · load ochikuie riadok-shliakh · load erwartet einen String-Pfad",
-            span,
-        ));
-    };
-
-    let source = super::file_io::read_file(path, span)?;
-    let expressions = crate::parse(&source).map_err(|mut error| {
-        error.span = span;
-        error
-    })?;
-
-    let mut last_value = Value::Nil;
-    for expr in expressions {
-        last_value = evaluate(&expr, environment)?;
-    }
-
-    Ok(last_value)
-}

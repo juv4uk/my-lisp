@@ -16,12 +16,14 @@
 //! `cond`, und `closures` den Bau von `lambda` und die Anwendung von Funktionen/Makros.
 
 mod arithmetic;
+mod capabilities;
 mod closures;
 mod special_forms;
 
 // Facade re-export: host adapters (LSP, CLI tooling) consume the canonical
 // JSON decoder as a plain function without going through eval.
-pub use special_forms::json::parse_json;
+pub use capabilities::{capability_installed, installed_capabilities, register_capability, unregister_capability};
+pub use special_forms::{exact_arity, json::parse_json};
 
 use crate::{parse, Environment, ErrorKind, Expr, ExprKind, LanguageError, Session, Span, Value};
 
@@ -61,7 +63,7 @@ pub(crate) enum EvalStep {
     },
 }
 
-pub(crate) fn evaluate(expression: &Expr, environment: &Environment) -> Result<Value, LanguageError> {
+pub fn evaluate(expression: &Expr, environment: &Environment) -> Result<Value, LanguageError> {
     let (mut owned_expression, mut owned_environment) =
         match evaluate_step(expression, environment)? {
             EvalStep::Value(value) => return Ok(value),
@@ -159,50 +161,11 @@ fn evaluate_list(
         Some("eval") => {
             special_forms::evaluate_eval(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("load") => {
-            special_forms::evaluate_load(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("read-file") => {
-            special_forms::evaluate_read_file(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("read-dir") => {
-            special_forms::evaluate_read_dir(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("write-file") => {
-            special_forms::evaluate_write_file(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("read-file-bytes") => {
-            special_forms::evaluate_read_file_bytes(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("write-file-bytes") => {
-            special_forms::evaluate_write_file_bytes(arguments, environment, span).map(EvalStep::Value)
-        }
         Some("string-append") => {
             special_forms::evaluate_string_append(arguments, environment, span).map(EvalStep::Value)
         }
         Some("string<?") => {
             special_forms::evaluate_string_less_than(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("tcp-connect") => {
-            special_forms::evaluate_tcp_connect(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("tcp-listen") => {
-            special_forms::evaluate_tcp_listen(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("tcp-accept") => {
-            special_forms::evaluate_tcp_accept(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("tcp-read") => {
-            special_forms::evaluate_tcp_read(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("tcp-write") => {
-            special_forms::evaluate_tcp_write(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("tcp-close") => {
-            special_forms::evaluate_tcp_close(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("process-run") => {
-            special_forms::evaluate_process_run(arguments, environment, span).map(EvalStep::Value)
         }
         Some("read-all") => {
             special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
@@ -242,6 +205,17 @@ fn evaluate_list(
             arithmetic::evaluate_comparison(operator, arguments, environment, span).map(EvalStep::Value)
         }
         _ => {
+            // Host-capability fallback (see eval/capabilities.rs): the
+            // canonical core registers nothing here, so an unregistered
+            // name still falls through to ordinary application and fails
+            // `UnknownSymbol` as always.
+            if let Some(name) = items[0].kind.as_symbol() {
+                if let Some(result) =
+                    capabilities::dispatch_capability(name, arguments, environment, span)
+                {
+                    return result;
+                }
+            }
             let function = evaluate(&items[0], environment)?;
             match &function {
                 Value::Macro(closure) => {

@@ -11,6 +11,7 @@ path = "src/lib.rs"
 [dependencies]
 
 [dev-dependencies]
+my-lisp-host = { path = "../my-lisp-host" }
 # No dev-dependencies needed as of 2026-08-09: mccarthy.rs's fixture tests
 # used to need serde_json (conformance.json) and my-lisp-literate
 # (markdown-mode fixtures) — both gone now that tests/fixtures/conformance.my

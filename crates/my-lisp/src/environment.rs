@@ -150,7 +150,7 @@ impl Environment {
     /// `program` ne ye tochno odnym z perelichenykh tam imen — bez chastkovoho
     /// zbihu, bez khytroshchiv iz rozdilnoiu zdatnistiu shliakhu, dozvolene imia
     /// maie zbihatys povnistiu.
-    pub(crate) fn is_process_allowed(&self, program: &str) -> bool {
+    pub fn is_process_allowed(&self, program: &str) -> bool {
         match &self.2.borrow().process_allowlist {
             Some(programs) => programs.iter().any(|allowed| allowed == program),
             None => false,

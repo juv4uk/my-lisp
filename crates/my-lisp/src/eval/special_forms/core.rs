@@ -157,7 +157,7 @@ pub(crate) fn evaluate_cond(
     Ok(EvalStep::Value(Value::Nil))
 }
 
-pub(crate) fn exact_arity(
+pub fn exact_arity(
     operator: &str,
     arguments: &[Expr],
     expected: usize,

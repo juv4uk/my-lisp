@@ -11,6 +11,9 @@
 use my_lisp::{eval_program, Environment, Session};
 
 fn agent_session() -> Session {
+    // The bash tool is a host capability now - install it like the CLI does,
+    // then opt this session into exactly the programs the agent may run.
+    my_lisp_host::install();
     let environment =
         Environment::root().with_process_allowlist(vec!["bash".into(), "curl".into()]);
     let mut session = Session { environment };
