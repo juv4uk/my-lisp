@@ -47,6 +47,10 @@ This repository is the canonical Rust implementation:
 - [`crates/my-lisp-cli`](crates/my-lisp-cli) — the `my-lisp` binary (REPL + file runner).
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly bindings powering the browser REPL above.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — literate-Markdown source-offset mapping.
+- [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — Language-Server-Protocol-Adapter über dem kanonischen Parser (Diagnostik, Dokumentsymbole, Hover, Go-to-Definition innerhalb einer Datei); auch als `my-lisp lsp` verfügbar.
+- [`crates/swarm-node`](crates/swarm-node) — eigenständiger Swarm-Koordinationsknoten.
+- [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — Language Server Protocol adapter over the canonical parser (diagnostics, document symbols, hover, same-file go-to-definition); also exposed as `my-lisp lsp`.
+- [`crates/swarm-node`](crates/swarm-node) — standalone swarm coordination node.
 - [`racket/`](racket/) — a `#lang my-lisp` plugin for Racket/DrRacket using the Chez Scheme JIT.
 - [`lib/core.my`](lib/core.my) — the bootstrapped standard library.
 - [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — unification and backward-chaining inference.
@@ -56,6 +60,7 @@ This repository is the canonical Rust implementation:
 - [`lib/content-store.my`](lib/content-store.my) — an immutable content-addressed store that deduplicates equal knowledge and World histories.
 - [`lib/understand.my`](lib/understand.my) / [`lib/narrate.my`](lib/narrate.my) — controlled natural language, both directions.
 - [`lib/clips-import.my`](lib/clips-import.my) — imports real CLIPS `.clp` source files.
+- [`lib/yantra.my`](lib/yantra.my) — EXPERIMENTAL: the smallest coding agent whose control logic lives entirely in my-lisp (tool-call loop against an OpenAI-compatible endpoint; see `docs/yantra-agent.md`).
 
 ### Build and test
 
@@ -129,6 +134,8 @@ Rust надає лише те, що робить особливо добре —
 - [`crates/my-lisp-cli`](crates/my-lisp-cli) — бінарник `my-lisp` (REPL + запуск файлів).
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-біндінги для браузерного REPL вище.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — зіставлення зміщень початкового коду literate-Markdown.
+- [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — адаптер протоколу Language Server над канонічним парсером (діагностика, символи документа, hover, перехід до визначення в межах файла); також доступний як `my-lisp lsp`.
+- [`crates/swarm-node`](crates/swarm-node) — окремий вузол swarm-координації.
 - [`racket/`](racket/) — плагін `#lang my-lisp` для Racket/DrRacket на базі Chez Scheme JIT.
 - [`lib/core.my`](lib/core.my) — bootstrapped стандартна бібліотека.
 - [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — унікація й backward-chaining висновування.
