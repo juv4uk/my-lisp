@@ -133,6 +133,7 @@ Special forms (`quote`, `cond`, `lambda`, `def`, `defmacro`, ...) НЕ
 | `((lambda (f) (f 2 3)) +)` | `5` — builtin як аргумент вищого порядку |
 | `(42 1 2)` | error: not callable |
 | special form як value | чітко визначена контрактом поведінка (не first-class) |
+| `(env)` після bootstrap | містить усі прив'язування, incl. builtin'и — інтроспекція стає можливою |
 
 Порядок робіт: failing conformance tests спершу → `Value::Builtin` →
 bootstrap у env → generic application на `Value` → лише потім прибрати
