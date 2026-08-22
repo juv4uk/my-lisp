@@ -221,6 +221,9 @@ fn evaluate_list(
         Some("sha256-hex") => {
             special_forms::evaluate_sha256_hex(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("json-parse") => {
+            special_forms::json::evaluate_json_parse(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("/") => arithmetic::evaluate_division(arguments, environment, span).map(EvalStep::Value),
         // Binding the operator symbol in the pattern avoids re-deriving it with
         // an `.expect()`, so a future refactor of `as_symbol` cannot turn this into a panic.

@@ -1,0 +1,386 @@
+; yantra.my — my-lisp-yantra: the smallest Chebupelka-style coding agent,
+; control logic entirely in my-lisp. Host boundary is exactly three
+; capabilities, none of them agent-specific:
+;   1. `process-run` (existing) — the bash tool and the HTTP transport
+;      (`curl` subprocess; see http-post-json below),
+;   2. `json-parse` (new, crates/my-lisp/src/eval/special_forms/json.rs) —
+;      wire-format decode; provably not expressible in .my because \uXXXX
+;      escapes require constructing a character from a codepoint, and no
+;      primitive maps an integer to a character string,
+;   3. existing string/list machinery of lib/core.my for JSON *encoding*.
+;
+; Everything else lives here: message shape, agent state, tool-call
+; representation, dispatch, turn loop, completion validation.
+;
+; The key rule this file enforces (valid-final? below): a textual claim
+; that a command was executed is NOT evidence of execution. Only a real
+; tool-result message in the conversation permits such a completion.
+;
+; Message shapes (internal, symbol-keyed alists):
+;   ((role . "system"|"user"|"assistant"|"tool") (content . "..."))
+;   assistant may add: (tool-calls . (((id . "...") (name . "bash")
+;                                      (arguments . "{...}")) ...))
+;   tool results carry: (tool-call-id . "...") — correlated to the
+;   originating tool call's id by construction (append-tool-results).
+
+; ---------------------------------------------------------------------------
+; JSON encoding (pure .my; decode is the host primitive, encode never was)
+; ---------------------------------------------------------------------------
+
+(def json-escape-char
+  (lambda (ch)
+    (cond
+      ((eq ch "\"") "\\\"")
+      ((eq ch "\\") "\\\\")
+      ((eq ch "\n") "\\n")
+      ((eq ch "\r") "\\r")
+      ((eq ch "\t") "\\t")
+      (t ch))))
+
+(def json-escape-onto
+  (lambda (s acc)
+    (cond
+      ((string-empty? s) acc)
+      (t (json-escape-onto (string-rest s)
+                           (string-append acc (json-escape-char (string-first s))))))))
+
+(def json-escape
+  (lambda (s) (json-escape-onto s "")))
+
+; The kernel's string-append is strictly binary AND a special form, so it
+; cannot be passed as a function value to reduce — fold over rest args
+; directly instead. Derived here, no new primitive.
+(def strcat-onto
+  (lambda (items acc)
+    (cond
+      ((atom items) acc)
+      (t (strcat-onto (cdr items) (string-append acc (car items)))))))
+
+(def strcat
+  (lambda args
+    (strcat-onto args "")))
+
+(def json-encode-string
+  (lambda (s) (string-append "\"" (string-append (json-escape s) "\""))))
+
+(def json-encode-key
+  (lambda (k)
+    (cond
+      ((symbol? k) (json-encode-string (symbol->string k)))
+      (t (json-encode-string k)))))
+
+; Objects are alists (lists of dotted pairs), arrays are proper lists.
+; Disambiguation for this protocol's data: a list is an OBJECT iff its
+; first element is a pair with an atomic key (an alist entry); arrays
+; contain either scalars or nested structures (whose car is itself a
+; pair). This survives nested-object values like ("cmd" . (("type" . ...))),
+; which a naive "cdr of first entry is atom" test misclassifies as array.
+(def json-object?
+  (lambda (v)
+    (cond
+      ((atom v) (quote ()))
+      ((atom (car v)) (quote ()))
+      ((atom (car (car v))) t)
+      (t (quote ())))))
+
+(def json-encode-value
+  (lambda (v)
+    (cond
+      ((atom v)
+       (cond
+         ((eq v t) "true")
+         ((eq v (quote ())) "null")
+         ((string? v) (json-encode-string v))
+         (t (write-to-string v))))
+      ((json-object? v) (json-encode-object v))
+      (t (json-encode-array v)))))
+
+(def json-encode-object-entries
+  (lambda (entries acc)
+    (cond
+      ((atom entries) acc)
+      (t (let ((entry (car entries)))
+           (json-encode-object-entries
+            (cdr entries)
+            (strcat acc
+                    (cond ((string-empty? acc) "")
+                          (t ","))
+                    (json-encode-key (car entry))
+                    ":"
+                    (json-encode-value (cdr entry)))))))))
+
+(def json-encode-object
+  (lambda (alist)
+    (strcat "{" (json-encode-object-entries alist "") "}")))
+
+(def json-encode-array-items
+  (lambda (items acc)
+    (cond
+      ((atom items) acc)
+      (t (json-encode-array-items
+          (cdr items)
+          (strcat acc
+                  (cond ((string-empty? acc) "")
+                        (t ","))
+                  (json-encode-value (car items))))))))
+
+(def json-encode-array
+  (lambda (items)
+    (strcat "[" (json-encode-array-items items "") "]")))
+
+(def json-encode json-encode-value)
+
+; ---------------------------------------------------------------------------
+; Message / tool-call accessors and JSON -> internal conversion
+; ---------------------------------------------------------------------------
+
+; Safe alist lookup: assoc returns () when the key is absent, and this
+; kernel's cdr fails named on (), so every read goes through this guard.
+; A genuinely absent key and an explicit nil value both read as () — the
+; loop below only ever distinguishes present-nonempty from everything else.
+(def alist-ref
+  (lambda (key alist)
+    (cond
+      ((assoc key alist) (cdr (assoc key alist)))
+      (t (quote ())))))
+
+(def msg-role (lambda (m) (alist-ref (quote role) m)))
+(def msg-content (lambda (m) (alist-ref (quote content) m)))
+(def msg-tool-calls (lambda (m) (alist-ref (quote tool-calls) m)))
+(def msg-tool-call-id (lambda (m) (alist-ref (quote tool-call-id) m)))
+
+(def tc-id (lambda (tc) (alist-ref (quote id) tc)))
+(def tc-name (lambda (tc) (alist-ref (quote name) tc)))
+(def tc-arguments (lambda (tc) (alist-ref (quote arguments) tc)))
+
+; OpenAI's content field is null when the assistant emits only tool calls.
+(def json-message-content
+  (lambda (jm)
+    (let ((c (alist-ref "content" jm)))
+      (cond
+        ((eq c (quote ())) "")
+        (t c)))))
+
+(def json->tool-call
+  (lambda (jtc)
+    (let ((fn (alist-ref "function" jtc)))
+      (list (cons (quote id) (alist-ref "id" jtc))
+            (cons (quote name) (alist-ref "name" fn))
+            (cons (quote arguments) (alist-ref "arguments" fn))))))
+
+(def json->message
+  (lambda (jm)
+    (let ((tcs (alist-ref "tool_calls" jm)))
+      (append (list (cons (quote role) (alist-ref "role" jm))
+                    (cons (quote content) (json-message-content jm)))
+              (cond
+                (tcs (list (cons (quote tool-calls) (map json->tool-call tcs))))
+                (t (quote ())))))))
+
+(def extract-assistant-message
+  (lambda (response-json)
+    (let* ((choices (alist-ref "choices" response-json))
+           (choice (car choices)))
+      (alist-ref "message" choice))))
+
+; ---------------------------------------------------------------------------
+; Request encoding (raw-data builders; one json-encode at the leaf)
+; ---------------------------------------------------------------------------
+
+(def encode-tool-call
+  (lambda (tc)
+    (list (cons "id" (tc-id tc))
+          (cons "type" "function")
+          (cons "function" (list (cons "name" (tc-name tc))
+                                 (cons "arguments" (tc-arguments tc)))))))
+
+(def encode-message
+  (lambda (m)
+    (cond
+      ((equal? (msg-role m) "tool")
+       (list (cons "role" "tool")
+             (cons "tool_call_id" (msg-tool-call-id m))
+             (cons "content" (msg-content m))))
+      (t (let ((tcs (msg-tool-calls m)))
+           (append (list (cons "role" (msg-role m))
+                         (cons "content" (msg-content m)))
+                   (cond (tcs (list (cons "tool_calls" (map encode-tool-call tcs))))
+                         (t (quote ())))))))))
+
+(def bash-tool-schema
+  (lambda ()
+    (list (cons "type" "function")
+          (cons "function"
+                (list (cons "name" "bash")
+                      (cons "description" "Run one bash command; returns combined stdout and stderr.")
+                      (cons "parameters"
+                            (list (cons "type" "object")
+                                  (cons "properties"
+                                        (list (cons "cmd" (list (cons "type" "string")
+                                                                (cons "description" "The bash command to execute")))))
+                                  (cons "required" (list "cmd")))))))))
+
+(def build-request-body
+  (lambda (model messages)
+    (json-encode
+     (list (cons "model" model)
+           (cons "messages" (map encode-message messages))
+           (cons "tools" (list (bash-tool-schema)))))))
+
+; ---------------------------------------------------------------------------
+; Host transport: HTTP POST via the existing allowlisted process-run +
+; curl. Zero new Rust beyond json-parse; swap this one function if a
+; native http-post primitive is ever adopted.
+; ---------------------------------------------------------------------------
+
+(def http-post-json
+  (lambda (url body)
+    (let ((result (process-run "curl"
+                               (list "-s" "-S" "-X" "POST"
+                                     "-H" "Content-Type: application/json"
+                                     "-d" body url))))
+      (nth 1 result))))
+
+; ---------------------------------------------------------------------------
+; Tool dispatch — one tool: bash. Real execution only.
+; ---------------------------------------------------------------------------
+
+(def execute-bash
+  (lambda (arguments-json)
+    (let* ((args (json-parse arguments-json))
+           (cmd (alist-ref "cmd" args))
+           (result (process-run "bash" (list "-c" cmd))))
+      (string-append (nth 1 result) (nth 2 result)))))
+
+(def dispatch-tool
+  (lambda (name arguments-json)
+    (cond
+      ((equal? name "bash") (execute-bash arguments-json))
+      (t (string-append "error: unknown tool: " name)))))
+
+(def execute-tool-call
+  (lambda (tc)
+    (dispatch-tool (tc-name tc) (tc-arguments tc))))
+
+; Executes each tool call and produces the correlated tool-result
+; messages — the tool_call_id on each result is copied from the very
+; call object being executed, so correlation holds by construction.
+(def append-tool-results
+  (lambda (tcs acc)
+    (cond
+      ((atom tcs) acc)
+      (t (append-tool-results
+          (cdr tcs)
+          (append acc
+                  (list (list (cons (quote role) "tool")
+                              (cons (quote tool-call-id) (tc-id (car tcs)))
+                              (cons (quote content) (execute-tool-call (car tcs)))))))))))
+
+; ---------------------------------------------------------------------------
+; Completion validation — the key rule.
+; ---------------------------------------------------------------------------
+
+(def claim-markers
+  (quote ("ran " "executed" "command output" "output of the command" "виконав" "виконано")))
+
+(def markers-contained?
+  (lambda (markers text)
+    (cond
+      ((atom markers) (quote ()))
+      ((string-contains? (car markers) text) t)
+      (t (markers-contained? (cdr markers) text)))))
+
+(def claims-execution?
+  (lambda (text) (markers-contained? claim-markers text)))
+
+(def has-tool-result?
+  (lambda (messages)
+    (cond
+      ((atom messages) (quote ()))
+      ((equal? (msg-role (car messages)) "tool") t)
+      (t (has-tool-result? (cdr messages))))))
+
+; A turn may finish only if its text claims no execution — or if the
+; conversation actually contains at least one real tool result. A model
+; saying "I ran pwd, output: /home/x" with zero tool calls is rejected
+; and the loop continues instead of completing.
+(def valid-final?
+  (lambda (assistant-msg messages)
+    (cond
+      ((claims-execution? (msg-content assistant-msg))
+       (has-tool-result? messages))
+      (t t))))
+
+(def invalid-completion-nudge
+  (list (cons (quote role) "system")
+        (cons (quote content)
+              "Your last reply claimed a command was executed, but no bash tool result exists in this conversation. A textual claim is not evidence of execution. Either call the bash tool for real, or reply without claiming execution.")))
+
+; ---------------------------------------------------------------------------
+; Turn loop — hard MAX_TURNS limit, threaded (immutable) agent state.
+; ---------------------------------------------------------------------------
+
+(def max-turns 6)
+
+(def count-with-role
+  (lambda (role messages)
+    (cond
+      ((atom messages) 0)
+      ((equal? (msg-role (car messages)) role) (+ 1 (count-with-role role (cdr messages))))
+      (t (count-with-role role (cdr messages))))))
+
+(def agent-loop
+  (lambda (complete messages turn)
+    (cond
+      ((>= turn max-turns)
+       (list (cons (quote status) (quote max-turns-reached))
+             (cons (quote turn) turn)
+             (cons (quote messages) messages)))
+      (t
+       (let* ((assistant-msg (complete messages))
+              (with-reply (append messages (list assistant-msg)))
+              (tcs (msg-tool-calls assistant-msg)))
+         (cond
+           ((atom tcs)
+            (cond
+              ((valid-final? assistant-msg with-reply)
+               (list (cons (quote status) (quote completed))
+                     (cons (quote answer) (msg-content assistant-msg))
+                     (cons (quote turn) turn)
+                     (cons (quote messages) with-reply)))
+              (t (agent-loop complete
+                             (append with-reply (list invalid-completion-nudge))
+                             (+ turn 1)))))
+           (t (agent-loop complete
+                          (append with-reply (append-tool-results tcs (quote ())))
+                          (+ turn 1)))))))))
+
+(def run-agent
+  (lambda (complete system-prompt user-prompt)
+    (agent-loop complete
+                (list (list (cons (quote role) "system") (cons (quote content) system-prompt))
+                      (list (cons (quote role) "user") (cons (quote content) user-prompt)))
+                0)))
+
+; Result readers
+(def result-status (lambda (r) (alist-ref (quote status) r)))
+(def result-answer (lambda (r) (alist-ref (quote answer) r)))
+(def result-turn (lambda (r) (alist-ref (quote turn) r)))
+(def result-messages (lambda (r) (alist-ref (quote messages) r)))
+
+; ---------------------------------------------------------------------------
+; Live Ollama wiring — used only against a running server; tests inject
+; their own `complete` so the control logic above is verified
+; deterministically regardless of provider availability.
+; ---------------------------------------------------------------------------
+
+(def ollama-url "http://127.0.0.1:11434/v1/chat/completions")
+(def ollama-model "qwen3:4b")
+
+(def ollama-complete
+  (lambda (messages)
+    (json->message
+     (extract-assistant-message
+      (json-parse
+       (http-post-json ollama-url
+                       (build-request-body ollama-model messages)))))))

@@ -1,0 +1,213 @@
+//! MY-LISP-YANTRA: the smallest Chebupelka-style coding agent whose
+//! control logic lives entirely in lib/yantra.my. The host boundary is
+//! `process-run` (bash tool + curl transport) and `json-parse` (wire-format
+//! decode) — no agent logic in Rust.
+//!
+//! The LLM is stubbed per test with scripted assistant messages, so the
+//! control loop, completion validation, id correlation and MAX_TURNS are
+//! verified deterministically. The bash tool itself is REAL: tests 2-4
+//! execute actual subprocesses and assert on their genuine output.
+
+use my_lisp::{eval_program, Environment, Session};
+
+fn agent_session() -> Session {
+    let environment =
+        Environment::root().with_process_allowlist(vec!["bash".into(), "curl".into()]);
+    let mut session = Session { environment };
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/yantra.my"), &mut session).unwrap();
+    session
+}
+
+fn eval_with_agent(source: &str) -> String {
+    let mut session = agent_session();
+    eval_program(source, &mut session)
+        .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
+        .value
+        .to_string()
+}
+
+/// A pure `complete` stub: returns script element #n where n is the number
+/// of assistant messages already in the conversation — deterministic state
+/// threading through the immutable message list itself. Index clamps to the
+/// last element so an exhausted script repeats its final reply forever.
+const SCRIPTED_COMPLETE: &str = r#"
+(def script-nth
+  (lambda (i script)
+    (cond
+      ((eq i 0) (car script))
+      ((atom (cdr script)) (car script))
+      (t (script-nth (- i 1) (cdr script))))))
+(def make-scripted-complete
+  (lambda (script)
+    (lambda (messages)
+      (script-nth (count-with-role "assistant" messages) script))))
+"#;
+
+fn assistant(content: &str) -> String {
+    format!(
+        "(list (cons (quote role) \"assistant\") (cons (quote content) \"{content}\"))"
+    )
+}
+
+fn assistant_tool_call(id: &str, cmd: &str) -> String {
+    format!(
+        r#"(list (cons (quote role) "assistant")
+             (cons (quote content) "")
+             (cons (quote tool-calls)
+                   (list (list (cons (quote id) "{id}")
+                               (cons (quote name) "bash")
+                               (cons (quote arguments) "{{\"cmd\": \"{cmd}\"}}")))))"#
+    )
+}
+
+const FIRST_TOOL_RESULT: &str = r#"
+(def first-tool-result
+  (lambda (messages)
+    (cond
+      ((atom messages) "")
+      ((equal? (msg-role (car messages)) "tool") (msg-content (car messages)))
+      (t (first-tool-result (cdr messages))))))
+"#;
+
+/// Test 1: a pure question finishes without any tool.
+#[test]
+fn pure_question_finishes_without_a_tool() {
+    let source = format!(
+        r#"
+        {SCRIPTED_COMPLETE}
+        (def complete (make-scripted-complete (list {assistant_msg})))
+        (def result (run-agent complete "You are a helpful agent." "What is 2+2?"))
+        (list (result-status result)
+              (has-tool-result? (result-messages result))
+              (result-answer result))
+        "#,
+        assistant_msg = assistant("2+2 is 4.")
+    );
+    assert_eq!(
+        eval_with_agent(&source),
+        "(completed () \"2+2 is 4.\")",
+        "pure question must complete with no tool involvement"
+    );
+}
+
+/// Test 2: a filesystem question goes through the REAL bash process.
+#[test]
+fn filesystem_question_invokes_real_bash() {
+    let marker = "yantra-real-bash-marker";
+    let source = format!(
+        r#"
+        {SCRIPTED_COMPLETE}
+        {FIRST_TOOL_RESULT}
+        (def complete (make-scripted-complete
+                        (list {tool_call}
+                              {final_answer})))
+        (def result (run-agent complete "You are an agent." "What does that file say?"))
+        (list (result-status result)
+              (first-tool-result (result-messages result)))
+        "#,
+        tool_call = assistant_tool_call("call_fs", &format!("echo {marker}")),
+        final_answer = assistant("Done."),
+    );
+    let outcome = eval_with_agent(&source);
+    assert!(outcome.contains("completed"), "{outcome}");
+    // The tool message content is the REAL stdout of a real bash process —
+    // impossible to fabricate without process-run having executed.
+    assert!(
+        outcome.contains(marker),
+        "real bash stdout missing from tool result: {outcome}"
+    );
+}
+
+/// Test 3: "run pwd" answered with only a textual claim can NEVER finish.
+/// The validator rejects every turn; the loop runs to MAX_TURNS with no
+/// completion and no fabricated tool result.
+#[test]
+fn textual_claim_without_tool_result_cannot_finish() {
+    let source = format!(
+        r#"
+        {SCRIPTED_COMPLETE}
+        (def complete (make-scripted-complete
+                        (list {claiming_reply})))
+        (def result (run-agent complete "You are an agent." "run pwd"))
+        (list (result-status result)
+              (has-tool-result? (result-messages result))
+              (count-with-role "assistant" (result-messages result)))
+        "#,
+        claiming_reply = assistant("I ran pwd, the output of the command is /home/agents.")
+    );
+    assert_eq!(
+        eval_with_agent(&source),
+        "(max-turns-reached () 6)",
+        "a textual execution claim must never complete without a real tool result"
+    );
+}
+
+/// Test 4: tool results are correlated by tool_call_id, copied from the
+/// executed call object by construction.
+#[test]
+fn tool_result_correlated_by_tool_call_id() {
+    let source = format!(
+        r#"
+        {SCRIPTED_COMPLETE}
+        (def complete (make-scripted-complete
+                        (list {tool_call}
+                              {final_answer})))
+        (def correlated?
+          (lambda (messages)
+            (cond
+              ((atom messages) ())
+              ((equal? (msg-role (car messages)) "tool")
+               (equal? (msg-tool-call-id (car messages)) "call_pwd_42"))
+              (t (correlated? (cdr messages))))))
+        (correlated? (result-messages (run-agent complete "s" "run pwd")))
+        "#,
+        tool_call = assistant_tool_call("call_pwd_42", "pwd"),
+        final_answer = assistant("pwd printed the working directory."),
+    );
+    assert_eq!(eval_with_agent(&source), "t");
+}
+
+/// Test 5: the hard MAX_TURNS limit stops an endlessly tool-calling model
+/// after exactly max-turns turns.
+#[test]
+fn hard_max_turns_limit_stops_endless_tool_calls() {
+    let source = format!(
+        r#"
+        {SCRIPTED_COMPLETE}
+        ; every turn asks for another bash call — never finishes on its own
+        (def complete (lambda (messages) {tool_call}))
+        (def result (run-agent complete "s" "keep going"))
+        (list (result-status result) (result-turn result))
+        "#,
+        tool_call = assistant_tool_call("call_loop", "echo again")
+    );
+    assert_eq!(
+        eval_with_agent(&source),
+        "(max-turns-reached 6)",
+        "loop must stop exactly at MAX_TURNS"
+    );
+}
+
+/// Bonus coverage: the wire path the live Ollama wiring uses — request-body
+/// JSON encoding (.my) round-trips through json-parse (the host primitive).
+#[test]
+fn json_encode_and_parse_round_trip() {
+    let source = format!(
+        r#"
+        (def body (build-request-body "qwen3:4b"
+                    (list (list (cons (quote role) "user")
+                                (cons (quote content) "say \"hi\"\nnow")))))
+        (def parsed (json-parse body))
+        (list
+          (equal? (alist-ref "model" parsed) "qwen3:4b")
+          (alist-ref "content" (car (alist-ref "messages" parsed)))
+          (length (alist-ref "tools" parsed)))
+        "#
+    );
+    assert_eq!(
+        eval_with_agent(&source),
+        "(t \"say \\\"hi\\\"\\nnow\" 1)",
+        "encode/parse round trip must preserve strings incl. escapes"
+    );
+}

@@ -22,6 +22,7 @@ mod core;
 mod digest;
 mod file_io;
 mod io;
+pub mod json;
 mod process;
 mod strings;
 mod tcp;
