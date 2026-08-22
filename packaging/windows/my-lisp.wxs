@@ -28,6 +28,8 @@
 
     <Feature Id="Main" Level="1">
       <ComponentRef Id="MainExe" />
+      <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="StartMenuShortcut" />
     </Feature>
 
     <StandardDirectory Id="ProgramFiles64Folder">
@@ -49,6 +51,50 @@
                        Action="set"
                        System="yes" />
           <RemoveFolder Id="RemoveInstallDir" On="uninstall" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Desktop shortcut so the lambda icon is visible from day one.
+         Ярлик на робочому столі — щоб іконку було видно одразу.
+         HKCU registry KeyPath: a shortcut cannot be its own keypath. -->
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut"
+                 Guid="5D4C3B2A-1F9E-4877-A6B5-C4D3E2F1A0B9">
+        <Shortcut Id="MyLispDesktopShortcut"
+                  Name="my-lisp"
+                  Description="my-lisp CLI interpreter"
+                  Target="[INSTALLDIR]my-lisp.exe"
+                  WorkingDirectory="INSTALLDIR"
+                  Icon="MyLispIcon" />
+        <RemoveFolder Id="RemoveDesktopFolder" On="uninstall" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\WaldemarSydiyM\my-lisp"
+                       Name="desktop-shortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <!-- Start Menu entry: discoverable via Win-key search. -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="StartMenuDir" Name="my-lisp">
+        <Component Id="StartMenuShortcut"
+                   Guid="9E8D7C6B-5A4F-4332-B1A0-F9E8D7C6B5A4">
+          <Shortcut Id="MyLispStartMenuShortcut"
+                    Name="my-lisp"
+                    Description="my-lisp CLI interpreter"
+                    Target="[INSTALLDIR]my-lisp.exe"
+                    WorkingDirectory="INSTALLDIR"
+                    Icon="MyLispIcon" />
+          <RemoveFolder Id="RemoveStartMenuDir" On="uninstall" />
+          <RegistryValue Root="HKCU"
+                         Key="Software\WaldemarSydiyM\my-lisp"
+                         Name="startmenu-shortcut"
+                         Type="integer"
+                         Value="1"
+                         KeyPath="yes" />
         </Component>
       </Directory>
     </StandardDirectory>
