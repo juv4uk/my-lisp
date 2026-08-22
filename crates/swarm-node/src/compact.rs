@@ -35,9 +35,9 @@ use crate::state;
 /// reconstruct the current derived state (task definitions + ownership,
 /// membership), replacing however much raw history led there. Returns
 /// `(events_before, events_after)`.
-pub fn compact(journal: &mut Journal, self_node_id: &str) -> std::io::Result<(usize, usize)> {
+pub fn compact(journal: &mut Journal, self_node_id: &str, self_incarnation: &str) -> std::io::Result<(usize, usize)> {
     let before = journal.events.len();
-    let mut next_seq = journal.next_seq(self_node_id);
+    let mut next_seq = journal.next_seq(self_node_id, Some(self_incarnation));
     let mut next_lamport = journal.max_lamport() + 1;
     let mut fresh = || {
         let seq = next_seq;
@@ -60,7 +60,7 @@ pub fn compact(journal: &mut Journal, self_node_id: &str) -> std::io::Result<(us
                 Sexp::list(vec![Sexp::atom("capabilities"), Sexp::list(def.capabilities.iter().map(Sexp::atom).collect())]),
                 Sexp::list(vec![Sexp::atom("depends-on"), Sexp::list(def.depends_on.iter().map(Sexp::atom).collect())]),
             ]);
-            new_events.push(Event { node: self_node_id.to_string(), seq: fresh(), lamport: fresh_lamport(), typ: "task-defined".to_string(), payload });
+            new_events.push(Event { node: self_node_id.to_string(), incarnation: Some(self_incarnation.to_string()), seq: fresh(), lamport: fresh_lamport(), typ: "task-defined".to_string(), payload });
         }
 
         let ts = state::task_state(journal, &task);
@@ -79,7 +79,7 @@ pub fn compact(journal: &mut Journal, self_node_id: &str) -> std::io::Result<(us
             if let Some(holder) = &ts.holder {
                 fields.push(Sexp::list(vec![Sexp::atom("agent"), Sexp::atom(holder)]));
             }
-            new_events.push(Event { node: self_node_id.to_string(), seq: fresh(), lamport: fresh_lamport(), typ: typ.to_string(), payload: Sexp::list(fields) });
+            new_events.push(Event { node: self_node_id.to_string(), incarnation: Some(self_incarnation.to_string()), seq: fresh(), lamport: fresh_lamport(), typ: typ.to_string(), payload: Sexp::list(fields) });
         }
     }
 
@@ -94,13 +94,13 @@ pub fn compact(journal: &mut Journal, self_node_id: &str) -> std::io::Result<(us
             Sexp::list(vec![Sexp::atom("capabilities"), Sexp::list(m.capabilities.iter().map(Sexp::atom).collect())]),
             Sexp::list(vec![Sexp::atom("roles"), Sexp::list(m.roles.iter().map(Sexp::atom).collect())]),
         ]);
-        new_events.push(Event { node: self_node_id.to_string(), seq: fresh(), lamport: fresh_lamport(), typ: "agent-joined".to_string(), payload });
+        new_events.push(Event { node: self_node_id.to_string(), incarnation: Some(self_incarnation.to_string()), seq: fresh(), lamport: fresh_lamport(), typ: "agent-joined".to_string(), payload });
         if !m.present {
             let leave_payload = Sexp::list(vec![
                 Sexp::list(vec![Sexp::atom("node"), Sexp::atom(id)]),
                 Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom("0")]),
             ]);
-            new_events.push(Event { node: self_node_id.to_string(), seq: fresh(), lamport: fresh_lamport(), typ: "agent-left".to_string(), payload: leave_payload });
+            new_events.push(Event { node: self_node_id.to_string(), incarnation: Some(self_incarnation.to_string()), seq: fresh(), lamport: fresh_lamport(), typ: "agent-left".to_string(), payload: leave_payload });
         }
     }
 

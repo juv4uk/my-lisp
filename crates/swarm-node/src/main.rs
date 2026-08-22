@@ -631,13 +631,34 @@ fn handle_peer_list(node: &Arc<Node>, msg: &Sexp) {
 
 fn send_sync_hello(node: &Arc<Node>, stream: &mut TcpStream) {
     let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let seen: Vec<Sexp> = journal
-        .all_node_ids()
+    // Legacy-compatible pairs: (node, max seq across ALL incarnations).
+    // A pre-M1.1a peer reads only these and keeps working exactly as before.
+    let mut per_node: Vec<(String, u64)> = Vec::new();
+    let mut v2: Vec<Sexp> = Vec::new();
+    for (node_id, inc) in journal.all_origins() {
+        let last = match &inc {
+            Some(i) => journal.last_seq(&node_id, Some(i)),
+            None => journal.last_seq(&node_id, None),
+        };
+        let prev = per_node.iter_mut().find(|(n, _)| *n == node_id);
+        match prev {
+            Some((_, max)) => {
+                if last > *max {
+                    *max = last;
+                }
+            }
+            None => per_node.push((node_id.clone(), last)),
+        }
+        v2.push(Sexp::list(vec![
+            Sexp::atom(&node_id),
+            Sexp::atom(inc.as_deref().unwrap_or("-")),
+            Sexp::atom(last.to_string()),
+        ]));
+    }
+    drop(journal);
+    let seen: Vec<Sexp> = per_node
         .into_iter()
-        .map(|id| {
-            let last = journal.last_seq(&id);
-            Sexp::list(vec![Sexp::atom(id), Sexp::atom(last.to_string())])
-        })
+        .map(|(id, last)| Sexp::list(vec![Sexp::atom(id), Sexp::atom(last.to_string())]))
         .collect();
     send(
         stream,
@@ -645,29 +666,56 @@ fn send_sync_hello(node: &Arc<Node>, stream: &mut TcpStream) {
             Sexp::atom("sync-hello"),
             Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)]),
             Sexp::list(vec![Sexp::atom("seen"), Sexp::list(seen)]),
+            Sexp::list(vec![Sexp::atom("incarnations"), Sexp::list(v2)]),
         ]),
     );
 }
 
 fn handle_sync_hello(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let their_node = msg.field_atom("node").unwrap_or("unknown");
-    let seen_items: &[Sexp] = match msg.field("seen").and_then(|f| f.first()) {
-        Some(Sexp::List(items)) => items,
-        _ => &[],
-    };
-    let mut seen_map: HashMap<String, u64> = HashMap::new();
-    for entry in seen_items {
-        if let Sexp::List(pair) = entry {
-            if let (Some(Sexp::Atom(n)), Some(Sexp::Atom(s))) = (pair.first(), pair.get(1)) {
-                seen_map.insert(n.clone(), s.parse().unwrap_or(0));
+    // Legacy `seen` pairs are accepted but no longer parsed: since the F1
+    // fix a legacy requester (no `incarnations` field) is always served
+    // from seq 0 (flood + peer-side dedup), so per-node maxima cannot
+    // starve it of any incarnation's facts during the v1↔v2 migration.
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    // v2 peers send an `incarnations` field with (node, incarnation, last)
+    // triples; when present it takes precedence over the legacy per-node
+    // pairs. Legacy peers get the old per-node semantics unchanged.
+    let mut v2_map: HashMap<(String, String), u64> = HashMap::new();
+    if let Some(Sexp::List(items)) = msg.field("incarnations").and_then(|f| f.first()) {
+        for triple in items {
+            if let Sexp::List(t) = triple {
+                if let (Some(Sexp::Atom(n)), Some(Sexp::Atom(i)), Some(Sexp::Atom(s))) =
+                    (t.first(), t.get(1), t.get(2))
+                {
+                    if let Ok(seq) = s.parse::<u64>() {
+                        let inc = i.clone();
+                        v2_map.insert((n.clone(), inc), seq);
+                    }
+                }
             }
         }
     }
-    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut missing_events = Vec::new();
-    for node_id in journal.all_node_ids() {
-        let their_seen = *seen_map.get(&node_id).unwrap_or(&0);
-        for ev in journal.events_after(&node_id, their_seen) {
+    // F1 fix (post-review): a LEGACY requester (`incarnations` field
+    // entirely absent) must NOT get the per-origin "max seq across
+    // incarnations" cut — that permanently starves it of incarnation-Y
+    // events whose seq is below incarnation-X's max. Instead, serve every
+    // origin from seq 0 and let the old peer's (node, seq) dedup drop what
+    // it already has: costs bandwidth during the migration window, removes
+    // silent fact starvation. See NOTE-FOR-SWARM-NODE-AGENT.md finding F1.
+    let legacy_requester = msg.field("incarnations").is_none();
+    for (origin_node, origin_inc) in journal.all_origins() {
+        let their_last = if legacy_requester {
+            0
+        } else if !v2_map.is_empty() {
+            let key_inc = origin_inc.clone().unwrap_or_else(|| "-".to_string());
+            v2_map.get(&(origin_node.clone(), key_inc)).copied().unwrap_or(0)
+        } else {
+            // v2 field present but unparseable: treat as seen-nothing.
+            0
+        };
+        for ev in journal.events_after(&origin_node, origin_inc.as_deref(), their_last) {
             missing_events.push(ev.to_sexp());
         }
     }
@@ -703,7 +751,7 @@ fn handle_sync_events(node: &Arc<Node>, msg: &Sexp) {
     let mut applied = 0;
     for ev_sexp in events {
         if let Ok(ev) = Event::from_sexp(ev_sexp) {
-            if !journal.has(&ev.node, ev.seq) {
+            if !journal.has(&ev.node, ev.incarnation.as_deref(), ev.seq) {
                 let lamport = ev.lamport;
                 if journal.append(ev).is_ok() {
                     applied += 1;
@@ -735,7 +783,7 @@ fn handle_push_event(node: &Arc<Node>, msg: &Sexp) {
     let Some(ev_sexp) = msg.field("event").and_then(|f| f.first()) else { return };
     let Ok(ev) = Event::from_sexp(ev_sexp) else { return };
     let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    if journal.has(&ev.node, ev.seq) {
+    if journal.has(&ev.node, ev.incarnation.as_deref(), ev.seq) {
         return;
     }
     let lamport = ev.lamport;
@@ -773,8 +821,8 @@ fn handle_emit(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let payload = msg.field("payload").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
     let lamport = node.tick_lamport(0);
     let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let seq = journal.next_seq(&node.identity.node_id);
-    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: typ.to_string(), payload };
+    let seq = journal.next_seq(&node.identity.node_id, Some(&node.identity.incarnation));
+    let event = Event { node: node.identity.node_id.clone(), incarnation: Some(node.identity.incarnation.clone()), seq, lamport, typ: typ.to_string(), payload };
     match journal.append(event.clone()) {
         Ok(()) => {
             drop(journal);
@@ -819,8 +867,8 @@ fn append_task_fact(node: &Arc<Node>, typ: &str, task: &str, generation: u64) ->
     ]);
     let lamport = node.tick_lamport(0);
     let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let seq = journal.next_seq(&node.identity.node_id);
-    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: typ.to_string(), payload };
+    let seq = journal.next_seq(&node.identity.node_id, Some(&node.identity.incarnation));
+    let event = Event { node: node.identity.node_id.clone(), incarnation: Some(node.identity.incarnation.clone()), seq, lamport, typ: typ.to_string(), payload };
     journal.append(event.clone())?;
     drop(journal);
     broadcast_event(node, &event, None);
@@ -1245,8 +1293,8 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     }
 
     let lamport = node.tick_lamport(0);
-    let seq = journal.next_seq(&node.identity.node_id);
-    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "task-defined".to_string(), payload };
+    let seq = journal.next_seq(&node.identity.node_id, Some(&node.identity.incarnation));
+    let event = Event { node: node.identity.node_id.clone(), incarnation: Some(node.identity.incarnation.clone()), seq, lamport, typ: "task-defined".to_string(), payload };
     match journal.append(event.clone()) {
         Ok(()) => {
             drop(journal);
@@ -1419,8 +1467,8 @@ fn handle_join(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     ]);
     let lamport = node.tick_lamport(0);
     let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let seq = journal.next_seq(&node.identity.node_id);
-    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "agent-joined".to_string(), payload };
+    let seq = journal.next_seq(&node.identity.node_id, Some(&node.identity.incarnation));
+    let event = Event { node: node.identity.node_id.clone(), incarnation: Some(node.identity.incarnation.clone()), seq, lamport, typ: "agent-joined".to_string(), payload };
     match journal.append(event.clone()) {
         Ok(()) => {
             drop(journal);
@@ -1441,8 +1489,8 @@ fn handle_leave(node: &Arc<Node>, stream: &mut TcpStream) {
     ]);
     let lamport = node.tick_lamport(0);
     let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let seq = journal.next_seq(&node.identity.node_id);
-    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: "agent-left".to_string(), payload };
+    let seq = journal.next_seq(&node.identity.node_id, Some(&node.identity.incarnation));
+    let event = Event { node: node.identity.node_id.clone(), incarnation: Some(node.identity.incarnation.clone()), seq, lamport, typ: "agent-left".to_string(), payload };
     match journal.append(event.clone()) {
         Ok(()) => {
             drop(journal);
@@ -1538,8 +1586,8 @@ fn handle_sync_tasks(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 fn append_local_fact(node: &Arc<Node>, typ: &str, payload: Sexp) -> std::io::Result<Event> {
     let lamport = node.tick_lamport(0);
     let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let seq = journal.next_seq(&node.identity.node_id);
-    let event = Event { node: node.identity.node_id.clone(), seq, lamport, typ: typ.to_string(), payload };
+    let seq = journal.next_seq(&node.identity.node_id, Some(&node.identity.incarnation));
+    let event = Event { node: node.identity.node_id.clone(), incarnation: Some(node.identity.incarnation.clone()), seq, lamport, typ: typ.to_string(), payload };
     journal.append(event.clone())?;
     drop(journal);
     broadcast_event(node, &event, None);
@@ -1554,7 +1602,7 @@ fn append_local_fact(node: &Arc<Node>, typ: &str, payload: Sexp) -> std::io::Res
 /// compaction that path already serves the smaller equivalent set.
 fn handle_compact(node: &Arc<Node>, stream: &mut TcpStream) {
     let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    match compact::compact(&mut journal, &node.identity.node_id) {
+    match compact::compact(&mut journal, &node.identity.node_id, &node.identity.incarnation) {
         Ok((before, after)) => {
             drop(journal);
             info!("swarm-node: compacted journal {before} -> {after} events");

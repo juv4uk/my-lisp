@@ -6,8 +6,8 @@
   ))
   ("MYLISP-LINGUA-FRANCA" . (
     (priority . 9.5)
-    (description . "Solidify .my structure as the native language for swarm tasks, claims, and handoffs.")
-    (done . ())
+    (description . "DONE 2026-08-22. EVIDENCE: .my is de facto the swarm-native format — tasks.my/claims/handoffs all parse as flat-field s-exprs (swarm_dashboard.rs), repo.my files across 6 repos use it, and lib/yantra.my (commit 363e9a6) implements a full coding agent in pure .my. No non-.my coordination format remains in active use.")
+    (done . t)
   ))
   ("MYLISP-SEMANTIC-CONTRACT" . (
     (priority . 9.0)
@@ -79,7 +79,7 @@
   ("MYLISP-DIVISION-GENERALIZED" . (
     (priority . 9.0)
     (capabilities . (fpga-lisp cml my-idea my-lisp-panini shiva-sutras))
-    (description . "INFO: my-lisp has generalized the `/` operator to support both exact and inexact operands per S1. It no longer fails on inexact numbers. `(/ 1 0.0)` now fails with InvalidForm, just like `(/ 1 0)`. Review your implementations to ensure they match this exact/inexact promotion behavior.")
-    (done . ())
+    (description . "DONE 2026-08-22. EVIDENCE: exact/inexact promotion + (/ 1 0.0) -> InvalidForm implemented in crates/my-lisp/src/eval/arithmetic.rs:181-235 and pinned by tests/fixtures/conformance.my:28-33,69,103. Consumers (cml/fpga-lisp) verified matching behavior via their own conformance tasks (CML-* / FPGA-CONFORMANCE-SUITE done).")
+    (done . t)
   ))
 )))

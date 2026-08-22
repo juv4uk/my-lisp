@@ -51,7 +51,12 @@ fn spawn(port: u16, node_id: &str, data_dir: &Path, connect: Option<u16>) -> Nod
     if let Some(p) = connect {
         cmd.arg("--connect").arg(format!("127.0.0.1:{p}"));
     }
-    cmd.stdout(Stdio::null()).stderr(Stdio::null());
+    if let Ok(logdir) = std::env::var("SWARM_TEST_LOGS") {
+        let f = std::fs::File::create(std::path::Path::new(&logdir).join(format!("{node_id}-{port}.log"))).unwrap();
+        cmd.stdout(f.try_clone().unwrap()).stderr(f);
+    } else {
+        cmd.stdout(Stdio::null()).stderr(Stdio::null());
+    }
     let child = cmd.spawn().expect("failed to spawn swarm-node — did `cargo build -p swarm-node` run first?");
     let node = Node { child };
     wait_for_port(port);
@@ -112,8 +117,12 @@ fn anti_entropy_sync_and_live_push_event() {
     let (port_a, port_b) = (base, base + 1);
 
     let _a = spawn(port_a, "node-a", &data_dir("ae-a"), None);
-    assert_eq!(request(port_a, "(emit (type evidence-created) (payload (artifact \"x.my\")))"), "(ok (id node-a:1))");
-    assert_eq!(request(port_a, "(emit (type evidence-created) (payload (artifact \"y.my\")))"), "(ok (id node-a:2))");
+    // M1.1a: emitted ids now embed the node's incarnation id —
+    // `node-a:<incarnation>:N`. Assert the shape instead of a literal.
+    let e1 = request(port_a, "(emit (type evidence-created) (payload (artifact \"x.my\")))");
+    assert!(e1.starts_with("(ok (id node-a:") && e1.ends_with(":1))"), "unexpected first emit id: {e1}");
+    let e2 = request(port_a, "(emit (type evidence-created) (payload (artifact \"y.my\")))");
+    assert!(e2.ends_with(":2))"), "unexpected second emit id: {e2}");
 
     // B connects after A already has 2 events -- must anti-entropy sync them.
     let _b = spawn(port_b, "node-b", &data_dir("ae-b"), Some(port_a));
@@ -121,7 +130,8 @@ fn anti_entropy_sync_and_live_push_event() {
     let _ = synced; // list-task-state is task-only; just confirm B is responsive post-sync below
 
     // A live-pushes a 3rd event; B must receive it without any resync call.
-    assert_eq!(request(port_a, "(emit (type evidence-created) (payload (artifact \"z.my\")))"), "(ok (id node-a:3))");
+    let e3 = request(port_a, "(emit (type evidence-created) (payload (artifact \"z.my\")))");
+    assert!(e3.ends_with(":3))"), "unexpected third emit id: {e3}");
 
     // No direct way to read the raw journal over the wire, so prove sync worked
     // indirectly via a task defined on A becoming visible on B.
@@ -347,4 +357,173 @@ fn define_task_is_idempotent_for_an_identical_redefinition() {
     assert!(!fourth.contains("(unchanged t)"), "a genuinely different redefinition must not be reported unchanged: {fourth}");
     let after_change = event_count(port);
     assert_eq!(after_repeats + 1, after_change, "a real change must append exactly one new event");
+}
+
+// ---------------------------------------------------------------------------
+// M1.1a: incarnation-safe event identity
+// ---------------------------------------------------------------------------
+
+/// Reads this node's incarnation id out of its persisted identity store.
+fn read_incarnation(dir: &Path) -> String {
+    let text = std::fs::read_to_string(dir.join("node.my")).expect("node.my must exist");
+    let marker = "(incarnation ";
+    let start = text.find(marker).expect("node.my must contain an incarnation field") + marker.len();
+    let end = text[start..].find(')').expect("incarnation field must be closed") + start;
+    text[start..end].trim_matches('"').to_string()
+}
+
+fn kill(node: &mut Node) {
+    let _ = node.child.kill();
+    let _ = node.child.wait();
+}
+
+/// THE reincarnation regression test for the 2026-08-22 anti-entropy bug:
+///
+/// A node emits T1 under incarnation X. Its data-dir is destroyed. The same
+/// node-id comes back as incarnation Y and emits T2 with seq restarting at 1.
+/// A bootstrap that saw both lifetimes must end up holding BOTH events, and
+/// anti-entropy must converge in both directions — before M1.1a the second
+/// lifetime's `(id my-idea-1:1)` collided with the first and the bootstrap
+/// permanently believed it was already synced.
+#[test]
+fn reincarnation_does_not_collide_and_anti_entropy_converges() {
+    let base = alloc_ports(2);
+    let (port_boot, port_a) = (base, base + 1);
+
+    let boot_dir = data_dir("reinc-boot");
+    let a_dir = data_dir("reinc-a");
+
+    // Bootstrap first, alone.
+    let boot = spawn(port_boot, "boot", &boot_dir, None);
+
+    // Incarnation X of node "wanderer": define T1.
+    let mut x = spawn(port_a, "wanderer", &a_dir, Some(port_boot));
+    let inc_x = read_incarnation(&a_dir);
+    // Wait until the mesh link is actually up — a define issued before the
+    // handshake completes would only ever live in the local journal.
+    eventually(
+        port_a,
+        "(metrics)",
+        Duration::from_secs(3),
+        |r| r.contains("(peer-count 1)"),
+    );
+    assert!(
+        request(port_a, "(define-task (task T1) (priority 5) (capabilities ()) (depends-on ()) (description \"from incarnation X\"))").starts_with("(ok"),
+        "T1 define failed"
+    );
+    // The scenario requires the bootstrap to HAVE received T1 before X
+    // dies. Killing immediately after the define can RST the connection
+    // while boot's reader hasn't consumed the push yet — a test artifact,
+    // not a protocol property.
+    eventually(
+        port_boot,
+        "(list-task-state)",
+        Duration::from_secs(5),
+        |r| r.contains("T1"),
+    );
+    kill(&mut x);
+
+    // Identity store DESTROYED — the exact scenario that produced the
+    // silent-sync bug. Same node-id returns with fresh state.
+    std::fs::remove_dir_all(&a_dir).unwrap();
+
+    // Wait for the bootstrap to notice X is gone, or its duplicate-live
+    // identity guard would reject Y's handshake as a spoof of X.
+    eventually(
+        port_boot,
+        "(metrics)",
+        Duration::from_secs(5),
+        |r| r.contains("(peer-count 0)"),
+    );
+
+    // Incarnation Y of the same node-id: define T2 (its seq restarts at 1).
+    let y = spawn(port_a, "wanderer", &a_dir, Some(port_boot));
+    let inc_y = read_incarnation(&a_dir);
+    assert_ne!(inc_x, inc_y, "destroying the data-dir MUST produce a new incarnation");
+    eventually(
+        port_a,
+        "(metrics)",
+        Duration::from_secs(3),
+        |r| r.contains("(peer-count 1)"),
+    );
+    assert!(
+        request(port_a, "(define-task (task T2) (priority 5) (capabilities ()) (depends-on ()) (description \"from incarnation Y\"))").starts_with("(ok"),
+        "T2 define failed"
+    );
+
+    // Bootstrap must hold BOTH definitions despite identical (node, seq)
+    // namespaces across the two lifetimes.
+    let boot_view = eventually(
+        port_boot,
+        "(list-task-state)",
+        Duration::from_secs(3),
+        |r| r.contains("T1") && r.contains("T2"),
+    );
+    assert!(boot_view.contains("T1"), "bootstrap lost incarnation-X task T1: {boot_view}");
+    assert!(boot_view.contains("T2"), "bootstrap lost incarnation-Y task T2: {boot_view}");
+
+    // Bidirectional convergence (review finding F5): Y itself must relearn
+    // T1 — an event issued by its own PREVIOUS incarnation — from the
+    // bootstrap. Y's sync-hello reports only (wanderer, inc_y); boot
+    // iterates ITS origins, finds (wanderer, inc_x) absent from Y's map,
+    // serves the full X stream, and Y's has(wanderer, inc_x, k) = false
+    // applies it. Pre-M1.1a this was impossible: the shared (node, seq)
+    // made boot believe Y was already caught up.
+    let y_view = eventually(
+        port_a,
+        "(list-task-state)",
+        Duration::from_secs(3),
+        |r| r.contains("T1"),
+    );
+    assert!(y_view.contains("T1"), "reincarnated node never relearned its previous incarnation's task T1: {y_view}");
+
+    // And a THIRD node joining late must see both lifetimes' tasks purely
+    // through gossip/anti-entropy.
+    drop(y);
+    let base2 = alloc_ports(1);
+    let c = spawn(base2, "latecomer", &data_dir("reinc-c"), Some(port_boot));
+    let c_view = eventually(
+        base2,
+        "(list-task-state)",
+        Duration::from_secs(3),
+        |r| r.contains("T1") && r.contains("T2"),
+    );
+    assert!(c_view.contains("T1") && c_view.contains("T2"), "latecomer never converged on both lifetimes' tasks: {c_view}");
+
+    // Sanity: both lifetimes' tasks visible; the logical node-id appears in
+    // presence (it never joined, so membership stays empty).
+    let status = request(port_boot, "(status)");
+    assert!(status.contains("T1") && status.contains("T2"), "bootstrap status lost tasks: {status}");
+    drop(c);
+    drop(boot);
+}
+
+/// Normal restart WITHOUT losing the data-dir must NOT create a new
+/// namespace: same incarnation, epoch increments, seq continues —
+/// otherwise fixing reincarnation would have broken restart semantics.
+#[test]
+fn restart_preserves_incarnation_epoch_increments_seq_continues() {
+    let port = alloc_ports(1);
+    let dir = data_dir("restart-semantics");
+
+    let mut n1 = spawn(port, "steady", &dir, None);
+    let inc_1 = read_incarnation(&dir);
+    let e1 = request(port, "(emit (type evidence-created) (payload (artifact \"one\")))");
+    assert!(e1.ends_with(":1))"), "first emit should be seq 1: {e1}");
+    kill(&mut n1);
+    drop(n1);
+
+    let mut n2 = spawn(port, "steady", &dir, None);
+    let inc_2 = read_incarnation(&dir);
+    assert_eq!(inc_1, inc_2, "restart without data-dir loss must KEEP the incarnation");
+    let e2 = request(port, "(emit (type evidence-created) (payload (artifact \"two\")))");
+    assert!(e2.ends_with(":2))"), "restart must CONTINUE the sequence, not reset it: {e2}");
+
+    let epoch_text = std::fs::read_to_string(dir.join("node.my")).unwrap();
+    let epoch_marker = "(epoch ";
+    let start = epoch_text.find(epoch_marker).unwrap() + epoch_marker.len();
+    let end = epoch_text[start..].find(')').unwrap() + start;
+    let epoch: u64 = epoch_text[start..end].parse().unwrap();
+    assert_eq!(epoch, 1, "two process starts => epoch 1 (0-indexed): {epoch_text}");
+    kill(&mut n2);
 }
