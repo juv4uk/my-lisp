@@ -18,6 +18,7 @@ const CRATE_MANIFESTS: &[&str] = &[
     "crates/my-lisp-wasm/Cargo.toml",
     "crates/my-lisp-lsp/Cargo.toml",
     "crates/my-lisp-host/Cargo.toml",
+    "crates/my-lisp-semantic/Cargo.toml",
 ];
 
 fn manifest_version(repo_root: &Path, manifest: &str) -> String {

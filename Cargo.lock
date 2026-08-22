@@ -185,6 +185,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "my-lisp-semantic"
+version = "0.26.0"
+dependencies = [
+ "my-lisp",
+]
+
+[[package]]
 name = "my-lisp-wasm"
 version = "0.26.0"
 dependencies = [

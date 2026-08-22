@@ -18,8 +18,8 @@
 //! used for role-bound values now, rather than a placeholder, precisely so
 //! P5 only has to *produce* `SemanticCall` values, not change their shape.
 
-use crate::semantic::atoms::{self, AtomCategory};
-use crate::syntax::Expr;
+use crate::atoms::{self, AtomCategory};
+use my_lisp::Expr;
 
 /// A dhātu predicate applied to its kāraka role bindings — the semantic
 /// AST node spec §6 names `SemanticCall`. `predicate` and every role key
@@ -98,7 +98,7 @@ impl SemanticCall {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::syntax::{ExprKind, Span};
+    use my_lisp::{ExprKind, Span};
 
     fn symbol(name: &str) -> Expr {
         Expr { kind: ExprKind::Symbol(name.into()), span: Span { start: 0, end: 0 } }

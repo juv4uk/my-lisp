@@ -92,7 +92,8 @@
                            "crates/my-lisp-literate/Cargo.toml" 
                            "crates/my-lisp-wasm/Cargo.toml"
                            "crates/my-lisp-lsp/Cargo.toml"
-                           "crates/my-lisp-host/Cargo.toml")))
+                           "crates/my-lisp-host/Cargo.toml"
+                           "crates/my-lisp-semantic/Cargo.toml")))
 
 (report-and-exit-if-failed "sed version bump" bump-result)
 

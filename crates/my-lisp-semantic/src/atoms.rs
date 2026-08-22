@@ -315,8 +315,8 @@ pub fn by_alias(alias: &str) -> Option<&'static Atom> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::semantic::devanagari::slp1_to_devanagari;
-    use crate::semantic::transliteration::slp1_to_iast;
+    use crate::devanagari::slp1_to_devanagari;
+    use crate::transliteration::slp1_to_iast;
 
     #[test]
     fn no_atom_id_equals_its_own_slp1_spelling() {

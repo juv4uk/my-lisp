@@ -8,6 +8,7 @@ members = [
     "crates/my-lisp-wasm",
     "crates/swarm-node",
     "crates/my-lisp-host",
+    "crates/my-lisp-semantic",
     "crates/my-lisp-lsp",
 ]
 
