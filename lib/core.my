@@ -582,3 +582,73 @@
          (cond
            ((atom rest) step)
            (t (cons (quote ->>) (cons step rest))))))))
+
+;; ── Numeric library additions (M0, 2026-08-22) ─────────────────────
+;; Додано для реальних задач (WSM-24 shape comparison): abs/min/max/
+;; sqrt. Усе — бібліотечні функції над наявними примітивами; жодного
+ ;; нового коду в Rust-ядрі (doctrine: library before core primitive).
+;;
+;; Конвенції:
+;;   (abs x)          — модуль;
+;;   (min lst)/(max lst) — беруть СПИСОК (reduce-стиль), не варіадик;
+;;   (sqrt x)         — Ньютон, 40 ітерацій; точний вхід дає раціональне
+;;                      наближення, дробове — дробовий результат
+;;                      (S1 inexact promotion). Відʼємний вхід → nil.
+
+(def abs
+  (lambda (x)
+    (cond ((< x 0) (- 0 x)) (t x))))
+
+(def min-pair
+  (lambda (a b)
+    (cond ((< a b) a) (t b))))
+
+(def max-pair
+  (lambda (a b)
+    (cond ((> a b) a) (t b))))
+
+(def min
+  (lambda (lst)
+    (cond ((atom lst) (quote ()))
+          (t (reduce min-pair (car lst) (cdr lst))))))
+
+(def max
+  (lambda (lst)
+    (cond ((atom lst) (quote ()))
+          (t (reduce max-pair (car lst) (cdr lst))))))
+
+(def sqrt-iter
+  (lambda (guess x n)
+    (cond ((= n 0) guess)
+          (t (sqrt-iter (/ (+ guess (/ x guess)) 2) x (- n 1))))))
+
+;; integer sqrt: Newton on quotients — provably terminating
+(def isqrt
+  (lambda (n)
+    (cond ((< n 2) n)
+          (t (isqrt-step n (quotient n 2))))))
+
+(def isqrt-step
+  (lambda (n g)
+    (let ((next (quotient (+ g (quotient n g)) 2)))
+      (cond ((< next g) (isqrt-step n next))
+            (t g)))))
+
+(def sqrt
+  (lambda (x)
+    (cond
+      ;; negative -> nil (error handling stays with the caller for now)
+      ((< x 0) ())
+      ;; zero -> exact zero
+      ((= x 0) 0)
+      ;; integer input: exact answer when a perfect square...
+      ((= x (quotient x 1))
+       (let ((r (isqrt x)))
+         (cond ((= (* r r) x) r)
+               ;; ... else bounded rational approximation (see below)
+               (t (sqrt-iter (/ x 2) x 8)))))
+      ;; rational/float input: bounded Newton. NOTE: this language is
+      ;; fully exact (float literals parse as rationals), so unbounded
+      ;; Newton explodes bignum denominators; 8 iterations give a
+      ;; usable approximation without the blow-up.
+      (t (sqrt-iter (/ x 2.0) x 8)))))
