@@ -70,6 +70,51 @@ const FIRST_TOOL_RESULT: &str = r#"
       (t (first-tool-result (cdr messages))))))
 "#;
 
+
+/// Yantra M1: stale evidence. A real tool run in an EARLIER exchange must
+/// not back an execution claim made later - an intervening assistant
+/// message breaks the ownership chain. Tested against the validator
+/// directly with a hand-built shared-history shape, because within one
+/// `run-agent` invocation the loop would already have completed on the
+/// intermediate (claim-free) reply; the guarantee matters when message
+/// histories are reused across invocations.
+#[test]
+fn stale_tool_evidence_cannot_back_a_later_claim() {
+    let source = r#"
+        (def sys (list (cons (quote role) "system") (cons (quote content) "s")))
+        (def user (list (cons (quote role) "user") (cons (quote content) "u")))
+        (def with-tools
+          (list (cons (quote role) "assistant")
+                (cons (quote content) "")
+                (cons (quote tool-calls)
+                      (list (list (cons (quote id) "call_1")
+                                  (cons (quote name) "bash")
+                                  (cons (quote arguments) "{\"cmd\": \"pwd\"}"))))))
+        (def tool-result
+          (list (cons (quote role) "tool")
+                (cons (quote tool-call-id) "call_1")
+                (cons (quote content) "/home/x")))
+        (def plain-reply
+          (list (cons (quote role) "assistant") (cons (quote content) "2+2 is 4.")))
+        (def stale-claim
+          (list (cons (quote role) "assistant")
+                (cons (quote content) "I ran rm -rf /tmp/x, the command output confirms it.")))
+        ; fresh evidence: claim DIRECTLY follows its own tool result -> valid
+        (def fresh (valid-final? stale-claim
+                     (list sys user with-tools tool-result stale-claim)))
+        ; stale evidence: an unrelated assistant reply sits between the tool
+        ; result and the claim -> chain broken -> invalid
+        (def stale (valid-final? stale-claim
+                     (list sys user with-tools tool-result plain-reply stale-claim)))
+        (list fresh stale)
+    "#;
+    assert_eq!(
+        eval_with_agent(&source),
+        "(t ())",
+        "fresh owned evidence must validate; stale evidence must not"
+    );
+}
+
 /// Test 1: a pure question finishes without any tool.
 #[test]
 fn pure_question_finishes_without_a_tool() {

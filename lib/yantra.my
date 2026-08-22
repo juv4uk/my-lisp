@@ -235,8 +235,13 @@
 
 (def http-post-json
   (lambda (url body)
+    ;; --fail: non-2xx yields non-zero exit instead of an error body that
+    ;; would be fed to json-parse; --max-time: never hang the agent loop
+    ;; on a stuck server; --show-error keeps the reason on stderr.
     (let ((result (process-run "curl"
-                               (list "-s" "-S" "-X" "POST"
+                               (list "-s" "-S" "--fail" "--show-error"
+                                     "--max-time" "120"
+                                     "-X" "POST"
                                      "-H" "Content-Type: application/json"
                                      "-d" body url))))
       (nth 1 result))))
@@ -245,12 +250,30 @@
 ; Tool dispatch — one tool: bash. Real execution only.
 ; ---------------------------------------------------------------------------
 
+; The tool result is structured: the exit status is evidence, not a
+; detail to drop - a command that failed with 127 must not read the same
+; as one that succeeded. Text shape stays LLM-friendly.
 (def execute-bash
   (lambda (arguments-json)
     (let* ((args (json-parse arguments-json))
            (cmd (alist-ref "cmd" args))
-           (result (process-run "bash" (list "-c" cmd))))
-      (string-append (nth 1 result) (nth 2 result)))))
+           (result (process-run "bash" (list "-c" cmd)))
+           (exit-code (nth 0 result))
+           (stdout (nth 1 result))
+           (stderr (nth 2 result)))
+      (strcat "[exit-code " (number->string-nonneg exit-code)
+              "]\n"
+              stdout
+              (cond ((string-empty? stderr) "")
+                    (t (strcat "\n[stderr]\n" stderr)))))))
+
+; number->string in core.my covers non-negative integers only, which is
+; exactly process exit codes (0..255); negative means killed-by-signal
+; and is surfaced via write-to-string rather than guessed.
+(def number->string-nonneg
+  (lambda (n)
+    (cond ((< n 0) (write-to-string n))
+          (t (number->string n)))))
 
 (def dispatch-tool
   (lambda (name arguments-json)
@@ -293,6 +316,10 @@
 (def claims-execution?
   (lambda (text) (markers-contained? claim-markers text)))
 
+
+; Does the conversation contain any tool result at all? Coarse - kept
+; for callers that only need existence; the claim validator below uses
+; the stricter owned-evidence rule instead.
 (def has-tool-result?
   (lambda (messages)
     (cond
@@ -300,15 +327,74 @@
       ((equal? (msg-role (car messages)) "tool") t)
       (t (has-tool-result? (cdr messages))))))
 
-; A turn may finish only if its text claims no execution — or if the
-; conversation actually contains at least one real tool result. A model
-; saying "I ran pwd, output: /home/x" with zero tool calls is rejected
-; and the loop continues instead of completing.
+; -----------------------------------------------------------------------
+; Evidence calculus v1 (Yantra M1). A global "some tool ran at some
+; point" is NOT evidence for a claim made turns later - a pwd from turn 1
+; cannot back an "I executed rm" claim in turn 4. The structural rule:
+;
+;   an execution-claiming reply is valid only if it DIRECTLY follows the
+;   tool results answering its own preceding tool-call message:
+;
+;     [... assistant(tool-calls ids) tool(id ...) assistant-claiming]
+;
+; so the evidence block is adjacent to, and owned by, the turn that
+; produced it. Anything in between (another assistant reply, a nudge)
+; breaks the chain and the claim is rejected.
+; -----------------------------------------------------------------------
+
+(def msg-call-ids
+  (lambda (m) (map tc-id (msg-tool-calls m))))
+
+(def id-in-list?
+  (lambda (id ids)
+    (cond
+      ((atom ids) (quote ()))
+      ((equal? id (car ids)) t)
+      (t (id-in-list? id (cdr ids))))))
+
+(def all-covered?
+  (lambda (ids candidates)
+    (cond
+      ((atom ids) t)
+      ((id-in-list? (car ids) candidates) (all-covered? (cdr ids) candidates))
+      (t (quote ())))))
+
+; t iff everything BEFORE the final reply ends with
+; [... assistant(tool-calls) tool* ] where every trailing tool result's
+; id belongs to that assistant message. The final reply itself is dropped
+; first - it is the message being validated, never its own evidence.
+(def ends-with-owned-tool-results?
+  (lambda (messages)
+    (cond
+      ((atom messages) (quote ()))
+      (t (collect-trailing-tools
+          (cdr (reverse messages))
+          (quote ()))))))
+
+; walks backwards over a trailing run of tool results, then requires the
+; assistant message that issued those calls to own every collected id
+(def collect-trailing-tools
+  (lambda (reversed collected)
+    (cond
+      ((atom reversed) (quote ()))
+      ((equal? (msg-role (car reversed)) "tool")
+       (collect-trailing-tools (cdr reversed)
+                               (cons (msg-tool-call-id (car reversed)) collected)))
+      (t
+       (let ((issuer (car reversed)))
+         (cond
+           ((not (equal? (msg-role issuer) "assistant")) (quote ()))
+           ((atom (msg-tool-calls issuer)) (quote ()))
+           (t (all-covered? collected (msg-call-ids issuer)))))))))
+
+; A turn may finish only if its text claims no execution - or if its
+; execution claims are backed by tool results owned by this turn's own
+; tool calls, directly preceding the reply.
 (def valid-final?
   (lambda (assistant-msg messages)
     (cond
       ((claims-execution? (msg-content assistant-msg))
-       (has-tool-result? messages))
+       (ends-with-owned-tool-results? messages))
       (t t))))
 
 (def invalid-completion-nudge
