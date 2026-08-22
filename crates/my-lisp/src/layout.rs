@@ -72,6 +72,12 @@ impl NanBox {
                 let ptr = Rc::as_ptr(m) as u64;
                 NanBox(Self::pack_ptr(TAG_MACRO, ptr))
             },
+            // TAG_PRIMITIVE was reserved in the memory-layout contract
+            // from day one -- contract 2.1 finally fills it.
+            Value::Builtin(b) => {
+                let ptr = Rc::as_ptr(b) as u64;
+                NanBox(Self::pack_ptr(TAG_PRIMITIVE, ptr))
+            },
             Value::TcpConnection(c) => {
                 let ptr = Rc::as_ptr(c) as u64;
                 NanBox(Self::pack_ptr(TAG_TCP_CONN, ptr))

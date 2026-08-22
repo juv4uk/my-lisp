@@ -56,73 +56,9 @@ pub(crate) fn evaluate_defmacro(
     Ok(macro_val)
 }
 
-pub(crate) fn evaluate_eq(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("eq", arguments, 2, span)?;
-    let left = evaluate(&arguments[0], environment)?;
-    let right = evaluate(&arguments[1], environment)?;
-    if !left.is_atom() || !right.is_atom() {
-        return Err(LanguageError::new(
-            ErrorKind::Type,
-            "eq expects two atoms · eq ochikuie dva atomy · eq erwartet zwei Atome",
-            span,
-        ));
-    }
-    Ok(Value::Bool(left == right))
-}
 
-pub(crate) fn evaluate_car(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("car", arguments, 1, span)?;
-    match evaluate(&arguments[0], environment)? {
-        Value::Pair(ref head, _) => Ok((**head).clone()),
-        _ => Err(LanguageError::new(
-            ErrorKind::Type,
-            "car expects a non-empty list · car ochikuie neporozhnii spysok · car erwartet eine nicht leere Liste",
-            span,
-        )),
-    }
-}
 
-pub(crate) fn evaluate_cdr(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("cdr", arguments, 1, span)?;
-    match evaluate(&arguments[0], environment)? {
-        Value::Pair(_, ref tail) => Ok((**tail).clone()),
-        _ => Err(LanguageError::new(
-            ErrorKind::Type,
-            "cdr expects a non-empty list · cdr ochikuie neporozhnii spysok · cdr erwartet eine nicht leere Liste",
-            span,
-        )),
-    }
-}
 
-pub(crate) fn evaluate_cons(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("cons", arguments, 2, span)?;
-    let head = evaluate(&arguments[0], environment)?;
-    let tail = evaluate(&arguments[1], environment)?;
-    if environment.try_alloc_cons().is_err() {
-        return Err(LanguageError::new(
-            ErrorKind::OutOfMemory,
-            "cons: resource limit reached · cons: dosiahnuto mezhi resursu · cons: Ressourcengrenze erreicht",
-            span,
-        ));
-    }
-    Ok(Value::Pair(Rc::new(head), Rc::new(tail)))
-}
 
 pub(crate) fn evaluate_cond(
     clauses: &[Expr],
@@ -185,4 +121,57 @@ pub(crate) fn quoted(expression: &Expr) -> Value {
         ExprKind::List(items) => Value::list(items.iter().map(quoted)),
         ExprKind::Pair(head, tail) => Value::Pair(Rc::new(quoted(head)), Rc::new(quoted(tail))),
     }
+}
+
+// ── contract 2.1: value-level entry points (first-class builtins) ──
+// Same compute as the expr-handlers above; arguments arrive
+// pre-evaluated. The expr-handlers delegate here after evaluating.
+
+pub(crate) fn car_value(value: &Value, span: Span) -> Result<Value, LanguageError> {
+    match value {
+        Value::Pair(ref head, _) => Ok((**head).clone()),
+        _ => Err(LanguageError::new(
+            ErrorKind::Type,
+            "car expects a non-empty list · car ochikuie neporozhnii spysok · car erwartet eine nicht leere Liste",
+            span,
+        )),
+    }
+}
+
+pub(crate) fn cdr_value(value: &Value, span: Span) -> Result<Value, LanguageError> {
+    match value {
+        Value::Pair(_, ref tail) => Ok((**tail).clone()),
+        _ => Err(LanguageError::new(
+            ErrorKind::Type,
+            "cdr expects a non-empty list · cdr ochikuie neporozhnii spysok · cdr erwartet eine nicht leere Liste",
+            span,
+        )),
+    }
+}
+
+pub(crate) fn cons_values(
+    head: Value,
+    tail: Value,
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    if environment.try_alloc_cons().is_err() {
+        return Err(LanguageError::new(
+            ErrorKind::OutOfMemory,
+            "cons: resource limit reached · cons: dosiahnuto mezhi resursu · cons: Ressourcengrenze erreicht",
+            span,
+        ));
+    }
+    Ok(Value::Pair(std::rc::Rc::new(head), std::rc::Rc::new(tail)))
+}
+
+pub(crate) fn eq_values(left: Value, right: Value, span: Span) -> Result<Value, LanguageError> {
+    if !left.is_atom() || !right.is_atom() {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "eq expects two atoms · eq ochikuie dva atomy · eq erwartet zwei Atome",
+            span,
+        ));
+    }
+    Ok(Value::Bool(left == right))
 }

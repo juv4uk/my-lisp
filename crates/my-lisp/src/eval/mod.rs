@@ -16,6 +16,7 @@
 //! `cond`, und `closures` den Bau von `lambda` und die Anwendung von Funktionen/Makros.
 
 mod arithmetic;
+pub(crate) mod builtins;
 mod capabilities;
 mod closures;
 mod special_forms;
@@ -134,18 +135,6 @@ fn evaluate_list(
             special_forms::evaluate_defmacro(arguments, environment, span).map(EvalStep::Value)
         }
         Some("cond") => special_forms::evaluate_cond(arguments, environment, span),
-        Some("atom") => {
-            special_forms::exact_arity("atom", arguments, 1, span)?;
-            Ok(EvalStep::Value(Value::Bool(
-                evaluate(&arguments[0], environment)?.is_atom(),
-            )))
-        }
-        Some("eq") => special_forms::evaluate_eq(arguments, environment, span).map(EvalStep::Value),
-        Some("car") => special_forms::evaluate_car(arguments, environment, span).map(EvalStep::Value),
-        Some("cdr") => special_forms::evaluate_cdr(arguments, environment, span).map(EvalStep::Value),
-        Some("cons") => {
-            special_forms::evaluate_cons(arguments, environment, span).map(EvalStep::Value)
-        }
         Some("print") => {
             special_forms::evaluate_print(arguments, environment, span).map(EvalStep::Value)
         }
@@ -191,19 +180,12 @@ fn evaluate_list(
         Some("json-parse") => {
             special_forms::json::evaluate_json_parse(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("/") => arithmetic::evaluate_division(arguments, environment, span).map(EvalStep::Value),
         // Binding the operator symbol in the pattern avoids re-deriving it with
         // an `.expect()`, so a future refactor of `as_symbol` cannot turn this into a panic.
         // Zakhoplennia symvola operatora priamo v paterni unykaie povtornoho `.expect()`,
         // tozh maibutnia zmina `as_symbol` ne zmozhe peretvoryty tse na paniku.
         // Das Binden des Operator-Symbols im Pattern vermeidet ein erneutes `.expect()`,
         // sodass eine spätere Änderung an `as_symbol` dies nicht zu einem Panic machen kann.
-        Some(operator @ ("+" | "-" | "*")) => {
-            arithmetic::evaluate_arithmetic(operator, arguments, environment, span).map(EvalStep::Value)
-        }
-        Some(operator @ ("<" | ">" | "=")) => {
-            arithmetic::evaluate_comparison(operator, arguments, environment, span).map(EvalStep::Value)
-        }
         _ => {
             // Host-capability fallback (see eval/capabilities.rs): the
             // canonical core registers nothing here, so an unregistered
@@ -218,6 +200,15 @@ fn evaluate_list(
             }
             let function = evaluate(&items[0], environment)?;
             match &function {
+                // contract 2.1: builtins are ordinary callable values --
+                // arguments arrive pre-evaluated.
+                Value::Builtin(builtin) => {
+                    let mut values = Vec::with_capacity(arguments.len());
+                    for argument in arguments {
+                        values.push(evaluate(argument, environment)?);
+                    }
+                    (builtin.func)(&values, environment, span).map(EvalStep::Value)
+                }
                 Value::Macro(closure) => {
                     closures::apply_macro(closure.clone(), arguments, environment, span)
                 }

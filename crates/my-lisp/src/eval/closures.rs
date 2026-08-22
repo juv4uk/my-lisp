@@ -276,6 +276,15 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
         Value::Number(number, exactness) => ExprKind::Number(*number, *exactness),
         Value::Rational(rational) => ExprKind::Rational(rational.clone()),
         Value::String(val) => ExprKind::String(val.clone()),
+        // A builtin is callable but not syntax: it cannot round-trip
+        // through eval/macro-expansion as code (contract 2.1 decision).
+        Value::Builtin(builtin) => {
+            return Err(LanguageError::new(
+                ErrorKind::Type,
+                format!("a builtin ({}) is not executable code · v budovanyi funktsii ne ye vykonavym kodom", builtin.name),
+                span,
+            ));
+        }
         Value::Symbol(symbol) => ExprKind::Symbol(symbol.clone()),
         Value::Pair(_, _) => {
             let mut items = Vec::new();

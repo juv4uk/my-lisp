@@ -12,7 +12,7 @@ pub mod layout;
 mod bignum;
 mod environment;
 mod error;
-mod eval;
+pub(crate) mod eval;
 mod parser;
 mod syntax;
 mod value;

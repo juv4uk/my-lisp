@@ -25,8 +25,8 @@ pub mod json;
 mod strings;
 
 pub(super) use core::{
-    evaluate_car, evaluate_cdr, evaluate_cond, evaluate_cons, evaluate_defmacro,
-    evaluate_definition, evaluate_eq, quoted,
+    car_value, cdr_value, cons_values, eq_values, evaluate_cond, evaluate_defmacro,
+    evaluate_definition, quoted,
 };
 pub use core::exact_arity;
 pub(super) use digest::evaluate_sha256_hex;

@@ -2,71 +2,9 @@
 //! Obrobka tochnykh/netochnykh chysel dlia `+`, `-`, `*` ta `/`.
 //! Verarbeitung exakter/inexakter Zahlen für `+`, `-`, `*` und `/`.
 
-use super::evaluate;
-use crate::{Environment, ErrorKind, Exactness, Expr, LanguageError, Rational, Span, Value};
 
-pub(super) fn evaluate_arithmetic(
-    operator: &str,
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    if operator == "-" && arguments.is_empty() {
-        return Err(LanguageError::new(
-            ErrorKind::Arity,
-            "- expects at least one argument · - ochikuie shchonaimenshe odyn arhument · - erwartet mindestens ein Argument",
-            span,
-        ));
-    }
-    let values = arguments
-        .iter()
-        .map(|argument| numeric_value(evaluate(argument, environment)?, argument.span))
-        .collect::<Result<Vec<_>, _>>()?;
+use crate::{Environment, ErrorKind, Exactness, LanguageError, Rational, Span, Value};
 
-    // Exact integers and rationals stay exact. One inexact operand deliberately makes the result inexact.
-    // Tochni tsili ta ratsionalni lyshaiutsia tochnymy. Odyn netochnyi operand navmysno robyt rezultat netochnym.
-    // Exakte Ganz- und rationale Zahlen bleiben exakt. Ein unexakter Operand macht das Ergebnis bewusst unexakt.
-    if values
-        .iter()
-        .any(|value| matches!(value, Numeric::Inexact(_)))
-    {
-        let values = values
-            .iter()
-            .map(|value| value.as_f64())
-            .collect::<Vec<_>>();
-        let result = match operator {
-            "+" => values.iter().sum(),
-            "*" => values.iter().product(),
-            "-" if values.len() == 1 => -values[0],
-            "-" => values[1..]
-                .iter()
-                .fold(values[0], |result, value| result - value),
-            _ => unreachable!("known arithmetic operator"),
-        };
-        return Ok(Value::Number(result, Exactness::Inexact));
-    }
-
-    let exact = values
-        .iter()
-        .map(Numeric::to_exact)
-        .collect::<Vec<_>>();
-    let result = match operator {
-        "+" => exact
-            .into_iter()
-            .try_fold(Rational::integer(0), Rational::checked_add),
-        "*" => exact
-            .into_iter()
-            .try_fold(Rational::integer(1), Rational::checked_mul),
-        "-" if exact.len() == 1 => exact[0].clone().checked_neg(),
-        "-" => exact[1..]
-            .iter()
-            .try_fold(exact[0].clone(), |result, value| result.checked_sub(value.clone())),
-        _ => unreachable!("known arithmetic operator"),
-    }
-    .ok_or_else(|| arithmetic_overflow(span))?;
-    check_numeric_limit(environment, &result, span)?;
-    Ok(exact_value(result))
-}
 
 // `Rational` wraps a heap-allocated `BigRational` (arbitrary precision), so
 // it isn't `Copy` — neither is `Numeric` anymore. Both accessor methods
@@ -178,117 +116,8 @@ fn check_numeric_limit(environment: &Environment, result: &Rational, span: Span)
     Ok(())
 }
 
-pub(super) fn evaluate_division(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    if arguments.is_empty() {
-        return Err(LanguageError::new(
-            ErrorKind::Arity,
-            "/ expects at least one argument · / ochikuie shchonaimenshe odyn arhument · / erwartet mindestens ein Argument",
-            span,
-        ));
-    }
-    let values = arguments
-        .iter()
-        .map(|argument| numeric_value(evaluate(argument, environment)?, argument.span))
-        .collect::<Result<Vec<_>, _>>()?;
 
-    if values
-        .iter()
-        .any(|value| matches!(value, Numeric::Inexact(_)))
-    {
-        let values = values
-            .iter()
-            .map(|value| value.as_f64())
-            .collect::<Vec<_>>();
-        let mut result = values[0];
-        if arguments.len() == 1 {
-            if result == 0.0 {
-                return Err(division_error(span));
-            }
-            result = 1.0 / result;
-        } else {
-            for &divisor in &values[1..] {
-                if divisor == 0.0 {
-                    return Err(division_error(span));
-                }
-                result /= divisor;
-            }
-        }
-        return Ok(Value::Number(result, Exactness::Inexact));
-    }
 
-    let exact = values
-        .iter()
-        .map(Numeric::to_exact)
-        .collect::<Vec<_>>();
-    let mut result = exact[0].clone();
-    if arguments.len() == 1 {
-        result = Rational::integer(1)
-            .checked_div(result)
-            .ok_or_else(|| division_error(span))?;
-    } else {
-        for divisor in exact.into_iter().skip(1) {
-            result = result
-                .checked_div(divisor)
-                .ok_or_else(|| division_error(span))?;
-        }
-    }
-    check_numeric_limit(environment, &result, span)?;
-    Ok(exact_value(result))
-}
-
-/// `<`, `>`, `=` follow the same exact/inexact promotion rule as
-/// `+`/`-`/`*`: if every operand is exact, comparison is exact (`Rational`'s
-/// `Ord`, no float involved); one inexact operand makes the whole comparison
-/// inexact. Chained like `(< 1 2 3)`: true iff each operand compares against
-/// the next in order, same as Scheme/Racket's variadic comparisons.
-/// `<`, `>`, `=` dotrymuiutsia toho samoho pravyla exact/inexact,
-/// shcho y `+`/`-`/`*`: yakshcho vsi operandy tochni, porivniannia tochne (`Ord` dlia
-/// `Rational`, bez float); odyn netochnyi operand robyt use porivniannia
-/// netochnym. Lantsiuhove, yak `(< 1 2 3)`: istyna, yakshcho kozhen operand
-/// porivniuietsia z nastupnym po poriadku — yak variatyvni porivniannia v
-/// Scheme/Racket.
-/// `<`, `>`, `=` folgen derselben exakt/inexakt-Promotionsregel
-/// wie `+`/`-`/`*`: sind alle Operanden exakt, ist der Vergleich exakt
-/// (`Ord` für `Rational`, kein Float); ein inexakter Operand macht den
-/// gesamten Vergleich inexakt. Verkettet wie `(< 1 2 3)`: wahr, wenn jeder
-/// Operand im Vergleich zum nächsten in Ordnung ist — wie variadische
-/// Vergleiche in Scheme/Racket.
-pub(super) fn evaluate_comparison(
-    operator: &str,
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    if arguments.is_empty() {
-        return Err(LanguageError::new(
-            ErrorKind::Arity,
-            format!("{operator} expects at least one argument · {operator} ochikuie shchonaimenshe odyn arhument · {operator} erwartet mindestens ein Argument"),
-            span,
-        ));
-    }
-    let values = arguments
-        .iter()
-        .map(|argument| numeric_value(evaluate(argument, environment)?, argument.span))
-        .collect::<Result<Vec<_>, _>>()?;
-
-    let holds = if values
-        .iter()
-        .any(|value| matches!(value, Numeric::Inexact(_)))
-    {
-        values
-            .windows(2)
-            .all(|pair| compare(operator, pair[0].as_f64(), pair[1].as_f64()))
-    } else {
-        values
-            .windows(2)
-            .all(|pair| compare(operator, pair[0].to_exact(), pair[1].to_exact()))
-    };
-    Ok(Value::Bool(holds))
-}
 
 fn compare<T: PartialOrd>(operator: &str, left: T, right: T) -> bool {
     match operator {
@@ -305,4 +134,145 @@ fn division_error(span: Span) -> LanguageError {
         "division by zero or rational overflow · dilennia na nul abo perepovnennia drobu · Division durch null oder Bruchüberlauf",
         span,
     )
+}
+
+// ── contract 2.1: value-level entry points (first-class builtins) ──
+// The expr-handlers above evaluate arguments then delegate here; the
+// builtin closures in eval/builtins.rs call these directly with
+// pre-evaluated values. Single compute path, two front doors.
+
+pub(super) fn arithmetic_on_values(
+    operator: &str,
+    values: &[Value],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    if operator == "-" && values.is_empty() {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            "- expects at least one argument · - ochikuie shchonaimenshe odyn arhument · - erwartet mindestens ein Argument",
+            span,
+        ));
+    }
+    let numerics = values
+        .iter()
+        .map(|value| numeric_value(value.clone(), span))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if numerics.iter().any(|value| matches!(value, Numeric::Inexact(_))) {
+        let floats = numerics.iter().map(Numeric::as_f64).collect::<Vec<_>>();
+        let mut result = floats[0];
+        for &operand in &floats[1..] {
+            result = match operator {
+                "+" => result + operand,
+                "-" => result - operand,
+                "*" => result * operand,
+                _ => unreachable!("known arithmetic operator"),
+            };
+        }
+        return Ok(Value::Number(result, Exactness::Inexact));
+    }
+
+    let exact = numerics.iter().map(Numeric::to_exact).collect::<Vec<_>>();
+    let result = match operator {
+        "+" => exact
+            .into_iter()
+            .try_fold(Rational::integer(0), Rational::checked_add),
+        "*" => exact
+            .into_iter()
+            .try_fold(Rational::integer(1), Rational::checked_mul),
+        "-" if exact.len() == 1 => exact[0].clone().checked_neg(),
+        "-" => exact[1..]
+            .iter()
+            .try_fold(exact[0].clone(), |result, value| result.checked_sub(value.clone())),
+        _ => unreachable!("known arithmetic operator"),
+    }
+    .ok_or_else(|| arithmetic_overflow(span))?;
+    check_numeric_limit(environment, &result, span)?;
+    Ok(exact_value(result))
+}
+
+pub(super) fn division_on_values(
+    values: &[Value],
+    argument_count: usize,
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    if values.is_empty() {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            "/ expects at least one argument · / ochikuie shchonaimenshe odyn arhument · / erwartet mindestens ein Argument",
+            span,
+        ));
+    }
+    let numerics = values
+        .iter()
+        .map(|value| numeric_value(value.clone(), span))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let single = argument_count == 1;
+
+    if numerics.iter().any(|value| matches!(value, Numeric::Inexact(_))) {
+        let floats = numerics.iter().map(Numeric::as_f64).collect::<Vec<_>>();
+        let mut result = floats[0];
+        if single {
+            if result == 0.0 {
+                return Err(division_error(span));
+            }
+            result = 1.0 / result;
+        } else {
+            for &divisor in &floats[1..] {
+                if divisor == 0.0 {
+                    return Err(division_error(span));
+                }
+                result /= divisor;
+            }
+        }
+        return Ok(Value::Number(result, Exactness::Inexact));
+    }
+
+    let exact = numerics.iter().map(Numeric::to_exact).collect::<Vec<_>>();
+    let mut result = exact[0].clone();
+    if single {
+        result = Rational::integer(1)
+            .checked_div(result)
+            .ok_or_else(|| division_error(span))?;
+    } else {
+        for divisor in exact.into_iter().skip(1) {
+            result = result
+                .checked_div(divisor)
+                .ok_or_else(|| division_error(span))?;
+        }
+    }
+    check_numeric_limit(environment, &result, span)?;
+    Ok(exact_value(result))
+}
+
+pub(super) fn comparison_on_values(
+    operator: &str,
+    values: &[Value],
+    span: Span,
+) -> Result<Value, LanguageError> {
+    if values.is_empty() {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            format!("{operator} expects at least one argument · {operator} ochikuie shchonaimenshe odyn arhument · {operator} erwartet mindestens ein Argument"),
+            span,
+        ));
+    }
+    let numerics = values
+        .iter()
+        .map(|value| numeric_value(value.clone(), span))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let holds = if numerics.iter().any(|value| matches!(value, Numeric::Inexact(_))) {
+        numerics
+            .windows(2)
+            .all(|pair| compare(operator, pair[0].as_f64(), pair[1].as_f64()))
+    } else {
+        numerics
+            .windows(2)
+            .all(|pair| compare(operator, pair[0].to_exact(), pair[1].to_exact()))
+    };
+    Ok(Value::Bool(holds))
 }

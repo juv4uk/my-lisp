@@ -341,6 +341,28 @@ pub struct Closure {
     pub(crate) environment: Environment,
 }
 
+/// A primitive operation as a first-class value (contract 2.1,
+/// docs/PROPOSAL-FIRST-CLASS-BUILTINS.md). Registered into the root
+/// environment at bootstrap; from then on it is an ordinary callable
+/// value indistinguishable -- by the language's own rules -- from a
+/// lambda. Arguments arrive pre-evaluated; special forms never become
+/// Builtins (they are syntax, not values).
+/// Prymityv iak pershoklasne znachennia (kontrakt 2.1). Reiestruietsia
+/// v kornevomu seredovyshchi na bootstrapi; pislia tsioho tse zvychaine
+/// zastosovne znachennia. Arhumenty nadkhodiat vzhie obchyslenymy;
+/// spetsialni formy nikoly ne staiutsia Builtinamy.
+pub struct Builtin {
+    pub name: &'static str,
+    #[allow(clippy::type_complexity)]
+    pub func: std::rc::Rc<dyn Fn(&[Value], &crate::Environment, crate::Span) -> Result<Value, crate::LanguageError>>,
+}
+
+impl std::fmt::Debug for Builtin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#<builtin {}>", self.name)
+    }
+}
+
 /// Runtime data is independent of the parser and any host representation.
 /// Dani vykonannia ne zalezhat vid parsera ta predstavlennia u khost-systemi.
 /// Laufzeitdaten sind unabhängig vom Parser und von jeder Host-Darstellung.
@@ -355,6 +377,8 @@ pub enum Value {
     Pair(Rc<Value>, Rc<Value>),
     Closure(Rc<Closure>),
     Macro(Rc<Closure>),
+    /// Primitive operation as a first-class value (contract 2.1).
+    Builtin(std::rc::Rc<Builtin>),
     /// An open TCP connection (PLAN.md item 21) — the outbound-client half
     /// of "talk to other AI systems," principle 3 extended to external
     /// agents/LLM APIs. Opaque host-capability handle, the same category
@@ -488,6 +512,7 @@ impl Value {
 /// u chomus, krim obrobky riadkiv.
 fn render(value: &Value, quote_strings: bool) -> String {
     match value {
+        Value::Builtin(builtin) => format!("#<builtin {}>", builtin.name),
         Value::Nil => "()".to_string(),
         Value::Bool(true) => "t".to_string(),
         Value::Bool(false) => "()".to_string(),

@@ -70,6 +70,10 @@ impl Environment {
             Rc::new(RefCell::new(Limits::default())),
         );
         environment.define("t", Value::Bool(true));
+        // contract 2.1: primitives enter the root environment as
+        // first-class builtin values -- one runtime authority, no
+        // head-only registry (docs/PROPOSAL-FIRST-CLASS-BUILTINS.md).
+        crate::eval::builtins::install(&environment);
         environment
     }
 
