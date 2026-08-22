@@ -527,3 +527,53 @@ fn restart_preserves_incarnation_epoch_increments_seq_continues() {
     assert_eq!(epoch, 1, "two process starts => epoch 1 (0-indexed): {epoch_text}");
     kill(&mut n2);
 }
+
+// ---------------------------------------------------------------------------
+// M1.1b: task origin/provenance
+// ---------------------------------------------------------------------------
+
+/// Origin flows end to end: define-task with (origin X) is visible via
+/// task-def; sync-tasks stamps per-file `(origin . repo)` and honors the
+/// msg-level default; tasks with neither stay unresolved.
+#[test]
+fn task_origin_provenance_flows_through() {
+    let port = alloc_ports(1);
+    let dir = data_dir("origin-prov");
+    let _n = spawn(port, "prov", &dir, None);
+
+    // 1. explicit origin via define-task
+    request(port, "(define-task (task ORIG-A) (priority 5) (capabilities ()) (depends-on ()) (origin cml) (description \"owned by cml\"))");
+    let a = request(port, "(task-def (task ORIG-A))");
+    assert!(a.contains("(origin cml)"), "define-task origin not visible in task-def: {a}");
+
+    // 2. no origin => unresolved (empty list, not an atom)
+    request(port, "(define-task (task ORIG-B) (priority 5) (capabilities ()) (depends-on ()) (description \"no owner\"))");
+    let b = request(port, "(task-def (task ORIG-B))");
+    assert!(b.contains("(origin ())") || b.contains("(origin nil)"), "unresolved origin must render empty: {b}");
+    assert!(!b.contains("(origin cml)"));
+
+    // 3. sync-tasks: per-task (origin . x) wins over msg-level default
+    let f = dir.join("tasks_with_origin.my");
+    std::fs::write(&f, r#"
+((kind . tasks-my)
+ (tasks .
+  (("ORIG-C" . ((priority . 4) (origin . fpga-lisp) (done . ())))
+   ("ORIG-D" . ((priority . 3) (done . ()))))))
+"#).unwrap();
+    let resp = request(port, &format!(r#"(sync-tasks (file "{}") (origin my-idea))"#, f.display()));
+    assert!(resp.starts_with("(ok"), "sync-tasks failed: {resp}");
+    let c = request(port, "(task-def (task ORIG-C))");
+    assert!(c.contains("(origin fpga-lisp)"), "per-task origin must beat msg default: {c}");
+    let d = request(port, "(task-def (task ORIG-D))");
+    assert!(d.contains("(origin my-idea)"), "msg-level origin must fill undeclared tasks: {d}");
+
+    // 4. unknown task => defined nil
+    let none = request(port, "(task-def (task NO-SUCH))");
+    assert!(none.contains("(defined nil)"), "unknown task must report undefined: {none}");
+
+    // 5. next-best-action exposes origin too
+    let nba = request(port, "(next-best-action (capabilities ()))");
+    if nba.starts_with("(next-best-action (task") && nba.contains("ORIG-C") {
+        assert!(nba.contains("(origin fpga-lisp)"), "NBA should expose origin: {nba}");
+    }
+}

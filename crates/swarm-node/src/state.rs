@@ -20,6 +20,9 @@ pub struct TaskDef {
     pub depends_on: Vec<String>,
     pub blocked_by: Vec<String>,
     pub description: Option<String>,
+    /// Owning repository id (M1.1b provenance). `None` = unresolved:
+    /// defined before M1.1b or without an explicit origin.
+    pub origin: Option<String>,
 }
 
 /// Folds `task-defined` events for `task`, last one wins (a redefinition
@@ -38,7 +41,8 @@ pub fn task_def(journal: &Journal, task: &str) -> Option<TaskDef> {
         let depends_on = string_list(&ev.payload, "depends-on");
         let blocked_by = string_list(&ev.payload, "blocked-by");
         let description = ev.payload.field_atom("description").map(|s| s.to_string());
-        def = Some(TaskDef { priority, capabilities, depends_on, blocked_by, description });
+        let origin = ev.payload.field_atom("origin").map(|s| s.to_string());
+        def = Some(TaskDef { priority, capabilities, depends_on, blocked_by, description, origin });
     }
     def
 }

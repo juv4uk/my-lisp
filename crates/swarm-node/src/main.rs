@@ -465,6 +465,9 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("task-state") => {
                 handle_task_state(&node, &msg, &mut stream);
             }
+            Some("task-def") => {
+                handle_task_def(&node, &msg, &mut stream);
+            }
             Some("task-status") => {
                 handle_task_status(&node, &msg, &mut stream);
             }
@@ -1133,6 +1136,54 @@ fn handle_task_state(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     send(stream, &task_state_sexp(task, &s));
 }
 
+/// Local client op: `(task-def (task X))` — the task's current DEFINITION
+/// (M1.1b): priority, capabilities, depends-on/blocked-by, description and
+/// the provenance `origin`. Unknown task => `(task-def (task X) (defined nil))`.
+fn handle_task_def(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    let Some(task) = msg.field_atom("task") else {
+        send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string("task-def requires a `task` field")]));
+        return;
+    };
+    let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let def = state::task_def(&journal, task);
+    drop(journal);
+    match def {
+        Some(d) => send(
+            stream,
+            &Sexp::list(vec![
+                Sexp::atom("task-def"),
+                Sexp::list(vec![Sexp::atom("task"), Sexp::atom(task)]),
+                Sexp::list(vec![Sexp::atom("priority"), Sexp::atom(d.priority.to_string())]),
+                Sexp::list(vec![Sexp::atom("capabilities"), Sexp::list(d.capabilities.iter().map(Sexp::atom).collect())]),
+                Sexp::list(vec![Sexp::atom("depends-on"), Sexp::list(d.depends_on.iter().map(Sexp::atom).collect())]),
+                Sexp::list(vec![Sexp::atom("blocked-by"), Sexp::list(d.blocked_by.iter().map(Sexp::atom).collect())]),
+                Sexp::list(vec![
+                    Sexp::atom("description"),
+                    match &d.description {
+                        Some(x) => Sexp::string(x),
+                        None => Sexp::List(vec![]),
+                    },
+                ]),
+                Sexp::list(vec![
+                    Sexp::atom("origin"),
+                    match &d.origin {
+                        Some(o) => Sexp::atom(o),
+                        None => Sexp::List(vec![]),
+                    },
+                ]),
+            ]),
+        ),
+        None => send(
+            stream,
+            &Sexp::list(vec![
+                Sexp::atom("task-def"),
+                Sexp::list(vec![Sexp::atom("task"), Sexp::atom(task)]),
+                Sexp::list(vec![Sexp::atom("defined"), Sexp::atom("nil")]),
+            ]),
+        ),
+    }
+}
+
 fn handle_list_task_state(node: &Arc<Node>, stream: &mut TcpStream) {
     let journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     let entries: Vec<Sexp> = state::all_task_ids(&journal)
@@ -1238,6 +1289,8 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let depends_on = msg.field("depends-on").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
     let blocked_by = msg.field("blocked-by").and_then(|f| f.first()).cloned().unwrap_or(Sexp::List(vec![]));
     let description = msg.field_atom("description");
+    // M1.1b provenance: optional owning-repository id. Absent = unresolved.
+    let origin = msg.field_atom("origin");
 
     fn sexp_to_string_list(s: &Sexp) -> Vec<String> {
         match s {
@@ -1265,6 +1318,9 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     if let Some(d) = description {
         payload_fields.push(Sexp::list(vec![Sexp::atom("description"), Sexp::string(d)]));
     }
+    if let Some(o) = origin {
+        payload_fields.push(Sexp::list(vec![Sexp::atom("origin"), Sexp::string(o)]));
+    }
     let payload = Sexp::list(payload_fields);
 
     let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -1284,7 +1340,8 @@ fn handle_define_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             && existing.capabilities == capabilities_list
             && existing.depends_on == depends_on_list
             && existing.blocked_by == blocked_by_list
-            && existing.description.as_deref() == description;
+            && existing.description.as_deref() == description
+            && existing.origin.as_deref() == origin;
         if same {
             drop(journal);
             send(stream, &Sexp::list(vec![Sexp::atom("ok"), Sexp::list(vec![Sexp::atom("task"), Sexp::atom(task)]), Sexp::list(vec![Sexp::atom("unchanged"), Sexp::atom("t")])]));
@@ -1338,6 +1395,13 @@ fn handle_next_best_action(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream)
                     Sexp::atom("description"),
                     match &def.description {
                         Some(d) => Sexp::string(d),
+                        None => Sexp::List(vec![]),
+                    },
+                ]),
+                Sexp::list(vec![
+                    Sexp::atom("origin"),
+                    match &def.origin {
+                        Some(o) => Sexp::atom(o),
                         None => Sexp::List(vec![]),
                     },
                 ]),
@@ -1548,6 +1612,10 @@ fn handle_sync_tasks(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 
     let mut defined = 0;
     let mut completed = 0;
+    // M1.1b: msg-level default origin for files that don't declare
+    // `(origin . repo)` per task. Per-task origin always wins; tasks with
+    // neither stay unresolved (None) — no silent inference from paths.
+    let msg_origin = msg.field_atom("origin");
     for t in &tasks {
         let mut fields = vec![
             Sexp::list(vec![Sexp::atom("task"), Sexp::atom(&t.id)]),
@@ -1557,6 +1625,9 @@ fn handle_sync_tasks(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         ];
         if let Some(d) = &t.description {
             fields.push(Sexp::list(vec![Sexp::atom("description"), Sexp::string(d)]));
+        }
+        if let Some(o) = t.origin.as_deref().or(msg_origin) {
+            fields.push(Sexp::list(vec![Sexp::atom("origin"), Sexp::string(o)]));
         }
         let payload = Sexp::list(fields);
         if append_local_fact(node, "task-defined", payload).is_ok() {

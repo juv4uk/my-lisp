@@ -13,6 +13,9 @@ pub struct ParsedTask {
     pub depends_on: Vec<String>,
     pub done: bool,
     pub description: Option<String>,
+    /// Owning repository id, e.g. "cml" (M1.1b provenance). Absent = the
+    /// file doesn't declare it; sync-tasks may fill a msg-level default.
+    pub origin: Option<String>,
 }
 
 /// `(key . value)` pairs written as a 3-element list `[key, ".", value]` —
@@ -85,8 +88,9 @@ pub fn parse_tasks_file(text: &str) -> Result<Vec<ParsedTask>, String> {
         let depends_on = dotted_get(fields, "depends-on").map(atoms_of).unwrap_or_default();
         let done = dotted_get(fields, "done").and_then(atom_text).map(|s| s == "t").unwrap_or(false);
         let description = dotted_get(fields, "description").and_then(atom_text);
+        let origin = dotted_get(fields, "origin").and_then(atom_text);
 
-        parsed.push(ParsedTask { id, priority, capabilities, depends_on, done, description });
+        parsed.push(ParsedTask { id, priority, capabilities, depends_on, done, description, origin });
     }
     Ok(parsed)
 }
@@ -115,5 +119,18 @@ mod tests {
         assert_eq!(tasks[1].id, "SWARM-P2P-HEARTBEAT");
         assert_eq!(tasks[1].depends_on, vec!["SWARM-P2P-SYNC"]);
         assert!(!tasks[1].done);
+    }
+
+    #[test]
+    fn parses_optional_origin_field() {
+        let text = r#"
+((kind . tasks-my)
+ (tasks .
+  (("CML-FOO" . ((priority . 5) (origin . cml) (done . ())))
+   ("ORPHAN-TASK" . ((priority . 3))))))
+"#;
+        let tasks = parse_tasks_file(text).unwrap();
+        assert_eq!(tasks[0].origin.as_deref(), Some("cml"));
+        assert_eq!(tasks[1].origin, None);
     }
 }
