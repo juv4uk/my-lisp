@@ -286,6 +286,13 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
             ));
         }
         Value::Symbol(symbol) => ExprKind::Symbol(symbol.clone()),
+        Value::Vector(_) => {
+            return Err(LanguageError::new(
+                crate::ErrorKind::Type,
+                "a vector is not executable code",
+                span,
+            ));
+        }
         Value::Pair(_, _) => {
             let mut items = Vec::new();
             let mut current = value.clone();

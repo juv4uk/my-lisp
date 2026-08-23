@@ -250,6 +250,35 @@ fn evaluate_list(
             }
             Ok(EvalStep::Value(best))
         }
+        Some("make-vector") => {
+            special_forms::exact_arity("make-vector", arguments, 1, span)?;
+            let n_expr = evaluate(&arguments[0], environment)?;
+            if let Value::Number(f, _) = &n_expr {
+                Ok(EvalStep::Value(Value::vector(
+                    std::iter::repeat(Value::Nil).take(*f as usize)
+                )))
+            } else {
+                Err(LanguageError::new(crate::ErrorKind::Type,
+                    "make-vector expects a number", span))
+            }
+        }
+        Some("vector") => {
+            let mut items = Vec::with_capacity(arguments.len());
+            for arg in arguments {
+                items.push(evaluate(arg, environment)?);
+            }
+            Ok(EvalStep::Value(Value::vector(items)))
+        }
+        Some("vector-length") => {
+            special_forms::exact_arity("vector-length", arguments, 1, span)?;
+            let v = evaluate(&arguments[0], environment)?;
+            match &v {
+                Value::Vector(vec) => Ok(EvalStep::Value(Value::Number(vec.len() as f64, crate::Exactness::Exact))),
+                _ => Err(LanguageError::new(crate::ErrorKind::Type,
+                    "vector-length expects a vector", span))
+            }
+        }
+
         // Binding the operator symbol in the pattern avoids re-deriving it with
         // an `.expect()`, so a future refactor of `as_symbol` cannot turn this into a panic.
         // Zakhoplennia symvola operatora priamo v paterni unykaie povtornoho `.expect()`,

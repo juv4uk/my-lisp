@@ -379,6 +379,8 @@ pub enum Value {
     Macro(Rc<Closure>),
     /// Primitive operation as a first-class value (contract 2.1).
     Builtin(std::rc::Rc<Builtin>),
+    /// Persistent vector: O(1) indexed access for numeric workloads
+    Vector(std::rc::Rc<Vec<Value>>),
     /// An open TCP connection (PLAN.md item 21) — the outbound-client half
     /// of "talk to other AI systems," principle 3 extended to external
     /// agents/LLM APIs. Opaque host-capability handle, the same category
@@ -450,6 +452,10 @@ impl PartialEq for Value {
 }
 
 impl Value {
+    pub fn vector(values: impl IntoIterator<Item = Value>) -> Self {
+        Self::Vector(std::rc::Rc::new(values.into_iter().collect()))
+    }
+
     pub fn list(values: impl IntoIterator<Item = Value>) -> Self {
         values
             .into_iter()
@@ -513,6 +519,10 @@ impl Value {
 fn render(value: &Value, quote_strings: bool) -> String {
     match value {
         Value::Builtin(builtin) => format!("#<builtin {}>", builtin.name),
+        Value::Vector(v) => {
+            let items: Vec<String> = v.iter().map(|x| render(x, quote_strings)).collect();
+            format!("#({})", items.join(" "))
+        }
         Value::Nil => "()".to_string(),
         Value::Bool(true) => "t".to_string(),
         Value::Bool(false) => "()".to_string(),
