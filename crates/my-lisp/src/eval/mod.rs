@@ -180,6 +180,38 @@ fn evaluate_list(
         Some("json-parse") => {
             special_forms::json::evaluate_json_parse(arguments, environment, span).map(EvalStep::Value)
         }
+        Some("abs") => {
+            special_forms::exact_arity("abs", arguments, 1, span)?;
+            let value = evaluate(&arguments[0], environment)?;
+            Ok(EvalStep::Value(match value {
+                Value::Number(f, e) => Value::Number(if f < 0.0 { -f } else { f }, e),
+                Value::Rational(ref r) => {
+                    let neg = r.numerator() < &num_bigint::BigInt::from(0);
+                    if neg { Value::Rational(-r.clone()) } else { Value::Rational(r.clone()) }
+                }
+                other => other,
+            }))
+        }
+        Some("min") | Some("max") => {
+            if arguments.is_empty() {
+                return Err(LanguageError::new(
+                    crate::ErrorKind::Arity,
+                    format!("{} expects at least one argument", items[0].kind.as_symbol().unwrap()),
+                    span,
+                ));
+            }
+            let op = items[0].kind.as_symbol().unwrap().to_string();
+            let mut values = Vec::with_capacity(arguments.len());
+            for arg in arguments {
+                values.push(evaluate(arg, environment)?);
+            }
+            let mut best = values[0].clone();
+            for v in &values[1..] {
+                let is_better = if op == "min" { v < &best } else { v > &best };
+                if is_better { best = v.clone(); }
+            }
+            Ok(EvalStep::Value(best))
+        }
         // Binding the operator symbol in the pattern avoids re-deriving it with
         // an `.expect()`, so a future refactor of `as_symbol` cannot turn this into a panic.
         // Zakhoplennia symvola operatora priamo v paterni unykaie povtornoho `.expect()`,
