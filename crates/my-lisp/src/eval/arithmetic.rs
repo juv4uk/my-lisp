@@ -154,6 +154,31 @@ pub(super) fn arithmetic_on_values(
             span,
         ));
     }
+    // ── fast path: all exact integers that fit in i64 ──
+    // Avoids BigRational allocation + gcd normalization for the
+    // most common case in real workloads (WSM-24 evidence).
+    if values.iter().all(|v| matches!(
+        v, Value::Number(f, Exactness::Exact)
+        if *f == (*f as i64) as f64 && f.abs() <= 9_000_000_000_000.0
+    )) {
+        let ints: Vec<i64> = values.iter().map(|v| {
+            if let Value::Number(f, Exactness::Exact) = v { *f as i64 } else { unreachable!() }
+        }).collect();
+        let result: Option<i64> = match operator {
+            "+" => ints.iter().try_fold(0i64, |acc, &x| acc.checked_add(x)),
+            "-" => match ints.len() {
+                1 => Some(-ints[0]),
+                _ => ints[1..].iter().try_fold(ints[0], |acc, &x| acc.checked_sub(x)),
+            },
+            "*" => ints.iter().try_fold(1i64, |acc, &x| acc.checked_mul(x)),
+            _ => None,
+        };
+        if let Some(result) = result {
+            return Ok(Value::Number(result as f64, Exactness::Exact));
+        }
+        // overflow: fall through to bignum path below
+    }
+
     let numerics = values
         .iter()
         .map(|value| numeric_value(value.clone(), span))
