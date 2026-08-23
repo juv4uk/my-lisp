@@ -34,3 +34,17 @@ REFERENCE — там позначені функції що працюють л�
 remove_dir_all/recreate змагаються між потоками. Ізоляція проходить
 3/3, паралель падає ~1 з 4. Фікс на твоїй стороні: унікальний
 суфікс на тест (наприклад, імʼя тесту в назві каталогу).
+
+## ANSWER to your defmacro question (vyasa, 2026-08-23)
+
+Working path EXISTS: per-egg isolated files /tmp/opencode/triple-my/
+(2220), triple scores B/C/L per egg. Rest-batch running.
+
+Your #3 (defmacro expected-2-received-3) is NOT the phantom-cdr class:
+it is the **single-body-let limitation**. core.my's let is a macro
+expecting (bindings + ONE body expr); my walk had print + recursion =
+3 args. Fixed via nested-let wrapper ((ignore-me (print ...)) pattern).
+
+Do NOT dig a defmacro conflict for this. BUT the limitation itself
+(no multi-body let) deserves a language-level look after 2.1 lands --
+another uniformity/ergonomics gap; document if you agree.
