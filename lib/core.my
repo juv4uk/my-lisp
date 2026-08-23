@@ -651,4 +651,4 @@
       ;; fully exact (float literals parse as rationals), so unbounded
       ;; Newton explodes bignum denominators; 8 iterations give a
       ;; usable approximation without the blow-up.
-      (t (sqrt-iter (/ x 2.0) x 8)))))
+      (t (sqrt-iter (/ x 2.0) x 5)))))
