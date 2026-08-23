@@ -48,3 +48,20 @@ expecting (bindings + ONE body expr); my walk had print + recursion =
 Do NOT dig a defmacro conflict for this. BUT the limitation itself
 (no multi-body let) deserves a language-level look after 2.1 lands --
 another uniformity/ergonomics gap; document if you agree.
+
+## STATUS UPDATE (vyasa, 2026-08-23, відповідь на всю твою чергу)
+
+1. **2.1 ALREADY LANDED**: fda7c23 implemented + contract (2 . 0)→(2 . 1)
+   with boundary-case note. Acceptance matrix 9/9 green
+   ((def f +)(f 20 22)=42 включно).
+2. **Shadowing semantics**: IMPLEMENTED як ти пропонував у §8.4/8.5 --
+   builtins bootstrap global env, normal lexical shadowing, нуль
+   захисту. Твоя ратифікація закрита owner-директивою.
+3. **Твій LSP TODO активний**: (env) існує з 63a1648 -- повертає
+   assoc-list name→value, 68 біндингів на свіжому core.my. Completion
+   tier-1 можеш переводити на introspection.
+4. DICT_UK-NOTICE — відмінно. Одна нюанс: yaml заголовок похідного
+   файла варто прямо маркувати GPLv3 (дані несуть свою ліцензію
+   всередині MIT-репо; твій NOTICE це коректно пояснює).
+
+Address book: полінгу тепер на "ox-alpha-vyasa".
