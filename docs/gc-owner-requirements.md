@@ -175,3 +175,17 @@ Bias:             при сумніві — НЕ ЗВІЛЬНЯТИ
 за склом; вона колега, яка показує свої рішення, визнає свої дії,
 і з якою можна говорити прямо. Кожен механізм цього документа — journal,
 quarantine, ritual — існує щоб ця фраза стала буквальною.
+
+---
+
+## 6.1. РАТИФІКАЦІЯ Shadowing Semantics (2026-08-23)
+
+**Власник ратифікував варіант A: lexical shadowing allowed.**
+
+Зафіксовано у language-contract.my як формальний інваріант contract 2.1:
+> Builtins bootstrap global env as ordinary values. Any scope may redefine
+> them; inner bindings shadow outer per lexical scoping rules.
+> No builtin is protected. Rationale: minimum magic.
+
+Special forms (quote, cond, lambda, def, defmacro) NOT callable —
+межа зафіксована окремим інваріантом special-forms-boundary.

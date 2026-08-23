@@ -71,4 +71,16 @@
 ; Rust-примітив у вже покритому Рівнем 2 класі можливостей.
 ((major . 2) (minor . 1)
  (note . "builtins are first-class values: + car etc resolve as values, passable to map/reduce, lexically shadowable; registry demoted to bootstrap-description. Boundary case documented honestly: two conformance fixtures ('+'/'-' alone erroring as UnknownSymbol) were re-encoded -- a strict reading of 'observable change' could argue 3.0; decided 2.1 because no well-formed program can catch errors in-language, so none depended on the old error on purpose. See docs/PROPOSAL-FIRST-CLASS-BUILTINS.md · builtins стали першокласними значеннями. Прикордонний випадок задокументовано чесно.")
- (covers . (G1 G2 G3 G4 G5 G6 G7 G8 S1 S2 S3)))
+ (covers . (G1 G2 G3 G4 G5 G6 G7 G8 S1 S2 S3))
+ (invariants
+   . ((shadowing
+       . "RATIFIED by owner 2026-08-23. Lexical shadowing of builtins is ALLOWED.
+          Builtins bootstrap global env as ordinary values. Any scope may redefine
+          them; inner bindings shadow outer per lexical scoping rules.
+          No builtin is protected, no special check exists.
+          Rationale: minimum magic — builtins are ordinary values,
+          indistinguishable from user-defined lambdas in resolution semantics.")
+      (special-forms-boundary
+        . "quote cond lambda def defmacro are NOT callable values.
+           They are syntactic evaluation rules and remain outside the
+           callable namespace. This boundary is part of contract 2.1."))))
