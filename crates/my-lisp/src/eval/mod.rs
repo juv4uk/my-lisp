@@ -180,14 +180,52 @@ fn evaluate_list(
         Some("json-parse") => {
             special_forms::json::evaluate_json_parse(arguments, environment, span).map(EvalStep::Value)
         }
+        // ── fast-path numeric operations (avoid interpreted lambda overhead) ──
+        Some("abs") => {
+            special_forms::exact_arity("abs", arguments, 1, span)?;
+            let v = evaluate(&arguments[0], environment)?;
+            Ok(EvalStep::Value(match &v {
+                Value::Number(f, e) => Value::Number(if *f < 0.0 { -*f } else { *f }, *e),
+                Value::Rational(r) => {
+                    let zero = crate::Rational::from_i64(0); if *r < zero { Value::Rational(-r.clone()) } else { Value::Rational(r.clone()) }
+                }
+                _ => v,
+            }))
+        }
+        Some("min-list") | Some("max-list") => {
+            let op = items[0].kind.as_symbol().unwrap().to_string();
+            if arguments.len() != 1 {
+                return Err(LanguageError::new(
+                    crate::ErrorKind::Arity,
+                    format!("{op} expects exactly 1 argument (a list)"),
+                    span,
+                ));
+            }
+            let list = evaluate(&arguments[0], environment)?;
+            let mut best: Option<Value> = None;
+            let mut current = Some(list.clone());
+            while let Some(v) = current {
+                if let Value::Pair(ref h, ref t) = v {
+                    let item = (**h).clone();
+                    match &best {
+                        None => best = Some(item),
+                        Some(b) => {
+                            let is_better = if op == "min-list" { item < *b } else { item > *b };
+                            if is_better { best = Some(item); }
+                        }
+                    }
+                    current = Some((**t).clone());
+                } else { break; }
+            }
+            Ok(EvalStep::Value(best.unwrap_or(Value::Nil)))
+        }
         Some("abs") => {
             special_forms::exact_arity("abs", arguments, 1, span)?;
             let value = evaluate(&arguments[0], environment)?;
             Ok(EvalStep::Value(match value {
                 Value::Number(f, e) => Value::Number(if f < 0.0 { -f } else { f }, e),
                 Value::Rational(ref r) => {
-                    let neg = r.numerator() < &num_bigint::BigInt::from(0);
-                    if neg { Value::Rational(-r.clone()) } else { Value::Rational(r.clone()) }
+                    let zero = crate::Rational::from_i64(0); if *r < zero { Value::Rational(-r.clone()) } else { Value::Rational(r.clone()) }
                 }
                 other => other,
             }))

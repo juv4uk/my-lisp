@@ -57,6 +57,55 @@ pub(crate) fn install(environment: &Environment) {
         Ok(Value::Bool(args[0].is_atom()))
     });
 
+
+    define!(environment, "abs", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("abs", args, 1, span)?;
+        Ok(match &args[0] {
+            crate::Value::Number(f, e) => crate::Value::Number(if *f < 0.0 { -*f } else { *f }, *e),
+            crate::Value::Rational(r) => {
+                let neg = r.is_negative();
+                if neg { crate::Value::Rational(-r.clone()) } else { crate::Value::Rational(r.clone()) }
+            }
+            other => other.clone(),
+        })
+    });
+
+    define!(environment, "min-list", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("min-list", args, 1, span)?;
+        let mut items = Vec::new();
+        let mut cur = args[0].clone();
+        loop {
+            match &cur {
+                crate::Value::Pair(h, t) => { items.push((**h).clone()); cur = (**t).clone(); }
+                _ => break,
+            }
+        }
+        if items.is_empty() { return Ok(crate::Value::Nil); }
+        let mut best = items[0].clone();
+        for item in &items[1..] {
+            if item < &best { best = item.clone(); }
+        }
+        Ok(best)
+    });
+
+    define!(environment, "max-list", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("max-list", args, 1, span)?;
+        let mut items = Vec::new();
+        let mut cur = args[0].clone();
+        loop {
+            match &cur {
+                crate::Value::Pair(h, t) => { items.push((**h).clone()); cur = (**t).clone(); }
+                _ => break,
+            }
+        }
+        if items.is_empty() { return Ok(crate::Value::Nil); }
+        let mut best = items[0].clone();
+        for item in &items[1..] {
+            if item > &best { best = item.clone(); }
+        }
+        Ok(best)
+    });
+
     for op in ["+", "-", "*"] {
         define!(environment, op, move |args: &[Value], env: &Environment, span: Span| {
             arithmetic_on_values(op, args, env, span)
