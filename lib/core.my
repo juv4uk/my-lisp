@@ -589,33 +589,11 @@
  ;; нового коду в Rust-ядрі (doctrine: library before core primitive).
 ;;
 ;; Конвенції:
-;;   (abs x)          — модуль;
-;;   (min lst)/(max lst) — беруть СПИСОК (reduce-стиль), не варіадик;
+;;   (abs x) / (min a b ...) / (max a b ...) — Rust builtins (builtins.rs);
+;;   (min-list lst)/(max-list lst) — Rust builtins для списків;
 ;;   (sqrt x)         — Ньютон, 40 ітерацій; точний вхід дає раціональне
 ;;                      наближення, дробове — дробовий результат
 ;;                      (S1 inexact promotion). Відʼємний вхід → nil.
-
-(def abs
-  (lambda (x)
-    (cond ((< x 0) (- 0 x)) (t x))))
-
-(def min-pair
-  (lambda (a b)
-    (cond ((< a b) a) (t b))))
-
-(def max-pair
-  (lambda (a b)
-    (cond ((> a b) a) (t b))))
-
-(def min
-  (lambda (lst)
-    (cond ((atom lst) (quote ()))
-          (t (reduce min-pair (car lst) (cdr lst))))))
-
-(def max
-  (lambda (lst)
-    (cond ((atom lst) (quote ()))
-          (t (reduce max-pair (car lst) (cdr lst))))))
 
 (def sqrt-iter
   (lambda (guess x n)

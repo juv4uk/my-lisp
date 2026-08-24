@@ -174,6 +174,8 @@ pub(super) fn arithmetic_on_values(
             _ => None,
         };
         if let Some(result) = result {
+            let exact = Rational::integer(result);
+            check_numeric_limit(environment, &exact, span)?;
             return Ok(Value::Number(result as f64, Exactness::Exact));
         }
         // overflow: fall through to bignum path below
@@ -300,4 +302,16 @@ pub(super) fn comparison_on_values(
             .all(|pair| compare(operator, pair[0].to_exact(), pair[1].to_exact()))
     };
     Ok(Value::Bool(holds))
+}
+
+pub(super) fn order_pair(
+    operator: &str,
+    left: &Value,
+    right: &Value,
+    span: Span,
+) -> Result<bool, LanguageError> {
+    match comparison_on_values(operator, &[left.clone(), right.clone()], span)? {
+        Value::Bool(holds) => Ok(holds),
+        _ => unreachable!("comparison_on_values returns Bool"),
+    }
 }

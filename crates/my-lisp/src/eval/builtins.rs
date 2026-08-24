@@ -83,7 +83,7 @@ pub(crate) fn install(environment: &Environment) {
         if items.is_empty() { return Ok(crate::Value::Nil); }
         let mut best = items[0].clone();
         for item in &items[1..] {
-            if item < &best { best = item.clone(); }
+            if super::arithmetic::order_pair("<", item, &best, span)? { best = item.clone(); }
         }
         Ok(best)
     });
@@ -101,7 +101,37 @@ pub(crate) fn install(environment: &Environment) {
         if items.is_empty() { return Ok(crate::Value::Nil); }
         let mut best = items[0].clone();
         for item in &items[1..] {
-            if item > &best { best = item.clone(); }
+            if super::arithmetic::order_pair(">", item, &best, span)? { best = item.clone(); }
+        }
+        Ok(best)
+    });
+
+    define!(environment, "min", |args: &[Value], _env: &Environment, span: Span| {
+        if args.is_empty() {
+            return Err(crate::LanguageError::new(
+                crate::ErrorKind::Arity,
+                "min expects at least one argument · min ochikuie shchonaimenshe odyn arhument · min erwartet mindestens ein Argument",
+                span,
+            ));
+        }
+        let mut best = args[0].clone();
+        for v in &args[1..] {
+            if super::arithmetic::order_pair("<", v, &best, span)? { best = v.clone(); }
+        }
+        Ok(best)
+    });
+
+    define!(environment, "max", |args: &[Value], _env: &Environment, span: Span| {
+        if args.is_empty() {
+            return Err(crate::LanguageError::new(
+                crate::ErrorKind::Arity,
+                "max expects at least one argument · max ochikuie shchonaimenshe odyn arhument · max erwartet mindestens ein Argument",
+                span,
+            ));
+        }
+        let mut best = args[0].clone();
+        for v in &args[1..] {
+            if super::arithmetic::order_pair(">", v, &best, span)? { best = v.clone(); }
         }
         Ok(best)
     });

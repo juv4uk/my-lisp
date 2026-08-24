@@ -1,6 +1,6 @@
 use crate::bignum::BigInt;
 use crate::{Environment, Exactness, Expr};
-use std::{cell::RefCell, cmp::Ordering, fmt, net::TcpListener, net::TcpStream, rc::Rc, str::FromStr};
+use std::{cell::RefCell, cmp::Ordering, fmt, net::TcpListener, net::TcpStream, ops::Neg, rc::Rc, str::FromStr};
 
 /// A reduced exact fraction owned by the language runtime, backed by the
 /// hand-rolled `BigInt` in `bignum.rs` — "exact" has no numeric ceiling
@@ -82,6 +82,16 @@ pub enum DecimalLiteralError {
 impl PartialOrd for Rational {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl Neg for Rational {
+    type Output = Self;
+    fn neg(self) -> Self {
+        Self {
+            numerator: self.numerator.neg(),
+            denominator: self.denominator,
+        }
     }
 }
 
@@ -307,6 +317,10 @@ impl Rational {
         const MAX_EXACT: i64 = 1 << 53;
         let value = self.numerator.to_i64()?;
         (-MAX_EXACT..=MAX_EXACT).contains(&value).then_some(value)
+    }
+
+    pub fn is_negative(&self) -> bool {
+        self.numerator.is_negative()
     }
 }
 

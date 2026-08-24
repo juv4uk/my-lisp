@@ -1,7 +1,7 @@
 ; lib/linter.my — Linter for my-lisp ASTs
 ; Analyzes size, nesting, complexity, globals, and effects.
 
-(def max
+(def lint-max2
   (lambda (a b)
     (cond
       ((> a b) a)
@@ -19,7 +19,7 @@
   (lambda (ast)
     (cond
       ((atom ast) 0)
-      (t (max (+ 1 (lint-nesting (car ast)))
+      (t (lint-max2 (+ 1 (lint-nesting (car ast)))
               (lint-nesting (cdr ast)))))))
 
 ; 3. Complexity: Number of branching paths (cond clauses)
