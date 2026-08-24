@@ -61,19 +61,40 @@ swarm-node --port <p> --node-id <id> --project <proj> \
 
 ## Remote box (droplet 100.113.68.50)
 
-- Not directly accessible from this host's session (no SSH key path
-  documented here); updates are git pull + rebuild + restart per the
-  playbook in swarm-mesh-v2.md.
-- Runs `my-lisp-1` as **root** (see SWARM-NODE-ROOT-USER-CONCERN) with
-  no supervisor (see SWARM-NODE-SYSTEMD-SERVICE) and no per-agent user
-  isolation (see SWARM-REMOTE-USER-ISOLATION). All three are documented
-  follow-ups, not solved.
+**Updated 2026-08-24 (M1.2 + hardening deployed by wsl-ganaka-1; owner
+installed ed25519 key `ganaka-1@wsl` for root):**
+
+- SSH works from this host: `ssh -i ~/.ssh/id_ed25519 root@100.113.68.50`.
+  Per-agent keys live in `/home/agents/.ssh/droplet-keys/<agent>/`
+  targeting user `agentops` (passwordless sudo). Password auth disabled;
+  ufw active (OpenSSH + tailscale0 only).
+- node-1 runs as **systemd unit `swarm-node.service`** (user `swarm`,
+  `Restart=always`, binary `/usr/local/bin/swarm-node` @ M1.1c,
+  data-dir `/var/lib/swarm-node`). Registry journal backup cron 03:17,
+  compact ping 03:23. Evidence snapshot:
+  `/var/lib/swarm-node/evidence-snapshot-20260824.tar.gz`.
+- Legacy `/opt/my-lisp/blue/my-lisp` bootstrap was retired 2026-08-24;
+  a separate instance of the same binary runs the semantic oracle on
+  `--tcp=10000` behind haproxy :9999 (bound to the tailscale IP).
+- RULE (registry escalation 2026-08-24): journal operations only on a
+  stopped service or via atomic rename — never `cp -a` a live journal.
+
+## Default-branch asymmetry (per Vyasa, 2026-08-24)
+
+| Repo | Default branch | Push target |
+|---|---|---|
+| my-lisp | `main` | `git push origin main` |
+| tauricode | `dev` | `git push origin dev` |
+| cml | **`master`** | `git push origin master` |
+| fpga-lisp | `master` | `git push origin master` |
+| WSM-24 | `main` | `git push origin main` |
 
 ## Open items
 
-1. Oracle :9999 — restart semantic oracle service on the droplet.
-2. my-lisp-panini-1 (100.120.29.6:9106) unreachable; fpga-lisp-1,
-   my-idea-1, cml-1 not running (may be remote or stopped).
-3. cml-1 address/port unknown — fill in when it next registers.
-4. No authenticated peer identity (M0.11 spoofing gap, tracked in
-   swarm-mesh-v2.md).
+1. my-lisp-panini-1 (100.120.29.6:9106) unreachable; fpga-lisp-1,
+   my-idea-1, cml-1 not running locally (may be remote or stopped).
+2. cml-1 address/port unknown — fill in when it next registers.
+3. No authenticated peer identity (M0.11 spoofing gap, tracked in
+   swarm-mesh-v2.md; crypto identity remains M1.3).
+4. Panini remote nodes on the droplet run pre-M1.1a binaries under
+   their own users (ports 9106/9107) — upgrade tail.
