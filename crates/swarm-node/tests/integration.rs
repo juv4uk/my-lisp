@@ -732,3 +732,62 @@ fn large_backlog_sync_converges_without_stale_close() {
         diag(b_port)
     );
 }
+
+/// M1.3 hygiene: `(evict (node <id>))` flips a dead member's presence to
+/// nil across the mesh and shuts down its live-looking socket.
+#[test]
+fn evict_marks_dead_member_absent_everywhere() {
+    let ports = alloc_ports(3);
+    let dir = data_dir("m11d-evict");
+    let _a = spawn(ports, "evict-a", &dir.join("a"), None);
+    let victim_port = ports + 1;
+    let mut victim = spawn(victim_port, "ghost-9", &dir.join("g"), Some(ports));
+
+    // ghost joins from ITS own connection
+    assert!(request(victim_port, "(join (capabilities (test)) (roles (worker)))").starts_with("(ok"));
+
+    // Wait until the join fact has propagated to A before evicting —
+    // otherwise the late-arriving join would re-mark the ghost present.
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let members = request(ports, "(list-members)");
+        let seg = members
+            .split("(node ghost-9)")
+            .nth(1)
+            .unwrap_or("")
+            .chars()
+            .take_while(|c| *c != ')')
+            .collect::<String>();
+        if seg.contains("t") {
+            break;
+        }
+        assert!(Instant::now() < deadline, "ghost-9 never appeared present on A");
+        std::thread::sleep(Duration::from_millis(100));
+    }
+
+    // admin on A evicts the ghost id
+    let r = request(ports, "(evict (node ghost-9))");
+    assert!(r.starts_with("(ok"), "{r}");
+
+    // derived membership on A shows it absent
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let members = request(ports, "(list-members)");
+        let seg = members
+            .split("(node ghost-9)")
+            .nth(1)
+            .unwrap_or("")
+            .chars()
+            .take_while(|c| *c != ')')
+            .collect::<String>();
+        if seg.contains("nil") {
+            break;
+        }
+        assert!(Instant::now() < deadline, "ghost-9 still present after evict");
+        std::thread::sleep(Duration::from_millis(100));
+    }
+
+    // Reap the spawned child before Drop does it for us.
+    victim.child.kill().ok();
+    victim.child.wait().ok();
+}

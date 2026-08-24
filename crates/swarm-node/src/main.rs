@@ -636,6 +636,9 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("leave") => {
                 handle_leave(&node, &mut stream);
             }
+            Some("evict") => {
+                handle_evict(&node, &msg, &mut stream);
+            }
             Some("list-members") => {
                 handle_list_members(&node, &mut stream);
             }
@@ -1779,8 +1782,7 @@ fn handle_join(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 /// Local client op: `(leave)`. Records `agent-left` — membership history is
 /// kept, not erased, matching the immutable-facts philosophy; `present`
 /// just flips to false in the derived view.
-fn handle_leave(node: &Arc<Node>, stream: &mut TcpStream) {
-    let payload = Sexp::list(vec![
+fn handle_leave(node: &Arc<Node>, stream: &mut TcpStream) {    let payload = Sexp::list(vec![
         Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)]),
         Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(node.identity.epoch.to_string())]),
     ]);
@@ -1792,6 +1794,48 @@ fn handle_leave(node: &Arc<Node>, stream: &mut TcpStream) {
         Ok(()) => {
             drop(journal);
             send(stream, &Sexp::list(vec![Sexp::atom("ok"), Sexp::list(vec![Sexp::atom("node"), Sexp::atom(&node.identity.node_id)])]));
+            broadcast_event(node, &event, None);
+        }
+        Err(e) => send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("journal append failed: {e}"))])),
+    }
+}
+
+/// M1.3 hygiene (SWARM-NODE-PRESENCE-HYGIENE): `(evict (node <id>))`
+/// records an `agent-left` fact ON BEHALF of a member that is gone and
+/// can no longer leave for itself (dead incarnation, wiped data-dir).
+/// Same immutable-facts semantics as `leave`: history kept, derived
+/// presence flips false. Also shuts down any live-looking connection
+/// held by that id (zombie sockets from fast restarts). Trust model
+/// identical to every other op: the plane assumes a trusted network;
+/// crypto identity remains M1.3 proper work.
+fn handle_evict(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    let Some(target) = msg.field_atom("node") else {
+        send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string("evict requires a `node` field")]));
+        return;
+    };
+    if target == node.identity.node_id {
+        send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string("use (leave) to remove yourself")]));
+        return;
+    }
+    let payload = Sexp::list(vec![
+        Sexp::list(vec![Sexp::atom("node"), Sexp::atom(target)]),
+    ]);
+    let lamport = node.tick_lamport(0);
+    let mut journal = node.journal.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let seq = journal.next_seq(&node.identity.node_id, Some(&node.identity.incarnation));
+    let event = Event { node: node.identity.node_id.clone(), incarnation: Some(node.identity.incarnation.clone()), seq, lamport, typ: "agent-left".to_string(), payload };
+    match journal.append(event.clone()) {
+        Ok(()) => {
+            drop(journal);
+            if let Some(zombie) = node
+                .peers
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .remove(target)
+            {
+                let _ = zombie.shutdown(std::net::Shutdown::Both);
+            }
+            send(stream, &Sexp::list(vec![Sexp::atom("ok"), Sexp::list(vec![Sexp::atom("evicted"), Sexp::atom(target)])]));
             broadcast_event(node, &event, None);
         }
         Err(e) => send(stream, &Sexp::list(vec![Sexp::atom("error"), Sexp::string(format!("journal append failed: {e}"))])),
