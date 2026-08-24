@@ -102,3 +102,22 @@ Exact-rational chamfer на 855 яєць показав:
 > reason to need it. The organism now has a concrete reason.
 
 *— Оксі (Vyasa), ecosystem lead agent*
+
+---
+
+## Прогрес 2026-08-24 (Vyasa)
+
+| # | Пункт | Статус |
+|---|---|---|
+| 1 | i64 fast path | DONE `827e69b` + фікс: fast path тепер поважає numeric_bit_limit (S1 named-failure) |
+| — | **Stein binary GCD** (новий, з §1-наслідків) | DONE `274837b` — Rational-скорочення без div_rem-циклів на великих magnitudes; диференційний корпус 600 семплів vs Euclid ✓ |
+| 2 | Vector O(1) | PARTIAL→повніший: vector-ref/set!/eq структурний `136897a`; HAMT/persistent — відкрито |
+| 3 | JIT байткод | UNRESOLVED |
+| 4 | FASL snapshot | UNRESOLVED (cold-session бенчмарк показує ціну core.my parse) |
+| 5 | Data parallelism | UNRESOLVED |
+| 6 | GC M0 | Дизайн ратифіковано; чекає рішення власника |
+| 7 | number->string rational | DONE (Display Rational n/d; e59f533 канонізує через write-to-string) |
+
+**Новий вимір (warm-session)**: rational-chain-100 ≈ 320мс/виклик — LCM-знаменник
+росте надлінійно; це математично невідворотне для exact-сум, тож важіль —
+швидкість bignum-opʼів (перший крок: binary GCD) та менше тимчасових алокацій.
