@@ -112,15 +112,31 @@ pub fn exact_arity(
     ))
 }
 
-pub(crate) fn quoted(expression: &Expr) -> Value {
-    match &expression.kind {
-        ExprKind::Number(number, exactness) => Value::Number(*number, *exactness),
-        ExprKind::Rational(rational) => Value::Rational(rational.clone()),
-        ExprKind::String(value) => Value::String(value.clone()),
-        ExprKind::Symbol(symbol) => Value::Symbol(symbol.clone()),
-        ExprKind::List(items) => Value::list(items.iter().map(quoted)),
-        ExprKind::Pair(head, tail) => Value::Pair(Rc::new(quoted(head)), Rc::new(quoted(tail))),
+pub(crate) fn quoted(expression: &Expr) -> Result<Value, LanguageError> {
+    fn go(expression: &Expr, depth: u32) -> Result<Value, LanguageError> {
+        if depth > crate::syntax::MAX_STRUCTURE_DEPTH {
+            return Err(LanguageError::new(
+                ErrorKind::Parse,
+                "quoted structure exceeds reader limit · struktura perevyshchuie mezhu chytacha · zitierte Struktur überschreitet das Reader-Limit",
+                Span { start: 0, end: 0 },
+            ));
+        }
+        Ok(match &expression.kind {
+            ExprKind::Number(number, exactness) => Value::Number(*number, *exactness),
+            ExprKind::Rational(rational) => Value::Rational(rational.clone()),
+            ExprKind::String(value) => Value::String(value.clone()),
+            ExprKind::Symbol(symbol) => Value::Symbol(symbol.clone()),
+            ExprKind::List(items) => {
+                let mut out = Vec::with_capacity(items.len());
+                for item in items.iter() {
+                    out.push(go(item, depth + 1)?);
+                }
+                Value::list(out)
+            }
+            ExprKind::Pair(head, tail) => Value::Pair(Rc::new(go(head, depth + 1)?), Rc::new(go(tail, depth + 1)?)),
+        })
     }
+    go(expression, 0)
 }
 
 // ── contract 2.1: value-level entry points (first-class builtins) ──

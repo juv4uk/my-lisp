@@ -125,7 +125,8 @@ fn evaluate_list(
     match items[0].kind.as_symbol() {
         Some("quote") => {
             special_forms::exact_arity("quote", arguments, 1, span)?;
-            Ok(EvalStep::Value(special_forms::quoted(&arguments[0])))
+            let value = special_forms::quoted(&arguments[0])?;
+            Ok(EvalStep::Value(value))
         }
         Some("lambda") => closures::create_lambda(arguments, environment, span).map(EvalStep::Value),
         Some("def") => {

@@ -20,7 +20,7 @@ fn dotted_list(items: Vec<Expr>, tail: Expr, start: usize, end: usize) -> Expr {
 }
 
 pub fn parse(source: &str) -> Result<Vec<Expr>, LanguageError> {
-    let mut parser = Parser { source, cursor: 0 };
+    let mut parser = Parser { source, cursor: 0, depth: 0 };
     let mut expressions = Vec::new();
     parser.skip_ignored();
     while parser.cursor < source.len() {
@@ -33,6 +33,7 @@ pub fn parse(source: &str) -> Result<Vec<Expr>, LanguageError> {
 struct Parser<'a> {
     source: &'a str,
     cursor: usize,
+    depth: u32,
 }
 
 impl Parser<'_> {
@@ -56,9 +57,28 @@ impl Parser<'_> {
         }
     }
 
+    fn enter(&mut self, span_start: usize) -> Result<(), LanguageError> {
+        self.depth += 1;
+        if self.depth > crate::syntax::MAX_STRUCTURE_DEPTH {
+            return Err(self.error(
+                "nesting exceeds reader limit · hlybyna vkladennia perevyshchuie mezhu chytacha · Verschachtelungstiefe überschreitet das Reader-Limit",
+                span_start,
+                span_start + 1,
+            ));
+        }
+        Ok(())
+    }
+
 
 
     fn list(&mut self, start: usize) -> Result<Expr, LanguageError> {
+        self.enter(start)?;
+        let result = self.list_inner(start);
+        self.depth -= 1;
+        result
+    }
+
+    fn list_inner(&mut self, start: usize) -> Result<Expr, LanguageError> {
         self.bump();
         let mut items = Vec::new();
         loop {
@@ -547,5 +567,18 @@ mod tests {
     #[test]
     fn empty_source_parses_to_no_expressions() {
         assert_eq!(parse("   ; only a comment\n").expect("should parse"), vec![]);
+    }
+
+    #[test]
+    fn reader_depth_past_limit_fails_named_not_with_a_crash() {
+        let deep = format!("{}{}", "(".repeat(50_000), ")".repeat(50_000));
+        let error = parse(&deep).expect_err("past the limit must fail named");
+        assert!(error.message.contains("nesting exceeds reader limit"));
+    }
+
+    #[test]
+    fn reader_at_reasonable_depth_still_parses() {
+        let ok = format!("{}42{}", "(".repeat(200), ")".repeat(200));
+        parse(&ok).expect("well under the limit should parse");
     }
 }

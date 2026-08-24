@@ -68,3 +68,10 @@ pub enum ExprKind {
     /// Daten liest).
     Pair(Rc<Expr>, Rc<Expr>),
 }
+
+/// Shared nesting cap for every recursive structure walk over reader
+/// output: the parser itself, `quote`d-data conversion (`quoted`) and
+/// value→expr lowering (`value_to_expr`). Mirrors the JSON decoder's
+/// defense; past this the language fails named instead of overflowing
+/// the native stack and killing the host process.
+pub(crate) const MAX_STRUCTURE_DEPTH: u32 = 1024;

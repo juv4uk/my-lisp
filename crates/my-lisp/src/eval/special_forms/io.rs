@@ -97,7 +97,7 @@ pub(crate) fn evaluate_read(
         error
     })?;
     match <[Expr; 1]>::try_from(expressions) {
-        Ok([expression]) => Ok(quoted(&expression)),
+        Ok([expression]) => quoted(&expression),
         Err(expressions) => Err(LanguageError::new(
             ErrorKind::InvalidForm,
             format!(
@@ -189,5 +189,9 @@ pub(crate) fn evaluate_read_all(
         error.span = span;
         error
     })?;
-    Ok(Value::list(expressions.iter().map(quoted)))
+    let mut values = Vec::with_capacity(expressions.len());
+    for expression in &expressions {
+        values.push(quoted(expression)?);
+    }
+    Ok(Value::list(values))
 }

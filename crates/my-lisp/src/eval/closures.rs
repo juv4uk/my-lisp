@@ -237,14 +237,14 @@ pub(super) fn apply_macro(
 
     let local_environment = closure.environment.child();
     for (parameter, argument) in closure.parameters.iter().zip(arguments.iter()) {
-        let value = quoted(argument); // Do NOT evaluate arguments
+        let value = quoted(argument)?; // Do NOT evaluate arguments
         local_environment.define(parameter.clone(), value);
     }
     if let Some(rest_name) = &closure.rest {
-        let rest_values: Vec<Value> = arguments[closure.parameters.len()..]
-            .iter()
-            .map(quoted) // Do NOT evaluate arguments
-            .collect();
+        let mut rest_values: Vec<Value> = Vec::with_capacity(arguments.len());
+        for argument in &arguments[closure.parameters.len()..] {
+            rest_values.push(quoted(argument)?); // Do NOT evaluate arguments
+        }
         local_environment.define(rest_name.clone(), Value::list(rest_values));
     }
 
@@ -269,6 +269,18 @@ pub(super) fn apply_macro(
 // Daten->Code-Umwandlung für `eval` wieder, statt den Cons-Zellen-Durchlauf
 // zu duplizieren, den die Makro-Expansion bereits brauchte.
 pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageError> {
+    fn go(value: &Value, span: Span, depth: u32) -> Result<Expr, LanguageError> {
+        if depth > crate::syntax::MAX_STRUCTURE_DEPTH {
+            return Err(LanguageError::new(
+                ErrorKind::Parse,
+                "structure exceeds reader limit · struktura perevyshchuie mezhu chytacha · Struktur überschreitet das Reader-Limit",
+                span,
+            ));
+        }
+        go_inner(value, span, depth)
+    }
+
+    fn go_inner(value: &Value, span: Span, depth: u32) -> Result<Expr, LanguageError> {
     let kind = match &value {
         Value::Nil => ExprKind::List(Rc::new([])),
         Value::Bool(true) => ExprKind::Symbol("t".into()),
@@ -299,7 +311,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
             loop {
                 match &current {
                     Value::Pair(h, t) => {
-                        items.push(value_to_expr((**h).clone(), span)?);
+                        items.push(go(h, span, depth + 1)?);
                         current = (**t).clone();
                     }
                     Value::Nil => break,
@@ -340,4 +352,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
         }
     };
     Ok(Expr { kind, span })
+    }
+
+    go(&value, span, 0)
 }
