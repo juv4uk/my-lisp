@@ -1,47 +1,63 @@
 # my-lisp benchmarks · Benchmarks my-lisp · my-lisp-Benchmarks
 
-## English
+**Status:** CURRENT · regenerated 2026-08-24 · base `1566fcf`+ · Vyasa
+**Runner:** `cargo run --release -p my-lisp --example benchmark`
+(env var `MY_LISP_BENCH_ITERATIONS`, default 1000; `MY_LISP_RAT_N` for the rational chain depth)
 
-The benchmark suite historically ran the same `.my` programs through the ClojureScript prototype and the canonical Rust core, to quantify the migration. The ClojureScript prototype has since been fully replaced (see `docs/language-core.md`), so the CLJS side of these numbers is a historical comparison point, not an active engine. It measures parser throughput plus arithmetic, list recursion, direct recursion, and lexical closures. Each case receives 50 warm-up executions; the reported value is average microseconds per operation over 1,000 measured executions.
+> ⚠️ Machine-specific numbers. Compare runs from the same machine only.
+> These are microbenchmarks and a workload probe — not product promises.
+> Числа специфічні для машини; порівнюйте тільки рани з однієї машини.
 
-Run `npm run benchmark`. Set `MY_LISP_BENCH_ITERATIONS` to change the measured iteration count. Results depend on CPU, power mode, compiler version, background activity, and thermal state; compare engines from the same run instead of treating one machine's numbers as universal.
+## 1. Fresh-session microbenchmarks (cold path)
 
-These are microbenchmarks, not product-performance promises. They deliberately include parser and fresh-session allocation in every evaluation operation because that matches the current Language Lab path. Later benchmarks may separately measure persistent REPL sessions, loading `lib/core.my`, deep tail calls, allocation, and Android devices.
+Every operation pays `Session::default()` + full `lib/core.my` parse —
+this matches one-shot CLI/batch invocations (WSM-24 style egg farms),
+which is exactly why optimization item #4 (AST snapshot) targets it.
+
+Measured 2026-08-24, `MY_LISP_BENCH_ITERATIONS=200`:
+
+| case | ns/op | note |
+|---|---|---|
+| rust/parser | 23 511 | parse-only |
+| rust/arithmetic | 31 392 | incl. session+core.my |
+| rust/lists | 48 746 | |
+| rust/recursion | 88 747 | |
+| rust/closures | 24 371 | |
+
+## 2. Warm-session steady state (hot path) — NEW
+
+Session loaded once (`core.my` + setup); measures pure interpreter loop
+through `eval_program`. This is what LSP / REPL / swarm-node actually
+experience after startup.
+
+| case | per call | what it exercises |
+|---|---|---|
+| warm/rational-chain-100 | **~320 ms** | 100 exact-rational additions; denominator = LCM chain of 100 coprime-ish terms → multi-thousand-digit bignums, gcd on every step |
+| warm/vector-fill-500 | ~89 ms | 500× vector-set!/vector-ref through Rc<RefCell<Vec>> |
+
+### The finding that drives the next optimization
+
+The rational chain scales **superlinearly**: n=100 → 0.32 s,
+n=200 → 3 s, n=400 → 42 s (CLI repro), n=2000 → >5 min.
+Root cause: each `(+ acc term)` normalizes against an ever-growing LCM
+denominator; gcd cost grows with digit count. This is the single most
+expensive real-workload shape we know of (WSM-24 chamfer is built from
+exactly these chains). Optimization options are tracked in
+`docs/OPTIMIZATION-ANALYSIS-VYASA.md` §1.
+
+## 3. Historical note
+
+The suite historically also ran the same `.my` programs through the
+ClojureScript prototype (`npm run benchmark`). The CLJS prototype has
+been fully replaced by the Rust core and `package.json` no longer
+exists — those instructions were dead and are removed. The `.my`
+programs in `benchmarks/*.my` remain as fixture inputs to this runner.
 
 ## Українська
 
-Набір benchmark історично запускав однакові програми `.my` через ClojureScript-прототип і канонічне Rust-ядро, щоб виміряти прогрес міграції. ClojureScript-прототип відтоді повністю замінено (див. `docs/language-core.md`), тож CLJS-частина цих чисел — історична точка порівняння, а не активний рушій. Він вимірює parser, арифметику, рекурсію списків, пряму рекурсію та лексичні замикання. Кожен випадок має 50 прогрівальних запусків; результат — середня кількість мікросекунд на операцію за 1 000 виміряних запусків.
-
-Запуск: `npm run benchmark`. Змінна `MY_LISP_BENCH_ITERATIONS` задає іншу кількість виміряних ітерацій. Результати залежать від CPU, режиму живлення, версії компілятора, фонової активності й температури; порівнюйте рушії з одного запуску, а не сприймайте числа одного комп’ютера як універсальні.
-
-Це microbenchmarks, а не обіцянка швидкодії продукту. Вони навмисно включають parser і створення нової session у кожну eval-операцію, бо це відповідає поточному шляху Language Lab. Пізніше можна окремо вимірювати постійні REPL-сесії, завантаження `lib/core.my`, глибокі tail calls, allocations та Android-пристрої.
-
-## Deutsch
-
-Die Benchmark-Suite führte historisch dieselben `.my`-Programme im ClojureScript-Prototyp und im kanonischen Rust-Kern aus, um den Migrationsfortschritt zu messen. Der ClojureScript-Prototyp wurde inzwischen vollständig ersetzt (siehe `docs/language-core.md`), daher ist die CLJS-Seite dieser Zahlen ein historischer Vergleichspunkt und keine aktive Engine. Gemessen werden Parser, Arithmetik, Listenrekursion, direkte Rekursion und lexikalische Closures. Jeder Fall erhält 50 Aufwärmausführungen; ausgegeben werden durchschnittliche Mikrosekunden pro Operation aus 1.000 gemessenen Ausführungen.
-
-Start mit `npm run benchmark`. `MY_LISP_BENCH_ITERATIONS` ändert die Anzahl gemessener Iterationen. Ergebnisse hängen von CPU, Energiemodus, Compiler-Version, Hintergrundlast und Temperatur ab; Engines sollen innerhalb desselben Laufs verglichen werden, statt Zahlen eines Rechners als universell anzusehen.
-
-Dies sind Mikrobenchmarks und keine Leistungszusage für das Produkt. Parser und neue Session-Allokation sind absichtlich Teil jeder Auswertungsoperation, da dies dem aktuellen Language-Lab-Pfad entspricht. Später können dauerhafte REPL-Sitzungen, das Laden von `lib/core.my`, tiefe Tail Calls, Allokationen und Android-Geräte getrennt gemessen werden.
-
-## Local baseline · Локальний baseline · Lokale Ausgangsmessung
-
-Windows x86_64, 2026-08-05, release-mode Rust, median of three runs with 5,000 measured iterations per case. CLJS varied more because JIT and garbage-collection activity remain part of the measurement; the median avoids presenting either the best or worst outlier as the baseline.
-
-This table predates the explicit trampoline and remains the comparison baseline. The trampoline is behaviorally verified with 5,000 consecutive zero-argument closure tail calls in debug mode. `Value::Pair` cons cells already share structure via `Rc` — `cons` is O(1) regardless of list length, verified by timing 50,000 `cons` calls onto a 200,000-element list (~1.3µs/op, flat) — and deep-list drop is iterative and stack-safe (`crates/my-lisp/tests/stack_safety.rs`). A new timing baseline is still worth recording once a broader set of list operations (not just `cons`) has been profiled this way.
-
-Windows x86_64, 2026-08-05, Rust у release mode, медіана трьох прогонів по 5 000 виміряних ітерацій на випадок. CLJS коливався сильніше через JIT і garbage collection, які залишаються частиною вимірювання; медіана не видає ані найкращий, ані найгірший викид за baseline.
-
-Ця таблиця передує явному trampoline й залишається baseline для порівняння. Trampoline поведінково перевірено 5 000 послідовними хвостовими викликами нуль-аргументних closures у debug mode. Cons-комірки `Value::Pair` вже поділяють структуру через `Rc` — `cons` є O(1) незалежно від довжини списку, перевірено вимірюванням 50 000 викликів `cons` на список із 200 000 елементів (~1.3мкс/операцію, плоско) — а drop глибоких списків ітеративний і stack-safe (`crates/my-lisp/tests/stack_safety.rs`). Новий часовий baseline все ще варто записати, коли ширший набір list-операцій (не лише `cons`) буде так само профільовано.
-
-Windows x86_64, 2026-08-05, Rust im Release-Modus, Median aus drei Läufen mit jeweils 5.000 gemessenen Iterationen pro Fall. CLJS schwankte wegen JIT- und Garbage-Collection-Aktivität stärker; der Median verwendet weder den besten noch den schlechtesten Ausreißer als Ausgangswert.
-
-Diese Tabelle entstand vor dem expliziten Trampolin und bleibt die Vergleichsbasis. Das Trampolin wird im Debug-Modus mit 5.000 aufeinanderfolgenden Tail Calls parameterloser Closures verhaltensbasiert geprüft. `Value::Pair`-Cons-Zellen teilen Struktur bereits über `Rc` — `cons` ist O(1) unabhängig von der Listenlänge, verifiziert durch Zeitmessung von 50.000 `cons`-Aufrufen auf eine 200.000-Elemente-Liste (~1,3µs/Op, konstant) — und das Droppen tiefer Listen ist iterativ und stack-sicher (`crates/my-lisp/tests/stack_safety.rs`). Eine neue Zeitbasis lohnt sich weiterhin, sobald ein breiteres Set an Listenoperationen (nicht nur `cons`) so profiliert wurde.
-
-| Case · Випадок · Fall | CLJS µs/op | Rust µs/op | Rust speedup · Прискорення · Beschleunigung |
-|---|---:|---:|---:|
-| parser | 62.72 | 8.60 | 7.3× |
-| arithmetic | 57.39 | 7.12 | 8.1× |
-| lists | 198.26 | 52.40 | 3.8× |
-| recursion | 194.92 | 105.36 | 1.8× |
-| closures | 48.14 | 10.36 | 4.6× |
+Запуск: `cargo run --release -p my-lisp --example benchmark`.
+Секція 1 — cold path (кожна операція платить парсинг core.my — як раз
+батчові CLI-запуски). Секція 2 — тепла сесія (стале навантаження
+інтерпретатора, як у LSP/REPL/swarm після старту). Головний висновок:
+точнорaціональний ланцюг масштабується надлінійно через ріст
+LCM-знаменника — це ціль наступної оптимізації.
