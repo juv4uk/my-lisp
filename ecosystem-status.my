@@ -57,12 +57,12 @@
      (compiler-version . (0 1 0))
      (recursive-def-status . resolved)
      (recursive-def-fix . "compile_cond was using R4 (the ENV register) as a scratch register for its NIL-check, silently clobbering the environment on every cond — fixed commit e73f93a; self-recursive (def count (lambda (n) (cond ((eq n 0) 99) (t (count (+ n -1)))))) now returns 99 on real iverilog")
-     (length-e2e . "actively running as of this writing (tb_cml_e2e.sv, my-lisp -> cml -> fpga-lisp, the ecosystem's pinned next-milestone target) — result not yet confirmed back to my-lisp session; check mailbox/evidence/length/ once it lands")
+     (length-e2e . "done — cml evidence/length/{my-lisp/bb6a595,cml/26c1963,fpga-lisp/735e7c4}.my records the same core.my length/length-onto source, oracle expected 3, and fpga-lisp RTL actual 3 via iverilog; RESULT_TAG:0 RESULT_VAL:3")
      (equal-status . merged-fixed-and-verified)
      (defmacro-status . merged-fixed-and-verified)
      (documented-limitations . (no-inexact-numbers no-rationals no-canonical-strings
                                  no-more-than-eight-call-arguments))
-     (current-task . "confirm+file length_e2e result as evidence/length/cml/<sha>.my and evidence/length/fpga-lisp/<sha>.my once the run completes")))
+     (current-task . "length_e2e evidence reconciled; next cross-repo target is physical execution of the ISA 1.1 tagged register-input frame, with no claim until COM4 evidence exists")))
    (my-idea .
     ((role . observer-and-ide)
      (joined-ecosystem-sync . "2026-08-11")
@@ -76,13 +76,13 @@
    (isa-no-inexact-rational-string .
     "representational gap, not an implementation gap; blocks my-lisp's stated core purpose (exact rational arithmetic) from ever reaching fpga-lisp until isa-contract.my adds tags/encoding for it — needs a representation contract before any RTL/cml lowering work, not an ad-hoc format invented mid-implementation")))
  (next-milestone .
-  ((name . pinned-end-to-end-length)
-   (status . "in progress — cml running the actual pipeline as of this writing, not yet confirmed complete")
-   (goal . "one real, non-trivial my-lisp program (length) proven identical end-to-end: my-lisp interpreter result == cml-compiled fpga-lisp result, on a pinned SHA triple, comparison automated, result surfaced as evidence — not a manually-eyeballed register dump or a green CI badge")
-   (per-repo .
-    ((my-lisp . "done — tests/fixtures/conformance.my's tier-1 fixtures already expose the oracle value; no further work needed unless cml/fpga-lisp need a different entry point")
-     (cml . "in progress — recursive def resolved (e73f93a), length_e2e run underway via tb_cml_e2e.sv")
-     (fpga-lisp . "waiting on cml's run to land, then decode the result structurally and confirm")
+ ((name . physical-fpga-register-input)
+  (status . "planned — ISA 1.1 frame encoding and bridge parsing are complete; physical payload execution is not yet evidenced")
+  (goal . "one tagged register-input frame produced by CML, accepted by the physical fpga-lisp bootloader after COM4 transfer, and decoded to an observed result with pinned evidence")
+  (per-repo .
+   ((my-lisp . "done — tests/fixtures/conformance.my's tier-1 fixtures already expose the oracle value; no further work needed unless cml/fpga-lisp need a different entry point")
+    (cml . "done for length_e2e; ISA 1.1 register-input encoder is implemented and tested, physical COM4 payload remains pending")
+    (fpga-lisp . "ISA 1.1 register-input RTL simulation and host bridge parsing pass; physical payload execution remains pending")
      (my-idea . "not started — one panel: source -> compiled instructions -> execution -> decoded result -> oracle match, PASS/FAIL")))
    (anti-pattern-to-avoid . "no more NOTE-*.md proliferation or (quote agent) X replied to agent Y' commits — coordinate through this file's current-task fields and normal commits that actually touch code")))
  (how-to-refresh .
