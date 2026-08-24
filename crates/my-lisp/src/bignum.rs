@@ -50,6 +50,70 @@ impl Magnitude {
         Magnitude(limbs)
     }
 
+    /// Number of trailing zero bits across all limbs (0 for zero magnitude).
+    /// Kilkist kintsevykh nulovykh bitiv usikh limbiv.
+    fn trailing_zeros(&self) -> u32 {
+        let mut zeros = 0u32;
+        for limb in &self.0 {
+            if *limb == 0 {
+                zeros += 32;
+            } else {
+                zeros += limb.trailing_zeros();
+                break;
+            }
+        }
+        zeros
+    }
+
+    /// In-place logical right shift by `bits` (< total bit length).
+    /// Pobitovyi zsun vpravo na `bits` bil in-place.
+    fn shr_assign(&mut self, bits: u32) {
+        let limbs = (bits / 32) as usize;
+        let rem = bits % 32;
+        if limbs >= self.0.len() {
+            self.0.clear();
+            return;
+        }
+        if limbs > 0 {
+            self.0.drain(0..limbs);
+        }
+        if rem > 0 {
+            let mut carry = 0u32;
+            for limb in self.0.iter_mut().rev() {
+                let next_carry = *limb << (32 - rem);
+                *limb = (*limb >> rem) | carry;
+                carry = next_carry;
+            }
+        }
+        while self.0.last() == Some(&0) {
+            self.0.pop();
+        }
+    }
+
+    /// In-place logical left shift by `bits`.
+    /// Pobitovyi zsun vlivo na `bits` bil.
+    fn shl_assign(&mut self, bits: u32) {
+        if self.is_zero() {
+            return;
+        }
+        let limbs = (bits / 32) as usize;
+        let rem = bits % 32;
+        if rem > 0 {
+            let mut carry = 0u32;
+            for limb in self.0.iter_mut() {
+                let next_carry = *limb >> (32 - rem);
+                *limb = (*limb << rem) | carry;
+                carry = next_carry;
+            }
+            if carry != 0 {
+                self.0.push(carry);
+            }
+        }
+        if limbs > 0 {
+            self.0.splice(0..0, std::iter::repeat(0).take(limbs));
+        }
+    }
+
     fn is_zero(&self) -> bool {
         self.0.is_empty()
     }
@@ -409,14 +473,36 @@ impl BigInt {
     /// nichtnegativ, passend zur Konvention, die der Reduktionsschritt von
     /// `Rational` erwartet.
     pub fn gcd(&self, other: &Self) -> Self {
-        let mut a = self.abs();
-        let mut b = other.abs();
-        while !b.is_zero() {
-            let (_, remainder) = a.div_rem(&b).expect("b is checked nonzero by the loop condition");
-            a = b;
-            b = remainder;
+        // Stein's binary GCD: shifts and subtractions only — no div_rem.
+        // Each Rational reduction step pays this cost, and div_rem-based
+        // Euclid was the dominant term in exact-rational chains
+        // (benchmarks/rational stress, WSM-24 shape).
+        // Binarnyi gcd Shtaina: tilky zsuny ta vidnimannia — bez div_rem;
+        // same skorochennia Rational platytse za tsei krok.
+        if self.is_zero() {
+            return other.abs();
         }
-        a
+        if other.is_zero() {
+            return self.abs();
+        }
+        let a_mag = self.abs().magnitude;
+        let b_mag = other.abs().magnitude;
+        let shared = a_mag.trailing_zeros().min(b_mag.trailing_zeros());
+        let mut a = a_mag;
+        a.shr_assign(a.trailing_zeros());
+        let mut b = b_mag;
+        loop {
+            b.shr_assign(b.trailing_zeros());
+            if a.cmp(&b) == Ordering::Greater {
+                std::mem::swap(&mut a, &mut b);
+            }
+            b = b.sub(&a);
+            if b.is_zero() {
+                break;
+            }
+        }
+        a.shl_assign(shared);
+        BigInt::normalized(false, a)
     }
 }
 
