@@ -922,6 +922,29 @@ fn string_rest_drops_exactly_the_first_character() {
 }
 
 #[test]
+fn string_slice_uses_character_indices_and_clamps_bounds() {
+    assert_eq!(eval(r#"(string-slice "привіт" 1 3)"#).to_string(), "\"ри\"");
+    assert_eq!(eval(r#"(string-slice "abc" 2 9)"#).to_string(), "\"c\"");
+    assert_eq!(eval(r#"(string-slice "abc" 4 9)"#).to_string(), "\"\"");
+    assert_eq!(eval(r#"(string-slice "abc" 2 1)"#).to_string(), "\"\"");
+}
+
+#[test]
+fn string_slice_rejects_non_integer_or_negative_indices() {
+    for source in [
+        r#"(string-slice "abc" 1.5 2)"#,
+        r#"(string-slice "abc" -1 2)"#,
+        r#"(string-slice "abc" "1" 2)"#,
+    ] {
+        assert_eq!(
+            eval_program(source, &mut Session::default()).unwrap_err().kind,
+            ErrorKind::Type,
+            "source: {source}"
+        );
+    }
+}
+
+#[test]
 fn read_all_parses_every_top_level_form_as_data() {
     // Unlike `read`, which errors unless the string holds exactly one
     // form, `read-all` returns every top-level form as a list of data.

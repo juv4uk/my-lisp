@@ -8,6 +8,84 @@ use crate::eval::evaluate;
 use crate::{Environment, ErrorKind, Expr, LanguageError, Span, Value};
 use std::rc::Rc;
 
+/// Return the half-open character-indexed slice of a string.
+///
+/// Indices count Unicode scalar values, matching `string-first` and
+/// `string-rest`, rather than UTF-8 bytes. Bounds are clamped to the string
+/// length; an inverted or empty range returns the empty string.
+pub(crate) fn evaluate_string_slice(
+    arguments: &[Value],
+    span: Span,
+) -> Result<Value, LanguageError> {
+    if arguments.len() != 3 {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            "string-slice expects a string, start, and end · string-slice ochikuie riadok, pochatok i kinets · string-slice erwartet Zeichenkette, Anfang und Ende",
+            span,
+        ));
+    }
+    let Value::String(text) = &arguments[0] else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "string-slice expects a string as its first argument · string-slice ochikuie riadok pershym arhumentom · string-slice erwartet eine Zeichenkette als erstes Argument",
+            span,
+        ));
+    };
+    let start = slice_index(&arguments[1], span)?;
+    let end = slice_index(&arguments[2], span)?;
+    if start >= end {
+        return Ok(Value::String(Rc::from("")));
+    }
+    let result: String = text.chars().skip(start).take(end - start).collect();
+    Ok(Value::String(Rc::from(result.as_str())))
+}
+
+fn slice_index(value: &Value, span: Span) -> Result<usize, LanguageError> {
+    let integer = match value {
+        Value::Number(number, crate::Exactness::Exact)
+            if number.is_finite() && number.fract() == 0.0 => {
+                if *number < 0.0 {
+                    return Err(LanguageError::new(
+                        ErrorKind::Type,
+                        "string-slice indices must be non-negative exact integers · indeksy string-slice maiut buty nevidiemni tochnymy tsilymy · string-slice-Indizes müssen nichtnegative exakte Ganzzahlen sein",
+                        span,
+                    ));
+                }
+                (*number as u128).try_into().map_err(|_| {
+                    LanguageError::new(
+                        ErrorKind::NumericOverflow,
+                        "string-slice index is too large · indeks string-slice zavelykyi · string-slice-Index ist zu groß",
+                        span,
+                    )
+                })?
+            }
+        Value::Rational(rational) if rational.is_integer() => {
+            let number = rational.as_precise_i64().ok_or_else(|| {
+                LanguageError::new(
+                    ErrorKind::NumericOverflow,
+                    "string-slice index is too large · indeks string-slice zavelykyi · string-slice-Index ist zu groß",
+                    span,
+                )
+            })?;
+            usize::try_from(number).map_err(|_| {
+                LanguageError::new(
+                    ErrorKind::Type,
+                    "string-slice indices must be non-negative exact integers · indeksy string-slice maiut buty nevidiemni tochnymy tsilymy · string-slice-Indizes müssen nichtnegative exakte Ganzzahlen sein",
+                    span,
+                )
+            })?
+        }
+        _ => {
+            return Err(LanguageError::new(
+                ErrorKind::Type,
+                "string-slice indices must be non-negative exact integers · indeksy string-slice maiut buty nevidiemni tochnymy tsilymy · string-slice-Indizes müssen nichtnegative exakte Ganzzahlen sein",
+                span,
+            ));
+        }
+    };
+    Ok(integer)
+}
+
 /// String concatenation (PLAN.md item 14) — genuinely needs a Rust
 /// primitive, unlike `string-length`/`string-contains?` (both now in
 /// `lib/core.my`, expressible via `string-first`/`string-rest`/`eq`

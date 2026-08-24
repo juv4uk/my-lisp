@@ -37,5 +37,5 @@ pub(super) use io::{
 pub(super) use strings::{
     evaluate_string_append, evaluate_string_first, evaluate_string_less_than,
     evaluate_string_predicate, evaluate_string_rest, evaluate_string_to_symbol,
-    evaluate_symbol_to_string,
+    evaluate_string_slice, evaluate_symbol_to_string,
 };

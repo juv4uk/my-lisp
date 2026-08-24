@@ -290,6 +290,10 @@ pub(crate) fn install(environment: &Environment) {
         Ok(Value::NumericBuffer(NumericBuffer::F32(values.into())))
     });
 
+    define!(environment, "string-slice", |args: &[Value], _env: &Environment, span: Span| {
+        super::special_forms::evaluate_string_slice(args, span)
+    });
+
     define!(environment, "numeric-buffer?", |args: &[Value], _env: &Environment, span: Span| {
         exact_args("numeric-buffer?", args, 1, span)?;
         Ok(if matches!(args[0], Value::NumericBuffer(_)) {
