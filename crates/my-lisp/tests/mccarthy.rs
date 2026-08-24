@@ -604,7 +604,7 @@ fn list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin() {
 /// lohyt toi samyi error i perepysuie lyshe *vlasne vitannia*.)
 #[test]
 fn evaluator_still_errors_on_a_lone_unknown_symbol() {
-    let error = eval_program("мама", &mut Session::default()).unwrap_err();
+    let error = eval_program("пустота", &mut Session::default()).unwrap_err();
     assert_eq!(error.kind, ErrorKind::UnknownSymbol);
 
     let error = eval_program("hello", &mut Session::default()).unwrap_err();
