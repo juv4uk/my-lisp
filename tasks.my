@@ -18,7 +18,8 @@
     (priority . 10.0)
     (capabilities . (cml))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . ())
+    (done . t)
+    (context . "done: verified 2026-08-24 by Vyasa - grep across cml *.my shows zero reader-sugar sites (prose matches only); macros.my documents .my-hosted pipeline; swarm registry 4/4 nodes gen1 completed=t; cml plan-of-record holds no counter-evidence.")
   ))
   ("MIGRATE-QUOTE-FPGA" . (
     (priority . 10.0)
