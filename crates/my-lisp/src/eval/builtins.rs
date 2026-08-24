@@ -14,7 +14,7 @@ use crate::eval::arithmetic::{
     arithmetic_on_values, comparison_on_values, division_on_values,
 };
 use crate::eval::special_forms::{car_value, cdr_value, cons_values, eq_values};
-use crate::{Exactness, Span, Value};
+use crate::{Exactness, NumericBuffer, Span, Value};
 
 type Native = std::rc::Rc<dyn Fn(&[Value], &Environment, Span) -> Result<Value, crate::LanguageError>>;
 
@@ -222,6 +222,145 @@ pub(crate) fn install(environment: &Environment) {
                 span,
             )),
         }
+    });
+
+    define!(environment, "i32-buffer", |args: &[Value], _env: &Environment, span: Span| {
+        let mut values = Vec::with_capacity(args.len());
+        for value in args {
+            let integer = match value {
+                Value::Number(number, Exactness::Exact) if number.fract() == 0.0 => *number as i64,
+                Value::Rational(rational) if rational.is_integer() => rational
+                    .as_precise_i64()
+                    .ok_or_else(|| {
+                        crate::LanguageError::new(
+                            crate::ErrorKind::NumericOverflow,
+                            "i32-buffer element is outside the signed 32-bit range",
+                            span,
+                        )
+                    })?,
+                _ => return Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "i32-buffer expects exact integer elements",
+                    span,
+                )),
+            };
+            values.push(i32::try_from(integer).map_err(|_| {
+                crate::LanguageError::new(
+                    crate::ErrorKind::NumericOverflow,
+                    "i32-buffer element is outside the signed 32-bit range",
+                    span,
+                )
+            })?);
+        }
+        Ok(Value::NumericBuffer(NumericBuffer::I32(values.into())))
+    });
+
+    define!(environment, "f32-buffer", |args: &[Value], _env: &Environment, span: Span| {
+        let mut values = Vec::with_capacity(args.len());
+        for value in args {
+            let number = match value {
+                Value::Number(number, _) => *number,
+                Value::Rational(rational) => rational.as_f64(),
+                _ => return Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "f32-buffer expects numeric elements",
+                    span,
+                )),
+            };
+            let narrowed = number as f32;
+            if !number.is_finite() || !narrowed.is_finite() {
+                return Err(crate::LanguageError::new(
+                    crate::ErrorKind::NumericOverflow,
+                    "f32-buffer element is outside the finite binary32 domain",
+                    span,
+                ));
+            }
+            values.push(narrowed);
+        }
+        Ok(Value::NumericBuffer(NumericBuffer::F32(values.into())))
+    });
+
+    define!(environment, "numeric-buffer?", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("numeric-buffer?", args, 1, span)?;
+        Ok(if matches!(args[0], Value::NumericBuffer(_)) {
+            Value::Bool(true)
+        } else {
+            Value::Nil
+        })
+    });
+
+    define!(environment, "numeric-buffer-type", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("numeric-buffer-type", args, 1, span)?;
+        let name = match &args[0] {
+            Value::NumericBuffer(NumericBuffer::I32(_)) => "i32",
+            Value::NumericBuffer(NumericBuffer::F32(_)) => "f32",
+            _ => {
+                return Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "numeric-buffer-type expects a numeric buffer",
+                    span,
+                ))
+            }
+        };
+        Ok(Value::Symbol(name.into()))
+    });
+
+    define!(environment, "numeric-buffer-length", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("numeric-buffer-length", args, 1, span)?;
+        let length = match &args[0] {
+            Value::NumericBuffer(NumericBuffer::I32(values)) => values.len(),
+            Value::NumericBuffer(NumericBuffer::F32(values)) => values.len(),
+            _ => {
+                return Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "numeric-buffer-length expects a numeric buffer",
+                    span,
+                ))
+            }
+        };
+        Ok(Value::Number(length as f64, Exactness::Exact))
+    });
+
+    define!(environment, "numeric-buffer-ref", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("numeric-buffer-ref", args, 2, span)?;
+        let index = match args[1] {
+            Value::Number(number, Exactness::Exact)
+                if number >= 0.0
+                    && number.fract() == 0.0
+                    && number <= usize::MAX as f64 =>
+            {
+                number as usize
+            }
+            _ => {
+                return Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "numeric-buffer-ref expects an exact non-negative integer index",
+                    span,
+                ))
+            }
+        };
+        match &args[0] {
+            Value::NumericBuffer(NumericBuffer::I32(values)) => values
+                .get(index)
+                .map(|value| Value::Number(f64::from(*value), Exactness::Exact)),
+            Value::NumericBuffer(NumericBuffer::F32(values)) => values
+                .get(index)
+                .map(|value| Value::Number(f64::from(*value), Exactness::Inexact)),
+            _ => {
+                return Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "numeric-buffer-ref expects a numeric buffer",
+                    span,
+                ))
+            }
+        }
+        .ok_or_else(|| {
+            crate::LanguageError::new(
+                crate::ErrorKind::InvalidForm,
+                "numeric-buffer-ref index is out of bounds",
+                span,
+            )
+        })
     });
 
     for op in ["+", "-", "*"] {

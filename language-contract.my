@@ -69,8 +69,8 @@
 ; зворотносумісній зміні семантики. Що НЕ піднімає цей файл: додавання
 ; функції в lib/core.my, фікс бага в lib/*.my, фікс CI, новий
 ; Rust-примітив у вже покритому Рівнем 2 класі можливостей.
-((major . 2) (minor . 1)
- (note . "builtins are first-class values: + car etc resolve as values, passable to map/reduce, lexically shadowable; registry demoted to bootstrap-description. Boundary case documented honestly: two conformance fixtures ('+'/'-' alone erroring as UnknownSymbol) were re-encoded -- a strict reading of 'observable change' could argue 3.0; decided 2.1 because no well-formed program can catch errors in-language, so none depended on the old error on purpose. See docs/PROPOSAL-FIRST-CLASS-BUILTINS.md · builtins стали першокласними значеннями. Прикордонний випадок задокументовано чесно.")
+((major . 2) (minor . 2)
+ (note . "immutable typed numeric buffers are additive language values: explicit i32/f32 constructors, #i32/#f32 canonical reader forms, structural equality, and typed accessors. Exact values never enter f32 implicitly; i32 overflow and invalid conversion fail named. Contract 2.1 first-class builtin semantics remain unchanged. See docs/PROPOSAL-TYPED-NUMERIC-BUFFERS.md · незмінні типізовані числові буфери стали адитивною частиною мови без послаблення точної арифметики.")
  (covers . (G1 G2 G3 G4 G5 G6 G7 G8 S1 S2 S3))
  (invariants
    . ((shadowing

@@ -40,6 +40,12 @@ impl Parser<'_> {
     fn expression(&mut self) -> Result<Expr, LanguageError> {
         self.skip_ignored();
         let start = self.cursor;
+        if self.source[self.cursor..].starts_with("#i32(") {
+            return self.numeric_buffer(start, false);
+        }
+        if self.source[self.cursor..].starts_with("#f32(") {
+            return self.numeric_buffer(start, true);
+        }
         match self.peek() {
             Some('(') => self.list(start),
             Some(')') => Err(self.error(
@@ -55,6 +61,104 @@ impl Parser<'_> {
                 start,
             )),
         }
+    }
+
+    fn numeric_buffer(&mut self, start: usize, f32_elements: bool) -> Result<Expr, LanguageError> {
+        self.enter(start)?;
+        self.cursor += 5;
+        let result = (|| {
+            let mut elements: Vec<Expr> = Vec::new();
+            loop {
+                self.skip_ignored();
+                if self.peek() == Some(')') {
+                    self.bump();
+                    let buffer = if f32_elements {
+                        let mut values = Vec::with_capacity(elements.len());
+                        for element in elements {
+                            let span = element.span;
+                            let number = match element.kind {
+                                ExprKind::Number(_, _) => self.source[span.start..span.end]
+                                    .parse::<f32>()
+                                    .map(f64::from)
+                                    .map_err(|_| {
+                                        self.error(
+                                            "#f32 expects numeric elements",
+                                            span.start,
+                                            span.end,
+                                        )
+                                    })?,
+                                ExprKind::Rational(value) => value.as_f64(),
+                                _ => {
+                                    return Err(self.error(
+                                        "#f32 expects numeric elements",
+                                        element.span.start,
+                                        element.span.end,
+                                    ))
+                                }
+                            };
+                            let narrowed = number as f32;
+                            if !number.is_finite() || !narrowed.is_finite() {
+                                return Err(LanguageError::new(
+                                    ErrorKind::NumericOverflow,
+                                    "#f32 element is outside the finite binary32 domain",
+                                    element.span,
+                                ));
+                            }
+                            values.push(narrowed);
+                        }
+                        crate::NumericBuffer::F32(values.into())
+                    } else {
+                        let mut values = Vec::with_capacity(elements.len());
+                        for element in elements {
+                            let integer = match element.kind {
+                                ExprKind::Number(value, Exactness::Exact)
+                                    if value.fract() == 0.0 =>
+                                {
+                                    value as i64
+                                }
+                                ExprKind::Rational(value) if value.is_integer() => value
+                                    .as_precise_i64()
+                                    .ok_or_else(|| {
+                                        LanguageError::new(
+                                            ErrorKind::NumericOverflow,
+                                            "#i32 element is outside the signed 32-bit range",
+                                            element.span,
+                                        )
+                                    })?,
+                                _ => {
+                                    return Err(self.error(
+                                        "#i32 expects exact integer elements",
+                                        element.span.start,
+                                        element.span.end,
+                                    ))
+                                }
+                            };
+                            values.push(i32::try_from(integer).map_err(|_| {
+                                LanguageError::new(
+                                    ErrorKind::NumericOverflow,
+                                    "#i32 element is outside the signed 32-bit range",
+                                    element.span,
+                                )
+                            })?);
+                        }
+                        crate::NumericBuffer::I32(values.into())
+                    };
+                    return Ok(Expr {
+                        kind: ExprKind::NumericBuffer(buffer),
+                        span: Span {
+                            start,
+                            end: self.cursor,
+                        },
+                    });
+                }
+                if self.peek().is_none() {
+                    return Err(self.error("unclosed numeric buffer", start, self.cursor));
+                }
+                elements.push(self.expression()?);
+            }
+        })();
+        self.depth -= 1;
+        result
     }
 
     fn enter(&mut self, span_start: usize) -> Result<(), LanguageError> {

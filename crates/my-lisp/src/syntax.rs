@@ -1,4 +1,4 @@
-use crate::value::Rational;
+use crate::value::{NumericBuffer, Rational};
 use std::rc::Rc;
 
 /// Byte range in the original UTF-8 source.
@@ -47,6 +47,7 @@ pub enum Exactness {
 pub enum ExprKind {
     Number(f64, Exactness),
     Rational(Rational),
+    NumericBuffer(NumericBuffer),
     String(Rc<str>),
     Symbol(Rc<str>),
     List(Rc<[Expr]>),
@@ -74,4 +75,7 @@ pub enum ExprKind {
 /// value→expr lowering (`value_to_expr`). Mirrors the JSON decoder's
 /// defense; past this the language fails named instead of overflowing
 /// the native stack and killing the host process.
-pub(crate) const MAX_STRUCTURE_DEPTH: u32 = 1024;
+// Keep a safety margin below the native test-thread stack ceiling. The old
+// 1024 value sat on that ceiling and could overflow before returning its named
+// error when an additive Expr variant changed compiler frame layout.
+pub(crate) const MAX_STRUCTURE_DEPTH: u32 = 768;

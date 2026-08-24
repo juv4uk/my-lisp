@@ -371,6 +371,29 @@ pub struct Builtin {
     pub func: std::rc::Rc<dyn Fn(&[Value], &crate::Environment, crate::Span) -> Result<Value, crate::LanguageError>>,
 }
 
+/// Immutable contiguous numeric storage for portable bulk-compute lowering.
+#[derive(Clone, Debug)]
+pub enum NumericBuffer {
+    I32(std::sync::Arc<[i32]>),
+    F32(std::sync::Arc<[f32]>),
+}
+
+impl PartialEq for NumericBuffer {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::I32(left), Self::I32(right)) => left == right,
+            (Self::F32(left), Self::F32(right)) => {
+                left.len() == right.len()
+                    && left
+                        .iter()
+                        .zip(right.iter())
+                        .all(|(left, right)| left.to_bits() == right.to_bits())
+            }
+            _ => false,
+        }
+    }
+}
+
 impl std::fmt::Debug for Builtin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "#<builtin {}>", self.name)
@@ -395,6 +418,9 @@ pub enum Value {
     Builtin(std::rc::Rc<Builtin>),
     /// Persistent vector: O(1) indexed access for numeric workloads
     Vector(std::rc::Rc<std::cell::RefCell<Vec<Value>>>),
+    /// Fixed-width immutable numeric data. Unlike `Vector`, this is
+    /// homogeneous, contiguous, and has no mutating language operation.
+    NumericBuffer(NumericBuffer),
     /// An open TCP connection (PLAN.md item 21) — the outbound-client half
     /// of "talk to other AI systems," principle 3 extended to external
     /// agents/LLM APIs. Opaque host-capability handle, the same category
@@ -460,6 +486,7 @@ impl PartialEq for Value {
                 left.len() == right.len()
                     && left.iter().zip(right.iter()).all(|(l, r)| l == r)
             }
+            (Value::NumericBuffer(left), Value::NumericBuffer(right)) => left == right,
             // Functions have identity: two separately created closures are not equal.
             // Funktsii maiut identychnist: dva okremo stvoreni zamykannia ne ye rivnymy.
             // Funktionen besitzen Identität: Zwei getrennt erzeugte Closures sind nicht gleich.
@@ -547,6 +574,23 @@ fn render(value: &Value, quote_strings: bool) -> String {
         Value::Vector(v) => {
             let items: Vec<String> = v.borrow().iter().map(|x| render(x, quote_strings)).collect();
             format!("#({})", items.join(" "))
+        }
+        Value::NumericBuffer(NumericBuffer::I32(values)) => {
+            let items = values.iter().map(i32::to_string).collect::<Vec<_>>();
+            format!("#i32({})", items.join(" "))
+        }
+        Value::NumericBuffer(NumericBuffer::F32(values)) => {
+            let items = values
+                .iter()
+                .map(|number| {
+                    if number.fract() == 0.0 {
+                        format!("{number:.1}")
+                    } else {
+                        number.to_string()
+                    }
+                })
+                .collect::<Vec<_>>();
+            format!("#f32({})", items.join(" "))
         }
         Value::Nil => "()".to_string(),
         Value::Bool(true) => "t".to_string(),

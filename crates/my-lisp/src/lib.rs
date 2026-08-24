@@ -29,4 +29,4 @@ pub use eval::{
 };
 pub use parser::parse;
 pub use syntax::{Exactness, Expr, ExprKind, Span};
-pub use value::{Closure, Rational, Value};
+pub use value::{Closure, NumericBuffer, Rational, Value};

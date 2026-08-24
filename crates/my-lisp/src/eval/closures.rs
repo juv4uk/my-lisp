@@ -287,6 +287,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
         Value::Bool(false) => ExprKind::List(Rc::new([])),
         Value::Number(number, exactness) => ExprKind::Number(*number, *exactness),
         Value::Rational(rational) => ExprKind::Rational(rational.clone()),
+        Value::NumericBuffer(buffer) => ExprKind::NumericBuffer(buffer.clone()),
         Value::String(val) => ExprKind::String(val.clone()),
         // A builtin is callable but not syntax: it cannot round-trip
         // through eval/macro-expansion as code (contract 2.1 decision).

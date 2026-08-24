@@ -19,6 +19,7 @@ pub const TAG_CLOSURE: u64   = 8;
 pub const TAG_MACRO: u64     = 9;
 pub const TAG_TCP_CONN: u64  = 10;
 pub const TAG_TCP_LIST: u64  = 11;
+pub const TAG_NUMERIC_BUFFER: u64 = 13;
 
 #[derive(Debug, Copy, Clone)]
 pub struct NanBox(pub u64);
@@ -81,6 +82,12 @@ impl NanBox {
             Value::Vector(v) => {
                 let ptr = Rc::as_ptr(v) as *const u8 as u64;
                 NanBox(Self::pack_ptr(12, ptr))
+            },
+            Value::NumericBuffer(crate::NumericBuffer::I32(values)) => {
+                NanBox(Self::pack_ptr(TAG_NUMERIC_BUFFER, values.as_ptr() as u64))
+            },
+            Value::NumericBuffer(crate::NumericBuffer::F32(values)) => {
+                NanBox(Self::pack_ptr(TAG_NUMERIC_BUFFER, values.as_ptr() as u64))
             },
             Value::TcpConnection(c) => {
                 let ptr = Rc::as_ptr(c) as u64;

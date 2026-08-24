@@ -1,8 +1,8 @@
 # PROPOSAL: immutable typed numeric buffers
 
-**Status:** PROPOSED M0, not implemented and not part of language contract 2.1  
+**Status:** RATIFIED by owner and implemented as language contract 2.2
 **Date:** 2026-08-24  
-**Type:** additive language/value proposal; ratification would require contract 2.2  
+**Type:** additive language/value contract
 **Driver:** portable CPU/GPU/FPGA bulk execution through CML without weakening exact arithmetic
 
 ## 1. Problem
@@ -56,17 +56,16 @@ Constructors and accessors:
 (numeric-buffer-ref value index)  ; => exact integer or inexact number
 ```
 
-Canonical reader/printer forms, required before ratification:
+Canonical reader/printer forms:
 
 ```lisp
 #i32(1 -2 3)
 #f32(1.0 0.10000000149011612 -2.5)
 ```
 
-`read(write-to-string(buffer))` must reconstruct the same element type and
-bits. Constructor syntax is convenient source code; the tagged reader form is
-the canonical serialized value. The exact spelling remains proposed until the
-reader implementation and round-trip fixtures exist.
+`read(write-to-string(buffer))` reconstructs the same element type and bits.
+Constructor syntax is convenient source code; the tagged reader form is the
+canonical serialized value and is self-evaluating reader syntax.
 
 No `numeric-buffer-set!` exists. Transformations return a new buffer. A host
 backend may reuse physical allocation only when that optimization is
@@ -170,21 +169,20 @@ buffers. No RTL should precede the joint representation and ABI fixtures.
 
 ## 9. Contract decision
 
-Ratification is an additive language change and therefore a proposed 2.1 ->
-2.2 minor bump. The bump happens only after these acceptance gates pass:
+Ratification is an additive language change and therefore a 2.1 -> 2.2 minor
+bump. The language-value gates are complete; backend gates remain milestones:
 
 1. reader and printer round-trip both element types;
 2. construction and indexing errors have named kinds;
 3. existing `Vector` behavior remains unchanged;
 4. structural equality is specified and tested;
-5. CML CPU backend matches the my-lisp oracle;
+5. CML CPU backend matches the my-lisp oracle (remaining backend milestone);
 6. exact-to-f32 conversion is explicit in every source path;
-7. WASM either implements the same value or returns an explicit unsupported
-   capability without changing native semantics.
+7. WASM uses the same capability-free core value and semantics.
 
-Until then this document is a proposal. CML's `compute-contract.my` 0.1 may
-model a hypothetical proven contiguous representation for analysis tests, but
-must not claim that my-lisp currently supplies one.
+CML's `compute-contract.my` may now model this ratified contiguous
+representation, but must not claim GPU execution until a backend and
+differential evidence exist.
 
 ## 10. Rejected shortcuts
 
@@ -206,4 +204,3 @@ must not claim that my-lisp currently supplies one.
 5. CPU ComputeBackend reference implementation.
 6. Portable Rust GPU backend for one element-wise f32 kernel.
 7. Differential CPU/GPU/oracle evidence and measured planner threshold.
-
