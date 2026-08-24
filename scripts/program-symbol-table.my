@@ -1,0 +1,94 @@
+;; STATUS: BLOCKED — потребує примітивів read-line/string-slice/argv
+;; (doctrine: library before core primitive; додавання білтінів =
+;; contract surface → через proposal до власника)
+;; A1 pilot: per-program symbol table extractor (machine-readable).
+;; Usage: my-lisp scripts/program-symbol-table.my <program.asm> <constants.inc>
+;; Recovers (id . name) from:
+;;   1. constants.inc .define SYM_<NAME> <id> / PRIM_* rows
+;;   2. .asm LOADSYM/LOADI <id> lines annotated with trailing "; '<name>"
+;; Deliberately partial: bare unannotated ids are unrecoverable from
+;; source — the diff vs fpga-lisp/symbol_table.py is the deliverable.
+
+(def read-text (lambda (path) (car (read-all path))))
+
+(def chars-until
+  (lambda (s stop)
+    (cond ((string-empty? s) "")
+          ((string-contains? (string-first s) stop) "")
+          (t (string-append (string-first s)
+                            (chars-until (string-rest s) stop))))))
+
+(def after-marker
+  (lambda (s marker)
+    (cond ((string-empty? s) "")
+          ((string-prefix? marker s) (string-rest (chars-until-skip s marker)))
+          (t (after-marker (string-rest s) marker)))))
+
+(def chars-until-skip
+  ;; drop the marker itself, return remainder
+  (lambda (s marker)
+    (cond ((string-prefix? marker s) (string-rest-from-n s (string-length marker)))
+          (t (chars-until-skip (string-rest s) marker)))))
+
+(def string-rest-from-n (lambda (s n) (cond ((= n 0) s) (t (string-rest-from-n (string-rest s) (- n 1))))))
+
+(def take-word
+  (lambda (s)
+    (cond ((string-empty? s) "")
+          ((string-contains? " " (string-first s)) "")
+          (t (string-append (string-first s) (take-word (string-rest s)))))))
+
+(def line-name
+  ;; "; 'plus" -> plus
+  (lambda (line)
+    (take-word (after-marker line "; '"))))
+
+(def digits-after-comma
+  ;; "LOADSYM R2, 300              ; ..." -> "300"
+  (lambda (line)
+    (cond ((string-empty? line) "")
+          ((string-prefix? ", " line)
+           (digits-of (string-rest-from-n line 2)))
+          (t (digits-after-comma (string-rest line))))))
+
+(def digits-of
+  (lambda (s)
+    (cond ((string-empty? s) "")
+          ((string-contains? "0123456789" (string-first s))
+           (string-append (string-first s) (digits-of (string-rest s))))
+          (t ""))))
+
+(def loadsym-id
+  ;; "LOADSYM R2, 300 ; 'plus" -> "300" or ""
+  (lambda (line)
+    (cond ((string-prefix? "LOADSYM" line)
+           (digits-after-comma (after-marker line "LOADSYM")))
+          (t ""))))
+
+(def process-line
+  (lambda (line acc)
+    (let ((name (line-name line))
+          (id   (loadsym-id line)))
+      (cond ((and (not (string-empty? name))
+                  (not (string-empty? id)))
+             (cons (cons id name) acc))
+            (t acc)))))
+
+(def process-lines
+  (lambda (lines acc)
+    (cond ((atom lines) acc)
+          (t (process-lines (cdr lines)
+                            (process-line (car lines) acc))))))
+
+(def main-asm
+  (lambda (path)
+    (process-lines (lines-of (read-text path)) (quote ()))))
+
+(def main-inc
+  (lambda (path)
+    (process-lines
+      (filter (lambda (l) (string-contains? l ".define SYM_"))
+              (lines-of (read-text path)))
+      (quote ()))))
+
+(print (write-to-string (main-asm (car *argv*))))
