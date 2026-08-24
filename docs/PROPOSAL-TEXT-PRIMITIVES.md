@@ -1,6 +1,9 @@
 # PROPOSAL: мінімальні текстові примітиви — read-line, string-slice, argv
 
-**Статус:** PROPOSED v1 · **Дата:** 2026-08-24 · **Автор:** Vyasa (COMPILER STEWARD)
+**Статус:** PROPOSED v2 · **Дата:** 2026-08-24 · **Автор:** Vyasa (COMPILER STEWARD)
+**v2 корекція:** `read-file-string` ВЖЕ ІСНУЄ як host-capability `read-file`
+(my-lisp-host/lib.rs:723-726 разом з read-dir/read-file-bytes/write-file),
+але стандартний CLI його не встановлює → фактичний дефікт інший, див. §1a
 **Тип:** ядро → 3 нові builtins (minor bump; surface розширення, семантика наявних форм не змінюється)
 **Драйвер:** директива власника «максимально переводимо екосистему на my-lisp» —
 міграційна хвиля вперлася у відсутність рядкового I/O (пілот
@@ -14,20 +17,26 @@ scripts/program-symbol-table.my, BLOCKED; evidence у комміті)
 індексом. Наявна строкова бібліотека — char-рекурсія над string-first/
 string-rest (core.my:347+) без індексного доступу; `read-all` парсить
 s-вирази і непридатний для не-Lisp форматів (.asm/.inc/.yaml/.log).
-Наслідок: будь-яка міграція утиліт трансформації даних (директива
-власника) блокована або залишається Python-ом всупереч доктрині.
+Наслідок: міграційна хвиля блокована подвійно — CLI без файлових
+capabilities (§1a) та без індексних зрізів/argv (нові builtins).
+Пілот-доказ: scripts/program-symbol-table.my BLOCKED commit.
 
 ## 2. Пропонована поверхня (мінімум, без дублювання)
 
-| Примітив | Сигнатура | Семантика |
+| Пункт | Тип | Семантика |
 |---|---|---|
-| `read-file-string` | path → string | увесь файл одним рядком; помилка читання → named error |
-| `string-slice` | s start end → string | індексний зріз; start≥end → ""; поза межами → clamp |
-| `*argv*` | () → list-of-strings | аргументи CLI після скрипта; порожній список якщо нема |
+| §1a CLI capabilities parity | інтеграція | стандартний `my-lisp script.my` встановлює ті самі host-capabilities, що й embedders: read-file/read-dir/read-file-bytes/write-file (джерело вже є: my-lisp-host/lib.rs:723-726) |
+| `string-slice` | новий builtin | s start end → string; clamp за межами |
+| `*argv*` | новий builtin | () → list-of-strings аргументів після скрипта |
 
-`read-line` окремо НЕ пропонується: `read-file-string` + `string-slice`
-+ наявні `string-contains?/prefix?` покривають рядкову обробку через
-бібліотечну функцію `(lines-of text)` у core.my.
+`read-line` не потрібен: read-file + string-slice + бібліотечна (lines-of).
+
+### §1a Деталі (найважливіший пункт)
+Виявлено [VERIFIED 2026-08-24]: capability-реєстр має файлові примітиви,
+але CLI-бінарник їх не інсталює → `(assoc "read-file" (env))` = ()
+у script.my, тоді як fpga-lisp/check-stale-refs.my (через host) працює.
+Різні точки входу = різна мова. Фікс: CLI викликає той самий
+install-набір що host; це виправляння розколу, не нова влада.
 
 ## 3. Doctrine: чому це виправдовує нові примітиви
 
