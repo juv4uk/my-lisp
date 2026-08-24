@@ -539,6 +539,78 @@ impl fmt::Display for BigInt {
 mod tests {
     use super::*;
 
+    /// Deterministic differential corpus: Stein (production gcd) must agree
+    /// with the retired Euclid-divmod algorithm on every sample — values,
+    /// signs, and canonical zero. Runtime is microseconds-scale by design
+    /// (owner resource policy: targeted evidence, not a heavy gate).
+    fn euclid_gcd_reference(a: &BigInt, b: &BigInt) -> BigInt {
+        let mut a = a.abs();
+        let mut b = b.abs();
+        while !b.is_zero() {
+            let (_, remainder) = a.div_rem(&b).expect("nonzero divisor");
+            a = b;
+            b = remainder;
+        }
+        a
+    }
+
+    struct Rng(u64);
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            let mut x = self.0;
+            x ^= x >> 12;
+            x ^= x << 25;
+            x ^= x >> 27;
+            self.0 = x;
+            x.wrapping_mul(0x2545_F491_4F6C_DD1D)
+        }
+        fn limb_count(&mut self) -> usize {
+            (self.next() % 9) as usize // 0..=8 limbs => up to 256-bit
+        }
+        fn magnitude(&mut self) -> Magnitude {
+            let count = self.limb_count();
+            let mut limbs: Vec<u32> = (0..count).map(|_| (self.next() & 0xFFFF_FFFF) as u32).collect();
+            while let Some(&0) = limbs.last() {
+                limbs.pop();
+            }
+            Magnitude(limbs)
+        }
+        fn bigint(&mut self) -> BigInt {
+            let negative = self.next() & 1 == 0 && !self.magnitude().is_zero();
+            let magnitude = self.magnitude();
+            BigInt::normalized(negative && !magnitude.is_zero(), magnitude)
+        }
+    }
+
+    #[test]
+    fn binary_gcd_matches_euclid_on_deterministic_corpus() {
+        let mut rng = Rng(0x5EED_2026_0824_00C1);
+        for _ in 0..600 {
+            let a = rng.bigint();
+            let b = rng.bigint();
+            assert_eq!(
+                a.gcd(&b),
+                euclid_gcd_reference(&a, &b),
+                "stein vs euclid diverged on a={a} b={b}"
+            );
+        }
+    }
+
+    #[test]
+    fn binary_gcd_handles_power_of_two_and_shared_factor_shapes() {
+        // shared power-of-two factor must come back via the final SHL
+        let two_pow_40 = BigInt::normalized(false, {
+            let mut m = Magnitude::from_u64(1); // 1 << 40 — not the zero magnitude
+            m.shl_assign(40);
+            m
+        });
+        let twelve = BigInt::from_i64(12);
+        assert_eq!(two_pow_40.gcd(&twelve).to_i64(), Some(4));
+        assert_eq!(BigInt::from_i64(0).gcd(&BigInt::zero()).to_i64(), Some(0));
+    }
+
+    use super::*;
+
     #[test]
     fn add_sub_mul_match_i64_for_small_values() {
         let a = BigInt::from_i64(123_456_789);
