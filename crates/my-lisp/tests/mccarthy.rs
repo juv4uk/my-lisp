@@ -58,6 +58,27 @@ fn division_is_an_exact_reduced_rational() {
     );
 }
 
+#[test]
+fn division_by_zero_has_the_contract_3_named_error() {
+    for source in ["(/ 1 0)", "(/ 1 0.0)"] {
+        assert_eq!(
+            eval_program(source, &mut Session::default()).unwrap_err().kind,
+            ErrorKind::DivisionByZero,
+            "source: {source}"
+        );
+    }
+
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    for source in ["(quotient 5 0)", "(mod 5 0)"] {
+        assert_eq!(
+            eval_program(source, &mut session).unwrap_err().kind,
+            ErrorKind::DivisionByZero,
+            "source: {source}"
+        );
+    }
+}
+
 /// `Rational` used to be `i64`-bounded and this exact expression overflowed
 /// (`ErrorKind::InvalidForm`) — deliberately kept *out* of
 /// tests/fixtures/conformance.json at the time (see that file's README)

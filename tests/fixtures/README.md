@@ -12,7 +12,7 @@ One flat alist per fixture, one fixture per top-level form (read via `read-all`,
 
 **Success fixture** — `((expr . "...") (expected . "...") ...)`. `expr` is my-lisp source (a string); `expected` is the exact string `Display`-formatting of the resulting value would produce (`t` for true, `()` for nil/false, `(a b c)` for lists, `5/336` for a reduced rational, etc — see the `Display` impl for `Value` in `crates/my-lisp/src/value.rs` for the exact grammar). String comparison is intentional: an implementation only needs to match *observable printed output*, not any particular internal representation.
 
-**Error fixture** — `((expr . "...") (error . "...") ...)`. `expr` must fail to evaluate; `error` is one of the five `ErrorKind` variant names — `Parse`, `UnknownSymbol`, `Arity`, `Type`, `InvalidForm` (see `docs/language-core.md`'s error-kind documentation and `crates/my-lisp/src/error.rs`). This checks the *kind* of failure, not the message text — error message wording is allowed to differ across implementations (and across the three languages this project's messages are written in); the *category* of failure is the contract.
+**Error fixture** — `((expr . "...") (error . "...") ...)`. `expr` must fail to evaluate; `error` is one of the eight `ErrorKind` variant names — `Parse`, `UnknownSymbol`, `Arity`, `Type`, `InvalidForm`, `NumericOverflow`, `OutOfMemory`, `DivisionByZero` (see `docs/language-core.md` and `crates/my-lisp/src/error.rs`). This checks the *kind* of failure, not the message text — the *category* of failure is the contract.
 
 ### Rules an implementation must follow to be conformant
 
@@ -37,7 +37,7 @@ One flat alist per fixture, one fixture per top-level form (read via `read-all`,
 
 **Фікстура успіху** — `((expr . "...") (expected . "...") ...)`. `expr` — код my-lisp (рядок); `expected` — точний рядок, який видасть `Display`-форматування результату (`t` для істини, `()` для nil/хиби, `(a b c)` для списків, `5/336` для скороченого раціонального — точну граматику див. у `Display`-реалізації `Value` в `crates/my-lisp/src/value.rs`). Порівняння рядків навмисне: реалізація має збігатись лише за *спостережуваним друкованим виводом*, не за якимось конкретним внутрішнім представленням.
 
-**Фікстура помилки** — `((expr . "...") (error . "...") ...)`. `expr` має провалитись при обчисленні; `error` — одна з п'яти назв варіантів `ErrorKind` — `Parse`, `UnknownSymbol`, `Arity`, `Type`, `InvalidForm` (див. документацію видів помилок у `docs/language-core.md` і `crates/my-lisp/src/error.rs`). Це перевіряє *вид* провалу, не текст повідомлення — формулювання помилки може відрізнятись між реалізаціями (і між трьома мовами, якими написані повідомлення цього проєкту); контракт — саме *категорія* провалу.
+**Фікстура помилки** — `((expr . "...") (error . "...") ...)`. `expr` має провалитись при обчисленні; `error` — одна з восьми назв `ErrorKind`: `Parse`, `UnknownSymbol`, `Arity`, `Type`, `InvalidForm`, `NumericOverflow`, `OutOfMemory`, `DivisionByZero`. Перевіряється вид провалу, а не текст; контрактом є саме категорія.
 
 ### Правила, яких має дотримуватись реалізація для конформності
 
@@ -62,7 +62,7 @@ Eine flache Assoziationsliste pro Fixture, eine Fixture pro Top-Level-Form (gele
 
 **Erfolgs-Fixture** — `((expr . "...") (expected . "...") ...)`. `expr` ist my-lisp-Quellcode (ein String); `expected` ist genau der String, den die `Display`-Formatierung des resultierenden Werts erzeugen würde (`t` für wahr, `()` für nil/falsch, `(a b c)` für Listen, `5/336` für ein gekürztes Rational usw. — die genaue Grammatik siehe die `Display`-Implementierung von `Value` in `crates/my-lisp/src/value.rs`). Der String-Vergleich ist beabsichtigt: eine Implementierung muss nur der *beobachtbaren gedruckten Ausgabe* entsprechen, keiner bestimmten internen Repräsentation.
 
-**Fehler-Fixture** — `((expr . "...") (error . "...") ...)`. `expr` muss bei der Auswertung fehlschlagen; `error` ist einer der fünf `ErrorKind`-Variantennamen — `Parse`, `UnknownSymbol`, `Arity`, `Type`, `InvalidForm` (siehe die Fehlerarten-Dokumentation in `docs/language-core.md` und `crates/my-lisp/src/error.rs`). Dies prüft die *Art* des Fehlschlags, nicht den Nachrichtentext — der Wortlaut der Fehlermeldung darf zwischen Implementierungen abweichen (und zwischen den drei Sprachen, in denen die Meldungen dieses Projekts geschrieben sind); die *Kategorie* des Fehlschlags ist der Vertrag.
+**Fehler-Fixture** — `((expr . "...") (error . "...") ...)`. `expr` muss fehlschlagen; `error` ist einer von acht `ErrorKind`-Namen: `Parse`, `UnknownSymbol`, `Arity`, `Type`, `InvalidForm`, `NumericOverflow`, `OutOfMemory`, `DivisionByZero`. Geprüft wird die Fehlerkategorie, nicht der Meldungstext.
 
 ### Regeln, die eine Implementierung für Konformität einhalten muss
 

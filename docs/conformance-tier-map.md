@@ -68,7 +68,7 @@ table was always secondary to, and it can't drift from itself.
 | 46 | `(lambda (x))` error `Arity` | 2 | S2 | |
 | 47 | `(quote a b)` error `Arity` | 1 | S2 | |
 | 48 | `(cons 1)` error `Arity` | 1 | S2 | |
-| 49 | `(/ 1 0)` error `InvalidForm` | 2 | S2 | |
+| 49 | `(/ 1 0)` error `DivisionByZero` | 2 | S2 | contract 3.0 named arithmetic failure |
 | 50 | `(let ((x 1) (y 2)) (+ x y))` | 3 | G5 | `let` is a macro in `lib/core.my` |
 | 51 | `(let* ((x 1) (y (+ x 1))) y)` | 3 | G5 | |
 | 52 | `(equal? '(1 (2 3) 4) '(1 (2 3) 4))` | 3 | G5 | |

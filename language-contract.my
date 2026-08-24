@@ -69,8 +69,8 @@
 ; зворотносумісній зміні семантики. Що НЕ піднімає цей файл: додавання
 ; функції в lib/core.my, фікс бага в lib/*.my, фікс CI, новий
 ; Rust-примітив у вже покритому Рівнем 2 класі можливостей.
-((major . 2) (minor . 3)
- (note . "numeric-buffer-map gives contract-2.2 typed buffers one canonical bulk transformation: applies an ordinary callable element-wise, preserves i32/f32 type, and returns named Type/NumericOverflow failures instead of coercion or wrapping. This closes the semantic boundary CML needs before a CPU/GPU backend may execute buffer maps. See docs/PROPOSAL-TYPED-NUMERIC-BUFFERS.md · numeric-buffer-map задає канонічну семантику поелементного перетворення типізованих буферів без неявного послаблення точності.")
+((major . 3) (minor . 0)
+ (note . "RATIFIED by owner 2026-08-24. Error categories are observable S2 semantics: division by zero is DivisionByZero, exact arithmetic magnitude failure is NumericOverflow, and malformed JSON decoding is Parse rather than the generic InvalidForm. This is a major change because programs and conformance adapters can observe ErrorKind. Contract 2.3 numeric-buffer-map semantics remain unchanged. · Категорії помилок є спостережуваною семантикою S2: ділення на нуль — DivisionByZero, переповнення точної арифметики — NumericOverflow, помилка декодування JSON — Parse.")
  (covers . (G1 G2 G3 G4 G5 G6 G7 G8 S1 S2 S3))
  (invariants
    . ((shadowing
@@ -83,4 +83,11 @@
       (special-forms-boundary
         . "quote cond lambda def defmacro are NOT callable values.
            They are syntactic evaluation rules and remain outside the
-           callable namespace. This boundary is part of contract 2.1."))))
+           callable namespace. This boundary is part of contract 2.1.")
+      (error-classification
+        . "Contract 3.0: ErrorKind is observable semantics. DivisionByZero
+           names a zero divisor; NumericOverflow names an exact-arithmetic
+           magnitude/resource failure; Parse names reader and decoder
+           failures, including malformed json-parse input. InvalidForm is
+           reserved for structurally invalid evaluation forms or disabled
+           capability use, not arithmetic or decoding failures."))))
