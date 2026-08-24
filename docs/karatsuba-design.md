@@ -39,6 +39,14 @@ result = z2·B^(2m) + z1·B^m + z0      (B = 2^32)
 - Full `cargo test -p my-lisp`: 59 unit tests plus all integration suites
   passed. No rational benchmark claim is made yet; the n=400/800 measurement
   remains a separate, resource-gated task.
+- `bignum::tests::karatsuba_schoolbook_same_build_ab_probe` now measures both
+  algorithms in one build on the same 256-limb deterministic operands and
+  asserts byte-level magnitude equality. Its timing output is evidence for
+  tuning only, not a contractual performance guarantee.
+- Observed targeted test-profile probe: schoolbook `34,347,704 ns` versus
+  Karatsuba `27,419,437 ns` for 20 repetitions (about 20% faster in this
+  single run). This is not a release benchmark and is not generalized beyond
+  the tested operand shape.
 
 ## Ризики
 - Помилки переносів на стиках частин → ловиться диф-корпусом

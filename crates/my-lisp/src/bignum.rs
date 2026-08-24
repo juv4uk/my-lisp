@@ -712,6 +712,37 @@ mod tests {
     }
 
     #[test]
+    fn karatsuba_schoolbook_same_build_ab_probe() {
+        use std::time::Instant;
+
+        let left = Magnitude((0..256).map(|i| (i as u32).wrapping_mul(0x9E37_79B9)).collect())
+            .trim();
+        let right = Magnitude(
+            (0..256)
+                .map(|i| (i as u32).wrapping_mul(0x85EB_CA6B).rotate_left(7))
+                .collect(),
+        )
+        .trim();
+        let repetitions = 20;
+        let start_schoolbook = Instant::now();
+        let mut schoolbook = Magnitude::ZERO;
+        for _ in 0..repetitions {
+            schoolbook = left.mul_schoolbook(&right);
+        }
+        let schoolbook_ns = start_schoolbook.elapsed().as_nanos();
+        let start_karatsuba = Instant::now();
+        let mut karatsuba = Magnitude::ZERO;
+        for _ in 0..repetitions {
+            karatsuba = left.mul(&right);
+        }
+        let karatsuba_ns = start_karatsuba.elapsed().as_nanos();
+        assert_eq!(karatsuba, schoolbook);
+        println!(
+            "KARATSUBA_AB limbs=256 repetitions={repetitions} schoolbook_ns={schoolbook_ns} karatsuba_ns={karatsuba_ns}"
+        );
+    }
+
+    #[test]
     fn division_and_remainder_match_i64_semantics() {
         let a = BigInt::from_i64(1_000_000_007);
         let b = BigInt::from_i64(97);
