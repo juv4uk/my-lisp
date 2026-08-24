@@ -129,6 +129,12 @@ struct Node {
     /// The heartbeat's stale-close is suppressed for these: the receiver
     /// is busy replaying our flood and legitimately cannot pong yet.
     sync_in_flight: Mutex<HashSet<String>>,
+    /// M1.1c review fix #4 (Vyasa): per-peer write serialization. The
+    /// heartbeat thread and a catch-up train both hold clones of the same
+    /// peer socket; concurrent `write_all`s could interleave framed lines
+    /// and corrupt the stream. Every long-lived writer acquires this lock
+    /// for the duration of one framed message.
+    peer_write_locks: Mutex<HashMap<String, std::sync::Arc<Mutex<()>>>>,
     /// M1.1c legacy compat: last time a peer streamed us sync-events
     /// WITHOUT a following sync-complete (pre-M1.1c peers end non-empty
     /// trains silently). Heartbeat marks them caught-up after the idle
@@ -272,6 +278,7 @@ fn main() -> std::io::Result<()> {
         promised: Mutex::new(HashMap::new()),
         last_seen: Mutex::new(HashMap::new()),
         sync_in_flight: Mutex::new(HashSet::new()),
+        peer_write_locks: Mutex::new(HashMap::new()),
         sync_train_last: Mutex::new(HashMap::new()),
         started_at: Instant::now(),
     });
@@ -502,6 +509,20 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             }
         };
         if !first_message_seen {
+            // Review fix #3 (Vyasa): strict handshake. The initiator's
+            // deadline may only be lifted by the message it actually waits
+            // for — a peer-welcome. Any other parseable line (garbage,
+            // wrong dialect, an echo) keeps the deadline armed and drops
+            // the connection, feeding the redial loop instead of a zombie.
+            // Inbound connections serve clients too, so any parseable
+            // first line is accepted there.
+            if initiator && msg.head() != Some("peer-welcome") {
+                warn!(
+                    "swarm-node: first message from {peer_addr} was {:?}, expected peer-welcome — dropping",
+                    msg.head()
+                );
+                break;
+            }
             first_message_seen = true;
             let _ = stream.set_read_timeout(None);
         }
@@ -842,6 +863,11 @@ fn handle_sync_hello(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             missing_events.push(ev.to_sexp());
         }
     }
+    // Review fix (Vyasa, M1.1c round 2): the journal lock used to live
+    // through the whole network train below, blocking EVERY other op
+    // (claims, metrics, client requests) for the duration of large
+    // catch-ups. Collection is CPU-only; I/O happens after the drop.
+    drop(journal);
     if !missing_events.is_empty() {
         info!(
             "swarm-node: sending {} catch-up event(s) to {their_node}",
@@ -853,32 +879,66 @@ fn handle_sync_hello(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         // mid-sync — the flood-then-close loop from 2026-08-24. Batches +
         // a 1ms yield let pongs interleave; the in-flight grace above is
         // the belt to this braces.
+        // Review fix #2 (Vyasa): RAII cleanup — a stalled reader must not
+        // leave the peer exempt from stale-close forever. The guard
+        // removes the in-flight marker on ANY exit path, including write
+        // errors mid-train.
+        struct InFlightGuard<'a> {
+            set: &'a Mutex<HashSet<String>>,
+            id: String,
+        }
+        impl Drop for InFlightGuard<'_> {
+            fn drop(&mut self) {
+                self.set
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .remove(&self.id);
+            }
+        }
+        let _guard = InFlightGuard {
+            set: &node.sync_in_flight,
+            id: their_node.to_string(),
+        };
         node.sync_in_flight
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .insert(their_node.to_string());
+        // Bounded writes: a dead socket with a full buffer would block
+        // write_all forever otherwise. Serialized against heartbeat
+        // pings via the same per-peer lock (review fix #4).
+        let _ = stream.set_write_timeout(Some(Duration::from_secs(5)));
+        let train_lock = Arc::clone(
+            node.peer_write_locks
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .entry(their_node.to_string())
+                .or_insert_with(|| Arc::new(Mutex::new(()))),
+        );
+        let mut train_ok = true;
         for batch in missing_events.chunks(SYNC_BATCH_EVENTS) {
-            send(
-                stream,
-                &Sexp::list(vec![
-                    Sexp::atom("sync-events"),
-                    Sexp::list(vec![Sexp::atom("from"), Sexp::atom(&node.identity.node_id)]),
-                    Sexp::list(vec![Sexp::atom("events"), Sexp::List(batch.to_vec())]),
-                ]),
-            );
+            let frame = Sexp::list(vec![
+                Sexp::atom("sync-events"),
+                Sexp::list(vec![Sexp::atom("from"), Sexp::atom(&node.identity.node_id)]),
+                Sexp::list(vec![Sexp::atom("events"), Sexp::List(batch.to_vec())]),
+            ]);
+            let _w = train_lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            if stream.write_all(format!("{}\n", frame.to_text()).as_bytes()).is_err() {
+                warn!("swarm-node: catch-up train to {their_node} aborted on write error");
+                train_ok = false;
+                break;
+            }
+            drop(_w);
             std::thread::sleep(Duration::from_millis(1));
         }
-        node.sync_in_flight
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .remove(their_node);
-        // Definitive end-of-train marker: with per-batch delivery, THIS —
-        // not the last sync-events message — is what marks the requester
-        // caught up (handle_sync_events no longer marks on partials).
-        send(
-            stream,
-            &Sexp::list(vec![Sexp::atom("sync-complete"), Sexp::list(vec![Sexp::atom("from"), Sexp::atom(&node.identity.node_id)])]),
-        );
+        if train_ok {
+            // Definitive end-of-train marker: with per-batch delivery, THIS —
+            // not the last sync-events message — is what marks the requester
+            // caught up (handle_sync_events no longer marks on partials).
+            send(
+                stream,
+                &Sexp::list(vec![Sexp::atom("sync-complete"), Sexp::list(vec![Sexp::atom("from"), Sexp::atom(&node.identity.node_id)])]),
+            );
+        }
     } else {
         // Nothing missing is still a definitive answer — the requester needs
         // *some* reply to know it has fully caught up, not just silence.
@@ -978,6 +1038,16 @@ fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) {
     };
     let mut dead = Vec::new();
     for (id, mut stream) in targets {
+        // Review fix #4: serialize against other long-lived writers
+        // (catch-up trains) on the same socket.
+        let lock = Arc::clone(
+            node.peer_write_locks
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .entry(id.clone())
+                .or_insert_with(|| Arc::new(Mutex::new(()))),
+        );
+        let _guard = lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let _ = stream.set_write_timeout(Some(PEER_WRITE_TIMEOUT));
         if stream.write_all(line.as_bytes()).is_err() {
             dead.push(id);

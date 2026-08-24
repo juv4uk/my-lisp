@@ -632,29 +632,50 @@ fn silent_inbound_socket_is_closed_after_hello_deadline() {
 /// Fix A, initiator side: dialing a listener that accepts but never says
 /// welcome must produce repeated redials (deadline fires, handle_connection
 /// returns, spawn_connect loops) — not one eternal ESTABLISHED zombie.
+///
+/// Review fix #5 (Vyasa): the accepted sockets are HELD OPEN (a drop would
+/// surface as EOF — a different path than the silent-welcome deadline this
+/// test exists for), and the test asserts the redial actually happened by
+/// counting >= 2 accepts.
 #[test]
 fn initiator_redials_when_welcome_never_arrives() {
     let ports = alloc_ports(2);
-    // Silent peer: accepts TCP, never sends a byte.
+    // Silent peer: accepts TCP, holds the sockets open, never sends a byte.
     let listener = std::net::TcpListener::bind(("127.0.0.1", ports + 1)).unwrap();
-    std::thread::spawn(move || {
-        for stream in listener.incoming() {
-            drop(stream); // accepted, then held without any reply
-        }
-    });
+    listener.set_nonblocking(true).unwrap();
+    let accepted: std::sync::Arc<std::sync::atomic::AtomicUsize> =
+        std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let held: std::sync::Arc<std::sync::Mutex<Vec<TcpStream>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    {
+        let accepted = std::sync::Arc::clone(&accepted);
+        let held = std::sync::Arc::clone(&held);
+        std::thread::spawn(move || {
+            for stream in listener.incoming().flatten() {
+                accepted.fetch_add(1, Ordering::SeqCst);
+                held.lock().unwrap().push(stream);
+            }
+        });
+    }
 
     let dir = data_dir("m11c-redial");
     let _b = spawn_with_env(ports, "b", &dir.join("b"), Some(ports + 1), 300);
 
-    // Give the dialer a few deadline cycles; it must remain fully
-    // responsive the whole time (the old failure mode was a wedged node).
-    for _ in 0..6 {
-        std::thread::sleep(Duration::from_millis(400));
+    // Several deadline cycles must pass with the node fully responsive,
+    // and each cycle should have produced a fresh accept.
+    let deadline = Instant::now() + Duration::from_secs(4);
+    while Instant::now() < deadline {
         assert!(
             request(ports, "(metrics)").contains("metrics"),
             "node wedged while its bootstrap link was stalled"
         );
+        std::thread::sleep(Duration::from_millis(200));
     }
+    let count = accepted.load(Ordering::SeqCst);
+    assert!(
+        count >= 2,
+        "expected >=2 accepts (redials), got {count} — initiator is not re-dialing after silent welcome"
+    );
 }
 
 /// Fix B: a large catch-up train must CONVERGE without either side closing
