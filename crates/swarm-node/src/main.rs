@@ -53,6 +53,42 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// stalled write would take to fail.
 const STALE_PEER_TIMEOUT: Duration = Duration::from_secs(20);
 
+/// M1.1c fix A: how long the INITIATOR of an outbound connection waits for
+/// the peer's `peer-welcome` before closing and letting `spawn_connect`
+/// redial. A receiver that silently refuses our hello (the identity-
+/// already-live guard fires right after a fast restart) otherwise leaves
+/// us blocked on read forever over an ESTABLISHED socket — the zombie
+/// link observed 2026-08-24.
+const WELCOME_DEADLINE: Duration = Duration::from_secs(3);
+
+/// M1.1c fix A, inbound side: a connection that sends no protocol message
+/// at all within this window is closed. Clients and peers both send their
+/// first line immediately, so this only ever catches dead sockets.
+const INBOUND_HELLO_DEADLINE: Duration = Duration::from_secs(20);
+
+/// M1.1c fix B: catch-up streams are split into batches of this many
+/// events so the receiver's reader thread interleaves heartbeat pongs
+/// between batches. One giant `sync-events` write starves the ping-reply
+/// path and BOTH sides then declare each other stale mid-sync (observed
+/// 2026-08-24: "sending 172 catch-up event(s)" followed by "silent for
+/// over 20s" on the next log line — sync never converged).
+const SYNC_BATCH_EVENTS: usize = 250;
+
+/// Test hook: overrides both hello deadlines (integration tests shrink
+/// them so refusal/redial paths run in seconds, not minutes).
+fn hello_deadline(base: Duration) -> Duration {
+    static OVERRIDE: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
+    let ms = *OVERRIDE.get_or_init(|| {
+        std::env::var("SWARM_TEST_HELLO_DEADLINE_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+    });
+    match ms {
+        Some(ms) => Duration::from_millis(ms),
+        None => base,
+    }
+}
+
 struct Node {
     identity: Identity,
     project: String,
@@ -89,6 +125,15 @@ struct Node {
     /// Last time we received *any* message (heartbeat or otherwise) from
     /// each connected peer — see `HEARTBEAT_INTERVAL`/`STALE_PEER_TIMEOUT`.
     last_seen: Mutex<HashMap<String, Instant>>,
+    /// M1.1c fix B: peers we are CURRENTLY streaming a catch-up train to.
+    /// The heartbeat's stale-close is suppressed for these: the receiver
+    /// is busy replaying our flood and legitimately cannot pong yet.
+    sync_in_flight: Mutex<HashSet<String>>,
+    /// M1.1c legacy compat: last time a peer streamed us sync-events
+    /// WITHOUT a following sync-complete (pre-M1.1c peers end non-empty
+    /// trains silently). Heartbeat marks them caught-up after the idle
+    /// window — their train is over, silence is their "complete".
+    sync_train_last: Mutex<HashMap<String, Instant>>,
     /// Process start time, for `(metrics)`'s uptime field.
     started_at: Instant,
 }
@@ -226,6 +271,8 @@ fn main() -> std::io::Result<()> {
         caught_up_with: Mutex::new(HashSet::new()),
         promised: Mutex::new(HashMap::new()),
         last_seen: Mutex::new(HashMap::new()),
+        sync_in_flight: Mutex::new(HashSet::new()),
+        sync_train_last: Mutex::new(HashMap::new()),
         started_at: Instant::now(),
     });
 
@@ -317,14 +364,54 @@ fn spawn_heartbeat(node: &Arc<Node>) {
         broadcast_to_peers(&node, &beat, None);
 
         let now = Instant::now();
+        // M1.1c fix B: a peer mid-replay of OUR catch-up flood cannot pong
+        // on schedule; closing it would abort the sync and restart the
+        // same flood forever. Grace applies only while our train to that
+        // peer is actually in flight.
+        let in_flight = node
+            .sync_in_flight
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let stale: Vec<String> = node
             .last_seen
             .lock()
             .unwrap()
             .iter()
-            .filter(|(_, seen)| now.duration_since(**seen) > STALE_PEER_TIMEOUT)
+            .filter(|(id, seen)| {
+                now.duration_since(**seen) > STALE_PEER_TIMEOUT && !in_flight.contains(*id)
+            })
             .map(|(id, _)| id.clone())
             .collect();
+        drop(in_flight);
+
+        // M1.1c legacy fallback: a peer whose batched train went silent
+        // for a full STALE_PEER_TIMEOUT without ever sending the new
+        // sync-complete is a pre-M1.1c peer — its silence IS its
+        // "complete". Mark it so mixed-version meshes converge.
+        let mut trains = node
+            .sync_train_last
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut legacy_done: Vec<String> = Vec::new();
+        trains.retain(|id, last| {
+            if now.duration_since(*last) > STALE_PEER_TIMEOUT {
+                legacy_done.push(id.clone());
+                return false;
+            }
+            true
+        });
+        drop(trains);
+        for id in legacy_done {
+            let already = node
+                .caught_up_with
+                .lock()
+                .unwrap()
+                .contains(&id);
+            if !already {
+                info!("swarm-node: legacy peer {id} train idle past window, marking caught up");
+                mark_caught_up(&node, &id);
+            }
+        }
         if stale.is_empty() {
             continue;
         }
@@ -350,6 +437,20 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
 
     let peer_ip = peer_addr.rsplit_once(':').map(|(ip, _)| ip.to_string()).unwrap_or_else(|| peer_addr.clone());
 
+    // M1.1c fix A: deadline on the FIRST protocol message. An initiator
+    // whose hello was silently refused (identity-already-live right after
+    // a fast restart) used to block on read forever over an ESTABLISHED
+    // socket, and spawn_connect never redialed — the zombie link. After
+    // the first message arrives the timeout is cleared; steady-state
+    // liveness is the heartbeat's job, not a per-read timer.
+    let first_deadline = if initiator {
+        hello_deadline(WELCOME_DEADLINE)
+    } else {
+        hello_deadline(INBOUND_HELLO_DEADLINE)
+    };
+    let _ = stream.set_read_timeout(Some(first_deadline));
+    let mut first_message_seen = false;
+
     if initiator {
         send(
             &mut stream,
@@ -370,7 +471,22 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
     for line in reader.lines() {
         let line = match line {
             Ok(l) => l,
-            Err(_) => break,
+            Err(e) => {
+                // M1.1c fix A: the first-message deadline fired. Logging
+                // makes the zombie link visible; returning lets the
+                // initiator's retry loop redial and frees the inbound slot.
+                if !first_message_seen
+                    && matches!(
+                        e.kind(),
+                        std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                    )
+                {
+                    warn!(
+                        "swarm-node: no first message from {peer_addr} within {first_deadline:?}, closing"
+                    );
+                }
+                break;
+            }
         };
         if line.trim().is_empty() {
             continue;
@@ -385,6 +501,10 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                 continue;
             }
         };
+        if !first_message_seen {
+            first_message_seen = true;
+            let _ = stream.set_read_timeout(None);
+        }
         match msg.head() {
             Some("peer-hello") => {
                 let their_node = msg.field_atom("node").unwrap_or("unknown").to_string();
@@ -727,13 +847,37 @@ fn handle_sync_hello(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             "swarm-node: sending {} catch-up event(s) to {their_node}",
             missing_events.len()
         );
+        // M1.1c fix B: batch the train. One giant sync-events write makes
+        // the receiver chew a single handler call for longer than the
+        // heartbeat window, so it cannot pong and we declare it stale
+        // mid-sync — the flood-then-close loop from 2026-08-24. Batches +
+        // a 1ms yield let pongs interleave; the in-flight grace above is
+        // the belt to this braces.
+        node.sync_in_flight
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(their_node.to_string());
+        for batch in missing_events.chunks(SYNC_BATCH_EVENTS) {
+            send(
+                stream,
+                &Sexp::list(vec![
+                    Sexp::atom("sync-events"),
+                    Sexp::list(vec![Sexp::atom("from"), Sexp::atom(&node.identity.node_id)]),
+                    Sexp::list(vec![Sexp::atom("events"), Sexp::List(batch.to_vec())]),
+                ]),
+            );
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        node.sync_in_flight
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(their_node);
+        // Definitive end-of-train marker: with per-batch delivery, THIS —
+        // not the last sync-events message — is what marks the requester
+        // caught up (handle_sync_events no longer marks on partials).
         send(
             stream,
-            &Sexp::list(vec![
-                Sexp::atom("sync-events"),
-                Sexp::list(vec![Sexp::atom("from"), Sexp::atom(&node.identity.node_id)]),
-                Sexp::list(vec![Sexp::atom("events"), Sexp::list(missing_events)]),
-            ]),
+            &Sexp::list(vec![Sexp::atom("sync-complete"), Sexp::list(vec![Sexp::atom("from"), Sexp::atom(&node.identity.node_id)])]),
         );
     } else {
         // Nothing missing is still a definitive answer — the requester needs
@@ -766,8 +910,19 @@ fn handle_sync_events(node: &Arc<Node>, msg: &Sexp) {
     if applied > 0 {
         info!("swarm-node: applied {applied} event(s) from anti-entropy sync");
     }
+    // M1.1c: deliberately NOT marking caught-up here anymore. Since
+    // catch-up trains are batched (SYNC_BATCH_EVENTS), a plain
+    // sync-events message is a PARTIAL delivery; the definitive answer is
+    // the responder's `sync-complete`, which every sync-hello now gets.
+    // Marking per-batch opened the claim gate while later batches were
+    // still streaming — an agent could act on an incomplete registry.
+    // Legacy peers (pre-M1.1c) end non-empty trains WITHOUT a
+    // sync-complete; heartbeat's idle fallback covers them.
     if let Some(from) = msg.field_atom("from") {
-        mark_caught_up(node, from);
+        node.sync_train_last
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(from.to_string(), Instant::now());
     }
 }
 

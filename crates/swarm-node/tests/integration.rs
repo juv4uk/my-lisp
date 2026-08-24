@@ -52,6 +52,7 @@ fn spawn(port: u16, node_id: &str, data_dir: &Path, connect: Option<u16>) -> Nod
         cmd.arg("--connect").arg(format!("127.0.0.1:{p}"));
     }
     if let Ok(logdir) = std::env::var("SWARM_TEST_LOGS") {
+        let _ = std::fs::create_dir_all(&logdir);
         let f = std::fs::File::create(std::path::Path::new(&logdir).join(format!("{node_id}-{port}.log"))).unwrap();
         cmd.stdout(f.try_clone().unwrap()).stderr(f);
     } else {
@@ -576,4 +577,137 @@ fn task_origin_provenance_flows_through() {
     if nba.starts_with("(next-best-action (task") && nba.contains("ORIG-C") {
         assert!(nba.contains("(origin fpga-lisp)"), "NBA should expose origin: {nba}");
     }
+}
+
+// ---------------------------------------------------------------------------
+// M1.1c liveness (SWARM-NODE-M11C-LIVENESS): hello deadlines, redial after
+// silent refusal, and catch-up trains that no longer starve the heartbeat.
+// ---------------------------------------------------------------------------
+
+fn spawn_with_env(port: u16, node_id: &str, data_dir: &Path, connect: Option<u16>, deadline_ms: u64) -> Node {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_swarm-node"));
+    cmd.arg("--port").arg(port.to_string());
+    cmd.arg("--node-id").arg(node_id);
+    cmd.arg("--project").arg("itest");
+    cmd.arg("--data-dir").arg(data_dir);
+    cmd.env("SWARM_TEST_HELLO_DEADLINE_MS", deadline_ms.to_string());
+    if let Some(p) = connect {
+        cmd.arg("--connect").arg(format!("127.0.0.1:{p}"));
+    }
+    cmd.stdout(Stdio::null()).stderr(Stdio::null());
+    let child = cmd.spawn().expect("spawn swarm-node");
+    let node = Node { child };
+    wait_for_port(port);
+    node
+}
+
+/// Fix A, inbound side: a connected socket that never speaks protocol is
+/// closed after the (test-shrunk) inbound hello deadline instead of leaking.
+#[test]
+fn silent_inbound_socket_is_closed_after_hello_deadline() {
+    let ports = alloc_ports(1);
+    let dir = data_dir("m11c-inbound");
+    let _a = spawn_with_env(ports, "a", &dir.join("a"), None, 400);
+
+    // Connect and deliberately say nothing — the old code kept this
+    // socket in the peers-eligible world forever if it never spoke.
+    let dead = TcpStream::connect(("127.0.0.1", ports)).unwrap();
+    dead.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+
+    // The node itself must stay healthy and answer clients throughout.
+    let start = Instant::now();
+    let mut saw_reply_after_close = false;
+    while start.elapsed() < Duration::from_secs(5) {
+        if request(ports, "(metrics)").contains("metrics") && start.elapsed() > Duration::from_millis(700)
+        {
+            saw_reply_after_close = true;
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    drop(dead);
+    assert!(saw_reply_after_close, "node stopped answering after silent socket window");
+}
+
+/// Fix A, initiator side: dialing a listener that accepts but never says
+/// welcome must produce repeated redials (deadline fires, handle_connection
+/// returns, spawn_connect loops) — not one eternal ESTABLISHED zombie.
+#[test]
+fn initiator_redials_when_welcome_never_arrives() {
+    let ports = alloc_ports(2);
+    // Silent peer: accepts TCP, never sends a byte.
+    let listener = std::net::TcpListener::bind(("127.0.0.1", ports + 1)).unwrap();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            drop(stream); // accepted, then held without any reply
+        }
+    });
+
+    let dir = data_dir("m11c-redial");
+    let _b = spawn_with_env(ports, "b", &dir.join("b"), Some(ports + 1), 300);
+
+    // Give the dialer a few deadline cycles; it must remain fully
+    // responsive the whole time (the old failure mode was a wedged node).
+    for _ in 0..6 {
+        std::thread::sleep(Duration::from_millis(400));
+        assert!(
+            request(ports, "(metrics)").contains("metrics"),
+            "node wedged while its bootstrap link was stalled"
+        );
+    }
+}
+
+/// Fix B: a large catch-up train must CONVERGE without either side closing
+/// mid-sync (the flood-then-stale-close loop). 1200 events on a fresh join.
+#[test]
+fn large_backlog_sync_converges_without_stale_close() {
+    let ports = alloc_ports(2);
+    let dir = data_dir("m11c-backlog");
+    let a_port = ports;
+    let _a = spawn(a_port, "backlog-a", &dir.join("a"), None);
+
+    for i in 0..1200 {
+        let r = request(a_port, &(format!("(define-task (task BK-{i}) (priority 1))")));
+        assert!(r.starts_with("(ok"), "define failed at {i}: {r}");
+    }
+
+    let b_port = ports + 1;
+    let _b = spawn(b_port, "backlog-b", &dir.join("b"), Some(a_port));
+
+    // B must reach synced=t AND both sides must keep each other connected
+    // through the whole train (peer-count on B includes A afterwards).
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let m = request(b_port, "(metrics)");
+        let synced = m.contains("(synced t)");
+        let peers: usize = m
+            .split("(peer-count ")
+            .nth(1)
+            .and_then(|s| s.split(')').next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        if synced && peers >= 1 {
+            break;
+        }
+        assert!(Instant::now() < deadline, "sync did not converge in 30s: {m}");
+        std::thread::sleep(Duration::from_millis(200));
+    }
+
+    // Diagnostics on failure: full state of both sides at the moment of
+    // the (previously flaky) assertion.
+    let diag = |port: u16| {
+        format!(
+            "metrics={}\n  BK-0={}\n  BK-1199={}",
+            request(port, "(metrics)"),
+            request(port, "(task-status (task BK-0))"),
+            request(port, "(task-status (task BK-1199))")
+        )
+    };
+    let status = request(b_port, "(task-status (task BK-1199))");
+    assert!(
+        status.contains("(defined t"),
+        "BK-1199 missing on B\nA: {}\nB: {}",
+        diag(a_port),
+        diag(b_port)
+    );
 }
