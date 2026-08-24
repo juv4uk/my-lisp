@@ -250,56 +250,20 @@ impl Rational {
         )
     }
 
-    /// Add two reduced rationals without any post-normalization gcd.
-    /// With g = gcd(db, dd) and b = g·b', d = g·d', the identity
-    /// a/b ± c/d = (a·d' ± c·b') / (b'·d') is provably already in lowest
-    /// terms whenever gcd(a,b) = gcd(c,d) = 1 (the stored invariant), so
-    /// the only gcd ever computed is the *small* denominator-pair one.
-    /// This replaces the dominant giant-numerator gcd in exact chains
-    /// (rational stress evidence, docs/OPTIMIZATION-ANALYSIS-VYASA.md).
     pub fn checked_add(self, other: Self) -> Option<Self> {
-        self.add_sub(other, false)
+        let numerator = self
+            .numerator
+            .mul(&other.denominator)
+            .add(&other.numerator.mul(&self.denominator));
+        Self::from_big(numerator, self.denominator.mul(&other.denominator))
     }
 
     pub fn checked_sub(self, other: Self) -> Option<Self> {
-        self.add_sub(other, true)
-    }
-
-    fn add_sub(self, other: Self, subtract: bool) -> Option<Self> {
-        // With g = gcd(db, dd), b = g·b', d = g·d': a/b ± c/d reduces
-        // provably to (a·d' ∓ c·b') / (b'·d') given the stored invariant
-        // gcd(num, den) = 1 on both inputs. Only the SMALL denominator-pair
-        // gcd is ever computed — no giant post-hoc normalization.
-        let g = self.denominator.gcd(&other.denominator);
-        let coprime = g.to_i64() == Some(1);
-        let numerator = if coprime {
-            let x = self.numerator.mul(&other.denominator);
-            let y = other.numerator.mul(&self.denominator);
-            if subtract { x.sub(&y) } else { x.add(&y) }
-        } else {
-            let (d1, rem1) = self.denominator.div_rem(&g)?;
-            if !rem1.is_zero() {
-                return None;
-            }
-            let (d2, rem2) = other.denominator.div_rem(&g)?;
-            if !rem2.is_zero() {
-                return None;
-            }
-            let x = self.numerator.mul(&d2);
-            let y = other.numerator.mul(&d1);
-            if subtract { x.sub(&y) } else { x.add(&y) }
-        };
-        let denominator = if coprime {
-            self.denominator.mul(&other.denominator)
-        } else {
-            let (d1, _) = self.denominator.div_rem(&g)?;
-            let (d2, _) = other.denominator.div_rem(&g)?;
-            d1.mul(&d2)
-        };
-        Some(Self {
-            numerator,
-            denominator,
-        })
+        let numerator = self
+            .numerator
+            .mul(&other.denominator)
+            .sub(&other.numerator.mul(&self.denominator));
+        Self::from_big(numerator, self.denominator.mul(&other.denominator))
     }
 
     pub fn checked_mul(self, other: Self) -> Option<Self> {
