@@ -529,6 +529,11 @@
 ; reverse-onto вище, тож не має власної стелі розрядності. Обсяг:
 ; лише невід'ємні цілі, як і самі quotient/mod.
 (def digit->string
+  ; Superseded by number->string's canonical delegation to write-to-string
+  ; (FIX-NUMBER-TO-STRING-RATIONAL). Retained because racket/boot/core.my
+  ; mirrors this file and fpga-lisp's assembler.my carries its own local
+  ; variant — removal is a separate mirrored-surface decision, not a
+  ; silent one.
   (lambda (d)
     (nth d (quote ("0" "1" "2" "3" "4" "5" "6" "7" "8" "9")))))
 
@@ -540,9 +545,16 @@
 
 (def number->string
   (lambda (n)
-    (cond
-      ((eq n 0) "0")
-      (t (number->string-onto n "")))))
+    ; Canonical serialization for every number (FIX-NUMBER-TO-STRING-
+    ; RATIONAL, docs/BUG-number-to-string-rational.md): integers render
+    ; as themselves, non-integer rationals render REDUCED exactly —
+    ; "1/3", never a decimal approximation, per the same G6 law that
+    ; makes 10/20 serialize as "1/2". The previous quotient/mod descent
+    ; crashed on fractional digit indices ((nth 1/3 <digit-table>)) and
+    ; its misleading error surfaced as an apparent memory corruption.
+    ; Delegation, not re-implementation: write-to-string is already the
+    ; contract-tested renderer (G6 fixtures), so this cannot drift from it.
+    (write-to-string n)))
 
 ; -> / ->> (thread-first / thread-last macros) — express transformation pipelines
 ; without deep nesting (PLAN.md item / clean-code policy).
