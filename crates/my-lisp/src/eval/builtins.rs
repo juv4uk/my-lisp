@@ -150,6 +150,20 @@ pub(crate) fn install(environment: &Environment) {
         Ok(Value::vector(args.iter().cloned()))
     });
 
+    // (mono-ms) — monotonie milliseconds since first call in this process.
+    // Wall-clock-independent, so diffs measure true elapsed time of a block:
+    //   (define t0 (mono-ms)) <block> (- (mono-ms) t0)
+    // Library-before-core doctrine: this is the minimal host primitive that
+    // CANNOT be expressed in the language itself; everything else (lap
+    // timers, `timed` wrappers) stays library-level.
+    define!(environment, "mono-ms", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("mono-ms", args, 0, span)?;
+        static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+        let elapsed = START.get_or_init(std::time::Instant::now).elapsed();
+        Ok(Value::Number(elapsed.as_millis() as f64, Exactness::Exact))
+    });
+
+
     define!(environment, "vector-length", |args: &[Value], _env: &Environment, span: Span| {
         exact_args("vector-length", args, 1, span)?;
         match &args[0] {
