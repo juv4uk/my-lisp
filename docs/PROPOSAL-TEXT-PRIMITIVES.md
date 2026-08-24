@@ -1,10 +1,10 @@
-# PROPOSAL: мінімальні текстові примітиви — read-line, string-slice, argv
+# PROPOSAL: мінімальні текстові примітиви — string-slice, argv
 
-**Статус:** PROPOSED v2 · **Дата:** 2026-08-24 · **Автор:** Vyasa (COMPILER STEWARD)
+**Статус:** PROPOSED v2.1 · **Дата:** 2026-08-25 · **Автор:** Vyasa (COMPILER STEWARD)
 **v2 корекція:** `read-file-string` ВЖЕ ІСНУЄ як host-capability `read-file`
 (my-lisp-host/lib.rs:723-726 разом з read-dir/read-file-bytes/write-file),
 але стандартний CLI його не встановлює → фактичний дефікт інший, див. §1a
-**Тип:** ядро → 3 нові builtins (minor bump; surface розширення, семантика наявних форм не змінюється)
+**Тип:** ядро → 2 нові builtins + CLI capability parity (minor bump; surface розширення, семантика наявних форм не змінюється)
 **Драйвер:** директива власника «максимально переводимо екосистему на my-lisp» —
 міграційна хвиля вперлася у відсутність рядкового I/O (пілот
 scripts/program-symbol-table.my, BLOCKED; evidence у комміті)
@@ -76,6 +76,19 @@ install-набір що host; це виправляння розколу, не �
 1. unit: slice межі (0/клімп/порожній), utf-8 багатобайтові границі по КОДАх символів не байтам
 2. integration: program-symbol-table pilot завершується і дає parity vs symbol_table.py
 3. conformance: fixtures у tests/fixtures/conformance.my
+
+## 5.1 Empirical motivation
+
+The migration decision is benchmark-driven, not a convenience request. On
+2026-08-25 the current self-hosted `check-stale-refs.my` and Python reference
+checked the same live repository state with matching success status. Twenty
+fresh processes measured Python at **0.89 s / 12,020 KB** and my-lisp at
+**14.00 s / 3,328 KB**. A decomposition measured 20 empty my-lisp processes at
+**0.06 s**, versus **13.65 s** for the checker. Therefore process startup is
+not the bottleneck: character-recursive text traversal/string construction is.
+`string-slice` is proposed as the smallest contract-level experiment that can
+replace that path; Python remains the reference until the fixtures and parity
+gate pass.
 
 ## 6. Альтернативи (відхилені)
 - Залишити клас утиліт у Python-bootstrap → суперечить напряму власника
