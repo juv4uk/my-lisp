@@ -1,6 +1,6 @@
-;; STATUS: BLOCKED — потребує примітивів read-line/string-slice/argv
-;; (doctrine: library before core primitive; додавання білтінів =
-;; contract surface → через proposal до власника)
+;; STATUS: BLOCKED — тільки на відсутності string-slice (v2.2 proposal;
+;; read-file ВЕ доступний у CLI через my_lisp_host::install — раніше
+;; помилково вважав відсутнім, виправлено 2026-08-24 пізно)
 ;; A1 pilot: per-program symbol table extractor (machine-readable).
 ;; Usage: my-lisp scripts/program-symbol-table.my <program.asm> <constants.inc>
 ;; Recovers (id . name) from:
