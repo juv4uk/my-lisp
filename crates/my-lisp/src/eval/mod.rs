@@ -48,12 +48,50 @@ pub fn eval_parsed_expressions(
     })
 }
 
+/// Parsed-source twin of `eval_program_incremental`: output carries only
+/// the lines printed during THIS call.
+pub fn eval_parsed_expressions_incremental(
+    expressions: &[Expr],
+    session: &mut Session,
+) -> Result<EvalResult, LanguageError> {
+    session.environment.output_take_new();
+    let mut value = Value::Nil;
+    for expression in expressions {
+        value = evaluate(expression, &session.environment)?;
+    }
+    Ok(EvalResult {
+        value,
+        output: session.environment.output_take_new(),
+    })
+}
+
 /// Evaluates source string by parsing it and running the resulting expressions.
 /// Obchysliuie syrtsevyi riadok cherez parsynh ta vykonannia otrymanykh vyraziv.
 /// Wertet den Quelltext durch Parsing und Ausführung der Ausdrücke aus.
 pub fn eval_program(source: &str, session: &mut Session) -> Result<EvalResult, LanguageError> {
     let expressions = parse(source)?;
     eval_parsed_expressions(&expressions, session)
+}
+
+/// Same as `eval_program`, but `EvalResult::output` carries only the
+/// lines printed during THIS call — O(new output) instead of re-cloning
+/// the whole session transcript. For hot hosts (REPL loop, LSP, swarm
+/// TCP oracle) this removes the quadratic cost of long sessions; full
+/// history remains available via `Environment::output_snapshot`.
+pub fn eval_program_incremental(
+    source: &str,
+    session: &mut Session,
+) -> Result<EvalResult, LanguageError> {
+    session.environment.output_take_new(); // drop anything printed before this call
+    let expressions = parse(source)?;
+    let mut value = Value::Nil;
+    for expression in &expressions {
+        value = evaluate(expression, &session.environment)?;
+    }
+    Ok(EvalResult {
+        value,
+        output: session.environment.output_take_new(),
+    })
 }
 
 pub(crate) enum EvalStep {

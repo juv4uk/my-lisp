@@ -5,8 +5,17 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 /// could cause a stack overflow because `Rc<RefCell<Frame>>` uses Rust's recursive `Drop`.
 /// This is not currently an issue since we only have one child level from root in most usage,
 /// but it could appear if deep nesting of `let` or currying patterns emerges.
+/// Session-wide print transcript plus a consumer cursor, so hot hosts
+/// (REPL, LSP, swarm TCP) can take only the lines appended since their
+/// last read instead of re-cloning the whole history per evaluation.
+#[derive(Debug)]
+pub struct Transcript {
+    lines: Vec<String>,
+    taken: usize,
+}
+
 #[derive(Clone, Debug)]
-pub struct Environment(Rc<RefCell<Frame>>, Rc<RefCell<Vec<String>>>, Rc<RefCell<Limits>>);
+pub struct Environment(Rc<RefCell<Frame>>, Rc<RefCell<Transcript>>, Rc<RefCell<Limits>>);
 
 #[derive(Debug)]
 struct Frame {
@@ -66,7 +75,10 @@ impl Environment {
                 values: HashMap::new(),
                 parent: None,
             })),
-            Rc::new(RefCell::new(Vec::new())),
+            Rc::new(RefCell::new(Transcript {
+                lines: Vec::new(),
+                taken: 0,
+            })),
             Rc::new(RefCell::new(Limits::default())),
         );
         environment.define("t", Value::Bool(true));
@@ -192,14 +204,26 @@ impl Environment {
     /// Hängt eine Zeile an das sitzungsweite Ausgabetranskript an, das sich
     /// jede `Environment` im lexikalischen Baum dieser Sitzung teilt.
     pub fn print(&self, line: String) {
-        self.1.borrow_mut().push(line);
+        self.1.borrow_mut().lines.push(line);
     }
 
     /// A snapshot of everything `print` has produced so far in this session.
     /// Znimok usoho, shcho `print` uzhe vyviv u tsii sesii.
     /// Ein Schnappschuss von allem, was `print` in dieser Sitzung bisher ausgegeben hat.
     pub fn output_snapshot(&self) -> Vec<String> {
-        self.1.borrow().clone()
+        self.1.borrow().lines.clone()
+    }
+
+    /// Returns and consumes the lines printed since the previous call —
+    /// O(new lines), not O(session output). Full-history reads stay
+    /// available through `output_snapshot`.
+    /// Povertaie i pohlynaie riadky, nadrukovani z poperednoho vyklyku —
+    /// O(novykh riadkiv), ne O(usoho vyvodu sesii).
+    pub fn output_take_new(&self) -> Vec<String> {
+        let mut transcript = self.1.borrow_mut();
+        let new = transcript.lines[transcript.taken..].to_vec();
+        transcript.taken = transcript.lines.len();
+        new
     }
 
     /// Snapshot of every visible binding, root-first, shadowed names

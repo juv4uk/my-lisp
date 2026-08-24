@@ -4,7 +4,7 @@
 //! (2026-08-22 mechanical split); it takes the prepared Session so main
 //! stays a dispatcher.
 
-use my_lisp::{eval_parsed_expressions, parse, ErrorKind, ExprKind, Session};
+use my_lisp::{eval_parsed_expressions_incremental, parse, ErrorKind, ExprKind, Session};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::env;
@@ -59,7 +59,7 @@ pub(crate) fn run_repl(mut session: Session) {
 
                     match parse(line) {
                         Ok(ast) => {
-                            match eval_parsed_expressions(&ast, &mut session) {
+                            match eval_parsed_expressions_incremental(&ast, &mut session) {
                                 Ok(result) => {
                                     for out in result.output {
                                         println!("{}", out);

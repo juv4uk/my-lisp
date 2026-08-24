@@ -2,7 +2,7 @@
 //! served on 127.0.0.1 only. The semantic sexpr/oracle protocol lives in
 //! swarm.rs. Moved verbatim from main.rs (2026-08-22 mechanical split).
 
-use my_lisp::{eval_parsed_expressions, parse, Environment, Session};
+use my_lisp::{eval_parsed_expressions, eval_parsed_expressions_incremental, parse, Environment, Session};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener};
 use std::process;
@@ -71,7 +71,7 @@ pub(crate) fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
                     }
                     eprintln!("TCP REPL: {peer} > {trimmed}");
                     let response = match parse(trimmed) {
-                        Ok(ast) => match eval_parsed_expressions(&ast, &mut session) {
+                        Ok(ast) => match eval_parsed_expressions_incremental(&ast, &mut session) {
                             Ok(result) => {
                                 let mut out = String::new();
                                 for line in result.output {

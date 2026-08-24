@@ -23,7 +23,10 @@ pub use error::{ErrorKind, LanguageError};
 pub use eval::exact_arity;
 pub use eval::{capability_installed, installed_capabilities, register_capability, unregister_capability};
 pub use eval::parse_json;
-pub use eval::{evaluate as eval_expr, eval_parsed_expressions, eval_program, EvalResult};
+pub use eval::{
+    evaluate as eval_expr, eval_parsed_expressions, eval_parsed_expressions_incremental,
+    eval_program, eval_program_incremental, EvalResult,
+};
 pub use parser::parse;
 pub use syntax::{Exactness, Expr, ExprKind, Span};
 pub use value::{Closure, Rational, Value};

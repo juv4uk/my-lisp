@@ -3,7 +3,10 @@
 //! tables, and the `--connect` P2P client. Moved out of main.rs verbatim
 //! (2026-08-22 mechanical CLI split, no behavior changes).
 
-use my_lisp::{eval_parsed_expressions, parse, Environment, ErrorKind, Exactness, Session, Value};
+use my_lisp::{
+    eval_parsed_expressions, eval_parsed_expressions_incremental, parse, Environment, ErrorKind,
+    Exactness, Session, Value,
+};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener, TcpStream};
@@ -509,7 +512,7 @@ fn handle_sexpr_connection(
                 // evaluate `source` is the only place code ever runs.
                 let quoted = format!("(quote {trimmed})");
                 let request = match parse(&quoted).ok().and_then(|ast| {
-                    eval_parsed_expressions(&ast, &mut session).ok().map(|r| r.value)
+                    eval_parsed_expressions_incremental(&ast, &mut session).ok().map(|r| r.value)
                 }) {
                     Some(value) => value,
                     None => {
@@ -672,7 +675,7 @@ fn handle_sexpr_connection(
                             Ok(ast) if ast.len() == 1 => {
                                 let quoted_src = format!("(quote {src})");
                                 match parse(&quoted_src).ok().and_then(|q| {
-                                    eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
+                                    eval_parsed_expressions_incremental(&q, &mut session).ok().map(|r| r.value)
                                 }) {
                                     Some(structure) => ok_response(&id, structure, &[], &contract_version),
                                     None => error_response(&id, "parse-error", "source parsed but could not be rendered as data", &contract_version),
@@ -1115,7 +1118,7 @@ fn handle_sexpr_connection(
                                 Ok(_) => {
                                     let quoted_file = format!("(quote {content})");
                                     let rendered = parse(&quoted_file).ok().and_then(|q| {
-                                        eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
+                                        eval_parsed_expressions_incremental(&q, &mut session).ok().map(|r| r.value)
                                     });
                                     match rendered {
                                         None => error_response(
@@ -1213,7 +1216,7 @@ fn handle_sexpr_connection(
                                     // evaluate — dotted pairs stay dotted.
                                     let quoted_file = format!("(quote {content})");
                                     let rendered = parse(&quoted_file).ok().and_then(|q| {
-                                        eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
+                                        eval_parsed_expressions_incremental(&q, &mut session).ok().map(|r| r.value)
                                     });
                                     match rendered {
                                         None => error_response(
@@ -1340,7 +1343,7 @@ fn handle_sexpr_connection(
                                 Ok(_) => {
                                     let quoted_file = format!("(quote {content})");
                                     let rendered = parse(&quoted_file).ok().and_then(|q| {
-                                        eval_parsed_expressions(&q, &mut session).ok().map(|r| r.value)
+                                        eval_parsed_expressions_incremental(&q, &mut session).ok().map(|r| r.value)
                                     });
                                     match rendered {
                                         None => error_response(
