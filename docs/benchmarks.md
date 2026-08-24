@@ -80,3 +80,30 @@ programs in `benchmarks/*.my` remain as fixture inputs to this runner.
 інтерпретатора, як у LSP/REPL/swarm після старту). Головний висновок:
 точнорaціональний ланцюг масштабується надлінійно через ріст
 LCM-знаменника — це ціль наступної оптимізації.
+
+## 4. Cross-language boundary — exact rationals vs Python (2026-08-24)
+
+**Workload:** LCM-chain `acc += k²/(3k+1)`, k=n..1, exact fractions.
+**Engines:** my-lisp release CLI (Stein GCD+Karatsuba, post-revert d8594c1)
+vs CPython `fractions.Fraction` (C math.gcd).
+**Protocol:** 5 runs each, nice -n 10 ionice -c2 -n7, load 1.46, same machine;
+median reported; parity = numerator/denominator prefix match n=200.
+
+| n | my-lisp | python | ratio |
+|---|---|---|---|
+| 100 | 0.32s | 0.03s | ~10× |
+| 200 | 2.9s | 0.03s | ~95× |
+| 400 | 32.4s | 0.04s | ~900× |
+
+Memory: my-lisp ~2.8MB vs python ~11.5MB RSS (**my-lisp 4× leaner**).
+Parity: PASS (identical fraction heads).
+
+**Boundary verdict [honest]:** для exact-раціональних обчислень CPython
+перемагає у стіну на глибоких ланцюгах (C gcd/mul); my-lisp виграє памʼяттю
+та гарантує exactness контрактом. Виправдана межа: числові батчі залишаються
+Python-bootstrap до Karatsuba-class+алгоритмічних покращень; optimization
+targets записані (bignum mul/gcd steady-state).
+
+Див. також fpga-lisp@cf48fd0 (text-processing boundary: python 0.89s vs
+my-lisp 14s cold; startup НЕ вузьке місце — рекурсивний string-traversal є,
+6c2e024) — разом ці два фікстури окреслюють поточні чесні межі мови.
