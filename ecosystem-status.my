@@ -76,13 +76,13 @@
    (isa-no-inexact-rational-string .
     "representational gap, not an implementation gap; blocks my-lisp's stated core purpose (exact rational arithmetic) from ever reaching fpga-lisp until isa-contract.my adds tags/encoding for it — needs a representation contract before any RTL/cml lowering work, not an ad-hoc format invented mid-implementation")))
  (next-milestone .
- ((name . physical-fpga-register-input)
-  (status . "planned — ISA 1.1 frame encoding and bridge parsing are complete; physical payload execution is not yet evidenced")
-  (goal . "one tagged register-input frame produced by CML, accepted by the physical fpga-lisp bootloader after COM4 transfer, and decoded to an observed result with pinned evidence")
+ ((name . heterogeneous-host-staged-fpga-input)
+  (status . "complete — physical ISA 1.1 register-input and CPU→CUDA→host-staged-FPGA evidence are pinned in cml/fpga-lisp")
+  (goal . "preserve one semantic graph across CPU, CUDA, and FPGA while keeping direct device-to-device transfer explicitly absent")
   (per-repo .
    ((my-lisp . "done — tests/fixtures/conformance.my's tier-1 fixtures already expose the oracle value; no further work needed unless cml/fpga-lisp need a different entry point")
-    (cml . "done for length_e2e; ISA 1.1 register-input encoder is implemented and tested, physical COM4 payload remains pending")
-    (fpga-lisp . "ISA 1.1 register-input RTL simulation and host bridge parsing pass; physical payload execution remains pending")
+    (cml . "done — typed buffer adapter, explicit graph edge, and CPU→CUDA→host-staged-FPGA live pass are pinned")
+    (fpga-lisp . "done — M35 physical register-input and M36 host-staged heterogeneous evidence are pinned")
      (my-idea . "not started — one panel: source -> compiled instructions -> execution -> decoded result -> oracle match, PASS/FAIL")))
    (anti-pattern-to-avoid . "no more NOTE-*.md proliferation or (quote agent) X replied to agent Y' commits — coordinate through this file's current-task fields and normal commits that actually touch code")))
  (how-to-refresh .
