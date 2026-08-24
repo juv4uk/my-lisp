@@ -26,10 +26,11 @@ capabilities (§1a) та без індексних зрізів/argv (нові b
 | Пункт | Тип | Семантика |
 |---|---|---|
 | §1a CLI capabilities parity | інтеграція | стандартний `my-lisp script.my` встановлює ті самі host-capabilities, що й embedders: read-file/read-dir/read-file-bytes/write-file (джерело вже є: my-lisp-host/lib.rs:723-726) |
-| `string-slice` | новий builtin | s start end → string; clamp за межами |
-| `*argv*` | новий builtin | () → list-of-strings аргументів після скрипта |
+| `string-slice` | новий builtin | s start end → string; CHAR-індекси (узгоджено з string-first/rest); start≥end → ""; поза межами → clamp |
+| `*argv*` | новий builtin | () → list-of-strings аргументів після скрипта; без аргументів → () |
 
-`read-line` не потрібен: read-file + string-slice + бібліотечна (lines-of).
+`read-line` не пропонується; `read-file-string` ВИЛУЧЕНО з v2 — read-file
+уже існує як capability, дублювати поверхню немає сенсу.
 
 ### §1a Деталі (найважливіший пункт)
 Виявлено [VERIFIED 2026-08-24]: capability-реєстр має файлові примітиви,
@@ -49,6 +50,27 @@ install-набір що host; це виправляння розколу, не �
 - regex, split-by-separator, line-reader з буферизацією — бібліотека поверх
 - запис файлів (окрема пропозиція, capability-gated)
 - argv як мутований стан — чисте значення на старті
+
+
+## 4.5 ABI / портативність
+- Індекси string-slice — за СИМВОЛАМИ (Unicode scalar values), не байтами:
+  узгоджено зі string-first/string-rest; реалізація через char_indices,
+  O(n) на виклик — задокументовано.
+- Кодування: рядки мови = UTF-8 Rust String; read-file декодує strict UTF-8,
+  invalid → named error (не lossy).
+- Портативність: примітиви не нормалізують шляхи й роздільники — це
+  відповідальність викликуча; жодних OS-specific гілок у ядрі.
+- Capability-взаємодія: string-slice/*argv* — чисті, без I/O, тому БЕЗ
+  capability-gate; файлові операції лишаються за capability-моделлю.
+
+## 4.6 Conformance fixtures (до contracts/fixtures після ратифікації)
+1. `(string-slice "привіт" 1 3)` → "ри"            ; char-index на кирилиці
+2. `(string-slice "abc" 0 0)` → ""                  ; порожній
+3. `(string-slice "abc" 2 9)` → "c"                 ; clamp end
+4. `(string-slice "abc" 4 9)` → ""                  ; повний clamp
+5. `(*argv*)` з аргументами `[x y]` → "("x" "y")"   ; список рядків
+6. `(*argv*)` без аргументів → "()"
+7. read-file відсутнього шляху → named error (існуюча поведінка, фіксувальна)
 
 ## 5. Тест-план
 1. unit: slice межі (0/клімп/порожній), utf-8 багатобайтові границі по КОДАх символів не байтам
