@@ -14,7 +14,7 @@ use crate::eval::arithmetic::{
     arithmetic_on_values, comparison_on_values, division_on_values,
 };
 use crate::eval::special_forms::{car_value, cdr_value, cons_values, eq_values};
-use crate::{Span, Value};
+use crate::{Exactness, Span, Value};
 
 type Native = std::rc::Rc<dyn Fn(&[Value], &Environment, Span) -> Result<Value, crate::LanguageError>>;
 
@@ -134,6 +134,94 @@ pub(crate) fn install(environment: &Environment) {
             if super::arithmetic::order_pair(">", v, &best, span)? { best = v.clone(); }
         }
         Ok(best)
+    });
+
+    define!(environment, "make-vector", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("make-vector", args, 1, span)?;
+        match &args[0] {
+            Value::Number(f, Exactness::Exact) if *f >= 0.0 && f.fract() == 0.0 => {
+                Ok(Value::vector(std::iter::repeat(Value::Nil).take(*f as usize)))
+            }
+            _ => Err(crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "make-vector expects an exact non-negative integer · make-vector ochikuie tochnyi nenulevyi tsilyi · make-vector erwartet eine exakte nichtnegative ganze Zahl",
+                span,
+            )),
+        }
+    });
+
+    define!(environment, "vector", |args: &[Value], _env: &Environment, _span: Span| {
+        Ok(Value::vector(args.iter().cloned()))
+    });
+
+    define!(environment, "vector-length", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("vector-length", args, 1, span)?;
+        match &args[0] {
+            Value::Vector(vec) => Ok(Value::Number(vec.borrow().len() as f64, Exactness::Exact)),
+            _ => Err(crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "vector-length expects a vector",
+                span,
+            )),
+        }
+    });
+
+    define!(environment, "vector-ref", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("vector-ref", args, 2, span)?;
+        let index = match &args[1] {
+            Value::Number(f, Exactness::Exact) if *f >= 0.0 && f.fract() == 0.0 && *f <= usize::MAX as f64 => *f as usize,
+            _ => return Err(crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "vector-ref expects an exact non-negative integer index",
+                span,
+            )),
+        };
+        match &args[0] {
+            Value::Vector(vec) => vec.borrow().get(index).cloned().ok_or_else(|| {
+                crate::LanguageError::new(
+                    crate::ErrorKind::InvalidForm,
+                    format!("vector-ref index {index} out of bounds for length {}", vec.borrow().len()),
+                    span,
+                )
+            }),
+            _ => Err(crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "vector-ref expects a vector",
+                span,
+            )),
+        }
+    });
+
+    define!(environment, "vector-set!", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("vector-set!", args, 3, span)?;
+        let index = match &args[1] {
+            Value::Number(f, Exactness::Exact) if *f >= 0.0 && f.fract() == 0.0 && *f <= usize::MAX as f64 => *f as usize,
+            _ => return Err(crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "vector-set! expects an exact non-negative integer index",
+                span,
+            )),
+        };
+        match &args[0] {
+            Value::Vector(vec) => {
+                let mut vec = vec.borrow_mut();
+                if index >= vec.len() {
+                    let len = vec.len();
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::InvalidForm,
+                        format!("vector-set! index {index} out of bounds for length {len}"),
+                        span,
+                    ));
+                }
+                vec[index] = args[2].clone();
+                Ok(Value::Nil)
+            }
+            _ => Err(crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "vector-set! expects a vector",
+                span,
+            )),
+        }
     });
 
     for op in ["+", "-", "*"] {

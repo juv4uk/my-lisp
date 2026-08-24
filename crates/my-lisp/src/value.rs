@@ -394,7 +394,7 @@ pub enum Value {
     /// Primitive operation as a first-class value (contract 2.1).
     Builtin(std::rc::Rc<Builtin>),
     /// Persistent vector: O(1) indexed access for numeric workloads
-    Vector(std::rc::Rc<Vec<Value>>),
+    Vector(std::rc::Rc<std::cell::RefCell<Vec<Value>>>),
     /// An open TCP connection (PLAN.md item 21) — the outbound-client half
     /// of "talk to other AI systems," principle 3 extended to external
     /// agents/LLM APIs. Opaque host-capability handle, the same category
@@ -449,6 +449,17 @@ impl PartialEq for Value {
             (Value::Pair(left_head, left_tail), Value::Pair(right_head, right_tail)) => {
                 left_head == right_head && left_tail == right_tail
             }
+            // Vectors compare structurally, element by element — same rule
+            // as Pair chains. Identity would make `(eq (vector 1) (vector 1))`
+            // false while `(eq '(1) '(1))` is also false for Pairs... but the
+            // docstring positions vectors as *values* for numeric workloads,
+            // so structural equality is the consistent choice.
+            (Value::Vector(left), Value::Vector(right)) => {
+                let left = left.borrow();
+                let right = right.borrow();
+                left.len() == right.len()
+                    && left.iter().zip(right.iter()).all(|(l, r)| l == r)
+            }
             // Functions have identity: two separately created closures are not equal.
             // Funktsii maiut identychnist: dva okremo stvoreni zamykannia ne ye rivnymy.
             // Funktionen besitzen Identität: Zwei getrennt erzeugte Closures sind nicht gleich.
@@ -467,7 +478,7 @@ impl PartialEq for Value {
 
 impl Value {
     pub fn vector(values: impl IntoIterator<Item = Value>) -> Self {
-        Self::Vector(std::rc::Rc::new(values.into_iter().collect()))
+        Self::Vector(std::rc::Rc::new(std::cell::RefCell::new(values.into_iter().collect())))
     }
 
     pub fn list(values: impl IntoIterator<Item = Value>) -> Self {
@@ -534,7 +545,7 @@ fn render(value: &Value, quote_strings: bool) -> String {
     match value {
         Value::Builtin(builtin) => format!("#<builtin {}>", builtin.name),
         Value::Vector(v) => {
-            let items: Vec<String> = v.iter().map(|x| render(x, quote_strings)).collect();
+            let items: Vec<String> = v.borrow().iter().map(|x| render(x, quote_strings)).collect();
             format!("#({})", items.join(" "))
         }
         Value::Nil => "()".to_string(),
