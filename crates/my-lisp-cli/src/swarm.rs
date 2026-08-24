@@ -397,6 +397,7 @@ fn error_kind_symbol(kind: &ErrorKind) -> &'static str {
         ErrorKind::InvalidForm => "invalid-form",
         ErrorKind::OutOfMemory => "out-of-memory",
         ErrorKind::NumericOverflow => "numeric-overflow",
+        ErrorKind::DivisionByZero => "division-by-zero",
     }
 }
 

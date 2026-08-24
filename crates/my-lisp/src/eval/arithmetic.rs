@@ -84,7 +84,7 @@ fn exact_value(value: Rational) -> Value {
 
 fn arithmetic_overflow(span: Span) -> LanguageError {
     LanguageError::new(
-        ErrorKind::InvalidForm,
+        ErrorKind::NumericOverflow,
         "exact arithmetic overflow · perepovnennia tochnoi aryfmetyky · Überlauf der exakten Arithmetik",
         span,
     )
@@ -130,8 +130,8 @@ fn compare<T: PartialOrd>(operator: &str, left: T, right: T) -> bool {
 
 fn division_error(span: Span) -> LanguageError {
     LanguageError::new(
-        ErrorKind::InvalidForm,
-        "division by zero or rational overflow · dilennia na nul abo perepovnennia drobu · Division durch null oder Bruchüberlauf",
+        ErrorKind::DivisionByZero,
+        "division by zero · dilennia na nul · Division durch null",
         span,
     )
 }

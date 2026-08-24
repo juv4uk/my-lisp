@@ -36,6 +36,15 @@ pub enum ErrorKind {
     /// na rezultaty tochnoi aryfmetyky; za neiu operatsiia provaliuietsia
     /// nazvano, nikoly ne nablyzhaie movchky.
     NumericOverflow,
+    /// Arithmetic hit an undefined operation: division by zero. Sibling of
+    /// `NumericOverflow` — both are exact-arithmetic named failures, but a
+    /// zero divisor is a *logic* error in the program, while an overflow is
+    /// a *magnitude* limit; conflating them with the generic InvalidForm
+    /// made programmatic diagnosis (LSP, batch verdicts) impossible.
+    /// Dilennia na nul — sesterskyi klas do `NumericOverflow`: tezh nazvana
+    /// vidmova tochnoi aryfmetyky, ale nulovyj dilnyk — pomylka lohiky
+    /// prohramy, ne mezh velychyny.
+    DivisionByZero,
 }
 
 /// Structured errors let the IDE underline the exact source range later.

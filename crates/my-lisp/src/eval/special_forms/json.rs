@@ -43,7 +43,7 @@ pub(crate) fn evaluate_json_parse(
         ));
     };
     parse_json(text).map_err(|message| {
-        LanguageError::new(ErrorKind::InvalidForm, format!("json-parse: {message}"), span)
+        LanguageError::new(ErrorKind::Parse, format!("json-parse: {message}"), span)
     })
 }
 
