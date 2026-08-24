@@ -1,6 +1,6 @@
 # Karatsuba multiplication для Magnitude — дизайн (OPT наступний крок)
 
-**Статус:** DRAFT · 2026-08-24 · Vyasa · НЕ РЕАЛІЗОВАНО
+**Статус:** IMPLEMENTED · 2026-08-24 · threshold 32 · differential gate green
 
 ## Проблема
 Після прибрання gcd-вузьких місць глибокі exact-ланцюги лімітуються
@@ -29,6 +29,16 @@ result = z2·B^(2m) + z1·B^m + z0      (B = 2^32)
 3. Rational-регресії: mccarthy arithmetic_promotes + conformance fixtures
 4. Бенчмарк rational-chain n=400/800 у тихому вікні; очікування −30…−60%
    саме на глибоких n (де mul домінує)
+
+### Результат першого кроку
+
+- `Magnitude::mul` використовує Karatsuba для `min(limb_count) >= 32`,
+  schoolbook залишається базовим випадком.
+- Deterministic differential tests cover threshold boundary, unbalanced
+  operands, random limb values, and all-`0xFFFF_FFFF` limbs.
+- Full `cargo test -p my-lisp`: 59 unit tests plus all integration suites
+  passed. No rational benchmark claim is made yet; the n=400/800 measurement
+  remains a separate, resource-gated task.
 
 ## Ризики
 - Помилки переносів на стиках частин → ловиться диф-корпусом

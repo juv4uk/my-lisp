@@ -40,6 +40,7 @@ struct Magnitude(Vec<u32>);
 
 impl Magnitude {
     const ZERO: Magnitude = Magnitude(Vec::new());
+    const KARATSUBA_THRESHOLD: usize = 32;
 
     fn from_u64(mut value: u64) -> Self {
         let mut limbs = Vec::new();
@@ -166,7 +167,7 @@ impl Magnitude {
         Magnitude(result).trim()
     }
 
-    fn mul(&self, other: &Self) -> Self {
+    fn mul_schoolbook(&self, other: &Self) -> Self {
         if self.is_zero() || other.is_zero() {
             return Magnitude::ZERO;
         }
@@ -187,6 +188,45 @@ impl Magnitude {
             }
         }
         Magnitude(result).trim()
+    }
+
+    fn shl_limbs(&self, limbs: usize) -> Self {
+        if self.is_zero() {
+            return Magnitude::ZERO;
+        }
+        let mut shifted = Vec::with_capacity(self.0.len() + limbs);
+        shifted.resize(limbs, 0);
+        shifted.extend_from_slice(&self.0);
+        Magnitude(shifted)
+    }
+
+    /// Karatsuba multiplication for large magnitudes; schoolbook remains the
+    /// base case. The split uses the smaller operand so unbalanced products
+    /// never index past a short limb vector.
+    fn mul(&self, other: &Self) -> Self {
+        if self.is_zero() || other.is_zero() {
+            return Magnitude::ZERO;
+        }
+        if self.0.len().min(other.0.len()) < Self::KARATSUBA_THRESHOLD {
+            return self.mul_schoolbook(other);
+        }
+        let split = self.0.len().min(other.0.len()) / 2;
+        let (a_low, a_high) = self.0.split_at(split);
+        let (b_low, b_high) = other.0.split_at(split);
+        let a_low = Magnitude(a_low.to_vec());
+        let a_high = Magnitude(a_high.to_vec());
+        let b_low = Magnitude(b_low.to_vec());
+        let b_high = Magnitude(b_high.to_vec());
+        let z0 = a_low.mul(&b_low);
+        let z2 = a_high.mul(&b_high);
+        let z1 = a_low
+            .add(&a_high)
+            .mul(&b_low.add(&b_high))
+            .sub(&z0)
+            .sub(&z2);
+        z2.shl_limbs(split * 2)
+            .add(&z1.shl_limbs(split))
+            .add(&z0)
     }
 
     fn bit_len(&self) -> u32 {
@@ -637,8 +677,6 @@ mod tests {
         assert_eq!(BigInt::from_i64(0).gcd(&BigInt::zero()).to_i64(), Some(0));
     }
 
-    use super::*;
-
     #[test]
     fn add_sub_mul_match_i64_for_small_values() {
         let a = BigInt::from_i64(123_456_789);
@@ -653,6 +691,24 @@ mod tests {
         let big = BigInt::from_i64(i64::MAX).mul(&BigInt::from_i64(i64::MAX));
         assert_eq!(big.to_i64(), None);
         assert_eq!(big.to_string(), "85070591730234615847396907784232501249");
+    }
+
+    #[test]
+    fn karatsuba_matches_schoolbook_at_and_above_threshold() {
+        let mut state = 0x9E37_79B9u64;
+        let mut next_limb = || {
+            state ^= state << 7;
+            state ^= state >> 9;
+            state ^= state << 8;
+            state as u32
+        };
+        for (left_len, right_len) in [(31, 31), (32, 32), (33, 65), (64, 32), (70, 71)] {
+            let left = Magnitude((0..left_len).map(|_| next_limb()).collect()).trim();
+            let right = Magnitude((0..right_len).map(|_| next_limb()).collect()).trim();
+            assert_eq!(left.mul(&right), left.mul_schoolbook(&right));
+        }
+        let max_limb = Magnitude(vec![u32::MAX; 65]);
+        assert_eq!(max_limb.mul(&max_limb), max_limb.mul_schoolbook(&max_limb));
     }
 
     #[test]
