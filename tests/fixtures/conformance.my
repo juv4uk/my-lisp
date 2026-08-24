@@ -230,3 +230,7 @@
 ((expr . "(eq (read (write-to-string #f32(1.0 0.1 -2.5))) #f32(1.0 0.1 -2.5))") (expected . "t") (tier . 2) (since-contract . (2 2)) (requires . (typed-numeric-buffers)) (axioms . (G6 G7 S1)))
 ((expr . "(i32-buffer 2147483648)") (error . "NumericOverflow") (tier . 2) (since-contract . (2 2)) (requires . (typed-numeric-buffers)) (axioms . (S2 S3)))
 ((expr . "(i32-buffer 1/2)") (error . "Type") (tier . 2) (since-contract . (2 2)) (requires . (typed-numeric-buffers)) (axioms . (S1 S2)))
+; Contract 2.3: the canonical semantic operation CML ComputeBackends must match.
+((expr . "(numeric-buffer-map (lambda (x) (+ x 1)) #i32(1 2 3))") (expected . "#i32(2 3 4)") (tier . 2) (since-contract . (2 3)) (requires . (typed-numeric-buffers numeric-buffer-map)) (axioms . (G6 G7 S1)))
+((expr . "(numeric-buffer-map (lambda (x) (+ x 0.5)) #f32(1.0 2.0))") (expected . "#f32(1.5 2.5)") (tier . 2) (since-contract . (2 3)) (requires . (typed-numeric-buffers numeric-buffer-map)) (axioms . (G6 G7 S1)))
+((expr . "(numeric-buffer-map (lambda (x) (+ x 1)) #i32(2147483647))") (error . "NumericOverflow") (tier . 2) (since-contract . (2 3)) (requires . (typed-numeric-buffers numeric-buffer-map)) (axioms . (S2 S3)))

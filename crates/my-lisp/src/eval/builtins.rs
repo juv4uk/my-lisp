@@ -363,6 +363,81 @@ pub(crate) fn install(environment: &Environment) {
         })
     });
 
+    define!(environment, "numeric-buffer-map", |args: &[Value], env: &Environment, span: Span| {
+        exact_args("numeric-buffer-map", args, 2, span)?;
+        match &args[1] {
+            Value::NumericBuffer(NumericBuffer::I32(input)) => {
+                let mut output = Vec::with_capacity(input.len());
+                for element in input.iter() {
+                    let result = super::invoke_value(
+                        &args[0],
+                        &[Value::Number(f64::from(*element), Exactness::Exact)],
+                        env,
+                        span,
+                    )?;
+                    let integer = match &result {
+                        Value::Number(number, Exactness::Exact) if number.fract() == 0.0 => {
+                            *number as i64
+                        }
+                        Value::Rational(rational) if rational.is_integer() => rational
+                            .as_precise_i64()
+                            .ok_or_else(|| crate::LanguageError::new(
+                                crate::ErrorKind::NumericOverflow,
+                                "numeric-buffer-map i32 result is outside the signed 32-bit range",
+                                span,
+                            ))?,
+                        _ => return Err(crate::LanguageError::new(
+                            crate::ErrorKind::Type,
+                            "numeric-buffer-map over i32 requires exact integer results",
+                            span,
+                        )),
+                    };
+                    output.push(i32::try_from(integer).map_err(|_| crate::LanguageError::new(
+                        crate::ErrorKind::NumericOverflow,
+                        "numeric-buffer-map i32 result is outside the signed 32-bit range",
+                        span,
+                    ))?);
+                }
+                Ok(Value::NumericBuffer(NumericBuffer::I32(output.into())))
+            }
+            Value::NumericBuffer(NumericBuffer::F32(input)) => {
+                let mut output = Vec::with_capacity(input.len());
+                for bits in input.iter() {
+                    let result = super::invoke_value(
+                        &args[0],
+                        &[Value::Number(f64::from(*bits), Exactness::Inexact)],
+                        env,
+                        span,
+                    )?;
+                    let number = match &result {
+                        Value::Number(number, _) => *number,
+                        Value::Rational(rational) => rational.as_f64(),
+                        _ => return Err(crate::LanguageError::new(
+                            crate::ErrorKind::Type,
+                            "numeric-buffer-map over f32 requires numeric results",
+                            span,
+                        )),
+                    };
+                    let narrowed = number as f32;
+                    if !number.is_finite() || !narrowed.is_finite() {
+                        return Err(crate::LanguageError::new(
+                            crate::ErrorKind::NumericOverflow,
+                            "numeric-buffer-map f32 result is outside the finite binary32 domain",
+                            span,
+                        ));
+                    }
+                    output.push(narrowed);
+                }
+                Ok(Value::NumericBuffer(NumericBuffer::F32(output.into())))
+            }
+            _ => Err(crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "numeric-buffer-map expects a numeric buffer",
+                span,
+            )),
+        }
+    });
+
     for op in ["+", "-", "*"] {
         define!(environment, op, move |args: &[Value], env: &Environment, span: Span| {
             arithmetic_on_values(op, args, env, span)

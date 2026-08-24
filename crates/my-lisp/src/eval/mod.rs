@@ -102,6 +102,23 @@ pub(crate) enum EvalStep {
     },
 }
 
+pub(crate) fn invoke_value(
+    function: &Value,
+    arguments: &[Value],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    match function {
+        Value::Builtin(builtin) => (builtin.func)(arguments, environment, span),
+        Value::Closure(closure) => closures::apply_values(closure.clone(), arguments, span),
+        _ => Err(LanguageError::new(
+            ErrorKind::Type,
+            "numeric-buffer-map expects a callable function",
+            span,
+        )),
+    }
+}
+
 pub fn evaluate(expression: &Expr, environment: &Environment) -> Result<Value, LanguageError> {
     let (mut owned_expression, mut owned_environment) =
         match evaluate_step(expression, environment)? {

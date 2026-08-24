@@ -197,6 +197,38 @@ pub(super) fn apply(
     })
 }
 
+/// Apply an ordinary closure to values that are already evaluated. Bulk
+/// primitives use this path so they do not fabricate source expressions or
+/// accidentally evaluate an element as code.
+pub(super) fn apply_values(
+    closure: Rc<Closure>,
+    arguments: &[Value],
+    span: Span,
+) -> Result<Value, LanguageError> {
+    check_arity(
+        "lambda",
+        closure.parameters.len(),
+        closure.rest.is_some(),
+        arguments.len(),
+        span,
+    )?;
+    let local_environment = closure.environment.child();
+    for (parameter, value) in closure.parameters.iter().zip(arguments.iter()) {
+        local_environment.define(parameter.clone(), value.clone());
+    }
+    if let Some(rest_name) = &closure.rest {
+        local_environment.define(
+            rest_name.clone(),
+            Value::list(arguments[closure.parameters.len()..].iter().cloned()),
+        );
+    }
+    let mut result = Value::Nil;
+    for expression in closure.body.iter() {
+        result = evaluate(expression, &local_environment)?;
+    }
+    Ok(result)
+}
+
 /// Runs every body expression except the last for its side effects, then returns
 /// the last one for the caller to evaluate in tail position. `create_lambda` always
 /// builds a non-empty body, but this returns a `LanguageError` instead of panicking

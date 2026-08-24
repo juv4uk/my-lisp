@@ -46,3 +46,29 @@ fn printed_buffers_round_trip_through_read() {
     assert_eq!(eval("(read \"#i32(1 -2 3)\")"), "#i32(1 -2 3)");
     assert_eq!(eval("(read \"#f32(1.0 0.1 -2.5)\")"), "#f32(1.0 0.1 -2.5)");
 }
+
+#[test]
+fn canonical_buffer_map_preserves_type_and_checks_results() {
+    assert_eq!(
+        eval("(numeric-buffer-map (lambda (x) (+ x 1)) #i32(1 2 3))"),
+        "#i32(2 3 4)"
+    );
+    assert_eq!(
+        eval("(numeric-buffer-map (lambda (x) (+ x 0.5)) #f32(1.0 2.0))"),
+        "#f32(1.5 2.5)"
+    );
+
+    let overflow = eval_program(
+        "(numeric-buffer-map (lambda (x) (+ x 1)) #i32(2147483647))",
+        &mut Session::default(),
+    )
+    .unwrap_err();
+    assert_eq!(overflow.kind, ErrorKind::NumericOverflow);
+
+    let wrong_result = eval_program(
+        "(numeric-buffer-map (lambda (x) (quote nope)) #i32(1))",
+        &mut Session::default(),
+    )
+    .unwrap_err();
+    assert_eq!(wrong_result.kind, ErrorKind::Type);
+}

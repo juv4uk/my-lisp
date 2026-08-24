@@ -69,8 +69,8 @@
 ; зворотносумісній зміні семантики. Що НЕ піднімає цей файл: додавання
 ; функції в lib/core.my, фікс бага в lib/*.my, фікс CI, новий
 ; Rust-примітив у вже покритому Рівнем 2 класі можливостей.
-((major . 2) (minor . 2)
- (note . "immutable typed numeric buffers are additive language values: explicit i32/f32 constructors, #i32/#f32 canonical reader forms, structural equality, and typed accessors. Exact values never enter f32 implicitly; i32 overflow and invalid conversion fail named. Contract 2.1 first-class builtin semantics remain unchanged. See docs/PROPOSAL-TYPED-NUMERIC-BUFFERS.md · незмінні типізовані числові буфери стали адитивною частиною мови без послаблення точної арифметики.")
+((major . 2) (minor . 3)
+ (note . "numeric-buffer-map gives contract-2.2 typed buffers one canonical bulk transformation: applies an ordinary callable element-wise, preserves i32/f32 type, and returns named Type/NumericOverflow failures instead of coercion or wrapping. This closes the semantic boundary CML needs before a CPU/GPU backend may execute buffer maps. See docs/PROPOSAL-TYPED-NUMERIC-BUFFERS.md · numeric-buffer-map задає канонічну семантику поелементного перетворення типізованих буферів без неявного послаблення точності.")
  (covers . (G1 G2 G3 G4 G5 G6 G7 G8 S1 S2 S3))
  (invariants
    . ((shadowing

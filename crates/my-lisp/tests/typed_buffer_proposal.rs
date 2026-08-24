@@ -19,5 +19,5 @@ fn typed_buffer_record_matches_ratified_language_contract() {
     assert!(proposal.contains("(implicit-exact-to-f32 . forbidden)"));
 
     let language_contract = repository_file("language-contract.my");
-    assert!(language_contract.contains("((major . 2) (minor . 2)"));
+    assert!(language_contract.contains("((major . 2) (minor . 3)"));
 }

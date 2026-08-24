@@ -54,6 +54,7 @@ Constructors and accessors:
 (numeric-buffer-type value)       ; => i32 or f32
 (numeric-buffer-length value)
 (numeric-buffer-ref value index)  ; => exact integer or inexact number
+(numeric-buffer-map f value)      ; => new buffer of the same element type
 ```
 
 Canonical reader/printer forms:
@@ -70,6 +71,11 @@ canonical serialized value and is self-evaluating reader syntax.
 No `numeric-buffer-set!` exists. Transformations return a new buffer. A host
 backend may reuse physical allocation only when that optimization is
 unobservable.
+
+`numeric-buffer-map` was added in contract 2.3 to make the first bulk
+operation canonical before CML implements it. It invokes an ordinary callable
+once per element, preserves the input element type, and applies the same
+conversion/error rules as the constructors to every result.
 
 ## 4. Conversion rules
 
