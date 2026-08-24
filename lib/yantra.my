@@ -238,13 +238,28 @@
     ;; --fail: non-2xx yields non-zero exit instead of an error body that
     ;; would be fed to json-parse; --max-time: never hang the agent loop
     ;; on a stuck server; --show-error keeps the reason on stderr.
+    ;; FIX YANTRA-HTTP-ERROR-PROPAGATION: the curl exit code used to be
+    ;; dropped here (stdout-only), so a failed request surfaced as an
+    ;; opaque json-parse("") crash downstream — the same evidence-losing
+    ;; class already fixed in execute-bash. The full triple now flows to
+    ;; ollama-complete, which decides.
     (let ((result (process-run "curl"
                                (list "-s" "-S" "--fail" "--show-error"
                                      "--max-time" "120"
                                      "-X" "POST"
                                      "-H" "Content-Type: application/json"
                                      "-d" body url))))
-      (nth 1 result))))
+      (list (nth 0 result) (nth 1 result) (nth 2 result)))))
+
+;; Transport result contract: (exit-code stdout stderr). Exit 0 = body is
+;; the JSON payload; anything else = a BLOCKED result per the unknown-
+;; result semantics (lib/result-status.my convention, mirrored here so
+;; yantra stays standalone): (blocked "curl exit N[\\nstderr]"). Callers
+;; must branch on this — feeding a blocked result to json-parse was the
+;; original bug.
+(def http-transport-exit (lambda (r) (car r)))
+(def http-transport-body (lambda (r) (car (cdr r))))
+(def http-transport-stderr (lambda (r) (car (cdr (cdr r)))))
 
 ; ---------------------------------------------------------------------------
 ; Tool dispatch — one tool: bash. Real execution only.
@@ -261,19 +276,15 @@
            (exit-code (nth 0 result))
            (stdout (nth 1 result))
            (stderr (nth 2 result)))
-      (strcat "[exit-code " (number->string-nonneg exit-code)
+      (strcat "[exit-code " (number->string exit-code)
               "]\n"
               stdout
               (cond ((string-empty? stderr) "")
                     (t (strcat "\n[stderr]\n" stderr)))))))
 
-; number->string in core.my covers non-negative integers only, which is
-; exactly process exit codes (0..255); negative means killed-by-signal
-; and is surfaced via write-to-string rather than guessed.
-(def number->string-nonneg
-  (lambda (n)
-    (cond ((< n 0) (write-to-string n))
-          (t (number->string n)))))
+; number->string-nonneg removed: core.my's number->string now renders
+; every number canonically (FIX-NUMBER-TO-STRING-RATIONAL), so the shim
+; duplicated it — including the killed-by-signal negative case.
 
 (def dispatch-tool
   (lambda (name arguments-json)
@@ -465,8 +476,18 @@
 
 (def ollama-complete
   (lambda (messages)
-    (json->message
-     (extract-assistant-message
-      (json-parse
-       (http-post-json ollama-url
-                       (build-request-body ollama-model messages)))))))
+    (let ((r (http-post-json ollama-url
+                             (build-request-body ollama-model messages))))
+      (cond ((= (http-transport-exit r) 0)
+             (json->message
+              (extract-assistant-message
+               (json-parse (http-transport-body r))))))
+            ; Non-zero curl exit: a BLOCKED result (result-status.my
+            ;; convention) carrying the evidence — never an empty body
+            ;; fed to json-parse.
+            (t (list 'blocked
+                     (string-append "curl exit "
+                                    (number->string (http-transport-exit r))
+                                    (let ((e (http-transport-stderr r)))
+                                      (cond ((string-empty? e) "")
+                                            (t (string-append "\n" e))))))))))

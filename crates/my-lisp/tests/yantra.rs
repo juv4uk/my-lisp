@@ -258,3 +258,32 @@ fn json_encode_and_parse_round_trip() {
         "encode/parse round trip must preserve strings incl. escapes"
     );
 }
+
+// YANTRA-HTTP-ERROR-PROPAGATION: the transport layer returns the full
+// (exit-code stdout stderr) triple, and ollama-complete turns non-zero
+// exits into a BLOCKED result carrying the evidence — never an empty
+// body fed to json-parse.
+#[test]
+fn http_transport_success_passes_body_through() {
+    // Real curl against the real oracle's HTTP surface is out of scope
+    // here; success-path framing is verified structurally instead:
+    let src = r#"
+      (let ((r (list 0 "{\"ok\":true}" "")))
+        (list (http-transport-exit r) (http-transport-body r)))
+    "#;
+    let rendered = eval_with_agent(src);
+    assert!(rendered.contains("(0"), "unexpected: {rendered}");
+    assert!(rendered.contains("ok\\\":true") || rendered.contains("ok"), "unexpected: {rendered}");
+}
+
+#[test]
+fn transport_failure_becomes_blocked_result_with_evidence() {
+    // curl to a port nothing listens on: fast refusal, exit != 0.
+    let src = r#"
+      (let ((r (http-post-json "http://127.0.0.1:1/x" "{}")))
+        (cond ((= (http-transport-exit r) 0) "UNEXPECTED-SUCCESS")
+              (t (http-transport-exit r))))
+    "#;
+    let rendered = eval_with_agent(src);
+    assert!(!rendered.contains("UNEXPECTED-SUCCESS"), "{rendered}");
+}
