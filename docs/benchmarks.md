@@ -37,15 +37,34 @@ experience after startup.
 
 ### The finding that drives the next optimization
 
-The rational chain scales **superlinearly**: n=100 → 0.32 s,
+The pre-Karatsuba rational-chain baseline scaled **superlinearly**: n=100 → 0.32 s,
 n=200 → 3 s, n=400 → 42 s (CLI repro), n=2000 → >5 min.
 Root cause: each `(+ acc term)` normalizes against an ever-growing LCM
 denominator; gcd cost grows with digit count. This is the single most
 expensive real-workload shape we know of (WSM-24 chamfer is built from
 exactly these chains). Optimization options are tracked in
-`docs/OPTIMIZATION-ANALYSIS-VYASA.md` §1.
+`docs/OPTIMIZATION-ANALYSIS-VYASA.md` §1. These historical numbers are not
+used as a causal speedup claim after the Karatsuba change.
 
-## 3. Historical note
+## 3. Karatsuba post-implementation probe (2026-08-24)
+
+After `df1c333`, a release build was run with
+`MY_LISP_BENCH_ITERATIONS=1` (the rational case still takes its minimum 50
+warm repetitions), `nice -n 10`, `ionice -c2 -n7`, and a 120–180 second
+timeout per run. The machine reported load 2.09/4.36/5.02 before the probe.
+These are current-machine observations, not an A/B speedup claim:
+
+| `MY_LISP_RAT_N` | warm rational-chain per call |
+|---:|---:|
+| 100 | 11.18 ms |
+| 200 | 49.82 ms |
+| 400 | 202.14 ms |
+
+The harness still labels the row `rational-chain-100`; depth is controlled by
+`MY_LISP_RAT_N`. A same-build schoolbook-vs-Karatsuba A/B harness is still
+needed before claiming a percentage improvement.
+
+## 4. Historical note
 
 The suite historically also ran the same `.my` programs through the
 ClojureScript prototype (`npm run benchmark`). The CLJS prototype has
