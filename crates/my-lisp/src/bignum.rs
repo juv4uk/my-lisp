@@ -356,6 +356,17 @@ impl BigInt {
     /// obmezhennia resursu (`Environment::with_numeric_bit_limit`), nikoly v
     /// zvychainii aryfmetytsi. Etalonna Rust-realizatsiia lyshaietsia
     /// neobmezhenoiu za zamovchuvanniam (dyv. S1 u `docs/language-core-axioms.md`).
+
+    /// Remainder of self divided by a single-limb magnitude divisor.
+    /// O(limbs) linear pass — used by the gcd small-operand fast path.
+    fn rem_by_limb(&self, divisor: u32) -> u32 {
+        let mut rem: u64 = 0;
+        for limb in self.magnitude.0.iter().rev() {
+            rem = ((rem << 32) | (*limb as u64)) % (divisor as u64);
+        }
+        rem as u32
+    }
+
     pub fn bit_length(&self) -> usize {
         match self.magnitude.0.last() {
             None => 0,
@@ -473,6 +484,23 @@ impl BigInt {
     /// nichtnegativ, passend zur Konvention, die der Reduktionsschritt von
     /// `Rational` erwartet.
     pub fn gcd(&self, other: &Self) -> Self {
+        // Fast path: huge × small (≤64-bit) — the rational-chain shape is
+        // exactly gcd(giant accumulated denominator, small term denominator).
+        // One linear pass computes giant % small, and from there both
+        // operands are tiny; full binary stepping on equal-size giants
+        // would be orders of magnitude slower.
+        if other.magnitude.0.len() == 1 && !other.magnitude.0.is_empty() && self.magnitude.0.len() > 2 {
+            let divisor = other.magnitude.0[0];
+            let r = self.rem_by_limb(divisor);
+            let mut x = BigInt::from_i64(r as i64);
+            let mut y = BigInt::from_i64(divisor as i64);
+            while !y.is_zero() {
+                let (_, rem) = x.div_rem(&y).expect("nonzero divisor");
+                x = y;
+                y = rem;
+            }
+            return x.abs();
+        }
         // Stein's binary GCD: shifts and subtractions only — no div_rem.
         // Each Rational reduction step pays this cost, and div_rem-based
         // Euclid was the dominant term in exact-rational chains
