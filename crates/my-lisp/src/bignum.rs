@@ -111,7 +111,7 @@ impl Magnitude {
             }
         }
         if limbs > 0 {
-            self.0.splice(0..0, std::iter::repeat(0).take(limbs));
+            self.0.splice(0..0, std::iter::repeat_n(0, limbs));
         }
     }
 
@@ -396,7 +396,6 @@ impl BigInt {
     /// obmezhennia resursu (`Environment::with_numeric_bit_limit`), nikoly v
     /// zvychainii aryfmetytsi. Etalonna Rust-realizatsiia lyshaietsia
     /// neobmezhenoiu za zamovchuvanniam (dyv. S1 u `docs/language-core-axioms.md`).
-
     /// Remainder of self divided by a single-limb magnitude divisor.
     /// O(limbs) linear pass — used by the gcd small-operand fast path.
     fn rem_by_limb(&self, divisor: u32) -> u32 {

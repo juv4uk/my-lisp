@@ -74,11 +74,9 @@ pub(crate) fn install(environment: &Environment) {
         exact_args("min-list", args, 1, span)?;
         let mut items = Vec::new();
         let mut cur = args[0].clone();
-        loop {
-            match &cur {
-                crate::Value::Pair(h, t) => { items.push((**h).clone()); cur = (**t).clone(); }
-                _ => break,
-            }
+        while let crate::Value::Pair(h, t) = &cur {
+            items.push((**h).clone());
+            cur = (**t).clone();
         }
         if items.is_empty() { return Ok(crate::Value::Nil); }
         let mut best = items[0].clone();
@@ -92,11 +90,9 @@ pub(crate) fn install(environment: &Environment) {
         exact_args("max-list", args, 1, span)?;
         let mut items = Vec::new();
         let mut cur = args[0].clone();
-        loop {
-            match &cur {
-                crate::Value::Pair(h, t) => { items.push((**h).clone()); cur = (**t).clone(); }
-                _ => break,
-            }
+        while let crate::Value::Pair(h, t) = &cur {
+            items.push((**h).clone());
+            cur = (**t).clone();
         }
         if items.is_empty() { return Ok(crate::Value::Nil); }
         let mut best = items[0].clone();
@@ -140,7 +136,7 @@ pub(crate) fn install(environment: &Environment) {
         exact_args("make-vector", args, 1, span)?;
         match &args[0] {
             Value::Number(f, Exactness::Exact) if *f >= 0.0 && f.fract() == 0.0 => {
-                Ok(Value::vector(std::iter::repeat(Value::Nil).take(*f as usize)))
+                Ok(Value::vector(std::iter::repeat_n(Value::Nil, *f as usize)))
             }
             _ => Err(crate::LanguageError::new(
                 crate::ErrorKind::Type,
