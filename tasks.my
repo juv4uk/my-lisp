@@ -117,6 +117,20 @@
     (done . t)
     (context . "done 2026-08-25 by Vyasa: cc6222f initial commit, code only.")
   ))
+
+  ("LANGUAGE-STABLE-GATE" . (
+    (priority . 9.0)
+    (capabilities . (my-lisp rust semantics testing))
+    (description . "Pass LANGUAGE-STABLE gate: full semantic analysis, complete language model representation in IR. Currently NOT satisfied per VIVEKA-MY-LISP-CML-ANALYSIS. Prerequisite for CML 3.0-parity claims.")
+    (done . ())
+  ))
+
+  ("BUG-NUMBER-TO-STRING-RATIONAL" . (
+    (priority . 7.5)
+    (capabilities . (my-lisp rust bugfix))
+    (description . "Fix number->string rational rendering bug per docs/BUG-number-to-string-rational.md")
+    (done . ())
+  ))
 ("FPGA-PRATYAHARA-ALU" . (
     (priority . 8.0)
     (capabilities . (fpga))
