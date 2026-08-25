@@ -14,6 +14,8 @@
 //! Trampolin-Schleife und die Dispatch-Tabelle, `arithmetic` die exakte/inexakte
 //! Zahlenverarbeitung, `special_forms` die McCarthy-Primitive sowie `def`/`defmacro`/
 //! `cond`, und `closures` den Bau von `lambda` und die Anwendung von Funktionen/Makros.
+pub(crate) use special_forms::digest::sha256 as digest_sha256;
+
 
 mod arithmetic;
 pub(crate) mod builtins;
@@ -343,3 +345,4 @@ mod single_pass_eval_tests {
         assert_eq!(result.value.to_string(), "1/6");
     }
 }
+

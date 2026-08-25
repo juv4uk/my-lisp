@@ -406,6 +406,35 @@ impl BigInt {
         rem as u32
     }
 
+    /// FASL support: append sign + little-endian limb encoding to `out`.
+    /// Pidtrymka FASL: znak + LE limby u `out`.
+    pub(crate) fn write_fasl(&self, out: &mut Vec<u8>) {
+        out.push(self.is_negative() as u8);
+        out.extend_from_slice(&(self.magnitude.0.len() as u32).to_le_bytes());
+        for limb in &self.magnitude.0 {
+            out.extend_from_slice(&limb.to_le_bytes());
+        }
+    }
+
+    /// FASL inverse: parse what `write_fasl` produced. Returns None on
+    /// truncation/corruption so callers fall back to text parsing.
+    pub(crate) fn read_fasl(bytes: &[u8], pos: &mut usize) -> Option<Self> {
+        let tag = *bytes.get(*pos)?;
+        *pos += 1;
+        let len = u32::from_le_bytes(bytes.get(*pos..*pos + 4)?.try_into().ok()?) as usize;
+        *pos += 4;
+        let mut limbs = Vec::with_capacity(len.min(1 << 20));
+        for _ in 0..len {
+            let limb = u32::from_le_bytes(bytes.get(*pos..*pos + 4)?.try_into().ok()?);
+            *pos += 4;
+            limbs.push(limb);
+        }
+        if tag > 1 {
+            return None;
+        }
+        Some(Self::normalized(tag == 1, Magnitude(limbs)))
+    }
+
     pub fn bit_length(&self) -> usize {
         match self.magnitude.0.last() {
             None => 0,

@@ -1,4 +1,4 @@
-use my_lisp::{eval_parsed_expressions, parse, Environment, Session, Value};
+use my_lisp::{eval_parsed_expressions, parse, Environment, Session, Value, Expr};
 use std::rc::Rc;
 use std::env;
 use std::fs;
@@ -72,11 +72,30 @@ fn main() {
     };
     let mut session = Session { environment };
 
-    // Load standard library
-    let core_lib = include_str!("../../../lib/core.my");
-    if let Ok(core_ast) = parse(core_lib) {
-        let _ = eval_parsed_expressions(&core_ast, &mut session);
+    // Load standard library — FASL snapshot first (parse-output cache,
+    // OPT-CORE-MY-AST-SNAPSHOT), text parse as the always-available fallback.
+    // Invalidation: the snapshot embeds sha256(lib/core.my); any drift
+    // between the compiled-in bytes and the compiled-in source flips us to
+    // the parse path, never to a wrong program.
+    const CORE_SRC: &str = include_str!("../../../lib/core.my");
+    const CORE_FASL: &[u8] = include_bytes!("../../../lib/core.my.fasl");
+    let core_expressions: Option<Vec<Expr>> = my_lisp::fasl_decode_program(CORE_FASL)
+        .filter(|(_, hash)| *hash == my_lisp::sha256_source(CORE_SRC.as_bytes()))
+        .map(|(expressions, _)| expressions);
+    match core_expressions {
+        Some(core_ast) => {
+            let _ = eval_parsed_expressions(&core_ast, &mut session);
+        }
+        None => {
+            if let Ok(core_ast) = parse(CORE_SRC) {
+                let _ = eval_parsed_expressions(&core_ast, &mut session);
+            }
+        }
     }
+    // Text form stays in scope for downstream consumers (tcp repl seed,
+    // --lint path) without re-reading the file.
+    #[allow(unused_variables)]
+    let core_lib = CORE_SRC;
 
     if args.len() > 1 {
         let arg = &args[1];

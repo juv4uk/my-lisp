@@ -319,6 +319,19 @@ impl Rational {
         (-MAX_EXACT..=MAX_EXACT).contains(&value).then_some(value)
     }
 
+    /// FASL support: numerator+denominator limb encoding.
+    pub(crate) fn write_fasl(&self, out: &mut Vec<u8>) {
+        self.numerator.write_fasl(out);
+        self.denominator.write_fasl(out);
+    }
+
+    /// FASL inverse of `write_fasl`; None on corruption.
+    pub(crate) fn read_fasl(bytes: &[u8], pos: &mut usize) -> Option<Self> {
+        let numerator = BigInt::read_fasl(bytes, pos)?;
+        let denominator = BigInt::read_fasl(bytes, pos)?;
+        Self::from_big(numerator, denominator)
+    }
+
     pub fn is_negative(&self) -> bool {
         self.numerator.is_negative()
     }

@@ -19,7 +19,7 @@
 //! geändert.
 
 mod core;
-mod digest;
+pub(crate) mod digest;
 mod io;
 pub mod json;
 mod strings;
