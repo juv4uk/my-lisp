@@ -77,7 +77,8 @@
      (holder . vyasa)
     (capabilities . (my-lisp-panini))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-25: read-only review delivered - my-lisp-panini/docs/arch-recovery-review-2026-08-25.md @ origin. LIVE EVIDENCE: machine-acceptance.my suite 77 PASS / 0 fail on current contract-3.0 binary (strongest cross-repo compatibility proof in the swarm). Fronts: derivation_ir .my migration design, TESTING.md path fix, scratch bootstrap-marking.")
   ))
   ("ARCH-RECOVERY-REVIEW-SIVA" . (
     (priority . 9.0)
