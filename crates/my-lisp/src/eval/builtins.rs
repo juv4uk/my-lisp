@@ -11,10 +11,10 @@
 
 use crate::environment::Environment;
 use crate::eval::arithmetic::{
-    arithmetic_on_values, comparison_on_values, division_on_values,
+    arithmetic_on_values, comparison_on_values, division_on_values, exact_value,
 };
 use crate::eval::special_forms::{car_value, cdr_value, cons_values, eq_values};
-use crate::{Exactness, NumericBuffer, Span, Value};
+use crate::{Exactness, NumericBuffer, Rational, Span, Value};
 
 type Native = std::rc::Rc<dyn Fn(&[Value], &Environment, Span) -> Result<Value, crate::LanguageError>>;
 
@@ -163,6 +163,21 @@ pub(crate) fn install(environment: &Environment) {
         Ok(Value::Number(elapsed.as_millis() as f64, Exactness::Exact))
     });
 
+    // (mono-ns) — same doctrine as `mono-ms`, at nanosecond resolution.
+    // Goes through `exact_value`/`Rational` rather than `mono-ms`'s direct
+    // `as f64` cast: an `f64` only represents integers losslessly up to
+    // 2^53, which `mono-ms` never reaches at millisecond resolution
+    // (~285000 years), but a nanosecond count reaches it after ~104 days of
+    // process uptime — a real risk for a long-running agent process, not a
+    // hypothetical one. `exact_value` falls back to a `Rational` past that
+    // point instead of silently rounding, so `(mono-ns)` stays exact for
+    // the life of the process.
+    define!(environment, "mono-ns", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("mono-ns", args, 0, span)?;
+        static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+        let elapsed = START.get_or_init(std::time::Instant::now).elapsed();
+        Ok(exact_value(Rational::integer(elapsed.as_nanos() as i64)))
+    });
 
     define!(environment, "vector-length", |args: &[Value], _env: &Environment, span: Span| {
         exact_args("vector-length", args, 1, span)?;

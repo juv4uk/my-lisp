@@ -75,7 +75,7 @@ fn numeric_value(value: Value, span: Span) -> Result<Numeric, LanguageError> {
     }
 }
 
-fn exact_value(value: Rational) -> Value {
+pub(crate) fn exact_value(value: Rational) -> Value {
     match value.as_precise_i64() {
         Some(n) => Value::Number(n as f64, Exactness::Exact),
         None => Value::Rational(value),
