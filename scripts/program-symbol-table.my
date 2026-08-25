@@ -1,94 +1,66 @@
-;; STATUS: BLOCKED — тільки на відсутності string-slice (v2.2 proposal;
-;; read-file ВЕ доступний у CLI через my_lisp_host::install — раніше
-;; помилково вважав відсутнім, виправлено 2026-08-24 пізно)
-;; A1 pilot: per-program symbol table extractor (machine-readable).
-;; Usage: my-lisp scripts/program-symbol-table.my <program.asm> <constants.inc>
-;; Recovers (id . name) from:
-;;   1. constants.inc .define SYM_<NAME> <id> / PRIM_* rows
-;;   2. .asm LOADSYM/LOADI <id> lines annotated with trailing "; '<name>"
-;; Deliberately partial: bare unannotated ids are unrecoverable from
-;; source — the diff vs fpga-lisp/symbol_table.py is the deliverable.
+;; A1 pilot FINAL — per-program symbol extractor (single-line forms).
+;; Usage (з кореня fpga-lisp):
+;;   my-lisp scripts/program-symbol-table.my bootstrap_add_demo.asm fpga/asm/constants.inc
+;; Вивід: count, потім "<id> <name>" на рядок.
 
-(def read-text (lambda (path) (car (read-all path))))
+(def nil-marker (quote ()))
 
-(def chars-until
-  (lambda (s stop)
-    (cond ((string-empty? s) "")
-          ((string-contains? (string-first s) stop) "")
-          (t (string-append (string-first s)
-                            (chars-until (string-rest s) stop))))))
+(def pos-of (lambda (s marker i) (cond ((string-empty? s) -1) ((string-prefix? marker s) i) (t (pos-of (string-rest s) marker (+ i 1))))))
 
-(def after-marker
-  (lambda (s marker)
-    (cond ((string-empty? s) "")
-          ((string-prefix? marker s) (string-rest (chars-until-skip s marker)))
-          (t (after-marker (string-rest s) marker)))))
+(def has (lambda (s m) (not (= (pos-of s m 0) -1))))
 
-(def chars-until-skip
-  ;; drop the marker itself, return remainder
-  (lambda (s marker)
-    (cond ((string-prefix? marker s) (string-rest-from-n s (string-length marker)))
-          (t (chars-until-skip (string-rest s) marker)))))
+(def slice-from (lambda (s i) (string-slice s i (string-length s))))
 
-(def string-rest-from-n (lambda (s n) (cond ((= n 0) s) (t (string-rest-from-n (string-rest s) (- n 1))))))
+(def digit? (lambda (c) (has "0123456789" c)))
 
-(def take-word
-  (lambda (s)
-    (cond ((string-empty? s) "")
-          ((string-contains? " " (string-first s)) "")
-          (t (string-append (string-first s) (take-word (string-rest s)))))))
+(def skip-ws (lambda (s) (cond ((string-prefix? " " s) (skip-ws (slice-from s 1))) (t s))))
 
-(def line-name
-  ;; "; 'plus" -> plus
+(def word-digits (lambda (s i) (cond ((>= i (string-length s)) "") ((digit? (string-slice s i (+ i 1))) (string-append (string-slice s i (+ i 1)) (word-digits s (+ i 1)))) (t ""))))
+
+(def word-nonspace (lambda (s i) (cond ((>= i (string-length s)) "") ((has " " (string-first s)) "") (t (string-append (string-first s) (word-nonspace s (+ i 1)))))))
+
+(def split-lines (lambda (s) (cond ((= (pos-of s "\n" 0) -1) (cons s (quote ()))) (t (cons (string-slice s 0 (pos-of s "\n" 0)) (split-lines (slice-from s (+ 1 (pos-of s "\n" 0)))))))))
+
+(def reverse-acc (lambda (lst acc) (cond ((atom lst) acc) (t (reverse-acc (cdr lst) (cons (car lst) acc))))))
+
+(def count-lst (lambda (lst) (cond ((atom lst) 0) (t (+ 1 (count-lst (cdr lst)))))))
+
+(def asm-id (lambda (line) (cond ((has line "LOADSYM") (word-digits (slice-from line (+ 2 (pos-of line ", " 0))) 0)) (t ""))))
+
+(def asm-name (lambda (line) (cond ((has line "; '") (word-nonspace (slice-from line (+ 3 (pos-of line "; '" 0))) 0)) (t ""))))
+
+(def keep-pair (lambda (id name acc) (cond ((string-empty? id) acc) ((string-empty? name) acc) (t (cons (cons id name) acc)))))
+
+(def process-asm-line (lambda (line acc) (keep-pair (asm-id line) (asm-name line) acc)))
+
+(def process-lines-asm (lambda (lines acc) (cond ((atom lines) acc) (t (process-lines-asm (cdr lines) (process-asm-line (car lines) acc))))))
+
+(def inc-name (lambda (line) (word-nonspace (slice-from line 12) 0)))
+
+(def probe
+  (lambda (tag value)
+    (cons (print (string-append tag (write-to-string value))) value)))
+
+(def inc-id
   (lambda (line)
-    (take-word (after-marker line "; '"))))
+    (let ((name (probe "name=" (inc-name line))))
+      (let ((tail (probe "tail=" (skip-ws (slice-from line (+ 12 (string-length name))) 0))))
+        (word-digits tail 0)))))
 
-(def digits-after-comma
-  ;; "LOADSYM R2, 300              ; ..." -> "300"
-  (lambda (line)
-    (cond ((string-empty? line) "")
-          ((string-prefix? ", " line)
-           (digits-of (string-rest-from-n line 2)))
-          (t (digits-after-comma (string-rest line))))))
+(def process-define-line (lambda (line acc) (keep-pair (inc-id line) (inc-name line) acc)))
 
-(def digits-of
-  (lambda (s)
-    (cond ((string-empty? s) "")
-          ((string-contains? "0123456789" (string-first s))
-           (string-append (string-first s) (digits-of (string-rest s))))
-          (t ""))))
+(def process-lines-inc (lambda (lines acc) (cond ((atom lines) acc) (t (process-lines-inc (cdr lines) (process-define-line (car lines) acc))))))
 
-(def loadsym-id
-  ;; "LOADSYM R2, 300 ; 'plus" -> "300" or ""
-  (lambda (line)
-    (cond ((string-prefix? "LOADSYM" line)
-           (digits-after-comma (after-marker line "LOADSYM")))
-          (t ""))))
+(def str-eq? (lambda (a b) (cond ((string-prefix? a b) (string-prefix? b a)) (t nil-marker))))
 
-(def process-line
-  (lambda (line acc)
-    (let ((name (line-name line))
-          (id   (loadsym-id line)))
-      (cond ((and (not (string-empty? name))
-                  (not (string-empty? id)))
-             (cons (cons id name) acc))
-            (t acc)))))
+(def id-in-base? (lambda (id base) (cond ((atom base) nil-marker) ((str-eq? id (car (car base))) t-marker) (t (id-in-base? id (cdr base))))))
 
-(def process-lines
-  (lambda (lines acc)
-    (cond ((atom lines) acc)
-          (t (process-lines (cdr lines)
-                            (process-line (car lines) acc))))))
+(def merge-pair (lambda (pair base) (cond ((id-in-base? (car pair) base) base) (t (cons pair base)))))
 
-(def main-asm
-  (lambda (path)
-    (process-lines (lines-of (read-text path)) (quote ()))))
+(def merge-all (lambda (pairs base) (cond ((atom pairs) base) (t (merge-all (cdr pairs) (merge-pair (car pairs) base))))))
 
-(def main-inc
-  (lambda (path)
-    (process-lines
-      (filter (lambda (l) (string-contains? l ".define SYM_"))
-              (lines-of (read-text path)))
-      (quote ()))))
+(def emit-all (lambda (lst) (cond ((atom lst) (quote ())) (t (cons (print (string-append (string-append (car (car lst)) " ") (cdr (car lst))))) (emit-all (cdr lst))))))
 
-(print (write-to-string (main-asm (car *argv*))))
+(def main (lambda (asm-path inc-path) (let ((asm-pairs (reverse-acc (process-lines-asm (split-lines (read-file asm-path)) (quote ())) (quote ())))) (let ((inc-pairs (reverse-acc (process-lines-inc (split-lines (read-file inc-path)) (quote ())) (quote ())))) (let ((merged (merge-all inc-pairs asm-pairs))) (cons (count-lst merged) (emit-all merged)))))))
+
+(main (car *argv*) (car (cdr *argv*)))
