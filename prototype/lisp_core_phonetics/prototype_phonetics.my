@@ -17,14 +17,14 @@
  ;; 2. Classical Pratyāhāra 64-Bit Bitmask Specifications
  (pratyahara-masks . (
    (ac  . ((mask . #x00000000000001FF) (description . "All 9 vowels (sūtras 1-4)")))
-   (hal . ((mask . #x000003FFFFFFFFFE00) (description . "All 33 consonants (sūtras 5-14)")))
-   (al  . ((mask . #x000003FFFFFFFFFFFF) (description . "All 42 canonical sounds")))
+   (hal . ((mask . #x000007FFFFFFFE00) (description . "All 33 consonants (sūtras 5-14)")))
+   (al  . ((mask . #x000007FFFFFFFFFF) (description . "All 42 canonical sounds")))
    (ik  . ((mask . #x000000000000001E) (description . "Vowels i, u, ṛ, ḷ")))
    (ec  . ((mask . #x00000000000001E0) (description . "Diphthongs e, o, ai, au")))
-   (yar . ((mask . #x000003FFFFFFFFFC00) (description . "All consonants except initial h")))
+   (yar . ((mask . #x000003FFFFFFFC00) (description . "All consonants except initial h")))
    (Sar . ((mask . #x000003800000000000) (description . "Sibilants ś, ṣ, s")))
    (JaS . ((mask . #x000000001F00000000) (description . "Voiced unaspirated stops j, b, g, ḍ, d")))
-   (Jal . ((mask . #x000003FFFFE0000200) (description . "Stops, sibilants, and h")))
+   (Jal . ((mask . #x000003FFFF000200) (description . "Stops, sibilants, and h")))
  ))
 
  ;; 3. Sūtra Reasoning Rules
