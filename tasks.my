@@ -117,4 +117,22 @@
     (done . t)
     (context . "done 2026-08-25 by Vyasa: cc6222f initial commit, code only.")
   ))
+("FPGA-PRATYAHARA-ALU" . (
+    (priority . 8.0)
+    (capabilities . (fpga))
+    (description . "Implement fpga_alu.v per docs/recommendations-fpga-prototypes.md: complete Verilog ALU + testbench + Python reference model + assembler extension. Critical path ~1.82ns on Gowin 22nm. 42-entry ROM fits distributed LUT without BSRAM.")
+    (done . ())
+  ))
+  ("CML-CONSTANT-FOLDING-PASS" . (
+    (priority . 7.0)
+    (capabilities . (cml compiler))
+    (description . "Compile-time constant folding for pratyahara set algebra per recommendations-cml-prototypes.md section 3.2. Fold S-it/P-it/Kit membership checks at compile time when masks are known constants.")
+    (done . ())
+  ))
+  ("TAURI-DERIVATION-STREAMER" . (
+    (priority . 6.5)
+    (capabilities . (tauricode))
+    (description . "Interactive Panininian derivation proof graph streamer per recommendations-tauricode-prototypes.md section 3: stream_phoneme_vector + query_derivation_trace IPC commands.")
+    (done . ())
+  ))
 )))
