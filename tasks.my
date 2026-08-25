@@ -55,7 +55,8 @@
      (holder . vyasa)
     (capabilities . (cml))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-25: read-only review delivered - cml/docs/arch-recovery-review-2026-08-25.md @ master. As-built pipeline mapped (lower->Ir->4 backends + heterogeneous execution), strengths verified (fail-closed discipline, machine-readable evidence scope, external wire-authority), constraints table (7 primops, strings-to-symbols, no rational ISA, 8-arg limit), ranked risks (execution modularity MED, docs drift LOW). No code changes.")
   ))
   ("ARCH-RECOVERY-REVIEW-FPGA" . (
     (priority . 9.0)
