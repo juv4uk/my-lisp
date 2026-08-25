@@ -147,4 +147,12 @@
     (description . "Wire C1/C7/C9/C11 checks into active agent sessions per AGENT-GUARD-M0 step 5. C1=no fabrication, C7=verify-before-claim, C9=evidence-gate, C11=honesty-over-beauty. Today's vault tagging session was live C1/C7 violation case.")
     (done . ())
   ))
+
+
+  ("PVC16-NANBOX-INTEGRATION" . (
+    (priority . 6.5)
+    (capabilities . (my-lisp compiler rust semantics))
+    (description . "Integrate PVC-16 unboxed representation (TAG_PHONETIC_VECTOR=12) into NaN-boxed word model per recommendations-my-lisp-prototypes.md section 1. BLOCKED on COMPILER STEWARD sign-off.")
+    (done . ())
+  ))
 )))
