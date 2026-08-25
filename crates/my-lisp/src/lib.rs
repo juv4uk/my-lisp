@@ -13,12 +13,14 @@ mod bignum;
 mod environment;
 mod error;
 pub(crate) mod eval;
+mod language_items;
 mod parser;
 pub mod syntax;
 mod value;
 
 pub use environment::{Environment, Session};
 pub use error::{ErrorKind, LanguageError};
+pub use language_items::{language_items, LanguageItem, LanguageItemKind};
 
 pub use eval::exact_arity;
 pub use eval::{capability_installed, installed_capabilities, register_capability, unregister_capability};

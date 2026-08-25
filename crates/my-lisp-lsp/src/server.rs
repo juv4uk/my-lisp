@@ -14,7 +14,7 @@ use crate::protocol::{
     self, as_array, as_i64, as_str, decode, get, publish_diagnostics, response, span_to_range,
 };
 use crate::workspace::WorkspaceIndex;
-use my_lisp::{Environment, Value};
+use my_lisp::{LanguageItemKind, Value};
 use std::collections::HashMap;
 
 const PARSE_ERROR: i64 = -32700;
@@ -26,17 +26,6 @@ pub struct Server {
     documents: HashMap<String, String>,
     workspace: WorkspaceIndex,
 }
-
-/// Forms dispatched by syntax rather than looked up as ordinary values.
-/// First-class runtime builtins deliberately do not live here: completion
-/// discovers them from `Environment::root()`, the same registry evaluation
-/// uses. Keep this list aligned with `eval::evaluate_list`'s explicit arms.
-const HEAD_FORMS: &[&str] = &[
-    "quote", "lambda", "def", "defmacro", "cond", "print", "princ",
-    "write-to-string", "read", "eval", "string-append", "string<?", "read-all",
-    "string?", "symbol->string", "string->symbol", "string-first", "string-rest",
-    "sha256-hex", "json-parse",
-];
 
 impl Server {
     pub fn new() -> Self {
@@ -232,18 +221,6 @@ impl Server {
         let Some((symbol, sym_span)) = analysis.symbol_at(&text, offset) else {
             return response(&incoming.id, Some("null".to_string()), None);
         };
-        if let Some(doc) = analysis::builtin_docs(&symbol) {
-            let value = format!(
-                "**builtin** `{}`\n\n{}",
-                symbol, doc
-            );
-            let result = format!(
-                "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
-                str_lit(&value),
-                span_to_range(&text, sym_span.start, sym_span.end)
-            );
-            return response(&incoming.id, Some(result), None);
-        }
         if let Some(def) = analysis.lookup(&symbol) {
             let value = format!(
                 "**{}** `{}`\n\nDefined locally at bytes {}..{}\n\n```my-lisp\n{}\n```",
@@ -252,6 +229,25 @@ impl Server {
                 def.name_span.start,
                 def.name_span.end,
                 span_text(&text, def.form_span)
+            );
+            let result = format!(
+                "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
+                str_lit(&value),
+                span_to_range(&text, sym_span.start, sym_span.end)
+            );
+            return response(&incoming.id, Some(result), None);
+        }
+        if let Some(item) = my_lisp::language_items()
+            .into_iter()
+            .find(|item| item.name == symbol)
+        {
+            let kind = match item.kind {
+                LanguageItemKind::Builtin => "builtin",
+                LanguageItemKind::SyntaxForm => "syntax-dispatched form",
+            };
+            let value = format!(
+                "**{}** `{}`\n\n{}",
+                kind, symbol, item.documentation
             );
             let result = format!(
                 "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
@@ -349,7 +345,8 @@ impl Server {
             text[start..offset.min(text.len())].to_string()
         };
 
-        // label -> (detail, kind). Insertion order keeps builtins first.
+        // label -> (detail, kind). Insertion order preserves lexical
+        // shadowing: local definitions win over core items with the same name.
         let mut items: Vec<(String, String, u8)> = Vec::new();
         let mut seen = std::collections::HashSet::new();
         let consider = |label: &str,
@@ -365,18 +362,17 @@ impl Server {
             }
         };
 
-        for (name, value) in Environment::root().snapshot() {
-            if matches!(value, Value::Builtin(_)) {
-                consider(&name, "builtin", 3, &mut seen, &mut items);
-            }
-        }
-        for form in HEAD_FORMS {
-            consider(form, "special form", 3, &mut seen, &mut items);
-        }
         if let Ok(analysis) = analysis::analyze(&text) {
             for def in &analysis.defs {
                 consider(&def.name, &format!("local {}", def.kind), 3, &mut seen, &mut items);
             }
+        }
+        for item in my_lisp::language_items() {
+            let detail = match item.kind {
+                LanguageItemKind::Builtin => "builtin",
+                LanguageItemKind::SyntaxForm => "syntax-dispatched form",
+            };
+            consider(&item.name, detail, 3, &mut seen, &mut items);
         }
         for def in self.workspace.lookup_all() {
             let file = def.uri.rsplit('/').next().unwrap_or("");

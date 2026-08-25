@@ -114,6 +114,18 @@ fn t06_hover_on_known_definition_is_useful() {
     assert!(r.contains("**def** `greeting`"), "{r}");
     // The canonical representation of the defining form travels along.
     assert!(r.contains("(def greeting \\\"hello\\\")"), "{r}");
+
+    // A local binding shadows a builtin in the evaluator and must also
+    // shadow its tooling metadata.
+    let mut shadow_server = Server::new();
+    let shadow_doc = "(def max 42)\n(max)\n";
+    let replies = shadow_server.feed(&[
+        open_msg("file:///shadow.my", shadow_doc),
+        hover_msg("file:///shadow.my", 1, 2),
+    ]);
+    let shadow = &replies[1];
+    assert!(shadow.contains("**def** `max`"), "local max must win: {shadow}");
+    assert!(!shadow.contains("**builtin**"), "builtin metadata leaked: {shadow}");
 }
 
 /// definition on a use of a local symbol → the def name's exact range.
@@ -305,6 +317,20 @@ fn t11_completion_offers_builtins_and_local_defs() {
             );
         }
     }
+
+    let mut shadow_server = Server::new();
+    shadow_server.feed(&[did_open("file:///shadow-completion.my", "(def max 42)\n(ma )\n")]);
+    let shadow_params = r#"{"textDocument":{"uri":"file:///shadow-completion.my"},"position":{"line":1,"character":3}}"#;
+    let shadow_reply = shadow_server.feed(&[raw(&request(
+        10,
+        "textDocument/completion",
+        shadow_params,
+    ))]);
+    let shadow = &shadow_reply[0];
+    assert!(
+        shadow.contains("\"label\":\"max\",\"kind\":3,\"detail\":\"local def\""),
+        "local completion metadata must shadow builtin max: {shadow}"
+    );
 }
 
 // ---------------------------------------------------------------------------
