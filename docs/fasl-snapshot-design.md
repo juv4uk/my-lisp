@@ -49,3 +49,15 @@ one-shot батчі — головний виграш. Замір: той сам
 - Дрейф формату між версіями компілятора → гаситься version+sha перевіркою
 - Розмір бінарника +~50–100KB (несуттєво)
 - Хибне відчуття «ще один формат» → формат приватний для бінарника, не контрактний
+
+## ⚠️ Регенерація після зміни lib/core.my
+
+Якщо хтось редагує `lib/core.my` — FASL-снапшот (`lib/core.my.fasl`)
+автоматично стає невалідним (sha256 mismatch). Це БЕЗПЕЧНО: CLI
+мовчки падає на text-parse fallback. Але перформанс-виграш втрачається.
+
+Перегенерувати:
+```bash
+cargo run --release -p my-lisp-cli --bin gen-fasl -- lib/core.my lib/core.my.fasl
+git add lib/core.my.fasl && git commit -m "chore(fasl): regenerate after core.my change"
+```
