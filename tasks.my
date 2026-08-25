@@ -68,6 +68,7 @@
   ))
   ("ARCH-RECOVERY-REVIEW-IDE" . (
     (priority . 9.0)
+     (holder . vyasa)
     (capabilities . (my-idea))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
     (done . ())
