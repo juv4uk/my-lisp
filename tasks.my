@@ -39,13 +39,15 @@
     (priority . 10.0)
     (capabilities . (my-lisp-panini))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . ())
+    (done . t)
+    (context . "done: verified 2026-08-25 by Vyasa - grep across my-lisp-panini *.my shows zero reader-sugar sites (prose/scratch-status matches only); swarm registry 4/4 nodes gen1 completed=t")
   ))
   ("MIGRATE-QUOTE-SIVA" . (
     (priority . 10.0)
     (capabilities . (shiva-sutras))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . ())
+    (done . t)
+    (context . "done: verified 2026-08-25 by Vyasa - grep across shiva-sutras *.my shows zero reader-sugar sites (prose only); swarm registry 4/4 nodes gen1 completed=t")
   ))
   ("ARCH-RECOVERY-REVIEW-CML" . (
     (priority . 9.0)
