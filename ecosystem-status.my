@@ -66,8 +66,11 @@
    (my-idea .
     ((role . observer-and-ide)
      (joined-ecosystem-sync . "2026-08-11")
-     (depends-on-my-lisp-via . (cargo-git-dependency git-submodule))
-     (revision-sync-risk . "embedded external/my-lisp submodule pinned at a possibly-different SHA than the live TCP oracle's my-lisp build or cml's tested-my-lisp-sha — no automated check; UI should ideally surface all three SHAs and flag semantic-contract mismatch vs. mere revision drift")
+     ;; updated 2026-08-24: vestigial embedded external/my-lisp submodule
+     ;; REMOVED from my-idea (verified: zero build/source references);
+     ;; historical risk note below kept for provenance only.
+     (depends-on-my-lisp-via . nil)
+     (revision-sync-risk . "RESOLVED 2026-08-24: vestigial submodule removed (was pinned 85b53f2, l0.20-era); my-idea consumes nothing from my-lisp build-wise")
      (evidence-matrix-fixture-drill-down . "live, commit 3dc7121 — click a requirement row for source+expected/actual/commit/note per implementation")
      (current-task . "cargo check --workspace was rustc-version-blocked (darling/icu/time/zbus/plist all need >=1.86-1.88), unblocked now that guix rust is 1.93.0 — retry and report")))))
  (open-blockers .
