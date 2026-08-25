@@ -71,7 +71,8 @@
      (holder . vyasa)
     (capabilities . (my-idea))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-25: read-only review delivered - my-idea/docs/arch-recovery-review-2026-08-25.md @ origin. Role confirmed by code: observatory UI consuming oracle:9999 + swarm registry (oracle.rs/swarm_dashboard.rs), no semantic authority. v0.13.1 active, 24 commits/7d.")
   ))
   ("ARCH-RECOVERY-REVIEW-PANINI" . (
     (priority . 9.0)
