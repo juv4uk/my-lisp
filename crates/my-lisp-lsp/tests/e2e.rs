@@ -428,3 +428,56 @@ fn t14_rename_produces_cross_file_edits_and_validates_name() {
     let r = replies[0].as_str();
     assert!(r.contains("\"error\"") || r.contains("-32602"), "invalid name must be rejected: {r}");
 }
+
+#[test]
+fn t15_arity_diagnostics_are_conservative_and_shadow_aware() {
+    let mut server = Server::new();
+    let bad = did_open("file:///arity-bad.my", "(car 1 2)\n");
+    let replies = server.feed(&[bad]);
+    let diagnostic = &replies[0];
+    assert!(
+        diagnostic.contains("arity: car expects 1, received 2"),
+        "known direct call must report exact arity: {diagnostic}"
+    );
+
+    let shadowed = did_open(
+        "file:///arity-shadow.my",
+        "(def car (lambda (x y) x))\n(car 1 2)\n(quote (car 1 2))\n(read)\n",
+    );
+    let replies = server.feed(&[shadowed]);
+    assert!(
+        replies[0].contains("\"diagnostics\":[]"),
+        "local shadow, quoted data, and valid optional arity must stay clean: {}",
+        replies[0]
+    );
+
+    let too_many = did_open("file:///arity-read.my", "(read \"a\" \"b\")\n");
+    let replies = server.feed(&[too_many]);
+    assert!(
+        replies[0].contains("arity: read expects between 0 and 1, received 2"),
+        "bounded optional arity must be enforced: {}",
+        replies[0]
+    );
+
+    let mut metadata_server = Server::new();
+    metadata_server.feed(&[did_open("file:///metadata.my", "(car 1)\n")]);
+    let hover = metadata_server.feed(&[hover_msg("file:///metadata.my", 0, 2)]);
+    assert!(
+        hover[0].contains("(car pair)"),
+        "hover must expose the canonical signature: {}",
+        hover[0]
+    );
+
+    metadata_server.feed(&[did_open("file:///metadata-completion.my", "\n")]);
+    let params = r#"{"textDocument":{"uri":"file:///metadata-completion.my"},"position":{"line":0,"character":0}}"#;
+    let completion = metadata_server.feed(&[raw(&request(
+        16,
+        "textDocument/completion",
+        params,
+    ))]);
+    assert!(
+        completion[0].contains("builtin · (car pair)"),
+        "completion must expose the canonical signature: {}",
+        completion[0]
+    );
+}

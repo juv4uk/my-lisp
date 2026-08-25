@@ -12,7 +12,8 @@
 //! is never classified as a definition because it never appears as a
 //! top-level def-form in the AST.
 
-use my_lisp::{Expr, ExprKind, LanguageError, Span};
+use my_lisp::{Arity, Expr, ExprKind, LanguageError, LanguageItemKind, Span};
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// A definition the language can structurally prove.
@@ -70,6 +71,82 @@ fn collect_defs(expressions: &[Expr]) -> Vec<DefInfo> {
 pub struct SymbolOccurrence {
     pub name: String,
     pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArityDiagnostic {
+    pub message: String,
+    pub span: Span,
+}
+
+/// Diagnose only calls whose head is a canonical runtime builtin or
+/// syntax-dispatched form. Unknown/dynamic heads and locally shadowed
+/// first-class builtins remain untouched; quoted subtrees are data.
+pub fn arity_diagnostics(source: &str) -> Result<Vec<ArityDiagnostic>, LanguageError> {
+    let expressions = my_lisp::parse(source)?;
+    let local_defs = collect_defs(&expressions)
+        .into_iter()
+        .map(|definition| definition.name)
+        .collect::<HashSet<_>>();
+    let items = my_lisp::language_items()
+        .into_iter()
+        .map(|item| (item.name, (item.kind, item.arity)))
+        .collect::<HashMap<_, _>>();
+    let mut diagnostics = Vec::new();
+    for expression in &expressions {
+        collect_arity_diagnostics(expression, false, &local_defs, &items, &mut diagnostics);
+    }
+    Ok(diagnostics)
+}
+
+fn collect_arity_diagnostics(
+    expression: &Expr,
+    in_quote: bool,
+    local_defs: &HashSet<String>,
+    items: &HashMap<String, (LanguageItemKind, Arity)>,
+    diagnostics: &mut Vec<ArityDiagnostic>,
+) {
+    if in_quote {
+        return;
+    }
+    match &expression.kind {
+        ExprKind::List(elements) => {
+            let head_name = elements.first().and_then(|head| match &head.kind {
+                ExprKind::Symbol(name) => Some(name.as_ref()),
+                _ => None,
+            });
+            if let Some(name) = head_name {
+                if let Some((kind, arity)) = items.get(name) {
+                    let shadowed = *kind == LanguageItemKind::Builtin && local_defs.contains(name);
+                    let received = elements.len().saturating_sub(1);
+                    if !shadowed && !arity.accepts(received) {
+                        diagnostics.push(ArityDiagnostic {
+                            message: format!(
+                                "arity: {name} expects {}, received {received}",
+                                arity.expected()
+                            ),
+                            span: expression.span,
+                        });
+                    }
+                }
+            }
+            let head_is_quote = head_name == Some("quote");
+            for (index, element) in elements.iter().enumerate() {
+                collect_arity_diagnostics(
+                    element,
+                    head_is_quote && index > 0,
+                    local_defs,
+                    items,
+                    diagnostics,
+                );
+            }
+        }
+        ExprKind::Pair(head, tail) => {
+            collect_arity_diagnostics(head, false, local_defs, items, diagnostics);
+            collect_arity_diagnostics(tail, false, local_defs, items, diagnostics);
+        }
+        _ => {}
+    }
 }
 
 /// Collect every symbol occurrence that represents a *code reference*.

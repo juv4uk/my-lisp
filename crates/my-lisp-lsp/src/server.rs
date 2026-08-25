@@ -164,13 +164,30 @@ impl Server {
         vec![self.publish(&uri)]
     }
 
-    /// Recompute diagnostics from the canonical parser and emit the push
-    /// notification. No invented lints: only what parse() proves, which
-    /// for a valid document is an empty list.
+    /// Recompute diagnostics from the canonical parser and canonical
+    /// language-item arities. Dynamic/unknown calls are never guessed.
     fn publish(&self, uri: &str) -> String {
         let diagnostics = match self.documents.get(uri) {
             Some(text) => match analysis::analyze(text) {
-                Ok(_) => vec![],
+                Ok(_) => match analysis::arity_diagnostics(text) {
+                    Ok(diagnostics) => diagnostics
+                        .into_iter()
+                        .map(|diagnostic| {
+                            protocol::diagnostic(
+                                text,
+                                &diagnostic.message,
+                                diagnostic.span.start,
+                                diagnostic.span.end,
+                            )
+                        })
+                        .collect(),
+                    Err(err) => vec![protocol::diagnostic(
+                        text,
+                        &err.message,
+                        err.span.start,
+                        err.span.end,
+                    )],
+                },
                 Err(err) => vec![protocol::diagnostic(
                     text,
                     &err.message,
@@ -246,8 +263,8 @@ impl Server {
                 LanguageItemKind::SyntaxForm => "syntax-dispatched form",
             };
             let value = format!(
-                "**{}** `{}`\n\n{}",
-                kind, symbol, item.documentation
+                "**{}** `{}`\n\n```my-lisp\n{}\n```\n\n{}",
+                kind, symbol, item.signature, item.documentation
             );
             let result = format!(
                 "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
@@ -368,11 +385,12 @@ impl Server {
             }
         }
         for item in my_lisp::language_items() {
-            let detail = match item.kind {
+            let kind = match item.kind {
                 LanguageItemKind::Builtin => "builtin",
                 LanguageItemKind::SyntaxForm => "syntax-dispatched form",
             };
-            consider(&item.name, detail, 3, &mut seen, &mut items);
+            let detail = format!("{kind} · {}", item.signature);
+            consider(&item.name, &detail, 3, &mut seen, &mut items);
         }
         for def in self.workspace.lookup_all() {
             let file = def.uri.rsplit('/').next().unwrap_or("");

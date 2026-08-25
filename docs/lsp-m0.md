@@ -1,4 +1,4 @@
-# my-lisp-lsp — Language Server Protocol adapter (M0–M2)
+# my-lisp-lsp — Language Server Protocol adapter (M0–M3)
 
 > A thin LSP adapter over the canonical my-lisp core.
 > The LSP never re-parses `.my`, never greps for definitions, never
@@ -28,9 +28,10 @@ tokens, workspace indexing, AI/LLM and Yantra integration.
 
 ## Behavior notes
 
-- **Diagnostics** come only from the canonical parser (`LanguageError`
-  with its proven span). Valid documents produce an empty list; nothing
-  is invented beyond parse-time semantics.
+- **Diagnostics** come from the canonical parser (`LanguageError` with its
+  proven span) plus canonical arity metadata for known direct calls. Unknown
+  or dynamic heads are not guessed; locally shadowed builtins and quoted data
+  are excluded.
 - **documentSymbol** returns only structurally provable definitions:
   top-level `(def name ...)` / `(defmacro name ...)` whose second element
   is a symbol. Symbol text inside strings or comments can never qualify —
@@ -69,7 +70,7 @@ so a crate added to one list but not the other cannot slip through.
 
 ## Tests
 
-- `crates/my-lisp-lsp/tests/e2e.rs` — nine end-to-end tests driving the
+- `crates/my-lisp-lsp/tests/e2e.rs` — fifteen end-to-end tests driving the
   real server with real JSON-RPC messages: capabilities, false-positive
   diagnostics, real parser-backed diagnostic ranges, def/defmacro symbols
   with exact selection ranges, hover payload with canonical source,
@@ -89,19 +90,17 @@ Added on the same principles (canonical parser only, nothing invented):
   Open/change events refresh one document's contributions incrementally.
 - **Cross-file go-to-definition**: same-document resolution first (M0 path),
   then the workspace index. Ranges come from the defining file's own text.
-- **Completion** (`textDocument/completion`, kind Function): builtins
-  (static snapshot of the core's match arms — see docs/FUNCTIONS.md),
-  local defs, workspace defs; filtered by the symbol prefix at the cursor.
+- **Completion** (`textDocument/completion`, kind Function): local defs,
+  runtime-discovered builtins, syntax-dispatched forms, workspace defs;
+  filtered by the symbol prefix at the cursor. Core items include signatures.
 
 ## Known limitations
 
-- Diagnostics are parse-only; eval-time errors are not reported yet.
+- Diagnostics deliberately cover parse errors and statically provable arity
+  errors only; types and dynamic calls remain runtime concerns.
 - Full-document sync (simple and correct, not incremental).
 - Completion inherits parse-only honesty: a document that fails to parse
   contributes no definitions (visible while typing unbalanced forms).
-- The builtin completion list is a static snapshot duplicated from the
-  core's match arms; after contract 2.1 it should be derived from the
-  environment ((env)) instead.
 
 ## M2 scope (2026-08-22)
 
@@ -113,3 +112,14 @@ Added on the same principles (canonical parser only, nothing invented):
   files. newName validated against the my-lisp symbol charset (error
   -32602 otherwise). Quoted data (`(quote x)` subtrees) is never touched:
   data symbols are not code references, per analysis::symbol_occurrences.
+
+## M3 scope (2026-08-26)
+
+- `my_lisp::language_items()` is the tooling boundary for runtime-discovered
+  builtin names plus explicit syntax-dispatched forms. Each item carries a
+  signature, documentation, kind, and arity.
+- Hover and completion consume the same metadata. Local definitions shadow
+  first-class builtins exactly as they do in evaluation.
+- Arity diagnostics inspect only canonical known heads. They do not infer
+  user-function signatures, execute code, inspect quoted data, or classify
+  unknown calls.

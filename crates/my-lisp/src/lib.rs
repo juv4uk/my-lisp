@@ -20,7 +20,7 @@ mod value;
 
 pub use environment::{Environment, Session};
 pub use error::{ErrorKind, LanguageError};
-pub use language_items::{language_items, LanguageItem, LanguageItemKind};
+pub use language_items::{language_items, Arity, LanguageItem, LanguageItemKind};
 
 pub use eval::exact_arity;
 pub use eval::{capability_installed, installed_capabilities, register_capability, unregister_capability};
