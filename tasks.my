@@ -97,4 +97,16 @@
     (description . "DONE 2026-08-22. EVIDENCE: exact/inexact promotion + (/ 1 0.0) -> InvalidForm implemented in crates/my-lisp/src/eval/arithmetic.rs:181-235 and pinned by tests/fixtures/conformance.my:28-33,69,103. Consumers (cml/fpga-lisp) verified matching behavior via their own conformance tasks (CML-* / FPGA-CONFORMANCE-SUITE done).")
     (done . t)
   ))
+("GOLD-SPIKE-PREP-MYLISP" . (
+    (priority . 9.5)
+    (capabilities . (my-lisp compiler))
+    (description . "Prepare my-lisp side of Gold Spike 01: verify bhū + laṭ → bhavati derivation works through panini machine model, confirm contract 3.0 compatibility, prepare test fixtures for cml lowering handoff.")
+    (done . ())
+  ))
+  ("AGENT-GUARD-LIVE-TRIAL" . (
+    (priority . 8.5)
+    (capabilities . (swarm coordination testing))
+    (description . "AGENT-GUARD-M0 step 5: wire C1/C7/C9/C11 checks into active agent sessions. Today's vault tagging session was a live C1/C7 violation case - mass regex edits without diff-inspection, done claims pre-verification.")
+    (done . ())
+  ))
 )))
