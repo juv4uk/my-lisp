@@ -83,7 +83,8 @@
      (holder . vyasa)
     (capabilities . (shiva-sutras))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-25: read-only review delivered - shiva-sutras/docs/arch-recovery-review-2026-08-25.md @ master. Layers as-built verified (canon immutable intact 14 sutras / 43 records / 42 unique), canon-oracle layer split documented (SLP1 internal + dedup-h), phonetics-KB BLOCKED gate confirmed with regeneration path, UPC8 design quartile flagged for domain decision.")
   ))
   ("MYLISP-DIVISION-GENERALIZED" . (
     (priority . 9.0)
