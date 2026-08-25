@@ -233,9 +233,19 @@ impl Server {
         let Some((symbol, sym_span)) = analysis.symbol_at(&text, offset) else {
             return response(&incoming.id, Some("null".to_string()), None);
         };
+        if let Some(doc) = analysis::builtin_docs(&symbol) {
+            let value = format!(
+                "**builtin** `{}`\n\n{}",
+                symbol, doc
+            );
+            let result = format!(
+                "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
+                str_lit(&value),
+                span_to_range(&text, sym_span.start, sym_span.end)
+            );
+            return response(&incoming.id, Some(result), None);
+        }
         let Some(def) = analysis.lookup(&symbol) else {
-            // Unknown stays unknown: hovering a built-in or undefined name
-            // returns null rather than guessed documentation.
             return response(&incoming.id, Some("null".to_string()), None);
         };
         let value = format!(
