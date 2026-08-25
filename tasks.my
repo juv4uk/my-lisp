@@ -52,6 +52,7 @@
   ))
   ("ARCH-RECOVERY-REVIEW-CML" . (
     (priority . 9.0)
+     (holder . vyasa)
     (capabilities . (cml))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
     (done . ())
