@@ -169,4 +169,16 @@
     (description . "Integrate PVC-16 unboxed representation (TAG_PHONETIC_VECTOR=12) into NaN-boxed word model per recommendations-my-lisp-prototypes.md section 1. BLOCKED on COMPILER STEWARD sign-off.")
     (done . ())
   ))
+("FPGA-GC-IMPLEMENTATION" . (
+    (priority . 7.5)
+    (capabilities . (fpga))
+    (description . "Implement trace-based mark-and-sweep GC per fpga-lisp/docs/gc-design.md. Reference counting cannot collect letrec closure cycles (SETCDR backpatch creates real reference cycles). Blocks FPGA-EXTERNAL-MEMORY-SDRAM.")
+    (done . ())
+  ))
+  ("NLP-BRIDGE-REDESIGN" . (
+    (priority . 6.0)
+    (capabilities . (my-lisp compiler nlp))
+    (description . "Reimplement NLP Bridge per docs/vision.md section 2. Previous llm.rs was removed for adding network dependency without tests/trilingual convention. New version needs same rigor as reason.my/unify.my, not a REPL hack.")
+    (done . ())
+  ))
 )))
