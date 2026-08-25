@@ -245,6 +245,39 @@ impl Server {
             );
             return response(&incoming.id, Some(result), None);
         }
+        // Eval-on-hover: if the cursor is on a complete top-level form,
+        // evaluate it in a fresh session and show the result alongside docs.
+        if let Some(form_span) = analysis.top_level_at(&text, offset) {
+            let form_text = crate::analysis::span_text(&text, form_span);
+            let mut session = my_lisp::Session::default();
+            match my_lisp::eval_program(form_text, &mut session) {
+                Ok(result) => {
+                    let value = format!(
+                        "**result:** `{}`\n\n```my-lisp\n{}\n```",
+                        result.value,
+                        form_text
+                    );
+                    let result_json = format!(
+                        "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
+                        str_lit(&value),
+                        span_to_range(&text, form_span.start, form_span.end)
+                    );
+                    return response(&incoming.id, Some(result_json), None);
+                }
+                Err(err) => {
+                    let value = format!(
+                        "**error:** {}",
+                        err.message
+                    );
+                    let result_json = format!(
+                        "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
+                        str_lit(&value),
+                        span_to_range(&text, form_span.start, form_span.end)
+                    );
+                    return response(&incoming.id, Some(result_json), None);
+                }
+            }
+        }
         let Some(def) = analysis.lookup(&symbol) else {
             return response(&incoming.id, Some("null".to_string()), None);
         };

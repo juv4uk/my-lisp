@@ -113,6 +113,15 @@ fn walk_symbols(expr: &Expr, in_quote: bool, out: &mut Vec<SymbolOccurrence>) {
 }
 
 impl Analysis {
+    /// Find the top-level expression containing `offset` and return its span.
+    /// Used by hover to show evaluation results for complete forms.
+    pub fn top_level_at(&self, source: &str, offset: usize) -> Option<Span> {
+        let exprs = my_lisp::parse(source).ok()?;
+        exprs.iter()
+            .find(|e| e.span.start <= offset && offset < e.span.end)
+            .map(|e| e.span)
+    }
+
     pub fn lookup(&self, name: &str) -> Option<&DefInfo> {
         // Last definition wins, matching the evaluator's own shadowing of
         // a repeated `def` in one session/document.

@@ -79,9 +79,17 @@ fn main() {
     // the parse path, never to a wrong program.
     const CORE_SRC: &str = include_str!("../../../lib/core.my");
     const CORE_FASL: &[u8] = include_bytes!("../../../lib/core.my.fasl");
-    let core_expressions: Option<Vec<Expr>> = my_lisp::fasl_decode_program(CORE_FASL)
-        .filter(|(_, hash)| *hash == my_lisp::sha256_source(CORE_SRC.as_bytes()))
-        .map(|(expressions, _)| expressions);
+    let fasl_hash_ok = my_lisp::fasl_decode_program(CORE_FASL)
+        .map(|(_, hash)| hash == my_lisp::sha256_source(CORE_SRC.as_bytes()))
+        .unwrap_or(false);
+    if !fasl_hash_ok {
+        eprintln!("warning: lib/core.my.fasl is stale (source changed); run gen-fasl to regenerate");
+    }
+    let core_expressions: Option<Vec<Expr>> = if fasl_hash_ok {
+        my_lisp::fasl_decode_program(CORE_FASL).map(|(expressions, _)| expressions)
+    } else {
+        None
+    };
     match core_expressions {
         Some(core_ast) => {
             let _ = eval_parsed_expressions(&core_ast, &mut session);
