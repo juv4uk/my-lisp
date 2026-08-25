@@ -101,7 +101,8 @@
     (priority . 9.5)
     (capabilities . (my-lisp compiler))
     (description . "Prepare my-lisp side of Gold Spike 01: verify bhū + laṭ → bhavati derivation works through panini machine model, confirm contract 3.0 compatibility, prepare test fixtures for cml lowering handoff.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-25: panini machine-acceptance.my 77 PASS / 0 fail on current contract-3.0 binary (dc2172d+). Bavati derivation: 8 specific tests all PASS including step-by-step trace, guna precondition, observed surface form. My-lisp side of Gold Spike 01 is ready for cml lowering handoff.")
   ))
   ("AGENT-GUARD-LIVE-TRIAL" . (
     (priority . 8.5)
