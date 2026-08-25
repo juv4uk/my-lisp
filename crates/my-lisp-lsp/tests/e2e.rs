@@ -2,6 +2,7 @@
 //! with real framed JSON-RPC/LSP messages and asserts on the protocol
 //! responses — a handler only counts as implemented when this passes.
 
+use my_lisp::{Environment, Value};
 use my_lisp_lsp::Harness as Server;
 use std::fs;
 use std::path::PathBuf;
@@ -294,6 +295,16 @@ fn t11_completion_offers_builtins_and_local_defs() {
     let replies2 = server.feed(&[raw(&request(9, "textDocument/completion", params2))]);
     let r2 = replies2[0].as_str();
     assert!(r2.contains("\"label\":\"+\"") || r2.contains("\"+\""), "builtin + must be offered on empty prefix: {r2}");
+
+    for (name, value) in Environment::root().snapshot() {
+        if matches!(value, Value::Builtin(_)) {
+            let label = format!("\"label\":\"{name}\"");
+            assert!(
+                r2.contains(&label),
+                "runtime builtin {name} must be offered by completion: {r2}"
+            );
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ use crate::protocol::{
     self, as_array, as_i64, as_str, decode, get, publish_diagnostics, response, span_to_range,
 };
 use crate::workspace::WorkspaceIndex;
-use my_lisp::Value;
+use my_lisp::{Environment, Value};
 use std::collections::HashMap;
 
 const PARSE_ERROR: i64 = -32700;
@@ -27,16 +27,15 @@ pub struct Server {
     workspace: WorkspaceIndex,
 }
 
-/// Builtin names visible to the evaluator (M1: static snapshot of the
-/// core's match arms; see docs/FUNCTIONS.md). After contract 2.1 lands
-/// this list should come from the environment itself ((env) introspection)
-/// instead of being duplicated here.
-const BUILTINS: &[&str] = &[
-    "+", "-", "/", "<", "=", ">", "atom", "car", "cdr", "cond", "cons", "def",
-    "defmacro", "eq", "eval", "json-parse", "lambda", "princ", "print",
-    "quote", "read", "read-all", "sha256-hex", "string->symbol",
-    "string-append", "string-first", "string-rest", "string<?", "string?",
-    "symbol->string", "write-to-string",
+/// Forms dispatched by syntax rather than looked up as ordinary values.
+/// First-class runtime builtins deliberately do not live here: completion
+/// discovers them from `Environment::root()`, the same registry evaluation
+/// uses. Keep this list aligned with `eval::evaluate_list`'s explicit arms.
+const HEAD_FORMS: &[&str] = &[
+    "quote", "lambda", "def", "defmacro", "cond", "print", "princ",
+    "write-to-string", "read", "eval", "string-append", "string<?", "read-all",
+    "string?", "symbol->string", "string->symbol", "string-first", "string-rest",
+    "sha256-hex", "json-parse",
 ];
 
 impl Server {
@@ -245,6 +244,22 @@ impl Server {
             );
             return response(&incoming.id, Some(result), None);
         }
+        if let Some(def) = analysis.lookup(&symbol) {
+            let value = format!(
+                "**{}** `{}`\n\nDefined locally at bytes {}..{}\n\n```my-lisp\n{}\n```",
+                def.kind,
+                def.name,
+                def.name_span.start,
+                def.name_span.end,
+                span_text(&text, def.form_span)
+            );
+            let result = format!(
+                "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
+                str_lit(&value),
+                span_to_range(&text, sym_span.start, sym_span.end)
+            );
+            return response(&incoming.id, Some(result), None);
+        }
         // Eval-on-hover: if the cursor is on a complete top-level form,
         // evaluate it in a fresh session and show the result alongside docs.
         if let Some(form_span) = analysis.top_level_at(&text, offset) {
@@ -278,23 +293,7 @@ impl Server {
                 }
             }
         }
-        let Some(def) = analysis.lookup(&symbol) else {
-            return response(&incoming.id, Some("null".to_string()), None);
-        };
-        let value = format!(
-            "**{}** `{}`\n\nDefined locally at bytes {}..{}\n\n```my-lisp\n{}\n```",
-            def.kind,
-            def.name,
-            def.name_span.start,
-            def.name_span.end,
-            span_text(&text, def.form_span)
-        );
-        let result = format!(
-            "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
-            str_lit(&value),
-            span_to_range(&text, sym_span.start, sym_span.end)
-        );
-        response(&incoming.id, Some(result), None)
+        response(&incoming.id, Some("null".to_string()), None)
     }
 
     fn definition(&self, incoming: &protocol::Incoming) -> String {
@@ -332,11 +331,10 @@ impl Server {
         response(&incoming.id, Some("null".to_string()), None)
     }
 
-    /// M1: completion = builtins + workspace/local defs, filtered by the
-    /// symbol prefix at the cursor. The builtin list is a static snapshot
-    /// (docs/FUNCTIONS.md); after contract 2.1 it should come from the
-    /// environment itself via (env) introspection instead of being
-    /// duplicated here.
+    /// M1: completion = runtime builtins + syntax-dispatched head forms +
+    /// workspace/local defs, filtered by the symbol prefix at the cursor.
+    /// Runtime names come from the canonical root environment, so adding a
+    /// first-class builtin cannot silently leave LSP completion stale.
     fn completion(&self, incoming: &protocol::Incoming) -> String {
         let Some((_, text)) = Self::uri_and_text(&incoming.params, &self.documents) else {
             return response(&incoming.id, Some("[]".to_string()), None);
@@ -367,8 +365,13 @@ impl Server {
             }
         };
 
-        for b in BUILTINS {
-            consider(b, "builtin", 3, &mut seen, &mut items);
+        for (name, value) in Environment::root().snapshot() {
+            if matches!(value, Value::Builtin(_)) {
+                consider(&name, "builtin", 3, &mut seen, &mut items);
+            }
+        }
+        for form in HEAD_FORMS {
+            consider(form, "special form", 3, &mut seen, &mut items);
         }
         if let Ok(analysis) = analysis::analyze(&text) {
             for def in &analysis.defs {
