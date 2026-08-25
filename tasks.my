@@ -63,7 +63,8 @@
      (holder . vyasa)
     (capabilities . (fpga-lisp))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-25: read-only review delivered - fpga-lisp/docs/arch-recovery-review-2026-08-25.md @ master. As-built mapped (9 RTL modules, 35 tb, self-hosted assembler.my, ISA 1.0->1.1 byte-compatible), strengths (evidence-first milestones M1-M33 with honest retractions, clean I/O boundary, oracle linkage), open fronts table (ISA-RATIONAL blocked gate G1-G5, physical/CML payload separate, full regression CI-gated).")
   ))
   ("ARCH-RECOVERY-REVIEW-IDE" . (
     (priority . 9.0)
