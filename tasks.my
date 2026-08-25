@@ -109,4 +109,11 @@
     (description . "AGENT-GUARD-M0 step 5: wire C1/C7/C9/C11 checks into active agent sessions. Today's vault tagging session was a live C1/C7 violation case - mass regex edits without diff-inspection, done claims pre-verification.")
     (done . ())
   ))
+  ("VAULT-MCP-GIT-INIT" . (
+    (priority . 8.0)
+    (capabilities . (swarm coordination))
+    (description . "vault-semantic-mcp had NO git repo - embedding/classification code unversioned. Initialized git, data excluded.")
+    (done . t)
+    (context . "done 2026-08-25 by Vyasa: cc6222f initial commit, code only.")
+  ))
 )))
