@@ -129,7 +129,8 @@
     (priority . 7.5)
     (capabilities . (my-lisp rust bugfix))
     (description . "Fix number->string rational rendering bug per docs/BUG-number-to-string-rational.md")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-25: VERIFIED - number->string works correctly for rationals 22/7, integers 42, negatives -2. Fixed by e59f533 (delegates to canonical write-to-string).")
   ))
 ("FPGA-PRATYAHARA-ALU" . (
     (priority . 8.0)
