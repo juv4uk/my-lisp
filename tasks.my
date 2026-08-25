@@ -181,4 +181,28 @@
     (description . "Reimplement NLP Bridge per docs/vision.md section 2. Previous llm.rs was removed for adding network dependency without tests/trilingual convention. New version needs same rigor as reason.my/unify.my, not a REPL hack.")
     (done . ())
   ))
+
+
+  ("MYLISP-FASL-SNAPSHOT-IMPLEMENT" . (
+    (priority . 8.5)
+    (capabilities . (my-lisp rust compiler optimization))
+    (description . "Implement FASL binary snapshot format per docs/fasl-snapshot-design.md. Cache parser output (Vec<Expr>) to eliminate parse+load overhead for one-shot batches. Format MYF1 v0 with SHA-256 invalidation. DRAFT design by vyasa @docs/fasl-snapshot-design.md.")
+    (done . ())
+  ))
+
+
+  ("MYLISP-SMALLINT-SPECIALIZE" . (
+    (priority . 7.5)
+    (capabilities . (my-lisp rust optimization))
+    (description . "Specialize small rationals: if p and q fit in i64, compute without BigRational allocation. Covers 90% of arithmetic ops, expected 2-5x speedup per OPTIMIZATION-ANALYSIS-VYASA.md finding #1.")
+    (done . ())
+  ))
+
+
+  ("MYLISP-LSP-M0-M3-CONTINUE" . (
+    (priority . 7.0)
+    (capabilities . (my-lisp-lsp rust lsp))
+    (description . "Continue LSP adapter development M0-M3 per docs/lsp-m0.md. my-lisp-lsp crate exists; canonical parse/Expr/LanguageError reused.")
+    (done . ())
+  ))
 )))
