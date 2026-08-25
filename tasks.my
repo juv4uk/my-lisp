@@ -2,7 +2,8 @@
   ("MYLISP-SWARM-CONTRACT-01" . (
     (priority . 9.0)
     (description . "Adopt Swarm Contract v0.1: setup repo.my and ecosystem/ folders.")
-    (done . ())
+    (done . t)
+    (context . "done: verified 2026-08-25 by Vyasa - repo.my present (Swarm Contract v0.1 scope declaration, format confirmed vs fpga-lisp/shiva-sutras/tauricode siblings); ecosystem/ folder scaffolded with README. Node membership live: node-1:9101 + 4 peers synced.")
   ))
   ("MYLISP-LINGUA-FRANCA" . (
     (priority . 9.5)
