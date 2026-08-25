@@ -457,9 +457,17 @@ pub(crate) fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec
         let claims = Arc::clone(&claims);
         let presence = Arc::clone(&presence);
         let tasks = Arc::clone(&tasks);
-        thread::spawn(move || {
-            handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker, &claims, &presence, &tasks);
-        });
+        // Deep my-lisp recursion (e.g. (fact 1000)) consumes native stack
+        // through the tree-walking evaluator; the default 2 MiB thread
+        // stack overflowed and ABORTED the whole shared oracle process
+        // (found 2026-08-25 by wsl-nidana-1/wsl-ganaka-1). Give every
+        // connection its own generous stack instead.
+        thread::Builder::new()
+            .stack_size(256 * 1024 * 1024)
+            .spawn(move || {
+                handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker, &claims, &presence, &tasks);
+            })
+            .expect("failed to spawn TCP connection thread");
     }
 }
 
