@@ -251,4 +251,22 @@
     (description . "Integrate He-Mufassal registry data into WASM session preload for browser-based Sanskrit IDE. Requires size/complexity trade-off analysis.")
     (done . ())
   ))
+("GUIX-WITNESS-STRICT-PASS" . (
+    (priority . 8.0)
+    (capabilities . (swarm coordination))
+    (description . "Redo GUIX-WITNESS-01 with --no-substitutes AND time-machine -C channels.scm pinning. Current evidence has 2 honest deviations: dependencies came from local store substitutes, and current guix revision used instead of pinned 5375f33. Strict pass makes builds truly reproducible.")
+    (done . ())
+  ))
+  ("GUIX-PACK-RELOCATABLE" . (
+    (priority . 7.0)
+    (capabilities . (swarm coordination))
+    (description . "Create guix pack --relocatable --save-provenance for deploying swarm-node/my-lisp binaries to non-Guix hosts (droplet Ubuntu 24.04, other WSL machines). Solves glibc mismatch problem without requiring Guix on target.")
+    (done . ())
+  ))
+  ("GUIX-AGENT-CAPSULES" . (
+    (priority . 6.5)
+    (capabilities . (swarm coordination))
+    (description . "Design agent capsule system: each agent starts through pinned guix time-machine -- shell --container --pure with explicit filesystem/network exposure. GPU/GUI/MCP access = conscious escape hatches.")
+    (done . ())
+  ))
 )))
