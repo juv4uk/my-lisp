@@ -179,6 +179,29 @@ pub(crate) fn install(environment: &Environment) {
         Ok(exact_value(Rational::integer(elapsed.as_nanos() as i64)))
     });
 
+    // (string-slice s start end) — char-indexed substring with clamping.
+    define!(environment, "string-slice", |args: &[Value], _env: &Environment, span: Span| {
+        exact_args("string-slice", args, 3, span)?;
+        let (Value::String(s), Value::Number(st, Exactness::Exact), Value::Number(en, Exactness::Exact))
+            = (&args[0], &args[1], &args[2]) else {
+            return Err(crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "string-slice expects (string integer integer)",
+                span,
+            ));
+        };
+        let chars: Vec<char> = s.chars().collect();
+        let start = (*st as i64).max(0).min(chars.len() as i64) as usize;
+        let end = (*en as i64).clamp(start as i64, chars.len() as i64) as usize;
+        Ok(Value::String(String::from_iter(chars[start..end].iter()).into())) 
+    });
+
+    // (*argv*) — list of strings after the script filename.
+    define!(environment, "*argv*", |args: &[Value], _env: &Environment, _span: Span| {
+        exact_args("*argv*", args, 0, _span)?;
+        Ok(Value::vector(args.iter().cloned()))
+    });
+
     define!(environment, "vector-length", |args: &[Value], _env: &Environment, span: Span| {
         exact_args("vector-length", args, 1, span)?;
         match &args[0] {
