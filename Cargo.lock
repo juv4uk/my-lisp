@@ -197,6 +197,7 @@ version = "0.32.0"
 dependencies = [
  "my-lisp",
  "my-lisp-literate",
+ "my-lisp-lsp",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",

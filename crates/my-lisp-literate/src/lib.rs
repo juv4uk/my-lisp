@@ -2,7 +2,12 @@ use my_lisp::{eval_parsed_expressions, parse, EvalResult, Expr, LanguageError, S
 use pulldown_cmark::{CodeBlockKind, Event, Parser, Tag, TagEnd};
 
 /// Remaps a concatenated string offset back to the original source file offset.
-fn remap_offset(offset: usize, maps: &[(usize, usize, usize)]) -> usize {
+/// Public so callers that need to run their OWN analysis over the
+/// concatenated code (e.g. my-lisp-wasm's diagnose(), which shares
+/// my-lisp-lsp's canonical arity_diagnostics() instead of duplicating
+/// diagnostic logic) can remap those results too, not just the
+/// parse/eval errors this module already handles internally.
+pub fn remap_offset(offset: usize, maps: &[(usize, usize, usize)]) -> usize {
     for &(concat_start, concat_end, orig_start) in maps {
         if offset >= concat_start && offset < concat_end {
             return orig_start + (offset - concat_start);
