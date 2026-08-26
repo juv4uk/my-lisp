@@ -269,4 +269,11 @@
     (description . "Design agent capsule system: each agent starts through pinned guix time-machine -- shell --container --pure with explicit filesystem/network exposure. GPU/GUI/MCP access = conscious escape hatches.")
     (done . ())
   ))
+  ("README-TEST-PARITY-MYLISP" . (
+    (priority . 7.0)
+    (capabilities . (testing documentation))
+    (description . "Audit README test/build claims against current repo plus executable evidence; correct only proven drift.")
+    (done . t)
+    (context . "done 2026-08-25 by Vyasa: NO DRIFT FOUND. cargo build --workspace + cargo test --workspace verified green (29 suites, ~423 tests, 0 failures). All docs/ and lib/ file references in README exist on disk. No stale version claims. No dead links. *argv* P0 already fixed in prior commit. Evidence class: full workspace test run + file existence check.")
+  ))
 )))
