@@ -49,7 +49,11 @@ pub fn evaluate(source: &str, mode: JsValue) -> Result<JsValue, JsValue> {
     init_if_needed();
 
     let mode_str = mode.as_string().unwrap_or_default();
-    let source_mode = if mode_str == "markdown" { SourceMode::Literate } else { SourceMode::PureLisp };
+    let source_mode = if mode_str == "markdown" {
+        SourceMode::Literate
+    } else {
+        SourceMode::PureLisp
+    };
 
     SESSION.with(|slot| {
         let mut guard = slot.borrow_mut();
@@ -143,8 +147,10 @@ mod tests {
             let session = guard.as_mut().unwrap();
             let (result, _) = my_lisp_literate::eval_literate(
                 "(length (quote (a b c)))",
-                SourceMode::PureLisp, session)
-                .expect("length should work after core.my preload");
+                SourceMode::PureLisp,
+                session,
+            )
+            .expect("length should work after core.my preload");
             assert_eq!(result.value.to_string(), "3");
         });
     }
@@ -160,18 +166,19 @@ mod tests {
             let session = guard.as_mut().unwrap();
             let _ = my_lisp_literate::eval_literate(
                 "(def foo (lambda (x) (+ x 1)))",
-                SourceMode::PureLisp, session)
-                .expect("def should succeed");
+                SourceMode::PureLisp,
+                session,
+            )
+            .expect("def should succeed");
         });
 
         // Call foo in a separate eval — same session
         SESSION.with(|slot| {
             let mut guard = slot.borrow_mut();
             let session = guard.as_mut().unwrap();
-            let (result, _) = my_lisp_literate::eval_literate(
-                "(foo 5)",
-                SourceMode::PureLisp, session)
-                .expect("foo should be visible from previous eval");
+            let (result, _) =
+                my_lisp_literate::eval_literate("(foo 5)", SourceMode::PureLisp, session)
+                    .expect("foo should be visible from previous eval");
             assert_eq!(result.value.to_string(), "6");
         });
     }
@@ -185,7 +192,9 @@ mod tests {
         let diagnostics = diagnose_impl("(car 1 2)", false);
         assert_eq!(diagnostics.len(), 1);
         assert!(
-            diagnostics[0].message.contains("arity: car expects 1, received 2"),
+            diagnostics[0]
+                .message
+                .contains("arity: car expects 1, received 2"),
             "expected canonical arity message, got: {}",
             diagnostics[0].message
         );
@@ -195,7 +204,10 @@ mod tests {
     #[test]
     fn diagnose_reports_no_arity_diagnostic_for_valid_call() {
         let diagnostics = diagnose_impl("(car (quote (1 2)))", false);
-        assert!(diagnostics.is_empty(), "valid call must not be flagged: {diagnostics:?}");
+        assert!(
+            diagnostics.is_empty(),
+            "valid call must not be flagged: {diagnostics:?}"
+        );
     }
 
     #[test]
@@ -216,5 +228,39 @@ mod tests {
             "remapped span must point at the actual call in the original document, got: {:?}",
             &source[d.from..d.to]
         );
+    }
+
+    #[test]
+    fn diagnose_reports_exact_parse_error_span_in_pure_lisp() {
+        let source = ")";
+        let diagnostics = diagnose_impl(source, false);
+
+        assert_eq!(diagnostics.len(), 1);
+        let diagnostic = &diagnostics[0];
+        assert_eq!(diagnostic.severity, "error");
+        assert_eq!((diagnostic.from, diagnostic.to), (0, 1));
+        assert_eq!(&source[diagnostic.from..diagnostic.to], ")");
+    }
+
+    #[test]
+    fn diagnose_remaps_parse_error_span_in_literate_mode() {
+        let source = "# Doc\n\nProse before the program.\n\n```my-lisp\n)\n```\n";
+        let diagnostics = diagnose_impl(source, true);
+
+        assert_eq!(diagnostics.len(), 1);
+        let diagnostic = &diagnostics[0];
+        assert_eq!(diagnostic.severity, "error");
+        assert_eq!(
+            &source[diagnostic.from..diagnostic.to],
+            ")",
+            "parse-error span must point into the original Markdown source"
+        );
+    }
+
+    #[test]
+    fn diagnose_accepts_empty_source_and_literate_prose_without_code() {
+        assert!(diagnose_impl("", false).is_empty());
+        assert!(diagnose_impl("", true).is_empty());
+        assert!(diagnose_impl("# Notes\n\nNo executable fence here.\n", true).is_empty());
     }
 }
