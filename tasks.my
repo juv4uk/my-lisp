@@ -217,7 +217,8 @@
     (priority . 6.5)
     (capabilities . (my-lisp wasm))
     (description . "Currently each evaluate() call creates a fresh Session - no state persistence between calls. Expose session_init/session_eval/session_free for persistent browser sessions with incremental definitions.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-25: thread_local RefCell<Option<Session>> provides persistent state across evaluate() calls. reset_session() exposed for manual clearing. Verified by native test persistent_session_preserves_definitions_across_calls.")
   ))
   ("WASM-STRING-PRIMITIVES-COVERAGE" . (
     (priority . 6.0)
