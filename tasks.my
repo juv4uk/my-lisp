@@ -207,4 +207,22 @@
     (description . "Continue LSP adapter development M0-M3 per docs/lsp-m0.md. my-lisp-lsp crate exists; canonical parse/Expr/LanguageError reused.")
     (done . ())
   ))
+("WASM-CORE-LIB-INTEGRATION" . (
+    (priority . 7.0)
+    (capabilities . (my-lisp wasm))
+    (description . "Embed core.my in WASM binary so browser REPL has standard library. Currently browser gets only Rust builtins - no length/map/filter/reverse/assoc/equal? etc. Options: (a) include_str! + parse on startup, (b) FASL snapshot embedded as bytes, (c) pre-evaluated environment serialized.")
+    (done . ())
+  ))
+  ("WASM-PERSISTENT-SESSION" . (
+    (priority . 6.5)
+    (capabilities . (my-lisp wasm))
+    (description . "Currently each evaluate() call creates a fresh Session - no state persistence between calls. Expose session_init/session_eval/session_free for persistent browser sessions with incremental definitions.")
+    (done . ())
+  ))
+  ("WASM-STRING-PRIMITIVES-COVERAGE" . (
+    (priority . 6.0)
+    (capabilities . (my-lisp wasm))
+    (description . "Verify string-slice, skip-ws, and other new primitives work identically in WASM context. Test UTF-8 boundary handling in browser vs native.")
+    (done . ())
+  ))
 )))
