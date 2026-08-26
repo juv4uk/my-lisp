@@ -1,7 +1,10 @@
 use my_lisp::{eval_program, ErrorKind, Session};
 
 fn eval(source: &str) -> String {
-    eval_program(source, &mut Session::default()).unwrap().value.to_string()
+    eval_program(source, &mut Session::default())
+        .unwrap()
+        .value
+        .to_string()
 }
 
 #[test]
@@ -37,7 +40,8 @@ fn conversion_failures_are_named_and_never_wrap() {
     let overflow = eval_program("(i32-buffer 2147483648)", &mut Session::default()).unwrap_err();
     assert_eq!(overflow.kind, ErrorKind::NumericOverflow);
 
-    let bounds = eval_program("(numeric-buffer-ref #i32(1) 1)", &mut Session::default()).unwrap_err();
+    let bounds =
+        eval_program("(numeric-buffer-ref #i32(1) 1)", &mut Session::default()).unwrap_err();
     assert_eq!(bounds.kind, ErrorKind::InvalidForm);
 }
 

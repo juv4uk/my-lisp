@@ -29,12 +29,18 @@ fn eval_unify(source: &str) -> String {
 
 #[test]
 fn identical_atoms_unify_with_an_unchanged_substitution() {
-    assert_eq!(eval_unify("(unify (quote radio) (quote radio) (quote ()))"), "()");
+    assert_eq!(
+        eval_unify("(unify (quote radio) (quote radio) (quote ()))"),
+        "()"
+    );
 }
 
 #[test]
 fn different_atoms_fail_to_unify() {
-    assert_eq!(eval_unify("(unify (quote radio) (quote antenna) (quote ()))"), "fail");
+    assert_eq!(
+        eval_unify("(unify (quote radio) (quote antenna) (quote ()))"),
+        "fail"
+    );
 }
 
 #[test]

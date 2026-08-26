@@ -42,13 +42,39 @@ const VOWELS: &[(char, char, Option<char>)] = &[
 
 /// `(SLP1 consonant, Devanāgarī base glyph, carries inherent /a/)`.
 const CONSONANTS: &[(char, char)] = &[
-    ('k', 'क'), ('K', 'ख'), ('g', 'ग'), ('G', 'घ'), ('N', 'ङ'),
-    ('c', 'च'), ('C', 'छ'), ('j', 'ज'), ('J', 'झ'), ('Y', 'ञ'),
-    ('w', 'ट'), ('W', 'ठ'), ('q', 'ड'), ('Q', 'ढ'), ('R', 'ण'),
-    ('t', 'त'), ('T', 'थ'), ('d', 'द'), ('D', 'ध'), ('n', 'न'),
-    ('p', 'प'), ('P', 'फ'), ('b', 'ब'), ('B', 'भ'), ('m', 'म'),
-    ('y', 'य'), ('r', 'र'), ('l', 'ल'), ('v', 'व'),
-    ('S', 'श'), ('z', 'ष'), ('s', 'स'), ('h', 'ह'),
+    ('k', 'क'),
+    ('K', 'ख'),
+    ('g', 'ग'),
+    ('G', 'घ'),
+    ('N', 'ङ'),
+    ('c', 'च'),
+    ('C', 'छ'),
+    ('j', 'ज'),
+    ('J', 'झ'),
+    ('Y', 'ञ'),
+    ('w', 'ट'),
+    ('W', 'ठ'),
+    ('q', 'ड'),
+    ('Q', 'ढ'),
+    ('R', 'ण'),
+    ('t', 'त'),
+    ('T', 'थ'),
+    ('d', 'द'),
+    ('D', 'ध'),
+    ('n', 'न'),
+    ('p', 'प'),
+    ('P', 'फ'),
+    ('b', 'ब'),
+    ('B', 'भ'),
+    ('m', 'म'),
+    ('y', 'य'),
+    ('r', 'र'),
+    ('l', 'ल'),
+    ('v', 'व'),
+    ('S', 'श'),
+    ('z', 'ष'),
+    ('s', 'स'),
+    ('h', 'ह'),
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,8 +87,13 @@ pub enum DevanagariError {
 impl std::fmt::Display for DevanagariError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DevanagariError::UnknownSlp1Char(c) => write!(f, "unknown SLP1 character `{c}` (same core inventory as transliteration.rs)"),
-            DevanagariError::UnknownDevanagariChar(c) => write!(f, "unrecognized Devanāgarī character `{c}`"),
+            DevanagariError::UnknownSlp1Char(c) => write!(
+                f,
+                "unknown SLP1 character `{c}` (same core inventory as transliteration.rs)"
+            ),
+            DevanagariError::UnknownDevanagariChar(c) => {
+                write!(f, "unrecognized Devanāgarī character `{c}`")
+            }
             DevanagariError::Empty => write!(f, "empty input is not a valid phoneme sequence"),
         }
     }
@@ -74,7 +105,10 @@ fn consonant_glyph(c: char) -> Option<char> {
     CONSONANTS.iter().find(|(s, _)| *s == c).map(|(_, g)| *g)
 }
 fn vowel_forms(c: char) -> Option<(char, Option<char>)> {
-    VOWELS.iter().find(|(s, _, _)| *s == c).map(|(_, ind, matra)| (*ind, *matra))
+    VOWELS
+        .iter()
+        .find(|(s, _, _)| *s == c)
+        .map(|(_, ind, matra)| (*ind, *matra))
 }
 
 pub fn slp1_to_devanagari(slp1: &str) -> Result<String, DevanagariError> {
@@ -139,7 +173,12 @@ pub fn devanagari_to_slp1(deva: &str) -> Result<String, DevanagariError> {
                 i += 2;
                 continue;
             }
-            if let Some(matra_slp1) = next.and_then(|n| VOWELS.iter().find(|(_, _, m)| *m == Some(n)).map(|(s, _, _)| *s)) {
+            if let Some(matra_slp1) = next.and_then(|n| {
+                VOWELS
+                    .iter()
+                    .find(|(_, _, m)| *m == Some(n))
+                    .map(|(s, _, _)| *s)
+            }) {
                 out.push(matra_slp1);
                 i += 2;
                 continue;
@@ -172,16 +211,38 @@ mod tests {
     use super::*;
 
     const CANDIDATE_ATOMS: &[&str] = &[
-        "kf", "gam", "dA", "grah", "jYA", "dfS", "Sru", "vac", "liK", "paW", "sTA", "BU",
-        "kartf", "karman", "karaRa", "sampradAna", "apAdAna", "aDikaraRa",
+        "kf",
+        "gam",
+        "dA",
+        "grah",
+        "jYA",
+        "dfS",
+        "Sru",
+        "vac",
+        "liK",
+        "paW",
+        "sTA",
+        "BU",
+        "kartf",
+        "karman",
+        "karaRa",
+        "sampradAna",
+        "apAdAna",
+        "aDikaraRa",
     ];
 
     #[test]
     fn round_trips_every_candidate_atom_slp1_to_deva_to_slp1() {
         for atom in CANDIDATE_ATOMS {
-            let deva = slp1_to_devanagari(atom).unwrap_or_else(|e| panic!("slp1_to_devanagari({atom:?}) failed: {e}"));
-            let back = devanagari_to_slp1(&deva).unwrap_or_else(|e| panic!("devanagari_to_slp1({deva:?}) failed for atom {atom:?}: {e}"));
-            assert_eq!(&back, atom, "round trip mismatch for {atom:?}: SLP1 -> Deva {deva:?} -> SLP1 {back:?}");
+            let deva = slp1_to_devanagari(atom)
+                .unwrap_or_else(|e| panic!("slp1_to_devanagari({atom:?}) failed: {e}"));
+            let back = devanagari_to_slp1(&deva).unwrap_or_else(|e| {
+                panic!("devanagari_to_slp1({deva:?}) failed for atom {atom:?}: {e}")
+            });
+            assert_eq!(
+                &back, atom,
+                "round trip mismatch for {atom:?}: SLP1 -> Deva {deva:?} -> SLP1 {back:?}"
+            );
         }
     }
 
@@ -218,7 +279,10 @@ mod tests {
 
     #[test]
     fn rejects_unknown_slp1_character() {
-        assert_eq!(slp1_to_devanagari("a~a").unwrap_err(), DevanagariError::UnknownSlp1Char('~'));
+        assert_eq!(
+            slp1_to_devanagari("a~a").unwrap_err(),
+            DevanagariError::UnknownSlp1Char('~')
+        );
     }
 
     #[test]

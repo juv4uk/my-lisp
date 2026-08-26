@@ -38,7 +38,10 @@ fn simple_fact_retrieval() {
              (reason (quote (parent alice bob)) rules))
     "#;
     // Returns a list containing one empty substitution and its proof tree
-    assert_eq!(eval_reason(source), "((() (proved (parent alice bob) (parent alice bob) ())))");
+    assert_eq!(
+        eval_reason(source),
+        "((() (proved (parent alice bob) (parent alice bob) ())))"
+    );
 }
 
 #[test]
@@ -48,7 +51,10 @@ fn variable_binding_from_fact() {
              (reason (list (quote parent) (logic-var (quote x)) (quote bob)) rules))
     "#;
     // Returns a list of substitutions and proof trees. One successful path binding x to alice.
-    assert_eq!(eval_reason(source), "((((x . alice)) (proved (parent (var x) bob) (parent alice bob) ())))");
+    assert_eq!(
+        eval_reason(source),
+        "((((x . alice)) (proved (parent (var x) bob) (parent alice bob) ())))"
+    );
 }
 
 #[test]
@@ -131,9 +137,25 @@ fn test_explain_proof() {
     assert_eq!(
         output,
         vec![
-            "Proved:", "(bird (var x))", "using", "rule:", "(bird (var (x . 0)))",
-            "..", "|-", "Proved:", "(animal (var (x . 0)))", "using", "rule:", "(animal tweety)",
-            "..", "|-", "Proved", "by", "failure:", "not", "(penguin (var (x . 0)))"
+            "Proved:",
+            "(bird (var x))",
+            "using",
+            "rule:",
+            "(bird (var (x . 0)))",
+            "..",
+            "|-",
+            "Proved:",
+            "(animal (var (x . 0)))",
+            "using",
+            "rule:",
+            "(animal tweety)",
+            "..",
+            "|-",
+            "Proved",
+            "by",
+            "failure:",
+            "not",
+            "(penguin (var (x . 0)))"
         ]
     );
 }
@@ -147,7 +169,13 @@ fn reason_explain_explains_a_provable_goal() {
     let output = eval_reason_with_output(source);
     assert_eq!(
         output,
-        vec!["Proved:", "(parent alice bob)", "using", "rule:", "(parent alice bob)"]
+        vec![
+            "Proved:",
+            "(parent alice bob)",
+            "using",
+            "rule:",
+            "(parent alice bob)"
+        ]
     );
 }
 

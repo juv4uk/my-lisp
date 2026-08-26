@@ -15,7 +15,6 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-
 /// Walks a `Value` list (the `Pair`-chain shape `Value::list` builds) into
 /// a `Vec`, stopping at the first non-`Pair` tail. Used only for reading
 /// the machine-protocol's own request/response envelopes — the language
@@ -155,10 +154,20 @@ fn ok_response(id: &Value, value: Value, output: &[String], contract_version: &V
         Value::list([Value::Symbol("value".into()), value]),
         Value::list([
             Value::Symbol("output".into()),
-            Value::list(output.iter().map(|line| Value::String(line.as_str().into()))),
+            Value::list(
+                output
+                    .iter()
+                    .map(|line| Value::String(line.as_str().into())),
+            ),
         ]),
-        Value::list([Value::Symbol("contract-version".into()), contract_version.clone()]),
-        Value::list([Value::Symbol("server-generation".into()), Value::Number(server_generation() as f64, Exactness::Exact)]),
+        Value::list([
+            Value::Symbol("contract-version".into()),
+            contract_version.clone(),
+        ]),
+        Value::list([
+            Value::Symbol("server-generation".into()),
+            Value::Number(server_generation() as f64, Exactness::Exact),
+        ]),
     ])
 }
 
@@ -166,11 +175,23 @@ fn error_response(id: &Value, kind: &str, message: &str, contract_version: &Valu
     Value::list([
         Value::Symbol("response".into()),
         Value::list([Value::Symbol("id".into()), id.clone()]),
-        Value::list([Value::Symbol("status".into()), Value::Symbol("error".into())]),
+        Value::list([
+            Value::Symbol("status".into()),
+            Value::Symbol("error".into()),
+        ]),
         Value::list([Value::Symbol("kind".into()), Value::Symbol(kind.into())]),
-        Value::list([Value::Symbol("message".into()), Value::String(message.into())]),
-        Value::list([Value::Symbol("contract-version".into()), contract_version.clone()]),
-        Value::list([Value::Symbol("server-generation".into()), Value::Number(server_generation() as f64, Exactness::Exact)]),
+        Value::list([
+            Value::Symbol("message".into()),
+            Value::String(message.into()),
+        ]),
+        Value::list([
+            Value::Symbol("contract-version".into()),
+            contract_version.clone(),
+        ]),
+        Value::list([
+            Value::Symbol("server-generation".into()),
+            Value::Number(server_generation() as f64, Exactness::Exact),
+        ]),
     ])
 }
 
@@ -235,10 +256,22 @@ struct Broker {
 fn stored_event_to_text(event: &StoredEvent) -> String {
     Value::list([
         Value::Symbol("event".into()),
-        Value::list([Value::Symbol("id".into()), Value::Number(event.id as f64, Exactness::Exact)]),
-        Value::list([Value::Symbol("from".into()), Value::String(event.from.as_str().into())]),
-        Value::list([Value::Symbol("topic".into()), Value::String(event.topic.as_str().into())]),
-        Value::list([Value::Symbol("message".into()), Value::String(event.message.as_str().into())]),
+        Value::list([
+            Value::Symbol("id".into()),
+            Value::Number(event.id as f64, Exactness::Exact),
+        ]),
+        Value::list([
+            Value::Symbol("from".into()),
+            Value::String(event.from.as_str().into()),
+        ]),
+        Value::list([
+            Value::Symbol("topic".into()),
+            Value::String(event.topic.as_str().into()),
+        ]),
+        Value::list([
+            Value::Symbol("message".into()),
+            Value::String(event.message.as_str().into()),
+        ]),
     ])
     .to_string()
 }
@@ -360,7 +393,12 @@ fn presence_entry_to_value(agent: &str, entry: &PresenceEntry) -> Value {
         ]),
         Value::list([
             Value::Symbol("capabilities".into()),
-            Value::list(entry.capabilities.iter().map(|c| Value::Symbol(c.as_str().into()))),
+            Value::list(
+                entry
+                    .capabilities
+                    .iter()
+                    .map(|c| Value::Symbol(c.as_str().into())),
+            ),
         ]),
         Value::list([
             Value::Symbol("task".into()),
@@ -378,8 +416,14 @@ fn presence_entry_to_value(agent: &str, entry: &PresenceEntry) -> Value {
 
 fn mailbox_entry_to_value(entry: &MailboxEntry) -> Value {
     Value::list([
-        Value::list([Value::Symbol("id".into()), Value::Number(entry.id as f64, Exactness::Exact)]),
-        Value::list([Value::Symbol("from".into()), Value::String(entry.from.as_str().into())]),
+        Value::list([
+            Value::Symbol("id".into()),
+            Value::Number(entry.id as f64, Exactness::Exact),
+        ]),
+        Value::list([
+            Value::Symbol("from".into()),
+            Value::String(entry.from.as_str().into()),
+        ]),
         Value::list([
             Value::Symbol("to".into()),
             match &entry.to {
@@ -387,7 +431,10 @@ fn mailbox_entry_to_value(entry: &MailboxEntry) -> Value {
                 None => Value::Nil,
             },
         ]),
-        Value::list([Value::Symbol("message".into()), Value::String(entry.message.as_str().into())]),
+        Value::list([
+            Value::Symbol("message".into()),
+            Value::String(entry.message.as_str().into()),
+        ]),
     ])
 }
 
@@ -428,7 +475,13 @@ fn error_kind_symbol(kind: &ErrorKind) -> &'static str {
 /// a live `Value`. The isolation guarantee (`eval`/`parse`/`diagnose`
 /// state invisible across connections) is now also physical (separate
 /// threads), not just logical (separate `Environment`s in one thread).
-pub(crate) fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec<String>, contract_major: f64, contract_minor: f64) {
+pub(crate) fn run_tcp_repl_sexpr(
+    port: u16,
+    core_lib: &'static str,
+    allowed: Vec<String>,
+    contract_major: f64,
+    contract_minor: f64,
+) {
     let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, port)) {
         Ok(listener) => listener,
         Err(err) => {
@@ -437,7 +490,10 @@ pub(crate) fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec
         }
     };
     let actual_port = listener.local_addr().map(|a| a.port()).unwrap_or(port);
-    eprintln!("my-lisp TCP REPL v{} (sexpr protocol) listening on 127.0.0.1:{actual_port}", env!("CARGO_PKG_VERSION"));
+    eprintln!(
+        "my-lisp TCP REPL v{} (sexpr protocol) listening on 127.0.0.1:{actual_port}",
+        env!("CARGO_PKG_VERSION")
+    );
 
     let allowed = Arc::new(allowed);
     let mailbox: Arc<Mutex<MailboxState>> = Arc::new(Mutex::new(MailboxState::default()));
@@ -465,7 +521,18 @@ pub(crate) fn run_tcp_repl_sexpr(port: u16, core_lib: &'static str, allowed: Vec
         thread::Builder::new()
             .stack_size(256 * 1024 * 1024)
             .spawn(move || {
-                handle_sexpr_connection(stream, core_lib, &allowed, contract_major, contract_minor, &mailbox, &broker, &claims, &presence, &tasks);
+                handle_sexpr_connection(
+                    stream,
+                    core_lib,
+                    &allowed,
+                    contract_major,
+                    contract_minor,
+                    &mailbox,
+                    &broker,
+                    &claims,
+                    &presence,
+                    &tasks,
+                );
             })
             .expect("failed to spawn TCP connection thread");
     }
@@ -489,7 +556,10 @@ fn handle_sexpr_connection(
         Value::Number(contract_minor, Exactness::Exact),
     ]);
 
-    let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_else(|_| "?".into());
+    let peer = stream
+        .peer_addr()
+        .map(|a| a.to_string())
+        .unwrap_or_else(|_| "?".into());
     eprintln!("TCP REPL: connection from {peer}");
 
     let environment = if allowed.is_empty() {
@@ -520,11 +590,18 @@ fn handle_sexpr_connection(
                 // evaluate `source` is the only place code ever runs.
                 let quoted = format!("(quote {trimmed})");
                 let request = match parse(&quoted).ok().and_then(|ast| {
-                    eval_parsed_expressions_incremental(&ast, &mut session).ok().map(|r| r.value)
+                    eval_parsed_expressions_incremental(&ast, &mut session)
+                        .ok()
+                        .map(|r| r.value)
                 }) {
                     Some(value) => value,
                     None => {
-                        let resp = error_response(&Value::Nil, "parse-error", "request envelope is not a valid s-expression", &contract_version);
+                        let resp = error_response(
+                            &Value::Nil,
+                            "parse-error",
+                            "request envelope is not a valid s-expression",
+                            &contract_version,
+                        );
                         let _ = writeln!(stream, "{resp}");
                         continue;
                     }
@@ -553,7 +630,9 @@ fn handle_sexpr_connection(
                 let mut file: Option<String> = None;
                 for field in fields.iter().skip(1) {
                     let kv = list_items(field);
-                    let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else { continue };
+                    let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else {
+                        continue;
+                    };
                     if let Value::Symbol(name) = key {
                         match &**name {
                             "id" => id = val.clone(),

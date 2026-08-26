@@ -23,11 +23,13 @@ pub use error::{ErrorKind, LanguageError};
 pub use language_items::{language_items, Arity, LanguageItem, LanguageItemKind};
 
 pub use eval::exact_arity;
-pub use eval::{capability_installed, installed_capabilities, register_capability, unregister_capability};
 pub use eval::parse_json;
 pub use eval::{
-    evaluate as eval_expr, eval_parsed_expressions, eval_parsed_expressions_incremental,
-    eval_program, eval_program_incremental, EvalResult,
+    capability_installed, installed_capabilities, register_capability, unregister_capability,
+};
+pub use eval::{
+    eval_parsed_expressions, eval_parsed_expressions_incremental, eval_program,
+    eval_program_incremental, evaluate as eval_expr, EvalResult,
 };
 pub use parser::parse;
 pub use syntax::fasl::{

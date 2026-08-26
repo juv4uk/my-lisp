@@ -46,7 +46,9 @@ pub fn extract_code(source: &str, is_literate: bool) -> (String, Vec<(usize, usi
 
     for (event, range) in parser {
         match event {
-            Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(lang))) if lang.as_ref() == "my-lisp" => {
+            Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(lang)))
+                if lang.as_ref() == "my-lisp" =>
+            {
                 in_my_lisp_block = true;
             }
             Event::End(TagEnd::CodeBlock) if in_my_lisp_block => {
@@ -74,7 +76,11 @@ pub fn parse_literate(source: &str, mode: SourceMode) -> Result<Vec<Expr>, Langu
     parse(&concatenated).map_err(|e| remap_error(e, &offset_maps))
 }
 
-pub fn eval_literate(source: &str, mode: SourceMode, session: &mut Session) -> Result<(EvalResult, Vec<Expr>), LanguageError> {
+pub fn eval_literate(
+    source: &str,
+    mode: SourceMode,
+    session: &mut Session,
+) -> Result<(EvalResult, Vec<Expr>), LanguageError> {
     let (concatenated, offset_maps) = extract_code(source, mode == SourceMode::Literate);
 
     if mode == SourceMode::Literate && offset_maps.is_empty() {
@@ -83,15 +89,17 @@ pub fn eval_literate(source: &str, mode: SourceMode, session: &mut Session) -> R
                 value: my_lisp::Value::Nil,
                 output: vec!["No my-lisp code blocks found in markdown document.".to_string()],
             },
-            vec![]
+            vec![],
         ));
     }
 
     let forms = parse(&concatenated).map_err(|e| remap_error(e, &offset_maps))?;
-    
+
     // Evaluate core bootstrap first
-    my_lisp::eval_program(include_str!("../../../lib/core.my"), session).map_err(|e| remap_error(e, &offset_maps))?;
-    
-    let result = eval_parsed_expressions(&forms, session).map_err(|e| remap_error(e, &offset_maps))?;
+    my_lisp::eval_program(include_str!("../../../lib/core.my"), session)
+        .map_err(|e| remap_error(e, &offset_maps))?;
+
+    let result =
+        eval_parsed_expressions(&forms, session).map_err(|e| remap_error(e, &offset_maps))?;
     Ok((result, forms))
 }

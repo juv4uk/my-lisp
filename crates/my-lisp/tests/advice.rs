@@ -20,7 +20,10 @@ fn eval_advice(source: &str) -> String {
     ] {
         eval_program(library, &mut session).unwrap();
     }
-    eval_program(source, &mut session).unwrap().value.to_string()
+    eval_program(source, &mut session)
+        .unwrap()
+        .value
+        .to_string()
 }
 
 #[test]
@@ -44,8 +47,5 @@ fn rejected_translation_cannot_leak_into_the_knowledge_module() {
         (def result (advise astronomy (quote (planet earth))))
         (list (car result) (reason-in (quote astronomy) (quote (planet earth))))
     "#;
-    assert_eq!(
-        eval_advice(source),
-        "(rejected Module-not-found)"
-    );
+    assert_eq!(eval_advice(source), "(rejected Module-not-found)");
 }

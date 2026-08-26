@@ -1,4 +1,7 @@
-use my_lisp::{eval_program, parse, Environment, ErrorKind, Exactness, Expr, ExprKind, Rational, Session, Value};
+use my_lisp::{
+    eval_program, parse, Environment, ErrorKind, Exactness, Expr, ExprKind, Rational, Session,
+    Value,
+};
 
 /// Looks up `key` in a my-lisp alist `((k1 . v1) (k2 . v2) ...)`, already
 /// parsed as `Expr`s (data, not evaluated) — used by the two
@@ -62,7 +65,9 @@ fn division_is_an_exact_reduced_rational() {
 fn division_by_zero_has_the_contract_3_named_error() {
     for source in ["(/ 1 0)", "(/ 1 0.0)"] {
         assert_eq!(
-            eval_program(source, &mut Session::default()).unwrap_err().kind,
+            eval_program(source, &mut Session::default())
+                .unwrap_err()
+                .kind,
             ErrorKind::DivisionByZero,
             "source: {source}"
         );
@@ -100,9 +105,14 @@ fn exact_arithmetic_handles_products_beyond_i64_range() {
 fn bare_large_integer_literals_remain_exact() {
     let literal = "123456789012345678901234567890";
     assert_eq!(eval(literal).to_string(), literal);
-    assert_eq!(eval(&format!("(+ {literal} 1)")).to_string(),
-               "123456789012345678901234567891");
-    assert_eq!(eval(&format!("(eq {literal} {literal})")), Value::Bool(true));
+    assert_eq!(
+        eval(&format!("(+ {literal} 1)")).to_string(),
+        "123456789012345678901234567891"
+    );
+    assert_eq!(
+        eval(&format!("(eq {literal} {literal})")),
+        Value::Bool(true)
+    );
 }
 
 /// The case that actually matters, more than any single large literal:
@@ -123,7 +133,10 @@ fn exact_arithmetic_computes_factorials_past_i64_range() {
         (fact 30 (/ 1 1))
     "#;
     let result = eval_program(source, &mut Session::default()).unwrap();
-    assert_eq!(result.value.to_string(), "265252859812191058636308480000000");
+    assert_eq!(
+        result.value.to_string(),
+        "265252859812191058636308480000000"
+    );
 }
 
 #[test]
@@ -148,7 +161,10 @@ fn arithmetic_promotes_exact_integers_and_preserves_inexact_numbers() {
         eval("(+ (/ 1 2) 0.25)"),
         Value::Rational(Rational::new(3, 4).unwrap())
     );
-    assert_eq!(eval("(+ (/ 1 2) (/ 1 2))"), Value::Number(1.0, Exactness::Exact));
+    assert_eq!(
+        eval("(+ (/ 1 2) (/ 1 2))"),
+        Value::Number(1.0, Exactness::Exact)
+    );
 }
 
 #[test]
@@ -199,7 +215,10 @@ fn read_parses_text_into_data_without_evaluating_it() {
         ])
     );
     assert_eq!(eval(r#"(read "radio")"#), Value::Symbol("radio".into()));
-    assert_eq!(eval(r#"(read "42")"#), Value::Number(42.0, Exactness::Exact));
+    assert_eq!(
+        eval(r#"(read "42")"#),
+        Value::Number(42.0, Exactness::Exact)
+    );
 }
 
 #[test]
@@ -216,8 +235,14 @@ fn read_rejects_non_string_arguments_and_multi_expression_input() {
 
 #[test]
 fn eval_closes_the_read_eval_loop_by_hand() {
-    assert_eq!(eval(r#"(eval (read "(+ 1 2)"))"#), Value::Number(3.0, Exactness::Exact));
-    assert_eq!(eval("(eval (quote (+ 1 2)))"), Value::Number(3.0, Exactness::Exact));
+    assert_eq!(
+        eval(r#"(eval (read "(+ 1 2)"))"#),
+        Value::Number(3.0, Exactness::Exact)
+    );
+    assert_eq!(
+        eval("(eval (quote (+ 1 2)))"),
+        Value::Number(3.0, Exactness::Exact)
+    );
 }
 
 #[test]
@@ -268,7 +293,9 @@ fn bootstrap_library_is_written_and_executed_in_my_lisp() {
         Value::Symbol("antenna".into())
     );
     assert_eq!(
-        eval_program("(not (quote ()))", &mut session).unwrap().value,
+        eval_program("(not (quote ()))", &mut session)
+            .unwrap()
+            .value,
         Value::Bool(true)
     );
 }
@@ -280,20 +307,32 @@ fn bootstrap_library_provides_list_utilities() {
     let run = |source: &str, session: &mut Session| {
         eval_program(source, session).unwrap().value.to_string()
     };
-    assert_eq!(run("(length (quote (radio antenna signal)))", &mut session), "3");
+    assert_eq!(
+        run("(length (quote (radio antenna signal)))", &mut session),
+        "3"
+    );
     assert_eq!(run("(length (quote ()))", &mut session), "0");
     assert_eq!(run("(reverse (quote (1 2 3)))", &mut session), "(3 2 1)");
-    assert_eq!(run("(append (quote (1 2)) (quote (3 4)))", &mut session), "(1 2 3 4)");
+    assert_eq!(
+        run("(append (quote (1 2)) (quote (3 4)))", &mut session),
+        "(1 2 3 4)"
+    );
     assert_eq!(
         run("(map (lambda (x) (+ x 1)) (quote (1 2 3)))", &mut session),
         "(2 3 4)"
     );
     assert_eq!(
-        run("(filter (lambda (x) (eq x 2)) (quote (1 2 3 2)))", &mut session),
+        run(
+            "(filter (lambda (x) (eq x 2)) (quote (1 2 3 2)))",
+            &mut session
+        ),
         "(2 2)"
     );
     assert_eq!(
-        run("(reduce (lambda (acc x) (+ acc x)) 0 (quote (1 2 3 4)))", &mut session),
+        run(
+            "(reduce (lambda (acc x) (+ acc x)) 0 (quote (1 2 3 4)))",
+            &mut session
+        ),
         "10"
     );
 }
@@ -332,17 +371,32 @@ fn bootstrap_library_provides_deep_structural_equality() {
     let run = |source: &str, session: &mut Session| {
         eval_program(source, session).unwrap().value.to_string()
     };
-    assert_eq!(run("(equal? (quote (1 2 3)) (quote (1 2 3)))", &mut session), "t");
-    assert_eq!(run("(equal? (quote (1 2 3)) (quote (1 2 4)))", &mut session), "()");
     assert_eq!(
-        run("(equal? (quote (1 (2 3) 4)) (quote (1 (2 3) 4)))", &mut session),
+        run("(equal? (quote (1 2 3)) (quote (1 2 3)))", &mut session),
+        "t"
+    );
+    assert_eq!(
+        run("(equal? (quote (1 2 3)) (quote (1 2 4)))", &mut session),
+        "()"
+    );
+    assert_eq!(
+        run(
+            "(equal? (quote (1 (2 3) 4)) (quote (1 (2 3) 4)))",
+            &mut session
+        ),
         "t"
     );
     assert_eq!(run("(equal? (quote ()) (quote ()))", &mut session), "t");
-    assert_eq!(run("(equal? (quote radio) (quote radio))", &mut session), "t");
+    assert_eq!(
+        run("(equal? (quote radio) (quote radio))", &mut session),
+        "t"
+    );
     // Different lengths, and an atom compared against a compound term —
     // neither should ever reach `eq` with a non-atom operand.
-    assert_eq!(run("(equal? (quote (1 2)) (quote (1 2 3)))", &mut session), "()");
+    assert_eq!(
+        run("(equal? (quote (1 2)) (quote (1 2 3)))", &mut session),
+        "()"
+    );
     assert_eq!(run("(equal? 5 (quote (5)))", &mut session), "()");
     assert_eq!(run("(equal? (quote (1 2)) 5)", &mut session), "()");
 }
@@ -361,7 +415,10 @@ fn implements_mccarthys_seven_primitives() {
     assert_eq!(eval("(atom (quote ()))"), Value::Bool(true));
     assert_eq!(eval("(atom (quote (radio antenna)))"), Value::Bool(false));
     assert_eq!(eval("(eq (quote radio) (quote radio))"), Value::Bool(true));
-    assert_eq!(eval("(eq (quote radio) (quote antenna))"), Value::Bool(false));
+    assert_eq!(
+        eval("(eq (quote radio) (quote antenna))"),
+        Value::Bool(false)
+    );
     assert_eq!(
         eval("(car (quote (radio antenna)))"),
         Value::Symbol("radio".into())
@@ -461,16 +518,27 @@ fn lambda_reports_invalid_parameters_and_arity() {
 fn dotted_lambda_list_binds_extra_arguments_as_a_rest_list() {
     assert_eq!(
         eval("((lambda (a b . rest) rest) 1 2 3 4 5)"),
-        Value::list(vec![Value::Number(3.0, Exactness::Exact), Value::Number(4.0, Exactness::Exact), Value::Number(5.0, Exactness::Exact)])
+        Value::list(vec![
+            Value::Number(3.0, Exactness::Exact),
+            Value::Number(4.0, Exactness::Exact),
+            Value::Number(5.0, Exactness::Exact)
+        ])
     );
-    assert_eq!(eval("((lambda (a . rest) a) 1 2 3)"), Value::Number(1.0, Exactness::Exact));
+    assert_eq!(
+        eval("((lambda (a . rest) a) 1 2 3)"),
+        Value::Number(1.0, Exactness::Exact)
+    );
 }
 
 #[test]
 fn bare_symbol_lambda_list_binds_every_argument_as_one_list() {
     assert_eq!(
         eval("((lambda args args) 1 2 3)"),
-        Value::list(vec![Value::Number(1.0, Exactness::Exact), Value::Number(2.0, Exactness::Exact), Value::Number(3.0, Exactness::Exact)])
+        Value::list(vec![
+            Value::Number(1.0, Exactness::Exact),
+            Value::Number(2.0, Exactness::Exact),
+            Value::Number(3.0, Exactness::Exact)
+        ])
     );
     assert_eq!(eval("((lambda args args))"), Value::Nil);
 }
@@ -492,7 +560,11 @@ fn variadic_defmacro_binds_unevaluated_rest_arguments() {
     .unwrap();
     assert_eq!(
         result.value,
-        Value::list(vec![Value::Number(1.0, Exactness::Exact), Value::Number(2.0, Exactness::Exact), Value::Number(3.0, Exactness::Exact)])
+        Value::list(vec![
+            Value::Number(1.0, Exactness::Exact),
+            Value::Number(2.0, Exactness::Exact),
+            Value::Number(3.0, Exactness::Exact)
+        ])
     );
 }
 
@@ -518,9 +590,7 @@ fn print_escapes_embedded_quotes_and_backslashes_so_read_can_reconstruct_the_str
     // escaping — the *value* itself is `(eq "radio" "radio")`, 22 chars,
     // no backslashes in the value, just in how it's written here.
     let source = r#""(eq \"radio\" \"radio\")""#;
-    let value = eval_program(source, &mut Session::default())
-        .unwrap()
-        .value;
+    let value = eval_program(source, &mut Session::default()).unwrap().value;
     // `to_string()` is now valid my-lisp source for that same string literal
     // — parsing it again (not wrapping in another layer of quoting) should
     // reconstruct the identical value.
@@ -528,7 +598,10 @@ fn print_escapes_embedded_quotes_and_backslashes_so_read_can_reconstruct_the_str
     let reread = eval_program(&printed, &mut Session::default())
         .unwrap()
         .value;
-    assert_eq!(reread, value, "printed text should read back to the same string value");
+    assert_eq!(
+        reread, value,
+        "printed text should read back to the same string value"
+    );
 }
 
 /// `princ` — the `princ`/`display` half of the classic Lisp print-function
@@ -586,7 +659,11 @@ fn list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin() {
     let result = eval_program("(list 1 2 3)", &mut session).unwrap();
     assert_eq!(
         result.value,
-        Value::list(vec![Value::Number(1.0, Exactness::Exact), Value::Number(2.0, Exactness::Exact), Value::Number(3.0, Exactness::Exact)])
+        Value::list(vec![
+            Value::Number(1.0, Exactness::Exact),
+            Value::Number(2.0, Exactness::Exact),
+            Value::Number(3.0, Exactness::Exact)
+        ])
     );
     // Without core.my loaded, "list" is an ordinary unbound symbol now —
     // regression-tests that it really did leave the Rust special-form table.
@@ -615,15 +692,40 @@ fn evaluator_still_errors_on_a_lone_unknown_symbol() {
 fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    assert_eq!(eval_program("(<= 1 1 2)", &mut session).unwrap().value, Value::Bool(true));
-    assert_eq!(eval_program("(<= 1 2 1)", &mut session).unwrap().value, Value::Nil);
-    assert_eq!(eval_program("(>= 3 3 2)", &mut session).unwrap().value, Value::Bool(true));
-    assert_eq!(eval_program("(>= 2 3)", &mut session).unwrap().value, Value::Nil);
-    assert_eq!(eval_program("(<= 1/2 0.5)", &mut session).unwrap().value, Value::Bool(true));
-    assert_eq!(eval_program("(<= 5)", &mut session).unwrap().value, Value::Bool(true));
-    assert_eq!(eval_program("(<=)", &mut session).unwrap_err().kind, ErrorKind::Arity);
-    assert_eq!(eval_program("(<= 1 2)", &mut Session::default()).unwrap_err().kind,
-               ErrorKind::UnknownSymbol);
+    assert_eq!(
+        eval_program("(<= 1 1 2)", &mut session).unwrap().value,
+        Value::Bool(true)
+    );
+    assert_eq!(
+        eval_program("(<= 1 2 1)", &mut session).unwrap().value,
+        Value::Nil
+    );
+    assert_eq!(
+        eval_program("(>= 3 3 2)", &mut session).unwrap().value,
+        Value::Bool(true)
+    );
+    assert_eq!(
+        eval_program("(>= 2 3)", &mut session).unwrap().value,
+        Value::Nil
+    );
+    assert_eq!(
+        eval_program("(<= 1/2 0.5)", &mut session).unwrap().value,
+        Value::Bool(true)
+    );
+    assert_eq!(
+        eval_program("(<= 5)", &mut session).unwrap().value,
+        Value::Bool(true)
+    );
+    assert_eq!(
+        eval_program("(<=)", &mut session).unwrap_err().kind,
+        ErrorKind::Arity
+    );
+    assert_eq!(
+        eval_program("(<= 1 2)", &mut Session::default())
+            .unwrap_err()
+            .kind,
+        ErrorKind::UnknownSymbol
+    );
 }
 
 /// tests/fixtures/conformance.my is the implementation-independent contract
@@ -689,8 +791,9 @@ fn conformance_tests_from_my() {
         }
 
         if let Some(expected_error) = alist_str(entries, "error") {
-            let error = eval_program(expr, &mut session)
-                .expect_err(&format!("expected an error but evaluation succeeded: {expr}"));
+            let error = eval_program(expr, &mut session).expect_err(&format!(
+                "expected an error but evaluation succeeded: {expr}"
+            ));
             assert_eq!(
                 format!("{:?}", error.kind),
                 expected_error,
@@ -699,8 +802,8 @@ fn conformance_tests_from_my() {
             continue;
         }
 
-        let expected =
-            alist_str(entries, "expected").expect("fixture needs an \"expected\" string (or an \"error\" string)");
+        let expected = alist_str(entries, "expected")
+            .expect("fixture needs an \"expected\" string (or an \"error\" string)");
         let actual = eval_program(expr, &mut session)
             .unwrap_or_else(|e| panic!("fixture failed: {e}\nexpr: {expr}"))
             .value
@@ -739,8 +842,9 @@ fn macro_conformance_tests_from_my() {
         }
 
         if let Some(expected_error) = alist_str(entries, "error") {
-            let error = eval_program(expr, &mut session)
-                .expect_err(&format!("expected an error but evaluation succeeded: {expr}"));
+            let error = eval_program(expr, &mut session).expect_err(&format!(
+                "expected an error but evaluation succeeded: {expr}"
+            ));
             assert_eq!(
                 format!("{:?}", error.kind),
                 expected_error,
@@ -749,8 +853,8 @@ fn macro_conformance_tests_from_my() {
             continue;
         }
 
-        let expected =
-            alist_str(entries, "expected").expect("fixture needs an \"expected\" string (or an \"error\" string)");
+        let expected = alist_str(entries, "expected")
+            .expect("fixture needs an \"expected\" string (or an \"error\" string)");
         let actual = eval_program(expr, &mut session)
             .unwrap_or_else(|e| panic!("fixture failed: {e}\nexpr: {expr}"))
             .value
@@ -776,8 +880,8 @@ fn linter_tests_from_my() {
         };
         let expr = alist_str(entries, "expr").expect("fixture needs an \"expr\" string");
 
-        let expected =
-            alist_str(entries, "expected").expect("fixture needs an \"expected\" string (or an \"error\" string)");
+        let expected = alist_str(entries, "expected")
+            .expect("fixture needs an \"expected\" string (or an \"error\" string)");
         let actual = eval_program(expr, &mut session)
             .unwrap_or_else(|e| panic!("fixture failed: {e}\nexpr: {expr}"))
             .value
@@ -791,12 +895,16 @@ struct Lcg {
     state: u64,
 }
 impl Lcg {
-    fn new(seed: u64) -> Self { Self { state: seed } }
+    fn new(seed: u64) -> Self {
+        Self { state: seed }
+    }
     fn next(&mut self) -> u64 {
         self.state = self.state.wrapping_mul(6364136223846793005).wrapping_add(1);
         self.state
     }
-    fn next_int(&mut self) -> i64 { self.next() as i64 }
+    fn next_int(&mut self) -> i64 {
+        self.next() as i64
+    }
     fn next_string(&mut self, max_len: usize) -> String {
         let len = (self.next() as usize) % max_len;
         let mut s = String::with_capacity(len);
@@ -826,9 +934,15 @@ impl Lcg {
 
 fn alist_list<'a>(entries: &'a [Expr], key: &str) -> Option<&'a [Expr]> {
     entries.iter().find_map(|entry| {
-        let ExprKind::Pair(k, v) = &entry.kind else { return None; };
-        let ExprKind::Symbol(name) = &k.kind else { return None; };
-        if &**name != key { return None; }
+        let ExprKind::Pair(k, v) = &entry.kind else {
+            return None;
+        };
+        let ExprKind::Symbol(name) = &k.kind else {
+            return None;
+        };
+        if &**name != key {
+            return None;
+        }
         if let ExprKind::List(list) = &v.kind {
             return Some(&**list);
         }
@@ -856,9 +970,16 @@ fn property_tests_from_my() {
         let name = alist_str(entries, "name").expect("fixture needs a \"name\"");
         let expr_str = alist_str(entries, "expr").expect("fixture needs an \"expr\"");
         let types = alist_list(entries, "types").expect("fixture needs \"types\"");
-        let type_strings: Vec<&str> = types.iter().map(|e| {
-            if let ExprKind::String(s) = &e.kind { s.as_ref() } else { panic!("type must be string") }
-        }).collect();
+        let type_strings: Vec<&str> = types
+            .iter()
+            .map(|e| {
+                if let ExprKind::String(s) = &e.kind {
+                    s.as_ref()
+                } else {
+                    panic!("type must be string")
+                }
+            })
+            .collect();
 
         println!("type_strings = {:?}", type_strings);
         let param_names = ["x", "y", "z", "w", "v"];
@@ -870,7 +991,11 @@ fn property_tests_from_my() {
             eval_program(include_str!("../../../lib/persistent-map.my"), &mut session).unwrap();
             eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
             eval_program(include_str!("../../../lib/world.my"), &mut session).unwrap();
-            eval_program(include_str!("../../../tests/fixtures/properties-helpers.my"), &mut session).unwrap();
+            eval_program(
+                include_str!("../../../tests/fixtures/properties-helpers.my"),
+                &mut session,
+            )
+            .unwrap();
 
             for (i, &t) in type_strings.iter().enumerate() {
                 let val = match t {
@@ -885,7 +1010,11 @@ fn property_tests_from_my() {
 
             let result = eval_program(expr_str, &mut session)
                 .unwrap_or_else(|e| panic!("property {name} failed on iteration {iteration}: {e}"));
-            assert_eq!(result.value, Value::Bool(true), "Property {name} failed on iteration {iteration}");
+            assert_eq!(
+                result.value,
+                Value::Bool(true),
+                "Property {name} failed on iteration {iteration}"
+            );
         }
     }
 }
@@ -898,7 +1027,10 @@ fn property_tests_from_my() {
 
 #[test]
 fn symbol_to_string_and_back_round_trips() {
-    assert_eq!(eval("(symbol->string (quote planet))").to_string(), "\"planet\"");
+    assert_eq!(
+        eval("(symbol->string (quote planet))").to_string(),
+        "\"planet\""
+    );
     assert_eq!(
         eval("(string->symbol (symbol->string (quote planet)))").to_string(),
         "planet"
@@ -937,7 +1069,9 @@ fn string_slice_rejects_non_integer_or_negative_indices() {
         r#"(string-slice "abc" "1" 2)"#,
     ] {
         assert_eq!(
-            eval_program(source, &mut Session::default()).unwrap_err().kind,
+            eval_program(source, &mut Session::default())
+                .unwrap_err()
+                .kind,
             ErrorKind::Type,
             "source: {source}"
         );
@@ -1013,8 +1147,11 @@ fn symbol_predicate_is_a_my_lisp_function_not_a_rust_builtin() {
 
 #[test]
 fn symbol_to_string_rejects_a_non_symbol() {
-    let error = eval_program("(symbol->string \"already a string\")", &mut Session::default())
-        .expect_err("expected a Type error");
+    let error = eval_program(
+        "(symbol->string \"already a string\")",
+        &mut Session::default(),
+    )
+    .expect_err("expected a Type error");
     assert_eq!(error.kind, ErrorKind::Type);
 }
 

@@ -154,7 +154,14 @@ mod tests {
     #[test]
     fn line_col_clamps_offsets_beyond_source_length() {
         let source = "(car";
-        let error = LanguageError::new(ErrorKind::Parse, "unexpected eof", Span { start: 999, end: 999 });
+        let error = LanguageError::new(
+            ErrorKind::Parse,
+            "unexpected eof",
+            Span {
+                start: 999,
+                end: 999,
+            },
+        );
         assert_eq!(error.line_col(source), (1, 5));
     }
 }

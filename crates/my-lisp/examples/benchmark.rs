@@ -83,9 +83,7 @@ fn main() {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(100usize);
-    let rat = format!(
-        "(rat-loop {rat_n} 0)"
-    );
+    let rat = format!("(rat-loop {rat_n} 0)");
     warm("rational-chain-100", &rat, 50.max(iterations / 20));
 
     let vecs = "(cons (vector-set! v0 (mod 7 8) 42) (vfill v0 500))";

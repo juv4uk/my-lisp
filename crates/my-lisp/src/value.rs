@@ -1,6 +1,9 @@
 use crate::bignum::BigInt;
 use crate::{Environment, Exactness, Expr};
-use std::{cell::RefCell, cmp::Ordering, fmt, net::TcpListener, net::TcpStream, ops::Neg, rc::Rc, str::FromStr};
+use std::{
+    cell::RefCell, cmp::Ordering, fmt, net::TcpListener, net::TcpStream, ops::Neg, rc::Rc,
+    str::FromStr,
+};
 
 /// A reduced exact fraction owned by the language runtime, backed by the
 /// hand-rolled `BigInt` in `bignum.rs` — "exact" has no numeric ceiling
@@ -153,27 +156,29 @@ impl Rational {
             if digits.is_empty() || !digits.chars().all(|c| c.is_ascii_digit()) {
                 return Err(DecimalLiteralError::InvalidSyntax);
             }
-            e.parse().map_err(|_| DecimalLiteralError::ResourceLimitExceeded)?
+            e.parse()
+                .map_err(|_| DecimalLiteralError::ResourceLimitExceeded)?
         } else {
             0
         };
 
-        let (mantissa_str, decimal_exp) = if let Some((int_part, frac_part)) = base_str.split_once('.') {
-            let decimal_exp = frac_part.len() as i32;
-            let mut m = String::with_capacity(int_part.len() + frac_part.len());
-            m.push_str(int_part);
-            m.push_str(frac_part);
-            (m, decimal_exp)
-        } else {
-            (base_str.to_string(), 0)
-        };
+        let (mantissa_str, decimal_exp) =
+            if let Some((int_part, frac_part)) = base_str.split_once('.') {
+                let decimal_exp = frac_part.len() as i32;
+                let mut m = String::with_capacity(int_part.len() + frac_part.len());
+                m.push_str(int_part);
+                m.push_str(frac_part);
+                (m, decimal_exp)
+            } else {
+                (base_str.to_string(), 0)
+            };
 
         if mantissa_str.is_empty() || mantissa_str == "-" || mantissa_str == "+" {
             return Err(DecimalLiteralError::InvalidSyntax);
         }
 
-        let mantissa = BigInt::from_str(&mantissa_str)
-            .map_err(|_| DecimalLiteralError::InvalidSyntax)?;
+        let mantissa =
+            BigInt::from_str(&mantissa_str).map_err(|_| DecimalLiteralError::InvalidSyntax)?;
         let total_exp = scientific_exp
             .checked_sub(decimal_exp)
             .ok_or(DecimalLiteralError::ResourceLimitExceeded)?;
@@ -187,8 +192,8 @@ impl Rational {
         multiplier_str.push('1');
         multiplier_str.extend(std::iter::repeat_n('0', abs_exp));
 
-        let power_of_10 = BigInt::from_str(&multiplier_str)
-            .map_err(|_| DecimalLiteralError::InvalidSyntax)?;
+        let power_of_10 =
+            BigInt::from_str(&multiplier_str).map_err(|_| DecimalLiteralError::InvalidSyntax)?;
 
         if total_exp >= 0 {
             Self::from_big(mantissa.mul(&power_of_10), BigInt::from_i64(1))
@@ -237,7 +242,9 @@ impl Rational {
     /// `BigInt::bit_length`, chomu tse isnuie (optsiina perevirka obmezhennia
     /// resursu, ne zvychaine vykorystannia).
     pub fn bit_length(&self) -> usize {
-        self.numerator.bit_length().max(self.denominator.bit_length())
+        self.numerator
+            .bit_length()
+            .max(self.denominator.bit_length())
     }
 
     pub fn checked_div(self, divisor: Self) -> Option<Self> {
@@ -381,7 +388,9 @@ pub struct Closure {
 pub struct Builtin {
     pub name: &'static str,
     #[allow(clippy::type_complexity)]
-    pub func: std::rc::Rc<dyn Fn(&[Value], &crate::Environment, crate::Span) -> Result<Value, crate::LanguageError>>,
+    pub func: std::rc::Rc<
+        dyn Fn(&[Value], &crate::Environment, crate::Span) -> Result<Value, crate::LanguageError>,
+    >,
 }
 
 /// Immutable contiguous numeric storage for portable bulk-compute lowering.
@@ -496,8 +505,7 @@ impl PartialEq for Value {
             (Value::Vector(left), Value::Vector(right)) => {
                 let left = left.borrow();
                 let right = right.borrow();
-                left.len() == right.len()
-                    && left.iter().zip(right.iter()).all(|(l, r)| l == r)
+                left.len() == right.len() && left.iter().zip(right.iter()).all(|(l, r)| l == r)
             }
             (Value::NumericBuffer(left), Value::NumericBuffer(right)) => left == right,
             // Functions have identity: two separately created closures are not equal.
@@ -518,7 +526,9 @@ impl PartialEq for Value {
 
 impl Value {
     pub fn vector(values: impl IntoIterator<Item = Value>) -> Self {
-        Self::Vector(std::rc::Rc::new(std::cell::RefCell::new(values.into_iter().collect())))
+        Self::Vector(std::rc::Rc::new(std::cell::RefCell::new(
+            values.into_iter().collect(),
+        )))
     }
 
     pub fn list(values: impl IntoIterator<Item = Value>) -> Self {
@@ -585,7 +595,11 @@ fn render(value: &Value, quote_strings: bool) -> String {
     match value {
         Value::Builtin(builtin) => format!("#<builtin {}>", builtin.name),
         Value::Vector(v) => {
-            let items: Vec<String> = v.borrow().iter().map(|x| render(x, quote_strings)).collect();
+            let items: Vec<String> = v
+                .borrow()
+                .iter()
+                .map(|x| render(x, quote_strings))
+                .collect();
             format!("#({})", items.join(" "))
         }
         Value::NumericBuffer(NumericBuffer::I32(values)) => {

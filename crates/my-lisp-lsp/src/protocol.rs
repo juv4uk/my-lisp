@@ -39,7 +39,9 @@ pub fn as_str(value: Option<&Value>) -> Option<&str> {
 pub fn as_i64(value: Option<&Value>) -> Option<i64> {
     match value? {
         // Integral JSON numbers decode as exact numbers.
-        Value::Number(n, _) if n.fract() == 0.0 && *n >= i64::MIN as f64 && *n <= i64::MAX as f64 => {
+        Value::Number(n, _)
+            if n.fract() == 0.0 && *n >= i64::MIN as f64 && *n <= i64::MAX as f64 =>
+        {
             Some(*n as i64)
         }
         _ => None,
@@ -48,7 +50,9 @@ pub fn as_i64(value: Option<&Value>) -> Option<i64> {
 
 pub fn as_array(value: Option<&Value>) -> Vec<&Value> {
     let mut items = Vec::new();
-    let Some(mut current) = value else { return items };
+    let Some(mut current) = value else {
+        return items;
+    };
     loop {
         match current {
             Value::Nil => return items,
@@ -102,11 +106,21 @@ fn id_text(id: &Option<Value>) -> String {
     }
 }
 
-pub fn response(id: &Option<Value>, result: Option<String>, error: Option<(i64, String)>) -> String {
+pub fn response(
+    id: &Option<Value>,
+    result: Option<String>,
+    error: Option<(i64, String)>,
+) -> String {
     let body = if let Some((code, message)) = error {
-        format!("\"error\":{{\"code\":{code},\"message\":{}}}", escape(&message))
+        format!(
+            "\"error\":{{\"code\":{code},\"message\":{}}}",
+            escape(&message)
+        )
     } else {
-        format!("\"result\":{}", result.unwrap_or_else(|| "null".to_string()))
+        format!(
+            "\"result\":{}",
+            result.unwrap_or_else(|| "null".to_string())
+        )
     };
     let mut out = String::with_capacity(body.len() + 32);
     out.push_str("{\"jsonrpc\":\"2.0\",\"id\":");

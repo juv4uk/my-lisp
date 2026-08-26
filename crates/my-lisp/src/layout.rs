@@ -1,24 +1,24 @@
-use std::rc::Rc;
-use crate::value::{Value, Rational};
+use crate::value::{Rational, Value};
 use crate::Exactness;
+use std::rc::Rc;
 
 // IEEE 754 NaN boxing masks
 
-const MASK_QNAN: u64     = 0x7FF0_0000_0000_0000; // All exponent bits 1
+const MASK_QNAN: u64 = 0x7FF0_0000_0000_0000; // All exponent bits 1
 
 // fpga-lisp tags (lower 32 bits, bits 28..31 are tag)
-pub const TAG_FIXNUM: u64    = 0;
-pub const TAG_CONS: u64      = 1;
-pub const TAG_SYMBOL: u64    = 2;
-pub const TAG_NIL: u64       = 3;
-pub const TAG_TRUE: u64      = 4;
+pub const TAG_FIXNUM: u64 = 0;
+pub const TAG_CONS: u64 = 1;
+pub const TAG_SYMBOL: u64 = 2;
+pub const TAG_NIL: u64 = 3;
+pub const TAG_TRUE: u64 = 4;
 pub const TAG_PRIMITIVE: u64 = 5;
-pub const TAG_STRING: u64    = 6;
-pub const TAG_RATIONAL: u64  = 7;
-pub const TAG_CLOSURE: u64   = 8;
-pub const TAG_MACRO: u64     = 9;
-pub const TAG_TCP_CONN: u64  = 10;
-pub const TAG_TCP_LIST: u64  = 11;
+pub const TAG_STRING: u64 = 6;
+pub const TAG_RATIONAL: u64 = 7;
+pub const TAG_CLOSURE: u64 = 8;
+pub const TAG_MACRO: u64 = 9;
+pub const TAG_TCP_CONN: u64 = 10;
+pub const TAG_TCP_LIST: u64 = 11;
 pub const TAG_NUMERIC_BUFFER: u64 = 13;
 
 #[derive(Debug, Copy, Clone)]
@@ -34,7 +34,6 @@ impl NanBox {
         MASK_QNAN | (ptr_high << 32) | (tag << 28) | ptr_low
     }
 
-
     pub fn from_value(value: &Value) -> Self {
         match value {
             Value::Nil => NanBox(MASK_QNAN | (TAG_NIL << 28)),
@@ -45,54 +44,54 @@ impl NanBox {
                 let i = *f as i32;
                 let payload = (i as u32) & 0x0FFF_FFFF;
                 NanBox(MASK_QNAN | (TAG_FIXNUM << 28) | (payload as u64))
-            },
+            }
             Value::Rational(r) => {
                 let ptr = r as *const Rational as u64;
                 NanBox(Self::pack_ptr(TAG_RATIONAL, ptr))
-            },
+            }
             Value::String(s) => {
                 let ptr = Rc::as_ptr(s) as *const u8 as u64;
                 NanBox(Self::pack_ptr(TAG_STRING, ptr))
-            },
+            }
             Value::Symbol(s) => {
                 let ptr = Rc::as_ptr(s) as *const u8 as u64;
                 NanBox(Self::pack_ptr(TAG_SYMBOL, ptr))
-            },
+            }
             Value::Pair(h, _t) => {
                 // Since my-lisp uses Rc for Pair but fpga-lisp expects a cons cell pointer.
                 // We'll pack the Pair object pointer.
                 // Note: This is an unowned reference encoding (Memory Layout Boundary only).
                 let ptr = h as *const Rc<Value> as u64;
                 NanBox(Self::pack_ptr(TAG_CONS, ptr))
-            },
+            }
             Value::Closure(c) => {
                 let ptr = Rc::as_ptr(c) as u64;
                 NanBox(Self::pack_ptr(TAG_CLOSURE, ptr))
-            },
+            }
             Value::Macro(m) => {
                 let ptr = Rc::as_ptr(m) as u64;
                 NanBox(Self::pack_ptr(TAG_MACRO, ptr))
-            },
+            }
             // TAG_PRIMITIVE was reserved in the memory-layout contract
             // from day one -- contract 2.1 finally fills it.
             Value::Builtin(b) => {
                 let ptr = Rc::as_ptr(b) as u64;
                 NanBox(Self::pack_ptr(TAG_PRIMITIVE, ptr))
-            },
+            }
             Value::Vector(v) => {
                 let ptr = Rc::as_ptr(v) as *const u8 as u64;
                 NanBox(Self::pack_ptr(12, ptr))
-            },
+            }
             Value::NumericBuffer(crate::NumericBuffer::I32(values)) => {
                 NanBox(Self::pack_ptr(TAG_NUMERIC_BUFFER, values.as_ptr() as u64))
-            },
+            }
             Value::NumericBuffer(crate::NumericBuffer::F32(values)) => {
                 NanBox(Self::pack_ptr(TAG_NUMERIC_BUFFER, values.as_ptr() as u64))
-            },
+            }
             Value::TcpConnection(c) => {
                 let ptr = Rc::as_ptr(c) as u64;
                 NanBox(Self::pack_ptr(TAG_TCP_CONN, ptr))
-            },
+            }
             Value::TcpListener(l) => {
                 let ptr = Rc::as_ptr(l) as u64;
                 NanBox(Self::pack_ptr(TAG_TCP_LIST, ptr))

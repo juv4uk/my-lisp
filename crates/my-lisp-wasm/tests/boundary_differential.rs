@@ -15,9 +15,8 @@ fn eval_bare(src: &str) -> Result<String, String> {
     // Session::default() has builtins (+ - * / car cdr cons eq atom quote cond lambda)
     // but NOT core.my definitions (define, length, etc.)
     let mut s = Session::default();
-    let (result, _) = my_lisp_literate::eval_literate(
-        src, SourceMode::PureLisp, &mut s
-    ).map_err(|e| e.to_string())?;
+    let (result, _) = my_lisp_literate::eval_literate(src, SourceMode::PureLisp, &mut s)
+        .map_err(|e| e.to_string())?;
     Ok(result.value.to_string())
 }
 

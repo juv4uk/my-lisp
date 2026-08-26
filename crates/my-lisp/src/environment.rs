@@ -15,7 +15,11 @@ pub struct Transcript {
 }
 
 #[derive(Clone, Debug)]
-pub struct Environment(Rc<RefCell<Frame>>, Rc<RefCell<Transcript>>, Rc<RefCell<Limits>>);
+pub struct Environment(
+    Rc<RefCell<Frame>>,
+    Rc<RefCell<Transcript>>,
+    Rc<RefCell<Limits>>,
+);
 
 #[derive(Debug)]
 struct Frame {

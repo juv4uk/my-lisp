@@ -52,11 +52,17 @@ pub enum SemanticCallError {
 impl std::fmt::Display for SemanticCallError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SemanticCallError::UnknownPredicate(id) => write!(f, "unknown predicate atom id `{id}`"),
-            SemanticCallError::PredicateNotADhatu(id) => write!(f, "predicate `{id}` is not a dhātu"),
+            SemanticCallError::UnknownPredicate(id) => {
+                write!(f, "unknown predicate atom id `{id}`")
+            }
+            SemanticCallError::PredicateNotADhatu(id) => {
+                write!(f, "predicate `{id}` is not a dhātu")
+            }
             SemanticCallError::UnknownRole(id) => write!(f, "unknown role atom id `{id}`"),
             SemanticCallError::RoleNotAKaraka(id) => write!(f, "role `{id}` is not a kāraka"),
-            SemanticCallError::DuplicateRole(id) => write!(f, "role `{id}` is bound more than once"),
+            SemanticCallError::DuplicateRole(id) => {
+                write!(f, "role `{id}` is bound more than once")
+            }
         }
     }
 }
@@ -69,8 +75,12 @@ impl SemanticCall {
     /// role is bound twice — spec §20's "known dhātu / known kāraka /
     /// duplicate role" validation cases, enforced here rather than left
     /// for a later pass to discover.
-    pub fn new(predicate: &'static str, roles: Vec<(&'static str, Expr)>) -> Result<Self, SemanticCallError> {
-        let predicate_atom = atoms::by_id(predicate).ok_or(SemanticCallError::UnknownPredicate(predicate))?;
+    pub fn new(
+        predicate: &'static str,
+        roles: Vec<(&'static str, Expr)>,
+    ) -> Result<Self, SemanticCallError> {
+        let predicate_atom =
+            atoms::by_id(predicate).ok_or(SemanticCallError::UnknownPredicate(predicate))?;
         if predicate_atom.category != AtomCategory::Dhatu {
             return Err(SemanticCallError::PredicateNotADhatu(predicate));
         }
@@ -91,7 +101,10 @@ impl SemanticCall {
     }
 
     pub fn role(&self, role_id: &str) -> Option<&Expr> {
-        self.roles.iter().find(|(r, _)| *r == role_id).map(|(_, e)| e)
+        self.roles
+            .iter()
+            .find(|(r, _)| *r == role_id)
+            .map(|(_, e)| e)
     }
 }
 
@@ -101,7 +114,10 @@ mod tests {
     use my_lisp::{ExprKind, Span};
 
     fn symbol(name: &str) -> Expr {
-        Expr { kind: ExprKind::Symbol(name.into()), span: Span { start: 0, end: 0 } }
+        Expr {
+            kind: ExprKind::Symbol(name.into()),
+            span: Span { start: 0, end: 0 },
+        }
     }
 
     /// Spec §0/§35's own worked example, built directly (not parsed --
@@ -123,13 +139,20 @@ mod tests {
         assert_eq!(call.role("KARAKA_KARTR"), Some(&symbol("server")));
         assert_eq!(call.role("KARAKA_KARMAN"), Some(&symbol("packet")));
         assert_eq!(call.role("KARAKA_SAMPRADANA"), Some(&symbol("client")));
-        assert_eq!(call.role("KARAKA_APADANA"), None, "role not bound in this call must be absent, not a default");
+        assert_eq!(
+            call.role("KARAKA_APADANA"),
+            None,
+            "role not bound in this call must be absent, not a default"
+        );
     }
 
     #[test]
     fn rejects_unknown_predicate() {
         let err = SemanticCall::new("DHATU_NONEXISTENT", vec![]).unwrap_err();
-        assert_eq!(err, SemanticCallError::UnknownPredicate("DHATU_NONEXISTENT"));
+        assert_eq!(
+            err,
+            SemanticCallError::UnknownPredicate("DHATU_NONEXISTENT")
+        );
     }
 
     #[test]
@@ -141,7 +164,8 @@ mod tests {
 
     #[test]
     fn rejects_unknown_role() {
-        let err = SemanticCall::new("DHATU_DA", vec![("KARAKA_NONEXISTENT", symbol("x"))]).unwrap_err();
+        let err =
+            SemanticCall::new("DHATU_DA", vec![("KARAKA_NONEXISTENT", symbol("x"))]).unwrap_err();
         assert_eq!(err, SemanticCallError::UnknownRole("KARAKA_NONEXISTENT"));
     }
 

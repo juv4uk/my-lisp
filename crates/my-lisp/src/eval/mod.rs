@@ -16,7 +16,6 @@
 //! `cond`, und `closures` den Bau von `lambda` und die Anwendung von Funktionen/Makros.
 pub(crate) use special_forms::digest::sha256 as digest_sha256;
 
-
 mod arithmetic;
 pub(crate) mod builtins;
 mod capabilities;
@@ -25,7 +24,9 @@ mod special_forms;
 
 // Facade re-export: host adapters (LSP, CLI tooling) consume the canonical
 // JSON decoder as a plain function without going through eval.
-pub use capabilities::{capability_installed, installed_capabilities, register_capability, unregister_capability};
+pub use capabilities::{
+    capability_installed, installed_capabilities, register_capability, unregister_capability,
+};
 pub use special_forms::{exact_arity, json::parse_json};
 
 use crate::{parse, Environment, ErrorKind, Expr, ExprKind, LanguageError, Session, Span, Value};
@@ -186,7 +187,9 @@ fn evaluate_list(
             let value = special_forms::quoted(&arguments[0])?;
             Ok(EvalStep::Value(value))
         }
-        Some("lambda") => closures::create_lambda(arguments, environment, span).map(EvalStep::Value),
+        Some("lambda") => {
+            closures::create_lambda(arguments, environment, span).map(EvalStep::Value)
+        }
         Some("def") => {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
         }
@@ -201,7 +204,8 @@ fn evaluate_list(
             special_forms::evaluate_princ(arguments, environment, span).map(EvalStep::Value)
         }
         Some("write-to-string") => {
-            special_forms::evaluate_write_to_string(arguments, environment, span).map(EvalStep::Value)
+            special_forms::evaluate_write_to_string(arguments, environment, span)
+                .map(EvalStep::Value)
         }
         Some("read") => {
             special_forms::evaluate_read(arguments, environment, span).map(EvalStep::Value)
@@ -212,20 +216,20 @@ fn evaluate_list(
         Some("string-append") => {
             special_forms::evaluate_string_append(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("string<?") => {
-            special_forms::evaluate_string_less_than(arguments, environment, span).map(EvalStep::Value)
-        }
+        Some("string<?") => special_forms::evaluate_string_less_than(arguments, environment, span)
+            .map(EvalStep::Value),
         Some("read-all") => {
             special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("string?") => {
-            special_forms::evaluate_string_predicate(arguments, environment, span).map(EvalStep::Value)
-        }
+        Some("string?") => special_forms::evaluate_string_predicate(arguments, environment, span)
+            .map(EvalStep::Value),
         Some("symbol->string") => {
-            special_forms::evaluate_symbol_to_string(arguments, environment, span).map(EvalStep::Value)
+            special_forms::evaluate_symbol_to_string(arguments, environment, span)
+                .map(EvalStep::Value)
         }
         Some("string->symbol") => {
-            special_forms::evaluate_string_to_symbol(arguments, environment, span).map(EvalStep::Value)
+            special_forms::evaluate_string_to_symbol(arguments, environment, span)
+                .map(EvalStep::Value)
         }
         Some("string-first") => {
             special_forms::evaluate_string_first(arguments, environment, span).map(EvalStep::Value)
@@ -237,7 +241,8 @@ fn evaluate_list(
             special_forms::evaluate_sha256_hex(arguments, environment, span).map(EvalStep::Value)
         }
         Some("json-parse") => {
-            special_forms::json::evaluate_json_parse(arguments, environment, span).map(EvalStep::Value)
+            special_forms::json::evaluate_json_parse(arguments, environment, span)
+                .map(EvalStep::Value)
         }
         // NOTE: abs/min/max/min-list/max-list are first-class builtins
         // (eval/builtins.rs), NOT special forms — resolving them through the
@@ -345,4 +350,3 @@ mod single_pass_eval_tests {
         assert_eq!(result.value.to_string(), "1/6");
     }
 }
-

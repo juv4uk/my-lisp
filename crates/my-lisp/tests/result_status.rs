@@ -34,7 +34,9 @@ fn make_partial_tags_a_value_and_a_bound() {
 #[test]
 fn make_blocked_tags_a_reason() {
     assert_eq!(
-        eval_result_status(r#"(make-blocked (quote (depends-on PANINI-BRIDGE-MY-LISP-SYNTAX-CONVERSION)))"#),
+        eval_result_status(
+            r#"(make-blocked (quote (depends-on PANINI-BRIDGE-MY-LISP-SYNTAX-CONVERSION)))"#
+        ),
         "(blocked (depends-on PANINI-BRIDGE-MY-LISP-SYNTAX-CONVERSION))"
     );
 }
@@ -73,7 +75,10 @@ fn an_ordinary_value_is_not_a_tagged_result() {
     // mistaken for a tagged result just because it has a car — the
     // whole point of the four-tag gate in result-tagged? is precision.
     assert_eq!(eval_result_status(r#"(result-tagged? 42)"#), "()");
-    assert_eq!(eval_result_status(r#"(result-tagged? (quote (a b c)))"#), "()");
+    assert_eq!(
+        eval_result_status(r#"(result-tagged? (quote (a b c)))"#),
+        "()"
+    );
     assert_eq!(
         eval_result_status(r#"(result-tagged? (make-disputed (quote ())))"#),
         "t"

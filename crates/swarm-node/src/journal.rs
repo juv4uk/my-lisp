@@ -36,15 +36,27 @@ impl Event {
         if let Some(inc) = &self.incarnation {
             fields.push(Sexp::list(vec![Sexp::atom("incarnation"), Sexp::atom(inc)]));
         }
-        fields.push(Sexp::list(vec![Sexp::atom("seq"), Sexp::atom(self.seq.to_string())]));
-        fields.push(Sexp::list(vec![Sexp::atom("lamport"), Sexp::atom(self.lamport.to_string())]));
+        fields.push(Sexp::list(vec![
+            Sexp::atom("seq"),
+            Sexp::atom(self.seq.to_string()),
+        ]));
+        fields.push(Sexp::list(vec![
+            Sexp::atom("lamport"),
+            Sexp::atom(self.lamport.to_string()),
+        ]));
         fields.push(Sexp::list(vec![Sexp::atom("type"), Sexp::atom(&self.typ)]));
-        fields.push(Sexp::list(vec![Sexp::atom("payload"), self.payload.clone()]));
+        fields.push(Sexp::list(vec![
+            Sexp::atom("payload"),
+            self.payload.clone(),
+        ]));
         Sexp::list(std::iter::once(Sexp::atom("event")).chain(fields).collect())
     }
 
     pub fn from_sexp(s: &Sexp) -> Result<Event, String> {
-        let node = s.field_atom("node").ok_or("event missing node")?.to_string();
+        let node = s
+            .field_atom("node")
+            .ok_or("event missing node")?
+            .to_string();
         // "-" is the legacy-namespace sentinel in sync-hello v2 maps; a
         // peer sending `(incarnation -)` would alias it (review finding
         // F2), so reject it at parse time.
@@ -63,13 +75,23 @@ impl Event {
             .ok_or("event missing lamport")?
             .parse()
             .map_err(|_| "event lamport not a number".to_string())?;
-        let typ = s.field_atom("type").ok_or("event missing type")?.to_string();
+        let typ = s
+            .field_atom("type")
+            .ok_or("event missing type")?
+            .to_string();
         let payload = s
             .field("payload")
             .and_then(|f| f.first())
             .cloned()
             .unwrap_or(Sexp::List(vec![]));
-        Ok(Event { node, incarnation, seq, lamport, typ, payload })
+        Ok(Event {
+            node,
+            incarnation,
+            seq,
+            lamport,
+            typ,
+            payload,
+        })
     }
 }
 
@@ -141,10 +163,17 @@ pub fn load_or_init_identity(data_dir: &Path, node_id: &str) -> std::io::Result<
         Sexp::atom("node"),
         Sexp::list(vec![Sexp::atom("id"), Sexp::atom(node_id)]),
         Sexp::list(vec![Sexp::atom("epoch"), Sexp::atom(epoch.to_string())]),
-        Sexp::list(vec![Sexp::atom("incarnation"), Sexp::atom(&stored_incarnation)]),
+        Sexp::list(vec![
+            Sexp::atom("incarnation"),
+            Sexp::atom(&stored_incarnation),
+        ]),
     ]);
     fs::write(&path, doc.to_text())?;
-    Ok(Identity { node_id: node_id.to_string(), epoch, incarnation: stored_incarnation })
+    Ok(Identity {
+        node_id: node_id.to_string(),
+        epoch,
+        incarnation: stored_incarnation,
+    })
 }
 
 /// Append-only durable log at `<data-dir>/events.log`, one event per line.
@@ -193,12 +222,19 @@ impl Journal {
     /// being derivation-equivalent to what they replace; this method just
     /// does the (fsync'd) file swap safely.
     pub fn replace_all(&mut self, new_events: Vec<Event>) -> std::io::Result<()> {
-        let mut file = OpenOptions::new().create(true).write(true).truncate(true).open(&self.path)?;
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&self.path)?;
         for ev in &new_events {
             writeln!(file, "{}", ev.to_sexp().to_text())?;
         }
         file.sync_data()?;
-        self.file = OpenOptions::new().create(true).append(true).open(&self.path)?;
+        self.file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.path)?;
         self.events = new_events;
         Ok(())
     }
@@ -263,10 +299,7 @@ mod incarnation_tests {
             seq: 7,
             lamport: 9,
             typ: "task-defined".to_string(),
-            payload: Sexp::list(vec![Sexp::list(vec![
-                Sexp::atom("task"),
-                Sexp::atom("T1"),
-            ])]),
+            payload: Sexp::list(vec![Sexp::list(vec![Sexp::atom("task"), Sexp::atom("T1")])]),
         };
         let text = ev.to_sexp().to_text();
         eprintln!("wire: {text}");
@@ -300,7 +333,10 @@ mod incarnation_tests {
         };
         j.append(mk(Some("AAA"), 1)).unwrap();
         assert!(j.has("n", Some("AAA"), 1));
-        assert!(!j.has("n", Some("BBB"), 1), "different incarnation must not dedup-hit");
+        assert!(
+            !j.has("n", Some("BBB"), 1),
+            "different incarnation must not dedup-hit"
+        );
         j.append(mk(Some("BBB"), 1)).unwrap();
         assert_eq!(j.next_seq("n", Some("AAA")), 2);
         assert_eq!(j.next_seq("n", Some("BBB")), 2);

@@ -132,7 +132,11 @@ fn parse_one(chars: &[char], pos: &mut usize) -> Result<Sexp, String> {
         ')' => Err("unexpected `)`".to_string()),
         _ => {
             let start = *pos;
-            while *pos < chars.len() && !chars[*pos].is_whitespace() && chars[*pos] != '(' && chars[*pos] != ')' {
+            while *pos < chars.len()
+                && !chars[*pos].is_whitespace()
+                && chars[*pos] != '('
+                && chars[*pos] != ')'
+            {
                 *pos += 1;
             }
             Ok(Sexp::Atom(chars[start..*pos].iter().collect()))
@@ -157,6 +161,9 @@ mod tests {
     fn parses_quoted_strings_with_escapes() {
         let text = r#"(payload (artifact "evidence/G8/a \"b\" c.my"))"#;
         let parsed = parse(text).unwrap();
-        assert_eq!(parsed.field_atom("artifact"), Some("evidence/G8/a \"b\" c.my"));
+        assert_eq!(
+            parsed.field_atom("artifact"),
+            Some("evidence/G8/a \"b\" c.my")
+        );
     }
 }

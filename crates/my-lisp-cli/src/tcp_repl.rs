@@ -2,11 +2,12 @@
 //! served on 127.0.0.1 only. The semantic sexpr/oracle protocol lives in
 //! swarm.rs. Moved verbatim from main.rs (2026-08-22 mechanical split).
 
-use my_lisp::{eval_parsed_expressions, eval_parsed_expressions_incremental, parse, Environment, Session};
+use my_lisp::{
+    eval_parsed_expressions, eval_parsed_expressions_incremental, parse, Environment, Session,
+};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener};
 use std::process;
-
 
 /// `--tcp` / `--tcp=PORT` — a REPL reachable over TCP instead of stdio, for
 /// other local processes (e.g. a cross-session tool) to eval expressions
@@ -38,14 +39,20 @@ pub(crate) fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
         }
     };
     let actual_port = listener.local_addr().map(|a| a.port()).unwrap_or(port);
-    println!("my-lisp TCP REPL v{} listening on 127.0.0.1:{actual_port}", env!("CARGO_PKG_VERSION"));
+    println!(
+        "my-lisp TCP REPL v{} listening on 127.0.0.1:{actual_port}",
+        env!("CARGO_PKG_VERSION")
+    );
 
     for stream in listener.incoming() {
         let mut stream = match stream {
             Ok(stream) => stream,
             Err(_) => continue,
         };
-        let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_else(|_| "?".into());
+        let peer = stream
+            .peer_addr()
+            .map(|a| a.to_string())
+            .unwrap_or_else(|_| "?".into());
         eprintln!("TCP REPL: connection from {peer}");
 
         let environment = if allowed.is_empty() {
@@ -95,5 +102,3 @@ pub(crate) fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
         eprintln!("TCP REPL: {peer} disconnected");
     }
 }
-
-

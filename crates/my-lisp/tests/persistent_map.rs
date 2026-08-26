@@ -71,10 +71,7 @@ fn insert_is_persistent_the_original_tree_is_untouched() {
         (def m2 (map-insert "b" 2 m))
         (list (map->list m) (map->list m2))
     "#;
-    assert_eq!(
-        eval_map(source),
-        r#"((("a" . 1)) (("a" . 1) ("b" . 2)))"#
-    );
+    assert_eq!(eval_map(source), r#"((("a" . 1)) (("a" . 1) ("b" . 2)))"#);
 }
 
 #[test]

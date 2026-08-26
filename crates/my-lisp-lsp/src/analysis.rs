@@ -39,15 +39,21 @@ pub struct Analysis {
 /// mean inventing semantics.
 pub fn analyze(source: &str) -> Result<Analysis, LanguageError> {
     let expressions = my_lisp::parse(source)?;
-    Ok(Analysis { defs: collect_defs(&expressions) })
+    Ok(Analysis {
+        defs: collect_defs(&expressions),
+    })
 }
 
 fn collect_defs(expressions: &[Expr]) -> Vec<DefInfo> {
     let mut defs = Vec::new();
     for expr in expressions {
-        let ExprKind::List(items) = &expr.kind else { continue };
+        let ExprKind::List(items) = &expr.kind else {
+            continue;
+        };
         let Some(head) = items.first() else { continue };
-        let ExprKind::Symbol(head_name) = &head.kind else { continue };
+        let ExprKind::Symbol(head_name) = &head.kind else {
+            continue;
+        };
         if head_name.as_ref() != "def" && head_name.as_ref() != "defmacro" {
             continue;
         }
@@ -55,7 +61,9 @@ fn collect_defs(expressions: &[Expr]) -> Vec<DefInfo> {
         // `(def (f a) ...)` or `(def "x" 1)` is not a provable named
         // definition, so it produces none rather than guessing one.
         let Some(second) = items.get(1) else { continue };
-        let ExprKind::Symbol(name) = &second.kind else { continue };
+        let ExprKind::Symbol(name) = &second.kind else {
+            continue;
+        };
         defs.push(DefInfo {
             name: name.to_string(),
             kind: head_name.to_string(),
@@ -166,7 +174,10 @@ fn walk_symbols(expr: &Expr, in_quote: bool, out: &mut Vec<SymbolOccurrence>) {
     match &expr.kind {
         ExprKind::Symbol(name) => {
             if !in_quote {
-                out.push(SymbolOccurrence { name: name.to_string(), span: expr.span });
+                out.push(SymbolOccurrence {
+                    name: name.to_string(),
+                    span: expr.span,
+                });
             }
         }
         ExprKind::List(items) => {
@@ -194,7 +205,8 @@ impl Analysis {
     /// Used by hover to show evaluation results for complete forms.
     pub fn top_level_at(&self, source: &str, offset: usize) -> Option<Span> {
         let exprs = my_lisp::parse(source).ok()?;
-        exprs.iter()
+        exprs
+            .iter()
             .find(|e| e.span.start <= offset && offset < e.span.end)
             .map(|e| e.span)
     }
@@ -215,15 +227,16 @@ impl Analysis {
             match &expr.kind {
                 ExprKind::Symbol(name) => Some((name.to_string(), expr.span)),
                 ExprKind::List(items) => items.iter().find_map(|item| walk(item, offset)),
-                ExprKind::Pair(head, tail) => {
-                    walk(head, offset).or_else(|| walk(tail, offset))
-                }
+                ExprKind::Pair(head, tail) => walk(head, offset).or_else(|| walk(tail, offset)),
                 _ => None,
             }
         }
         // Top-level forms come from parse(); if the offset falls between
         // forms there is simply nothing to find.
-        my_lisp::parse(source).ok()?.iter().find_map(|e| walk(e, offset))
+        my_lisp::parse(source)
+            .ok()?
+            .iter()
+            .find_map(|e| walk(e, offset))
     }
 }
 

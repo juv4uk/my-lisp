@@ -92,7 +92,9 @@ impl Server {
 
     fn initialize(&mut self, incoming: &protocol::Incoming) -> String {
         // M1: a workspace root turns on the cross-file index.
-        if let Some(root_uri) = incoming.params.as_ref()
+        if let Some(root_uri) = incoming
+            .params
+            .as_ref()
             .and_then(|p| get(p, "rootUri"))
             .and_then(|u| as_str(Some(u)))
             .and_then(crate::workspace::uri_to_path)
@@ -152,7 +154,12 @@ impl Server {
             return vec![];
         };
         // Full sync: the LAST content change carries the whole document.
-        let changes = as_array(incoming.params.as_ref().and_then(|p| get(p, "contentChanges")));
+        let changes = as_array(
+            incoming
+                .params
+                .as_ref()
+                .and_then(|p| get(p, "contentChanges")),
+        );
         let Some(&last) = changes.last() else {
             return vec![];
         };
@@ -282,8 +289,7 @@ impl Server {
                 Ok(result) => {
                     let value = format!(
                         "**result:** `{}`\n\n```my-lisp\n{}\n```",
-                        result.value,
-                        form_text
+                        result.value, form_text
                     );
                     let result_json = format!(
                         "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
@@ -293,10 +299,7 @@ impl Server {
                     return response(&incoming.id, Some(result_json), None);
                 }
                 Err(err) => {
-                    let value = format!(
-                        "**error:** {}",
-                        err.message
-                    );
+                    let value = format!("**error:** {}", err.message);
                     let result_json = format!(
                         "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
                         str_lit(&value),
@@ -367,10 +370,10 @@ impl Server {
         let mut items: Vec<(String, String, u8)> = Vec::new();
         let mut seen = std::collections::HashSet::new();
         let consider = |label: &str,
-                            detail: &str,
-                            kind: u8,
-                            seen: &mut std::collections::HashSet<String>,
-                            items: &mut Vec<(String, String, u8)>| {
+                        detail: &str,
+                        kind: u8,
+                        seen: &mut std::collections::HashSet<String>,
+                        items: &mut Vec<(String, String, u8)>| {
             if !prefix.is_empty() && !label.starts_with(prefix.as_str()) {
                 return;
             }
@@ -381,7 +384,13 @@ impl Server {
 
         if let Ok(analysis) = analysis::analyze(&text) {
             for def in &analysis.defs {
-                consider(&def.name, &format!("local {}", def.kind), 3, &mut seen, &mut items);
+                consider(
+                    &def.name,
+                    &format!("local {}", def.kind),
+                    3,
+                    &mut seen,
+                    &mut items,
+                );
             }
         }
         for item in my_lisp::language_items() {
@@ -406,7 +415,12 @@ impl Server {
         let rendered: Vec<String> = items
             .into_iter()
             .map(|(label, detail, kind)| {
-                format!("{{\"label\":{},\"kind\":{},\"detail\":{}}}", str_lit(&label), kind, str_lit(&detail))
+                format!(
+                    "{{\"label\":{},\"kind\":{},\"detail\":{}}}",
+                    str_lit(&label),
+                    kind,
+                    str_lit(&detail)
+                )
             })
             .collect();
         response(
@@ -468,8 +482,13 @@ impl Server {
                     vec![]
                 } else {
                     analysis::analyze(doc_text)
-                        .map(|a| a.defs.iter().filter(|d| d.name == symbol)
-                             .map(|d| d.name_span.start).collect())
+                        .map(|a| {
+                            a.defs
+                                .iter()
+                                .filter(|d| d.name == symbol)
+                                .map(|d| d.name_span.start)
+                                .collect()
+                        })
                         .unwrap_or_default()
                 };
                 for occ in occurrences {
@@ -499,7 +518,11 @@ impl Server {
                 collect(&doc_uri, t);
             }
         }
-        response(&incoming.id, Some(format!("[{}]", locations.join(","))), None)
+        response(
+            &incoming.id,
+            Some(format!("[{}]", locations.join(","))),
+            None,
+        )
     }
 
     /// M2: rename the symbol at the cursor across open + indexed documents.

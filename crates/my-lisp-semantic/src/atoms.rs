@@ -323,7 +323,11 @@ mod tests {
         // Spec §3's explicit correct/incorrect example: DHATU_DA -> dA is
         // correct; identity == "dA" is not. Mechanically enforced.
         for atom in REGISTRY {
-            assert_ne!(atom.id, atom.slp1, "atom {} must not use its SLP1 spelling as its identity", atom.id);
+            assert_ne!(
+                atom.id, atom.slp1,
+                "atom {} must not use its SLP1 spelling as its identity",
+                atom.id
+            );
         }
     }
 
@@ -341,8 +345,14 @@ mod tests {
         // Prevents the registry's hand-written `iast` field from silently
         // drifting away from the verified Phase 1 table.
         for atom in REGISTRY {
-            let computed = slp1_to_iast(atom.slp1).unwrap_or_else(|e| panic!("atom {} has invalid SLP1 `{}`: {e}", atom.id, atom.slp1));
-            assert_eq!(atom.iast, computed, "atom {}'s stored IAST doesn't match Phase 1 transliteration of its SLP1 spelling", atom.id);
+            let computed = slp1_to_iast(atom.slp1).unwrap_or_else(|e| {
+                panic!("atom {} has invalid SLP1 `{}`: {e}", atom.id, atom.slp1)
+            });
+            assert_eq!(
+                atom.iast, computed,
+                "atom {}'s stored IAST doesn't match Phase 1 transliteration of its SLP1 spelling",
+                atom.id
+            );
         }
     }
 
@@ -351,7 +361,9 @@ mod tests {
         // Same drift-prevention as the IAST test, for the Devanagari
         // field added in SANSKRIT-P2-DEVANAGARI-MAPPING.
         for atom in REGISTRY {
-            let computed = slp1_to_devanagari(atom.slp1).unwrap_or_else(|e| panic!("atom {} has invalid SLP1 `{}`: {e}", atom.id, atom.slp1));
+            let computed = slp1_to_devanagari(atom.slp1).unwrap_or_else(|e| {
+                panic!("atom {} has invalid SLP1 `{}`: {e}", atom.id, atom.slp1)
+            });
             assert_eq!(atom.devanagari, computed, "atom {}'s stored Devanagari doesn't match Phase 2 transliteration of its SLP1 spelling", atom.id);
         }
     }
@@ -361,27 +373,55 @@ mod tests {
         // Spec §4's exact candidate list -- this test fails loudly if a
         // future edit accidentally drops one rather than silently
         // shrinking the core.
-        let expected_slp1 = ["kf", "gam", "dA", "grah", "jYA", "dfS", "Sru", "vac", "liK", "paW", "sTA", "BU"];
+        let expected_slp1 = [
+            "kf", "gam", "dA", "grah", "jYA", "dfS", "Sru", "vac", "liK", "paW", "sTA", "BU",
+        ];
         for slp1 in expected_slp1 {
-            assert!(by_slp1(slp1).is_some(), "spec §4 dhatu `{slp1}` is missing from the registry");
+            assert!(
+                by_slp1(slp1).is_some(),
+                "spec §4 dhatu `{slp1}` is missing from the registry"
+            );
         }
-        let dhatu_count = REGISTRY.iter().filter(|a| a.category == AtomCategory::Dhatu).count();
-        assert_eq!(dhatu_count, 12, "expected exactly the 12-dhatu core (spec §4), found {dhatu_count}");
+        let dhatu_count = REGISTRY
+            .iter()
+            .filter(|a| a.category == AtomCategory::Dhatu)
+            .count();
+        assert_eq!(
+            dhatu_count, 12,
+            "expected exactly the 12-dhatu core (spec §4), found {dhatu_count}"
+        );
     }
 
     #[test]
     fn registry_has_all_six_spec_karaka_roles() {
-        let expected_slp1 = ["kartf", "karman", "karaRa", "sampradAna", "apAdAna", "aDikaraRa"];
+        let expected_slp1 = [
+            "kartf",
+            "karman",
+            "karaRa",
+            "sampradAna",
+            "apAdAna",
+            "aDikaraRa",
+        ];
         for slp1 in expected_slp1 {
-            assert!(by_slp1(slp1).is_some(), "spec §5 kāraka `{slp1}` is missing from the registry");
+            assert!(
+                by_slp1(slp1).is_some(),
+                "spec §5 kāraka `{slp1}` is missing from the registry"
+            );
         }
-        let karaka_count = REGISTRY.iter().filter(|a| a.category == AtomCategory::Karaka).count();
-        assert_eq!(karaka_count, 6, "expected exactly the six kāraka roles (spec §5), found {karaka_count}");
+        let karaka_count = REGISTRY
+            .iter()
+            .filter(|a| a.category == AtomCategory::Karaka)
+            .count();
+        assert_eq!(
+            karaka_count, 6,
+            "expected exactly the six kāraka roles (spec §5), found {karaka_count}"
+        );
     }
 
     #[test]
     fn spec_worked_example_dhatu_da_is_registered_correctly() {
-        let atom = by_id("DHATU_DA").expect("DHATU_DA must be in the registry — it's the spec's own worked example");
+        let atom = by_id("DHATU_DA")
+            .expect("DHATU_DA must be in the registry — it's the spec's own worked example");
         assert_eq!(atom.slp1, "dA");
         assert_eq!(atom.iast, "dā");
         assert_eq!(atom.devanagari, "दा");

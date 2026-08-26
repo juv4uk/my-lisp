@@ -1,8 +1,8 @@
-use my_lisp::{eval_parsed_expressions, parse, Environment, Session, Value, Expr};
-use std::rc::Rc;
+use my_lisp::{eval_parsed_expressions, parse, Environment, Expr, Session, Value};
 use std::env;
 use std::fs;
 use std::process;
+use std::rc::Rc;
 mod lsp_entry;
 mod repl;
 mod swarm;
@@ -50,7 +50,9 @@ fn main() {
     // these two numbers instead of cloning a shared one across threads.
     let (contract_major, contract_minor) = {
         let contract_source = include_str!("../../../language-contract.my");
-        let mut throwaway = Session { environment: Environment::root() };
+        let mut throwaway = Session {
+            environment: Environment::root(),
+        };
         let quoted = format!("(quote {contract_source})");
         parse(&quoted)
             .ok()
@@ -59,8 +61,12 @@ fn main() {
             .and_then(|v| {
                 let major = dotted_alist_lookup(&v, "major")?;
                 let minor = dotted_alist_lookup(&v, "minor")?;
-                let Value::Number(major, _) = major else { return None };
-                let Value::Number(minor, _) = minor else { return None };
+                let Value::Number(major, _) = major else {
+                    return None;
+                };
+                let Value::Number(minor, _) = minor else {
+                    return None;
+                };
                 Some((major, minor))
             })
             .unwrap_or((0.0, 0.0))
@@ -83,7 +89,9 @@ fn main() {
         .map(|(_, hash)| hash == my_lisp::sha256_source(CORE_SRC.as_bytes()))
         .unwrap_or(false);
     if !fasl_hash_ok {
-        eprintln!("warning: lib/core.my.fasl is stale (source changed); run gen-fasl to regenerate");
+        eprintln!(
+            "warning: lib/core.my.fasl is stale (source changed); run gen-fasl to regenerate"
+        );
     }
     let core_expressions: Option<Vec<Expr>> = if fasl_hash_ok {
         my_lisp::fasl_decode_program(CORE_FASL).map(|(expressions, _)| expressions)
@@ -107,7 +115,7 @@ fn main() {
 
     if args.len() > 1 {
         let arg = &args[1];
-        
+
         // LSP mode: forwards to the my-lisp-lsp crate's stdio entrypoint.
         if arg == "lsp" {
             lsp_entry::run();
@@ -118,7 +126,7 @@ fn main() {
             println!("my-lisp {}", env!("CARGO_PKG_VERSION"));
             return;
         }
-        
+
         if arg == "--help" || arg == "-h" {
             println!("Usage: my-lisp [file]");
             println!("If no file is provided, starts the REPL.");
@@ -140,7 +148,13 @@ fn main() {
                 .and_then(|p| p.parse::<u16>().ok())
                 .unwrap_or(9999);
             if sexpr_protocol {
-                run_tcp_repl_sexpr(port, core_lib, allowed_for_tcp, contract_major, contract_minor);
+                run_tcp_repl_sexpr(
+                    port,
+                    core_lib,
+                    allowed_for_tcp,
+                    contract_major,
+                    contract_minor,
+                );
             } else {
                 run_tcp_repl(port, core_lib, &allowed_for_tcp);
             }
@@ -163,7 +177,7 @@ fn main() {
                 process::exit(1);
             }
             let filename = &args[2];
-            
+
             // Load linter
             let linter_lib = include_str!("../../../lib/linter.my");
             if let Ok(linter_ast) = parse(linter_lib) {
@@ -184,12 +198,15 @@ fn main() {
                             let target_ast = match eval_parsed_expressions(&q_ast, &mut session) {
                                 Ok(r) => r.value,
                                 Err(e) => {
-                                    eprintln!("Error evaluating quoted source: {}", e.render(&quoted_src));
+                                    eprintln!(
+                                        "Error evaluating quoted source: {}",
+                                        e.render(&quoted_src)
+                                    );
                                     process::exit(1);
                                 }
                             };
                             session.environment.define("*lint-target*", target_ast);
-                            
+
                             let lint_call_src = "(lint-check *lint-target* (quote ((max-size . 5000) (max-nesting . 50) (max-complexity . 100) (max-globals . 500) (max-effects . 10))))";
                             match parse(lint_call_src) {
                                 Ok(lint_ast) => {
@@ -199,19 +216,28 @@ fn main() {
                                                 println!("Linter passed: {}", filename);
                                                 return;
                                             } else {
-                                                eprintln!("Linter violations found in {}:", filename);
+                                                eprintln!(
+                                                    "Linter violations found in {}:",
+                                                    filename
+                                                );
                                                 eprintln!("{}", result.value);
                                                 process::exit(1);
                                             }
                                         }
                                         Err(e) => {
-                                            eprintln!("Error running linter: {}", e.render(lint_call_src));
+                                            eprintln!(
+                                                "Error running linter: {}",
+                                                e.render(lint_call_src)
+                                            );
                                             process::exit(1);
                                         }
                                     }
                                 }
                                 Err(e) => {
-                                    eprintln!("Parse error creating lint call: {}", e.render(lint_call_src));
+                                    eprintln!(
+                                        "Parse error creating lint call: {}",
+                                        e.render(lint_call_src)
+                                    );
                                     process::exit(1);
                                 }
                             }
@@ -254,28 +280,24 @@ fn main() {
         session.environment.define("*argv*", argv);
 
         match fs::read_to_string(filename) {
-            Ok(source) => {
-                match parse(&source) {
-                    Ok(ast) => {
-                        match eval_parsed_expressions(&ast, &mut session) {
-                            Ok(result) => {
-                                for out in result.output {
-                                    println!("{}", out);
-                                }
-                                println!("{}", result.value);
-                            }
-                            Err(e) => {
-                                eprintln!("Error: {}", e.render(&source));
-                                process::exit(1);
-                            }
+            Ok(source) => match parse(&source) {
+                Ok(ast) => match eval_parsed_expressions(&ast, &mut session) {
+                    Ok(result) => {
+                        for out in result.output {
+                            println!("{}", out);
                         }
+                        println!("{}", result.value);
                     }
                     Err(e) => {
-                        eprintln!("Parse error: {}", e.render(&source));
+                        eprintln!("Error: {}", e.render(&source));
                         process::exit(1);
                     }
+                },
+                Err(e) => {
+                    eprintln!("Parse error: {}", e.render(&source));
+                    process::exit(1);
                 }
-            }
+            },
             Err(e) => {
                 eprintln!("Error reading file {}: {}", filename, e);
                 process::exit(1);

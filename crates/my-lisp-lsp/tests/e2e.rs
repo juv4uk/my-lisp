@@ -7,13 +7,17 @@ use my_lisp_lsp::Harness as Server;
 use std::fs;
 use std::path::PathBuf;
 
-fn raw(m: &str) -> String { m.to_string() }
+fn raw(m: &str) -> String {
+    m.to_string()
+}
 
 /// initialize → capabilities must list exactly the M0 features.
 #[test]
 fn t01_initialize_returns_m0_capabilities() {
     let mut server = Server::new();
-    let replies = server.feed(&[raw(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#)]);
+    let replies = server.feed(&[raw(
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
+    )]);
     assert_eq!(replies.len(), 1);
     let r = replies[0].as_str();
     assert!(r.contains("\"capabilities\""), "{r}");
@@ -24,7 +28,10 @@ fn t01_initialize_returns_m0_capabilities() {
     // M1 added completion; M2 adds references+rename.
     assert!(r.contains("\"referencesProvider\":true"), "{r}");
     assert!(r.contains("\"renameProvider\":true"), "{r}");
-    assert!(r.contains("\"completionProvider\""), "M1 completion advertised: {r}");
+    assert!(
+        r.contains("\"completionProvider\""),
+        "M1 completion advertised: {r}"
+    );
 }
 
 const VALID_DOC: &str = "; a comment mentioning mystery_word\n(def answer 42)\n(defmacro unless (cond body) (list 'if cond body))\n";
@@ -41,7 +48,10 @@ fn t02_valid_document_produces_no_false_diagnostics() {
     assert_eq!(replies.len(), 1);
     let r = replies[0].as_str();
     assert!(r.contains("publishDiagnostics"), "{r}");
-    assert!(r.contains("\"diagnostics\":[]"), "no false diagnostics: {r}");
+    assert!(
+        r.contains("\"diagnostics\":[]"),
+        "no false diagnostics: {r}"
+    );
 }
 
 /// didOpen of an invalid document → at least one parser-backed diagnostic
@@ -58,7 +68,10 @@ fn t03_invalid_document_produces_real_diagnostic() {
     assert_eq!(replies.len(), 1);
     let r = replies[0].as_str();
     assert!(r.contains("publishDiagnostics"), "{r}");
-    assert!(!r.contains("\"diagnostics\":[]"), "must contain a diagnostic: {r}");
+    assert!(
+        !r.contains("\"diagnostics\":[]"),
+        "must contain a diagnostic: {r}"
+    );
     assert!(r.contains("\"severity\":1"), "{r}");
     assert!(r.contains("\"source\":\"my-lisp\""), "{r}");
     // The diagnostic range must point into line 1 (0-based), where the
@@ -74,7 +87,10 @@ fn t04_document_symbol_finds_def() {
     assert!(reply.contains("\"detail\":\"def\""), "{reply}");
     // selectionRange points at the NAME, not the whole form:
     // `(def answer` — the name starts at character 5.
-    assert!(reply.contains("\"selectionRange\":{\"start\":{\"line\":1,\"character\":5}"), "{reply}");
+    assert!(
+        reply.contains("\"selectionRange\":{\"start\":{\"line\":1,\"character\":5}"),
+        "{reply}"
+    );
     // ordinary text in the comment is not a symbol
     assert!(!reply.contains("mystery_word"), "{reply}");
 }
@@ -110,7 +126,10 @@ fn t06_hover_on_known_definition_is_useful() {
     let replies = server.feed(&[open, hover]);
     assert_eq!(replies.len(), 2);
     let r = &replies[1];
-    assert!(r.contains("\"result\":{\"contents\":{\"kind\":\"markdown\""), "{r}");
+    assert!(
+        r.contains("\"result\":{\"contents\":{\"kind\":\"markdown\""),
+        "{r}"
+    );
     assert!(r.contains("**def** `greeting`"), "{r}");
     // The canonical representation of the defining form travels along.
     assert!(r.contains("(def greeting \\\"hello\\\")"), "{r}");
@@ -124,8 +143,14 @@ fn t06_hover_on_known_definition_is_useful() {
         hover_msg("file:///shadow.my", 1, 2),
     ]);
     let shadow = &replies[1];
-    assert!(shadow.contains("**def** `max`"), "local max must win: {shadow}");
-    assert!(!shadow.contains("**builtin**"), "builtin metadata leaked: {shadow}");
+    assert!(
+        shadow.contains("**def** `max`"),
+        "local max must win: {shadow}"
+    );
+    assert!(
+        !shadow.contains("**builtin**"),
+        "builtin metadata leaked: {shadow}"
+    );
 }
 
 /// definition on a use of a local symbol → the def name's exact range.
@@ -160,8 +185,14 @@ fn t08_symbols_in_strings_and_comments_are_not_definitions() {
     let replies = server.feed(&[open, symbols]);
     let r = &replies[1];
     assert!(r.contains("real-def"), "{r}");
-    assert!(!r.contains("commented-out"), "comment text leaked as symbol: {r}");
-    assert!(!r.contains("in-string"), "string text leaked as symbol: {r}");
+    assert!(
+        !r.contains("commented-out"),
+        "comment text leaked as symbol: {r}"
+    );
+    assert!(
+        !r.contains("in-string"),
+        "string text leaked as symbol: {r}"
+    );
 }
 
 /// Malformed input must not crash the server; later requests still work.
@@ -171,7 +202,11 @@ fn t09_malformed_input_does_not_crash() {
     // garbage JSON
     let replies = server.feed(&["this is not json {{{".to_string()]);
     assert_eq!(replies.len(), 1);
-    assert!(replies[0].contains("-32700"), "ParseError expected: {}", replies[0]);
+    assert!(
+        replies[0].contains("-32700"),
+        "ParseError expected: {}",
+        replies[0]
+    );
     // unknown method with id → MethodNotFound; without id → silent drop
     let replies = server.feed(&[
         r#"{"jsonrpc":"2.0","id":9,"method":"workspace/executeCommand","params":{}}"#.to_string(),
@@ -263,7 +298,14 @@ fn t10_workspace_definition_resolves_across_files() {
     let _a_uri = format!("file://{}/a.my", dir.display());
     let b_uri = format!("file://{}/b.my", dir.display());
 
-    let init = request(1, "initialize", &format!(r#"{{"rootUri":{}}}"#, json_string(&format!("file://{}", dir.display()))));
+    let init = request(
+        1,
+        "initialize",
+        &format!(
+            r#"{{"rootUri":{}}}"#,
+            json_string(&format!("file://{}", dir.display()))
+        ),
+    );
     let open = did_open(&b_uri, "(foo 21)\n");
     let mut server = Server::new();
     server.feed(&[raw(&init), raw(&open)]);
@@ -276,8 +318,14 @@ fn t10_workspace_definition_resolves_across_files() {
     let replies = server.feed(&[raw(&request(7, "textDocument/definition", &params))]);
     assert_eq!(replies.len(), 1);
     let r = replies[0].as_str();
-    assert!(r.contains("/a.my"), "cross-file definition must point into a.my: {r}");
-    assert!(r.contains("\"range\""), "definition must carry a range: {r}");
+    assert!(
+        r.contains("/a.my"),
+        "cross-file definition must point into a.my: {r}"
+    );
+    assert!(
+        r.contains("\"range\""),
+        "definition must carry a range: {r}"
+    );
 }
 
 /// Completion offers builtins and local defs filtered by prefix.
@@ -299,14 +347,20 @@ fn t11_completion_offers_builtins_and_local_defs() {
     assert!(r.contains("alpha"), "local def must be offered: {r}");
     // Prefix "al" filters out builtins like "+" but may match none of them;
     // ensure no builtin leaked through the prefix filter.
-    assert!(!r.contains("\"label\":\"+\""), "prefix filter must drop '+': {r}");
+    assert!(
+        !r.contains("\"label\":\"+\""),
+        "prefix filter must drop '+': {r}"
+    );
 
     // Empty prefix → builtins are offered.
     server.feed(&[did_open("file:///w2.my", "\n")]);
     let params2 = r#"{"textDocument":{"uri":"file:///w2.my"},"position":{"line":0,"character":0}}"#;
     let replies2 = server.feed(&[raw(&request(9, "textDocument/completion", params2))]);
     let r2 = replies2[0].as_str();
-    assert!(r2.contains("\"label\":\"+\"") || r2.contains("\"+\""), "builtin + must be offered on empty prefix: {r2}");
+    assert!(
+        r2.contains("\"label\":\"+\"") || r2.contains("\"+\""),
+        "builtin + must be offered on empty prefix: {r2}"
+    );
 
     for (name, value) in Environment::root().snapshot() {
         if matches!(value, Value::Builtin(_)) {
@@ -319,13 +373,13 @@ fn t11_completion_offers_builtins_and_local_defs() {
     }
 
     let mut shadow_server = Server::new();
-    shadow_server.feed(&[did_open("file:///shadow-completion.my", "(def max 42)\n(ma )\n")]);
+    shadow_server.feed(&[did_open(
+        "file:///shadow-completion.my",
+        "(def max 42)\n(ma )\n",
+    )]);
     let shadow_params = r#"{"textDocument":{"uri":"file:///shadow-completion.my"},"position":{"line":1,"character":3}}"#;
-    let shadow_reply = shadow_server.feed(&[raw(&request(
-        10,
-        "textDocument/completion",
-        shadow_params,
-    ))]);
+    let shadow_reply =
+        shadow_server.feed(&[raw(&request(10, "textDocument/completion", shadow_params))]);
     let shadow = &shadow_reply[0];
     assert!(
         shadow.contains("\"label\":\"max\",\"kind\":3,\"detail\":\"local def\""),
@@ -358,7 +412,14 @@ fn t12_references_cross_file_excludes_quoted_data() {
     let dir = m2_workspace();
     let use1 = format!("file://{}/use1.my", dir.display());
 
-    let init = request(1, "initialize", &format!(r#"{{"rootUri":{}}}"#, json_string(&format!("file://{}", dir.display()))));
+    let init = request(
+        1,
+        "initialize",
+        &format!(
+            r#"{{"rootUri":{}}}"#,
+            json_string(&format!("file://{}", dir.display()))
+        ),
+    );
     let open = did_open(&use1, "(target 1)\n");
     let mut server = Server::new();
     server.feed(&[raw(&init), raw(&open)]);
@@ -373,14 +434,24 @@ fn t12_references_cross_file_excludes_quoted_data() {
     // Expect: def in defs.my + usage in use1.my + usage in use2.my line 2.
     assert_eq!(3, r.matches("\"uri\"").count(), "expected 3 locations: {r}");
     assert!(r.contains("defs.my"), "{r}");
-    assert!(!r.contains("quote") || !r.contains("(quote"), "quoted data must be excluded: {r}");
+    assert!(
+        !r.contains("quote") || !r.contains("(quote"),
+        "quoted data must be excluded: {r}"
+    );
 }
 
 #[test]
 fn t13_references_exclude_declaration_when_asked() {
     let dir = m2_workspace();
     let use1 = format!("file://{}/use1.my", dir.display());
-    let init = request(1, "initialize", &format!(r#"{{"rootUri":{}}}"#, json_string(&format!("file://{}", dir.display()))));
+    let init = request(
+        1,
+        "initialize",
+        &format!(
+            r#"{{"rootUri":{}}}"#,
+            json_string(&format!("file://{}", dir.display()))
+        ),
+    );
     let open = did_open(&use1, "(target 1)\n");
     let mut server = Server::new();
     server.feed(&[raw(&init), raw(&open)]);
@@ -391,14 +462,25 @@ fn t13_references_exclude_declaration_when_asked() {
     );
     let replies = server.feed(&[raw(&request(6, "textDocument/references", &params))]);
     let r = replies[0].as_str();
-    assert_eq!(2, r.matches("\"uri\"").count(), "declaration excluded → 2 refs: {r}");
+    assert_eq!(
+        2,
+        r.matches("\"uri\"").count(),
+        "declaration excluded → 2 refs: {r}"
+    );
 }
 
 #[test]
 fn t14_rename_produces_cross_file_edits_and_validates_name() {
     let dir = m2_workspace();
     let use1 = format!("file://{}/use1.my", dir.display());
-    let init = request(1, "initialize", &format!(r#"{{"rootUri":{}}}"#, json_string(&format!("file://{}", dir.display()))));
+    let init = request(
+        1,
+        "initialize",
+        &format!(
+            r#"{{"rootUri":{}}}"#,
+            json_string(&format!("file://{}", dir.display()))
+        ),
+    );
     let open = did_open(&use1, "(target 1)\n");
     let mut server = Server::new();
     server.feed(&[raw(&init), raw(&open)]);
@@ -413,10 +495,16 @@ fn t14_rename_produces_cross_file_edits_and_validates_name() {
     assert!(r.contains("\"changes\""), "{r}");
     // 3 code references: def name + use1 + use2 line 2. The quoted
     // `(quote target)` on use2 line 1 must stay untouched — it is data.
-    assert_eq!(3, r.matches("\"newText\":\"renamed-thing\"").count(),
-        "def + 2 code usages renamed; quoted data excluded: {r}");
+    assert_eq!(
+        3,
+        r.matches("\"newText\":\"renamed-thing\"").count(),
+        "def + 2 code usages renamed; quoted data excluded: {r}"
+    );
     let use2_section = r.split("use2.my").nth(1).unwrap_or("");
-    assert!(use2_section.contains("\"line\":1,"), "use2 edits start at line 1: {r}");
+    assert!(
+        use2_section.contains("\"line\":1,"),
+        "use2 edits start at line 1: {r}"
+    );
     assert!(r.contains("defs.my"), "{r}");
 
     // Invalid name → error response, not a workspace edit.
@@ -426,7 +514,10 @@ fn t14_rename_produces_cross_file_edits_and_validates_name() {
     );
     let replies = server.feed(&[raw(&bad)]);
     let r = replies[0].as_str();
-    assert!(r.contains("\"error\"") || r.contains("-32602"), "invalid name must be rejected: {r}");
+    assert!(
+        r.contains("\"error\"") || r.contains("-32602"),
+        "invalid name must be rejected: {r}"
+    );
 }
 
 #[test]
@@ -470,11 +561,7 @@ fn t15_arity_diagnostics_are_conservative_and_shadow_aware() {
 
     metadata_server.feed(&[did_open("file:///metadata-completion.my", "\n")]);
     let params = r#"{"textDocument":{"uri":"file:///metadata-completion.my"},"position":{"line":0,"character":0}}"#;
-    let completion = metadata_server.feed(&[raw(&request(
-        16,
-        "textDocument/completion",
-        params,
-    ))]);
+    let completion = metadata_server.feed(&[raw(&request(16, "textDocument/completion", params))]);
     assert!(
         completion[0].contains("builtin · (car pair)"),
         "completion must expose the canonical signature: {}",

@@ -59,7 +59,7 @@ macro_rules! log_error {
     };
 }
 
-pub(crate) use log_info;
-pub(crate) use log_warn;
 #[allow(unused_imports)]
 pub(crate) use log_error;
+pub(crate) use log_info;
+pub(crate) use log_warn;

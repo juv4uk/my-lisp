@@ -21,7 +21,9 @@ impl Default for Harness {
 
 impl Harness {
     pub fn new() -> Self {
-        Self { inner: server::Server::new() }
+        Self {
+            inner: server::Server::new(),
+        }
     }
     pub fn feed(&mut self, messages: &[String]) -> Vec<String> {
         let mut out = Vec::new();

@@ -10,13 +10,13 @@ fn install_read_capability() {
 fn linter_gate() {
     install_read_capability();
     let mut session = Session::default();
-    
+
     // Evaluate the libraries directly to load them into the environment
     let core_src = fs::read_to_string("../../lib/core.my").unwrap();
     eval_program(&core_src, &mut session).unwrap();
     let linter_src = fs::read_to_string("../../lib/linter.my").unwrap();
     eval_program(&linter_src, &mut session).unwrap();
-    
+
     // Check if linter.my works by defining the threshold script
     let runner_src = r#"
         (def thresholds (quote ((max-size . 2000) (max-nesting . 30) (max-complexity . 24) (max-globals . 55) (max-effects . 20))))
@@ -49,8 +49,7 @@ fn linter_gate() {
             (check-file "../../lib/content-store.my")
             (check-file "../../lib/reason.my")))
     "#;
-    
-    
+
     match eval_program(runner_src, &mut session) {
         Ok(res) => {
             if !matches!(res.value, my_lisp::Value::Nil) {

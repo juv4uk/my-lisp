@@ -12,11 +12,16 @@ fn main() {
         process::exit(2);
     }
     let source = fs::read(&args[1]).expect("read source");
-    let expressions = parse(std::str::from_utf8(&source).expect("utf-8 source"))
-        .expect("parse source");
+    let expressions =
+        parse(std::str::from_utf8(&source).expect("utf-8 source")).expect("parse source");
     let hash = sha256_source(&source);
     let encoded = fasl_encode(&expressions, &hash);
     fs::write(&args[2], &encoded).expect("write fasl");
-    println!("{} -> {} ({} bytes, {} top-level forms)",
-             args[1], args[2], encoded.len(), expressions.len());
+    println!(
+        "{} -> {} ({} bytes, {} top-level forms)",
+        args[1],
+        args[2],
+        encoded.len(),
+        expressions.len()
+    );
 }

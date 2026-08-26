@@ -21,7 +21,9 @@ fn eval_source(source: &str) -> String {
 
 fn eval_err(source: &str) -> ErrorKind {
     let mut session = session_with_core();
-    eval_program(source, &mut session).expect_err("should fail named").kind
+    eval_program(source, &mut session)
+        .expect_err("should fail named")
+        .kind
 }
 
 #[test]
@@ -51,7 +53,10 @@ fn vectors_are_structurally_equal_across_objects() {
 
 #[test]
 fn nested_elements_compare_structurally() {
-    assert_eq!(eval_source("(eq (vector (list 1 2)) (vector (list 1 2)))"), "t");
+    assert_eq!(
+        eval_source("(eq (vector (list 1 2)) (vector (list 1 2)))"),
+        "t"
+    );
 }
 
 #[test]

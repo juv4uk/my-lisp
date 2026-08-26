@@ -424,10 +424,7 @@ fn run_multi_supports_test_conditions() {
                       (list (quote test) (list (quote >) (logic-var (quote x)) 5))))
           (list (quote (num 3)) (quote (num 10))))
     "#;
-    assert_eq!(
-        eval_forward(source),
-        "((big 10) (num 3) (num 10))"
-    );
+    assert_eq!(eval_forward(source), "((big 10) (num 3) (num 10))");
 }
 
 #[test]

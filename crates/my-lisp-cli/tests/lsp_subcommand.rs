@@ -54,11 +54,15 @@ fn my_lisp_lsp_subcommand_serves_lsp_over_stdio() {
         .expect("spawn my-lisp lsp");
 
     let mut stdin = child.stdin.take().unwrap();
-    let mut reader = Reader { inner: BufReader::new(child.stdout.take().unwrap()) };
+    let mut reader = Reader {
+        inner: BufReader::new(child.stdout.take().unwrap()),
+    };
 
     // 1. initialize
     stdin
-        .write_all(&frame(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#))
+        .write_all(&frame(
+            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
+        ))
         .unwrap();
     let response = reader.read_message();
     assert!(response.contains("\"capabilities\""), "{response}");
@@ -89,10 +93,17 @@ fn my_lisp_lsp_subcommand_serves_lsp_over_stdio() {
     assert!(symbols.contains("\"name\":\"answer\""), "{symbols}");
 
     // clean shutdown + exit
-    stdin.write_all(&frame(r#"{"jsonrpc":"2.0","id":3,"method":"shutdown"}"#)).unwrap();
+    stdin
+        .write_all(&frame(r#"{"jsonrpc":"2.0","id":3,"method":"shutdown"}"#))
+        .unwrap();
     let shutdown = reader.read_message();
-    assert!(shutdown.contains("\"id\":3") && shutdown.contains("\"result\":null"), "{shutdown}");
-    stdin.write_all(&frame(r#"{"jsonrpc":"2.0","method":"exit"}"#)).unwrap();
+    assert!(
+        shutdown.contains("\"id\":3") && shutdown.contains("\"result\":null"),
+        "{shutdown}"
+    );
+    stdin
+        .write_all(&frame(r#"{"jsonrpc":"2.0","method":"exit"}"#))
+        .unwrap();
     drop(stdin);
     assert!(child.wait().expect("wait").success(), "clean exit");
 }

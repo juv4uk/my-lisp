@@ -26,7 +26,9 @@ fn alloc_ports(n: u16) -> u16 {
 }
 
 fn data_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join("swarm-node-itest").join(format!("{name}-{}", std::process::id()));
+    let dir = std::env::temp_dir()
+        .join("swarm-node-itest")
+        .join(format!("{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     dir
 }
@@ -53,12 +55,17 @@ fn spawn(port: u16, node_id: &str, data_dir: &Path, connect: Option<u16>) -> Nod
     }
     if let Ok(logdir) = std::env::var("SWARM_TEST_LOGS") {
         let _ = std::fs::create_dir_all(&logdir);
-        let f = std::fs::File::create(std::path::Path::new(&logdir).join(format!("{node_id}-{port}.log"))).unwrap();
+        let f = std::fs::File::create(
+            std::path::Path::new(&logdir).join(format!("{node_id}-{port}.log")),
+        )
+        .unwrap();
         cmd.stdout(f.try_clone().unwrap()).stderr(f);
     } else {
         cmd.stdout(Stdio::null()).stderr(Stdio::null());
     }
-    let child = cmd.spawn().expect("failed to spawn swarm-node — did `cargo build -p swarm-node` run first?");
+    let child = cmd
+        .spawn()
+        .expect("failed to spawn swarm-node — did `cargo build -p swarm-node` run first?");
     let node = Node { child };
     wait_for_port(port);
     node
@@ -87,7 +94,9 @@ fn request(port: u16, msg: &str) -> String {
             Err(e) => panic!("could not connect to port {port}: {e}"),
         }
     };
-    stream.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(3)))
+        .unwrap();
     writeln!(stream, "{msg}").unwrap();
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
@@ -120,25 +129,44 @@ fn anti_entropy_sync_and_live_push_event() {
     let _a = spawn(port_a, "node-a", &data_dir("ae-a"), None);
     // M1.1a: emitted ids now embed the node's incarnation id —
     // `node-a:<incarnation>:N`. Assert the shape instead of a literal.
-    let e1 = request(port_a, "(emit (type evidence-created) (payload (artifact \"x.my\")))");
-    assert!(e1.starts_with("(ok (id node-a:") && e1.ends_with(":1))"), "unexpected first emit id: {e1}");
-    let e2 = request(port_a, "(emit (type evidence-created) (payload (artifact \"y.my\")))");
+    let e1 = request(
+        port_a,
+        "(emit (type evidence-created) (payload (artifact \"x.my\")))",
+    );
+    assert!(
+        e1.starts_with("(ok (id node-a:") && e1.ends_with(":1))"),
+        "unexpected first emit id: {e1}"
+    );
+    let e2 = request(
+        port_a,
+        "(emit (type evidence-created) (payload (artifact \"y.my\")))",
+    );
     assert!(e2.ends_with(":2))"), "unexpected second emit id: {e2}");
 
     // B connects after A already has 2 events -- must anti-entropy sync them.
     let _b = spawn(port_b, "node-b", &data_dir("ae-b"), Some(port_a));
-    let synced = eventually(port_b, "(list-task-state)", Duration::from_secs(2), |r| !r.is_empty());
+    let synced = eventually(port_b, "(list-task-state)", Duration::from_secs(2), |r| {
+        !r.is_empty()
+    });
     let _ = synced; // list-task-state is task-only; just confirm B is responsive post-sync below
 
     // A live-pushes a 3rd event; B must receive it without any resync call.
-    let e3 = request(port_a, "(emit (type evidence-created) (payload (artifact \"z.my\")))");
+    let e3 = request(
+        port_a,
+        "(emit (type evidence-created) (payload (artifact \"z.my\")))",
+    );
     assert!(e3.ends_with(":3))"), "unexpected third emit id: {e3}");
 
     // No direct way to read the raw journal over the wire, so prove sync worked
     // indirectly via a task defined on A becoming visible on B.
     request(port_a, "(define-task (task PROOF) (priority 1) (capabilities ()) (depends-on ()) (description \"sync worked\"))");
-    let seen_on_b = eventually(port_b, "(list-task-state)", Duration::from_secs(2), |r| r.contains("PROOF"));
-    assert!(seen_on_b.contains("PROOF"), "task defined on A never propagated to B: {seen_on_b}");
+    let seen_on_b = eventually(port_b, "(list-task-state)", Duration::from_secs(2), |r| {
+        r.contains("PROOF")
+    });
+    assert!(
+        seen_on_b.contains("PROOF"),
+        "task defined on A never propagated to B: {seen_on_b}"
+    );
 }
 
 #[test]
@@ -149,26 +177,53 @@ fn quorum_claim_fencing_and_stale_rejection() {
     let _a = spawn(port_a, "node-a", &data_dir("qf-a"), None);
     let _b = spawn(port_b, "node-b", &data_dir("qf-b"), Some(port_a));
     let _c = spawn(port_c, "node-c", &data_dir("qf-c"), Some(port_a));
-    eventually(port_c, "(presence)", Duration::from_secs(2), |r| r.contains("node-a") && r.contains("node-b"));
+    eventually(port_c, "(presence)", Duration::from_secs(2), |r| {
+        r.contains("node-a") && r.contains("node-b")
+    });
 
     let claimed = request(port_a, "(claim-task (task T1))");
-    assert!(claimed.starts_with("(ok"), "expected quorum claim to succeed: {claimed}");
+    assert!(
+        claimed.starts_with("(ok"),
+        "expected quorum claim to succeed: {claimed}"
+    );
 
     // Give B's own copy time to observe A's commit via gossip before B tries
     // to claim -- otherwise B legitimately races A (M0.6 correctly rejects
     // that race via voter promises, but that's a *different* assertion than
     // "B saw the commit and backed off", which is what this test checks).
-    let duplicate = eventually(port_b, "(claim-task (task T1))", Duration::from_secs(2), |r| r.contains("already claimed"));
-    assert!(duplicate.contains("already claimed by `node-a`"), "expected duplicate claim rejection: {duplicate}");
+    let duplicate = eventually(
+        port_b,
+        "(claim-task (task T1))",
+        Duration::from_secs(2),
+        |r| r.contains("already claimed"),
+    );
+    assert!(
+        duplicate.contains("already claimed by `node-a`"),
+        "expected duplicate claim rejection: {duplicate}"
+    );
 
     let stale = request(port_b, "(complete-task (task T1) (generation 99))");
-    assert!(stale.contains("STALE"), "expected STALE rejection for wrong generation: {stale}");
+    assert!(
+        stale.contains("STALE"),
+        "expected STALE rejection for wrong generation: {stale}"
+    );
 
     let completed = request(port_a, "(complete-task (task T1) (generation 1))");
-    assert!(completed.starts_with("(ok"), "expected completion with correct generation to succeed: {completed}");
+    assert!(
+        completed.starts_with("(ok"),
+        "expected completion with correct generation to succeed: {completed}"
+    );
 
-    let after_done = eventually(port_c, "(claim-task (task T1))", Duration::from_secs(2), |r| r.contains("already completed"));
-    assert!(after_done.contains("already completed"), "expected claim on completed task to be rejected: {after_done}");
+    let after_done = eventually(
+        port_c,
+        "(claim-task (task T1))",
+        Duration::from_secs(2),
+        |r| r.contains("already completed"),
+    );
+    assert!(
+        after_done.contains("already completed"),
+        "expected claim on completed task to be rejected: {after_done}"
+    );
 }
 
 #[test]
@@ -181,8 +236,13 @@ fn gossip_peer_discovery_reaches_full_mesh() {
     // C connects ONLY to A -- must discover and dial B via gossip through A.
     let _c = spawn(port_c, "node-c", &data_dir("gd-c"), Some(port_a));
 
-    let c_presence = eventually(port_c, "(presence)", Duration::from_secs(3), |r| r.contains("node-b"));
-    assert!(c_presence.contains("node-b"), "node-c never gossip-discovered node-b: {c_presence}");
+    let c_presence = eventually(port_c, "(presence)", Duration::from_secs(3), |r| {
+        r.contains("node-b")
+    });
+    assert!(
+        c_presence.contains("node-b"),
+        "node-c never gossip-discovered node-b: {c_presence}"
+    );
 }
 
 #[test]
@@ -200,10 +260,16 @@ fn compaction_preserves_derived_state() {
     let before = request(port, "(list-task-state)");
 
     let compacted = request(port, "(compact)");
-    assert!(compacted.starts_with("(ok"), "compact should succeed: {compacted}");
+    assert!(
+        compacted.starts_with("(ok"),
+        "compact should succeed: {compacted}"
+    );
 
     let after = request(port, "(list-task-state)");
-    assert_eq!(before, after, "derived state must be byte-identical before/after compaction");
+    assert_eq!(
+        before, after,
+        "derived state must be byte-identical before/after compaction"
+    );
 }
 
 #[test]
@@ -214,29 +280,55 @@ fn dynamic_membership_voter_quorum_and_status() {
     let _a = spawn(port_a, "node-a", &data_dir("dm-a"), None);
     let _b = spawn(port_b, "node-b", &data_dir("dm-b"), Some(port_a));
     let _c = spawn(port_c, "node-c", &data_dir("dm-c"), Some(port_a));
-    eventually(port_c, "(presence)", Duration::from_secs(2), |r| r.contains("node-b"));
+    eventually(port_c, "(presence)", Duration::from_secs(2), |r| {
+        r.contains("node-b")
+    });
 
     for port in [port_a, port_b, port_c] {
         let r = request(port, "(join (capabilities (x)) (roles (voter)))");
-        assert!(r.starts_with("(ok"), "join should succeed on port {port}: {r}");
+        assert!(
+            r.starts_with("(ok"),
+            "join should succeed on port {port}: {r}"
+        );
     }
 
     // A worker joins mid-session through just A, and must reach node-b/node-c via gossip.
     let _w = spawn(port_w, "worker-1", &data_dir("dm-w"), Some(port_a));
-    eventually(port_w, "(presence)", Duration::from_secs(2), |r| r.contains("node-b") && r.contains("node-c"));
+    eventually(port_w, "(presence)", Duration::from_secs(2), |r| {
+        r.contains("node-b") && r.contains("node-c")
+    });
     request(port_w, "(join (capabilities (docs)) (roles (worker)))");
 
-    let members = eventually(port_a, "(list-members)", Duration::from_secs(2), |r| r.contains("worker-1"));
-    assert!(members.contains("worker-1"), "worker never showed up in list-members: {members}");
+    let members = eventually(port_a, "(list-members)", Duration::from_secs(2), |r| {
+        r.contains("worker-1")
+    });
+    assert!(
+        members.contains("worker-1"),
+        "worker never showed up in list-members: {members}"
+    );
 
     // Worker's own claim should only need 2/3 VOTER votes, not counting itself.
     request(port_w, "(define-task (task WORK) (priority 1) (capabilities ()) (depends-on ()) (description \"anyone\"))");
-    let claimed = eventually(port_w, "(claim-task (task WORK))", Duration::from_secs(2), |r| r.starts_with("(ok") || r.contains("error"));
-    assert!(claimed.contains("2/3"), "expected a 2/3 voter quorum, got: {claimed}");
+    let claimed = eventually(
+        port_w,
+        "(claim-task (task WORK))",
+        Duration::from_secs(2),
+        |r| r.starts_with("(ok") || r.contains("error"),
+    );
+    assert!(
+        claimed.contains("2/3"),
+        "expected a 2/3 voter quorum, got: {claimed}"
+    );
 
     let status = request(port_a, "(status)");
-    assert!(status.starts_with("(status"), "status op malformed: {status}");
-    assert!(status.contains("(synced t)"), "node-a should report itself synced: {status}");
+    assert!(
+        status.starts_with("(status"),
+        "status op malformed: {status}"
+    );
+    assert!(
+        status.contains("(synced t)"),
+        "node-a should report itself synced: {status}"
+    );
 }
 
 #[test]
@@ -247,15 +339,23 @@ fn rejects_duplicate_node_id_claim_from_a_second_connection() {
     let _a = spawn(port_a, "node-a", &data_dir("dup-a"), None);
     let _b = spawn(port_b, "node-b", &data_dir("dup-b"), Some(port_a));
     // Confirm the real node-b is live on A before trying to impersonate it.
-    eventually(port_a, "(presence)", Duration::from_secs(2), |r| r.contains("node-b"));
+    eventually(port_a, "(presence)", Duration::from_secs(2), |r| {
+        r.contains("node-b")
+    });
 
     // A raw connection claiming to already-live node-b's identity, from
     // somewhere that is NOT the real node-b -- simulates a spoofing
     // attempt (or a genuine but confused duplicate) rather than a normal
     // reconnect. Must get no peer-welcome back.
     let mut spoof = TcpStream::connect(("127.0.0.1", port_a)).unwrap();
-    spoof.set_read_timeout(Some(Duration::from_millis(500))).unwrap();
-    writeln!(spoof, "(peer-hello (protocol swarm/1) (node node-b) (epoch 0) (project spoof) (listen-port 0))").unwrap();
+    spoof
+        .set_read_timeout(Some(Duration::from_millis(500)))
+        .unwrap();
+    writeln!(
+        spoof,
+        "(peer-hello (protocol swarm/1) (node node-b) (epoch 0) (project spoof) (listen-port 0))"
+    )
+    .unwrap();
     let mut reply = String::new();
     let mut reader = BufReader::new(&spoof);
     let read_result = reader.read_line(&mut reply);
@@ -266,7 +366,10 @@ fn rejects_duplicate_node_id_claim_from_a_second_connection() {
 
     // The real node-b must still be the one registered -- not evicted.
     let presence = request(port_a, "(presence)");
-    assert!(presence.contains("node-b"), "real node-b should still be present after a rejected spoof attempt: {presence}");
+    assert!(
+        presence.contains("node-b"),
+        "real node-b should still be present after a rejected spoof attempt: {presence}"
+    );
 }
 
 #[test]
@@ -276,18 +379,41 @@ fn metrics_reports_event_count_peer_count_and_synced() {
 
     let dir_a = data_dir("metrics-a");
     let _a = spawn(port_a, "node-a", &dir_a, None);
-    request(port_a, "(emit (type evidence-created) (payload (artifact \"x.my\")))");
-    request(port_a, "(emit (type evidence-created) (payload (artifact \"y.my\")))");
+    request(
+        port_a,
+        "(emit (type evidence-created) (payload (artifact \"x.my\")))",
+    );
+    request(
+        port_a,
+        "(emit (type evidence-created) (payload (artifact \"y.my\")))",
+    );
 
     let _b = spawn(port_b, "node-b", &data_dir("metrics-b"), Some(port_a));
-    eventually(port_a, "(metrics)", Duration::from_secs(2), |r| r.contains("(peer-count 1)"));
+    eventually(port_a, "(metrics)", Duration::from_secs(2), |r| {
+        r.contains("(peer-count 1)")
+    });
 
     let metrics = request(port_a, "(metrics)");
-    assert!(metrics.starts_with("(metrics"), "metrics op malformed: {metrics}");
-    assert!(metrics.contains("(event-count 2)"), "expected 2 events after 2 emits: {metrics}");
-    assert!(metrics.contains("(peer-count 1)"), "expected 1 connected peer (node-b): {metrics}");
-    assert!(metrics.contains("(synced t)"), "node-a with no --connect should be trivially synced: {metrics}");
-    assert!(metrics.contains("(node node-a)"), "metrics should report the caller's own node-id: {metrics}");
+    assert!(
+        metrics.starts_with("(metrics"),
+        "metrics op malformed: {metrics}"
+    );
+    assert!(
+        metrics.contains("(event-count 2)"),
+        "expected 2 events after 2 emits: {metrics}"
+    );
+    assert!(
+        metrics.contains("(peer-count 1)"),
+        "expected 1 connected peer (node-b): {metrics}"
+    );
+    assert!(
+        metrics.contains("(synced t)"),
+        "node-a with no --connect should be trivially synced: {metrics}"
+    );
+    assert!(
+        metrics.contains("(node node-a)"),
+        "metrics should report the caller's own node-id: {metrics}"
+    );
     let dir_a_str = dir_a.to_string_lossy().replace('\\', "/");
     let metrics_normalized = metrics.replace('\\', "/");
     assert!(
@@ -306,10 +432,20 @@ fn help_flag_prints_usage_and_exits_without_starting_a_server() {
             .arg(flag)
             .output()
             .unwrap_or_else(|e| panic!("failed to run swarm-node {flag}: {e}"));
-        assert!(output.status.success(), "swarm-node {flag} should exit 0, got {:?}", output.status);
+        assert!(
+            output.status.success(),
+            "swarm-node {flag} should exit 0, got {:?}",
+            output.status
+        );
         let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("USAGE"), "{flag} output should contain usage text, got: {stdout}");
-        assert!(!stdout.contains("listening on"), "{flag} must not start a server: {stdout}");
+        assert!(
+            stdout.contains("USAGE"),
+            "{flag} output should contain usage text, got: {stdout}"
+        );
+        assert!(
+            !stdout.contains("listening on"),
+            "{flag} must not start a server: {stdout}"
+        );
     }
 }
 
@@ -327,7 +463,10 @@ fn define_task_is_idempotent_for_an_identical_redefinition() {
     fn event_count(port: u16) -> u64 {
         let metrics = request(port, "(metrics)");
         let marker = "(event-count ";
-        let start = metrics.find(marker).expect("metrics should report event-count") + marker.len();
+        let start = metrics
+            .find(marker)
+            .expect("metrics should report event-count")
+            + marker.len();
         let rest = &metrics[start..];
         let end = rest.find(')').expect("event-count should be closed");
         rest[..end].parse().expect("event-count should be a number")
@@ -336,28 +475,50 @@ fn define_task_is_idempotent_for_an_identical_redefinition() {
     let define = "(define-task (task DUP) (priority 3) (capabilities (a b)) (depends-on ()) (blocked-by ()) (description \"same every time\"))";
 
     let first = request(port, define);
-    assert!(first.starts_with("(ok"), "first define-task should succeed: {first}");
+    assert!(
+        first.starts_with("(ok"),
+        "first define-task should succeed: {first}"
+    );
     let after_first = event_count(port);
 
     // Two more identical calls, as if a peer re-broadcast the same
     // define-task (or retried after a timeout) — neither should grow the
     // journal.
     let second = request(port, define);
-    assert!(second.starts_with("(ok"), "repeat define-task should still report ok: {second}");
-    assert!(second.contains("(unchanged t)"), "repeat define-task should report unchanged: {second}");
+    assert!(
+        second.starts_with("(ok"),
+        "repeat define-task should still report ok: {second}"
+    );
+    assert!(
+        second.contains("(unchanged t)"),
+        "repeat define-task should report unchanged: {second}"
+    );
     let third = request(port, define);
-    assert!(third.contains("(unchanged t)"), "repeat define-task should report unchanged: {third}");
+    assert!(
+        third.contains("(unchanged t)"),
+        "repeat define-task should report unchanged: {third}"
+    );
 
     let after_repeats = event_count(port);
-    assert_eq!(after_first, after_repeats, "identical redefinitions must not append new events");
+    assert_eq!(
+        after_first, after_repeats,
+        "identical redefinitions must not append new events"
+    );
 
     // A genuinely different redefinition (priority changed) must still
     // append normally — this isn't a blanket "only define once" guard.
     let changed = "(define-task (task DUP) (priority 5) (capabilities (a b)) (depends-on ()) (blocked-by ()) (description \"same every time\"))";
     let fourth = request(port, changed);
-    assert!(!fourth.contains("(unchanged t)"), "a genuinely different redefinition must not be reported unchanged: {fourth}");
+    assert!(
+        !fourth.contains("(unchanged t)"),
+        "a genuinely different redefinition must not be reported unchanged: {fourth}"
+    );
     let after_change = event_count(port);
-    assert_eq!(after_repeats + 1, after_change, "a real change must append exactly one new event");
+    assert_eq!(
+        after_repeats + 1,
+        after_change,
+        "a real change must append exactly one new event"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -368,8 +529,14 @@ fn define_task_is_idempotent_for_an_identical_redefinition() {
 fn read_incarnation(dir: &Path) -> String {
     let text = std::fs::read_to_string(dir.join("node.my")).expect("node.my must exist");
     let marker = "(incarnation ";
-    let start = text.find(marker).expect("node.my must contain an incarnation field") + marker.len();
-    let end = text[start..].find(')').expect("incarnation field must be closed") + start;
+    let start = text
+        .find(marker)
+        .expect("node.my must contain an incarnation field")
+        + marker.len();
+    let end = text[start..]
+        .find(')')
+        .expect("incarnation field must be closed")
+        + start;
     text[start..end].trim_matches('"').to_string()
 }
 
@@ -402,12 +569,9 @@ fn reincarnation_does_not_collide_and_anti_entropy_converges() {
     let inc_x = read_incarnation(&a_dir);
     // Wait until the mesh link is actually up — a define issued before the
     // handshake completes would only ever live in the local journal.
-    eventually(
-        port_a,
-        "(metrics)",
-        Duration::from_secs(3),
-        |r| r.contains("(peer-count 1)"),
-    );
+    eventually(port_a, "(metrics)", Duration::from_secs(3), |r| {
+        r.contains("(peer-count 1)")
+    });
     assert!(
         request(port_a, "(define-task (task T1) (priority 5) (capabilities ()) (depends-on ()) (description \"from incarnation X\"))").starts_with("(ok"),
         "T1 define failed"
@@ -430,23 +594,20 @@ fn reincarnation_does_not_collide_and_anti_entropy_converges() {
 
     // Wait for the bootstrap to notice X is gone, or its duplicate-live
     // identity guard would reject Y's handshake as a spoof of X.
-    eventually(
-        port_boot,
-        "(metrics)",
-        Duration::from_secs(5),
-        |r| r.contains("(peer-count 0)"),
-    );
+    eventually(port_boot, "(metrics)", Duration::from_secs(5), |r| {
+        r.contains("(peer-count 0)")
+    });
 
     // Incarnation Y of the same node-id: define T2 (its seq restarts at 1).
     let y = spawn(port_a, "wanderer", &a_dir, Some(port_boot));
     let inc_y = read_incarnation(&a_dir);
-    assert_ne!(inc_x, inc_y, "destroying the data-dir MUST produce a new incarnation");
-    eventually(
-        port_a,
-        "(metrics)",
-        Duration::from_secs(3),
-        |r| r.contains("(peer-count 1)"),
+    assert_ne!(
+        inc_x, inc_y,
+        "destroying the data-dir MUST produce a new incarnation"
     );
+    eventually(port_a, "(metrics)", Duration::from_secs(3), |r| {
+        r.contains("(peer-count 1)")
+    });
     assert!(
         request(port_a, "(define-task (task T2) (priority 5) (capabilities ()) (depends-on ()) (description \"from incarnation Y\"))").starts_with("(ok"),
         "T2 define failed"
@@ -460,8 +621,14 @@ fn reincarnation_does_not_collide_and_anti_entropy_converges() {
         Duration::from_secs(3),
         |r| r.contains("T1") && r.contains("T2"),
     );
-    assert!(boot_view.contains("T1"), "bootstrap lost incarnation-X task T1: {boot_view}");
-    assert!(boot_view.contains("T2"), "bootstrap lost incarnation-Y task T2: {boot_view}");
+    assert!(
+        boot_view.contains("T1"),
+        "bootstrap lost incarnation-X task T1: {boot_view}"
+    );
+    assert!(
+        boot_view.contains("T2"),
+        "bootstrap lost incarnation-Y task T2: {boot_view}"
+    );
 
     // Bidirectional convergence (review finding F5): Y itself must relearn
     // T1 — an event issued by its own PREVIOUS incarnation — from the
@@ -470,31 +637,34 @@ fn reincarnation_does_not_collide_and_anti_entropy_converges() {
     // serves the full X stream, and Y's has(wanderer, inc_x, k) = false
     // applies it. Pre-M1.1a this was impossible: the shared (node, seq)
     // made boot believe Y was already caught up.
-    let y_view = eventually(
-        port_a,
-        "(list-task-state)",
-        Duration::from_secs(3),
-        |r| r.contains("T1"),
+    let y_view = eventually(port_a, "(list-task-state)", Duration::from_secs(3), |r| {
+        r.contains("T1")
+    });
+    assert!(
+        y_view.contains("T1"),
+        "reincarnated node never relearned its previous incarnation's task T1: {y_view}"
     );
-    assert!(y_view.contains("T1"), "reincarnated node never relearned its previous incarnation's task T1: {y_view}");
 
     // And a THIRD node joining late must see both lifetimes' tasks purely
     // through gossip/anti-entropy.
     drop(y);
     let base2 = alloc_ports(1);
     let c = spawn(base2, "latecomer", &data_dir("reinc-c"), Some(port_boot));
-    let c_view = eventually(
-        base2,
-        "(list-task-state)",
-        Duration::from_secs(3),
-        |r| r.contains("T1") && r.contains("T2"),
+    let c_view = eventually(base2, "(list-task-state)", Duration::from_secs(3), |r| {
+        r.contains("T1") && r.contains("T2")
+    });
+    assert!(
+        c_view.contains("T1") && c_view.contains("T2"),
+        "latecomer never converged on both lifetimes' tasks: {c_view}"
     );
-    assert!(c_view.contains("T1") && c_view.contains("T2"), "latecomer never converged on both lifetimes' tasks: {c_view}");
 
     // Sanity: both lifetimes' tasks visible; the logical node-id appears in
     // presence (it never joined, so membership stays empty).
     let status = request(port_boot, "(status)");
-    assert!(status.contains("T1") && status.contains("T2"), "bootstrap status lost tasks: {status}");
+    assert!(
+        status.contains("T1") && status.contains("T2"),
+        "bootstrap status lost tasks: {status}"
+    );
     drop(c);
     drop(boot);
 }
@@ -509,23 +679,38 @@ fn restart_preserves_incarnation_epoch_increments_seq_continues() {
 
     let mut n1 = spawn(port, "steady", &dir, None);
     let inc_1 = read_incarnation(&dir);
-    let e1 = request(port, "(emit (type evidence-created) (payload (artifact \"one\")))");
+    let e1 = request(
+        port,
+        "(emit (type evidence-created) (payload (artifact \"one\")))",
+    );
     assert!(e1.ends_with(":1))"), "first emit should be seq 1: {e1}");
     kill(&mut n1);
     drop(n1);
 
     let mut n2 = spawn(port, "steady", &dir, None);
     let inc_2 = read_incarnation(&dir);
-    assert_eq!(inc_1, inc_2, "restart without data-dir loss must KEEP the incarnation");
-    let e2 = request(port, "(emit (type evidence-created) (payload (artifact \"two\")))");
-    assert!(e2.ends_with(":2))"), "restart must CONTINUE the sequence, not reset it: {e2}");
+    assert_eq!(
+        inc_1, inc_2,
+        "restart without data-dir loss must KEEP the incarnation"
+    );
+    let e2 = request(
+        port,
+        "(emit (type evidence-created) (payload (artifact \"two\")))",
+    );
+    assert!(
+        e2.ends_with(":2))"),
+        "restart must CONTINUE the sequence, not reset it: {e2}"
+    );
 
     let epoch_text = std::fs::read_to_string(dir.join("node.my")).unwrap();
     let epoch_marker = "(epoch ";
     let start = epoch_text.find(epoch_marker).unwrap() + epoch_marker.len();
     let end = epoch_text[start..].find(')').unwrap() + start;
     let epoch: u64 = epoch_text[start..end].parse().unwrap();
-    assert_eq!(epoch, 1, "two process starts => epoch 1 (0-indexed): {epoch_text}");
+    assert_eq!(
+        epoch, 1,
+        "two process starts => epoch 1 (0-indexed): {epoch_text}"
+    );
     kill(&mut n2);
 }
 
@@ -545,37 +730,62 @@ fn task_origin_provenance_flows_through() {
     // 1. explicit origin via define-task
     request(port, "(define-task (task ORIG-A) (priority 5) (capabilities ()) (depends-on ()) (origin cml) (description \"owned by cml\"))");
     let a = request(port, "(task-def (task ORIG-A))");
-    assert!(a.contains("(origin cml)"), "define-task origin not visible in task-def: {a}");
+    assert!(
+        a.contains("(origin cml)"),
+        "define-task origin not visible in task-def: {a}"
+    );
 
     // 2. no origin => unresolved (empty list, not an atom)
     request(port, "(define-task (task ORIG-B) (priority 5) (capabilities ()) (depends-on ()) (description \"no owner\"))");
     let b = request(port, "(task-def (task ORIG-B))");
-    assert!(b.contains("(origin ())") || b.contains("(origin nil)"), "unresolved origin must render empty: {b}");
+    assert!(
+        b.contains("(origin ())") || b.contains("(origin nil)"),
+        "unresolved origin must render empty: {b}"
+    );
     assert!(!b.contains("(origin cml)"));
 
     // 3. sync-tasks: per-task (origin . x) wins over msg-level default
     let f = dir.join("tasks_with_origin.my");
-    std::fs::write(&f, r#"
+    std::fs::write(
+        &f,
+        r#"
 ((kind . tasks-my)
  (tasks .
   (("ORIG-C" . ((priority . 4) (origin . fpga-lisp) (done . ())))
    ("ORIG-D" . ((priority . 3) (done . ()))))))
-"#).unwrap();
-    let resp = request(port, &format!(r#"(sync-tasks (file "{}") (origin my-idea))"#, f.display()));
+"#,
+    )
+    .unwrap();
+    let resp = request(
+        port,
+        &format!(r#"(sync-tasks (file "{}") (origin my-idea))"#, f.display()),
+    );
     assert!(resp.starts_with("(ok"), "sync-tasks failed: {resp}");
     let c = request(port, "(task-def (task ORIG-C))");
-    assert!(c.contains("(origin fpga-lisp)"), "per-task origin must beat msg default: {c}");
+    assert!(
+        c.contains("(origin fpga-lisp)"),
+        "per-task origin must beat msg default: {c}"
+    );
     let d = request(port, "(task-def (task ORIG-D))");
-    assert!(d.contains("(origin my-idea)"), "msg-level origin must fill undeclared tasks: {d}");
+    assert!(
+        d.contains("(origin my-idea)"),
+        "msg-level origin must fill undeclared tasks: {d}"
+    );
 
     // 4. unknown task => defined nil
     let none = request(port, "(task-def (task NO-SUCH))");
-    assert!(none.contains("(defined nil)"), "unknown task must report undefined: {none}");
+    assert!(
+        none.contains("(defined nil)"),
+        "unknown task must report undefined: {none}"
+    );
 
     // 5. next-best-action exposes origin too
     let nba = request(port, "(next-best-action (capabilities ()))");
     if nba.starts_with("(next-best-action (task") && nba.contains("ORIG-C") {
-        assert!(nba.contains("(origin fpga-lisp)"), "NBA should expose origin: {nba}");
+        assert!(
+            nba.contains("(origin fpga-lisp)"),
+            "NBA should expose origin: {nba}"
+        );
     }
 }
 
@@ -584,7 +794,13 @@ fn task_origin_provenance_flows_through() {
 // silent refusal, and catch-up trains that no longer starve the heartbeat.
 // ---------------------------------------------------------------------------
 
-fn spawn_with_env(port: u16, node_id: &str, data_dir: &Path, connect: Option<u16>, deadline_ms: u64) -> Node {
+fn spawn_with_env(
+    port: u16,
+    node_id: &str,
+    data_dir: &Path,
+    connect: Option<u16>,
+    deadline_ms: u64,
+) -> Node {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_swarm-node"));
     cmd.arg("--port").arg(port.to_string());
     cmd.arg("--node-id").arg(node_id);
@@ -618,7 +834,8 @@ fn silent_inbound_socket_is_closed_after_hello_deadline() {
     let start = Instant::now();
     let mut saw_reply_after_close = false;
     while start.elapsed() < Duration::from_secs(5) {
-        if request(ports, "(metrics)").contains("metrics") && start.elapsed() > Duration::from_millis(700)
+        if request(ports, "(metrics)").contains("metrics")
+            && start.elapsed() > Duration::from_millis(700)
         {
             saw_reply_after_close = true;
             break;
@@ -626,7 +843,10 @@ fn silent_inbound_socket_is_closed_after_hello_deadline() {
         std::thread::sleep(Duration::from_millis(100));
     }
     drop(dead);
-    assert!(saw_reply_after_close, "node stopped answering after silent socket window");
+    assert!(
+        saw_reply_after_close,
+        "node stopped answering after silent socket window"
+    );
 }
 
 /// Fix A, initiator side: dialing a listener that accepts but never says
@@ -688,7 +908,10 @@ fn large_backlog_sync_converges_without_stale_close() {
     let _a = spawn(a_port, "backlog-a", &dir.join("a"), None);
 
     for i in 0..1200 {
-        let r = request(a_port, &(format!("(define-task (task BK-{i}) (priority 1))")));
+        let r = request(
+            a_port,
+            &(format!("(define-task (task BK-{i}) (priority 1))")),
+        );
         assert!(r.starts_with("(ok"), "define failed at {i}: {r}");
     }
 
@@ -710,7 +933,10 @@ fn large_backlog_sync_converges_without_stale_close() {
         if synced && peers >= 1 {
             break;
         }
-        assert!(Instant::now() < deadline, "sync did not converge in 30s: {m}");
+        assert!(
+            Instant::now() < deadline,
+            "sync did not converge in 30s: {m}"
+        );
         std::thread::sleep(Duration::from_millis(200));
     }
 
@@ -744,7 +970,9 @@ fn evict_marks_dead_member_absent_everywhere() {
     let mut victim = spawn(victim_port, "ghost-9", &dir.join("g"), Some(ports));
 
     // ghost joins from ITS own connection
-    assert!(request(victim_port, "(join (capabilities (test)) (roles (worker)))").starts_with("(ok"));
+    assert!(
+        request(victim_port, "(join (capabilities (test)) (roles (worker)))").starts_with("(ok")
+    );
 
     // Wait until the join fact has propagated to A before evicting —
     // otherwise the late-arriving join would re-mark the ghost present.
@@ -761,7 +989,10 @@ fn evict_marks_dead_member_absent_everywhere() {
         if seg.contains("t") {
             break;
         }
-        assert!(Instant::now() < deadline, "ghost-9 never appeared present on A");
+        assert!(
+            Instant::now() < deadline,
+            "ghost-9 never appeared present on A"
+        );
         std::thread::sleep(Duration::from_millis(100));
     }
 
@@ -783,7 +1014,10 @@ fn evict_marks_dead_member_absent_everywhere() {
         if seg.contains("nil") {
             break;
         }
-        assert!(Instant::now() < deadline, "ghost-9 still present after evict");
+        assert!(
+            Instant::now() < deadline,
+            "ghost-9 still present after evict"
+        );
         std::thread::sleep(Duration::from_millis(100));
     }
 

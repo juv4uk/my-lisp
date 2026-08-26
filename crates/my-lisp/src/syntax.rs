@@ -153,7 +153,9 @@ pub(crate) mod fasl {
             // Runtime-constructed buffers are not source syntax; a program
             // containing one cannot come from lib/*.my text, so snapshots
             // refuse them and callers fall back to parsing.
-            ExprKind::NumericBuffer(_) => unreachable!("NumericBuffer is runtime-only, never parsed"),
+            ExprKind::NumericBuffer(_) => {
+                unreachable!("NumericBuffer is runtime-only, never parsed")
+            }
         }
     }
 
@@ -191,7 +193,10 @@ pub(crate) mod fasl {
             _ => return None,
         };
         // Spans are debug metadata only; the snapshot records position zero.
-        Some(Expr { kind, span: crate::Span { start: 0, end: 0 } })
+        Some(Expr {
+            kind,
+            span: crate::Span { start: 0, end: 0 },
+        })
     }
 
     /// Header: magic + format version + payload length. Source-hash is the
@@ -261,8 +266,7 @@ mod fasl_tests {
         let expressions = parse(SAMPLE).expect("parse sample");
         let encoded = encode_program(&expressions, &source_hash);
 
-        let (decoded, decoded_hash) =
-            decode_program(&encoded).expect("decode should succeed");
+        let (decoded, decoded_hash) = decode_program(&encoded).expect("decode should succeed");
         assert_eq!(decoded_hash, source_hash, "embedded hash must survive");
 
         // Structural equality: re-encoding the decode output must be

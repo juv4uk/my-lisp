@@ -175,10 +175,7 @@ fn clips_import_mixes_deffacts_and_defrule_into_one_usable_module() {
         (defmodule imported-astro imported)
         (forward-in (quote imported-astro))
     "#;
-    assert_eq!(
-        eval_import(source),
-        "((has-mass earth) (planet earth))"
-    );
+    assert_eq!(eval_import(source), "((has-mass earth) (planet earth))");
 }
 
 #[test]
@@ -278,10 +275,7 @@ fn clips_deftemplate_works_end_to_end_through_forward_in() {
         (defmodule sensors imported)
         (forward-in (quote sensors))
     "#;
-    assert_eq!(
-        eval_import(source),
-        "((alert probe1) (reading probe1 98))"
-    );
+    assert_eq!(eval_import(source), "((alert probe1) (reading probe1 98))");
 }
 
 #[test]
@@ -335,10 +329,7 @@ fn clips_deftemplate_name_is_matched_regardless_of_a_defmodule_qualifier() {
             (deffacts init (question (attribute color) (text "what color?")))
         )))
     "#;
-    assert_eq!(
-        eval_import(source),
-        "(((question color \"what color?\")))"
-    );
+    assert_eq!(eval_import(source), "(((question color \"what color?\")))");
 }
 
 #[test]
@@ -376,9 +367,8 @@ fn clips_import_stays_stack_safe_on_a_deffacts_block_with_many_facts() {
     for i in 0..5000 {
         facts.push_str(&format!("(number {i})"));
     }
-    let source = format!(
-        r#"(clips-import (quote ((deffacts many (goal x)) (deffacts nums {facts}))))"#
-    );
+    let source =
+        format!(r#"(clips-import (quote ((deffacts many (goal x)) (deffacts nums {facts}))))"#);
     let imported = eval_import(&source);
     assert!(
         imported.contains("(number 0)") && imported.contains("(number 4999)"),
@@ -423,4 +413,3 @@ fn clips_defrule_with_a_forall_condition_imports_correctly() {
         "(((done) (forall (item (var x)) (checked (var x)))))"
     );
 }
-

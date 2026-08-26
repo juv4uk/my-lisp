@@ -1,4 +1,4 @@
-use crate::{Exactness, ErrorKind, Expr, ExprKind, LanguageError, Span};
+use crate::{ErrorKind, Exactness, Expr, ExprKind, LanguageError, Span};
 use std::rc::Rc;
 
 /// `true` for a token that is exactly the single character `.` — the reader
@@ -20,7 +20,11 @@ fn dotted_list(items: Vec<Expr>, tail: Expr, start: usize, end: usize) -> Expr {
 }
 
 pub fn parse(source: &str) -> Result<Vec<Expr>, LanguageError> {
-    let mut parser = Parser { source, cursor: 0, depth: 0 };
+    let mut parser = Parser {
+        source,
+        cursor: 0,
+        depth: 0,
+    };
     let mut expressions = Vec::new();
     parser.skip_ignored();
     while parser.cursor < source.len() {
@@ -116,15 +120,15 @@ impl Parser<'_> {
                                 {
                                     value as i64
                                 }
-                                ExprKind::Rational(value) if value.is_integer() => value
-                                    .as_precise_i64()
-                                    .ok_or_else(|| {
+                                ExprKind::Rational(value) if value.is_integer() => {
+                                    value.as_precise_i64().ok_or_else(|| {
                                         LanguageError::new(
                                             ErrorKind::NumericOverflow,
                                             "#i32 element is outside the signed 32-bit range",
                                             element.span,
                                         )
-                                    })?,
+                                    })?
+                                }
                                 _ => {
                                     return Err(self.error(
                                         "#i32 expects exact integer elements",
@@ -172,8 +176,6 @@ impl Parser<'_> {
         }
         Ok(())
     }
-
-
 
     fn list(&mut self, start: usize) -> Result<Expr, LanguageError> {
         self.enter(start)?;
@@ -313,7 +315,9 @@ impl Parser<'_> {
                     Some(value) => ExprKind::Number(value as f64, Exactness::Exact),
                     None => ExprKind::Rational(r),
                 },
-                Err(crate::value::DecimalLiteralError::InvalidSyntax) => ExprKind::Symbol(token.into()),
+                Err(crate::value::DecimalLiteralError::InvalidSyntax) => {
+                    ExprKind::Symbol(token.into())
+                }
                 Err(crate::value::DecimalLiteralError::ResourceLimitExceeded) => {
                     // S3: a syntactically valid numeric literal must never become
                     // an ordinary symbol just because a parser resource limit
@@ -406,9 +410,11 @@ mod tests {
     fn decimal_literal_is_parsed_as_exact_rational_or_exact_integer() {
         assert!(matches!(parse_one("3").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0));
         assert!(matches!(parse_one("3.0").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0));
-        assert!(matches!(parse_one("3.00").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0));
+        assert!(
+            matches!(parse_one("3.00").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0)
+        );
         assert!(matches!(parse_one("3e0").kind, ExprKind::Number(n, Exactness::Exact) if n == 3.0));
-        
+
         let ExprKind::Rational(rational) = parse_one("-3.5").kind else {
             panic!("expected a rational literal");
         };
@@ -433,7 +439,9 @@ mod tests {
 
     #[test]
     fn malformed_decimal_literals_fall_back_to_plain_symbols() {
-        for literal in [".", ".e3", "1e", "1e+", "1e-", "1.2.3", "1ee3", "--0.5", "+", "-"] {
+        for literal in [
+            ".", ".e3", "1e", "1e+", "1e-", "1.2.3", "1ee3", "--0.5", "+", "-",
+        ] {
             assert!(
                 matches!(parse_one(literal).kind, ExprKind::Symbol(s) if &*s == literal),
                 "literal {literal:?} should be an ordinary symbol, not a number"
@@ -670,7 +678,10 @@ mod tests {
 
     #[test]
     fn empty_source_parses_to_no_expressions() {
-        assert_eq!(parse("   ; only a comment\n").expect("should parse"), vec![]);
+        assert_eq!(
+            parse("   ; only a comment\n").expect("should parse"),
+            vec![]
+        );
     }
 
     #[test]

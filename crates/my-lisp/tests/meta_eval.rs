@@ -22,7 +22,10 @@ fn eval_meta(expr_source: &str, env_source: &str) -> String {
         expr_source.replace('\\', "\\\\").replace('"', "\\\""),
         env_source
     );
-    eval_program(&source, &mut session).unwrap().value.to_string()
+    eval_program(&source, &mut session)
+        .unwrap()
+        .value
+        .to_string()
 }
 
 /// Runs a sequence of top-level forms (as source text) through
@@ -40,7 +43,10 @@ fn eval_meta_program(program_source: &str, probe_source: &str) -> String {
         program_source.replace('\\', "\\\\").replace('"', "\\\""),
         probe_source.replace('\\', "\\\\").replace('"', "\\\""),
     );
-    eval_program(&source, &mut session).unwrap().value.to_string()
+    eval_program(&source, &mut session)
+        .unwrap()
+        .value
+        .to_string()
 }
 
 #[test]
@@ -67,7 +73,10 @@ fn cond_picks_the_first_truthy_clause() {
 
 #[test]
 fn list_primitives_dispatch_to_the_real_primitives() {
-    assert_eq!(eval_meta("(cons 1 (cons 2 (quote ())))", "(quote ())"), "(1 2)");
+    assert_eq!(
+        eval_meta("(cons 1 (cons 2 (quote ())))", "(quote ())"),
+        "(1 2)"
+    );
     assert_eq!(eval_meta("(car (cons 1 2))", "(quote ())"), "1");
     assert_eq!(eval_meta("(atom (quote ()))", "(quote ())"), "t");
     assert_eq!(eval_meta("(eq 1 1)", "(quote ())"), "t");
@@ -93,7 +102,10 @@ fn closures_capture_free_variables_from_the_calling_env() {
     // env = ((x . 5)); the lambda only takes y, so x must resolve through
     // the captured/passed-in env, not through its own parameter list.
     assert_eq!(
-        eval_meta("((lambda (y) (+ x y)) 10)", "(cons (cons (quote x) 5) (quote ()))"),
+        eval_meta(
+            "((lambda (y) (+ x y)) 10)",
+            "(cons (cons (quote x) 5) (quote ()))"
+        ),
         "15"
     );
 }
@@ -101,7 +113,10 @@ fn closures_capture_free_variables_from_the_calling_env() {
 #[test]
 fn higher_order_functions_pass_a_closure_as_an_argument() {
     assert_eq!(
-        eval_meta("((lambda (f x) (f x)) (lambda (n) (* n n)) 6)", "(quote ())"),
+        eval_meta(
+            "((lambda (f x) (f x)) (lambda (n) (* n n)) 6)",
+            "(quote ())"
+        ),
         "36"
     );
 }
@@ -112,10 +127,7 @@ fn higher_order_functions_pass_a_closure_as_an_argument() {
 /// `lib/knowledge.my`'s journal projection) rather than real mutation.
 #[test]
 fn def_extends_the_environment_visible_to_later_top_level_forms() {
-    assert_eq!(
-        eval_meta_program("(def x 10) (def y (+ x 5))", "y"),
-        "15"
-    );
+    assert_eq!(eval_meta_program("(def x 10) (def y (+ x 5))", "y"), "15");
 }
 
 #[test]
@@ -156,10 +168,19 @@ fn loads_a_real_verbatim_slice_of_lib_core_my_and_runs_it_through_my_eval() {
 (def second (lambda (values) (car (cdr values))))
 (def third (lambda (values) (car (cdr (cdr values)))))
 "#;
-    assert_eq!(eval_meta_program(core_slice, "(second (quote (a b c)))"), "b");
-    assert_eq!(eval_meta_program(core_slice, "(third (quote (a b c)))"), "c");
+    assert_eq!(
+        eval_meta_program(core_slice, "(second (quote (a b c)))"),
+        "b"
+    );
+    assert_eq!(
+        eval_meta_program(core_slice, "(third (quote (a b c)))"),
+        "c"
+    );
     assert_eq!(eval_meta_program(core_slice, "(not (quote ()))"), "t");
-    assert_eq!(eval_meta_program(core_slice, "(identity (quote radio))"), "radio");
+    assert_eq!(
+        eval_meta_program(core_slice, "(identity (quote radio))"),
+        "radio"
+    );
 }
 
 /// Documented, not hidden (PLAN.md item 8, mccarthy-principles.md §7): a

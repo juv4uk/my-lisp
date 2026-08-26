@@ -22,7 +22,9 @@ pub struct ParsedTask {
 /// look up `key` in a list of such pairs.
 fn dotted_get<'a>(pairs: &'a [Sexp], key: &str) -> Option<&'a Sexp> {
     pairs.iter().find_map(|entry| {
-        let Sexp::List(items) = entry else { return None };
+        let Sexp::List(items) = entry else {
+            return None;
+        };
         match items.as_slice() {
             [Sexp::Atom(k), Sexp::Atom(dot), value] if dot == "." && k == key => Some(value),
             _ => None,
@@ -76,21 +78,43 @@ pub fn parse_tasks_file(text: &str) -> Result<Vec<ParsedTask>, String> {
             _ => return Err(format!("malformed task entry: {}", entry.to_text())),
         };
         if atom_text(dot).as_deref() != Some(".") {
-            return Err(format!("malformed task entry (expected `ID . (fields)`): {}", entry.to_text()));
+            return Err(format!(
+                "malformed task entry (expected `ID . (fields)`): {}",
+                entry.to_text()
+            ));
         }
-        let id = atom_text(id_sexp).ok_or_else(|| format!("task id must be an atom or string: {}", id_sexp.to_text()))?;
+        let id = atom_text(id_sexp)
+            .ok_or_else(|| format!("task id must be an atom or string: {}", id_sexp.to_text()))?;
         let Sexp::List(fields) = fields_sexp else {
             return Err(format!("task `{id}` fields must be a list"));
         };
 
-        let priority = dotted_get(fields, "priority").and_then(atom_text).and_then(|s| s.parse().ok()).unwrap_or(1.0);
-        let capabilities = dotted_get(fields, "capabilities").map(atoms_of).unwrap_or_default();
-        let depends_on = dotted_get(fields, "depends-on").map(atoms_of).unwrap_or_default();
-        let done = dotted_get(fields, "done").and_then(atom_text).map(|s| s == "t").unwrap_or(false);
+        let priority = dotted_get(fields, "priority")
+            .and_then(atom_text)
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1.0);
+        let capabilities = dotted_get(fields, "capabilities")
+            .map(atoms_of)
+            .unwrap_or_default();
+        let depends_on = dotted_get(fields, "depends-on")
+            .map(atoms_of)
+            .unwrap_or_default();
+        let done = dotted_get(fields, "done")
+            .and_then(atom_text)
+            .map(|s| s == "t")
+            .unwrap_or(false);
         let description = dotted_get(fields, "description").and_then(atom_text);
         let origin = dotted_get(fields, "origin").and_then(atom_text);
 
-        parsed.push(ParsedTask { id, priority, capabilities, depends_on, done, description, origin });
+        parsed.push(ParsedTask {
+            id,
+            priority,
+            capabilities,
+            depends_on,
+            done,
+            description,
+            origin,
+        });
     }
     Ok(parsed)
 }

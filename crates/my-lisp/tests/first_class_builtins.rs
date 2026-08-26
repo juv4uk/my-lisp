@@ -61,8 +61,7 @@ fn select_operator_from_list() {
 #[test]
 
 fn applying_a_non_callable_is_a_named_error() {
-    let err = eval_program("(42 1 2)", &mut session_with_core())
-        .expect_err("42 is not callable");
+    let err = eval_program("(42 1 2)", &mut session_with_core()).expect_err("42 is not callable");
     assert_eq!(err.kind, ErrorKind::Type);
 }
 
@@ -73,10 +72,7 @@ fn special_forms_are_not_values() {
     // contract 2.1 special forms keep their syntax-only status. The exact
     // error kind is implementation-defined, but it MUST be an error,
     // never silent success.
-    let outcome = eval_program(
-        "(def q quote) (q (quote x))",
-        &mut session_with_core(),
-    );
+    let outcome = eval_program("(def q quote) (q (quote x))", &mut session_with_core());
     assert!(
         outcome.is_err(),
         "special forms must not become callable values"

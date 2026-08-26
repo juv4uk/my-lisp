@@ -44,7 +44,6 @@ fn clips_import_file_imports_a_second_real_external_clp_file_correctly() {
     );
 }
 
-
 #[test]
 fn clips_import_file_imports_a_real_external_clp_file_from_the_official_clips_examples() {
     // tests/fixtures/wordgame-external.clp is CLIPS's own GERALD+DONALD=
@@ -65,7 +64,6 @@ fn clips_import_file_imports_a_real_external_clp_file_from_the_official_clips_ex
     );
 }
 
-
 #[test]
 fn clips_import_file_reads_and_imports_a_real_clp_file() {
     // tests/fixtures/astronomy.clp is a genuine CLIPS source file, not a
@@ -81,7 +79,6 @@ fn clips_import_file_reads_and_imports_a_real_clp_file() {
         "((orbits earth sun) (orbits mars sun) (star sun) (planet mars) (planet earth))"
     );
 }
-
 
 #[test]
 fn clips_import_file_imports_a_third_real_external_clp_file_with_module_qualified_templates() {
@@ -106,7 +103,6 @@ fn clips_import_file_imports_a_third_real_external_clp_file_with_module_qualifie
     );
 }
 
-
 #[test]
 fn clips_import_file_imports_a_fourth_real_external_clp_file_with_a_large_deffacts_block() {
     // animal.clp ("Animal Identification Expert System") is the real file
@@ -127,7 +123,6 @@ fn clips_import_file_imports_a_fourth_real_external_clp_file_with_a_large_deffac
         "expected a converted deftemplate fact to survive the import, got: {imported}"
     );
 }
-
 
 #[test]
 fn clips_import_file_imports_a_fifth_real_external_clp_file_with_mostly_disqualified_rules() {
@@ -154,10 +149,9 @@ fn clips_import_file_imports_a_fifth_real_external_clp_file_with_mostly_disquali
     );
 }
 
-
 #[test]
-fn clips_import_file_imports_a_sixth_real_external_clp_file_with_duplicate_and_embedded_constraints()
-{
+fn clips_import_file_imports_a_sixth_real_external_clp_file_with_duplicate_and_embedded_constraints(
+) {
     // dilemma1.clp ("Farmer's Dilemma", CLIPS's own cannibals-and-goat
     // search example) is another clean confirmation, not a new bug.
     // Every one of its defrules uses `duplicate` (a CLIPS action this
@@ -180,7 +174,6 @@ fn clips_import_file_imports_a_sixth_real_external_clp_file_with_duplicate_and_e
         "(((status 1 no-parent shore-1 shore-1 shore-1 shore-1 no-move)) ((opposite-of shore-1 shore-2)) ((opposite-of shore-2 shore-1)))"
     );
 }
-
 
 #[test]
 fn clips_import_file_imports_a_seventh_real_external_clp_file_at_scale() {
@@ -227,7 +220,6 @@ fn clips_import_file_imports_a_seventh_real_external_clp_file_at_scale() {
     );
 }
 
-
 #[test]
 fn clips_import_file_imports_an_eighth_real_external_clp_file_with_bare_tilde_constraints() {
     // mab.clp ("Monkees and Bananas", CLIPS's own planning-problem
@@ -267,7 +259,6 @@ fn clips_import_file_imports_an_eighth_real_external_clp_file_with_bare_tilde_co
     );
 }
 
-
 #[test]
 fn clips_import_file_imports_a_ninth_real_external_clp_file_with_a_real_exists_condition() {
     // sudoku.clp (CLIPS's own Sudoku solver) is the real file that first
@@ -290,4 +281,3 @@ fn clips_import_file_imports_a_ninth_real_external_clp_file_with_a_real_exists_c
         "expected a converted deftemplate fact to survive the import, got: {imported}"
     );
 }
-

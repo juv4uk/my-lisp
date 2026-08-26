@@ -41,7 +41,9 @@ fn initializes_over_real_stdio() {
 
     // initialize
     stdin
-        .write_all(&frame(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#))
+        .write_all(&frame(
+            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
+        ))
         .unwrap();
     let response = read_frame(&mut stdout);
     assert!(response.contains("\"capabilities\""), "{response}");
@@ -49,13 +51,18 @@ fn initializes_over_real_stdio() {
 
     // initialized notification → no response expected, then shutdown
     stdin
-        .write_all(&frame(r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#))
+        .write_all(&frame(
+            r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#,
+        ))
         .unwrap();
     stdin
         .write_all(&frame(r#"{"jsonrpc":"2.0","id":2,"method":"shutdown"}"#))
         .unwrap();
     let response = read_frame(&mut stdout);
-    assert!(response.contains("\"id\":2") && response.contains("\"result\":null"), "{response}");
+    assert!(
+        response.contains("\"id\":2") && response.contains("\"result\":null"),
+        "{response}"
+    );
 
     // clean exit
     stdin

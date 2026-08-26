@@ -139,7 +139,11 @@ fn check_arity(
     received: usize,
     span: Span,
 ) -> Result<(), LanguageError> {
-    let arity_ok = if has_rest { received >= fixed } else { received == fixed };
+    let arity_ok = if has_rest {
+        received >= fixed
+    } else {
+        received == fixed
+    };
     if arity_ok {
         return Ok(());
     }
@@ -170,7 +174,13 @@ pub(super) fn apply(
             span,
         ));
     };
-    check_arity("lambda", closure.parameters.len(), closure.rest.is_some(), arguments.len(), span)?;
+    check_arity(
+        "lambda",
+        closure.parameters.len(),
+        closure.rest.is_some(),
+        arguments.len(),
+        span,
+    )?;
 
     // Arguments belong to the caller; parameters belong to the captured lexical frame.
     // Arhumenty nalezhat vyklyku, a parametry — zakhoplenomu leksychnomu freimu.
@@ -192,8 +202,8 @@ pub(super) fn apply(
     // Khvostovi pozytsii staiut danymy dlia tsyklu evaluator, a ne rekursyvnymy vyklykamy Rust.
     // Tail-Positionen werden zu Daten für die Evaluator-Schleife statt zu rekursiven Rust-Aufrufen.
     Ok(EvalStep::TailCall {
-            expression: last.clone(),
-            environment: local_environment,
+        expression: last.clone(),
+        environment: local_environment,
     })
 }
 
@@ -265,7 +275,13 @@ pub(super) fn apply_macro(
     calling_environment: &Environment,
     span: Span,
 ) -> Result<EvalStep, LanguageError> {
-    check_arity("defmacro", closure.parameters.len(), closure.rest.is_some(), arguments.len(), span)?;
+    check_arity(
+        "defmacro",
+        closure.parameters.len(),
+        closure.rest.is_some(),
+        arguments.len(),
+        span,
+    )?;
 
     let local_environment = closure.environment.child();
     for (parameter, argument) in closure.parameters.iter().zip(arguments.iter()) {
@@ -313,7 +329,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
     }
 
     fn go_inner(value: &Value, span: Span, depth: u32) -> Result<Expr, LanguageError> {
-    let kind = match &value {
+        let kind = match &value {
         Value::Nil => ExprKind::List(Rc::new([])),
         Value::Bool(true) => ExprKind::Symbol("t".into()),
         Value::Bool(false) => ExprKind::List(Rc::new([])),
@@ -384,7 +400,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
             ))
         }
     };
-    Ok(Expr { kind, span })
+        Ok(Expr { kind, span })
     }
 
     go(&value, span, 0)

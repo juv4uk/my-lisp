@@ -187,16 +187,37 @@ mod tests {
     /// aspirate, anusvāra, visarga, long vowel — each already present
     /// somewhere in this list, annotated below).
     const CANDIDATE_ATOMS: &[&str] = &[
-        "kf", "gam", "dA", "grah", "jYA", "dfS", "Sru", "vac", "liK", "paW", "sTA", "BU", // dhātu (spec §4)
-        "kartf", "karman", "karaRa", "sampradAna", "apAdAna", "aDikaraRa", // kāraka (spec §5)
+        "kf",
+        "gam",
+        "dA",
+        "grah",
+        "jYA",
+        "dfS",
+        "Sru",
+        "vac",
+        "liK",
+        "paW",
+        "sTA",
+        "BU", // dhātu (spec §4)
+        "kartf",
+        "karman",
+        "karaRa",
+        "sampradAna",
+        "apAdAna",
+        "aDikaraRa", // kāraka (spec §5)
     ];
 
     #[test]
     fn round_trips_every_candidate_atom_slp1_to_iast_to_slp1() {
         for atom in CANDIDATE_ATOMS {
-            let iast = slp1_to_iast(atom).unwrap_or_else(|e| panic!("slp1_to_iast({atom:?}) failed: {e}"));
-            let back = iast_to_slp1(&iast).unwrap_or_else(|e| panic!("iast_to_slp1({iast:?}) failed for atom {atom:?}: {e}"));
-            assert_eq!(&back, atom, "round trip mismatch for {atom:?}: SLP1 -> IAST {iast:?} -> SLP1 {back:?}");
+            let iast =
+                slp1_to_iast(atom).unwrap_or_else(|e| panic!("slp1_to_iast({atom:?}) failed: {e}"));
+            let back = iast_to_slp1(&iast)
+                .unwrap_or_else(|e| panic!("iast_to_slp1({iast:?}) failed for atom {atom:?}: {e}"));
+            assert_eq!(
+                &back, atom,
+                "round trip mismatch for {atom:?}: SLP1 -> IAST {iast:?} -> SLP1 {back:?}"
+            );
         }
     }
 
@@ -206,7 +227,10 @@ mod tests {
             let iast = slp1_to_iast(atom).unwrap();
             let slp1_again = iast_to_slp1(&iast).unwrap();
             let iast_again = slp1_to_iast(&slp1_again).unwrap();
-            assert_eq!(iast, iast_again, "IAST round trip mismatch starting from {atom:?}");
+            assert_eq!(
+                iast, iast_again,
+                "IAST round trip mismatch starting from {atom:?}"
+            );
         }
     }
 

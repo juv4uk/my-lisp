@@ -7,7 +7,7 @@ fn eval_src(src: &str) -> String {
     // Value::String Display wraps in quotes; unwrap them
     let s = result.value.to_string();
     if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
-        s[1..s.len()-1].to_string()
+        s[1..s.len() - 1].to_string()
     } else {
         s
     }
@@ -25,7 +25,10 @@ fn string_slice_clamps_at_end() {
 
 #[test]
 fn unicode_char_boundaries_respected() {
-    assert_eq!(eval_src(r#"(string-slice "Привіт Володимир" 0 7)"#), "Привіт ");
+    assert_eq!(
+        eval_src(r#"(string-slice "Привіт Володимир" 0 7)"#),
+        "Привіт "
+    );
 }
 
 #[test]

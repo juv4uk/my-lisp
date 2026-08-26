@@ -4,7 +4,6 @@
 
 use std::io::{BufRead, Write};
 
-
 /// One incoming message's raw JSON text, or None on clean EOF.
 pub fn read_message(input: &mut impl BufRead) -> std::io::Result<Option<String>> {
     let mut content_length: Option<usize> = None;

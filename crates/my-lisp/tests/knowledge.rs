@@ -23,7 +23,7 @@ fn eval_knowledge(source: &str) -> String {
                 println!("{}", line);
             }
             res.value.to_string()
-        },
+        }
         Err(e) => {
             println!("Output before panic:");
             for line in &session.environment.output_snapshot() {
@@ -123,7 +123,10 @@ fn test_family_module() {
              ;; The result contains the bindings used during the proof, including rule variables
              (car (car results)))
     "#;
-    assert_eq!(eval_knowledge(source), "(((z . 0) . bob) ((y . 0) . ann) ((x . 0) . tom))");
+    assert_eq!(
+        eval_knowledge(source),
+        "(((z . 0) . bob) ((y . 0) . ann) ((x . 0) . tom))"
+    );
 }
 
 #[test]
@@ -146,7 +149,10 @@ fn test_astronomy_module() {
              ;; The result contains the bindings used during the proof, including rule variables
              (car (car results)))
     "#;
-    assert_eq!(eval_knowledge(source), "(((s . 0) . sun) ((p . 0) . earth))");
+    assert_eq!(
+        eval_knowledge(source),
+        "(((s . 0) . sun) ((p . 0) . earth))"
+    );
 }
 
 #[test]
@@ -537,13 +543,15 @@ fn import_knowledge_file_reads_the_data_only_example() {
 fn write_knowledge_package_round_trips_through_file_import() {
     let path = std::env::temp_dir().join("my-lisp-knowledge-package.my");
     let path_str = path.to_str().unwrap().replace('\\', "/");
-    let source = format!(r#"
+    let source = format!(
+        r#"
         (write-knowledge-package "{path_str}" (quote exchange)
           (quote (((planet earth))
             ((has-mass (var x)) (planet (var x))))))
         (list (car (import-knowledge-file "{path_str}"))
               (car (car (reason-in (quote exchange) (quote (has-mass earth))))))
-    "#);
+    "#
+    );
     assert_eq!(eval_knowledge(&source), "(accepted (((x . 0) . earth)))");
     std::fs::remove_file(path).ok();
 }
@@ -554,6 +562,9 @@ fn write_knowledge_package_rejects_invalid_data_before_creating_a_file() {
     std::fs::remove_file(&path).ok();
     let path_str = path.to_str().unwrap().replace('\\', "/");
     let source = format!(r#"(write-knowledge-package "{path_str}" (quote exchange) (quote ()))"#);
-    assert_eq!(eval_knowledge(&source), "(rejected (reason invalid-batch) (input ()))");
+    assert_eq!(
+        eval_knowledge(&source),
+        "(rejected (reason invalid-batch) (input ()))"
+    );
     assert!(!path.exists());
 }

@@ -56,10 +56,6 @@ pub(crate) fn evaluate_defmacro(
     Ok(macro_val)
 }
 
-
-
-
-
 pub(crate) fn evaluate_cond(
     clauses: &[Expr],
     environment: &Environment,
@@ -134,7 +130,9 @@ pub(crate) fn quoted(expression: &Expr) -> Result<Value, LanguageError> {
                 }
                 Value::list(out)
             }
-            ExprKind::Pair(head, tail) => Value::Pair(Rc::new(go(head, depth + 1)?), Rc::new(go(tail, depth + 1)?)),
+            ExprKind::Pair(head, tail) => {
+                Value::Pair(Rc::new(go(head, depth + 1)?), Rc::new(go(tail, depth + 1)?))
+            }
         })
     }
     go(expression, 0)

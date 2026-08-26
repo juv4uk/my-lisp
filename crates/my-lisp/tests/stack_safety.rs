@@ -26,9 +26,12 @@ fn cons_chain_clone_does_not_overflow_stack() {
 #[test]
 fn shared_tails_do_not_overflow_stack() {
     let tail = build_long_list(150_000);
-    let list1 = Value::Pair(Rc::new(Value::Number(1.0, Exactness::Exact)), Rc::new(tail.clone()));
+    let list1 = Value::Pair(
+        Rc::new(Value::Number(1.0, Exactness::Exact)),
+        Rc::new(tail.clone()),
+    );
     let list2 = Value::Pair(Rc::new(Value::Number(2.0, Exactness::Exact)), Rc::new(tail));
-    
+
     drop(list1); // Drops list1's head and its Rc to tail. tail's refcount goes from 2 to 1. No iterative drop for tail.
     drop(list2); // Drops list2's head and its Rc to tail. tail's refcount goes from 1 to 0. Iterative drop handles tail.
 }
@@ -107,7 +110,10 @@ fn symbol_table_sort_stays_stack_safe() {
     let Value::Number(count, _) = result.value else {
         panic!("length should return a number");
     };
-    assert!(count >= 80.0, "expected at least ~80 symbols in lib/core.my, got {count}");
+    assert!(
+        count >= 80.0,
+        "expected at least ~80 symbols in lib/core.my, got {count}"
+    );
 }
 
 #[test]

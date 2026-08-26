@@ -154,7 +154,8 @@ impl Magnitude {
         let mut result = Vec::with_capacity(self.0.len());
         let mut borrow = 0i64;
         for i in 0..self.0.len() {
-            let diff = i64::from(self.0[i]) - i64::from(other.0.get(i).copied().unwrap_or(0)) - borrow;
+            let diff =
+                i64::from(self.0[i]) - i64::from(other.0.get(i).copied().unwrap_or(0)) - borrow;
             if diff < 0 {
                 result.push((diff + (1i64 << 32)) as u32);
                 borrow = 1;
@@ -224,9 +225,7 @@ impl Magnitude {
             .mul(&b_low.add(&b_high))
             .sub(&z0)
             .sub(&z2);
-        z2.shl_limbs(split * 2)
-            .add(&z1.shl_limbs(split))
-            .add(&z0)
+        z2.shl_limbs(split * 2).add(&z1.shl_limbs(split)).add(&z0)
     }
 
     fn bit_len(&self) -> u32 {
@@ -239,7 +238,9 @@ impl Magnitude {
     fn get_bit(&self, index: u32) -> bool {
         let limb = (index / 32) as usize;
         let bit = index % 32;
-        self.0.get(limb).is_some_and(|&value| (value >> bit) & 1 == 1)
+        self.0
+            .get(limb)
+            .is_some_and(|&value| (value >> bit) & 1 == 1)
     }
 
     fn shl1(&self) -> Self {
@@ -479,7 +480,10 @@ impl BigInt {
     }
 
     pub fn mul(&self, other: &Self) -> Self {
-        Self::normalized(self.negative != other.negative, self.magnitude.mul(&other.magnitude))
+        Self::normalized(
+            self.negative != other.negative,
+            self.magnitude.mul(&other.magnitude),
+        )
     }
 
     /// Truncating division (remainder takes the dividend's sign, same as
@@ -557,7 +561,10 @@ impl BigInt {
         // One linear pass computes giant % small, and from there both
         // operands are tiny; full binary stepping on equal-size giants
         // would be orders of magnitude slower.
-        if other.magnitude.0.len() == 1 && !other.magnitude.0.is_empty() && self.magnitude.0.len() > 2 {
+        if other.magnitude.0.len() == 1
+            && !other.magnitude.0.is_empty()
+            && self.magnitude.0.len() > 2
+        {
             let divisor = other.magnitude.0[0];
             let r = self.rem_by_limb(divisor);
             let mut x = BigInt::from_i64(r as i64);
@@ -616,7 +623,9 @@ impl FromStr for BigInt {
         let mut magnitude = Magnitude::ZERO;
         let ten = Magnitude::from_u64(10);
         for byte in digits.bytes() {
-            magnitude = magnitude.mul(&ten).add(&Magnitude::from_u64(u64::from(byte - b'0')));
+            magnitude = magnitude
+                .mul(&ten)
+                .add(&Magnitude::from_u64(u64::from(byte - b'0')));
         }
         Ok(BigInt::normalized(negative, magnitude))
     }
@@ -665,7 +674,9 @@ mod tests {
         }
         fn magnitude(&mut self) -> Magnitude {
             let count = self.limb_count();
-            let mut limbs: Vec<u32> = (0..count).map(|_| (self.next() & 0xFFFF_FFFF) as u32).collect();
+            let mut limbs: Vec<u32> = (0..count)
+                .map(|_| (self.next() & 0xFFFF_FFFF) as u32)
+                .collect();
             while let Some(&0) = limbs.last() {
                 limbs.pop();
             }
@@ -743,8 +754,12 @@ mod tests {
     fn karatsuba_schoolbook_same_build_ab_probe() {
         use std::time::Instant;
 
-        let left = Magnitude((0..256).map(|i| (i as u32).wrapping_mul(0x9E37_79B9)).collect())
-            .trim();
+        let left = Magnitude(
+            (0..256)
+                .map(|i| (i as u32).wrapping_mul(0x9E37_79B9))
+                .collect(),
+        )
+        .trim();
         let right = Magnitude(
             (0..256)
                 .map(|i| (i as u32).wrapping_mul(0x85EB_CA6B).rotate_left(7))
@@ -816,8 +831,14 @@ mod tests {
 
     #[test]
     fn ordering_accounts_for_sign_and_magnitude() {
-        assert_eq!(BigInt::from_i64(-5).cmp(&BigInt::from_i64(3)), Ordering::Less);
-        assert_eq!(BigInt::from_i64(5).cmp(&BigInt::from_i64(3)), Ordering::Greater);
+        assert_eq!(
+            BigInt::from_i64(-5).cmp(&BigInt::from_i64(3)),
+            Ordering::Less
+        );
+        assert_eq!(
+            BigInt::from_i64(5).cmp(&BigInt::from_i64(3)),
+            Ordering::Greater
+        );
         assert_eq!(
             BigInt::from_i64(-5).cmp(&BigInt::from_i64(-3)),
             Ordering::Less

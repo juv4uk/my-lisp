@@ -36,13 +36,24 @@ pub fn task_def(journal: &Journal, task: &str) -> Option<TaskDef> {
         if ev.typ != "task-defined" || ev.payload.field_atom("task") != Some(task) {
             continue;
         }
-        let priority: f64 = ev.payload.field_atom("priority").and_then(|s| s.parse().ok()).unwrap_or(1.0);
+        let priority: f64 = ev
+            .payload
+            .field_atom("priority")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1.0);
         let capabilities = string_list(&ev.payload, "capabilities");
         let depends_on = string_list(&ev.payload, "depends-on");
         let blocked_by = string_list(&ev.payload, "blocked-by");
         let description = ev.payload.field_atom("description").map(|s| s.to_string());
         let origin = ev.payload.field_atom("origin").map(|s| s.to_string());
-        def = Some(TaskDef { priority, capabilities, depends_on, blocked_by, description, origin });
+        def = Some(TaskDef {
+            priority,
+            capabilities,
+            depends_on,
+            blocked_by,
+            description,
+            origin,
+        });
     }
     def
 }
@@ -78,7 +89,10 @@ pub fn task_state(journal: &Journal, task: &str) -> TaskState {
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
         match ev.typ.as_str() {
-            "claim-committed" if generation > state.generation || (generation == state.generation && state.holder.is_none()) => {
+            "claim-committed"
+                if generation > state.generation
+                    || (generation == state.generation && state.holder.is_none()) =>
+            {
                 state.generation = generation;
                 state.holder = ev.payload.field_atom("agent").map(|s| s.to_string());
                 state.completed = false;
@@ -99,11 +113,7 @@ pub fn task_state(journal: &Journal, task: &str) -> TaskState {
 }
 
 pub fn all_task_ids(journal: &Journal) -> Vec<String> {
-    let mut ids: Vec<String> = journal
-        .events
-        .iter()
-        .filter_map(event_task)
-        .collect();
+    let mut ids: Vec<String> = journal.events.iter().filter_map(event_task).collect();
     ids.sort();
     ids.dedup();
     ids
@@ -130,12 +140,21 @@ struct Candidate {
 /// capability match as a hard gate rather than a down-rank — an agent
 /// missing a required capability should never be offered a task it can't
 /// actually do. Ties broken by task id for determinism across nodes.
-pub fn next_best_action(journal: &Journal, capabilities: &[String]) -> Option<(String, TaskDef, TaskState)> {
+pub fn next_best_action(
+    journal: &Journal,
+    capabilities: &[String],
+) -> Option<(String, TaskDef, TaskState)> {
     let ids = all_task_ids(journal);
-    let defs: Vec<(String, TaskDef)> = ids.iter().filter_map(|id| task_def(journal, id).map(|d| (id.clone(), d))).collect();
+    let defs: Vec<(String, TaskDef)> = ids
+        .iter()
+        .filter_map(|id| task_def(journal, id).map(|d| (id.clone(), d)))
+        .collect();
 
     let is_done = |task: &str| -> bool {
-        defs.iter().find(|(id, _)| id == task).map(|_| task_state(journal, task).completed).unwrap_or(false)
+        defs.iter()
+            .find(|(id, _)| id == task)
+            .map(|_| task_state(journal, task).completed)
+            .unwrap_or(false)
     };
 
     let mut candidates: Vec<Candidate> = Vec::new();
@@ -157,10 +176,18 @@ pub fn next_best_action(journal: &Journal, capabilities: &[String]) -> Option<(S
             .iter()
             .filter(|(_, other)| other.depends_on.contains(id))
             .count() as f64;
-        candidates.push(Candidate { task: id.clone(), score: def.priority * (1.0 + unblock_impact) });
+        candidates.push(Candidate {
+            task: id.clone(),
+            score: def.priority * (1.0 + unblock_impact),
+        });
     }
 
-    candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal).then(a.task.cmp(&b.task)));
+    candidates.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.task.cmp(&b.task))
+    });
     let best = candidates.into_iter().next()?;
     let def = task_def(journal, &best.task)?;
     let ts = task_state(journal, &best.task);
@@ -189,16 +216,27 @@ pub fn membership(journal: &Journal) -> HashMap<String, Member> {
     for ev in &journal.events {
         match ev.typ.as_str() {
             "agent-joined" => {
-                let Some(node) = ev.payload.field_atom("node") else { continue };
+                let Some(node) = ev.payload.field_atom("node") else {
+                    continue;
+                };
                 let capabilities = string_list(&ev.payload, "capabilities");
                 let mut roles = string_list(&ev.payload, "roles");
                 if roles.is_empty() {
                     roles.push("worker".to_string());
                 }
-                members.insert(node.to_string(), Member { capabilities, roles, present: true });
+                members.insert(
+                    node.to_string(),
+                    Member {
+                        capabilities,
+                        roles,
+                        present: true,
+                    },
+                );
             }
             "agent-left" => {
-                let Some(node) = ev.payload.field_atom("node") else { continue };
+                let Some(node) = ev.payload.field_atom("node") else {
+                    continue;
+                };
                 if let Some(m) = members.get_mut(node) {
                     m.present = false;
                 }
@@ -222,7 +260,8 @@ mod tests {
         let events = lines.iter().map(|l| event(l)).collect();
         // Journal::open needs a real path; tests fold on the events list
         // directly through the `events` field, which is public.
-        let dir = std::env::temp_dir().join(format!("swarm-node-state-test-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("swarm-node-state-test-{}", std::process::id()));
         let mut j = Journal::open(&dir).unwrap();
         j.events = events;
         j
@@ -249,7 +288,10 @@ mod tests {
         ]);
         // WAITER is blocked by an uncompleted BLOCKER -> only BLOCKER is
         // schedulable, never WAITER.
-        assert_eq!(next_best_action(&j, &["rust".to_string()]).map(|(id, _, _)| id), Some("BLOCKER".to_string()));
+        assert_eq!(
+            next_best_action(&j, &["rust".to_string()]).map(|(id, _, _)| id),
+            Some("BLOCKER".to_string())
+        );
 
         // Complete the blocker (generation 1, matching a claim at gen 1).
         let mut j = j;

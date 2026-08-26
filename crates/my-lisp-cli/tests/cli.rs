@@ -22,10 +22,16 @@ fn my_lisp() -> Command {
 
 #[test]
 fn version_flag_prints_the_crate_version() {
-    let output = my_lisp().arg("--version").output().expect("binary should run");
+    let output = my_lisp()
+        .arg("--version")
+        .output()
+        .expect("binary should run");
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert_eq!(stdout.trim(), format!("my-lisp {}", env!("CARGO_PKG_VERSION")));
+    assert_eq!(
+        stdout.trim(),
+        format!("my-lisp {}", env!("CARGO_PKG_VERSION"))
+    );
 }
 
 #[test]
@@ -34,7 +40,10 @@ fn short_version_flags_match_the_long_form() {
         let output = my_lisp().arg(flag).output().expect("binary should run");
         assert!(output.status.success());
         let stdout = String::from_utf8_lossy(&output.stdout);
-        assert_eq!(stdout.trim(), format!("my-lisp {}", env!("CARGO_PKG_VERSION")));
+        assert_eq!(
+            stdout.trim(),
+            format!("my-lisp {}", env!("CARGO_PKG_VERSION"))
+        );
     }
 }
 
@@ -110,10 +119,7 @@ fn repl_history_persists_across_separate_sessions() {
     // Isoliert HOME/USERPROFILE pro Testlauf, damit weder das echte
     // ~/.my-lisp-history des Nutzers gelesen/geschrieben wird noch parallele
     // Testläufe kollidieren.
-    let dir = std::env::temp_dir().join(format!(
-        "my-lisp-cli-test-history-{}",
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("my-lisp-cli-test-history-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("should create temp home dir");
 
     let run = |input: &str| {
@@ -397,9 +403,18 @@ fn sexpr_protocol_eval_returns_structured_response() {
     let response = request_with_retry(port, r#"(request (id 1) (op eval) (source "(+ 1 2)"))"#);
     child.kill().expect("should be able to stop the server");
 
-    assert!(response.contains("(status ok)"), "unexpected response: {response}");
-    assert!(response.contains("(value 3)"), "unexpected response: {response}");
-    assert!(response.contains("(output ())"), "unexpected response: {response}");
+    assert!(
+        response.contains("(status ok)"),
+        "unexpected response: {response}"
+    );
+    assert!(
+        response.contains("(value 3)"),
+        "unexpected response: {response}"
+    );
+    assert!(
+        response.contains("(output ())"),
+        "unexpected response: {response}"
+    );
 }
 
 #[test]
@@ -409,8 +424,14 @@ fn sexpr_protocol_diagnose_returns_structured_error() {
     let response = request_with_retry(port, r#"(request (id 2) (op diagnose) (source "(car 1)"))"#);
     child.kill().expect("should be able to stop the server");
 
-    assert!(response.contains("(status error)"), "unexpected response: {response}");
-    assert!(response.contains("(kind type-error)"), "unexpected response: {response}");
+    assert!(
+        response.contains("(status error)"),
+        "unexpected response: {response}"
+    );
+    assert!(
+        response.contains("(kind type-error)"),
+        "unexpected response: {response}"
+    );
 }
 
 #[test]
@@ -420,7 +441,10 @@ fn sexpr_protocol_parse_returns_canonical_structure_not_debug_format() {
     let response = request_with_retry(port, r#"(request (id 3) (op parse) (source "(+ 1 2)"))"#);
     child.kill().expect("should be able to stop the server");
 
-    assert!(response.contains("(value (+ 1 2))"), "expected canonical my-lisp syntax, not a Rust Debug string: {response}");
+    assert!(
+        response.contains("(value (+ 1 2))"),
+        "expected canonical my-lisp syntax, not a Rust Debug string: {response}"
+    );
 }
 
 #[test]
@@ -428,8 +452,12 @@ fn sexpr_protocol_parse_returns_canonical_structure_not_debug_format() {
 fn sexpr_protocol_connections_do_not_share_state() {
     let (mut child, port) = spawn_sexpr_server();
 
-    let _ = request_with_retry(port, r#"(request (id 1) (op eval) (source "(def leaked 999)"))"#);
-    let second_response = request_with_retry(port, r#"(request (id 2) (op eval) (source "leaked"))"#);
+    let _ = request_with_retry(
+        port,
+        r#"(request (id 1) (op eval) (source "(def leaked 999)"))"#,
+    );
+    let second_response =
+        request_with_retry(port, r#"(request (id 2) (op eval) (source "leaked"))"#);
     child.kill().expect("should be able to stop the server");
 
     assert!(
@@ -441,7 +469,8 @@ fn sexpr_protocol_connections_do_not_share_state() {
 #[test]
 #[ignore = "see block comment above sexpr_protocol_eval_returns_structured_response"]
 fn sexpr_protocol_sync_tasks_loads_durable_plan() {
-    let tasks_path = std::env::temp_dir().join(format!("sync-tasks-test-{}.my", std::process::id()));
+    let tasks_path =
+        std::env::temp_dir().join(format!("sync-tasks-test-{}.my", std::process::id()));
     std::fs::write(
         &tasks_path,
         r#"((kind . tasks-my)
@@ -456,7 +485,10 @@ fn sexpr_protocol_sync_tasks_loads_durable_plan() {
 
     let sync = request_with_retry(
         port,
-        &format!(r#"(request (id 1) (op sync-tasks) (from "opencode") (file "{}"))"#, tasks_path.display()),
+        &format!(
+            r#"(request (id 1) (op sync-tasks) (from "opencode") (file "{}"))"#,
+            tasks_path.display()
+        ),
     );
     let complete = request_with_retry(
         port,

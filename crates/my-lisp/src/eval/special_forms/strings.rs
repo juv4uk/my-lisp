@@ -43,22 +43,23 @@ pub(crate) fn evaluate_string_slice(
 fn slice_index(value: &Value, span: Span) -> Result<usize, LanguageError> {
     let integer = match value {
         Value::Number(number, crate::Exactness::Exact)
-            if number.is_finite() && number.fract() == 0.0 => {
-                if *number < 0.0 {
-                    return Err(LanguageError::new(
+            if number.is_finite() && number.fract() == 0.0 =>
+        {
+            if *number < 0.0 {
+                return Err(LanguageError::new(
                         ErrorKind::Type,
                         "string-slice indices must be non-negative exact integers · indeksy string-slice maiut buty nevidiemni tochnymy tsilymy · string-slice-Indizes müssen nichtnegative exakte Ganzzahlen sein",
                         span,
                     ));
-                }
-                (*number as u128).try_into().map_err(|_| {
+            }
+            (*number as u128).try_into().map_err(|_| {
                     LanguageError::new(
                         ErrorKind::NumericOverflow,
                         "string-slice index is too large · indeks string-slice zavelykyi · string-slice-Index ist zu groß",
                         span,
                     )
                 })?
-            }
+        }
         Value::Rational(rational) if rational.is_integer() => {
             let number = rational.as_precise_i64().ok_or_else(|| {
                 LanguageError::new(

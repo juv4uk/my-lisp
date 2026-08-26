@@ -59,7 +59,11 @@ pub(crate) fn evaluate_json_parse(
 const MAX_NESTING_DEPTH: u32 = 256;
 
 pub fn parse_json(text: &str) -> Result<Value, String> {
-    let mut parser = JsonParser { bytes: text.as_bytes(), pos: 0, depth: 0 };
+    let mut parser = JsonParser {
+        bytes: text.as_bytes(),
+        pos: 0,
+        depth: 0,
+    };
     parser.skip_ws();
     let value = parser.parse_value()?;
     parser.skip_ws();
@@ -106,7 +110,6 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-
     fn enter(&mut self) -> Result<(), String> {
         if self.depth >= MAX_NESTING_DEPTH {
             return Err(self.error("nesting too deep"));
@@ -119,7 +122,9 @@ impl<'a> JsonParser<'a> {
         match self.peek() {
             Some(b'{') => self.parse_object(),
             Some(b'[') => self.parse_array(),
-            Some(b'"') => self.parse_string().map(|s| Value::String(Rc::from(s.as_str()))),
+            Some(b'"') => self
+                .parse_string()
+                .map(|s| Value::String(Rc::from(s.as_str()))),
             Some(b't') => self.parse_literal("true", Value::Bool(true)),
             Some(b'f') => self.parse_literal("false", Value::Bool(false)),
             Some(b'n') => self.parse_literal("null", Value::Nil),
@@ -171,8 +176,10 @@ impl<'a> JsonParser<'a> {
         // `(key . value)` pair, matching language-contract.my's data convention.
         let mut alist = Value::Nil;
         for (key, value) in pairs.into_iter().rev() {
-            alist =
-                Value::Pair(Rc::new(Value::Pair(Rc::new(key), Rc::new(value))), Rc::new(alist));
+            alist = Value::Pair(
+                Rc::new(Value::Pair(Rc::new(key), Rc::new(value))),
+                Rc::new(alist),
+            );
         }
         Ok(alist)
     }

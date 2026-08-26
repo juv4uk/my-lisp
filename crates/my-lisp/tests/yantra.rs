@@ -48,9 +48,7 @@ const SCRIPTED_COMPLETE: &str = r#"
 "#;
 
 fn assistant(content: &str) -> String {
-    format!(
-        "(list (cons (quote role) \"assistant\") (cons (quote content) \"{content}\"))"
-    )
+    format!("(list (cons (quote role) \"assistant\") (cons (quote content) \"{content}\"))")
 }
 
 fn assistant_tool_call(id: &str, cmd: &str) -> String {
@@ -72,7 +70,6 @@ const FIRST_TOOL_RESULT: &str = r#"
       ((equal? (msg-role (car messages)) "tool") (msg-content (car messages)))
       (t (first-tool-result (cdr messages))))))
 "#;
-
 
 /// Yantra M1: stale evidence. A real tool run in an EARLIER exchange must
 /// not back an execution claim made later - an intervening assistant
@@ -241,8 +238,7 @@ fn hard_max_turns_limit_stops_endless_tool_calls() {
 /// JSON encoding (.my) round-trips through json-parse (the host primitive).
 #[test]
 fn json_encode_and_parse_round_trip() {
-    let source =
-        r#"
+    let source = r#"
         (def body (build-request-body "qwen3:4b"
                     (list (list (cons (quote role) "user")
                                 (cons (quote content) "say \"hi\"\nnow")))))
@@ -251,7 +247,8 @@ fn json_encode_and_parse_round_trip() {
           (equal? (alist-ref "model" parsed) "qwen3:4b")
           (alist-ref "content" (car (alist-ref "messages" parsed)))
           (length (alist-ref "tools" parsed)))
-        "#.to_string();
+        "#
+    .to_string();
     assert_eq!(
         eval_with_agent(&source),
         "(t \"say \\\"hi\\\"\\nnow\" 1)",
@@ -273,7 +270,10 @@ fn http_transport_success_passes_body_through() {
     "#;
     let rendered = eval_with_agent(src);
     assert!(rendered.contains("(0"), "unexpected: {rendered}");
-    assert!(rendered.contains("ok\\\":true") || rendered.contains("ok"), "unexpected: {rendered}");
+    assert!(
+        rendered.contains("ok\\\":true") || rendered.contains("ok"),
+        "unexpected: {rendered}"
+    );
 }
 
 #[test]

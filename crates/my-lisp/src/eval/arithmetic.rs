@@ -2,9 +2,7 @@
 //! Obrobka tochnykh/netochnykh chysel dlia `+`, `-`, `*` ta `/`.
 //! Verarbeitung exakter/inexakter Zahlen für `+`, `-`, `*` und `/`.
 
-
 use crate::{Environment, ErrorKind, Exactness, LanguageError, Rational, Span, Value};
-
 
 // `Rational` wraps a heap-allocated `BigRational` (arbitrary precision), so
 // it isn't `Copy` — neither is `Numeric` anymore. Both accessor methods
@@ -65,7 +63,9 @@ fn numeric_value(value: Value, span: Span) -> Result<Numeric, LanguageError> {
         // `fract() == 0.0` — tochnyi `Value::Number` zavzhdy tsilyi za
         // pobudovoiu (dyv. `exact_value` nyzhche), tozh priama konversiia v
         // `i64` bezpechna.
-        Value::Number(number, Exactness::Exact) => Ok(Numeric::Exact(Rational::integer(*number as i64))),
+        Value::Number(number, Exactness::Exact) => {
+            Ok(Numeric::Exact(Rational::integer(*number as i64)))
+        }
         Value::Number(number, Exactness::Inexact) => Ok(Numeric::Inexact(*number)),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
@@ -103,7 +103,11 @@ fn arithmetic_overflow(span: Span) -> LanguageError {
 /// obchyslennia tochnoho rezultatu, nikoly ne vykorystovuietsia, shchob
 /// vidkotytys do netochnoho nablyzhennia — tse porushylo b S1, ne
 /// zadovolnylo b yoho.
-fn check_numeric_limit(environment: &Environment, result: &Rational, span: Span) -> Result<(), LanguageError> {
+fn check_numeric_limit(
+    environment: &Environment,
+    result: &Rational,
+    span: Span,
+) -> Result<(), LanguageError> {
     if let Some(limit) = environment.numeric_bit_limit() {
         if result.bit_length() > limit {
             return Err(LanguageError::new(
@@ -115,9 +119,6 @@ fn check_numeric_limit(environment: &Environment, result: &Rational, span: Span)
     }
     Ok(())
 }
-
-
-
 
 fn compare<T: PartialOrd>(operator: &str, left: T, right: T) -> bool {
     match operator {
@@ -158,18 +159,29 @@ pub(super) fn arithmetic_on_values(
     // Avoids BigRational allocation + gcd normalization for the
     // most common case in real workloads (WSM-24 evidence).
     // ── fast path: all exact integers that fit in i64 ──
-    if values.iter().all(|v| matches!(
-        v, Value::Number(f, Exactness::Exact)
-        if *f == (*f as i64) as f64 && f.abs() <= 9_000_000_000_000.0
-    )) {
-        let ints: Vec<i64> = values.iter().map(|v| {
-            if let Value::Number(f, Exactness::Exact) = v { *f as i64 } else { unreachable!() }
-        }).collect();
+    if values.iter().all(|v| {
+        matches!(
+            v, Value::Number(f, Exactness::Exact)
+            if *f == (*f as i64) as f64 && f.abs() <= 9_000_000_000_000.0
+        )
+    }) {
+        let ints: Vec<i64> = values
+            .iter()
+            .map(|v| {
+                if let Value::Number(f, Exactness::Exact) = v {
+                    *f as i64
+                } else {
+                    unreachable!()
+                }
+            })
+            .collect();
         let result: Option<i64> = match operator {
             "+" => ints.iter().try_fold(0i64, |acc, &x| acc.checked_add(x)),
             "-" => match ints.len() {
                 1 => Some(-ints[0]),
-                _ => ints[1..].iter().try_fold(ints[0], |acc, &x| acc.checked_sub(x)),
+                _ => ints[1..]
+                    .iter()
+                    .try_fold(ints[0], |acc, &x| acc.checked_sub(x)),
             },
             "*" => ints.iter().try_fold(1i64, |acc, &x| acc.checked_mul(x)),
             _ => None,
@@ -187,7 +199,10 @@ pub(super) fn arithmetic_on_values(
         .map(|value| numeric_value(value.clone(), span))
         .collect::<Result<Vec<_>, _>>()?;
 
-    if numerics.iter().any(|value| matches!(value, Numeric::Inexact(_))) {
+    if numerics
+        .iter()
+        .any(|value| matches!(value, Numeric::Inexact(_)))
+    {
         let floats = numerics.iter().map(Numeric::as_f64).collect::<Vec<_>>();
         let mut result = floats[0];
         for &operand in &floats[1..] {
@@ -212,7 +227,9 @@ pub(super) fn arithmetic_on_values(
         "-" if exact.len() == 1 => exact[0].clone().checked_neg(),
         "-" => exact[1..]
             .iter()
-            .try_fold(exact[0].clone(), |result, value| result.checked_sub(value.clone())),
+            .try_fold(exact[0].clone(), |result, value| {
+                result.checked_sub(value.clone())
+            }),
         _ => unreachable!("known arithmetic operator"),
     }
     .ok_or_else(|| arithmetic_overflow(span))?;
@@ -240,7 +257,10 @@ pub(super) fn division_on_values(
 
     let single = argument_count == 1;
 
-    if numerics.iter().any(|value| matches!(value, Numeric::Inexact(_))) {
+    if numerics
+        .iter()
+        .any(|value| matches!(value, Numeric::Inexact(_)))
+    {
         let floats = numerics.iter().map(Numeric::as_f64).collect::<Vec<_>>();
         let mut result = floats[0];
         if single {
@@ -293,7 +313,10 @@ pub(super) fn comparison_on_values(
         .map(|value| numeric_value(value.clone(), span))
         .collect::<Result<Vec<_>, _>>()?;
 
-    let holds = if numerics.iter().any(|value| matches!(value, Numeric::Inexact(_))) {
+    let holds = if numerics
+        .iter()
+        .any(|value| matches!(value, Numeric::Inexact(_)))
+    {
         numerics
             .windows(2)
             .all(|pair| compare(operator, pair[0].as_f64(), pair[1].as_f64()))

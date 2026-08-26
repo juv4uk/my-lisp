@@ -24,11 +24,11 @@ mod io;
 pub mod json;
 mod strings;
 
-pub(super) use core::{
-    car_value, cdr_value, cons_values, eq_values, evaluate_cond, evaluate_defmacro,
-    evaluate_definition, quoted,
-};
 pub use core::exact_arity;
+pub(super) use core::{
+    car_value, cdr_value, cons_values, eq_values, evaluate_cond, evaluate_definition,
+    evaluate_defmacro, quoted,
+};
 pub(super) use digest::evaluate_sha256_hex;
 pub(super) use io::{
     evaluate_eval, evaluate_princ, evaluate_print, evaluate_read, evaluate_read_all,
@@ -36,6 +36,6 @@ pub(super) use io::{
 };
 pub(super) use strings::{
     evaluate_string_append, evaluate_string_first, evaluate_string_less_than,
-    evaluate_string_predicate, evaluate_string_rest, evaluate_string_to_symbol,
-    evaluate_string_slice, evaluate_symbol_to_string,
+    evaluate_string_predicate, evaluate_string_rest, evaluate_string_slice,
+    evaluate_string_to_symbol, evaluate_symbol_to_string,
 };

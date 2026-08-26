@@ -81,13 +81,11 @@ pub(crate) fn evaluate_read(
         let evaluated = evaluate(argument, environment)?;
         match &evaluated {
             Value::String(text) => text.to_string(),
-            _ => {
-                return Err(LanguageError::new(
-                    ErrorKind::Type,
-                    "read expects a string · read ochikuie riadok · read erwartet eine Zeichenkette",
-                    argument.span,
-                ))
-            }
+            _ => return Err(LanguageError::new(
+                ErrorKind::Type,
+                "read expects a string · read ochikuie riadok · read erwartet eine Zeichenkette",
+                argument.span,
+            )),
         }
     } else {
         read_stdin_line(span)?

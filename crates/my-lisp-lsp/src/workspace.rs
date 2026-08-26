@@ -50,7 +50,9 @@ impl WorkspaceIndex {
         let mut texts = HashMap::new();
         let mut stack = vec![root.clone()];
         while let Some(dir) = stack.pop() {
-            let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                continue;
+            };
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
@@ -67,7 +69,9 @@ impl WorkspaceIndex {
                 if meta.len() > SCAN_MAX_BYTES {
                     continue;
                 }
-                let Ok(text) = std::fs::read_to_string(&path) else { continue };
+                let Ok(text) = std::fs::read_to_string(&path) else {
+                    continue;
+                };
                 let uri = path_to_uri(&path);
                 collect_into(&mut by_name, &mut texts, &uri, &text);
             }
@@ -121,13 +125,16 @@ fn collect_into(
     texts.insert(uri.to_string(), text.to_string());
     if let Ok(analysis) = analysis::analyze(text) {
         for def in analysis.defs {
-            by_name.entry(def.name.clone()).or_default().push(WorkspaceDef {
-                name: def.name,
-                uri: uri.to_string(),
-                kind: def.kind,
-                name_span: def.name_span,
-                form_span: def.form_span,
-            });
+            by_name
+                .entry(def.name.clone())
+                .or_default()
+                .push(WorkspaceDef {
+                    name: def.name,
+                    uri: uri.to_string(),
+                    kind: def.kind,
+                    name_span: def.name_span,
+                    form_span: def.form_span,
+                });
         }
     }
 }

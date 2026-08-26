@@ -23,7 +23,6 @@ use std::rc::Rc;
 // submodules can share the one path to the filesystem rather than each
 // having its own.
 
-
 /// The write-side counterpart to `read-file` (PLAN.md item 13) — one
 /// primitive that opens and writes in a single step, the same shape
 /// `read-file` already uses for opening and reading, rather than a
@@ -316,7 +315,6 @@ fn write_file_bytes(_path: &str, _bytes: &[u8], span: Span) -> Result<(), Langua
 // session must have opted into exactly the program's name via
 // `Environment::with_process_allowlist`.
 
-
 /// `(process-run program args)` runs `program` with `args` (a list of
 /// strings) and returns `(list exit-code stdout stderr)`.
 /// `std::process::Command::new(program).args(args)` never goes through a
@@ -387,7 +385,11 @@ fn expect_string_list(value: &Value, span: Span) -> Result<Vec<String>, Language
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn process_run(program: &str, args: &[String], span: Span) -> Result<std::process::Output, LanguageError> {
+fn process_run(
+    program: &str,
+    args: &[String],
+    span: Span,
+) -> Result<std::process::Output, LanguageError> {
     std::process::Command::new(program)
         .args(args)
         .output()
@@ -401,7 +403,11 @@ fn process_run(program: &str, args: &[String], span: Span) -> Result<std::proces
 }
 
 #[cfg(target_arch = "wasm32")]
-fn process_run(_program: &str, _args: &[String], span: Span) -> Result<std::process::Output, LanguageError> {
+fn process_run(
+    _program: &str,
+    _args: &[String],
+    span: Span,
+) -> Result<std::process::Output, LanguageError> {
     Err(LanguageError::new(
         ErrorKind::InvalidForm,
         "process-run: process execution is not available in this build",
@@ -413,7 +419,6 @@ fn process_run(_program: &str, _args: &[String], span: Span) -> Result<std::proc
 // (PLAN.md item 21) — "talk to other AI systems" (principle 3, extended to
 // LLM APIs/other agents), the raw byte pipe only: no HTTP/TLS logic lives
 // here, a caller builds that itself with `string-append`/`tcp-write`.
-
 
 /// `(tcp-connect host port)` — the outbound-client half: opens a TCP
 /// connection, returns a `Value::TcpConnection` handle. The caller writes
@@ -436,7 +441,9 @@ fn evaluate_tcp_connect(
     };
     let port = expect_port(&arguments[1], environment)?;
     let stream = tcp_connect(host, port, span)?;
-    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
+    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(
+        stream,
+    ))))
 }
 
 /// `(tcp-listen port)` — the inbound-server half: binds and starts listening,
@@ -470,7 +477,9 @@ fn evaluate_tcp_accept(
         ));
     };
     let stream = tcp_accept(listener, span)?;
-    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
+    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(
+        stream,
+    ))))
 }
 
 /// `(tcp-read connection)` — one `read()` call, up to 64 KiB, returned as a
@@ -623,16 +632,13 @@ fn tcp_read(
 ) -> Result<String, LanguageError> {
     use std::io::Read;
     let mut buffer = [0u8; 65536];
-    let read = connection
-        .borrow_mut()
-        .read(&mut buffer)
-        .map_err(|error| {
-            LanguageError::new(
-                ErrorKind::InvalidForm,
-                format!("tcp-read: failed to read from the connection: {error}"),
-                span,
-            )
-        })?;
+    let read = connection.borrow_mut().read(&mut buffer).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("tcp-read: failed to read from the connection: {error}"),
+            span,
+        )
+    })?;
     String::from_utf8(buffer[..read].to_vec()).map_err(|error| {
         LanguageError::new(
             ErrorKind::InvalidForm,
@@ -675,8 +681,6 @@ fn tcp_close(
             )
         })
 }
-
-
 
 /// `load` reads a my-lisp source file from disk and evaluates each
 /// top-level form into the current environment - a filesystem capability
@@ -744,9 +748,18 @@ mod install_tests {
         super::install();
         let installed = my_lisp::installed_capabilities();
         for name in [
-            "read-file", "read-dir", "read-file-bytes", "write-file",
-            "write-file-bytes", "process-run", "tcp-connect", "tcp-listen",
-            "tcp-accept", "tcp-read", "tcp-write", "tcp-close",
+            "read-file",
+            "read-dir",
+            "read-file-bytes",
+            "write-file",
+            "write-file-bytes",
+            "process-run",
+            "tcp-connect",
+            "tcp-listen",
+            "tcp-accept",
+            "tcp-read",
+            "tcp-write",
+            "tcp-close",
         ] {
             assert!(installed.iter().any(|n| n == name), "{name} not registered");
         }
