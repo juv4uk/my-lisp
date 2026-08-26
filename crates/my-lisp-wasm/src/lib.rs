@@ -156,6 +156,33 @@ mod tests {
     }
 
     #[test]
+    fn wasm_session_exposes_unicode_string_slice_with_clamped_bounds() {
+        reset_session();
+        init_if_needed();
+
+        SESSION.with(|slot| {
+            let mut guard = slot.borrow_mut();
+            let session = guard.as_mut().unwrap();
+
+            let (unicode, _) = my_lisp_literate::eval_literate(
+                r#"(string-slice "привіт" 1 3)"#,
+                SourceMode::PureLisp,
+                session,
+            )
+            .expect("the WASM session must expose the canonical string-slice primitive");
+            assert_eq!(unicode.value.to_string(), r#""ри""#);
+
+            let (clamped, _) = my_lisp_literate::eval_literate(
+                r#"(string-slice "abc" 2 99)"#,
+                SourceMode::PureLisp,
+                session,
+            )
+            .expect("string-slice must preserve its canonical clamping semantics in WASM");
+            assert_eq!(clamped.value.to_string(), r#""c""#);
+        });
+    }
+
+    #[test]
     fn persistent_session_preserves_definitions_across_calls() {
         reset_session();
         init_if_needed();
