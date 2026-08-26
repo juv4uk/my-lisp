@@ -140,6 +140,9 @@ struct Node {
     /// trains silently). Heartbeat marks them caught-up after the idle
     /// window — their train is over, silence is their "complete".
     sync_train_last: Mutex<HashMap<String, Instant>>,
+    /// M1.2 auto-sync: tasks.my files to periodically re-read and import
+    /// into the registry without manual `(sync-tasks ...)` calls.
+    auto_sync_paths: Mutex<Vec<std::path::PathBuf>>,
     /// Process start time, for `(metrics)`'s uptime field.
     started_at: Instant,
 }
@@ -280,6 +283,7 @@ fn main() -> std::io::Result<()> {
         sync_in_flight: Mutex::new(HashSet::new()),
         peer_write_locks: Mutex::new(HashMap::new()),
         sync_train_last: Mutex::new(HashMap::new()),
+        auto_sync_paths: Mutex::new(Vec::new()),
         started_at: Instant::now(),
     });
 
