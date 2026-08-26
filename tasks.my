@@ -227,4 +227,28 @@
     (done . t)
     (context . "done 2026-08-25: 7 targeted tests green - string-slice verified across Cyrillic, Unicode, clamping, empty, Sanskrit IAST. Primitives work identically native and WASM (same Rust code path).")
   ))
+
+
+  ("WASM-DIAGNOSTIC-TESTS" . (
+    (priority . 6.0)
+    (capabilities . (my-lisp-wasm rust testing))
+    (description . "Add unit tests for diagnose() function: parse-error spans, literate mode, empty source edge cases. Currently 0 dedicated tests.")
+    (done . ())
+  ))
+
+
+  ("WASM-STRING-SLICE" . (
+    (priority . 5.5)
+    (capabilities . (my-lisp wasm compiler))
+    (description . "Expose string-slice primitive through WASM bindings per text-primitive-proposal-v01.md. Enables efficient text processing in browser.")
+    (done . ())
+  ))
+
+
+  ("WASM-KB-INTEGRATION" . (
+    (priority . 5.0)
+    (capabilities . (my-lisp-wasm browser))
+    (description . "Integrate He-Mufassal registry data into WASM session preload for browser-based Sanskrit IDE. Requires size/complexity trade-off analysis.")
+    (done . ())
+  ))
 )))
