@@ -196,12 +196,6 @@ pub(crate) fn install(environment: &Environment) {
         Ok(Value::String(String::from_iter(chars[start..end].iter()).into())) 
     });
 
-    // (*argv*) — list of strings after the script filename.
-    define!(environment, "*argv*", |args: &[Value], _env: &Environment, _span: Span| {
-        exact_args("*argv*", args, 0, _span)?;
-        Ok(Value::vector(args.iter().cloned()))
-    });
-
     define!(environment, "vector-length", |args: &[Value], _env: &Environment, span: Span| {
         exact_args("vector-length", args, 1, span)?;
         match &args[0] {

@@ -212,11 +212,6 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "Test structural or identity equality",
             Arity::Exact(2),
         ),
-        "*argv*" => (
-            "(*argv*)",
-            "Script arguments as a list of strings (empty when none)",
-            Arity::Exact(0),
-        ),
         "env" => (
             "(env)",
             "Return visible bindings as an alist",
