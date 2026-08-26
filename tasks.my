@@ -276,4 +276,28 @@
     (done . t)
     (context . "done 2026-08-25 by Vyasa: NO DRIFT FOUND. cargo build --workspace + cargo test --workspace verified green (29 suites, ~423 tests, 0 failures). All docs/ and lib/ file references in README exist on disk. No stale version claims. No dead links. *argv* P0 already fixed in prior commit. Evidence class: full workspace test run + file existence check.")
   ))
+
+
+  ("REMOVE-ARGV-PLACEHOLDER" . (
+    (priority . 8.0)
+    (capabilities . (my-lisp rust compiler))
+    (description . "Remove *argv* placeholder from core builtins registry per Manus AI review. CLI remains sole source of argv binding. Fixes workspace test red (63 passed / 1 failed). Minimal repair: delete entry from core registry, leave CLI as-is.")
+    (done . ())
+  ))
+
+
+  ("BGE3-TAGGING-RETUNE" . (
+    (priority . 6.5)
+    (capabilities . (my-lisp nlp tooling))
+    (description . "Retune BGE-M3 tagging pipeline for semantic classification instead of keyword extraction. Current output assigns frequent Sanskrit words as tags without semantic relevance (e.g. bhavitṣyati as tag on corpus file). Needs: prompt engineering or fine-tuning, evaluation set, quality metric.")
+    (done . ())
+  ))
+
+
+  ("REGISTRY-MUTATION-POLICY" . (
+    (priority . 7.0)
+    (capabilities . (my-lisp documentation process))
+    (description . "Codify rebuild-from-clean-base pattern for registry mutations in ecosystem docs. 3 corruption incidents today from incremental string-surgery. Rule: read full file, extract valid entries, rebuild entire file, verify balance.")
+    (done . ())
+  ))
 )))
