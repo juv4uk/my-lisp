@@ -14,7 +14,7 @@
     (priority . 9.0)
     (description . "Define conformance.my semantic contract to be verified independently by fpga-lisp.")
     (done . t)
-    (context . "done 2026-08-25: semantic contract 3.0 ratified (2eb4ad1). Implementation evidence: ErrorKind discipline (DivisionByZero/NumericOverflow/Parse - d15c910), vector family complete (136897a), parser depth limit (a9bf3b3), Stein GCD + small-operand fast path (274837b, ab058ef), incremental output (e594fd0), FASL snapshot cache (dc2172d), text primitives proposal filed (PROPOSAL-TEXT-PRIMITIVES.md v2.1). Full crate 25/25 suites green, clippy clean. Cross-language boundary documented vs CPython (docs/benchmarks.md §4).")
+    (context . "done 2026-08-25: Contract 3.0 ratified + implemented. Conformance fixtures pass 77/77 on panini machine. Cross-language boundary documented vs CPython. Remaining: LANGUAGE-STABLE-GATE deferred to 1.0.0 by design (axioms explicitly draft during 0.x).")
   ))
   ("MIGRATE-QUOTE-CML" . (
     (priority . 10.0)
