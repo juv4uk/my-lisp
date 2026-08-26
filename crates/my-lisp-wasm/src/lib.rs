@@ -291,3 +291,13 @@ mod tests {
         assert!(diagnose_impl("# Notes\n\nNo executable fence here.\n", true).is_empty());
     }
 }
+
+/// Direct JS-callable string-slice: char-indexed substring with clamping.
+/// Convenience for browser text processing without full my-lisp evaluation.
+#[wasm_bindgen]
+pub fn string_slice(s: &str, start: i64, end: i64) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    let st = start.max(0).min(chars.len() as i64) as usize;
+    let en = end.clamp(st as i64, chars.len() as i64) as usize;
+    chars[st..en].iter().collect()
+}
