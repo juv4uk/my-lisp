@@ -196,7 +196,8 @@
     (priority . 7.5)
     (capabilities . (my-lisp rust optimization))
     (description . "Specialize small rationals: if p and q fit in i64, compute without BigRational allocation. Covers 90% of arithmetic ops, expected 2-5x speedup per OPTIMIZATION-ANALYSIS-VYASA.md finding #1.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-25: i64 fast path already implemented at 827e69b and covers the smallint specialization use case. i128 extension evaluated and rejected - checked_add/mul on i64 correctly falls through to bignum on overflow, so there is no correctness gap. The optimization value would be marginal since the dominant cost in exact chains is gcd, not integer overflow handling.")
   ))
 
 

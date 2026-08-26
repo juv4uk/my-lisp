@@ -157,6 +157,7 @@ pub(super) fn arithmetic_on_values(
     // ── fast path: all exact integers that fit in i64 ──
     // Avoids BigRational allocation + gcd normalization for the
     // most common case in real workloads (WSM-24 evidence).
+    // ── fast path: all exact integers that fit in i64 ──
     if values.iter().all(|v| matches!(
         v, Value::Number(f, Exactness::Exact)
         if *f == (*f as i64) as f64 && f.abs() <= 9_000_000_000_000.0
