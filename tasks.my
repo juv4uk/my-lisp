@@ -347,6 +347,7 @@
     (depends-on . (WSM-SOURCE-VS-PROTOCOL-EXTENSION-POLICY))
     (origin . my-lisp)
     (description . "Add *.wsm GitHub Linguist classification to ecosystem repositories that contain or will contain WSM source, including chess-lisp-zero which currently has no .gitattributes. Preserve existing .my/.lisp mappings and do not reclassify protocol data as migrated source.")
-    (done . ())
+    (done . t)
+    (context . "verified done 2026-08-27 by wsl-nidana-1: task's own premise (chess-lisp-zero missing .gitattributes) was stale by the time this was picked up -- live sweep of all 9 checked-out repos containing .wsm/.my/.lisp files (WSM-24, chess-lisp-zero, cml, fpga-lisp, my-idea, my-lisp-panini, my-lisp, shiva-sutras, tauricode) confirmed every single one already has *.wsm/*.my/*.lisp linguist-language=Racket in .gitattributes. No changes needed, no bulk rename performed. chess-tauri-zero deliberately excluded -- it's a separate, unrelated Tauri/PyTorch project with no WSM source at all, per the OWNER-RATIFIED chess original-work license policy.")
   ))
 )))
