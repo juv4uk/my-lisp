@@ -1,8 +1,33 @@
-# my-lisp
+# wsm (my-lisp)
 
 **A small language that grows itself · Маленька мова, що вирощує себе · Eine kleine Sprache, die sich selbst wachsen lässt**
 
 [English](#english) · [Українська](#українська) · [Deutsch](#deutsch)
+
+> **Renamed 2026-08-27 (`ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME`): the
+> project is now `wsm` — a different, pre-existing "MyLisp" project
+> already exists, and the old name invited real confusion between the
+> two. `.wsm` is the new canonical source extension; `.my` and `.lisp`
+> remain fully supported, not deprecated. Only this README reflects the
+> new name so far — every other doc, comment, path, and crate name in
+> this repo (and across the ecosystem: my-lisp-panini, chess-lisp-zero,
+> fpga-lisp, cml) still says "my-lisp" on purpose. That is not drift to
+> fix on sight: the rename decision was deliberately scoped to name +
+> extension only, with repo/crate/doc migration left for a later,
+> separately scoped pass. Don't rename anything else on the strength of
+> this note alone.**
+>
+> **Перейменовано 2026-08-27 (`ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME`):
+> проєкт тепер називається `wsm` — уже існує інший, чужий проєкт
+> "MyLisp", і стара назва провокувала реальну плутанину. `.wsm` — нове
+> канонічне розширення, `.my`/`.lisp` лишаються повністю підтримуваними,
+> не депрекейтяться. Наразі нову назву відображає лише цей README — уся
+> решта документації, коментарів, шляхів і назв crate'ів у цьому репо
+> (і в екосистемі: my-lisp-panini, chess-lisp-zero, fpga-lisp, cml)
+> навмисно й далі каже "my-lisp". Це не дрейф, який треба виправляти —
+> рішення про перейменування свідомо обмежене назвою й розширенням,
+> міграція репо/crate'ів/документації лишена на окремий, майбутній крок.
+> Не перейменовуй нічого іншого лише на підставі цієї нотатки.**
 
 ## Quick try · Швидко спробувати · Schnell ausprobieren
 
@@ -16,14 +41,14 @@ Or build the native CLI from source:
 
 ```bash
 cargo run -p my-lisp-cli
-cargo run -p my-lisp-cli -- path/to/file.my
+cargo run -p my-lisp-cli -- path/to/file.wsm
 ```
 
 ## English
 
 `my-lisp` is a Lisp built around McCarthy's seven primitives — `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond` — plus the minimal semantic kernel needed to bootstrap everything else: `lambda`, `def`, `defmacro`. Everything derivable from that kernel is written in my-lisp itself ([`lib/core.my`](lib/core.my)), not added as Rust built-ins. Full rationale: [`docs/language-core.md`](docs/language-core.md).
 
-Exact rational arithmetic is a core purpose, not a nice-to-have: `/` on integers/rationals stays exact (`5/336`, not `0.0148...`), following Racket's exact/inexact distinction. `.my` is the canonical source extension; `.lisp` is a compatible alias.
+Exact rational arithmetic is a core purpose, not a nice-to-have: `/` on integers/rationals stays exact (`5/336`, not `0.0148...`), following Racket's exact/inexact distinction. `.wsm` is the canonical source extension; `.my` and `.lisp` remain fully supported aliases, not deprecated.
 
 The central architecture is one structural language for programs, facts, rules, and proofs. Machines exchange knowledge rather than executable commands, then reason locally under the same conformance contract across Rust and FPGA implementations.
 
@@ -110,7 +135,7 @@ A fifth sibling repository, [`my-lisp-panini`](https://github.com/juv4uk/my-lisp
 
 `my-lisp` — це Lisp, побудований навколо семи примітивів Маккарті — `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond` — плюс мінімальне семантичне ядро, потрібне для розгортання всього іншого: `lambda`, `def`, `defmacro`. Усе, що можна вивести з цього ядра, написане самою my-lisp ([`lib/core.my`](lib/core.my)), а не додане як Rust built-in. Повне обґрунтування — [`docs/language-core.md`](docs/language-core.md).
 
-Точна раціональна арифметика — базова мета, а не бонус: `/` над цілими/раціональними лишається точним (`5/336`, а не `0.0148...`), за зразком розрізнення exact/inexact у Racket. `.my` — канонічне розширення початкового коду; `.lisp` — сумісний псевдонім.
+Точна раціональна арифметика — базова мета, а не бонус: `/` над цілими/раціональними лишається точним (`5/336`, а не `0.0148...`), за зразком розрізнення exact/inexact у Racket. `.wsm` — канонічне розширення початкового коду; `.my` і `.lisp` лишаються повністю підтримуваними псевдонімами, не депрекейтяться.
 
 Центральна архітектура — одна структурна мова для програм, фактів, правил і доведень. Машини обмінюються знаннями, не командами на виконання, а потім міркують локально за спільним conformance-контрактом Rust- і FPGA-реалізацій.
 
@@ -194,7 +219,7 @@ raco pkg install --link --name my-lisp racket/
 
 `my-lisp` ist ein Lisp, aufgebaut um McCarthys sieben Primitive — `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond` — plus den minimalen semantischen Kern, der zum Bootstrap von allem anderen nötig ist: `lambda`, `def`, `defmacro`. Alles, was aus diesem Kern ableitbar ist, ist in my-lisp selbst geschrieben ([`lib/core.my`](lib/core.my)), nicht als Rust-Built-in hinzugefügt. Vollständige Begründung: [`docs/language-core.md`](docs/language-core.md).
 
-Exakte rationale Arithmetik ist ein Kernziel, kein Extra: `/` bleibt bei Ganzzahlen/rationalen Zahlen exakt (`5/336`, nicht `0.0148...`), nach Rackets exakt/inexakt-Unterscheidung. `.my` ist die kanonische Quellcodedateiendung; `.lisp` bleibt ein kompatibler Alias.
+Exakte rationale Arithmetik ist ein Kernziel, kein Extra: `/` bleibt bei Ganzzahlen/rationalen Zahlen exakt (`5/336`, nicht `0.0148...`), nach Rackets exakt/inexakt-Unterscheidung. `.wsm` ist die kanonische Quellcodedateiendung; `.my` und `.lisp` bleiben vollständig unterstützte Aliase, nicht veraltet.
 
 Die zentrale Architektur ist eine gemeinsame Struktursprache für Programme, Fakten, Regeln und Beweise. Maschinen tauschen Wissen statt Ausführungsbefehle aus und schließen lokal unter demselben Konformitätsvertrag für Rust- und FPGA-Implementierungen.
 
