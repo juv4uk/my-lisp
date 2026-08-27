@@ -268,7 +268,7 @@
     (priority . 6.5)
     (capabilities . (swarm coordination))
     (description . "Design agent capsule system: each agent starts through pinned guix time-machine -- shell --container --pure with explicit filesystem/network exposure. GPU/GUI/MCP access = conscious escape hatches.")
-    (done . ())
+    (done . t)
   ))
   ("README-TEST-PARITY-MYLISP" . (
     (priority . 7.0)
