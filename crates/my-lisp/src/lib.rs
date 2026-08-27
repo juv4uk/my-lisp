@@ -47,3 +47,15 @@ pub fn sha256_source(input: &[u8]) -> [u8; 32] {
 }
 pub use syntax::{Exactness, Expr, ExprKind, Span};
 pub use value::{Closure, NumericBuffer, Rational, Value};
+
+/// Return a half-open, Unicode-scalar-indexed substring with clamped bounds.
+///
+/// This is the shared implementation behind the language primitive and
+/// direct host bindings, so adapters cannot silently drift from language
+/// semantics. Argument validation remains the caller's responsibility.
+pub fn string_slice_text(text: &str, start: usize, end: usize) -> String {
+    if start >= end {
+        return String::new();
+    }
+    text.chars().skip(start).take(end - start).collect()
+}

@@ -33,20 +33,26 @@ struct Diagnostic {
 
 /// Ensures the shared session exists and has core.my preloaded.
 /// Idempotent — subsequent calls are no-ops.
-fn init_if_needed() {
+fn init_if_needed() -> Result<(), String> {
     SESSION.with(|slot| {
         let mut guard = slot.borrow_mut();
         if guard.is_none() {
-            let mut session = Session::default();
-            let _ = my_lisp::eval_program(CORE_LIB, &mut session);
-            *guard = Some(session);
+            *guard = Some(session_with_core(CORE_LIB)?);
         }
-    });
+        Ok(())
+    })
+}
+
+fn session_with_core(core: &str) -> Result<Session, String> {
+    let mut session = Session::default();
+    my_lisp::eval_program(core, &mut session)
+        .map_err(|error| format!("failed to preload core.my: {error}"))?;
+    Ok(session)
 }
 
 #[wasm_bindgen]
 pub fn evaluate(source: &str, mode: JsValue) -> Result<JsValue, JsValue> {
-    init_if_needed();
+    init_if_needed().map_err(|error| JsValue::from_str(&error))?;
 
     let mode_str = mode.as_string().unwrap_or_default();
     let source_mode = if mode_str == "markdown" {
@@ -141,7 +147,7 @@ mod tests {
 
     #[test]
     fn core_my_definitions_available_after_init() {
-        init_if_needed();
+        init_if_needed().expect("core.my preload must succeed");
         SESSION.with(|slot| {
             let mut guard = slot.borrow_mut();
             let session = guard.as_mut().unwrap();
@@ -156,9 +162,15 @@ mod tests {
     }
 
     #[test]
+    fn broken_core_preload_is_reported_instead_of_installing_partial_session() {
+        let error = session_with_core("(def broken").expect_err("invalid core must fail closed");
+        assert!(error.contains("failed to preload core.my"), "{error}");
+    }
+
+    #[test]
     fn wasm_session_exposes_unicode_string_slice_with_clamped_bounds() {
         reset_session();
-        init_if_needed();
+        init_if_needed().expect("core.my preload must succeed");
 
         SESSION.with(|slot| {
             let mut guard = slot.borrow_mut();
@@ -185,7 +197,7 @@ mod tests {
     #[test]
     fn persistent_session_preserves_definitions_across_calls() {
         reset_session();
-        init_if_needed();
+        init_if_needed().expect("core.my preload must succeed");
 
         // Define foo in one call
         SESSION.with(|slot| {
@@ -296,8 +308,8 @@ mod tests {
 /// Convenience for browser text processing without full my-lisp evaluation.
 #[wasm_bindgen]
 pub fn string_slice(s: &str, start: i64, end: i64) -> String {
-    let chars: Vec<char> = s.chars().collect();
-    let st = start.max(0).min(chars.len() as i64) as usize;
-    let en = end.clamp(st as i64, chars.len() as i64) as usize;
-    chars[st..en].iter().collect()
+    let length = s.chars().count() as i64;
+    let start = start.max(0).min(length) as usize;
+    let end = end.clamp(start as i64, length) as usize;
+    my_lisp::string_slice_text(s, start, end)
 }

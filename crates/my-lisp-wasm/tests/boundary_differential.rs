@@ -1,12 +1,11 @@
-//! Boundary differential tests: native Session vs WASM adapter code path.
+//! Native reference tests for the semantic engine embedded by the WASM adapter.
 //!
-//! PASSING tests prove: arithmetic parity, rational exactness, lambda
-//! persistence across calls, error handling, session reset.
+//! PASSING tests prove the native engine behavior expected by the adapter.
+//! They do not cross the wasm-bindgen/JavaScript boundary; browser workflow
+//! tests provide that separate evidence class.
 //!
-//! KNOWN LIMITATION (documented): core.my preloading causes stack overflow
-//! in test context (works in WASM runtime but not in native test binary).
-//! Tests requiring core.my definitions are excluded pending investigation.
-//! See: PHONETICS-KB-PARITY task and Viveka finding on infinite recursion.
+//! These tests intentionally use a bare session. `src/lib.rs` separately
+//! verifies persistent-session behavior and successful `core.my` preload.
 
 use my_lisp::Session;
 use my_lisp_literate::SourceMode;

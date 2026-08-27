@@ -577,8 +577,7 @@ fn t15_arity_diagnostics_are_conservative_and_shadow_aware() {
 fn t16_workspace_scan_recognizes_wsm_extension() {
     static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir: PathBuf =
-        std::env::temp_dir().join(format!("lsp-wsm-{}-{seq}", std::process::id()));
+    let dir: PathBuf = std::env::temp_dir().join(format!("lsp-wsm-{}-{seq}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("a.wsm"), "(def foo (lambda (x) (* x x)))\n").unwrap();

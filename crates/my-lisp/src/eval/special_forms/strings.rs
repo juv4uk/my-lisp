@@ -33,10 +33,7 @@ pub(crate) fn evaluate_string_slice(
     };
     let start = slice_index(&arguments[1], span)?;
     let end = slice_index(&arguments[2], span)?;
-    if start >= end {
-        return Ok(Value::String(Rc::from("")));
-    }
-    let result: String = text.chars().skip(start).take(end - start).collect();
+    let result = crate::string_slice_text(text, start, end);
     Ok(Value::String(Rc::from(result.as_str())))
 }
 

@@ -252,33 +252,6 @@ pub(crate) fn install(environment: &Environment) {
         }
     );
 
-    // (string-slice s start end) — char-indexed substring with clamping.
-    define!(
-        environment,
-        "string-slice",
-        |args: &[Value], _env: &Environment, span: Span| {
-            exact_args("string-slice", args, 3, span)?;
-            let (
-                Value::String(s),
-                Value::Number(st, Exactness::Exact),
-                Value::Number(en, Exactness::Exact),
-            ) = (&args[0], &args[1], &args[2])
-            else {
-                return Err(crate::LanguageError::new(
-                    crate::ErrorKind::Type,
-                    "string-slice expects (string integer integer)",
-                    span,
-                ));
-            };
-            let chars: Vec<char> = s.chars().collect();
-            let start = (*st as i64).max(0).min(chars.len() as i64) as usize;
-            let end = (*en as i64).clamp(start as i64, chars.len() as i64) as usize;
-            Ok(Value::String(
-                String::from_iter(chars[start..end].iter()).into(),
-            ))
-        }
-    );
-
     define!(
         environment,
         "vector-length",
