@@ -317,7 +317,8 @@
     (depends-on . ())
     (origin . my-lisp)
     (description . "Add .wsm to the global OpenCode my-lisp LSP extension list while preserving .my/.lisp aliases. Verify a real .wsm document receives diagnostics/completion through the configured LSP, not merely direct server tests.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-27 by wsl-nidana-1 (tauricode e50822c2a7): WsmLS registered in packages/opencode/src/lsp/server.ts (which(\"my-lisp-lsp\"), repo.my as root marker). Real end-to-end diagnostics/completion verified live -- not just server unit tests -- with a real my-lisp-lsp process on PATH: hover on a .wsm file returned genuine markdown docs (\"builtin +\"). Found+fixed a real bug during verification: ctx.worktree == \"/\" for non-git instances (documented sentinel) was unguarded, handing my-lisp-lsp the whole filesystem as its scan root -- reproduced live under WSL (process wedged scanning /mnt/c/Windows/WinSxS). tsgo clean, 70/70 test/lsp/ pass (incl. 3 new WsmLS.root regression tests).")
   ))
 
   ("WSM-SOURCE-VS-PROTOCOL-EXTENSION-POLICY" . (
@@ -335,7 +336,8 @@
     (depends-on . ())
     (origin . my-lisp)
     (description . "Update user-facing gen-fasl/CLI source examples from <source.my> to <source.wsm>, retain documented .my/.lisp compatibility, and add an executable CLI smoke covering all three aliases without changing parser semantics.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-27 (SHA bc9907f, my-lisp main): gen-fasl usage updated <source.my> -> <source.wsm>; my-lisp --help documents .wsm as canonical, .my/.lisp as aliases; 15/15 cli tests pass (5 pre-existing ignored) including new all_three_source_extensions_run_identically smoke test. No parser semantics changed. Announced by ganaka-chess in comms-log 2026-08-27T15:05.")
   ))
 
   ("WSM-LINGUIST-ECOSYSTEM-ATTRIBUTES" . (
