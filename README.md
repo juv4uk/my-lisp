@@ -72,8 +72,6 @@ This repository is the canonical Rust implementation:
 - [`crates/my-lisp-cli`](crates/my-lisp-cli) — the `my-lisp` binary (REPL + file runner).
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly bindings powering the browser REPL above.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — literate-Markdown source-offset mapping.
-- [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — Language-Server-Protocol-Adapter über dem kanonischen Parser (Diagnostik, Dokumentsymbole, Hover, Go-to-Definition innerhalb einer Datei); auch als `my-lisp lsp` verfügbar.
-- [`crates/swarm-node`](crates/swarm-node) — eigenständiger Swarm-Koordinationsknoten.
 - [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — Language Server Protocol adapter over the canonical parser (diagnostics, document symbols, hover, same-file go-to-definition); also exposed as `my-lisp lsp`.
 - [`crates/swarm-node`](crates/swarm-node) — standalone swarm coordination node.
 - [`racket/`](racket/) — a `#lang my-lisp` plugin for Racket/DrRacket using the Chez Scheme JIT.
@@ -243,6 +241,8 @@ Dieses Repository ist die kanonische Rust-Implementierung:
 - [`crates/my-lisp-cli`](crates/my-lisp-cli) — die `my-lisp`-Binärdatei (REPL + Dateiausführung).
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-Bindings für den Browser-REPL oben.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — Offset-Zuordnung von literate-Markdown-Quellcode.
+- [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — Language-Server-Protocol-Adapter über dem kanonischen Parser (Diagnostik, Dokumentsymbole, Hover, Go-to-Definition innerhalb einer Datei); auch als `my-lisp lsp` verfügbar.
+- [`crates/swarm-node`](crates/swarm-node) — eigenständiger Swarm-Koordinationsknoten.
 - [`racket/`](racket/) — ein `#lang my-lisp`-Plugin für Racket/DrRacket mit dem Chez-Scheme-JIT.
 - [`lib/core.my`](lib/core.my) — die gebootstrappte Standardbibliothek.
 - [`lib/unify.my`](lib/unify.my) / [`lib/reason.my`](lib/reason.my) — Unifikation und Backward-Chaining-Inferenz.

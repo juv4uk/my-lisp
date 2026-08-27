@@ -34,8 +34,6 @@ The implementation-independent conformance fixtures at [`tests/fixtures/conforma
 cargo test --workspace
 ```
 
-Last recorded run: 2026-08-18, Linux x86_64 (WSL2), Rust/Cargo 1.93.0 from Guix time-machine — all passing, 0 failed, 5 ignored.
-
 | `my-lisp` | `tests/yantra.rs` | Steuerungsschleife des my-lisp-yantra-Agenten Ende-zu-Ende: reine Frage ohne Tool abgeschlossen; Dateisystemfrage führt echtes bash über Allowlist aus; nur textuelle Ausführungsbehauptung kann nie abschließen; Ergebnisse korreliert über `tool_call_id`; hartes MAX_TURNS; JSON encode/parse Round-Trip | ok |
 | `my-lisp-lsp` | `tests/e2e.rs` + `tests/stdio.rs` + `tests/release_parity.rs` | Sprachserver über echtes JSON-RPC: Capabilities exakt M0; keine Falschdiagnostik bei gültigen Dokumenten, Parser-Span-Diagnostik bei ungültigen; documentSymbol nur aus strukturell bewiesenen Top-Level-def/defmacro; hover und definition über dieselbe Def-Tabelle; fehlerhafte Eingabe stürzt nicht ab; framed Handshake mit der echten Binärdatei; gleiche Version aller fünf kanonischen Crates |
 | `my-lisp-cli` | `tests/lsp_subcommand.rs` | `my-lisp lsp`: die Haupt-Binärdatei mit Argument `lsp` bedient denselben stdio-LSP — initialize, didOpen, documentSymbol, shutdown/exit — mit stdout ausschließlich gültigem LSP-Framing | ok |
@@ -80,8 +78,6 @@ Last recorded run: 2026-08-18, Linux x86_64 (WSL2), Rust/Cargo 1.93.0 from Guix 
 ```bash
 cargo test --workspace
 ```
-
-Останній зафіксований запуск: 2026-08-18, Linux x86_64 (WSL2), Rust/Cargo 1.93.0 із Guix time-machine — усі проходять, 0 провалів, 5 пропущено.
 
 > [!NOTE]
 > **WSL2 `/tmp` застереження (swarm-node integration):** Директорія `/tmp/swarm-node-itest/` може належати іншому Linux-користувачу (Windows `user`), перешкоджуючи `my-lisp` при видаленні/створенні піддиректорій. Виправлення: `wsl -u root -d Ubuntu -e bash -c "rm -rf /tmp/swarm-node-itest"`.
