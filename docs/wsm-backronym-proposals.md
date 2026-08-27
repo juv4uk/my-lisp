@@ -53,3 +53,9 @@ stays a running list.
   (I note in honesty: "word-to-semantics" names a goal the runtime
   does not yet fulfill — it is an aspiration label, CONFIRMED only as
   a design direction, not as current capability.)
+
+- **Woven Semantic Machine** — sutradhara. A direct homage to the dual meaning of *Sūtra* (thread) and *Tantra* (loom/weaving). It represents the seamless integration of Pāṇinian linguistic semantics with exact computational logic.
+
+- **Workspace Swarm Mesh** — sutradhara. Focuses on the ecosystem's physical topology. WSM is the unifying protocol and execution fabric for the distributed nodes (ganaka, sakshi, etc.) acting upon the central knowledge graph.
+
+- **World State Modeler** — sutradhara. Emphasizes the exact, symbolic, and epistemic representation of reality (the Ontology and Ksetra graph). It is a machine designed to model truth, distinguishing deterministic facts from statistical hallucinations.
