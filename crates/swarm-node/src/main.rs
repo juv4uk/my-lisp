@@ -142,8 +142,10 @@ struct Node {
     sync_train_last: Mutex<HashMap<String, Instant>>,
     /// M1.2 auto-sync: tasks.my files to periodically re-read and import
     /// into the registry without manual `(sync-tasks ...)` calls.
-    #[allow(dead_code)]
     auto_sync_paths: Mutex<Vec<std::path::PathBuf>>,
+    /// Last successfully imported text per auto-sync path. Exact source-text
+    /// comparison prevents duplicate facts on unchanged polling cycles.
+    auto_sync_snapshots: Mutex<HashMap<PathBuf, String>>,
     /// Process start time, for `(metrics)`'s uptime field.
     started_at: Instant,
 }
@@ -195,6 +197,12 @@ struct Args {
     /// deployment where the observed IP isn't reachable would need that
     /// as a later addition, not preemptively built for an unconfirmed case.)
     bind: String,
+    /// M1.2 auto-sync: absolute paths to `tasks.my` files to periodically
+    /// re-read and import into the task registry (same format as
+    /// `(sync-tasks)`). Each path is re-read every `AUTO_SYNC_INTERVAL`;
+    /// file parse/IO errors are logged and skipped without crashing the
+    /// node or clearing already-imported facts.
+    auto_sync: Vec<PathBuf>,
 }
 
 fn parse_args() -> Args {
@@ -204,6 +212,7 @@ fn parse_args() -> Args {
     let mut data_dir = PathBuf::from(".swarm-node");
     let mut connect = Vec::new();
     let mut bind = "127.0.0.1".to_string();
+    let mut auto_sync = Vec::new();
 
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
@@ -219,6 +228,16 @@ fn parse_args() -> Args {
                     connect.push(v);
                 }
             }
+            "--auto-sync" => {
+                if let Some(v) = it.next() {
+                    let path = PathBuf::from(v);
+                    if !path.is_absolute() {
+                        eprintln!("swarm-node: --auto-sync requires an absolute path");
+                        std::process::exit(2);
+                    }
+                    auto_sync.push(path);
+                }
+            }
             other => warn!("swarm-node: ignoring unknown argument `{other}`"),
         }
     }
@@ -229,6 +248,7 @@ fn parse_args() -> Args {
         data_dir,
         connect,
         bind,
+        auto_sync,
     }
 }
 
@@ -259,6 +279,10 @@ fn print_usage_and_exit() -> ! {
          \x20\x20                       pass 0.0.0.0 or a specific interface IP for cross-machine use)\n\
          \x20\x20--connect <HOST:PORT>  Bootstrap peer to dial on startup (repeatable; one is enough,\n\
          \x20\x20                       gossip discovers the rest of the mesh)\n\
+         \x20\x20--auto-sync <PATH>     Absolute path to a tasks.my file to periodically re-read and\n\
+         \x20\x20                       import into the task registry (repeatable; same format as\n\
+         \x20\x20                       (sync-tasks); interval is ~30 s, override via\n\
+         \x20\x20                       SWARM_AUTO_SYNC_INTERVAL_MS)\n\
          \x20\x20--help, -h             Show this message and exit\n\
          \n\
          See docs/swarm-mesh-v2.md's onboarding checklist for a full first-join walkthrough."
@@ -299,7 +323,8 @@ fn main() -> std::io::Result<()> {
         sync_in_flight: Mutex::new(HashSet::new()),
         peer_write_locks: Mutex::new(HashMap::new()),
         sync_train_last: Mutex::new(HashMap::new()),
-        auto_sync_paths: Mutex::new(Vec::new()),
+        auto_sync_paths: Mutex::new(args.auto_sync),
+        auto_sync_snapshots: Mutex::new(HashMap::new()),
         started_at: Instant::now(),
     });
 
@@ -308,6 +333,7 @@ fn main() -> std::io::Result<()> {
     }
 
     spawn_heartbeat(&node);
+    spawn_auto_sync(&node);
 
     let listener = TcpListener::bind((args.bind.as_str(), args.port))?;
     for incoming in listener.incoming() {
@@ -454,6 +480,64 @@ fn spawn_heartbeat(node: &Arc<Node>) {
             if let Some(stream) = peers.remove(id) {
                 warn!("swarm-node: peer {id} silent for over {STALE_PEER_TIMEOUT:?}, closing connection");
                 let _ = stream.shutdown(std::net::Shutdown::Both);
+            }
+        }
+    });
+}
+
+/// M1.2 auto-sync: background thread that periodically re-reads every
+/// `tasks.my` file registered via `--auto-sync` and imports any new or
+/// changed task definitions. Errors (missing file, parse failure, IO)
+/// are logged and skipped — the node keeps running and retries on the
+/// next cycle. Unchanged files are skipped so polling cannot append an
+/// unbounded stream of duplicate journal facts.
+fn spawn_auto_sync(node: &Arc<Node>) {
+    let node = node.clone();
+    thread::spawn(move || loop {
+        let interval = auto_sync_interval();
+        thread::sleep(interval);
+
+        let paths: Vec<PathBuf> = node
+            .auto_sync_paths
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        if paths.is_empty() {
+            continue;
+        }
+        for path in &paths {
+            let path_str = path.to_string_lossy();
+            let text = match std::fs::read_to_string(path) {
+                Ok(text) => text,
+                Err(error) => {
+                    warn!("swarm-node: auto-sync {path_str}: could not read file: {error}");
+                    continue;
+                }
+            };
+            let unchanged = node
+                .auto_sync_snapshots
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .get(path)
+                .is_some_and(|previous| previous == &text);
+            if unchanged {
+                continue;
+            }
+            match sync_tasks_from_text(&node, &path_str, &text, None) {
+                Ok((defined, completed)) => {
+                    node.auto_sync_snapshots
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .insert(path.clone(), text);
+                    if defined > 0 || completed > 0 {
+                        info!(
+                            "swarm-node: auto-sync {path_str}: {defined} defined, {completed} marked done"
+                        );
+                    }
+                }
+                Err(e) => {
+                    warn!("swarm-node: auto-sync {path_str}: {e}");
+                }
             }
         }
     });
@@ -2465,64 +2549,53 @@ fn require_absolute_path(path: &str) -> Result<(), String> {
     }
 }
 
-/// Local client op: `(sync-tasks (file "/absolute/path/to/tasks.my"))`.
-/// Reads the same durable `tasks.my` format `:9999` reads, and emits a
-/// `task-defined` fact per entry (plus a `task-completed` fact for any
-/// entry already marked `done` — bulk-importing pre-existing ground truth
-/// from durable evidence bypasses the live claim/quorum flow entirely,
-/// since there's no real-time contention to arbitrate for work that's
-/// already finished).
-fn handle_sync_tasks(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
-    let Some(path) = msg.field_atom("file") else {
-        send(
-            stream,
-            &Sexp::list(vec![
-                Sexp::atom("error"),
-                Sexp::string("sync-tasks requires a `file` field"),
-            ]),
-        );
-        return;
-    };
-    if let Err(e) = require_absolute_path(path) {
-        send(
-            stream,
-            &Sexp::list(vec![Sexp::atom("error"), Sexp::string(e)]),
-        );
-        return;
+/// How often the auto-sync background thread re-reads each registered
+/// `tasks.my` file. Overridden for integration tests via
+/// `SWARM_AUTO_SYNC_INTERVAL_MS` (same pattern as `hello_deadline`).
+const AUTO_SYNC_INTERVAL: Duration = Duration::from_secs(30);
+
+fn auto_sync_interval() -> Duration {
+    static OVERRIDE: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
+    let ms = *OVERRIDE.get_or_init(|| {
+        std::env::var("SWARM_AUTO_SYNC_INTERVAL_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+    });
+    match ms {
+        Some(ms) => Duration::from_millis(ms),
+        None => AUTO_SYNC_INTERVAL,
     }
-    let text = match std::fs::read_to_string(path) {
-        Ok(t) => t,
-        Err(e) => {
-            send(
-                stream,
-                &Sexp::list(vec![
-                    Sexp::atom("error"),
-                    Sexp::string(format!("could not read `{path}`: {e}")),
-                ]),
-            );
-            return;
-        }
-    };
-    let tasks = match tasks_file::parse_tasks_file(&text) {
-        Ok(t) => t,
-        Err(e) => {
-            send(
-                stream,
-                &Sexp::list(vec![
-                    Sexp::atom("error"),
-                    Sexp::string(format!("parse error in `{path}`: {e}")),
-                ]),
-            );
-            return;
-        }
-    };
+}
+
+/// Core logic shared by `handle_sync_tasks` (explicit client op) and
+/// the background auto-sync thread: reads one `tasks.my` file, parses
+/// it, and emits `task-defined` / `task-completed` facts for every
+/// entry. `msg_origin` is an optional default origin for tasks that
+/// don't declare their own (used by the explicit `(sync-tasks)` op's
+/// `(origin ...)` field; auto-sync passes `None`). Returns
+/// `(defined, completed)` counts; errors are returned as a
+/// human-readable string without side effects.
+fn sync_tasks_from_file(
+    node: &Arc<Node>,
+    path: &str,
+    msg_origin: Option<&str>,
+) -> Result<(usize, usize), String> {
+    let text =
+        std::fs::read_to_string(path).map_err(|e| format!("could not read `{path}`: {e}"))?;
+    sync_tasks_from_text(node, path, &text, msg_origin)
+}
+
+fn sync_tasks_from_text(
+    node: &Arc<Node>,
+    path: &str,
+    text: &str,
+    msg_origin: Option<&str>,
+) -> Result<(usize, usize), String> {
+    let tasks =
+        tasks_file::parse_tasks_file(text).map_err(|e| format!("parse error in `{path}`: {e}"))?;
 
     let mut defined = 0;
     let mut completed = 0;
-    // M1.1b: msg-level default origin for files that don't declare
-    // `(origin . repo)` per task. Per-task origin always wins; tasks with
-    // neither stay unresolved (None) — no silent inference from paths.
-    let msg_origin = msg.field_atom("origin");
     for t in &tasks {
         let mut fields = vec![
             Sexp::list(vec![Sexp::atom("task"), Sexp::atom(&t.id)]),
@@ -2561,17 +2634,55 @@ fn handle_sync_tasks(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             }
         }
     }
-    send(
-        stream,
-        &Sexp::list(vec![
-            Sexp::atom("ok"),
-            Sexp::list(vec![Sexp::atom("defined"), Sexp::atom(defined.to_string())]),
-            Sexp::list(vec![
-                Sexp::atom("marked-done"),
-                Sexp::atom(completed.to_string()),
+    Ok((defined, completed))
+}
+
+/// Local client op: `(sync-tasks (file "/absolute/path/to/tasks.my"))`.
+/// Reads the same durable `tasks.my` format `:9999` reads, and emits a
+/// `task-defined` fact per entry (plus a `task-completed` fact for any
+/// entry already marked `done` — bulk-importing pre-existing ground truth
+/// from durable evidence bypasses the live claim/quorum flow entirely,
+/// since there's no real-time contention to arbitrate for work that's
+/// already finished).
+fn handle_sync_tasks(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+    let Some(path) = msg.field_atom("file") else {
+        send(
+            stream,
+            &Sexp::list(vec![
+                Sexp::atom("error"),
+                Sexp::string("sync-tasks requires a `file` field"),
             ]),
-        ]),
-    );
+        );
+        return;
+    };
+    if let Err(e) = require_absolute_path(path) {
+        send(
+            stream,
+            &Sexp::list(vec![Sexp::atom("error"), Sexp::string(e)]),
+        );
+        return;
+    }
+    match sync_tasks_from_file(node, path, msg.field_atom("origin")) {
+        Ok((defined, completed)) => {
+            send(
+                stream,
+                &Sexp::list(vec![
+                    Sexp::atom("ok"),
+                    Sexp::list(vec![Sexp::atom("defined"), Sexp::atom(defined.to_string())]),
+                    Sexp::list(vec![
+                        Sexp::atom("marked-done"),
+                        Sexp::atom(completed.to_string()),
+                    ]),
+                ]),
+            );
+        }
+        Err(e) => {
+            send(
+                stream,
+                &Sexp::list(vec![Sexp::atom("error"), Sexp::string(e)]),
+            );
+        }
+    }
 }
 
 /// Shared by `sync-tasks` and (indirectly) `define-task`: append an

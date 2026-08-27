@@ -1025,3 +1025,132 @@ fn evict_marks_dead_member_absent_everywhere() {
     victim.child.kill().ok();
     victim.child.wait().ok();
 }
+
+// ---------------------------------------------------------------------------
+// M1.2 auto-sync: periodic tasks.my file re-read
+// ---------------------------------------------------------------------------
+
+fn spawn_with_auto_sync(
+    port: u16,
+    node_id: &str,
+    data_dir: &Path,
+    connect: Option<u16>,
+    auto_sync_path: &Path,
+    sync_interval_ms: u64,
+) -> Node {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_swarm-node"));
+    cmd.arg("--port").arg(port.to_string());
+    cmd.arg("--node-id").arg(node_id);
+    cmd.arg("--project").arg("itest");
+    cmd.arg("--data-dir").arg(data_dir);
+    cmd.arg("--auto-sync")
+        .arg(auto_sync_path.to_string_lossy().to_string());
+    cmd.env("SWARM_AUTO_SYNC_INTERVAL_MS", sync_interval_ms.to_string());
+    if let Some(p) = connect {
+        cmd.arg("--connect").arg(format!("127.0.0.1:{p}"));
+    }
+    cmd.stdout(Stdio::null()).stderr(Stdio::null());
+    let child = cmd.spawn().expect("spawn swarm-node with --auto-sync");
+    let node = Node { child };
+    wait_for_port(port);
+    node
+}
+
+/// M1.2: a tasks.my file registered via --auto-sync is periodically
+/// re-read and its task definitions imported into the registry without
+/// any manual (sync-tasks) call. Modifying the file mid-flight must be
+/// picked up on the next cycle.
+#[test]
+fn auto_sync_periodically_imports_tasks_my_file() {
+    let port = alloc_ports(1);
+    let dir = data_dir("autosync-basic");
+    let tasks_file = dir.join("tasks.my");
+
+    // Create the directory first (data_dir() only removes, doesn't recreate).
+    std::fs::create_dir_all(&dir).unwrap();
+
+    // Write an initial tasks.my BEFORE starting the node.
+    std::fs::write(
+        &tasks_file,
+        r#"
+((kind . tasks-my)
+ (tasks .
+  (("AUTO-A" . ((priority . 3) (capabilities . (docs)) (done . ())))
+   ("AUTO-B" . ((priority . 7) (capabilities . (rust)) (done . t))))))
+"#,
+    )
+    .unwrap();
+
+    let _n = spawn_with_auto_sync(port, "autosync", &dir, None, &tasks_file, 500);
+
+    // Wait for the first auto-sync cycle to import the tasks.
+    let found = eventually(port, "(list-task-state)", Duration::from_secs(5), |r| {
+        r.contains("AUTO-A") && r.contains("AUTO-B")
+    });
+    assert!(
+        found.contains("AUTO-A"),
+        "auto-sync never imported AUTO-A: {found}"
+    );
+    assert!(
+        found.contains("AUTO-B"),
+        "auto-sync never imported AUTO-B: {found}"
+    );
+
+    // AUTO-B was marked done in the file — verify that propagated.
+    let b_state = eventually(
+        port,
+        "(task-state (task AUTO-B))",
+        Duration::from_secs(3),
+        |r| r.contains("(completed t)"),
+    );
+    assert!(
+        b_state.contains("(completed t)"),
+        "auto-sync should have marked AUTO-B as completed: {b_state}"
+    );
+
+    // Polling an unchanged file must not append duplicate task facts forever.
+    let event_count = |port| {
+        let metrics = request(port, "(metrics)");
+        let marker = "(event-count ";
+        let start = metrics.find(marker).expect("metrics event-count") + marker.len();
+        let tail = &metrics[start..];
+        let end = tail.find(')').expect("closed event-count");
+        tail[..end].parse::<usize>().expect("numeric event-count")
+    };
+    let after_initial_import = event_count(port);
+    std::thread::sleep(Duration::from_millis(1_200));
+    assert_eq!(
+        event_count(port),
+        after_initial_import,
+        "unchanged auto-sync source must not append duplicate journal facts"
+    );
+
+    // Now mutate the file: add a new task AUTO-C.
+    std::fs::write(
+        &tasks_file,
+        r#"
+((kind . tasks-my)
+ (tasks .
+  (("AUTO-A" . ((priority . 3) (capabilities . (docs)) (done . ())))
+   ("AUTO-B" . ((priority . 7) (capabilities . (rust)) (done . t)))
+   ("AUTO-C" . ((priority . 2) (capabilities . (lisp)) (description . "newly added"))))))
+"#,
+    )
+    .unwrap();
+
+    // Wait for the next auto-sync cycle to pick up the addition.
+    let found_c = eventually(port, "(list-task-state)", Duration::from_secs(5), |r| {
+        r.contains("AUTO-C")
+    });
+    assert!(
+        found_c.contains("AUTO-C"),
+        "auto-sync never picked up newly-added AUTO-C: {found_c}"
+    );
+
+    // Verify AUTO-C's description survived through the pipeline.
+    let c_def = request(port, "(task-def (task AUTO-C))");
+    assert!(
+        c_def.contains("newly added"),
+        "auto-sync should have imported AUTO-C's description: {c_def}"
+    );
+}
