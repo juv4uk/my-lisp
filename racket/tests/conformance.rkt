@@ -45,10 +45,32 @@
   (for/or ([name expected-unbound])
     (string-contains? message (format "unbound identifier: ~a" name))))
 
+;; The Racket port does not expose Rust's ErrorKind enum, so conformance maps
+;; its stable public messages to the contract's error names.  This deliberately
+;; rejects a host-reader error where the contract requires a my-lisp symbol
+;; error, and an unbound primitive where the contract requires Type/Arity.
+(define (error-message-matches? expected message)
+  (case (string->symbol expected)
+    [(UnknownSymbol) (string-contains? message "unbound identifier:")]
+    [(NumericOverflow) (string-contains? (string-downcase message) "overflow")]
+    [(DivisionByZero) (string-contains? message "division by zero")]
+    [(Arity) (or (string-contains? message "too many arguments")
+                 (string-contains? message "too few arguments")
+                 (string-contains? message "bad defmacro syntax"))]
+    [(InvalidForm) (or (string-contains? message "bad ")
+                       (string-contains? message "invalid"))]
+    [(Parse) (string-contains? message "read:")]
+    [(Type) (or (string-contains? message "expected pair")
+                (string-contains? message "not a function")
+                (string-contains? message "expects two atoms")
+                (string-contains? message "type"))]
+    [else #f]))
+
 (module+ test
   (require rackunit)
   (define forms (read-all-forms fixtures-path))
   (define checked 0)
+  (define error-checked 0)
   (for ([f forms])
     (define expr (cdr (assoc 'expr f)))
     (define expected (assoc 'expected f))
@@ -67,4 +89,29 @@
             (if (eof-object? d) (reverse acc) (loop (cons d acc)))))
         (define result (for/fold ([v (void)]) ([d datums]) (my-eval d env)))
         (check-equal? (my-format-string result) expected-str expr))))
-  (printf "conformance.my: checked ~a fixtures with an `expected` value\n" checked))
+  (for ([f forms])
+    (define expr (cdr (assoc 'expr f)))
+    (define expected-error (assoc 'error f))
+    (when expected-error
+      (define expected-kind (cdr expected-error))
+      (set! error-checked (add1 error-checked))
+      (define raised? #f)
+      (with-handlers ([exn:fail?
+                        (lambda (e)
+                          (set! raised? #t)
+                          (check-true
+                            (error-message-matches? expected-kind (exn-message e))
+                            (format "~a expected ~a, Racket reported: ~a"
+                                    expr expected-kind (exn-message e))))])
+        (define env (make-initial-env))
+        (define in (open-input-string expr))
+        (define datums
+          (let loop ([acc '()])
+            (define d (my-read in))
+            (if (eof-object? d) (reverse acc) (loop (cons d acc)))))
+        (for/fold ([v (void)]) ([d datums]) (my-eval d env)))
+      (check-true raised?
+                  (format "~a expected ~a, Racket returned a value"
+                          expr expected-kind))))
+  (printf "conformance.my: checked ~a value fixtures and ~a error fixtures\n"
+          checked error-checked))
