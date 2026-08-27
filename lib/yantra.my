@@ -16,6 +16,26 @@
 ; that a command was executed is NOT evidence of execution. Only a real
 ; tool-result message in the conversation permits such a completion.
 ;
+; MYLISP-YANTRA-EPISTEMIC-BOUNDARY (2026-08-27, docs/wsl-nidana-1-
+; reaction-2026-08-26.md's own Sarvam-Disney Critique 5, "Yantra as
+; poisoned arrow"): `run-agent`'s `answer` is an LLM's raw text over an
+; HTTP endpoint -- it has never been through `advise`/`reason.my`'s
+; proof machinery, and nothing here claims it has. `result-status`
+; therefore never returns bare `completed` -- `agent-loop`'s finished
+; branch always pairs it with `(epistemic-status . hypothesis)`, so a
+; caller cannot mistake "the LLM said so" for "reason.my proved it" by
+; the return shape alone; the boundary the critique demanded lives in
+; code, not just in this comment. Deliberately NOT wired into
+; `advise`/`reason.my` itself: `advise` validates structured
+; `(head :- body)`-shaped clauses (lib/knowledge.my), and an LLM's free
+; natural-language answer has no such structure to hand it -- bridging
+; that gap is `lib/understand.my`'s domain (fixed controlled-language
+; patterns), a separate, harder problem this task does not solve or
+; claim to. `hypothesis` is the only status this file ever produces;
+; promoting one to something reason.my-provable is left to a caller
+; that actually has a structured claim to offer `advise`, not invented
+; speculatively here.
+;
 ; Message shapes (internal, symbol-keyed alists):
 ;   ((role . "system"|"user"|"assistant"|"tool") (content . "..."))
 ;   assistant may add: (tool-calls . (((id . "...") (name . "bash")
@@ -442,6 +462,7 @@
             (cond
               ((valid-final? assistant-msg with-reply)
                (list (cons (quote status) (quote completed))
+                     (cons (quote epistemic-status) (quote hypothesis))
                      (cons (quote answer) (msg-content assistant-msg))
                      (cons (quote turn) turn)
                      (cons (quote messages) with-reply)))
@@ -461,6 +482,7 @@
 
 ; Result readers
 (def result-status (lambda (r) (alist-ref (quote status) r)))
+(def result-epistemic-status (lambda (r) (alist-ref (quote epistemic-status) r)))
 (def result-answer (lambda (r) (alist-ref (quote answer) r)))
 (def result-turn (lambda (r) (alist-ref (quote turn) r)))
 (def result-messages (lambda (r) (alist-ref (quote messages) r)))

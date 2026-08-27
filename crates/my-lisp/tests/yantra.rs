@@ -136,6 +136,28 @@ fn pure_question_finishes_without_a_tool() {
     );
 }
 
+/// MYLISP-YANTRA-EPISTEMIC-BOUNDARY: a completed result is never bare
+/// `completed` -- it always carries `(epistemic-status . hypothesis)`,
+/// so nothing downstream can mistake the LLM's own text for something
+/// reason.my has proved, by the return shape alone.
+#[test]
+fn completed_result_is_always_tagged_as_an_unproven_hypothesis() {
+    let source = format!(
+        r#"
+        {SCRIPTED_COMPLETE}
+        (def complete (make-scripted-complete (list {assistant_msg})))
+        (def result (run-agent complete "You are a helpful agent." "What is 2+2?"))
+        (list (result-status result) (result-epistemic-status result))
+        "#,
+        assistant_msg = assistant("2+2 is 4.")
+    );
+    assert_eq!(
+        eval_with_agent(&source),
+        "(completed hypothesis)",
+        "a completed answer must be explicitly marked as an unproven, LLM-sourced hypothesis"
+    );
+}
+
 /// Test 2: a filesystem question goes through the REAL bash process.
 #[test]
 fn filesystem_question_invokes_real_bash() {
