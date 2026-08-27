@@ -98,15 +98,33 @@ fn main() {
     } else {
         None
     };
+    // MYLISP-CLI-BOOTSTRAP-ERROR-VISIBILITY (Manus AI review P1): this used
+    // to be `let _ = eval_parsed_expressions(...)`, silently discarding the
+    // result on both the FASL and text-parse paths. Low risk today (CORE_SRC
+    // is a static include_str! of the real, tested lib/core.my), but a
+    // future broken snapshot would silently degrade every session's startup
+    // -- every def in core.my simply wouldn't exist, with no error printed,
+    // failing far from the actual cause. Same fail-fast style the --lint
+    // path already uses for lib/linter.my's own bootstrap below.
     match core_expressions {
         Some(core_ast) => {
-            let _ = eval_parsed_expressions(&core_ast, &mut session);
-        }
-        None => {
-            if let Ok(core_ast) = parse(CORE_SRC) {
-                let _ = eval_parsed_expressions(&core_ast, &mut session);
+            if let Err(e) = eval_parsed_expressions(&core_ast, &mut session) {
+                eprintln!("Error loading bootstrap core.my: {}", e.render(CORE_SRC));
+                process::exit(1);
             }
         }
+        None => match parse(CORE_SRC) {
+            Ok(core_ast) => {
+                if let Err(e) = eval_parsed_expressions(&core_ast, &mut session) {
+                    eprintln!("Error loading bootstrap core.my: {}", e.render(CORE_SRC));
+                    process::exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to parse bootstrap core.my: {}", e.render(CORE_SRC));
+                process::exit(1);
+            }
+        },
     }
     // Text form stays in scope for downstream consumers (tcp repl seed,
     // --lint path) without re-reading the file.
