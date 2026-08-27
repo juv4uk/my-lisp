@@ -1,3 +1,5 @@
+    Finished `release` profile [optimized] target(s) in 0.04s
+     Running `target/release/my-lisp scripts/build-constitution.my`
 (about . "my-lisp-constitution.my — the executable proof of docs/language-core-axioms.md's project principles and axioms (G1-G8 generative, S1-S3 safety). Each fixture is one of the observable claims from tests/fixtures/conformance.my, tagged with the tier (1 CORE SEMANTICS, 2 LANGUAGE CONTRACT, 3 ECOSYSTEM CONFORMANCE) and, where one applies, the axiom(s) it is evidence for. Symbolic-reasoning fixtures (tier 3, unify/reason) carry no axiom tag on purpose — they are evidence for project principle 3, not the G/S axiom list.")
 (status . "draft — not yet ratified; will become read-only once ratified")
 (generated . "This file is GENERATED — do not hand-edit it. It is a projection over tests/fixtures/conformance.my (facts and tags in one record) plus this script's own principle/axiom text. Edit tests/fixtures/conformance.my or scripts/build-constitution.my, then run: cargo run -p my-lisp-cli -- scripts/build-constitution.my > my-lisp-constitution.my . Written as my-lisp data, not JSON: readable directly via (read-all (read-file \"my-lisp-constitution.my\")), no foreign parser needed — the same reason conformance.my itself moved off JSON.")
@@ -83,6 +85,9 @@
 (fixture (expr . "(not (quote radio))") (expected . "()") (tier . 3) (axioms G5))
 (fixture (expr . "(and)") (expected . "t") (tier . 3) (axioms G5 G8) (note . "vacuous and -- neutral element, added 2026-08-27 after grep confirmed and/or were absent from both core.my and Rust builtins entirely; chess-lisp-zero had to bootstrap its own copy"))
 (fixture (expr . "(or)") (expected . "()") (tier . 3) (axioms G5 G8) (note . "vacuous or -- neutral element"))
+(fixture (expr . "(symbol? (gensym \"temp-\"))") (expected . "t") (tier . 3) (axioms G5) (note . "gensym, added 2026-08-27 (see docs/macro-hygiene-2026-08-27.md) -- returns a real symbol, built entirely from existing primitives (mono-ns/write-to-string/string-append/string->symbol), no new Rust code"))
+(fixture (expr . "(eq (gensym \"temp-\") (gensym \"temp-\"))") (expected . "()") (tier . 3) (axioms G5) (note . "two calls with the same prefix are never eq -- the actual property that matters for a fresh-name generator, not just a type check"))
+(fixture (expr . "(string-prefix? \"temp-\" (symbol->string (gensym \"temp-\")))") (expected . "t") (tier . 3) (axioms G5) (note . "the caller's prefix is genuinely preserved in the generated name, not discarded"))
 (fixture (expr . "(and t t t)") (expected . "t") (tier . 3) (axioms G5))
 (fixture (expr . "(and t (quote ()) t)") (expected . "()") (tier . 3) (axioms G5))
 (fixture (expr . "(and t 42)") (expected . "42") (tier . 3) (axioms G5) (note . "and/or return the actual value of the deciding form, not just t/() -- matches Common Lisp/Scheme, not a plain boolean-only and/or"))

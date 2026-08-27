@@ -56,6 +56,21 @@
              (list (car rest) t)
              (list t (cons (quote or) (cdr rest)))))))
 
+; gensym — my-lisp's defmacro is unhygienic by default (no automatic
+; protection against accidental variable capture; verified live
+; 2026-08-27, see docs/macro-hygiene-2026-08-27.md's own capture demo).
+; This is the "fresh name" tool a macro author reaches for when a name
+; must NOT be visible/capturable at the call site -- built entirely
+; from existing primitives, zero new Rust code, zero new language
+; machinery: mono-ns (monotonic, real-time-independent counter) makes
+; each call's suffix distinct, write-to-string/string-append/
+; string->symbol assemble it into a real symbol. Requires an explicit
+; prefix (no default-prefix convenience yet -- G5: earn that later if
+; a real caller needs it, don't build it speculatively now).
+(def gensym
+  (lambda (prefix)
+    (string->symbol (string-append prefix (write-to-string (mono-ns))))))
+
 (def pair
   (lambda (left right)
     (cons left (cons right (quote ())))))
