@@ -568,3 +568,44 @@ fn t15_arity_diagnostics_are_conservative_and_shadow_aware() {
         completion[0]
     );
 }
+
+/// ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME: `.wsm` is now the canonical
+/// extension, `.my`/`.lisp` stay supported. Workspace scanning (M1) must
+/// pick up `.wsm` files exactly like `.my` ones — same cross-file
+/// definition flow as t10, just with the new extension on both files.
+#[test]
+fn t16_workspace_scan_recognizes_wsm_extension() {
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir: PathBuf =
+        std::env::temp_dir().join(format!("lsp-wsm-{}-{seq}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("a.wsm"), "(def foo (lambda (x) (* x x)))\n").unwrap();
+    fs::write(dir.join("b.wsm"), "(foo 21)\n").unwrap();
+
+    let b_uri = format!("file://{}/b.wsm", dir.display());
+    let init = request(
+        1,
+        "initialize",
+        &format!(
+            r#"{{"rootUri":{}}}"#,
+            json_string(&format!("file://{}", dir.display()))
+        ),
+    );
+    let open = did_open(&b_uri, "(foo 21)\n");
+    let mut server = Server::new();
+    server.feed(&[raw(&init), raw(&open)]);
+
+    let params = format!(
+        r#"{{"textDocument":{{"uri":{}}},"position":{{"line":0,"character":1}}}}"#,
+        json_string(&b_uri)
+    );
+    let replies = server.feed(&[raw(&request(7, "textDocument/definition", &params))]);
+    assert_eq!(replies.len(), 1);
+    let r = replies[0].as_str();
+    assert!(
+        r.contains("/a.wsm"),
+        "cross-file definition must point into a.wsm: {r}"
+    );
+}

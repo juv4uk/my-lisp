@@ -1,10 +1,14 @@
 //! workspace.rs — cross-file definition index (LSP M1).
 //!
-//! Scans the workspace root for `.my` files once on `initialize`, then
+//! Scans the workspace root for source files once on `initialize`, then
 //! refreshes individual documents on open/change. Definitions are still
 //! proven ONLY by the canonical parser (`analysis::analyze`) — this module
 //! just remembers them per-file so go-to-definition can cross document
 //! boundaries. No grep-based detection, no invented semantics.
+//!
+//! Recognized extensions: `.wsm` (canonical, per
+//! ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME), `.my` and `.lisp`
+//! (supported, not deprecated — the decision explicitly keeps both).
 //!
 //! Memory model: every scanned/opened file's full text is kept so spans
 //! can be rendered as LSP ranges without re-reading disk. Reasonable for
@@ -62,7 +66,11 @@ impl WorkspaceIndex {
                     }
                     continue;
                 }
-                if path.extension().and_then(|e| e.to_str()) != Some("my") {
+                let is_source = matches!(
+                    path.extension().and_then(|e| e.to_str()),
+                    Some("wsm") | Some("my") | Some("lisp")
+                );
+                if !is_source {
                     continue;
                 }
                 let Ok(meta) = entry.metadata() else { continue };
