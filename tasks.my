@@ -310,4 +310,40 @@
     (description . "Per ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME, the project is now wsm. Propose a backronym/expansion for wsm that connects meaningfully to this ecosystem -- McCarthy's Lisp lineage, the symbolic-reasoning stack (lib/reason.my/unify.my/knowledge.my), cross-substrate universality (Rust + fpga-lisp), or the wider ecosystem's own themes (Sanskrit grammar work, exact/symbolic reasoning over statistics). Low priority, open-ended, no single correct answer -- add candidates to docs/wsm-backronym-proposals.md with a one-line reason each. Owner picks a favorite whenever they want to.")
     (done . ())
   ))
+
+  ("WSM-OPENCODE-LSP-EXTENSIONS" . (
+    (priority . 9.0)
+    (capabilities . (wsm lsp tooling opencode))
+    (depends-on . ())
+    (origin . my-lisp)
+    (description . "Add .wsm to the global OpenCode my-lisp LSP extension list while preserving .my/.lisp aliases. Verify a real .wsm document receives diagnostics/completion through the configured LSP, not merely direct server tests.")
+    (done . ())
+  ))
+
+  ("WSM-SOURCE-VS-PROTOCOL-EXTENSION-POLICY" . (
+    (priority . 8.8)
+    (capabilities . (wsm architecture documentation ecosystem))
+    (depends-on . ())
+    (origin . my-lisp)
+    (description . "Define the machine-actionable boundary between executable WSM sources (new canonical extension .wsm) and stable ecosystem S-expression protocol/data files such as tasks.my, repo.my, language-contract.my, compatibility.my, isa-contract.my and evidence/*.my. Include safe migration rules and explicit non-goals; no bulk rename.")
+    (done . ())
+  ))
+
+  ("WSM-CLI-HELP-AND-EXTENSION-SMOKE" . (
+    (priority . 6.5)
+    (capabilities . (wsm rust cli testing documentation))
+    (depends-on . ())
+    (origin . my-lisp)
+    (description . "Update user-facing gen-fasl/CLI source examples from <source.my> to <source.wsm>, retain documented .my/.lisp compatibility, and add an executable CLI smoke covering all three aliases without changing parser semantics.")
+    (done . ())
+  ))
+
+  ("WSM-LINGUIST-ECOSYSTEM-ATTRIBUTES" . (
+    (priority . 5.5)
+    (capabilities . (wsm tooling documentation ecosystem))
+    (depends-on . (WSM-SOURCE-VS-PROTOCOL-EXTENSION-POLICY))
+    (origin . my-lisp)
+    (description . "Add *.wsm GitHub Linguist classification to ecosystem repositories that contain or will contain WSM source, including chess-lisp-zero which currently has no .gitattributes. Preserve existing .my/.lisp mappings and do not reclassify protocol data as migrated source.")
+    (done . ())
+  ))
 )))
