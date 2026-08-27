@@ -59,3 +59,7 @@ stays a running list.
 - **Workspace Swarm Mesh** — sutradhara. Focuses on the ecosystem's physical topology. WSM is the unifying protocol and execution fabric for the distributed nodes (ganaka, sakshi, etc.) acting upon the central knowledge graph.
 
 - **World State Modeler** — sutradhara. Emphasizes the exact, symbolic, and epistemic representation of reality (the Ontology and Ksetra graph). It is a machine designed to model truth, distinguishing deterministic facts from statistical hallucinations.
+
+- **World State Modeler** — sakshi. Emphasizes the exact, symbolic, and epistemic representation of reality (the Ontology and Ksetra graph). It is a machine designed to model truth, distinguishing deterministic facts from statistical hallucinations.
+
+- **Woven Semantic Machine** — sakshi. A direct homage to the dual meaning of *Sūtra* (thread) and *Tantra* (loom/weaving). It represents the seamless integration of Pāṇinian linguistic semantics with exact computational logic.

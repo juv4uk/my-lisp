@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 
-const CORE_LIB: &str = include_str!("../../../lib/core.my");
+const CORE_FASL: &[u8] = include_bytes!("../../../lib/core.my.fasl");
 
 thread_local! {
     static SESSION: RefCell<Option<Session>> = const { RefCell::new(None) };
@@ -37,15 +37,17 @@ fn init_if_needed() -> Result<(), String> {
     SESSION.with(|slot| {
         let mut guard = slot.borrow_mut();
         if guard.is_none() {
-            *guard = Some(session_with_core(CORE_LIB)?);
+            *guard = Some(session_with_core_fasl(CORE_FASL)?);
         }
         Ok(())
     })
 }
 
-fn session_with_core(core: &str) -> Result<Session, String> {
+fn session_with_core_fasl(fasl_bytes: &[u8]) -> Result<Session, String> {
     let mut session = Session::default();
-    my_lisp::eval_program(core, &mut session)
+    let (expressions, _) = my_lisp::fasl_decode_program(fasl_bytes)
+        .ok_or_else(|| "failed to decode core.my.fasl (format or hash mismatch)".to_string())?;
+    my_lisp::eval_parsed_expressions(&expressions, &mut session)
         .map_err(|error| format!("failed to preload core.my: {error}"))?;
     Ok(session)
 }
@@ -163,8 +165,8 @@ mod tests {
 
     #[test]
     fn broken_core_preload_is_reported_instead_of_installing_partial_session() {
-        let error = session_with_core("(def broken").expect_err("invalid core must fail closed");
-        assert!(error.contains("failed to preload core.my"), "{error}");
+        let error = session_with_core_fasl(b"broken fasl").expect_err("if FASL loading fails, it must propagate rather than swallow the error");
+        assert!(error.contains("failed to decode") || error.contains("failed to preload"), "{error}");
     }
 
     #[test]
