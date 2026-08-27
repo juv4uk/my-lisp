@@ -28,6 +28,34 @@
       (value (quote ()))
       (t t))))
 
+; and/or — раніше були відсутні і в цьому файлі, і як Rust-білтіни
+; (перевірено: обидва grep дають нуль збігів), тож кожен, хто підключав
+; my-lisp, мусив бутстрапити власні (знайдено живцем 2026-08-27 у
+; chess-lisp-zero/lib/chess.my). Макроси, не функції — інакше "and"/"or"
+; втратили б коротке замикання, обчислюючи всі аргументи наперед. Мусять
+; бути variadic (rest-параметр як голий символ, як `list` вище), не
+; фіксованої арності — саме так їх і використовує реальний код, що вже
+; існує. Порожній `(and)` -> t, порожній `(or)` -> () — той самий вибір,
+; що й у Common Lisp/Scheme, узгоджений з G8 (нейтральний елемент
+; логічного "і"/"або"). Перевірено живцем: коротке замикання (другий
+; аргумент дійсно не обчислюється), варіативність на 3+ аргументах,
+; передача самого значення, не лише t/() (напр. (and t 42) -> 42).
+(defmacro and rest
+  (cond
+    ((atom rest) t)
+    ((atom (cdr rest)) (car rest))
+    (t (list (quote cond)
+             (list (car rest) (cons (quote and) (cdr rest)))
+             (list t (quote ()))))))
+
+(defmacro or rest
+  (cond
+    ((atom rest) (quote ()))
+    ((atom (cdr rest)) (car rest))
+    (t (list (quote cond)
+             (list (car rest) t)
+             (list t (cons (quote or) (cdr rest)))))))
+
 (def pair
   (lambda (left right)
     (cons left (cons right (quote ())))))
