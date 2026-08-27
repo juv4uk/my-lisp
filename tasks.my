@@ -105,6 +105,7 @@
     (context . "done 2026-08-25: panini machine-acceptance.my 77 PASS / 0 fail on current contract-3.0 binary (dc2172d+). Bavati derivation: 8 specific tests all PASS including step-by-step trace, guna precondition, observed surface form. My-lisp side of Gold Spike 01 is ready for cml lowering handoff.")
   ))
   ("AGENT-GUARD-LIVE-TRIAL" . (
+    (claimed-by . sutradhara)
     (priority . 8.5)
     (capabilities . (swarm coordination testing))
     (description . "AGENT-GUARD-M0 step 5: wire C1/C7/C9/C11 checks into active agent sessions. Today's vault tagging session was a live C1/C7 violation case - mass regex edits without diff-inspection, done claims pre-verification.")
