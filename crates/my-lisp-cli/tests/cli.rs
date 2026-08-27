@@ -53,6 +53,9 @@ fn help_flag_prints_usage() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("Usage: my-lisp [file]"));
+    assert!(stdout.contains(".wsm"));
+    assert!(stdout.contains(".my"));
+    assert!(stdout.contains(".lisp"));
 }
 
 #[test]
@@ -67,6 +70,32 @@ fn running_a_source_file_prints_its_result() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert_eq!(stdout.trim(), "3");
+}
+
+/// Smoke test: all three documented source extensions (.wsm canonical, .my and .lisp aliases)
+/// run the same code and produce identical output. No parser semantics change — only extension
+/// acceptance is verified.
+#[test]
+fn all_three_source_extensions_run_identically() {
+    let dir = std::env::temp_dir();
+    let code = "(+ 1 2)";
+    let mut results = Vec::new();
+
+    for ext in [".wsm", ".my", ".lisp"] {
+        let path = dir.join(format!("my-lisp-cli-test-ext{ext}"));
+        std::fs::write(&path, code).expect("should write temp file");
+
+        let output = my_lisp().arg(&path).output().expect("binary should run");
+        let _ = std::fs::remove_file(&path);
+
+        assert!(output.status.success(), "{ext} should succeed");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        results.push((ext, stdout.trim().to_string()));
+    }
+
+    assert_eq!(results[0].1, "3", ".wsm output");
+    assert_eq!(results[1].1, "3", ".my output");
+    assert_eq!(results[2].1, "3", ".lisp output");
 }
 
 #[test]

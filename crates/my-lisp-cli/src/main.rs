@@ -130,6 +130,7 @@ fn main() {
         if arg == "--help" || arg == "-h" {
             println!("Usage: my-lisp [file]");
             println!("If no file is provided, starts the REPL.");
+            println!("Canonical source extension: .wsm (.my and .lisp are supported aliases)");
             println!("\nOptions:");
             println!("  lsp                          Run the Language Server (LSP over stdio)");
             println!("  -V, --version               Print version information");

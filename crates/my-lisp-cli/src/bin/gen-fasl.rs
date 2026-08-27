@@ -1,5 +1,5 @@
-//! Regenerate a FASL snapshot from a Lisp source file.
-//! Usage: gen-fasl <source.my> <output.fasl>
+//! Regenerate a FASL snapshot from a WSM source file.
+//! Usage: gen-fasl <source.wsm> <output.fasl>
 //! The snapshot embeds sha256(source); the loader refuses snapshots whose
 //! embedded hash does not match the compiled-in source bytes.
 use my_lisp::{fasl_encode, parse, sha256_source};
@@ -8,7 +8,7 @@ use std::{fs, process};
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 3 {
-        eprintln!("usage: gen-fasl <source.my> <output.fasl>");
+        eprintln!("usage: gen-fasl <source.wsm> <output.fasl>");
         process::exit(2);
     }
     let source = fs::read(&args[1]).expect("read source");
