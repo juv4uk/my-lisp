@@ -301,4 +301,13 @@
     (description . "Codify rebuild-from-clean-base pattern for registry mutations in ecosystem docs. 3 corruption incidents today from incremental string-surgery. Rule: read full file, extract valid entries, rebuild entire file, verify balance.")
     (done . ())
   ))
+
+  ("WSM-BACKRONYM-PROPOSAL" . (
+    (priority . 2.0)
+    (capabilities . (naming documentation creative))
+    (depends-on . ())
+    (origin . my-lisp)
+    (description . "Per ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME, the project is now wsm. Propose a backronym/expansion for wsm that connects meaningfully to this ecosystem -- McCarthy's Lisp lineage, the symbolic-reasoning stack (lib/reason.my/unify.my/knowledge.my), cross-substrate universality (Rust + fpga-lisp), or the wider ecosystem's own themes (Sanskrit grammar work, exact/symbolic reasoning over statistics). Low priority, open-ended, no single correct answer -- add candidates to docs/wsm-backronym-proposals.md with a one-line reason each. Owner picks a favorite whenever they want to.")
+    (done . ())
+  ))
 )))
