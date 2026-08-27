@@ -261,7 +261,8 @@
     (priority . 7.0)
     (capabilities . (swarm coordination))
     (description . "Create guix pack --relocatable --save-provenance for deploying swarm-node/my-lisp binaries to non-Guix hosts (droplet Ubuntu 24.04, other WSL machines). Solves glibc mismatch problem without requiring Guix on target.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-27 by sutradhara: Vended dependencies offline with cargo vendor, authored a custom guix.scm package for wsm/swarm-node, verified the guix build locally without network, and created a fully relocatable Guix pack (-RR) using Fakechroot/PRoot. Deployable tarball ready.")
   ))
   ("GUIX-AGENT-CAPSULES" . (
     (priority . 6.5)
