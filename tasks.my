@@ -300,7 +300,8 @@
     (priority . 7.0)
     (capabilities . (my-lisp documentation process))
     (description . "Codify rebuild-from-clean-base pattern for registry mutations in ecosystem docs. 3 corruption incidents today from incremental string-surgery. Rule: read full file, extract valid entries, rebuild entire file, verify balance.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-27 by sutradhara: Codified the Rebuild-from-Clean-Base rule in docs/registry-mutation-policy.md. Prohibits incremental string surgery; mandates full parsing, in-memory mutation, and structural verification before writing.")
   ))
 
   ("WSM-BACKRONYM-PROPOSAL" . (
