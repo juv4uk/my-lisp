@@ -282,7 +282,8 @@
     (priority . 8.0)
     (capabilities . (my-lisp rust compiler))
     (description . "Remove *argv* placeholder from core builtins registry per Manus AI review. CLI remains sole source of argv binding. Fixes workspace test red (63 passed / 1 failed). Minimal repair: delete entry from core registry, leave CLI as-is.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-26, commit 3362c4f (fix(builtins): remove *argv* placeholder from core registry) -- source-confirmed the *argv* define! block and its language_items.rs metadata entry are both gone. Independently re-verified 2026-08-27 by nidana: `cargo test --workspace` (guix shell -m manifest.scm) is fully green, 0 failures across every suite -- task's own entry just hadn't been marked done despite the fix already landing.")
   ))
 
 
