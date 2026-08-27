@@ -327,7 +327,8 @@
     (depends-on . ())
     (origin . my-lisp)
     (description . "Define the machine-actionable boundary between executable WSM sources (new canonical extension .wsm) and stable ecosystem S-expression protocol/data files such as tasks.my, repo.my, language-contract.my, compatibility.my, isa-contract.my and evidence/*.my. Include safe migration rules and explicit non-goals; no bulk rename.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-27 by wsl-nidana-1: docs/wsm-source-vs-protocol-extension-policy.md. Machine-actionable test (does the file ever get passed to the interpreter for execution vs only read as data), verified live against 16 protocol/data files across 7 sibling repos (tasks.my/repo.my/language-contract.my/compatibility.my/isa-contract.my) plus evidence/*.my in 3 repos. 4 migration rules + 3 explicit non-goals (no bulk rename, no protocol-schema change, not authoritative over sibling repos per §9). Unblocks WSM-LINGUIST-ECOSYSTEM-ATTRIBUTES.")
   ))
 
   ("WSM-CLI-HELP-AND-EXTENSION-SMOKE" . (
