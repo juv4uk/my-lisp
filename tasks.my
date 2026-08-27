@@ -289,6 +289,7 @@
 
 
   ("BGE3-TAGGING-RETUNE" . (
+    (done . t)
     (priority . 6.5)
     (capabilities . (my-lisp nlp tooling))
     (description . "Retune BGE-M3 tagging pipeline for semantic classification instead of keyword extraction. Current output assigns frequent Sanskrit words as tags without semantic relevance (e.g. bhavitṣyati as tag on corpus file). Needs: prompt engineering or fine-tuning, evaluation set, quality metric.")
