@@ -19,7 +19,7 @@ struct Evaluation {
     value: String,
     output: Vec<String>,
     ast: String,
-    engine: &'static str,
+    engine: String,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -73,7 +73,7 @@ pub fn evaluate(source: &str, mode: JsValue) -> Result<JsValue, JsValue> {
             value: result.value.to_string(),
             output: result.output,
             ast: format!("{forms:#?}"),
-            engine: "my-lisp · WASM",
+            engine: "my-lisp · WASM".to_string(),
         };
 
         serde_wasm_bindgen::to_value(&evaluation).map_err(|e| JsValue::from_str(&e.to_string()))
@@ -146,6 +146,8 @@ fn diagnose_impl(source: &str, is_literate: bool) -> Vec<Diagnostic> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test;
 
     #[test]
     fn core_my_definitions_available_after_init() {
@@ -222,6 +224,27 @@ mod tests {
                     .expect("foo should be visible from previous eval");
             assert_eq!(result.value.to_string(), "6");
         });
+    }
+
+    // wasm32-only: exercises the public wasm_bindgen `evaluate()` path (the actual
+    // JS-callable entry the browser REPL uses) across two separate invocations with
+    // no in-between state passing — the session persists in the wasm module itself.
+    // Native persistence is covered separately by
+    // persistent_session_preserves_definitions_across_calls above (wasm-bindgen's
+    // JsValue is a stub on non-wasm32, so this tests the real boundary only on wasm32).
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn wasm32_evaluate_keeps_definitions_across_calls() {
+        reset_session();
+        init_if_needed().expect("core.my preload must succeed");
+
+        let mode = JsValue::from_str("my-lisp");
+        evaluate("(def foo (lambda (x) (+ x 1)))", mode.clone()).expect("def should succeed");
+        let second: Evaluation = serde_wasm_bindgen::from_value(
+            evaluate("(foo 5)", mode).expect("second call should see foo from the first"),
+        )
+        .expect("decode second evaluation");
+        assert_eq!(second.value, "6");
     }
 
     #[test]

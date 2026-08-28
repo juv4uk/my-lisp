@@ -96,65 +96,18 @@
          so scripts/make-portable-web.mjs can embed the WASM binary into a standalone HTML file. -->
     <script src="./wasm-loader.js"></script>
     <script>
-      // The my-lisp-cli binary silently injects lib/core.my before the REPL starts
-      // (see crates/my-lisp-cli/src/main.rs); this mirrors that so `identity`, `not`,
-      // `pair`, `second`, `third`, `caar`, and `cadr` are available from the first line.
-      // my-lisp-cli-бінарник тихо підвантажує lib/core.my перед стартом REPL; тут те
-      // саме, щоб identity/not/pair/second/third/caar/cadr були доступні з першого рядка.
-      // Die my-lisp-cli-Binärdatei lädt lib/core.my still vor dem REPL-Start; hier wird
-      // dasselbe getan, damit identity/not/pair/second/third/caar/cadr sofort bereitstehen.
-      const CORE_MY = "; my-lisp bootstrap library: derived behavior belongs in the language itself.\n"
-        + "; Bootstrap-бібліотека my-lisp: похідна поведінка належить самій мові.\n"
-        + "; my-lisp-Bootstrap-Bibliothek: Abgeleitetes Verhalten gehört in die Sprache selbst.\n"
-        + "\n"
-        + "(def identity (lambda (value) value))\n"
-        + "\n"
-        + "(def not\n"
-        + "  (lambda (value)\n"
-        + "    (cond\n"
-        + "      (value '())\n"
-        + "      (t t))))\n"
-        + "\n"
-        + "(def pair\n"
-        + "  (lambda (left right)\n"
-        + "    (cons left (cons right '()))))\n"
-        + "\n"
-        + "(def second\n"
-        + "  (lambda (values)\n"
-        + "    (car (cdr values))))\n"
-        + "\n"
-        + "(def third\n"
-        + "  (lambda (values)\n"
-        + "    (car (cdr (cdr values)))))\n"
-        + "\n"
-        + "(def caar\n"
-        + "  (lambda (values)\n"
-        + "    (car (car values))))\n"
-        + "\n"
-        + "(def cadr\n"
-        + "  (lambda (values)\n"
-        + "    (car (cdr values))))\n";
-
-      const logEl = document.getElementById("log");
-      const inputEl = document.getElementById("input");
-
-      function printLine(text, className) {
-        const div = document.createElement("div");
-        if (className) div.className = className;
-        div.textContent = text;
-        logEl.appendChild(div);
-        logEl.scrollTop = logEl.scrollHeight;
-      }
-
-      // Committed lines form the REPL's persistent session: the WASM `evaluate()`
-      // call is stateless (fresh Session::default() each time, see crates/my-lisp-wasm),
-      // so a growing script buffer is re-evaluated on every line to fake a persistent
-      // REPL — the same trick the desktop Language Lab editor uses on its whole buffer.
-      // Закомічені рядки формують постійну сесію REPL: WASM-виклик `evaluate()`
-      // без стану (щоразу новий Session::default(), див. crates/my-lisp-wasm), тому
-      // буфер, що росте, переобчислюється на кожен рядок, імітуючи постійний REPL —
-      // той самий прийом, що й desktop Language Lab-редактор на всьому буфері.
-      const committed = [CORE_MY];
+      // The WASM `evaluate()` call keeps a persistent session: crates/my-lisp-wasm
+      // holds a thread_local Session across calls and preloads lib/core.my.fasl on
+      // first use (see crates/my-lisp-wasm/src/lib.rs), so the standard library is
+      // available from the first line and definitions survive between lines. Each
+      // submitted line is therefore evaluated exactly once, directly into that
+      // session — no committed-buffer replay is needed or wanted.
+      // WASM-виклик `evaluate()` тримає сталу сесію: crates/my-lisp-wasm зберігає
+      // thread_local Session між викликами та підвантажує lib/core.my.fasl при
+      // першому використанні (див. crates/my-lisp-wasm/src/lib.rs), тож стандартна
+      // бібліотека доступна з першого рядка, а визначення живуть між рядками.
+      // Кожен введений рядок обчислюється рівно один раз, просто в цю сесію —
+      // переобчислення всього буфера не потрібне й не бажане.
       const history = [];
       let historyIndex = -1;
 
@@ -209,57 +162,27 @@
         historyIndex = -1;
         printLine("my-lisp> " + line, "line-input");
 
-        const committedSource = committed.join("\n") + "\n";
-        const candidateSource = committedSource + line;
         try {
-          const evaluation = wasmModule.evaluate(candidateSource, "my-lisp");
+          const evaluation = wasmModule.evaluate(line, "my-lisp");
           for (const out of evaluation.output || []) {
             printLine(out, "line-value");
           }
           printLine(evaluation.value, "line-value");
-          // Only keep the line in the persistent session once it evaluated successfully,
-          // so a bad line cannot corrupt future evaluations the way a real REPL wouldn't.
-          // Рядок лишається в постійній сесії лише після успішного обчислення, тож
-          // невдалий рядок не може зіпсувати наступні обчислення — як у справжньому REPL.
-          committed.push(line);
+          // The WASM session persists definitions itself, so a failed line needs
+          // no JS-side bookkeeping to stay out of a replayed history.
         } catch (error) {
-          const message = error && error.message ? error.message : String(error);
-          printLine("Error: " + localizeErrorPosition(message, committedSource), "line-error");
+          printLine("Error: " + (error && error.message ? error.message : String(error)), "line-error");
         }
       }
 
-      // The WASM `evaluate()` call above always sees the whole growing session
-      // buffer (`committedSource + line`, see the comment above `committed`),
-      // so a `LanguageError`'s span — and the byte offsets in its Display text
-      // ("... at / позиція / Stelle START..END") — are positions in that whole
-      // buffer, not in the line the user just typed. Left alone, a one-character
-      // typo reports something like "698..700", which reads as nonsense. This
-      // rewrites those two numbers to be relative to `line` instead, by
-      // subtracting the UTF-8 byte length of everything committed before it
-      // (`Span` is a byte offset — see crates/my-lisp/src/syntax.rs — so the
-      // subtraction has to use UTF-8 byte length via TextEncoder, not JS's
-      // UTF-16-code-unit `.length`, or it would misalign on any Cyrillic or
-      // other multi-byte input in the committed history).
-      // Виклик WASM `evaluate()` вище завжди бачить увесь буфер сесії, що
-      // росте (`committedSource + line`, див. коментар над `committed`), тож
-      // `span` `LanguageError` — і байтові зсуви в його Display-тексті ("...
-      // at / позиція / Stelle START..END") — це позиції в усьому буфері, не в
-      // рядку, який користувач щойно ввів. Без цього одна помилка в одному
-      // символі показує щось на кшталт "698..700", що читається як
-      // безглуздя. Ця функція переписує ці два числа відносно `line`,
-      // віднімаючи довжину в UTF-8-байтах усього закомiченого перед ним
-      // (`Span` — байтовий зсув, тож віднімання має рахувати саме UTF-8-байти
-      // через TextEncoder, не JS-івську `.length` в UTF-16-code-units — інакше
-      // зсунеться на будь-якому кириличному чи іншому багатобайтовому вводі в
-      // історії).
-      function localizeErrorPosition(message, committedSource) {
-        const match = message.match(/^(.*Stelle )(\d+)\.\.(\d+)(.*)$/s);
-        if (!match) return message;
-        const prefixBytes = new TextEncoder().encode(committedSource).length;
-        const start = Math.max(0, Number(match[2]) - prefixBytes);
-        const end = Math.max(0, Number(match[3]) - prefixBytes);
-        return match[1] + start + ".." + end + match[4];
-      }
+      // The WASM session is persistent, so `evaluate()` sees only the line the
+      // user just typed — no committed-buffer prefix. A `LanguageError`'s span
+      // (byte offsets in its Display text: "... at / позиція / Stelle START..END")
+      // is therefore already relative to that line and needs no relocation.
+      // WASM-сесія стала, тож `evaluate()` бачить лише щойно введений рядок —
+      // без префікса закомічених рядків. Отже `span` `LanguageError` (байтові
+      // зсуви в його Display-тексті: "... at / позиція / Stelle START..END") вже
+      // відносний до цього рядка, і переносити його не потрібно.
 
       main();
     </script>
