@@ -21,6 +21,11 @@
 ;   (X V Y)                                -> fact:  ((V X Y))
 ;   (all X have Y)                         -> rule:  ((has (var w) Y) (X (var w)))
 ;
+; Query shapes (via `understand-query`, text -> goal structure -> a query
+; `reason` can take):
+;   (is X a Y)   / (is X an Y) / (is X Y)  -> goal:  (Y X)
+;   (does X V Y)                           -> goal:  (V X Y)
+;
 ; Місток контрольованої природної мови від фіксованої форми речення до
 ; знаннєвого clause `(head . body)`, у форматі `lib/knowledge.my`/`lib/reason.my`
 ; — половина "текст -> структура" бачення Advice Taker з
@@ -45,6 +50,11 @@
 ;   (X V Y)                                -> факт:  ((V X Y))
 ;   (all X have Y)                         -> правило: ((has (var w) Y) (X (var w)))
 ;
+; Форми запитання (через `understand-query`, низ -> структура "goals" ->
+; структура запиту для `reason`):
+;   (is X a Y)   / (is X an Y) / (is X Y)  -> запит:  (Y X)
+;   (does X V Y)                           -> запит:  (V X Y)
+;
 ; Eine Brücke kontrollierter natürlicher Sprache von einer festen Satzform zu
 ; einem Wissens-Clause `(head . body)`, im Format von `lib/knowledge.my`/
 ; `lib/reason.my` — die Hälfte "Text -> Struktur" der Advice-Taker-Vision aus
@@ -68,6 +78,11 @@
 ;   (X is a Y)   / (X is an Y) / (X is Y)  -> Fakt:   ((Y X))
 ;   (X V Y)                                -> Fakt:   ((V X Y))
 ;   (all X have Y)                         -> Regel:  ((has (var w) Y) (X (var w)))
+;
+; Frageformen (über `understand-query`, Text -> Goal-Struktur -> Anfrage für
+; `reason`):
+;   (is X a Y)   / (is X an Y) / (is X Y)  -> Anfrage: (Y X)
+;   (does X V Y)                           -> Anfrage: (V X Y)
 
 (def strip-article
   (lambda (words)
@@ -99,3 +114,42 @@
       ((eq (car words) (quote all)) (understand-universal words))
       ((eq (second words) (quote is)) (understand-is words))
       (t (understand-relation words)))))
+
+; `understand-query` is the goal-shaped complement of `understand`: it turns
+; a fixed *question* shape into a goal `(head . args)` that `reason` can be
+; asked directly — "Is Socrates mortal?" -> `(mortal socrates)`. Unlike
+; `understand`, which returns a list of clauses (facts/rules) to add to a
+; knowledge base, this returns exactly one goal, the thing you *ask*.
+; Controlled, structural, deterministic: no morphology, no network, no LLM.
+;
+; `understand-query` — доповнення у формі запиту до `understand`: перетворює
+; фіксовану *форму запитання* на мету `(head . args)`, яку можна одразу
+; поставити `reason` — "Is Socrates mortal?" -> `(mortal socrates)`. На
+; відміну від `understand`, який повертає список clause (фактів/правил) для
+; додавання до бази знань, цей повертає рівно одну мету — те, про що
+; *запитують*. Контрольовано, структурно, детерміновано: без морфології,
+; без мережі, без LLM.
+;
+; `understand-query` ist das Ziel-Gegenstück zu `understand`: es wandelt eine
+; feste *Frageform* in ein Ziel `(head . args)` um, das direkt an `reason`
+; gestellt werden kann — "Is Socrates mortal?" -> `(mortal socrates)`. Anders
+; als `understand`, das eine Liste von Klauseln (Fakten/Regeln) liefert, die
+; in die Wissensbasis aufgenommen werden, liefert dies genau ein Ziel — das,
+; wonach man *fragt*. Kontrolliert, strukturell, deterministisch: keine
+; Morphologie, kein Netz, kein LLM.
+(def understand-query-is
+  (lambda (words)
+    (let ((subject (second words))
+          (after (cddr words)))
+      (list (car (strip-article after)) subject))))
+
+(def understand-query-relation
+  (lambda (words)
+    (list (third words) (second words) (fourth words))))
+
+(def understand-query
+  (lambda (words)
+    (cond
+      ((eq (car words) (quote is)) (understand-query-is words))
+      ((eq (car words) (quote does)) (understand-query-relation words))
+      (t (quote ())))))

@@ -58,9 +58,9 @@
 
 `make-blocked`, `make-disputed`, `make-partial`, `make-unknown`, `result-payload`, `result-status`, `result-tagged?`
 
-### understand.my (5)
+### understand.my (8)
 
-`strip-article`, `understand`, `understand-is`, `understand-relation`, `understand-universal`
+`strip-article`, `understand`, `understand-is`, `understand-relation`, `understand-universal`, `understand-query`, `understand-query-is`, `understand-query-relation`
 
 ### unify.my (15)
 

@@ -68,3 +68,41 @@ fn understand_output_is_usable_directly_as_a_reason_rule() {
     "#;
     assert_eq!(eval_understand(source), "1");
 }
+
+#[test]
+fn understand_query_is_produces_a_class_membership_goal() {
+    // Query form: "Is Socrates mortal?" -> (mortal socrates), the goal-shaped
+    // complement of `understand`, directly consumable by `reason`.
+    assert_eq!(
+        eval_understand("(understand-query (quote (is socrates mortal)))"),
+        "(mortal socrates)"
+    );
+}
+
+#[test]
+fn understand_query_is_with_article_produces_the_same_goal() {
+    assert_eq!(
+        eval_understand("(understand-query (quote (is socrates a mortal)))"),
+        "(mortal socrates)"
+    );
+}
+
+#[test]
+fn understand_query_does_produces_a_relation_goal() {
+    assert_eq!(
+        eval_understand("(understand-query (quote (does socrates drink hemlock)))"),
+        "(drink socrates hemlock)"
+    );
+}
+
+#[test]
+fn understand_query_goal_is_usable_directly_as_a_reason_goal() {
+    // The whole point of the query form: turn a question into a goal and ask
+    // `reason` without hand-editing — no separate translation step.
+    let source = r#"
+        (let ((fact1 (understand (quote (socrates is a mortal))))
+              (goal  (understand-query (quote (is socrates mortal)))))
+             (length (reason goal (list fact1))))
+    "#;
+    assert_eq!(eval_understand(source), "1");
+}
