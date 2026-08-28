@@ -1,11 +1,12 @@
 name: WASM Browser Test
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - 'crates/my-lisp-wasm/**'
-      - '.github/workflows/wasm-test.yml'
+      - '.github/workflows/wasm-browser-test.yml'
   pull_request:
     paths:
       - 'crates/my-lisp-wasm/**'
