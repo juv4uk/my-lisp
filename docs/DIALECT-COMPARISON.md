@@ -11,12 +11,13 @@
 CANON лишається малим і одноголосим (лише значення my-lisp); тут —
 порівняльний контекст, на який CANON лише посилається.
 
-**Живе середовище (перевірено 2026-08-28)**: жоден з 8 діалектів
-"живого ядра" нижче зараз НЕ встановлений у цьому середовищі
-(`guile`/`emacs`/`clojure`/`sbcl`/`racket`/`picolisp` — усі відсутні).
-Тому жоден рядок таблиці нижче не може бути `empirically confirmed`
-прямо зараз — максимум `source-confirmed` (перевірено читанням
-офіційної специфікації/документації, не запуском).
+**Живе середовище — оновлено 2026-08-28, того ж вечора**:
+`guile`/`racket`/`emacs`/`clojure` встановлено через Guix
+(`guix install guile racket emacs clojure`) і реально протестовано
+живцем нижче — ці чотири рядки тепер `empirically confirmed`
+(рівень: *local run*, за драбиною доказовості §3a — не *clean CI run*,
+не незалежне відтворення). `sbcl`/`picolisp`/InterLisp лишаються
+`source-confirmed`/`predicted` — не встановлені.
 
 ---
 
@@ -33,10 +34,10 @@ CANON лишається малим і одноголосим (лише знач
 |---|---|---|---|---|---|
 | **LISP 1.5 (1960)** | Об'єднано: nil = false = порожній список | один `eq` (атомна тотожність) | обидва — спеціальні форми | source-confirmed | McCarthy 1960/1962 manual (вторинні джерела, узгоджені; первинний скан не прочитано напряму) |
 | **Common Lisp (ANSI)** | Об'єднано, як LISP 1.5 | `eq`/`eql`/`equal`/`equalp` — 4 рівні | обидва — спеціальні форми | source-confirmed | CLHS glossary: "nil is ... the empty list, ... representing false, and the name of the empty type" |
-| **Scheme (R7RS)** | **Розділено на ТРИ речі**, не дві: `#f` ≠ `'()` ≠ символ `nil` (якщо він взагалі є) | один `eq?` (плюс `eqv?`/`equal?`) | обидва — спеціальні форми | source-confirmed | R7RS текст напряму: "Scheme distinguishes both #f and the empty list from the symbol nil" |
-| **Emacs Lisp** | Об'єднано, як LISP 1.5 (`nil` = symbol = false = `'()`, ідентичні) | один `eq` | обидва — спеціальні форми | source-confirmed | GNU ELisp manual: "nil has three separate meanings ... '() and nil are identical" |
-| **Guile (Scheme-гілка)** | Як Scheme (розділено) | як Scheme | обидва — спеціальні форми | source-confirmed (та сама R7RS-лінія) | R7RS-сумісна реалізація |
-| **Clojure** | `nil` ≠ `false`, обидва falsy (не unified, не повний split) | `identical?` (тотожність) окремо від `=` (значеннєва рівність) — **не** `eq` (Clojure має свій `eq`, тонко інший для деяких числових/nil випадків) | `cond` — макрос над `if`; `quote` — спецформа | source-confirmed | clojure.org/reference (lisps, data_structures) |
+| **Scheme (R7RS)** | **Розділено на ТРИ речі**, не дві: `#f` ≠ `'()` ≠ символ `nil` (якщо він взагалі є) | один `eq?` (плюс `eqv?`/`equal?`) | обидва — спеціальні форми | empirically confirmed (local run, через Guile та Racket — обидві R7RS-сумісні) | `(eq? '() #f)` → `#f`; `(if '() "true" "false")` → `"true"` — перевірено живцем і в Guile, і в Racket, ідентичний результат |
+| **Emacs Lisp** | Об'єднано, як LISP 1.5 (`nil` = symbol = false = `'()`, ідентичні) | один `eq` | обидва — спеціальні форми | empirically confirmed (local run) | `emacs --batch --eval`: `(eq (quote ()) nil)` → `t`; `(if (quote ()) "true" "false")` → `"false"`; `(car nil)` → `nil` |
+| **Guile (Scheme-гілка)** | Як Scheme (розділено) | як Scheme | обидва — спеціальні форми | empirically confirmed (local run) | `(eq? '() #f)` → `#f`; `(if '() "true" "false")` → `"true"` |
+| **Clojure** | `nil` ≠ `false`, обидва falsy (не unified, не повний split) | `identical?` (тотожність) окремо від `=` (значеннєва рівність) — **не** `eq` (Clojure має свій `eq`, тонко інший для деяких числових/nil випадків) | `cond` — макрос над `if`; `quote` — спецформа | empirically confirmed (local run, через `java -cp clojure.jar clojure.main`) | `(= nil false)` → `false`; `(identical? nil false)` → `false`; `(nil? false)` → `false`; `(false? nil)` → `false`; `(if nil "true" "false")` → `"false"` |
 | **InterLisp** | Не про цю вісь напряму — про вісь 4 | — | — | **predicted, низька впевненість** | Вторинний переказ (Interlisp-VAX Users Manual), первинний PDF (bitsavers) не прочитано напряму; не підтверджено для Interlisp-10/Xerox D-machine специфічно |
 | **PicoLisp** | `NIL`/`T` — окремі, розрізнені через тегування в нижніх 4 бітах вказівника комірки (не окреме поле) | — | — | source-confirmed | Офіційна документація, software-lab.de/doc/ref.html |
 
@@ -60,17 +61,23 @@ EuLisp, ISLISP, MIT Scheme/Chez Scheme/Racket/Arc (Scheme-гілка, уже
 ## Дисципліна тверджень (не новий винахід — §3/§3a кореневого CLAUDE.md)
 
 Кожен рядок вище позначений `predicted`/`source-confirmed`/
-`empirically confirmed`. Жодного `empirically confirmed` зараз немає
-(нуль встановлених рантаймів, перевірено живцем). Коли (якщо) з'явиться
-виконуваний `tests/fixtures/dialect-comparison.my` — твердження
-переперевіряються ПРИ ЧИТАННІ (перезапуском фікстури проти того, що
-реально встановлено), не за збереженою датою "перевірено колись" —
-той самий механізм §3a, що вже керує кожним іншим твердженням цієї
-екосистеми, не паралельна схема.
+`empirically confirmed`. Станом на 2026-08-28 (той самий вечір) чотири
+рядки (Scheme/R7RS, Emacs Lisp, Guile, Clojure) — `empirically
+confirmed`, рівень *local run* за драбиною доказовості §3a (ручна
+одноразова перевірка в цій сесії, ще не *clean CI run*, тим більше не
+незалежне відтворення іншим середовищем/особою). LISP 1.5, Common
+Lisp, InterLisp, PicoLisp лишаються `source-confirmed`/`predicted` —
+жоден історичний чи ANSI CL рантайм, і жоден з InterLisp/PicoLisp, не
+встановлений і не протестований у цьому середовищі. Коли (якщо)
+з'явиться виконуваний `tests/fixtures/dialect-comparison.my` —
+твердження переперевіряються ПРИ ЧИТАННІ (перезапуском фікстури проти
+того, що реально встановлено), не за збереженою датою "перевірено
+колись" — той самий механізм §3a, що вже керує кожним іншим
+твердженням цієї екосистеми, не паралельна схема.
 
 **Явно не зроблено**: сам виконуваний фікстур-файл
-(`tests/fixtures/dialect-comparison.my`) ще не написаний — з нульовою
-кількістю встановлених рантаймів зараз він був би лише неживим
-заглушка-кодом без реальної перевірочної цінності. Створити його —
-наступний крок, коли хоч один з 8 діалектів реально буде встановлено
-для тестування.
+(`tests/fixtures/dialect-comparison.my`) ще не написаний — чотири ручні
+перевірки вище не консолідовані в жоден скрипт чи checked-in тест;
+підняти цей local-run рівень до clean-CI-run рівня доказовості означає
+саме написати цей фікстур-файл і запустити його в CI. Це — наступний
+крок, не зроблений цим редагуванням.
