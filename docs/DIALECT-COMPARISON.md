@@ -19,10 +19,15 @@ Lisp — `sbcl`, `ecl`, `clisp`, `abcl` — і `picolisp`. Усі протест
 `clasp` — НЕ Common Lisp; це Answer-Set-Programming солвер
 (potassco.org, `gnu/packages/potassco.scm`), випадковий колізійний
 збіг імені. Справжня Common Lisp-реалізація Clasp пакується окремо, як
-`clasp-cl` (залежить від LLVM/clang, важча збірка) — встановлення
-`clasp-cl` розпочато окремо, статус нижче поки не оновлено, доки
-результат не підтверджено живцем. InterLisp лишається `predicted` —
-жодної встановлюваної реалізації в Guix не знайдено.
+`clasp-cl` (залежить від LLVM/clang, важча збірка) — встановлено й
+підтверджено живцем: та сама поведінка, п'ята незалежна CL-реалізація
+(разом із SBCL/ECL/CLISP/ABCL). Примітно: після встановлення обох
+пакунків `guix package -I` показує, що бінарник `clasp` у профілі
+резолвиться саме до `clasp-cl` (пізніший install перекрив символічне
+посилання ASP-солвера) — реальний внутрішньопрофільний конфлікт імен,
+не лише плутанина назв пакунків; викликано напряму повним шляхом у
+`/gnu/store/...` для однозначності тесту. InterLisp лишається
+`predicted` — жодної встановлюваної реалізації в Guix не знайдено.
 
 ---
 
@@ -38,7 +43,7 @@ Lisp — `sbcl`, `ecl`, `clisp`, `abcl` — і `picolisp`. Усі протест
 | Діалект | Вісь 1 (NIL/false/'()) | Вісь 2 (eq) | Вісь 3 (cond/quote) | Статус | Джерело |
 |---|---|---|---|---|---|
 | **LISP 1.5 (1960)** | Об'єднано: nil = false = порожній список | один `eq` (атомна тотожність) | обидва — спеціальні форми | source-confirmed | McCarthy 1960/1962 manual (вторинні джерела, узгоджені; первинний скан не прочитано напряму) |
-| **Common Lisp (ANSI)** | Об'єднано, як LISP 1.5 | `eq`/`eql`/`equal`/`equalp` — 4 рівні | обидва — спеціальні форми | empirically confirmed (local run, 4 незалежні реалізації) | `(eq (quote nil) (quote ()))` → `T`; `(car nil)` → `NIL`; `(if nil "true" "false")` → `"false"` — ідентичний результат у SBCL, ECL, CLISP, ABCL |
+| **Common Lisp (ANSI)** | Об'єднано, як LISP 1.5 | `eq`/`eql`/`equal`/`equalp` — 4 рівні | обидва — спеціальні форми | empirically confirmed (local run, 5 незалежних реалізацій) | `(eq (quote nil) (quote ()))` → `T`; `(car nil)` → `NIL`; `(if nil "true" "false")` → `"false"` — ідентичний результат у SBCL, ECL, CLISP, ABCL, Clasp |
 | **Scheme (R7RS)** | **Розділено на ТРИ речі**, не дві: `#f` ≠ `'()` ≠ символ `nil` (якщо він взагалі є) | один `eq?` (плюс `eqv?`/`equal?`) | обидва — спеціальні форми | empirically confirmed (local run, через Guile та Racket — обидві R7RS-сумісні) | `(eq? '() #f)` → `#f`; `(if '() "true" "false")` → `"true"` — перевірено живцем і в Guile, і в Racket, ідентичний результат |
 | **Emacs Lisp** | Об'єднано, як LISP 1.5 (`nil` = symbol = false = `'()`, ідентичні) | один `eq` | обидва — спеціальні форми | empirically confirmed (local run) | `emacs --batch --eval`: `(eq (quote ()) nil)` → `t`; `(if (quote ()) "true" "false")` → `"false"`; `(car nil)` → `nil` |
 | **Guile (Scheme-гілка)** | Як Scheme (розділено) | як Scheme | обидва — спеціальні форми | empirically confirmed (local run) | `(eq? '() #f)` → `#f`; `(if '() "true" "false")` → `"true"` |
@@ -90,14 +95,9 @@ Lisp, PicoLisp — `empirically confirmed`, рівень *local run* за
 не паралельна схема.
 
 **Явно не зроблено**: сам виконуваний фікстур-файл
-(`tests/fixtures/dialect-comparison.my`) ще не написаний — шість
-ручних перевірок вище не консолідовані в жоден скрипт чи checked-in
-тест; підняти цей local-run рівень до clean-CI-run рівня доказовості
-означає саме написати цей фікстур-файл і запустити його в CI. `clasp-cl`
-(справжня Common Lisp-реалізація Clasp, на відміну від колізійно
-названого ASP-солвера `clasp`) встановлюється окремо — якщо
-підтвердиться живцем, додасть сьомий приклад до Common Lisp-групи, але
-рядок таблиці для CL вже й так emprically confirmed через 4 інші
-реалізації, рядок таблиці для CL вже й так empirically confirmed через 4 інші
-реалізації, тож це не змінить статус, лише додасть ще одне незалежне
-підтвердження.
+(`tests/fixtures/dialect-comparison.my`) ще не написаний — усі ручні
+перевірки вище (шість рядків, дев'ять окремих рантаймів: Guile,
+Racket, Emacs Lisp, Clojure, SBCL, ECL, CLISP, ABCL, Clasp) не
+консолідовані в жоден скрипт чи checked-in тест; підняти цей
+local-run рівень до clean-CI-run рівня доказовості означає саме
+написати цей фікстур-файл і запустити його в CI.
