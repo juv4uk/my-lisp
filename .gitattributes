@@ -1,5 +1,15 @@
 * text=auto eol=lf
 
+# vendor/ holds `cargo vendor` output committed byte-for-byte, with its own
+# .cargo-checksum.json per crate. The blanket eol=lf rule above silently
+# rewrites any CRLF files in there on checkout, breaking cargo's checksum
+# validation ("the listed checksum ... has changed") on any fresh clone
+# (e.g. CI) even though the content is unmodified -- confirmed 2026-08-28:
+# vendor/serde-wasm-bindgen/.cargo/config.toml matches its expected checksum
+# locally (CRLF, as vendored) but not after a normalized checkout. Disable
+# all text/eol handling for vendor/ so checkouts are always byte-identical.
+vendor/** -text -diff
+
 # GitHub Linguist does not know WSM yet. Racket is the temporary display
 # profile for all supported WSM source extensions; this is classification,
 # not a claim of semantic identity.
