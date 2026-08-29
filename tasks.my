@@ -324,6 +324,8 @@
     (origin . my-lisp)
     (description . "Add .wsm to the global OpenCode my-lisp LSP extension list while preserving .my/.lisp aliases. Verify a real .wsm document receives diagnostics/completion through the configured LSP, not merely direct server tests.")
     (done . t)
+    (done . t)
+    (done . t)
     (context . "done 2026-08-27 by wsl-nidana-1 (tauricode e50822c2a7): WsmLS registered in packages/opencode/src/lsp/server.ts (which(\"my-lisp-lsp\"), repo.my as root marker). Real end-to-end diagnostics/completion verified live -- not just server unit tests -- with a real my-lisp-lsp process on PATH: hover on a .wsm file returned genuine markdown docs (\"builtin +\"). Found+fixed a real bug during verification: ctx.worktree == \"/\" for non-git instances (documented sentinel) was unguarded, handing my-lisp-lsp the whole filesystem as its scan root -- reproduced live under WSL (process wedged scanning /mnt/c/Windows/WinSxS). tsgo clean, 70/70 test/lsp/ pass (incl. 3 new WsmLS.root regression tests).")
   ))
 
