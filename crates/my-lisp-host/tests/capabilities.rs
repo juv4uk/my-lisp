@@ -244,10 +244,23 @@ fn read_file_bytes_wrong_arity_is_an_arity_error() {
 }
 
 #[test]
-fn process_run_fails_named_when_the_session_never_opted_in() {
-    let error = eval_program(r#"(process-run "git" (list "--version"))"#, &mut Session::default())
-        .expect_err("process-run on the default (unrestricted-by-default-off) session must fail named, not run anything");
-    assert_eq!(error.kind, ErrorKind::InvalidForm);
+fn process_run_is_unrestricted_in_a_native_root_session() {
+    let result = eval_program(
+        r#"(process-run "git" (quote ("--version")))"#,
+        &mut Session::default(),
+    )
+    .expect("the trusted native root session should run a named program");
+    let Value::Pair(ref exit_code, ref rest) = result.value else {
+        panic!("process-run should return a 3-element list");
+    };
+    assert_eq!(**exit_code, Value::Number(0.0, Exactness::Exact));
+    let Value::Pair(ref stdout, _) = **rest else {
+        panic!("process-run should return a 3-element list");
+    };
+    let Value::String(ref stdout) = **stdout else {
+        panic!("stdout should be a string");
+    };
+    assert!(stdout.contains("git version"));
 }
 
 #[test]
@@ -278,6 +291,16 @@ fn process_run_succeeds_for_an_explicitly_allowed_program() {
         stdout.contains("git version"),
         "expected stdout to contain (quote git) version', got {stdout:?}"
     );
+}
+
+#[test]
+fn process_run_is_deny_all_for_an_explicit_empty_allowlist() {
+    let mut session = Session {
+        environment: Environment::root().with_process_allowlist(Vec::new()),
+    };
+    let error = eval_program(r#"(process-run "git" (quote ("--version")))"#, &mut session)
+        .expect_err("an explicit empty embedding allowlist must remain deny-all");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
 }
 
 #[test]

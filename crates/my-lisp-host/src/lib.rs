@@ -310,21 +310,16 @@ fn write_file_bytes(_path: &str, _bytes: &[u8], span: Span) -> Result<(), Langua
     ))
 }
 
-// `process-run` (PLAN.md item 21's follow-up) — deliberately narrow, not a
-// general shell-out primitive: never goes through a shell, and the calling
-// session must have opted into exactly the program's name via
-// `Environment::with_process_allowlist`.
+// `process-run` is a native host capability, not a core semantic primitive.
+// It never goes through a shell. Trusted root sessions may run any named
+// program; network/embedding sessions can still apply an exact allowlist.
 
 /// `(process-run program args)` runs `program` with `args` (a list of
 /// strings) and returns `(list exit-code stdout stderr)`.
 /// `std::process::Command::new(program).args(args)` never goes through a
 /// shell (no `sh -c`, no string interpolation, no injection surface via
-/// `;`/`&&`/backticks in an argument), and the default session
-/// (`Environment::root()`) always fails this named, never silently — see
-/// `Environment::with_process_allowlist`'s own comment for why: combined
-/// with `tcp-accept`'s inbound networking, an unrestricted `process-run`
-/// would let a remote peer reach arbitrary command execution through a
-/// my-lisp program.
+/// `;`/`&&`/backticks in an argument). Native root sessions are unrestricted;
+/// explicit host allowlists remain available for untrusted entry points.
 fn evaluate_process_run(
     arguments: &[Expr],
     environment: &Environment,

@@ -55,11 +55,9 @@ pub(crate) fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
             .unwrap_or_else(|_| "?".into());
         eprintln!("TCP REPL: connection from {peer}");
 
-        let environment = if allowed.is_empty() {
-            Environment::root()
-        } else {
-            Environment::root().with_process_allowlist(allowed.to_vec())
-        };
+        // TCP is an unauthenticated entry point, not the trusted local
+        // Lisp-machine profile. Empty means deny all; a supplied list is exact.
+        let environment = Environment::root().with_process_allowlist(allowed.to_vec());
         let mut session = Session { environment };
         if let Ok(core_ast) = parse(core_lib) {
             let _ = eval_parsed_expressions(&core_ast, &mut session);

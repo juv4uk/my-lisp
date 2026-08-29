@@ -47,28 +47,13 @@ struct Limits {
     cons_limit: Option<usize>,
     cons_count: usize,
     numeric_bit_limit: Option<usize>,
-    /// `None` (the default, via `root()`) means `process-run` always fails
-    /// named — the opposite default from `cons_limit`/`numeric_bit_limit`
-    /// (those default to *unbounded*, this defaults to *disabled*), because
-    /// process execution is a categorically bigger capability than a
-    /// resource cap: combined with the inbound networking `tcp-accept`
-    /// gives a session (PLAN.md item 21), an unrestricted `process-run`
-    /// would let a remote peer reach arbitrary command execution through a
-    /// my-lisp program. `Some(programs)` opts a session into running only
-    /// those exact program names, never a shell string — the host (e.g.
-    /// `my-lisp-cli --allow-process=git`) decides the allowlist, a my-lisp
-    /// program itself can never grant itself this.
-    /// `None` (typovo, cherez `root()`) oznachaie, shcho `process-run` zavzhdy
-    /// provaliuietsia nazvano — protylezhnyi typovyi stan do
-    /// `cons_limit`/`numeric_bit_limit` (ti typovo *neobmezheni*, tsei typovo
-    /// *vymknenyi*), bo vykonannia protsesu — katehoriino bilsha mozhlyvist,
-    /// nizh mezha resursu: razom iz vkhidnoiu merezheiu, yaku daie sesii
-    /// `tcp-accept` (PLAN.md, punkt 21), neobmezhenyi `process-run` dav by
-    /// viddalenomu uchasnyku shliakh do dovilnoho vykonannia komand cherez
-    /// my-lisp-prohramu. `Some(programs)` vmykaie dlia sesii zapusk lyshe tsykh
-    /// tochnykh imen prohram, nikoly ne riadok shell — khost (napr.
-    /// `my-lisp-cli --allow-process=git`) vyrishuie allowlist, my-lisp-prohrama
-    /// sama nikoly ne mozhe dozvolyty tse sobi.
+    /// `None` (the default, via `root()`) means unrestricted named-program
+    /// execution once a native host installs `process-run`. This is the
+    /// trusted Lisp-machine profile: programs can compose the host instead
+    /// of requiring a per-executable grant. `Some(programs)` remains an
+    /// embedding boundary for untrusted entry points such as the loopback
+    /// TCP oracle; an empty list disables process execution there. Commands
+    /// still never pass through a shell.
     process_allowlist: Option<Vec<String>>,
 }
 
@@ -123,17 +108,8 @@ impl Environment {
         self
     }
 
-    /// Opts this session into `process-run`, restricted to exactly the
-    /// program names in `programs` — see `Limits::process_allowlist`'s own
-    /// comment for why this defaults to fully disabled rather than
-    /// unbounded. Only a host embedding the interpreter calls this (e.g.
-    /// `my-lisp-cli`'s `--allow-process` flag); nothing in the language
-    /// itself can reach it.
-    /// Vmykaie dlia sesii `process-run`, obmezhenyi tochno imenamy prohram u
-    /// `programs` — dyv. vlasnyi komentar `Limits::process_allowlist` pro
-    /// te, chomu tse typovo povnistiu vymkneno, ne neobmezheno. Vyklykaie lyshe
-    /// khost, shcho vbudovuie interpretator (napr. prapor `--allow-process` u
-    /// `my-lisp-cli`); nichoho v samii movi ne mozhe do tsoho dotiahnutys.
+    /// Restricts `process-run` to the exact program names in `programs`.
+    /// This is an embedding/network policy, not the native machine default.
     pub fn with_process_allowlist(self, programs: Vec<String>) -> Self {
         self.2.borrow_mut().process_allowlist = Some(programs);
         self
@@ -162,18 +138,12 @@ impl Environment {
         self.2.borrow().numeric_bit_limit
     }
 
-    /// `false` unless this session called `with_process_allowlist` *and*
-    /// `program` is exactly one of the names it listed — no substring
-    /// match, no path resolution tricks, an allowed name must match in
-    /// full.
-    /// `false`, yakshcho tsia sesiia ne vyklykala `with_process_allowlist` *abo*
-    /// `program` ne ye tochno odnym z perelichenykh tam imen — bez chastkovoho
-    /// zbihu, bez khytroshchiv iz rozdilnoiu zdatnistiu shliakhu, dozvolene imia
-    /// maie zbihatys povnistiu.
+    /// Native root sessions are unrestricted (`None`). An embedding can set
+    /// an exact allowlist; an empty allowlist is an explicit deny-all policy.
     pub fn is_process_allowed(&self, program: &str) -> bool {
         match &self.2.borrow().process_allowlist {
             Some(programs) => programs.iter().any(|allowed| allowed == program),
-            None => false,
+            None => true,
         }
     }
 

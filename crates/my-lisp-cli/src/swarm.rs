@@ -562,11 +562,10 @@ fn handle_sexpr_connection(
         .unwrap_or_else(|_| "?".into());
     eprintln!("TCP REPL: connection from {peer}");
 
-    let environment = if allowed.is_empty() {
-        Environment::root()
-    } else {
-        Environment::root().with_process_allowlist(allowed.to_vec())
-    };
+    // The oracle protocol is an unauthenticated network boundary. Keep its
+    // process policy explicit even though trusted native root sessions are
+    // unrestricted by default.
+    let environment = Environment::root().with_process_allowlist(allowed.to_vec());
     let mut session = Session { environment };
     if let Ok(core_ast) = parse(core_lib) {
         let _ = eval_parsed_expressions(&core_ast, &mut session);

@@ -3,6 +3,11 @@
 **Статус:** PROPOSED — потребує ратифікації власником (задача сама
 названа "owner-ratifiable"; цей документ пропонує дизайн, не
 самопроголошує його прийнятим).
+
+**Частково superseded 2026-08-29:** власник ратифікував unrestricted
+`process-run` для trusted native Lisp-machine profile. Exact allowlist
+залишається механізмом для обмежених embeddings і TCP/oracle boundary;
+решта filesystem/network proposal цим рішенням не ратифікована.
 **Задача:** `MYLISP-HOST-CAPABILITY-SCOPING-ADR` (my-lisp tasks.my,
 пріоритет 7.5, без залежностей). Розблоковує
 `MYLISP-HOST-CAPABILITY-SCOPING-IMPLEMENT` (реалізація — окрема

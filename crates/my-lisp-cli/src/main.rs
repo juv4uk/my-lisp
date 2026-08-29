@@ -10,22 +10,9 @@ mod tcp_repl;
 use swarm::{dotted_alist_lookup, run_client, run_tcp_repl_sexpr};
 use tcp_repl::run_tcp_repl;
 
-/// `--allow-process=git,cargo` (PLAN.md item 21's follow-up) — the only
-/// way a my-lisp program running under this CLI can ever get `process-run`
-/// to succeed: `Environment::root()` defaults to disabled (see that
-/// method's own comment for why), and nothing in the language itself can
-/// grant this to a program that wasn't explicitly launched with it. Kept
-/// as a small hand-rolled parser rather than a dependency (`clap` etc.) —
-/// this crate's only external dependency today is `rustyline` for the
-/// REPL line editor, and one flag doesn't justify a second.
-/// `--allow-process=git,cargo` (продовження PLAN.md, пункт 21) — єдиний
-/// спосіб, яким my-lisp-програма під цим CLI може взагалі отримати робочий
-/// `process-run`: `Environment::root()` типово вимкнений (див. власний
-/// коментар цього методу чому), і ніщо в самій мові не може дати це
-/// програмі, яку не запустили явно з цим прапором. Залишено як маленький
-/// власноруч написаний парсер, не залежність (`clap` тощо) — єдина
-/// зовнішня залежність цього крейта сьогодні — `rustyline` для
-/// REPL-редактора рядка, один прапор не виправдовує другу.
+/// `--allow-process=git,cargo` restricts process execution for the
+/// unauthenticated TCP/oracle entry point. The trusted local CLI/REPL is the
+/// Lisp-machine profile and does not require per-program grants.
 fn allowed_processes(args: &[String]) -> Vec<String> {
     args.iter()
         .find_map(|arg| arg.strip_prefix("--allow-process="))
@@ -33,8 +20,9 @@ fn allowed_processes(args: &[String]) -> Vec<String> {
         .unwrap_or_default()
 }
 fn main() {
-    // The CLI is a trusted local surface: install the OS capability layer
-    // (filesystem, process-run allowlist, TCP). The core itself ships none.
+    // The CLI is a trusted local Lisp-machine surface: install the OS
+    // capability layer (filesystem, process execution, TCP). The semantic
+    // core itself ships none.
     my_lisp_host::install();
     let args: Vec<String> = env::args().collect();
     let allowed = allowed_processes(&args);
@@ -71,12 +59,9 @@ fn main() {
             })
             .unwrap_or((0.0, 0.0))
     };
-    let environment = if allowed.is_empty() {
-        Environment::root()
-    } else {
-        Environment::root().with_process_allowlist(allowed)
+    let mut session = Session {
+        environment: Environment::root(),
     };
-    let mut session = Session { environment };
 
     // Load standard library — FASL snapshot first (parse-output cache,
     // OPT-CORE-MY-AST-SNAPSHOT), text parse as the always-available fallback.
@@ -153,7 +138,9 @@ fn main() {
             println!("  lsp                          Run the Language Server (LSP over stdio)");
             println!("  -V, --version               Print version information");
             println!("  -h, --help                  Print help information");
-            println!("  --allow-process=a,b,c        Allow (process-run) to run exactly these program names");
+            println!(
+                "  --allow-process=a,b,c        TCP/oracle only: allow exactly these process names"
+            );
             println!("  --lint                        Run the linter on the provided file and exit with non-zero if thresholds are exceeded");
             println!("  --tcp[=PORT]                 Serve the REPL over TCP on 127.0.0.1 (default port 9999) instead of stdio");
             println!("  --protocol=sexpr              With --tcp: strict (request (id) (op) (source)) / (response ...) envelope, no banner/prompt");

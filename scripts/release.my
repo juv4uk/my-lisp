@@ -10,9 +10,9 @@
 ; hand-edited constant — the `l` tag prefix (`docs/versioning.md`) is
 ; added here, so the caller passes a bare version:
 ;
-;   my-lisp --allow-process=git,cargo scripts/release.my 0.4.4
+;   my-lisp scripts/release.my 0.4.4
 ;
-; Without `--allow-process`, `process-run` fails named — see
+; The trusted native Lisp-machine profile can run these named programs — see
 ; `docs/language-core.md`'s own entry for why the default is fully
 ; disabled, not just unbounded: this project's own recommendation is to
 ; run this script deliberately, by hand, never from something that also
@@ -36,9 +36,9 @@
 ; тегу `l` (`docs/versioning.md`) додається тут, тож викликач передає
 ; голу версію:
 ;
-;   my-lisp --allow-process=git,cargo scripts/release.my 0.4.4
+;   my-lisp scripts/release.my 0.4.4
 ;
-; Без `--allow-process` `process-run` провалюється названо — див. власний
+; Довірений native-профіль Lisp-машини може запускати ці програми — див.
 ; запис у `docs/language-core.md`, чому типовий стан повністю вимкнений,
 ; не просто необмежений: власна рекомендація цього проєкту — запускати
 ; цей скрипт свідомо, вручну, ніколи з чогось, що в тій самій сесії ще й
