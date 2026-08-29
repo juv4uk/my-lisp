@@ -10,9 +10,9 @@
 # all text/eol handling for vendor/ so checkouts are always byte-identical.
 vendor/** -text -diff
 
-# GitHub Linguist does not know WSM yet. Racket is the temporary display
+# GitHub Linguist does not know WSM yet. Lisp is the temporary display
 # profile for all supported WSM source extensions; this is classification,
 # not a claim of semantic identity.
-*.wsm linguist-language=Racket
-*.my linguist-language=Racket
-*.lisp linguist-language=Racket
+*.wsm linguist-language=Lisp
+*.my linguist-language=Lisp
+*.lisp linguist-language=Lisp
