@@ -143,7 +143,8 @@
     (priority . 7.0)
     (capabilities . (cml compiler))
     (description . "Compile-time constant folding for pratyahara set algebra per recommendations-cml-prototypes.md section 3.2. Fold S-it/P-it/Kit membership checks at compile time when masks are known constants.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-29 by yukti. Implemented fold_constants pass in cml/src/pratyahara.rs which translates known pratyahara symbols into 64-bit integer masks and folds intersection, union, diff, complement, and subset? operations at compile time, eliminating runtime dispatch. Plumbed via cml/src/lower.rs lower_program.")
   ))
   ("TAURI-DERIVATION-STREAMER" . (
     (priority . 6.5)
