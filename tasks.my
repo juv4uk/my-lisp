@@ -212,7 +212,8 @@
     (priority . 7.0)
     (capabilities . (my-lisp wasm))
     (description . "Embed core.my in WASM binary so browser REPL has standard library. Currently browser gets only Rust builtins - no length/map/filter/reverse/assoc/equal? etc. Options: (a) include_str! + parse on startup, (b) FASL snapshot embedded as bytes, (c) pre-evaluated environment serialized.")
-    (done . ())
+    (done . t)
+    (context . "done 2026-08-26: core.my preloaded into persistent WASM session via thread_local RefCell (a65c67b), FASL snapshot integration finalized (b33fb8e). Browser REPL has standard library through the embedded FASL; WASM browser CI green.")
   ))
   ("WASM-PERSISTENT-SESSION" . (
     (priority . 6.5)
