@@ -89,7 +89,6 @@ fn loaded_session() -> Session {
 
 /// Build the my-lisp quoted rules list for a linear edge chain of `n` facts:
 /// `(quote (((edge 0 1)) ((edge 1 2)) ... ((edge (n-1) n))))`.
-
 /// Time a single `reason` query that must scan the whole chain: asks for the
 /// target node and only the last edge matches, so the no-index engine walks
 /// every fact (worst case). The chain is pre-built (untimed) into a def so
