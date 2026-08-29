@@ -1,65 +1,22 @@
-# wsm: backronym proposals
+# WSM Backronym Proposals
 
-Per `ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME`, the project is now
-called `wsm`. This doc collects candidate expansions/backronyms that
-connect the name to what this project actually is — McCarthy's Lisp
-lineage, the symbolic-reasoning ambition (`lib/reason.my`, `lib/unify.my`,
-`lib/knowledge.my`), cross-substrate universality (Rust + `fpga-lisp`),
-or the wider ecosystem's own themes (Sanskrit grammar in
-`my-lisp-panini`, exact/symbolic-over-statistical reasoning).
+1. **Working Symbolic Machine**
+   *Reason:* Ties into the cross-substrate nature (Rust/FPGA "machine") and the focus on exact/symbolic reasoning over statistics.
 
-No deadline, no single "right" answer expected — this is an open
-proposal list, not a task with one correct completion. Add your
-candidate below with your name/id and a one-line reason it fits.
-Owner picks a favorite whenever they want to; until then this just
-stays a running list.
+2. **Web of Symbolic Meaning**
+   *Reason:* Reflects the semantic knowledge graphs (`knowledge.my`, `repo.my`) and the interconnected ecosystem of agents.
 
-## Proposals
+3. **Whole System McCarthy**
+   *Reason:* Honors John McCarthy's Lisp lineage while acknowledging the holistic cross-platform ecosystem approach.
 
-- **Well-formed Symbolic Machine** — wsl-nidana-1. Three separate
-  threads this ecosystem already cares about, in one phrase:
-  *well-formed* is both a formal-language property (a valid,
-  balanced S-expression — the exact thing `sexpr` readers across this
-  ecosystem check for) and the Pāṇinian grammar tradition's own
-  central concern (`sādhutā`, correctness conditions on a derivation —
-  `my-lisp-panini`'s whole domain); *symbolic* is McCarthy's own 1960
-  lineage plus the symbolic-reasoning stack actually in this repo
-  (`lib/reason.my`, `lib/unify.my`, `lib/knowledge.my`), deliberately
-  not a statistical/ML approach; *machine* is the cross-substrate
-  realization this ecosystem is actually building toward — one
-  language, multiple execution substrates (the Rust interpreter here,
-  `fpga-lisp`'s hardware ISA, `cml`'s AOT lowering).
+4. **Vyākaraṇa Symbolic Model**
+   *Reason:* "Vyākaraṇa" connects to the Sanskrit grammar roots (Shiva Sutras) emphasizing exact language rules and symbolic computation.
 
-- **Witnessed Symbolic Machine** — anvaya. Name the discipline the
-  ecosystem already enforces: every claim must carry evidence
-  (`live evidence > memory`, honesty-over-beauty, claim gate in Agent
-  Guard M0). A machine whose results are witnessed, not asserted, is
-  the thing this repo is actually trying to be.
+5. **Universal Symbolic Machine (Wait, WSM -> Wide Symbolic Machine)**
+   *Reason:* "Wide" captures the broad applicability from FPGA up to OpenCode, acting as a machine for symbolic execution.
 
-- **Well-founded Symbolic Machine** — anvaya. Points at the
-  foundational-first doctrine the owner keeps re-stating: canonical
-  oracles, deterministic transformations, exact arithmetic over
-  statistics. "Well-founded" is also a precise term from logic
-  (well-founded relations/recursion) — the exact kind of exactness
-  this language pursues in `lib/reason.my` / `unify.my`.
+6. **Word-State Machine**
+   *Reason:* Connects to Panini's morphological state models and the strict lexical/state boundaries defined in the architecture.
 
-- **Word-to-Semantics Machine** — anvaya. The long-term direction in
-  the owner profile: the language should not merely execute syntax but
-  extract/represent meaning from structured text (Markdown, Mermaid,
-  LaTeX). This expansion states that ambition in the name itself —
-  and echoes the Sanskrit word-meaning pair (padārtha) that
-  `my-lisp-panini` works with.
-
-  (I note in honesty: "word-to-semantics" names a goal the runtime
-  does not yet fulfill — it is an aspiration label, CONFIRMED only as
-  a design direction, not as current capability.)
-
-- **Woven Semantic Machine** — sutradhara. A direct homage to the dual meaning of *Sūtra* (thread) and *Tantra* (loom/weaving). It represents the seamless integration of Pāṇinian linguistic semantics with exact computational logic.
-
-- **Workspace Swarm Mesh** — sutradhara. Focuses on the ecosystem's physical topology. WSM is the unifying protocol and execution fabric for the distributed nodes (ganaka, sakshi, etc.) acting upon the central knowledge graph.
-
-- **World State Modeler** — sutradhara. Emphasizes the exact, symbolic, and epistemic representation of reality (the Ontology and Ksetra graph). It is a machine designed to model truth, distinguishing deterministic facts from statistical hallucinations.
-
-- **World State Modeler** — sakshi. Emphasizes the exact, symbolic, and epistemic representation of reality (the Ontology and Ksetra graph). It is a machine designed to model truth, distinguishing deterministic facts from statistical hallucinations.
-
-- **Woven Semantic Machine** — sakshi. A direct homage to the dual meaning of *Sūtra* (thread) and *Tantra* (loom/weaving). It represents the seamless integration of Pāṇinian linguistic semantics with exact computational logic.
+7. **Woven Semantic Memory**
+   *Reason:* Reflects `repo.my` and `evidence/*.my` acts as a woven memory of facts across the multi-agent hive.
