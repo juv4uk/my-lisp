@@ -252,6 +252,33 @@ fn parse_args() -> Args {
     }
 }
 
+fn validate_startup_args(args: &Args) -> std::io::Result<()> {
+    let invalid = |message: &str| std::io::Error::new(std::io::ErrorKind::InvalidInput, message);
+    if args.node_id == "node-1" {
+        return Err(invalid(
+            "refusing implicit node-id `node-1`; pass an explicit stable --node-id",
+        ));
+    }
+    if args.project == "unknown" {
+        return Err(invalid(
+            "refusing implicit project `unknown`; pass an explicit --project",
+        ));
+    }
+    if !args.data_dir.is_absolute() {
+        return Err(invalid(
+            "--data-dir must be absolute so restart cannot create a second identity tree",
+        ));
+    }
+    for path in &args.auto_sync {
+        if !path.is_file() {
+            return Err(invalid(
+                "every --auto-sync path must name an existing tasks.my file",
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// `--help`/`-h` must exit before touching the network or filesystem at
 /// all — the bug this fixes (`SWARM-NODE-HELP-FLAG-BUG`) was that an
 /// unrecognized-looking `--help` fell through to `other => warn!(...)`
@@ -270,11 +297,10 @@ fn print_usage_and_exit() -> ! {
          \n\
          OPTIONS:\n\
          \x20\x20--port <PORT>          Listen port (default: 9101)\n\
-         \x20\x20--node-id <ID>         Stable node identity (default: node-1 — change this)\n\
-         \x20\x20--project <NAME>       Project label reported in handshakes (default: unknown)\n\
-         \x20\x20--data-dir <PATH>      Journal/identity directory (default: .swarm-node — prefer an\n\
-         \x20\x20                       absolute path, e.g. ~/.swarm-node/<node-id>; a relative one\n\
-         \x20\x20                       resolves against wherever this process happens to be started)\n\
+         \x20\x20--node-id <ID>         Stable node identity (required; placeholder node-1 is refused)\n\
+         \x20\x20--project <NAME>       Project label (required; placeholder unknown is refused)\n\
+         \x20\x20--data-dir <PATH>      Absolute journal/identity directory (required; relative state\n\
+         \x20\x20                       is refused so restart cannot create a second identity tree)\n\
          \x20\x20--bind <ADDRESS>       Interface to listen on (default: 127.0.0.1, localhost-only;\n\
          \x20\x20                       pass 0.0.0.0 or a specific interface IP for cross-machine use)\n\
          \x20\x20--connect <HOST:PORT>  Bootstrap peer to dial on startup (repeatable; one is enough,\n\
@@ -292,6 +318,7 @@ fn print_usage_and_exit() -> ! {
 
 fn main() -> std::io::Result<()> {
     let args = parse_args();
+    validate_startup_args(&args)?;
     let identity = journal::load_or_init_identity(&args.data_dir, &args.node_id)?;
     let journal = Journal::open(&args.data_dir)?;
     let lamport_start = journal.max_lamport();
@@ -328,6 +355,11 @@ fn main() -> std::io::Result<()> {
         started_at: Instant::now(),
     });
 
+    // Own the listen socket before any retry/heartbeat/auto-sync thread can
+    // mutate state. A duplicate unit must fail before it dials peers or
+    // materializes tasks, not several side effects later with AddrInUse.
+    let listener = TcpListener::bind((args.bind.as_str(), args.port))?;
+
     for addr in &args.connect {
         spawn_connect(&node, addr.clone());
     }
@@ -335,7 +367,6 @@ fn main() -> std::io::Result<()> {
     spawn_heartbeat(&node);
     spawn_auto_sync(&node);
 
-    let listener = TcpListener::bind((args.bind.as_str(), args.port))?;
     for incoming in listener.incoming() {
         let stream = match incoming {
             Ok(s) => s,
@@ -494,15 +525,13 @@ fn spawn_heartbeat(node: &Arc<Node>) {
 fn spawn_auto_sync(node: &Arc<Node>) {
     let node = node.clone();
     thread::spawn(move || loop {
-        let interval = auto_sync_interval();
-        thread::sleep(interval);
-
         let paths: Vec<PathBuf> = node
             .auto_sync_paths
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .clone();
         if paths.is_empty() {
+            thread::sleep(auto_sync_interval());
             continue;
         }
         for path in &paths {
@@ -540,6 +569,7 @@ fn spawn_auto_sync(node: &Arc<Node>) {
                 }
             }
         }
+        thread::sleep(auto_sync_interval());
     });
 }
 
@@ -2318,6 +2348,10 @@ fn handle_metrics(node: &Arc<Node>, stream: &mut TcpStream) {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .len();
     let uptime_secs = node.started_at.elapsed().as_secs();
+    let bootstrap_peers = node.bootstrap_expected;
+    let synced_peers = node.caught_up_with.lock().unwrap().len();
+    let auto_sync_paths = node.auto_sync_paths.lock().unwrap().len();
+    let task_syncs_completed = node.auto_sync_snapshots.lock().unwrap().len();
 
     send(
         stream,
@@ -2343,6 +2377,22 @@ fn handle_metrics(node: &Arc<Node>, stream: &mut TcpStream) {
             Sexp::list(vec![
                 Sexp::atom("synced"),
                 Sexp::atom(if node.synced() { "t" } else { "nil" }),
+            ]),
+            Sexp::list(vec![
+                Sexp::atom("bootstrap-peers"),
+                Sexp::atom(bootstrap_peers.to_string()),
+            ]),
+            Sexp::list(vec![
+                Sexp::atom("synced-peers"),
+                Sexp::atom(synced_peers.to_string()),
+            ]),
+            Sexp::list(vec![
+                Sexp::atom("task-sync"),
+                Sexp::atom(if auto_sync_paths == task_syncs_completed {
+                    "t"
+                } else {
+                    "nil"
+                }),
             ]),
             Sexp::list(vec![Sexp::atom("data-dir"), Sexp::string(data_dir)]),
         ]),

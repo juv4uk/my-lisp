@@ -142,6 +142,16 @@ pub fn load_or_init_identity(data_dir: &Path, node_id: &str) -> std::io::Result<
     let (epoch, stored_incarnation) = if path.exists() {
         let text = fs::read_to_string(&path)?;
         let parsed = parse(&text).unwrap_or(Sexp::List(vec![]));
+        if let Some(stored_id) = parsed.field_atom("id") {
+            if stored_id != node_id {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!(
+                        "data-dir identity mismatch: stored node-id `{stored_id}`, requested `{node_id}`"
+                    ),
+                ));
+            }
+        }
         let e = parsed
             .field_atom("epoch")
             .and_then(|s| s.parse::<u64>().ok())

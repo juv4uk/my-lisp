@@ -1,0 +1,81 @@
+; guard.wsm — спільна форма інженерної поради для власника й агентів.
+; Guard не є окремим reasoner-ом: він пакує спостережений стан, чинний
+; контракт, різницю, вплив, пораду та докази у стабільне WSM-значення.
+;
+; guard.wsm — shared engineering-advice shape for the owner and agents.
+; Guard is not another reasoner: it packages observed state, the active
+; contract, their difference, impact, guidance, and evidence as one stable
+; WSM value. Rust adapters observe mechanisms; WSM owns interpretation.
+
+(def guard-decision?
+  (lambda (decision)
+    (cond
+      ((eq decision (quote allow)) t)
+      ((eq decision (quote warn)) t)
+      ((eq decision (quote reject)) t)
+      ((eq decision (quote unknown)) t)
+      (t (quote ())))))
+
+(def guard-evidence-status?
+  (lambda (status)
+    (cond
+      ((eq status (quote confirmed)) t)
+      ((eq status (quote partial)) t)
+      ((eq status (quote unresolved)) t)
+      ((eq status (quote broken)) t)
+      (t (quote ())))))
+
+(def make-guard-finding
+  (lambda (decision evidence-status subject state contract difference impact guidance evidence)
+    (cond
+      ((not (guard-decision? decision))
+       (list (quote invalid-guard-decision) decision))
+      ((not (guard-evidence-status? evidence-status))
+       (list (quote invalid-evidence-status) evidence-status))
+      (t
+       (list
+         (quote guard-finding)
+         (list (quote schema) (quote guard/1))
+         (list (quote decision) decision)
+         (list (quote evidence-status) evidence-status)
+         (list (quote subject) subject)
+         (list (quote state) state)
+         (list (quote contract) contract)
+         (list (quote difference) difference)
+         (list (quote impact) impact)
+         (list (quote guidance) guidance)
+         (list (quote evidence) evidence))))))
+
+; A missing fact is UNKNOWN, never an implicit rejection.
+; Відсутній факт означає UNKNOWN, а не неявну заборону.
+(def guard-unknown
+  (lambda (subject missing-evidence guidance)
+    (make-guard-finding
+      (quote unknown)
+      (quote unresolved)
+      subject
+      (quote not-observed)
+      (quote insufficient-evidence)
+      missing-evidence
+      (quote decision-not-earned)
+      guidance
+      (quote ()))))
+
+; Oracle gives expected semantic truth; an observer gives actual truth;
+; Guard explains the relation without replacing either authority.
+; Oracle дає очікувану семантику, observer — фактичний стан, Guard пояснює
+; їхнє співвідношення, не підміняючи жодне джерело.
+(def guard-compare
+  (lambda (subject expected observed evidence)
+    (cond
+      ((equal? expected observed)
+       (make-guard-finding
+         (quote allow) (quote confirmed) subject observed expected
+         (quote ()) (quote invariant-preserved) (quote no-action) evidence))
+      (t
+       (make-guard-finding
+         (quote warn) (quote confirmed) subject observed expected
+         (list (quote expected) expected (quote observed) observed)
+         (quote contract-drift)
+         (quote reconcile-observation-with-contract)
+         evidence)))))

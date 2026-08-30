@@ -365,4 +365,49 @@
     (done . t)
     (context . "verified done 2026-08-27 by wsl-nidana-1: task's own premise (chess-lisp-zero missing .gitattributes) was stale by the time this was picked up -- live sweep of all 9 checked-out repos containing .wsm/.my/.lisp files (WSM-24, chess-lisp-zero, cml, fpga-lisp, my-idea, my-lisp-panini, my-lisp, shiva-sutras, tauricode) confirmed every single one already has *.wsm/*.my/*.lisp linguist-language=Racket in .gitattributes. No changes needed, no bulk rename performed. chess-tauri-zero deliberately excluded -- it's a separate, unrelated Tauri/PyTorch project with no WSM source at all, per the OWNER-RATIFIED chess original-work license policy.")
   ))
-)))
+
+  ("WSM-GUARD-KNOWLEDGE-G1" . (
+    (priority . 9.5)
+    (capabilities . (wsm guard knowledge testing))
+    (depends-on . ())
+    (origin . my-lisp)
+    (description . "Define the first executable Guard knowledge vocabulary in WSM. Keep decision and evidence status separate; UNKNOWN must remain a useful result. Reuse the language runtime instead of creating a second rule engine.")
+    (done . t)
+    (context . "done 2026-08-31: lib/guard.wsm adds schema guard/1, allow/warn/reject/unknown decisions, confirmed/partial/unresolved/broken evidence statuses, unknown-on-missing-evidence, and Oracle-vs-observation comparison; targeted Rust tests added.")))
+
+  ("WSM-ORACLE-RESULT-ENVELOPE-O1" . (
+    (priority . 9.4)
+    (capabilities . (wsm rust oracle protocol testing))
+    (depends-on . (WSM-GUARD-KNOWLEDGE-G1))
+    (origin . my-lisp)
+    (description . "Add a versioned, provenance-bearing Oracle result without breaking legacy eval clients. Separate transport success from evaluator outcome and include contract revision plus source digest.")
+    (done . t)
+    (context . "done 2026-08-31: new oracle-eval op returns oracle-result/1 with contract revision, SHA-256 source digest, implementation revision, value/error outcome, output, evidence class, relation, and provenance. Existing eval is unchanged.")))
+
+  ("SWARM-NODE-STRICT-STARTUP-N1" . (
+    (priority . 9.3)
+    (capabilities . (rust swarm systemd testing))
+    (depends-on . ())
+    (origin . my-lisp)
+    (description . "Make node startup deterministic: explicit identity/project, absolute state and tasks paths, identity ownership check, bind-before-background-work, immediate initial task sync, and observable readiness fields.")
+    (done . t)
+    (context . "done 2026-08-31: strict startup validation, persisted node-id mismatch rejection, listener-first startup, immediate auto-sync, expanded readiness metrics, integration tests, and one canonical systemd template/environment example.")))
+
+  ("WSM-GUARD-RUST-FACT-ADAPTER-G2" . (
+    (priority . 8.8)
+    (capabilities . (wsm rust guard systemd git swarm))
+    (depends-on . (WSM-GUARD-KNOWLEDGE-G1 SWARM-NODE-STRICT-STARTUP-N1))
+    (origin . my-lisp)
+    (description . "Implement one bounded read-only Rust fact adapter for Git/systemd/swarm observations and feed normalized clauses to guard.wsm. No mutation or enforcement in this slice.")
+    (done . ())
+  ))
+
+  ("WSM-GUARD-LSP-KNOWLEDGE-G3" . (
+    (priority . 8.0)
+    (capabilities . (wsm lsp guard documentation))
+    (depends-on . (WSM-GUARD-RUST-FACT-ADAPTER-G2))
+    (origin . my-lisp)
+    (description . "Expose Guard explanation/guidance/evidence through existing WSM LSP hover and diagnostics without duplicating knowledge in the IDE.")
+    (done . ())
+  ))
+  )))

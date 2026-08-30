@@ -195,6 +195,80 @@ fn error_response(id: &Value, kind: &str, message: &str, contract_version: &Valu
     ])
 }
 
+fn source_digest(source: &str) -> String {
+    let digest = my_lisp::sha256_source(source.as_bytes());
+    let mut hex = String::with_capacity(7 + digest.len() * 2);
+    hex.push_str("sha256:");
+    for byte in digest {
+        use std::fmt::Write as _;
+        let _ = write!(hex, "{byte:02x}");
+    }
+    hex
+}
+
+/// Versioned semantic result carried as the value of `oracle-eval`'s normal
+/// transport response.  Transport success and language outcome are separate:
+/// an evaluator error is a successfully delivered `(outcome error)` record,
+/// not a TCP/protocol failure. Existing `eval` clients remain byte-compatible.
+fn oracle_result_value(
+    source: &str,
+    contract_version: &Value,
+    outcome: Value,
+    payload: Value,
+    output: &[String],
+) -> Value {
+    Value::list([
+        Value::Symbol("oracle-result".into()),
+        Value::list([
+            Value::Symbol("protocol".into()),
+            Value::Symbol("oracle-result/1".into()),
+        ]),
+        Value::list([
+            Value::Symbol("contract-revision".into()),
+            contract_version.clone(),
+        ]),
+        Value::list([
+            Value::Symbol("source-digest".into()),
+            Value::String(source_digest(source).into()),
+        ]),
+        Value::list([
+            Value::Symbol("implementation-revision".into()),
+            Value::String(format!("my-lisp-cli/{}", env!("CARGO_PKG_VERSION")).into()),
+        ]),
+        Value::list([Value::Symbol("outcome".into()), outcome]),
+        payload,
+        Value::list([
+            Value::Symbol("output".into()),
+            Value::list(
+                output
+                    .iter()
+                    .map(|line| Value::String(line.as_str().into())),
+            ),
+        ]),
+        Value::list([
+            Value::Symbol("evidence-class".into()),
+            Value::Symbol("oracle-evaluation".into()),
+        ]),
+        Value::list([
+            Value::Symbol("relation".into()),
+            Value::Symbol("reference-implementation".into()),
+        ]),
+        Value::list([
+            Value::Symbol("provenance".into()),
+            Value::list([
+                Value::list([
+                    Value::Symbol("repository".into()),
+                    Value::String("my-lisp".into()),
+                ]),
+                Value::list([
+                    Value::Symbol("runner".into()),
+                    Value::String("my-lisp-cli".into()),
+                ]),
+            ]),
+        ]),
+    ])
+}
+
 /// A single `notify`d message, kept in `run_tcp_repl_sexpr`'s in-memory
 /// mailbox — deliberately separate from any `Session`/`Environment`, so
 /// agent coordination never touches the isolated eval-oracle state each
@@ -457,7 +531,9 @@ fn error_kind_symbol(kind: &ErrorKind) -> &'static str {
 /// (status ..) ..)` out, every time, so `cml`/`fpga-lisp`/`my-idea` can
 /// parse a response without guessing whether a given line is a value, an
 /// error, or REPL chrome. Op set: `eval`, `parse`, `diagnose`,
-/// `contract-version` for semantic-oracle use; `notify`/`poll` for
+/// `contract-version` for semantic-oracle use. `oracle-eval` returns the
+/// same semantics in a versioned, provenance-bearing result value while
+/// leaving the legacy `eval` response unchanged. `notify`/`poll` are for
 /// short-lived, poll-based agent mailbox; `subscribe`/`publish` for
 /// genuine push (owner decision, 2026-08-12) — a `subscribe`d connection
 /// blocks and receives `(event ...)` lines the instant a matching
@@ -770,6 +846,61 @@ fn handle_sexpr_connection(
                             Ok(_) => error_response(&id, "invalid-form", "op `parse` accepts exactly one top-level form", &contract_version),
                             Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
                         },
+                    },
+                    Some("oracle-eval") => match &source {
+                        None => error_response(&id, "invalid-form", "op `oracle-eval` requires a `source` field", &contract_version),
+                        Some(src) => {
+                            let result = match parse(src) {
+                                Ok(ast) => match eval_parsed_expressions(&ast, &mut session) {
+                                    Ok(result) => oracle_result_value(
+                                        src,
+                                        &contract_version,
+                                        Value::Symbol("value".into()),
+                                        Value::list([Value::Symbol("value".into()), result.value]),
+                                        &result.output,
+                                    ),
+                                    Err(error) => oracle_result_value(
+                                        src,
+                                        &contract_version,
+                                        Value::Symbol("error".into()),
+                                        Value::list([
+                                            Value::Symbol("error".into()),
+                                            Value::list([
+                                                Value::list([
+                                                    Value::Symbol("kind".into()),
+                                                    Value::Symbol(error_kind_symbol(&error.kind).into()),
+                                                ]),
+                                                Value::list([
+                                                    Value::Symbol("message".into()),
+                                                    Value::String(error.message.into()),
+                                                ]),
+                                            ]),
+                                        ]),
+                                        &[],
+                                    ),
+                                },
+                                Err(error) => oracle_result_value(
+                                    src,
+                                    &contract_version,
+                                    Value::Symbol("error".into()),
+                                    Value::list([
+                                        Value::Symbol("error".into()),
+                                        Value::list([
+                                            Value::list([
+                                                Value::Symbol("kind".into()),
+                                                Value::Symbol(error_kind_symbol(&error.kind).into()),
+                                            ]),
+                                            Value::list([
+                                                Value::Symbol("message".into()),
+                                                Value::String(error.message.into()),
+                                            ]),
+                                        ]),
+                                    ]),
+                                    &[],
+                                ),
+                            };
+                            ok_response(&id, result, &[], &contract_version)
+                        }
                     },
                     Some(op_name @ ("eval" | "diagnose")) => match &source {
                         None => error_response(&id, "invalid-form", &format!("op `{op_name}` requires a `source` field"), &contract_version),
@@ -1728,5 +1859,43 @@ pub(crate) fn run_client(address: &str) {
             eprintln!("my-lisp: cannot read request from stdin: {e}");
             process::exit(1);
         }
+    }
+}
+
+#[cfg(test)]
+mod oracle_result_tests {
+    use super::*;
+
+    fn contract() -> Value {
+        Value::list([
+            Value::Number(3.0, Exactness::Exact),
+            Value::Number(0.0, Exactness::Exact),
+        ])
+    }
+
+    #[test]
+    fn oracle_result_is_versioned_and_provenance_bearing() {
+        let result = oracle_result_value(
+            "(+ 1 2)",
+            &contract(),
+            Value::Symbol("value".into()),
+            Value::list([
+                Value::Symbol("value".into()),
+                Value::Number(3.0, Exactness::Exact),
+            ]),
+            &[],
+        )
+        .to_string();
+        assert!(result.contains("(protocol oracle-result/1)"));
+        assert!(result.contains("(contract-revision (3 0))"));
+        assert!(result.contains("(source-digest \"sha256:"));
+        assert!(result.contains("(outcome value)"));
+        assert!(result.contains("(relation reference-implementation)"));
+    }
+
+    #[test]
+    fn source_digest_is_stable_and_source_sensitive() {
+        assert_eq!(source_digest("(+ 1 2)"), source_digest("(+ 1 2)"));
+        assert_ne!(source_digest("(+ 1 2)"), source_digest("(+ 1 3)"));
     }
 }

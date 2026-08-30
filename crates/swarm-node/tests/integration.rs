@@ -82,6 +82,49 @@ fn wait_for_port(port: u16) {
     panic!("swarm-node on port {port} never started listening");
 }
 
+#[test]
+fn startup_rejects_relative_data_dir() {
+    let output = Command::new(env!("CARGO_BIN_EXE_swarm-node"))
+        .args([
+            "--port",
+            "15991",
+            "--node-id",
+            "strict-node",
+            "--project",
+            "itest",
+            "--data-dir",
+            "relative-state",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("--data-dir must be absolute"));
+}
+
+#[test]
+fn startup_rejects_data_dir_owned_by_another_identity() {
+    let dir = data_dir("identity-mismatch");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("node.my"),
+        "(node (id original-node) (epoch 1) (incarnation test))",
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_swarm-node"))
+        .arg("--port")
+        .arg("15992")
+        .arg("--node-id")
+        .arg("different-node")
+        .arg("--project")
+        .arg("itest")
+        .arg("--data-dir")
+        .arg(&dir)
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("identity mismatch"));
+}
+
 /// One request/response round trip over a fresh connection, matching how
 /// every other client in this ecosystem talks to the line-framed sexpr
 /// protocol (one form in, one line out).
@@ -410,6 +453,8 @@ fn metrics_reports_event_count_peer_count_and_synced() {
         metrics.contains("(synced t)"),
         "node-a with no --connect should be trivially synced: {metrics}"
     );
+    assert!(metrics.contains("(bootstrap-peers 0)"), "{metrics}");
+    assert!(metrics.contains("(task-sync t)"), "{metrics}");
     assert!(
         metrics.contains("(node node-a)"),
         "metrics should report the caller's own node-id: {metrics}"
