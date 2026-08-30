@@ -74,6 +74,7 @@ fn t03_invalid_document_produces_real_diagnostic() {
     );
     assert!(r.contains("\"severity\":1"), "{r}");
     assert!(r.contains("\"source\":\"my-lisp\""), "{r}");
+    assert!(my_lisp::parse_json(r).is_ok(), "diagnostic must be valid JSON: {r}");
     // The diagnostic range must point into line 1 (0-based), where the
     // unclosed form starts — proven by the canonical parser's span.
     assert!(r.contains("\"start\":{\"line\":1"), "{r}");
@@ -518,6 +519,7 @@ fn t14_rename_produces_cross_file_edits_and_validates_name() {
         r.contains("\"error\"") || r.contains("-32602"),
         "invalid name must be rejected: {r}"
     );
+    assert!(my_lisp::parse_json(r).is_ok(), "error response must be valid JSON: {r}");
 }
 
 #[test]

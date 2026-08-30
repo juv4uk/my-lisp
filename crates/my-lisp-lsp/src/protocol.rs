@@ -4,7 +4,7 @@
 //! this crate's transport-local encoder.
 
 use crate::analysis::offset_to_position;
-use crate::jsonout::{escape, str_lit};
+use crate::jsonout::str_lit;
 use my_lisp::Value;
 
 /// Navigate an alist produced by `parse_json`: objects decode to lists of
@@ -114,7 +114,7 @@ pub fn response(
     let body = if let Some((code, message)) = error {
         format!(
             "\"error\":{{\"code\":{code},\"message\":{}}}",
-            escape(&message)
+            str_lit(&message)
         )
     } else {
         format!(
@@ -156,6 +156,6 @@ pub fn diagnostic(source_text: &str, message: &str, start: usize, end: usize) ->
     format!(
         "{{\"range\":{},\"severity\":1,\"source\":\"my-lisp\",\"message\":{}}}",
         span_to_range(source_text, start, end),
-        escape(message)
+        str_lit(message)
     )
 }
