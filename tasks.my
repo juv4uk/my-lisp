@@ -396,11 +396,20 @@
   ("WSM-GUARD-RUST-FACT-ADAPTER-G2" . (
     (priority . 8.8)
     (capabilities . (wsm rust guard systemd git swarm))
-    (depends-on . (WSM-GUARD-KNOWLEDGE-G1 SWARM-NODE-STRICT-STARTUP-N1))
+    (depends-on . (WSM-GUARD-KNOWLEDGE-G1 WSM-GUARD-REFERENCE-BUREAU-G1A SWARM-NODE-STRICT-STARTUP-N1))
     (origin . my-lisp)
     (description . "Implement one bounded read-only Rust fact adapter for Git/systemd/swarm observations and feed normalized clauses to guard.wsm. No mutation or enforcement in this slice.")
     (done . ())
   ))
+
+  ("WSM-GUARD-REFERENCE-BUREAU-G1A" . (
+    (priority . 9.4)
+    (capabilities . (wsm guard knowledge documentation testing))
+    (depends-on . (WSM-GUARD-KNOWLEDGE-G1))
+    (origin . my-lisp)
+    (description . "Make Guard the discoverable ecosystem reference bureau: topics point to authority, canonical workflow, and verification evidence. UNKNOWN must route explicitly to ASK-AGENT, ASK-OWNER, or RESEARCH-WEB instead of becoming a dead end or implicit rejection.")
+    (done . t)
+    (context . "done 2026-08-31: knowledge/guard-reference.wsm adds executable topic discovery and authority/how-to/verify queries; AGENTS cold start points every agent to it; UNKNOWN carries three evidence-bearing escalation routes; guard tests cover known and missing topics.")))
 
   ("WSM-GUARD-LSP-KNOWLEDGE-G3" . (
     (priority . 8.0)

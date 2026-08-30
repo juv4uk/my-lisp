@@ -25,6 +25,26 @@
       ((eq status (quote broken)) t)
       (t (quote ())))))
 
+; UNKNOWN is a routing state, not a dead end. These routes distinguish
+; distributed local knowledge, owner authority, and external research.
+; UNKNOWN — це стан маршрутизації, а не глухий кут. Маршрути розрізняють
+; розподілене локальне знання, владу власника і зовнішнє дослідження.
+(def guard-unknown-routes
+  (lambda ()
+    (quote
+      (((route ask-agent)
+        (when ecosystem-local-or-component-owned)
+        (action ask-responsible-live-agent)
+        (verify commit-or-artifact-or-direct-source))
+       ((route ask-owner)
+        (when authority-choice-intent-license-or-destructive-scope)
+        (action ask-owner-explicitly)
+        (verify owner-decision-record))
+       ((route research-web)
+        (when external-current-or-primary-source-needed)
+        (action search-authoritative-external-sources)
+        (verify citations-and-access-date))))))
+
 (def make-guard-finding
   (lambda (decision evidence-status subject state contract difference impact guidance evidence)
     (cond
@@ -44,7 +64,12 @@
          (list (quote difference) difference)
          (list (quote impact) impact)
          (list (quote guidance) guidance)
-         (list (quote evidence) evidence))))))
+         (list (quote evidence) evidence)
+         (list
+           (quote unknown-routes)
+           (cond
+             ((eq decision (quote unknown)) (guard-unknown-routes))
+             (t (quote ())))))))))
 
 ; A missing fact is UNKNOWN, never an implicit rejection.
 ; Відсутній факт означає UNKNOWN, а не неявну заборону.
@@ -79,3 +104,14 @@
          (quote contract-drift)
          (quote reconcile-observation-with-contract)
          evidence)))))
+
+; Reference records are ordinary data. The evolving ecosystem directory lives
+; in knowledge/guard-reference.wsm; these accessors remain generic.
+; Довідкові записи — звичайні дані. Змінний каталог екосистеми лежить у
+; knowledge/guard-reference.wsm, а ці функції лишаються загальними.
+(def guard-reference-field
+  (lambda (field reference)
+    (let ((entry (assoc field (cdr reference))))
+      (cond
+        ((atom entry) (quote ()))
+        (t (second entry))))))

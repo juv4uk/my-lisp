@@ -4,6 +4,25 @@ See also `docs/agent-doctrine.md` — cross-repo rules (prose vs. contract
 precedence, evidence discipline, subagent/specialist-model usage) that
 apply to every sibling in this swarm, not just this repo.
 
+## Guard як довідкове бюро / Guard as a reference bureau
+
+Перед пошуком навмання або створенням нового workflow завантажте
+`lib/guard.wsm` і `knowledge/guard-reference.wsm`. Запитайте
+`(guard-reference topic)`, `(guard-authority topic)`,
+`(guard-how-to topic)` або `(guard-verify topic)`. Каталог указує, де лежить
+авторитетна інформація; він не копіює і не замінює її. Невідома тема повертає
+`UNKNOWN/UNRESOLVED`, після чого потрібен перевірений новий запис, а не здогад.
+
+Before searching blindly or inventing a workflow, load `lib/guard.wsm` and
+`knowledge/guard-reference.wsm`. Ask `(guard-reference topic)`,
+`(guard-authority topic)`, `(guard-how-to topic)`, or `(guard-verify topic)`.
+The directory points to authoritative information; it does not copy or
+replace it. An unknown topic returns `UNKNOWN/UNRESOLVED`, requiring a
+reviewed new entry rather than a guess. `UNKNOWN` then exposes three explicit
+routes: ask a responsible agent for ecosystem-local knowledge, ask the owner
+for authority/intent/license/scope decisions, or research authoritative web
+sources for external or time-sensitive facts.
+
 ## Session start — join the swarm
 
 **Coordination protocol (superseded 2026-08-12, drift found and fixed

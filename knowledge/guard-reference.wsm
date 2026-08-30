@@ -1,0 +1,114 @@
+; Guard reference bureau / Довідкове бюро Guard
+;
+; One topic points to authoritative sources, the canonical workflow, and the
+; evidence that proves completion. This is navigation knowledge, not a copy of
+; those contracts. Paths are repository-relative unless prefixed with ../.
+;
+; Одна тема вказує на авторитетні джерела, штатний workflow і докази
+; завершення. Це навігаційне знання, а не копія контрактів. Шляхи відносні до
+; репозиторію, якщо не починаються з ../.
+
+(def *guard-reference-directory*
+  (quote
+    ((reference
+       (topic language-semantics)
+       (summary "Meaning of WSM programs and conformance obligations")
+       (authority (language-contract.my docs/language-core-axioms.md tests/fixtures/conformance.my))
+       (how-to (read-contract run-conformance-fixtures))
+       (verify (cargo-test-workspace evidence/README.md)))
+     (reference
+       (topic semantic-oracle)
+       (summary "Expected semantic truth from the reference implementation")
+       (authority (language-contract.my crates/my-lisp-cli/src/swarm.rs docs/guard-oracle-node-plan.md))
+       (how-to (oracle-eval contract-version))
+       (verify (oracle-result/1 source-digest contract-revision)))
+     (reference
+       (topic guard)
+       (summary "Explain observed state against contract and guide the next safe step")
+       (authority (lib/guard.wsm knowledge/guard-reference.wsm docs/guard-oracle-node-plan.md))
+       (how-to (guard-reference guard-explain guard-how-to guard-verify))
+       (verify (schema-guard/1 decision evidence-status evidence)))
+     (reference
+       (topic swarm-coordination)
+       (summary "P2P journal, task claims, membership, replication, and readiness")
+       (authority (docs/swarm-mesh-v2.md crates/swarm-node/src/main.rs tasks.my))
+       (how-to (start-node wait-readiness join sync-tasks claim-task complete-task))
+       (verify (metrics list-members list-task-state journal-event)))
+     (reference
+       (topic task-materialization)
+       (summary "Move durable tasks.my definitions into journal facts and derived projection")
+       (authority (tasks.my docs/swarm-mesh-v2.md crates/swarm-node/src/tasks_file.rs))
+       (how-to (edit-tasks.my auto-sync-or-sync-tasks verify-projection verify-peer-convergence))
+       (verify (task-definition journal-event list-task-state)))
+     (reference
+       (topic agent-messaging)
+       (summary "Direct messages and completion broadcasts between live agent runtimes")
+       (authority (../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/scripts/agent-send))
+       (how-to (register-session send-direct broadcast-completion read-inbox))
+       (verify (durable-inbox-entry wakeup-result commit-sha)))
+     (reference
+       (topic evidence)
+       (summary "Record claims at the strength actually earned by tests and artifacts")
+       (authority (evidence/README.md docs/agent-doctrine.md))
+       (how-to (classify-evidence record-command record-revision record-result))
+       (verify (artifact commit-sha reproducible-command)))
+     (reference
+       (topic licenses)
+       (summary "Decide whether third-party code or data may enter an ecosystem repository")
+       (authority (../ecosystem/docs/LICENSE-MATRIX.md))
+       (how-to (check-license record-notice ask-owner-if-unresolved))
+       (verify (license-entry notice provenance)))
+     (reference
+       (topic owner-context)
+       (summary "Owner preferences, pace, identity, and durable architectural intent")
+       (authority (../ecosystem/memory/OWNER-PROFILE.md))
+       (how-to (read-before-work preserve-owner-wording))
+       (verify (owner-profile-current))))))
+
+(def guard-reference-find
+  (lambda (topic references)
+    (cond
+      ((atom references) (quote ()))
+      ((eq (guard-reference-field (quote topic) (car references)) topic)
+       (car references))
+      (t (guard-reference-find topic (cdr references))))))
+
+(def guard-reference
+  (lambda (topic)
+    (let ((reference (guard-reference-find topic *guard-reference-directory*)))
+      (cond
+        ((atom reference)
+         (list
+           (quote reference-missing)
+           (list (quote schema) (quote guard-reference/1))
+           (list (quote topic) topic)
+           (list (quote decision) (quote unknown))
+           (list (quote evidence-status) (quote unresolved))
+           (list (quote guidance) (quote choose-unknown-route))
+           (list (quote unknown-routes) (guard-unknown-routes))))
+        (t reference)))))
+
+(def guard-explain
+  (lambda (topic)
+    (guard-reference-field (quote summary) (guard-reference topic))))
+
+(def guard-how-to
+  (lambda (topic)
+    (guard-reference-field (quote how-to) (guard-reference topic))))
+
+(def guard-authority
+  (lambda (topic)
+    (guard-reference-field (quote authority) (guard-reference topic))))
+
+(def guard-verify
+  (lambda (topic)
+    (guard-reference-field (quote verify) (guard-reference topic))))
+
+(def guard-topics
+  (lambda (references)
+    (cond
+      ((atom references) (quote ()))
+      (t
+       (cons
+         (guard-reference-field (quote topic) (car references))
+         (guard-topics (cdr references)))))))

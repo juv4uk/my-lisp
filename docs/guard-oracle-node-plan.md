@@ -19,6 +19,12 @@ swarm-node = координаційний механізм, не semantic author
 статусу (`confirmed/partial/unresolved/broken`). Відсутність факту дає
 `unknown`, а не прихований `reject`.
 
+`UNKNOWN` не є кінцевою відповіддю. Він містить три явні маршрути:
+`ask-agent` для знання, розподіленого між компонентами/агентами; `ask-owner`
+для рішення про authority, намір, ліцензію або небезпечне розширення scope;
+`research-web` для зовнішнього, змінного або первинного джерела. Кожен маршрут
+також називає доказ, після якого питання можна закрити.
+
 Oracle зберігає стару операцію `eval` без змін. Нова `oracle-eval` повертає
 всередині звичайної transport-відповіді версійний `oracle-result/1` із
 revision мовного контракту, SHA-256 джерела, outcome, output, evidence class
@@ -54,6 +60,12 @@ The first executable slice adds `lib/guard.wsm` with a stable `guard/1`
 record. Decision (`allow/warn/reject/unknown`) is deliberately separate from
 evidence status (`confirmed/partial/unresolved/broken`). Missing facts yield
 `unknown`, never an implicit rejection.
+
+`UNKNOWN` is not terminal. It carries three explicit routes: `ask-agent` for
+ecosystem-local knowledge distributed across component owners; `ask-owner`
+for authority, intent, license, or destructive-scope decisions; and
+`research-web` for external, time-sensitive, or primary-source facts. Every
+route names the evidence needed to close the question.
 
 Legacy `eval` remains unchanged. The new `oracle-eval` operation carries a
 versioned `oracle-result/1` inside the normal transport response, including
