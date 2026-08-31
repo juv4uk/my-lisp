@@ -69,6 +69,46 @@ fn lisp_fs_conformance_fixture_is_deterministic() {
 }
 
 #[test]
+fn lisp_fs_overwrite_is_a_new_revision_and_old_value_remains_in_old_root() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let ((empty (fs-empty)))
+              (let ((a (fs-write empty "same" (quote old))))
+                (let ((b (fs-write (car a) "same" (quote new))))
+                  (list
+                    (fs-read (car a) "same")
+                    (fs-read (car b) "same")
+                    (fs-revision (car a))
+                    (fs-revision (car b))))))
+            "#
+        ),
+        "((found old \"old\") (found new \"new\") 1 2)"
+    );
+}
+
+#[test]
+fn lisp_fs_empty_name_is_literal_and_unknown_object_address_is_not_found() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let ((empty (fs-empty)))
+              (let ((written (fs-write empty "" (quote value))))
+                (let ((malformed
+                        (list (fs-objects (car written))
+                              (map-insert "ghost" "missing-address" map-empty)
+                              9)))
+                  (list
+                    (fs-read (car written) "")
+                    (fs-read malformed "ghost")
+                    (fs-read malformed "absent")))))
+            "#
+        ),
+        "((found value \"value\") (not-found \"ghost\") (not-found \"absent\"))"
+    );
+}
+
+#[test]
 fn stored_knowledge_is_retrievable_by_its_canonical_address() {
     assert_eq!(
         eval_store(
