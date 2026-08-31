@@ -107,6 +107,12 @@
        (how-to (choose-topic follow-authority-link avoid-duplicate-prose))
        (verify (linked-file-exists lifecycle-status-checked)))
      (reference
+       (topic wsm-lisp-filesystem)
+       (summary "Experimental immutable content-addressed filesystem model for the WSM Lisp machine")
+       (authority (lib/lisp-fs.my lib/content-store.my tests/fixtures/lisp-fs-conformance.my crates/my-lisp/tests/content_store.rs))
+       (how-to (fs-empty fs-write fs-read fs-list fs-contains? retain-old-root))
+       (verify (fs-conformance-fixture immutable-root old-value not-found stored-nil logical-revision ci-run)))
+     (reference
        (topic reference-learning)
        (summary "Persist a useful answer missing from the directory as a reviewable candidate for future agents")
        (authority (../ecosystem/knowledge/guard-reference-inbox.mylog ../ecosystem/docs/GUARD-REFERENCE-DIRECTORY.md crates/my-lisp-cli/src/bin/guard-reference.rs))

@@ -98,6 +98,7 @@ fn agents_can_enumerate_the_reference_desk() {
     assert!(topics.contains("reference-learning"));
     assert!(topics.contains("licenses"));
     assert!(topics.contains("owner-context"));
+    assert!(topics.contains("wsm-lisp-filesystem"));
 }
 
 #[test]
