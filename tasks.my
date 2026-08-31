@@ -420,6 +420,15 @@
     (done . t)
     (context . "done 2026-08-31: executable reference topics now include Guix, the linked documentation map, and reference-learning; guard-reference Rust intake durably appends bounded escaped candidate data with source, route, and evidence; ecosystem policy requires capture while keeping review separate from authority.")))
 
+  ("WSM-GUARD-RUST-LISP-SLICE-G2A" . (
+    (priority . 9.2)
+    (capabilities . (wsm rust guard protocol testing evidence))
+    (depends-on . (WSM-GUARD-KNOWLEDGE-G1))
+    (origin . my-lisp)
+    (description . "Complete and verify the abandoned wsm-guard-slice: compile it in the workspace, evaluate real WSM policy rather than Python, preserve strict swarm startup, prove ALLOW/WARN/REJECT/UNKNOWN, malformed-input safety, and hot policy reload.")
+    (done . t)
+    (context . "done 2026-08-31: corrected the unverified 72b915f prototype. Rust now validates bounded facts and embeds core+guard; WSM policy is reloaded per event; 4 targeted tests and live four-decision run pass; malformed input yields UNKNOWN; strict --auto-sync systemd contract restored.")))
+
   ("WSM-GUARD-LSP-KNOWLEDGE-G3" . (
     (priority . 8.0)
     (capabilities . (wsm lsp guard documentation))

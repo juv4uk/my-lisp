@@ -1,49 +1,228 @@
-use std::io::{self, BufRead};
-use std::process::{Command, Stdio};
+//! Minimal event-driven Rust mechanism for WSM Guard policy.
+//! Мінімальний event-driven Rust-механізм для політики WSM Guard.
+//!
+//! Rust validates and frames one bounded event from each stdin line. WSM owns
+//! the decision. The policy file is read again for every event, so policy can
+//! change without recompiling or restarting this process.
+
+use my_lisp::{Session, eval_program};
 use std::env;
+use std::fs;
+use std::io::{self, BufRead};
+use std::path::{Path, PathBuf};
+use std::time::Instant;
+
+const CORE: &str = include_str!("../../../lib/core.my");
+const GUARD: &str = include_str!("../../../lib/guard.wsm");
+const MAX_EVENT_BYTES: usize = 16 * 1024;
+
+#[derive(Debug, PartialEq)]
+struct Event {
+    kind: String,
+    subject: String,
+    evidence: String,
+}
+
+fn identifier(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 256
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || b"-_./".contains(&byte))
+}
+
+fn parse_event(line: &str) -> Result<Event, String> {
+    if line.len() > MAX_EVENT_BYTES {
+        return Err("event-too-large".into());
+    }
+    let mut kind = None;
+    let mut subject = None;
+    let mut evidence = None;
+    for field in line.split_whitespace() {
+        let (key, value) = field.split_once('=').ok_or("malformed-field")?;
+        if !identifier(value) {
+            return Err("invalid-identifier".into());
+        }
+        let slot = match key {
+            "kind" => &mut kind,
+            "subject" => &mut subject,
+            "evidence" => &mut evidence,
+            _ => return Err("unknown-field".into()),
+        };
+        if slot.replace(value.to_owned()).is_some() {
+            return Err("duplicate-field".into());
+        }
+    }
+    Ok(Event {
+        kind: kind.ok_or("missing-kind")?,
+        subject: subject.ok_or("missing-subject")?,
+        evidence: evidence.ok_or("missing-evidence")?,
+    })
+}
+
+fn evaluate(policy: &str, event: &Event) -> Result<String, String> {
+    let mut session = Session::default();
+    eval_program(CORE, &mut session).map_err(|error| format!("core: {error}"))?;
+    eval_program(GUARD, &mut session).map_err(|error| format!("guard: {error}"))?;
+    eval_program(policy, &mut session).map_err(|error| format!("policy: {error}"))?;
+    let call = format!(
+        "(guard-evaluate (quote {}) (quote {}) (quote {}))",
+        event.kind, event.subject, event.evidence
+    );
+    let result = eval_program(&call, &mut session).map_err(|error| format!("evaluate: {error}"))?;
+    let rendered = result.value.to_string();
+    if ![
+        "(decision allow)",
+        "(decision warn)",
+        "(decision reject)",
+        "(decision unknown)",
+    ]
+    .iter()
+    .any(|decision| rendered.contains(decision))
+    {
+        return Err("policy-result-without-valid-decision".into());
+    }
+    Ok(rendered)
+}
+
+fn adapter_error(reason: &str) -> String {
+    format!(
+        "(guard-adapter-result (schema guard-adapter/1) (decision unknown) (evidence-status unresolved) (error {reason}))"
+    )
+}
+
+fn policy_path(args: &[String]) -> Result<PathBuf, String> {
+    if args.len() != 2 || args[0] != "--policy" {
+        return Err("usage: wsm-guard-slice --policy /absolute/policy.wsm".into());
+    }
+    let path = PathBuf::from(&args[1]);
+    if !path.is_absolute() || !path.is_file() {
+        return Err("policy path must be an existing absolute file".into());
+    }
+    Ok(path)
+}
+
+fn process_line(path: &Path, line: &str) -> String {
+    let started = Instant::now();
+    let finding = parse_event(line)
+        .and_then(|event| {
+            fs::read_to_string(path)
+                .map_err(|_| "policy-read-failed".to_owned())
+                .and_then(|policy| evaluate(&policy, &event))
+        })
+        .unwrap_or_else(|reason| adapter_error(&reason.replace([' ', ':'], "-")));
+    format!(
+        "(guard-slice (schema guard-slice/1) (latency-micros {}) (result {finding}))",
+        started.elapsed().as_micros()
+    )
+}
 
 fn main() {
-    let stdin = io::stdin();
-    let mut args = env::args();
-    args.next(); // skip binary name
-    let lisp_script = args.next().unwrap_or_else(|| "/home/agents/ecosystem/guard/guard-eval.my".to_string());
-
-    println!("wsm-guard-slice: listening for events on stdin...");
-    for line in stdin.lock().lines() {
-        let event_text = match line {
-            Ok(t) => t,
-            Err(_) => break,
-        };
-
-        if event_text.trim().is_empty() {
-            continue;
+    let args: Vec<String> = env::args().skip(1).collect();
+    let path = match policy_path(&args) {
+        Ok(path) => path,
+        Err(error) => {
+            eprintln!("wsm-guard-slice: {error}");
+            std::process::exit(2);
         }
-
-        // Call the Lisp evaluator
-        // We assume we have a lisp interpreter. For this vertical slice, we'll use a mocked sh/lisp call or Python if lisp isn't ready.
-        // Actually, my-lisp is in /home/agents/GitHub/my-lisp/target/release/my-lisp
-        // Let's just use Python for the semantic policy evaluator prototype if my-lisp isn't fully bootstrapped for this,
-        // Wait! The task explicitly says "Lisp rule evaluator". I will write a mock bash script that behaves like the Lisp evaluator to prove the architecture, or better, just use grep/sed if no my-lisp interpreter is available, OR use the actual my-lisp.
-        // Since my-lisp is an ongoing project, let's just shell out to a small python/lisp script.
-        
-        let output = Command::new("python3")
-            .arg(&lisp_script)
-            .arg(&event_text)
-            .stdout(Stdio::piped())
-            .output();
-
-        match output {
-            Ok(out) => {
-                let result = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                if result.starts_with("ALLOW") || result.starts_with("WARN") || result.starts_with("REJECT") || result.starts_with("UNKNOWN") {
-                    println!("[GUARD DECISION]: {}", result);
-                } else {
-                    println!("[GUARD ERROR]: Malformed output from policy: {}", result);
-                }
-            },
-            Err(e) => {
-                println!("[GUARD ERROR]: Failed to invoke policy evaluator: {}", e);
+    };
+    for line in io::stdin().lock().lines() {
+        match line {
+            Ok(line) if !line.trim().is_empty() => println!("{}", process_line(&path, &line)),
+            Ok(_) => {}
+            Err(error) => {
+                println!("{}", adapter_error(&format!("stdin-{error}")));
+                break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const DEFAULT_POLICY: &str = include_str!("../../../knowledge/guard-runtime-policy.wsm");
+    const ALLOW_POLICY: &str = r#"
+      (def guard-evaluate
+        (lambda (kind subject evidence)
+          (make-guard-finding (quote allow) (quote confirmed) subject
+            kind (quote test-contract) (quote ()) (quote no-impact)
+            (quote no-action) (list evidence))))"#;
+
+    #[test]
+    fn parses_only_bounded_normalized_events() {
+        assert_eq!(
+            parse_event("kind=read subject=swarm/tasks evidence=confirmed").unwrap(),
+            Event {
+                kind: "read".into(),
+                subject: "swarm/tasks".into(),
+                evidence: "confirmed".into()
+            }
+        );
+        assert!(parse_event("kind=read subject=(evil) evidence=x").is_err());
+        assert!(parse_event("kind=read subject=x").is_err());
+        assert!(parse_event("kind=read kind=write subject=x evidence=y").is_err());
+    }
+
+    #[test]
+    fn real_wsm_policy_returns_structured_decision() {
+        let result = evaluate(
+            ALLOW_POLICY,
+            &Event {
+                kind: "read".into(),
+                subject: "docs".into(),
+                evidence: "confirmed".into(),
+            },
+        )
+        .unwrap();
+        assert!(result.contains("(decision allow)"));
+        assert!(result.contains("(schema guard/1)"));
+    }
+
+    #[test]
+    fn default_policy_covers_all_four_decisions() {
+        for (kind, evidence, expected) in [
+            ("read", "confirmed", "allow"),
+            ("write", "partial", "warn"),
+            ("destructive", "confirmed", "reject"),
+            ("other", "missing", "unknown"),
+        ] {
+            let result = evaluate(
+                DEFAULT_POLICY,
+                &Event {
+                    kind: kind.into(),
+                    subject: "test-subject".into(),
+                    evidence: evidence.into(),
+                },
+            )
+            .unwrap();
+            assert!(
+                result.contains(&format!("(decision {expected})")),
+                "{result}"
+            );
+        }
+    }
+
+    #[test]
+    fn malformed_input_fails_safe_as_unknown() {
+        let path = env::temp_dir().join(format!("guard-policy-{}.wsm", std::process::id()));
+        fs::write(&path, ALLOW_POLICY).unwrap();
+        let result = process_line(&path, "not-an-event");
+        fs::remove_file(path).unwrap();
+        assert!(result.contains("(decision unknown)"));
+        assert!(result.contains("malformed-field"));
+    }
+
+    #[test]
+    fn policy_reload_changes_decision_without_recompiling_rust() {
+        let path = env::temp_dir().join(format!("guard-reload-{}.wsm", std::process::id()));
+        fs::write(&path, ALLOW_POLICY).unwrap();
+        let first = process_line(&path, "kind=read subject=docs evidence=confirmed");
+        fs::write(&path, ALLOW_POLICY.replace("(quote allow)", "(quote warn)")).unwrap();
+        let second = process_line(&path, "kind=read subject=docs evidence=confirmed");
+        fs::remove_file(path).unwrap();
+        assert!(first.contains("(decision allow)"));
+        assert!(second.contains("(decision warn)"));
     }
 }
