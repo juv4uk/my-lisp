@@ -472,6 +472,15 @@ fn spawn_sexpr_server() -> (std::process::Child, u16) {
         .parse()
         .expect("banner port should be numeric");
 
+    // Keep the child's stderr pipe alive and drain it after consuming the
+    // banner. The server logs connection/request diagnostics; dropping this
+    // reader makes those writes hit EPIPE and abort the child connection
+    // thread, which masked protocol responses as ECONNRESET.
+    std::thread::spawn(move || {
+        let mut reader = reader;
+        let _ = std::io::copy(&mut reader, &mut std::io::sink());
+    });
+
     (child, port)
 }
 
@@ -583,7 +592,7 @@ fn sexpr_protocol_sync_tasks_loads_durable_plan() {
  (tasks .
   (("ISA-RATIONAL" . ((priority . 0.9) (capabilities . (verilog isa-design))))
    ("CML-RATIONAL" . ((priority . 0.8) (capabilities . (compiler rust)) (depends-on . ("ISA-RATIONAL"))))
-   (not-a-pair))))"#,
+   not-a-pair)))"#,
     )
     .expect("should be able to write the tasks file");
 

@@ -786,6 +786,7 @@ fn handle_sexpr_connection(
     presence: &Arc<Mutex<PresenceTable>>,
     tasks: &Arc<Mutex<TaskTable>>,
 ) {
+    const MAX_REQUEST_LINE_BYTES: usize = 256 * 1024;
     let contract_version = Value::list([
         Value::Number(contract_major, Exactness::Exact),
         Value::Number(contract_minor, Exactness::Exact),
@@ -812,12 +813,32 @@ fn handle_sexpr_connection(
         line.clear();
         match reader.read_line(&mut line) {
             Ok(0) => break,
+            Err(error) => {
+                let resp = error_response(
+                    &Value::Nil,
+                    "invalid-encoding",
+                    &format!("request is not valid UTF-8: {error}"),
+                    &contract_version,
+                );
+                let _ = writeln!(stream, "{resp}");
+                break;
+            }
             Ok(_) => {
                 let trimmed = line.trim();
                 if trimmed.is_empty() {
                     continue;
                 }
-                eprintln!("TCP REPL: {peer} > {trimmed}");
+                if line.len() > MAX_REQUEST_LINE_BYTES {
+                    let resp = error_response(
+                        &Value::Nil,
+                        "request-too-large",
+                        &format!("request line exceeds {MAX_REQUEST_LINE_BYTES} bytes"),
+                        &contract_version,
+                    );
+                    let _ = writeln!(stream, "{resp}");
+                    break;
+                }
+                eprintln!("TCP REPL: {peer} > request-bytes={}", line.len());
 
                 // The request envelope itself is read as literal data
                 // (`quote`), never evaluated — `(op eval)` deciding to
@@ -1961,7 +1982,6 @@ fn handle_sexpr_connection(
                     break;
                 }
             }
-            Err(_) => break,
         }
     }
     eprintln!("TCP REPL: {peer} disconnected");
