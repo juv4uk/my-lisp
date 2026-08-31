@@ -195,6 +195,19 @@ fn error_response(id: &Value, kind: &str, message: &str, contract_version: &Valu
     ])
 }
 
+fn protocol_error(kind: &str, message: &str, contract_version: &Value) -> Value {
+    Value::list([
+        Value::Symbol("protocol-error".into()),
+        Value::list([Value::Symbol("kind".into()), Value::Symbol(kind.into())]),
+        Value::list([Value::Symbol("message".into()), Value::String(message.into())]),
+        Value::list([Value::Symbol("contract-version".into()), contract_version.clone()]),
+        Value::list([
+            Value::Symbol("server-generation".into()),
+            Value::Number(server_generation() as f64, Exactness::Exact),
+        ]),
+    ])
+}
+
 fn source_digest(source: &str) -> String {
     let digest = my_lisp::sha256_source(source.as_bytes());
     let mut hex = String::with_capacity(7 + digest.len() * 2);
@@ -865,6 +878,7 @@ fn handle_sexpr_connection(
                 let fields = list_items(&request);
                 // fields[0] is the `request` tag symbol itself.
                 let mut id = Value::Nil;
+                let mut id_seen = false;
                 let mut op: Option<String> = None;
                 let mut source: Option<String> = None;
                 let mut from: Option<String> = None;
@@ -890,7 +904,10 @@ fn handle_sexpr_connection(
                     };
                     if let Value::Symbol(name) = key {
                         match &**name {
-                            "id" => id = val.clone(),
+                            "id" => {
+                                id_seen = true;
+                                id = val.clone();
+                            }
                             "op" => {
                                 if let Value::Symbol(s) = val {
                                     op = Some(s.to_string());
@@ -1001,6 +1018,16 @@ fn handle_sexpr_connection(
                             _ => {}
                         }
                     }
+                }
+
+                if !id_seen || matches!(id, Value::Nil) {
+                    let response = protocol_error(
+                        "missing-id",
+                        "request requires a non-nil id",
+                        &contract_version,
+                    );
+                    let _ = writeln!(stream, "{response}");
+                    continue;
                 }
 
                 let response = match op.as_deref() {

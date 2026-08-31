@@ -505,6 +505,25 @@ fn sexpr_protocol_eval_returns_structured_response() {
 }
 
 #[test]
+fn sexpr_protocol_rejects_missing_or_nil_id_without_fake_response() {
+    let (mut child, port) = spawn_sexpr_server();
+    let missing = request_with_retry(
+        port,
+        r#"(request (op eval) (source "(+ 1 2)"))"#,
+    );
+    let explicit_nil = request_with_retry(
+        port,
+        r#"(request (id ()) (op eval) (source "(+ 1 2)"))"#,
+    );
+    child.kill().expect("should be able to stop the server");
+
+    assert!(missing.contains("(protocol-error") && missing.contains("(kind missing-id)"), "{missing}");
+    assert!(explicit_nil.contains("(protocol-error") && explicit_nil.contains("(kind missing-id)"), "{explicit_nil}");
+    assert!(!missing.contains("(status ok)"), "{missing}");
+    assert!(!explicit_nil.contains("(status ok)"), "{explicit_nil}");
+}
+
+#[test]
 fn sexpr_protocol_diagnose_returns_structured_error() {
     let (mut child, port) = spawn_sexpr_server();
     let response = request_with_retry(port, r#"(request (id 2) (op diagnose) (source "(car 1)"))"#);

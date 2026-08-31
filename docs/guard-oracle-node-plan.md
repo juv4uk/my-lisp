@@ -59,6 +59,14 @@ Exit `0` означає синтаксично повне джерело, exit `
 parser-помилку. Це не semantic success: валідна форма все ще може містити
 невідомий symbol або runtime error.
 
+Wire-контракт sexpr також зберігає відмінності, а не підміняє їх: порожній або
+whitespace-only line є transport no-op (немає request, evaluation, mutation чи
+response; connection лишається відкритим). Звичайний `(request ...)` вимагає
+рівно один non-nil `(id ...)`; відсутній або `()` id дає окремий
+`(protocol-error (kind missing-id) ...)`, а не фальшивий `(response (id ()))`.
+Liveness, якщо потрібна, має бути окремим запитом (`op ping`), а notification
+і duplicate-id policy поки не реалізовані.
+
 Oracle також є зручним входом до WSM-довідника часто вживаних агентних
 інструментів:
 
@@ -134,6 +142,14 @@ printf '%s\n' '(def answer (+ 40 2))' | my-lisp --oracle-check -
 Exit `0` means syntactically complete source; exit `2` means a structured
 parser failure. This is not semantic success: a valid form may still contain
 an unknown symbol or runtime error.
+
+The sexpr wire contract preserves distinctions: an empty or whitespace-only
+line is a transport no-op (no request, evaluation, mutation, or response; the
+connection remains open). A normal `(request ...)` requires exactly one
+non-nil `(id ...)`; a missing or `()` id yields a separate
+`(protocol-error (kind missing-id) ...)`, never a fake `(response (id ()))`.
+Liveness, if needed, is a separate `op ping`; notifications and duplicate-id
+policy are not implemented yet.
 
 Oracle is also a convenient entry point into the WSM-owned directory of
 frequently used agent tools:
