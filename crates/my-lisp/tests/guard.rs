@@ -71,7 +71,7 @@ fn reference_bureau_points_to_authority_workflow_and_evidence() {
     );
     assert_eq!(
         eval_guard(r#"(guard-verify (quote agent-messaging))"#),
-        "(durable-inbox-entry wakeup-result commit-sha)"
+        "(durable-inbox-entry wakeup-result session-id-not-unknown commit-sha)"
     );
 }
 
