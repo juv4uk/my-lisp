@@ -384,6 +384,16 @@
     (done . t)
     (context . "done 2026-08-31: new oracle-eval op returns oracle-result/1 with contract revision, SHA-256 source digest, implementation revision, value/error outcome, output, evidence class, relation, and provenance. Existing eval is unchanged.")))
 
+  ("WSM-ORACLE-AGENT-SYNTAX-PREFLIGHT-O2" . (
+    (priority . 9.6)
+    (capabilities . (wsm rust oracle parser agents diagnostics testing))
+    (depends-on . (WSM-ORACLE-RESULT-ENVELOPE-O1))
+    (origin . my-lisp)
+    (description . "Make Oracle convenient for agents before execution: add a side-effect-free oracle-check operation with exact parser span, line/column, stable diagnostic code, bilingual guidance, and conservative suggested edits for missing or extra closing parentheses. Never auto-apply edits; require a second check as evidence.")
+    (done . t)
+    (context . "done 2026-08-31: side-effect-free oracle-check is available over TCP and local CLI file/stdin. It reports stable parenthesis codes, exact byte span plus line/column, bilingual guidance, rendered caret, and conservative insert/delete suggestions. Suggested edits are never applied. Evidence: 4 Oracle unit tests, 2 CLI black-box tests, and live missing/extra/fixed protocol probes.")
+  ))
+
   ("SWARM-NODE-STRICT-STARTUP-N1" . (
     (priority . 9.3)
     (capabilities . (rust swarm systemd testing))

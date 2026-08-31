@@ -56,6 +56,44 @@ fn help_flag_prints_usage() {
     assert!(stdout.contains(".wsm"));
     assert!(stdout.contains(".my"));
     assert!(stdout.contains(".lisp"));
+    assert!(stdout.contains("--oracle-check <file|->"));
+}
+
+#[test]
+fn oracle_check_file_is_agent_friendly_and_side_effect_free() {
+    let path = std::env::temp_dir().join("my-lisp-oracle-check-unclosed.wsm");
+    std::fs::write(&path, "(def answer (+ 40 2)").expect("should write fixture");
+
+    let output = my_lisp()
+        .args(["--oracle-check", path.to_str().expect("UTF-8 temp path")])
+        .output()
+        .expect("binary should run");
+    let _ = std::fs::remove_file(&path);
+
+    assert_eq!(output.status.code(), Some(2));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("(code unclosed-list)"), "{stdout}");
+    assert!(stdout.contains("(action insert)"), "{stdout}");
+    assert!(stdout.contains("(text \")\")"), "{stdout}");
+}
+
+#[test]
+fn oracle_check_valid_file_returns_zero_without_evaluating_it() {
+    let path = std::env::temp_dir().join("my-lisp-oracle-check-valid.wsm");
+    // Unknown symbol would fail evaluation, but syntax-only preflight must
+    // accept it. This proves the command does not silently become eval.
+    std::fs::write(&path, "(not-defined-here 1)").expect("should write fixture");
+
+    let output = my_lisp()
+        .args(["--oracle-check", path.to_str().expect("UTF-8 temp path")])
+        .output()
+        .expect("binary should run");
+    let _ = std::fs::remove_file(&path);
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("(outcome valid)"), "{stdout}");
+    assert!(stdout.contains("(forms 1)"), "{stdout}");
 }
 
 #[test]

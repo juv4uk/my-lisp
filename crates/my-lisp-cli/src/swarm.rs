@@ -206,6 +206,89 @@ fn source_digest(source: &str) -> String {
     hex
 }
 
+fn exact_usize(value: usize) -> Value {
+    Value::Number(value as f64, Exactness::Exact)
+}
+
+/// Turn the canonical `LanguageError` into an agent-oriented, machine-readable
+/// diagnostic.  The parser remains the only syntax authority; this merely
+/// preserves its span and adds a conservative suggested edit for the two most
+/// common parenthesis failures.  The edit is advice, never applied silently.
+fn oracle_error_payload(source: &str, error: &my_lisp::LanguageError) -> Value {
+    let (line, column) = error.line_col(source);
+    let (code, guidance, repair) = if error.message.starts_with("unclosed list") {
+        (
+            "unclosed-list",
+            "Додайте одну ')' в кінці незакритої форми · Add one ')' at the end of the unclosed form",
+            Value::list([
+                Value::list([Value::Symbol("action".into()), Value::Symbol("insert".into())]),
+                Value::list([Value::Symbol("text".into()), Value::String(")".into())]),
+                Value::list([Value::Symbol("offset".into()), exact_usize(source.len())]),
+            ]),
+        )
+    } else if error.message.starts_with("unexpected closing parenthesis") {
+        (
+            "unexpected-closing-parenthesis",
+            "Приберіть зайву ')' у вказаному діапазоні · Remove the extra ')' at the reported span",
+            Value::list([
+                Value::list([
+                    Value::Symbol("action".into()),
+                    Value::Symbol("delete".into()),
+                ]),
+                Value::list([Value::Symbol("start".into()), exact_usize(error.span.start)]),
+                Value::list([Value::Symbol("end".into()), exact_usize(error.span.end)]),
+            ]),
+        )
+    } else {
+        (
+            error_kind_symbol(&error.kind),
+            "Перевірте вказаний діапазон і повторіть oracle-check · Inspect the reported span and run oracle-check again",
+            Value::list([Value::list([
+                Value::Symbol("action".into()),
+                Value::Symbol("inspect".into()),
+            ])]),
+        )
+    };
+
+    Value::list([
+        Value::Symbol("error".into()),
+        Value::list([
+            Value::list([
+                Value::Symbol("kind".into()),
+                Value::Symbol(error_kind_symbol(&error.kind).into()),
+            ]),
+            Value::list([Value::Symbol("code".into()), Value::Symbol(code.into())]),
+            Value::list([
+                Value::Symbol("message".into()),
+                Value::String(error.message.clone().into()),
+            ]),
+            Value::list([
+                Value::Symbol("span".into()),
+                Value::list([
+                    Value::list([Value::Symbol("start".into()), exact_usize(error.span.start)]),
+                    Value::list([Value::Symbol("end".into()), exact_usize(error.span.end)]),
+                ]),
+            ]),
+            Value::list([
+                Value::Symbol("location".into()),
+                Value::list([
+                    Value::list([Value::Symbol("line".into()), exact_usize(line)]),
+                    Value::list([Value::Symbol("column".into()), exact_usize(column)]),
+                ]),
+            ]),
+            Value::list([
+                Value::Symbol("rendered".into()),
+                Value::String(error.render(source).into()),
+            ]),
+            Value::list([
+                Value::Symbol("guidance".into()),
+                Value::String(guidance.into()),
+            ]),
+            Value::list([Value::Symbol("suggested-edit".into()), repair]),
+        ]),
+    ])
+}
+
 /// Versioned semantic result carried as the value of `oracle-eval`'s normal
 /// transport response.  Transport success and language outcome are separate:
 /// an evaluator error is a successfully delivered `(outcome error)` record,
@@ -216,6 +299,7 @@ fn oracle_result_value(
     outcome: Value,
     payload: Value,
     output: &[String],
+    evidence_class: &str,
 ) -> Value {
     Value::list([
         Value::Symbol("oracle-result".into()),
@@ -247,7 +331,7 @@ fn oracle_result_value(
         ]),
         Value::list([
             Value::Symbol("evidence-class".into()),
-            Value::Symbol("oracle-evaluation".into()),
+            Value::Symbol(evidence_class.into()),
         ]),
         Value::list([
             Value::Symbol("relation".into()),
@@ -267,6 +351,44 @@ fn oracle_result_value(
             ]),
         ]),
     ])
+}
+
+/// Side-effect-free agent preflight shared by the local CLI and TCP Oracle.
+/// `true` means the complete source parsed; no evaluation has taken place.
+pub(crate) fn oracle_check(source: &str, contract_version: &Value) -> (Value, bool) {
+    match parse(source) {
+        Ok(ast) => (
+            oracle_result_value(
+                source,
+                contract_version,
+                Value::Symbol("valid".into()),
+                Value::list([
+                    Value::Symbol("syntax".into()),
+                    Value::list([
+                        Value::list([
+                            Value::Symbol("status".into()),
+                            Value::Symbol("valid".into()),
+                        ]),
+                        Value::list([Value::Symbol("forms".into()), exact_usize(ast.len())]),
+                    ]),
+                ]),
+                &[],
+                "oracle-syntax-check",
+            ),
+            true,
+        ),
+        Err(error) => (
+            oracle_result_value(
+                source,
+                contract_version,
+                Value::Symbol("error".into()),
+                oracle_error_payload(source, &error),
+                &[],
+                "oracle-syntax-check",
+            ),
+            false,
+        ),
+    }
 }
 
 /// A single `notify`d message, kept in `run_tcp_repl_sexpr`'s in-memory
@@ -847,6 +969,15 @@ fn handle_sexpr_connection(
                             Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
                         },
                     },
+                    // Agent-facing syntax preflight. Unlike `oracle-eval`,
+                    // this never evaluates the submitted program or invokes
+                    // capabilities. It preserves canonical parser spans and
+                    // gives a conservative suggested edit for mismatched
+                    // parentheses.
+                    Some("oracle-check") => match &source {
+                        None => error_response(&id, "invalid-form", "op `oracle-check` requires a `source` field", &contract_version),
+                        Some(src) => oracle_check(src, &contract_version).0,
+                    },
                     Some("oracle-eval") => match &source {
                         None => error_response(&id, "invalid-form", "op `oracle-eval` requires a `source` field", &contract_version),
                         Some(src) => {
@@ -858,45 +989,24 @@ fn handle_sexpr_connection(
                                         Value::Symbol("value".into()),
                                         Value::list([Value::Symbol("value".into()), result.value]),
                                         &result.output,
+                                        "oracle-evaluation",
                                     ),
                                     Err(error) => oracle_result_value(
                                         src,
                                         &contract_version,
                                         Value::Symbol("error".into()),
-                                        Value::list([
-                                            Value::Symbol("error".into()),
-                                            Value::list([
-                                                Value::list([
-                                                    Value::Symbol("kind".into()),
-                                                    Value::Symbol(error_kind_symbol(&error.kind).into()),
-                                                ]),
-                                                Value::list([
-                                                    Value::Symbol("message".into()),
-                                                    Value::String(error.message.into()),
-                                                ]),
-                                            ]),
-                                        ]),
+                                        oracle_error_payload(src, &error),
                                         &[],
+                                        "oracle-evaluation",
                                     ),
                                 },
                                 Err(error) => oracle_result_value(
                                     src,
                                     &contract_version,
                                     Value::Symbol("error".into()),
-                                    Value::list([
-                                        Value::Symbol("error".into()),
-                                        Value::list([
-                                            Value::list([
-                                                Value::Symbol("kind".into()),
-                                                Value::Symbol(error_kind_symbol(&error.kind).into()),
-                                            ]),
-                                            Value::list([
-                                                Value::Symbol("message".into()),
-                                                Value::String(error.message.into()),
-                                            ]),
-                                        ]),
-                                    ]),
+                                    oracle_error_payload(src, &error),
                                     &[],
+                                    "oracle-evaluation",
                                 ),
                             };
                             ok_response(&id, result, &[], &contract_version)
@@ -1884,6 +1994,7 @@ mod oracle_result_tests {
                 Value::Number(3.0, Exactness::Exact),
             ]),
             &[],
+            "oracle-evaluation",
         )
         .to_string();
         assert!(result.contains("(protocol oracle-result/1)"));
@@ -1897,5 +2008,29 @@ mod oracle_result_tests {
     fn source_digest_is_stable_and_source_sensitive() {
         assert_eq!(source_digest("(+ 1 2)"), source_digest("(+ 1 2)"));
         assert_ne!(source_digest("(+ 1 2)"), source_digest("(+ 1 3)"));
+    }
+
+    #[test]
+    fn unclosed_list_diagnostic_tells_agents_where_to_insert_one_paren() {
+        let source = "(def answer\n  (+ 40 2)";
+        let error = parse(source).unwrap_err();
+        let diagnostic = oracle_error_payload(source, &error).to_string();
+        assert!(diagnostic.contains("(code unclosed-list)"));
+        assert!(diagnostic.contains("(location ((line 1) (column 1)))"));
+        assert!(diagnostic.contains("(action insert)"));
+        assert!(diagnostic.contains("(text \")\")"));
+        assert!(diagnostic.contains(&format!("(offset {})", source.len())));
+    }
+
+    #[test]
+    fn extra_closing_paren_diagnostic_tells_agents_exactly_what_to_delete() {
+        let source = "(def answer 42)\n)";
+        let error = parse(source).unwrap_err();
+        let diagnostic = oracle_error_payload(source, &error).to_string();
+        assert!(diagnostic.contains("(code unexpected-closing-parenthesis)"));
+        assert!(diagnostic.contains("(location ((line 2) (column 1)))"));
+        assert!(diagnostic.contains("(action delete)"));
+        assert!(diagnostic.contains("(start 16)"));
+        assert!(diagnostic.contains("(end 17)"));
     }
 }

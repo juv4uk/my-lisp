@@ -1,13 +1,14 @@
 use my_lisp::{eval_parsed_expressions, parse, Environment, Expr, Session, Value};
 use std::env;
 use std::fs;
+use std::io::Read;
 use std::process;
 use std::rc::Rc;
 mod lsp_entry;
 mod repl;
 mod swarm;
 mod tcp_repl;
-use swarm::{dotted_alist_lookup, run_client, run_tcp_repl_sexpr};
+use swarm::{dotted_alist_lookup, oracle_check, run_client, run_tcp_repl_sexpr};
 use tcp_repl::run_tcp_repl;
 
 /// `--allow-process=git,cargo` restricts process execution for the
@@ -142,6 +143,7 @@ fn main() {
                 "  --allow-process=a,b,c        TCP/oracle only: allow exactly these process names"
             );
             println!("  --lint                        Run the linter on the provided file and exit with non-zero if thresholds are exceeded");
+            println!("  --oracle-check <file|->       Parse-only agent preflight; '-' reads stdin and emits oracle-result/1");
             println!("  --tcp[=PORT]                 Serve the REPL over TCP on 127.0.0.1 (default port 9999) instead of stdio");
             println!("  --protocol=sexpr              With --tcp: strict (request (id) (op) (source)) / (response ...) envelope, no banner/prompt");
             println!("  --connect=HOST:PORT            P2P client: forward one sexpr request from stdin to a peer's TCP REPL, print the response");
@@ -174,6 +176,39 @@ fn main() {
                 process::exit(1);
             }
             run_client(address);
+            return;
+        }
+
+        if arg == "--oracle-check" {
+            if args.len() < 3 {
+                eprintln!("Usage: my-lisp --oracle-check <file|->");
+                process::exit(1);
+            }
+            let source = if args[2] == "-" {
+                let mut source = String::new();
+                if let Err(error) = std::io::stdin().read_to_string(&mut source) {
+                    eprintln!("my-lisp: failed to read source from stdin: {error}");
+                    process::exit(1);
+                }
+                source
+            } else {
+                match fs::read_to_string(&args[2]) {
+                    Ok(source) => source,
+                    Err(error) => {
+                        eprintln!("my-lisp: failed to read {}: {error}", args[2]);
+                        process::exit(1);
+                    }
+                }
+            };
+            let contract_version = Value::list([
+                Value::Number(contract_major, my_lisp::Exactness::Exact),
+                Value::Number(contract_minor, my_lisp::Exactness::Exact),
+            ]);
+            let (result, valid) = oracle_check(&source, &contract_version);
+            println!("{result}");
+            if !valid {
+                process::exit(2);
+            }
             return;
         }
 
