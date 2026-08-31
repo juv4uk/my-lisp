@@ -69,6 +69,7 @@ fn spawn(port: u16, node_id: &str, data_dir: &Path, connect: Option<u16>) -> Nod
         .expect("failed to spawn swarm-node — did `cargo build -p swarm-node` run first?");
     let node = Node { child };
     wait_for_port(port);
+    wait_for_file(&data_dir.join("node.my"));
     node
 }
 
@@ -81,6 +82,17 @@ fn wait_for_port(port: u16) {
         std::thread::sleep(Duration::from_millis(20));
     }
     panic!("swarm-node on port {port} never started listening");
+}
+
+fn wait_for_file(path: &Path) {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while Instant::now() < deadline {
+        if path.is_file() {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    panic!("swarm-node startup did not create {}", path.display());
 }
 
 #[test]
