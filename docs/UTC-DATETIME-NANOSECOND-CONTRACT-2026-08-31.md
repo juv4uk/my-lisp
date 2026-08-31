@@ -38,9 +38,23 @@ integers. The calendar is proleptic Gregorian UTC; `nanosecond` is in
   distributed ordering.
 - No timezone database, locale formatting, or date parsing is claimed yet.
 
+`(internet-time-sync host timeout-ms)` performs one bounded NTP query and
+returns either `(accepted host unix-seconds nanosecond)` or `(rejected reason)`.
+It never sets the operating-system clock. `(timezone-detect)` reports an
+explicit `TZ` or `/etc/timezone` declaration, or returns `unknown`; it does not
+guess a timezone. A caller may keep a chosen fixed-offset timezone as ordinary
+WSM data, but timezone rules and system mutation remain outside this contract.
+
 - Для тривалостей і benchmark-ів використовуйте `mono-ns`.
 - Для часових міток спостережень чи operational receipts використовуйте
   `utc-now`.
 - Не використовуйте wall-clock як content identity, логічну revision FS або
   порядок у розподіленій системі.
 - База часових поясів, локалізоване форматування і parsing дат поки не заявлені.
+- `(internet-time-sync host timeout-ms)` робить один обмежений NTP-запит і
+  повертає `(accepted host unix-seconds nanosecond)` або `(rejected reason)`.
+  Системний годинник він не встановлює. `(timezone-detect)` читає явну
+  декларацію `TZ` або `/etc/timezone`, а за її відсутності повертає `unknown`;
+  часовий пояс не вгадується. Обраний фіксований offset можна зберігати як
+  звичайні WSM-дані, але правила часових поясів і мутація ОС не входять у цей
+  контракт.

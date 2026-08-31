@@ -278,6 +278,16 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "Return UTC date-time with exact nanoseconds",
             Arity::Exact(0),
         ),
+        "internet-time-sync" => (
+            "(internet-time-sync host timeout-ms)",
+            "Query an NTP server with a bounded timeout",
+            Arity::Exact(2),
+        ),
+        "timezone-detect" => (
+            "(timezone-detect)",
+            "Observe the host timezone declaration",
+            Arity::Exact(0),
+        ),
         "i32-buffer" => (
             "(i32-buffer number ...)",
             "Create a signed 32-bit numeric buffer",

@@ -21,3 +21,20 @@ fn utc_now_returns_utc_calendar_with_nanosecond_field() {
     assert!((0..60).contains(&second));
     assert!((0..1_000_000_000).contains(&nanosecond));
 }
+
+#[test]
+fn timezone_detection_is_explicit_and_ntp_requires_host_string() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+    let timezone = eval_program("(timezone-detect)", &mut session).unwrap().value.to_string();
+    assert!(timezone.starts_with("(detected ") || timezone.starts_with("(unknown "));
+    assert!(eval_program("(internet-time-sync 123 100)", &mut session).is_err());
+    assert_eq!(
+        eval_program("(timezone-config \"Europe/Kyiv\" 7200)", &mut session)
+            .unwrap()
+            .value
+            .to_string(),
+        "(accepted (timezone \"Europe/Kyiv\" 7200))"
+    );
+}

@@ -68,6 +68,77 @@ fn utc_now_value(span: Span) -> Result<Value, crate::LanguageError> {
     ]))
 }
 
+fn internet_time_sync_value(
+    host: &str,
+    timeout_ms: u64,
+    span: Span,
+) -> Result<Value, crate::LanguageError> {
+    use std::net::{ToSocketAddrs, UdpSocket};
+    use std::time::Duration;
+    let timeout_ms = timeout_ms.min(5_000);
+    let address = (host, 123)
+        .to_socket_addrs()
+        .map_err(|_| crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync cannot resolve host", span))?
+        .next()
+        .ok_or_else(|| crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync host has no address", span))?;
+    let socket = UdpSocket::bind("0.0.0.0:0")
+        .and_then(|socket| {
+            socket.set_read_timeout(Some(Duration::from_millis(timeout_ms)))?;
+            socket.set_write_timeout(Some(Duration::from_millis(timeout_ms)))?;
+            socket.connect(address)?;
+            Ok(socket)
+        })
+        .map_err(|_| crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync socket unavailable", span))?;
+    let mut request = [0u8; 48];
+    request[0] = 0x23; // LI=0, version=4, client mode=3.
+    if socket.send(&request).is_err() {
+        return Ok(Value::list([
+            Value::Symbol(std::rc::Rc::from("rejected")),
+            Value::Symbol(std::rc::Rc::from("send-failed")),
+        ]));
+    }
+    let mut response = [0u8; 512];
+    let size = match socket.recv(&mut response) {
+        Ok(size) => size,
+        Err(_) => {
+            return Ok(Value::list([
+                Value::Symbol(std::rc::Rc::from("rejected")),
+                Value::Symbol(std::rc::Rc::from("receive-failed")),
+            ]));
+        }
+    };
+    let reason = if size < 48 {
+        Some("short-response")
+    } else {
+        let mode = response[0] & 0x07;
+        let stratum = response[1];
+        let seconds = u32::from_be_bytes([response[40], response[41], response[42], response[43]]);
+        if !(mode == 4 || mode == 5) || stratum == 0 || stratum > 15 {
+            Some("invalid-response")
+        } else if seconds < 2_208_988_800 {
+            Some("invalid-epoch")
+        } else {
+            None
+        }
+    };
+    if let Some(reason) = reason {
+        return Ok(Value::list([
+            Value::Symbol(std::rc::Rc::from("rejected")),
+            Value::Symbol(std::rc::Rc::from(reason)),
+        ]));
+    }
+    let seconds = u32::from_be_bytes([response[40], response[41], response[42], response[43]]);
+    let fraction = u32::from_be_bytes([response[44], response[45], response[46], response[47]]);
+    let unix_seconds = (seconds - 2_208_988_800) as i64;
+    let nanosecond = ((fraction as u64 * 1_000_000_000) >> 32) as i64;
+    Ok(Value::list([
+        Value::Symbol(std::rc::Rc::from("accepted")),
+        Value::String(std::rc::Rc::from(host)),
+        exact_value(Rational::integer(unix_seconds)),
+        exact_value(Rational::integer(nanosecond)),
+    ]))
+}
+
 /// Registers batch-1 builtins into `environment`. Idempotent per name:
 /// later definitions simply shadow earlier ones like any other binding.
 pub(crate) fn install(environment: &Environment) {
@@ -310,6 +381,59 @@ pub(crate) fn install(environment: &Environment) {
         |args: &[Value], _env: &Environment, span: Span| {
             exact_args("utc-now", args, 0, span)?;
             utc_now_value(span)
+        }
+    );
+
+    // (internet-time-sync host timeout-ms) performs one bounded NTP query.
+    // It returns data, never changes the operating-system clock, and caps the
+    // timeout at five seconds. Internet time is an external observation.
+    define!(
+        environment,
+        "internet-time-sync",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("internet-time-sync", args, 2, span)?;
+            let host = match &args[0] {
+                Value::String(value) => value.as_ref(),
+                _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync expects host string", span)),
+            };
+            let timeout = match &args[1] {
+                Value::Number(value, Exactness::Exact) if *value >= 0.0 && value.fract() == 0.0 => *value as u64,
+                _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync expects exact timeout milliseconds", span)),
+            };
+            internet_time_sync_value(host, timeout, span)
+        }
+    );
+
+    // (timezone-detect) observes the host's explicit timezone declaration.
+    // It does not guess from coordinates and does not mutate the host.
+    define!(
+        environment,
+        "timezone-detect",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("timezone-detect", args, 0, span)?;
+            if let Ok(value) = std::env::var("TZ") {
+                if !value.is_empty() {
+                    return Ok(Value::list([
+                        Value::Symbol(std::rc::Rc::from("detected")),
+                        Value::String(std::rc::Rc::from(value)),
+                        Value::Symbol(std::rc::Rc::from("TZ")),
+                    ]));
+                }
+            }
+            if let Ok(value) = std::fs::read_to_string("/etc/timezone") {
+                let value = value.trim();
+                if !value.is_empty() {
+                    return Ok(Value::list([
+                        Value::Symbol(std::rc::Rc::from("detected")),
+                        Value::String(std::rc::Rc::from(value)),
+                        Value::Symbol(std::rc::Rc::from("etc-timezone")),
+                    ]));
+                }
+            }
+            Ok(Value::list([
+                Value::Symbol(std::rc::Rc::from("unknown")),
+                Value::Symbol(std::rc::Rc::from("host-declaration-unavailable")),
+            ]))
         }
     );
 

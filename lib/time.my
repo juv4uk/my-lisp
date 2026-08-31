@@ -1,0 +1,20 @@
+; Explicit timezone data for WSM. This is configuration, not an OS mutation.
+; Явні дані часового поясу для WSM. Це конфігурація, а не мутація ОС.
+
+(def timezone-config
+  (lambda (name offset-seconds)
+    (cond
+      ((not (string? name)) (list (quote rejected) (quote invalid-name)))
+      ((not (and (= offset-seconds offset-seconds)
+                 (>= offset-seconds -86400)
+                 (<= offset-seconds 86400)))
+       (list (quote rejected) (quote invalid-offset)))
+      (t (list (quote accepted) (list (quote timezone) name offset-seconds))))))
+
+(def timezone-name
+  (lambda (config)
+    (second config)))
+
+(def timezone-offset-seconds
+  (lambda (config)
+    (third config)))
