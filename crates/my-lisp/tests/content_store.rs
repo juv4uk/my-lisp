@@ -269,6 +269,24 @@ fn lisp_fs_journal_replay_rejects_unknown_and_truncated_events() {
 }
 
 #[test]
+fn lisp_fs_journal_replay_rejects_structurally_incomplete_events() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (fs-journal-replay
+              (list
+                (list
+                  (cons (quote format) (quote wsm-fs-event))
+                  (cons (quote version) (quote (0 1)))
+                  (cons (quote op) (quote write))
+                  (cons (quote name) "missing-value"))))
+            "#
+        ),
+        "(rejected incomplete-write)"
+    );
+}
+
+#[test]
 fn lisp_fs_recovery_keeps_old_root_until_root_pointer_commit() {
     assert_eq!(
         eval_store(
