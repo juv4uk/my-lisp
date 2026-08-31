@@ -8,7 +8,7 @@ use my_lisp::{
     Exactness, Session, Value,
 };
 use std::fs;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener, TcpStream};
 use std::process;
 use std::sync::mpsc;
@@ -27,6 +27,55 @@ fn list_items(mut value: &Value) -> Vec<Value> {
         value = tail;
     }
     items
+}
+
+enum RequestFrame {
+    Eof,
+    Line(Vec<u8>),
+    TooLarge,
+}
+
+/// Read one newline-delimited frame without ever allocating more than `limit`
+/// bytes for it. Oversized frames are drained through the newline and then
+/// reported, so the connection cannot be desynchronised by the rejected data.
+fn read_request_frame(
+    reader: &mut BufReader<TcpStream>,
+    limit: usize,
+) -> io::Result<RequestFrame> {
+    let mut bytes = Vec::with_capacity(limit.min(4096));
+    let mut too_large = false;
+    loop {
+        let chunk = reader.fill_buf()?;
+        if chunk.is_empty() {
+            return Ok(if too_large {
+                RequestFrame::TooLarge
+            } else if bytes.is_empty() {
+                RequestFrame::Eof
+            } else {
+                RequestFrame::Line(bytes)
+            });
+        }
+        if let Some(newline) = chunk.iter().position(|byte| *byte == b'\n') {
+            let frame_len = newline + 1;
+            if too_large || bytes.len() + frame_len > limit {
+                reader.consume(frame_len);
+                return Ok(RequestFrame::TooLarge);
+            }
+            bytes.extend_from_slice(&chunk[..frame_len]);
+            reader.consume(frame_len);
+            return Ok(RequestFrame::Line(bytes));
+        }
+        if too_large || bytes.len() + chunk.len() > limit {
+            too_large = true;
+            let consume_len = chunk.len();
+            reader.consume(consume_len);
+        } else {
+            let copied = chunk.to_vec();
+            let consume_len = copied.len();
+            bytes.extend_from_slice(&copied);
+            reader.consume(consume_len);
+        }
+    }
 }
 
 /// Looks up `(key . value)` in a dotted-pair alist like
@@ -821,11 +870,9 @@ fn handle_sexpr_connection(
     }
 
     let mut reader = BufReader::new(stream.try_clone().expect("clone TCP stream"));
-    let mut line = String::new();
     loop {
-        line.clear();
-        match reader.read_line(&mut line) {
-            Ok(0) => break,
+        let frame = match read_request_frame(&mut reader, MAX_REQUEST_LINE_BYTES) {
+            Ok(frame) => frame,
             Err(error) => {
                 let resp = error_response(
                     &Value::Nil,
@@ -836,20 +883,37 @@ fn handle_sexpr_connection(
                 let _ = writeln!(stream, "{resp}");
                 break;
             }
-            Ok(_) => {
-                let trimmed = line.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
-                if line.len() > MAX_REQUEST_LINE_BYTES {
+        };
+        let line = match frame {
+            RequestFrame::Eof => break,
+            RequestFrame::TooLarge => {
+                let resp = error_response(
+                    &Value::Nil,
+                    "request-too-large",
+                    &format!("request line exceeds {MAX_REQUEST_LINE_BYTES} bytes"),
+                    &contract_version,
+                );
+                let _ = writeln!(stream, "{resp}");
+                break;
+            }
+            RequestFrame::Line(bytes) => match String::from_utf8(bytes) {
+                Ok(line) => line,
+                Err(error) => {
                     let resp = error_response(
                         &Value::Nil,
-                        "request-too-large",
-                        &format!("request line exceeds {MAX_REQUEST_LINE_BYTES} bytes"),
+                        "invalid-encoding",
+                        &format!("request is not valid UTF-8: {error}"),
                         &contract_version,
                     );
                     let _ = writeln!(stream, "{resp}");
                     break;
+                }
+            },
+        };
+        let trimmed = line.trim();
+        {
+                if trimmed.is_empty() {
+                    continue;
                 }
                 eprintln!("TCP REPL: {peer} > request-bytes={}", line.len());
 
@@ -2008,7 +2072,6 @@ fn handle_sexpr_connection(
                 if writeln!(stream, "{response}").is_err() {
                     break;
                 }
-            }
         }
     }
     eprintln!("TCP REPL: {peer} disconnected");
