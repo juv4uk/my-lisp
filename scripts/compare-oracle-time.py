@@ -122,10 +122,16 @@ def main() -> int:
         local_row, remote_row = by_name["local"], by_name["remote"]
         local_offset = int(local_row["oracle_utc_ns"]) - int(local_row["client_midpoint_utc_ns"])
         remote_offset = int(remote_row["oracle_utc_ns"]) - int(remote_row["client_midpoint_utc_ns"])
-        offset = int(remote_row["oracle_utc_ns"]) - int(local_row["oracle_utc_ns"])
+        raw_offset = int(remote_row["oracle_utc_ns"]) - int(local_row["oracle_utc_ns"])
+        # The remote timestamp is observed after roughly half its RTT, while
+        # the local timestamp is observed after half the local RTT. Remove
+        # that sampling skew; retain raw_offset for auditability.
+        rtt_skew = (int(remote_row["rtt_ns"]) - int(local_row["rtt_ns"])) // 2
+        offset = raw_offset - rtt_skew
         uncertainty = (int(local_row["rtt_ns"]) + int(remote_row["rtt_ns"])) // 2
         offsets.append(offset)
-        print(f"sample={index} offset-ns={offset} uncertainty-ns={uncertainty} "
+        print(f"sample={index} raw-offset-ns={raw_offset} rtt-correction-ns={rtt_skew} "
+              f"offset-ns={offset} uncertainty-ns={uncertainty} "
               f"local-rtt-ns={local_row['rtt_ns']} remote-rtt-ns={remote_row['rtt_ns']} "
               f"local-clock-offset-ns={local_offset} remote-clock-offset-ns={remote_offset}")
     offsets.sort()
