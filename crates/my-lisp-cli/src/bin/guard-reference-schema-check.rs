@@ -60,122 +60,74 @@ fn parse_guard_reference(file_path: &Path) -> Result<Vec<TopicEntry>, String> {
     let content = fs::read_to_string(file_path)
         .map_err(|e| format!("cannot read {}: {}", file_path.display(), e))?;
 
+    // The catalogue is intentionally formatted one field per line. Parsing
+    // those records line-by-line keeps this quality gate independent of the
+    // full evaluator while preserving quoted summaries and list fields.
     let mut entries = Vec::new();
-    let mut depth = 0;
     let mut current: Option<TopicEntry> = None;
-    let mut current_field = String::new();
-    let mut current_list_field: Option<String> = None;
-    let mut buffer = String::new();
-    let mut in_string = false;
-    let mut escape = false;
-
-    for ch in content.chars() {
-        if escape {
-            buffer.push(ch);
-            escape = false;
-            continue;
-        }
-        if ch == '\\' && in_string {
-            escape = true;
-            buffer.push(ch);
-            continue;
-        }
-        if ch == '"' && !escape {
-            in_string = !in_string;
-            buffer.push(ch);
-            continue;
-        }
-        if in_string {
-            buffer.push(ch);
-            continue;
-        }
-
-        if ch == '(' {
-            depth += 1;
-            // Start of reference entry at depth 4
-            let token = buffer.trim();
-            if depth == 4 && token == "reference" {
-                current = Some(TopicEntry {
-                    topic: String::new(),
-                    summary: String::new(),
-                    authority: Vec::new(),
-                    how_to: Vec::new(),
-                    verify: Vec::new(),
-                    lifecycle: String::new(),
-                    provenance: String::new(),
-                    unknown_route: String::new(),
-                });
-                current_list_field = None;
-                current_field.clear();
-            }
-            buffer.clear();
-        } else if ch == ')' {
-            // Handle field values at depth 5 (simple fields) and depth 6 (list items)
-            let token = buffer.trim();
-            if !token.is_empty() && current.is_some() {
-                if depth == 5 {
-                    // Simple field value: (field value) - token is the value
-                    if let Some(ref mut entry) = current {
-                        let value = token.trim_matches('"').to_string();
-                        match current_field.as_str() {
-                            "topic" => entry.topic = value,
-                            "summary" => entry.summary = value,
-                            "lifecycle" => entry.lifecycle = value,
-                            "provenance" => entry.provenance = value,
-                            "unknown-route" => entry.unknown_route = value,
-                            _ => {}
-                        }
-                    }
-                    current_field.clear();
-                } else if depth == 6 {
-                    // List item: (field (item1 item2)) - each item at depth 6
-                    if let Some(ref mut entry) = current {
-                        let value = token.trim_matches('"').to_string();
-                        if let Some(list_field) = &current_list_field {
-                            match list_field.as_str() {
-                                "authority" => entry.authority.push(value),
-                                "how-to" => entry.how_to.push(value),
-                                "verify" => entry.verify.push(value),
-                                _ => {}
-                            }
-                        }
-                    }
+    for line in content.lines().map(str::trim) {
+        if line.contains("(reference") {
+            if let Some(previous) = current.take() {
+                if !previous.topic.is_empty() {
+                    entries.push(previous);
                 }
             }
-
-            // End of reference entry at depth 4
-            if depth == 4 && current.is_some() && token == "reference" {
-                if let Some(entry) = current.take() {
-                    if !entry.topic.is_empty() {
-                        entries.push(entry);
-                    }
-                }
-                current_list_field = None;
+            current = Some(TopicEntry {
+                topic: String::new(),
+                summary: String::new(),
+                authority: Vec::new(),
+                how_to: Vec::new(),
+                verify: Vec::new(),
+                lifecycle: String::new(),
+                provenance: String::new(),
+                unknown_route: String::new(),
+            });
+            continue;
+        }
+        let Some(entry) = current.as_mut() else {
+            continue;
+        };
+        if line == ")" || line == "))" {
+            if !entry.topic.is_empty() {
+                entries.push(current.take().unwrap());
             }
-
-            depth -= 1;
-            buffer.clear();
-        } else if ch.is_whitespace() {
-            let token = buffer.trim();
-            if !token.is_empty() {
-                if depth == 5 && current.is_some() {
-                    // Field name at depth 5
-                    if current_field.is_empty() {
-                        current_field = token.to_string();
-                        if matches!(token.as_ref(), "authority" | "how-to" | "verify") {
-                            current_list_field = Some(token.to_string());
-                        } else {
-                            current_list_field = None;
-                        }
-                    }
+            continue;
+        }
+        for (field, target) in [
+            ("topic", 0),
+            ("summary", 1),
+            ("lifecycle", 2),
+            ("provenance", 3),
+            ("unknown-route", 4),
+        ] {
+            let prefix = format!("({field} ");
+            if let Some(value) = line.strip_prefix(&prefix) {
+                let value = value.trim_end_matches(')').trim_matches('"').to_string();
+                match target {
+                    0 => entry.topic = value,
+                    1 => entry.summary = value,
+                    2 => entry.lifecycle = value,
+                    3 => entry.provenance = value,
+                    _ => entry.unknown_route = value,
                 }
             }
-            buffer.clear();
-        } else {
-            buffer.push(ch);
+        }
+        for (field, target) in [("authority", 0), ("how-to", 1), ("verify", 2)] {
+            let prefix = format!("({field} (");
+            if let Some(value) = line.strip_prefix(&prefix) {
+                let values = value
+                    .trim_end_matches(')')
+                    .trim_end_matches(')')
+                    .split_whitespace()
+                    .map(|v| v.trim_matches('"').to_string());
+                match target {
+                    0 => entry.authority.extend(values),
+                    1 => entry.how_to.extend(values),
+                    _ => entry.verify.extend(values),
+                }
+            }
         }
     }
-
     if let Some(entry) = current {
         if !entry.topic.is_empty() {
             entries.push(entry);
@@ -217,11 +169,12 @@ fn validate_entries(entries: &[TopicEntry], repo_root: &Path) -> ValidationResul
             ));
         } else {
             for auth in &entry.authority {
-                let path = if auth.starts_with("../") {
-                    repo_root.join(auth)
-                } else {
-                    repo_root.join(auth)
-                };
+                // Cross-repository authorities (../...) are resolved by the
+                // ecosystem Guard workflow, not by this repository-local CI.
+                if auth.starts_with("../") {
+                    continue;
+                }
+                let path = repo_root.join(auth);
                 if !path.exists() {
                     result.add_error(format!(
                         "topic '{}': authority file not found: {} (checked: {})",
@@ -333,8 +286,16 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
+    use std::fs;
+
+    fn temp_file(contents: &str, label: &str) -> PathBuf {
+        let path = std::env::temp_dir().join(format!(
+            "guard-reference-schema-check-{label}-{}",
+            std::process::id()
+        ));
+        fs::write(&path, contents).unwrap();
+        path
+    }
 
     fn sample_wsm() -> String {
         r#"(def *guard-reference-directory*
@@ -353,9 +314,8 @@ mod tests {
 
     #[test]
     fn parses_valid_entry() {
-        let mut f = NamedTempFile::new().unwrap();
-        f.write_all(sample_wsm().as_bytes()).unwrap();
-        let entries = parse_guard_reference(f.path()).unwrap();
+        let path = temp_file(&sample_wsm(), "valid");
+        let entries = parse_guard_reference(&path).unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].topic, "test-topic");
         assert_eq!(entries[0].summary, "Test summary");
@@ -364,30 +324,26 @@ mod tests {
         assert_eq!(entries[0].authority, vec!["file1.md", "file2.md"]);
         assert_eq!(entries[0].how_to, vec!["step1", "step2"]);
         assert_eq!(entries[0].verify, vec!["check1", "check2"]);
+        fs::remove_file(path).unwrap();
     }
 
     #[test]
     fn catches_duplicate_topic() {
-        let content = format!(
-            "{}\n{}",
-            sample_wsm(),
-            sample_wsm().replace("test-topic", "test-topic")
-        );
-        let mut f = NamedTempFile::new().unwrap();
-        f.write_all(content.as_bytes()).unwrap();
-        let entries = parse_guard_reference(f.path()).unwrap();
+        let content = format!("{}\n{}", sample_wsm(), sample_wsm());
+        let path = temp_file(&content, "duplicate");
+        let entries = parse_guard_reference(&path).unwrap();
         let repo_root = std::env::current_dir().unwrap();
         let result = validate_entries(&entries, &repo_root);
         assert!(result.has_errors());
         assert!(result.errors.iter().any(|e| e.contains("duplicate topic")));
+        fs::remove_file(path).unwrap();
     }
 
     #[test]
     fn catches_missing_authority() {
         let content = sample_wsm().replace("file1.md file2.md", "nonexistent.md");
-        let mut f = NamedTempFile::new().unwrap();
-        f.write_all(content.as_bytes()).unwrap();
-        let entries = parse_guard_reference(f.path()).unwrap();
+        let path = temp_file(&content, "missing-authority");
+        let entries = parse_guard_reference(&path).unwrap();
         let repo_root = std::env::current_dir().unwrap();
         let result = validate_entries(&entries, &repo_root);
         assert!(result.has_errors());
@@ -395,6 +351,7 @@ mod tests {
             .errors
             .iter()
             .any(|e| e.contains("authority file not found")));
+        fs::remove_file(path).unwrap();
     }
 
     #[test]
@@ -402,9 +359,8 @@ mod tests {
         let content = sample_wsm()
             .replace("(summary \"Test summary\")", "(summary \"\")")
             .replace("(lifecycle current-contract)", "(lifecycle \"\")");
-        let mut f = NamedTempFile::new().unwrap();
-        f.write_all(content.as_bytes()).unwrap();
-        let entries = parse_guard_reference(f.path()).unwrap();
+        let path = temp_file(&content, "empty-fields");
+        let entries = parse_guard_reference(&path).unwrap();
         let repo_root = std::env::current_dir().unwrap();
         let result = validate_entries(&entries, &repo_root);
         assert!(result.has_errors());
@@ -416,14 +372,14 @@ mod tests {
             .errors
             .iter()
             .any(|e| e.contains("lifecycle must not be empty")));
+        fs::remove_file(path).unwrap();
     }
 
     #[test]
     fn catches_invalid_unknown_route() {
         let content = sample_wsm().replace("(unknown-route ask-agent)", "(unknown-route guess)");
-        let mut f = NamedTempFile::new().unwrap();
-        f.write_all(content.as_bytes()).unwrap();
-        let entries = parse_guard_reference(f.path()).unwrap();
+        let path = temp_file(&content, "invalid-route");
+        let entries = parse_guard_reference(&path).unwrap();
         let repo_root = std::env::current_dir().unwrap();
         let result = validate_entries(&entries, &repo_root);
         assert!(result.has_errors());
@@ -431,5 +387,6 @@ mod tests {
             .errors
             .iter()
             .any(|e| e.contains("unknown-route must be")));
+        fs::remove_file(path).unwrap();
     }
 }
