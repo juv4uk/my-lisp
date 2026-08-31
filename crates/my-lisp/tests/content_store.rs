@@ -194,6 +194,45 @@ fn lisp_fs_reconstruction_rejects_missing_referenced_object() {
 }
 
 #[test]
+fn lisp_fs_journal_replay_matches_direct_construction() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let* ((empty (fs-empty))
+                   (event (fs-journal-write-event "notes/today" (quote (hello world))))
+                   (journal (fs-journal-append (quote ()) event))
+                   (direct (car (fs-write empty "notes/today" (quote (hello world)))))
+                   (with-commit
+                     (fs-journal-append journal (fs-journal-root-commit-event
+                                                  (fs-root-package direct))))
+                   (replayed (fs-journal-replay with-commit)))
+              (list
+                (car replayed)
+                (fs-read (second replayed) "notes/today")
+                (fs-revision (second replayed))))
+            "#
+        ),
+        "(accepted (found (hello world) \"(hello world)\") 1)"
+    );
+}
+
+#[test]
+fn lisp_fs_journal_replay_rejects_unknown_and_truncated_events() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (list
+              (fs-journal-replay
+                (list
+                  (fs-journal-event (quote future-op) (quote ()))) )
+              (fs-journal-replay (list (quote ()))) )
+            "#
+        ),
+        "((rejected unknown-event) (rejected invalid-event))"
+    );
+}
+
+#[test]
 fn stored_knowledge_is_retrievable_by_its_canonical_address() {
     assert_eq!(
         eval_store(

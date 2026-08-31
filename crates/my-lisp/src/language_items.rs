@@ -273,6 +273,11 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "Return exact monotonic nanoseconds",
             Arity::Exact(0),
         ),
+        "utc-now" => (
+            "(utc-now)",
+            "Return UTC date-time with exact nanoseconds",
+            Arity::Exact(0),
+        ),
         "i32-buffer" => (
             "(i32-buffer number ...)",
             "Create a signed 32-bit numeric buffer",
