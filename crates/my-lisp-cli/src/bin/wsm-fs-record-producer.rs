@@ -30,10 +30,18 @@ fn main() {
     }
 
     let program = r#"
-      (let* ((value (quote (lambda (x) x)))
+      (let* ((value (quote (hello world)))
              (written (fs-write (fs-empty) "code" value))
-             (fs (car written)))
-        (list (fs-serialize-root fs) (fs-serialize-object value)))
+             (fs (car written))
+             (root (fs-root-package fs))
+             (object (fs-object-package value))
+             (rebuilt (fs-reconstruct-root root (list object))))
+        (cond
+          ((not (eq (car rebuilt) (quote accepted)))
+           (quote reconstruction-rejected))
+          ((not (equal? (second (fs-read (second rebuilt) "code")) value))
+           (quote reconstruction-mismatch))
+          (t (list (fs-serialize-root fs) (fs-serialize-object value)))))
     "#;
     let result = match eval_program(program, &mut session) {
         Ok(result) => result,
@@ -56,7 +64,7 @@ fn main() {
             }
             Value::Nil => break,
             _ => {
-                eprintln!("wsm-fs-record-producer: result is not a proper list");
+                eprintln!("wsm-fs-record-producer: result is not a proper list: {value}");
                 std::process::exit(1);
             }
         }
