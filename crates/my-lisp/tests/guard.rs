@@ -92,6 +92,25 @@ fn agents_can_enumerate_the_reference_desk() {
     let topics = eval_guard(r#"(guard-topics *guard-reference-directory*)"#);
     assert!(topics.contains("language-semantics"));
     assert!(topics.contains("swarm-coordination"));
+    assert!(topics.contains("guix"));
+    assert!(topics.contains("documentation-map"));
+    assert!(topics.contains("reference-learning"));
     assert!(topics.contains("licenses"));
     assert!(topics.contains("owner-context"));
+}
+
+#[test]
+fn reference_learning_preserves_review_and_provenance_boundaries() {
+    assert_eq!(
+        eval_guard(r#"(guard-how-to (quote reference-learning))"#),
+        "(search-directory choose-unknown-route collect-source-and-evidence append-pending-review review promote-or-reject)"
+    );
+    assert_eq!(
+        eval_guard(r#"(guard-verify (quote reference-learning))"#),
+        "(candidate-record provenance review-status curated-entry-or-rejection)"
+    );
+    assert_eq!(
+        eval_guard(r#"(guard-authority (quote guix))"#),
+        "(../ecosystem/docs/VIVEKA-FINDINGS-2026-08-24.md manifest.scm channels.scm guix.scm evidence/GUIX-WITNESS-01)"
+    );
 }

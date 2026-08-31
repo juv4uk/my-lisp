@@ -411,6 +411,15 @@
     (done . t)
     (context . "done 2026-08-31: knowledge/guard-reference.wsm adds executable topic discovery and authority/how-to/verify queries; AGENTS cold start points every agent to it; UNKNOWN carries three evidence-bearing escalation routes; guard tests cover known and missing topics.")))
 
+  ("WSM-GUARD-REFERENCE-LEARNING-G1B" . (
+    (priority . 9.3)
+    (capabilities . (wsm rust guard knowledge documentation provenance testing))
+    (depends-on . (WSM-GUARD-REFERENCE-BUREAU-G1A))
+    (origin . my-lisp)
+    (description . "Expand Guard into a linked ecosystem documentation directory and preserve useful answers missing from it as provenance-bearing pending-review candidates. Promotion to authority must require review.")
+    (done . t)
+    (context . "done 2026-08-31: executable reference topics now include Guix, the linked documentation map, and reference-learning; guard-reference Rust intake durably appends bounded escaped candidate data with source, route, and evidence; ecosystem policy requires capture while keeping review separate from authority.")))
+
   ("WSM-GUARD-LSP-KNOWLEDGE-G3" . (
     (priority . 8.0)
     (capabilities . (wsm lsp guard documentation))
