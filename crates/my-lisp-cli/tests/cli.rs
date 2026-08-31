@@ -484,35 +484,7 @@ fn spawn_sexpr_server() -> (std::process::Child, u16) {
     (child, port)
 }
 
-// The four `sexpr_protocol_*` tests below are `#[ignore]`d on this
-// machine, not deleted or weakened: manually verified correct many times
-// over (see commit d14bf89 and its follow-ups, and evidence/G5/my-lisp/,
-// evidence/G8/my-lisp/ for round-tripped requests with real responses).
-// The `ConnectionRefused` failure is 100% reproducible here across every
-// retry budget tried (up to 100 retries * 100ms), for the *entire*
-// duration of the test binary's run — that shape (never once succeeds,
-// not "occasionally succeeds") points at something structurally blocking
-// inbound connections from this specific compiled test binary.
-//
-// Root cause is NOT Windows Firewall/Defender, despite an earlier version
-// of this comment guessing that: two independent sessions (2026-08-12)
-// reproduced the identical 100%-reproducible ConnectionRefused inside
-// WSL2/Linux, where no such AV/firewall applies. A minimal standalone
-// repro crate — same child binary, same Command::spawn/stderr-banner/
-// retry-connect pattern, run both outside and inside `cargo test`, from
-// both a native Linux path and the same `/mnt/c/...` DrvFs path this repo
-// lives on — always succeeds on the first attempt. The failure is
-// isolated to something specific to this test binary
-// (`my-lisp-cli/tests/cli.rs`) itself, not the OS, not WSL/DrvFs, and not
-// `cargo test`/libtest in general (the minimal repro ran under libtest
-// too, fine). True root cause is still open. Not a bug in the
-// request-handling loop itself, which a manual, unhurried connection to
-// the same binary answers correctly every time. Run explicitly with
-// `cargo test -- --ignored` on a machine without this constraint (CI,
-// or after resolving it locally) to get real pass/fail signal from them.
-
 #[test]
-#[ignore = "ConnectionRefused for the entire test run in this specific test binary; root cause unknown but confirmed OS-independent (reproduced under WSL2/Linux, not just Windows) — see the block comment above. Functionality is independently verified manually."]
 fn sexpr_protocol_eval_returns_structured_response() {
     let (mut child, port) = spawn_sexpr_server();
     let response = request_with_retry(port, r#"(request (id 1) (op eval) (source "(+ 1 2)"))"#);
@@ -533,7 +505,6 @@ fn sexpr_protocol_eval_returns_structured_response() {
 }
 
 #[test]
-#[ignore = "see block comment above sexpr_protocol_eval_returns_structured_response"]
 fn sexpr_protocol_diagnose_returns_structured_error() {
     let (mut child, port) = spawn_sexpr_server();
     let response = request_with_retry(port, r#"(request (id 2) (op diagnose) (source "(car 1)"))"#);
@@ -550,7 +521,6 @@ fn sexpr_protocol_diagnose_returns_structured_error() {
 }
 
 #[test]
-#[ignore = "see block comment above sexpr_protocol_eval_returns_structured_response"]
 fn sexpr_protocol_parse_returns_canonical_structure_not_debug_format() {
     let (mut child, port) = spawn_sexpr_server();
     let response = request_with_retry(port, r#"(request (id 3) (op parse) (source "(+ 1 2)"))"#);
@@ -563,7 +533,6 @@ fn sexpr_protocol_parse_returns_canonical_structure_not_debug_format() {
 }
 
 #[test]
-#[ignore = "see block comment above sexpr_protocol_eval_returns_structured_response"]
 fn sexpr_protocol_connections_do_not_share_state() {
     let (mut child, port) = spawn_sexpr_server();
 
@@ -582,7 +551,6 @@ fn sexpr_protocol_connections_do_not_share_state() {
 }
 
 #[test]
-#[ignore = "see block comment above sexpr_protocol_eval_returns_structured_response"]
 fn sexpr_protocol_sync_tasks_loads_durable_plan() {
     let tasks_path =
         std::env::temp_dir().join(format!("sync-tasks-test-{}.my", std::process::id()));
