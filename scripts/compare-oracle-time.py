@@ -10,6 +10,7 @@ import argparse
 import concurrent.futures
 import re
 import socket
+import subprocess
 import time
 
 UTC_RE = re.compile(r"\(value \(utc (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)\)\)")
@@ -60,6 +61,9 @@ def main() -> int:
     parser.add_argument("--remote", default="100.113.68.50:9999")
     parser.add_argument("--samples", type=int, default=5)
     parser.add_argument("--timeout", type=float, default=3.0)
+    parser.add_argument("--sync-system-clock", action="store_true",
+                        help="enable NTP via timedatectl and wait for synchronization")
+    parser.add_argument("--sync-wait-seconds", type=int, default=10)
     args = parser.parse_args()
 
     def endpoint(value: str) -> tuple[str, int]:
@@ -72,6 +76,32 @@ def main() -> int:
     remote = endpoint(args.remote)
     if args.samples < 1:
         raise SystemExit("--samples must be positive")
+    if args.sync_wait_seconds < 1:
+        raise SystemExit("--sync-wait-seconds must be positive")
+
+    if args.sync_system_clock:
+        try:
+            subprocess.run(["timedatectl", "set-ntp", "true"], check=True,
+                           timeout=args.timeout)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise SystemExit(f"system clock synchronization failed: {exc}") from exc
+        deadline = time.monotonic() + args.sync_wait_seconds
+        synchronized = False
+        while time.monotonic() < deadline:
+            try:
+                state = subprocess.run(
+                    ["timedatectl", "show", "-p", "NTPSynchronized", "--value"],
+                    check=True, capture_output=True, text=True, timeout=args.timeout,
+                ).stdout.strip().lower()
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise SystemExit(f"cannot verify NTP synchronization: {exc}") from exc
+            if state == "yes":
+                synchronized = True
+                break
+            time.sleep(1)
+        if not synchronized:
+            raise SystemExit("system clock is not NTP-synchronized after waiting")
+        print(f"system-clock=ntp-synchronized wait-seconds={args.sync_wait_seconds}")
 
     rows: list[dict[str, int | str]] = []
     for _ in range(args.samples):

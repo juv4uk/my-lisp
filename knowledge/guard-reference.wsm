@@ -182,7 +182,7 @@
        (path "scripts/compare-oracle-time.py")
        (invoke "python3 /home/agents/GitHub/my-lisp/scripts/compare-oracle-time.py --local 127.0.0.1:9999 --remote 100.113.68.50:9999 --samples 5")
        (risk network-observation)
-       (verify (parallel-samples baseline-offset-ns rtt-ns uncertainty-ns status-observed)))
+       (verify (ntp-sync-optional wait-confirmed parallel-samples baseline-offset-ns rtt-ns uncertainty-ns status-observed)))
      (tool
        (name guard-reference)
        (summary "Зберегти нову відповідь як pending-review candidate · Preserve a new answer as a review candidate")
