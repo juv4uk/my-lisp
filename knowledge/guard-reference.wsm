@@ -168,7 +168,7 @@
        (path "scripts/start-local-oracle-release.sh")
        (invoke "bash /home/agents/GitHub/my-lisp/scripts/start-local-oracle-release.sh")
        (risk local-service)
-       (verify (loopback-listener release-executable contract-version probe pid-metadata)))
+       (verify (loopback-listener release-executable contract-version kernel-utc-probe probe pid-metadata)))
      (tool
        (name oracle-local-release-stop)
        (summary "Зупинити локальний release Oracle · Stop the local release Oracle")

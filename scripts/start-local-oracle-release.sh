@@ -50,9 +50,15 @@ for _ in $(seq 1 20); do
   if printf '%s\n' '(request (id 1) (op contract-version))' \
       | nc -w 1 127.0.0.1 "$oracle_port" > "$state_root/oracle-local.probe" 2>/dev/null; then
     if grep -q '(status ok)' "$state_root/oracle-local.probe"; then
-      echo "local Oracle ready: pid=$oracle_pid port=$oracle_port commit=$commit version=$version"
-      cat "$state_root/oracle-local.probe"
-      exit 0
+      if printf '%s\n' '(request (id 2) (op eval) (source "(utc-now)"))' \
+          | nc -w 1 127.0.0.1 "$oracle_port" > "$state_root/oracle-local-time.probe" 2>/dev/null \
+          && grep -q '(status ok)' "$state_root/oracle-local-time.probe" \
+          && grep -q '(value (utc ' "$state_root/oracle-local-time.probe"; then
+        echo "local Oracle ready: pid=$oracle_pid port=$oracle_port commit=$commit version=$version"
+        cat "$state_root/oracle-local.probe"
+        cat "$state_root/oracle-local-time.probe"
+        exit 0
+      fi
     fi
   fi
   sleep 1
