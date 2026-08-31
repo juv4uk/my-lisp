@@ -92,11 +92,20 @@ fn agents_can_enumerate_the_reference_desk() {
     let topics = eval_guard(r#"(guard-topics *guard-reference-directory*)"#);
     assert!(topics.contains("language-semantics"));
     assert!(topics.contains("swarm-coordination"));
+    assert!(topics.contains("swarm-node-startup"));
     assert!(topics.contains("guix"));
     assert!(topics.contains("documentation-map"));
     assert!(topics.contains("reference-learning"));
     assert!(topics.contains("licenses"));
     assert!(topics.contains("owner-context"));
+}
+
+#[test]
+fn spawn_node_reference_requires_exclusive_state_ownership() {
+    assert_eq!(
+        eval_guard(r#"(guard-verify (quote swarm-node-startup))"#),
+        "(exclusive-data-dir-lock unchanged-identity-on-failed-spawn explicit-task-sync-choice metrics)"
+    );
 }
 
 #[test]

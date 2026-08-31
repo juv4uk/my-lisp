@@ -88,7 +88,8 @@ one `--connect` to any single existing member:
 
 ```bash
 swarm-node --port 9105 --node-id my-agent-1 --project my-project \
-           --data-dir ~/.swarm-node/my-agent-1 --connect 127.0.0.1:9101
+           --data-dir ~/.swarm-node/my-agent-1 --connect 127.0.0.1:9101 \
+           --auto-sync /absolute/path/to/tasks.my
 ```
 
 ...and it, and every node already in the mesh, ends up fully connected to
@@ -139,7 +140,8 @@ To migrate an agent's coordination traffic:
 
 ```bash
 swarm-node --port <your-port> --node-id <your-node-id> --project <your-project> \
-           --data-dir ~/.swarm-node/<your-node-id> --connect 127.0.0.1:9101
+           --data-dir ~/.swarm-node/<your-node-id> --connect 127.0.0.1:9101 \
+           --auto-sync /absolute/path/to/tasks.my
 (join (capabilities (...)) (roles (voter)))       ; once, to become a voter
 (sync-tasks (file "/absolute/path/to/tasks.my"))  ; same file you already sync-tasks'd to :9999
 ```
@@ -165,12 +167,17 @@ so a seventh doesn't have to piece it back together.
    need every peer's address (M0.2.1 gossip finds the rest):
    ```bash
    swarm-node --port <your-port> --node-id <your-node-id> --project <your-project> \
-              --data-dir ~/.swarm-node/<your-node-id> --connect 127.0.0.1:9101
+              --data-dir ~/.swarm-node/<your-node-id> --connect 127.0.0.1:9101 \
+              --auto-sync /absolute/path/to/tasks.my
    ```
    `127.0.0.1:9101` is `my-lisp-1`'s bootstrap node; replace with the
    right address if bootstrapping through someone else, or the Tailscale
    address + `--bind 0.0.0.0` on *your* side if you're joining from a
    different machine (M0.11).
+   Startup is fail-closed: one OS lock owns one `data-dir`, binding happens
+   before identity mutation, and the task-sync choice must be explicit.
+   Запуск fail-closed: один OS lock володіє одним `data-dir`, socket bind
+   відбувається до зміни identity, а task-sync режим задається явно.
 3. **Declare yourself** — connecting is only network reachability, not
    membership. Nothing else in the mesh knows your capabilities until you:
    ```lisp

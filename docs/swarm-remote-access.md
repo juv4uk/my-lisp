@@ -49,8 +49,19 @@ Each node runs as its own guix user with an explicit identity:
 ```
 swarm-node --port <p> --node-id <id> --project <proj> \
   --data-dir /home/<user>/.swarm-node/<id> \
-  [--bind 0.0.0.0] [--connect <peer>...]
+  [--bind 0.0.0.0] [--connect <peer>...] \
+  (--auto-sync /absolute/path/to/tasks.my | --no-auto-sync)
 ```
+- Startup now requires an explicit task-sync choice. Normal ecosystem nodes
+  use `--auto-sync`; `--no-auto-sync` is only for deliberate protocol-only or
+  isolated test nodes.
+- Тепер запуск вимагає явного вибору task-sync. Звичайні ecosystem-ноди
+  використовують `--auto-sync`; `--no-auto-sync` призначений лише для свідомих
+  protocol-only або ізольованих тестових нод.
+- One process owns one `data-dir` through an OS advisory lock. A second live
+  process is rejected before identity epoch or journal mutation.
+- Один процес володіє одним `data-dir` через OS advisory lock. Другий живий
+  процес відхиляється до зміни identity epoch або journal.
 - Roles/epochs: epoch bumps on identity change; voter/worker role set
   via `(join ...)`.
 - Data-dir per node, never the CLI default `~/.swarm-node` (defaults

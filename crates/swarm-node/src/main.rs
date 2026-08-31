@@ -10,8 +10,9 @@
 //!
 //! To join an already-running swarm from a brand-new agent, run e.g.:
 //!   swarm-node --port 9105 --node-id my-agent-1 --project my-project \
-//!              --data-dir ~/.swarm-node/my-agent-1 --connect 127.0.0.1:9101
-//! No other flags, no need to know every other member's address up front.
+//!              --data-dir ~/.swarm-node/my-agent-1 --connect 127.0.0.1:9101 \
+//!              --auto-sync /absolute/path/to/tasks.my
+//! No need to know every other member's address up front.
 
 mod compact;
 mod journal;
@@ -25,6 +26,7 @@ use log::{log_info as info, log_warn as warn};
 use journal::{Event, Identity, Journal};
 use sexpr::Sexp;
 use std::collections::{HashMap, HashSet};
+use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -203,9 +205,17 @@ struct Args {
     /// file parse/IO errors are logged and skipped without crashing the
     /// node or clearing already-imported facts.
     auto_sync: Vec<PathBuf>,
+    /// An explicit opt-out is required for protocol-only/test nodes. This
+    /// prevents a typo in `--auto-sync` from silently starting an empty task
+    /// projection.
+    no_auto_sync: bool,
 }
 
-fn parse_args() -> Args {
+fn invalid_arg(message: impl Into<String>) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::InvalidInput, message.into())
+}
+
+fn parse_args() -> std::io::Result<Args> {
     let mut port = 9101u16;
     let mut node_id = "node-1".to_string();
     let mut project = "unknown".to_string();
@@ -213,35 +223,83 @@ fn parse_args() -> Args {
     let mut connect = Vec::new();
     let mut bind = "127.0.0.1".to_string();
     let mut auto_sync = Vec::new();
+    let mut no_auto_sync = false;
+    let mut seen = HashSet::new();
 
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--help" | "-h" => print_usage_and_exit(),
-            "--port" => port = it.next().and_then(|v| v.parse().ok()).unwrap_or(port),
-            "--node-id" => node_id = it.next().unwrap_or(node_id),
-            "--project" => project = it.next().unwrap_or(project),
-            "--data-dir" => data_dir = it.next().map(PathBuf::from).unwrap_or(data_dir),
-            "--bind" => bind = it.next().unwrap_or(bind),
-            "--connect" => {
-                if let Some(v) = it.next() {
-                    connect.push(v);
+            "--port" => {
+                if !seen.insert("--port") {
+                    return Err(invalid_arg("duplicate --port"));
                 }
+                let value = it
+                    .next()
+                    .ok_or_else(|| invalid_arg("--port requires a value"))?;
+                port = value
+                    .parse()
+                    .map_err(|_| invalid_arg("--port requires a valid u16"))?;
+            }
+            "--node-id" => {
+                if !seen.insert("--node-id") {
+                    return Err(invalid_arg("duplicate --node-id"));
+                }
+                node_id = it
+                    .next()
+                    .ok_or_else(|| invalid_arg("--node-id requires a value"))?;
+            }
+            "--project" => {
+                if !seen.insert("--project") {
+                    return Err(invalid_arg("duplicate --project"));
+                }
+                project = it
+                    .next()
+                    .ok_or_else(|| invalid_arg("--project requires a value"))?;
+            }
+            "--data-dir" => {
+                if !seen.insert("--data-dir") {
+                    return Err(invalid_arg("duplicate --data-dir"));
+                }
+                data_dir = PathBuf::from(
+                    it.next()
+                        .ok_or_else(|| invalid_arg("--data-dir requires a value"))?,
+                );
+            }
+            "--bind" => {
+                if !seen.insert("--bind") {
+                    return Err(invalid_arg("duplicate --bind"));
+                }
+                bind = it
+                    .next()
+                    .ok_or_else(|| invalid_arg("--bind requires a value"))?;
+            }
+            "--connect" => {
+                connect.push(
+                    it.next()
+                        .ok_or_else(|| invalid_arg("--connect requires a value"))?,
+                );
             }
             "--auto-sync" => {
-                if let Some(v) = it.next() {
-                    let path = PathBuf::from(v);
-                    if !path.is_absolute() {
-                        eprintln!("swarm-node: --auto-sync requires an absolute path");
-                        std::process::exit(2);
-                    }
-                    auto_sync.push(path);
+                let path = PathBuf::from(
+                    it.next()
+                        .ok_or_else(|| invalid_arg("--auto-sync requires a value"))?,
+                );
+                if !path.is_absolute() {
+                    return Err(invalid_arg("--auto-sync requires an absolute path"));
                 }
+                auto_sync.push(path);
             }
-            other => warn!("swarm-node: ignoring unknown argument `{other}`"),
+            "--no-auto-sync" => {
+                if no_auto_sync {
+                    return Err(invalid_arg("duplicate --no-auto-sync"));
+                }
+                no_auto_sync = true;
+            }
+            other => return Err(invalid_arg(format!("unknown argument `{other}`"))),
         }
     }
-    Args {
+    Ok(Args {
         port,
         node_id,
         project,
@@ -249,7 +307,8 @@ fn parse_args() -> Args {
         connect,
         bind,
         auto_sync,
-    }
+        no_auto_sync,
+    })
 }
 
 fn validate_startup_args(args: &Args) -> std::io::Result<()> {
@@ -267,6 +326,16 @@ fn validate_startup_args(args: &Args) -> std::io::Result<()> {
     if !args.data_dir.is_absolute() {
         return Err(invalid(
             "--data-dir must be absolute so restart cannot create a second identity tree",
+        ));
+    }
+    if args.auto_sync.is_empty() && !args.no_auto_sync {
+        return Err(invalid(
+            "pass at least one --auto-sync tasks.my path, or explicitly pass --no-auto-sync",
+        ));
+    }
+    if !args.auto_sync.is_empty() && args.no_auto_sync {
+        return Err(invalid(
+            "--auto-sync and --no-auto-sync are mutually exclusive",
         ));
     }
     for path in &args.auto_sync {
@@ -309,6 +378,7 @@ fn print_usage_and_exit() -> ! {
          \x20\x20                       import into the task registry (repeatable; same format as\n\
          \x20\x20                       (sync-tasks); interval is ~30 s, override via\n\
          \x20\x20                       SWARM_AUTO_SYNC_INTERVAL_MS)\n\
+         \x20\x20--no-auto-sync         Explicit opt-out for protocol-only or isolated test nodes\n\
          \x20\x20--help, -h             Show this message and exit\n\
          \n\
          See docs/swarm-mesh-v2.md's onboarding checklist for a full first-join walkthrough."
@@ -316,9 +386,48 @@ fn print_usage_and_exit() -> ! {
     std::process::exit(0);
 }
 
+/// Process-lifetime ownership of one persistent identity/journal directory.
+/// The lock file itself may remain on disk; the OS lock cannot remain stale
+/// after the owning process exits or is killed.
+struct StateLock {
+    _file: File,
+}
+
+impl StateLock {
+    fn acquire(data_dir: &std::path::Path) -> std::io::Result<Self> {
+        std::fs::create_dir_all(data_dir)?;
+        let path = data_dir.join(".swarm-node.lock");
+        let mut file = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(false)
+            .open(&path)?;
+        file.try_lock().map_err(|error| {
+            invalid_arg(format!(
+                "data-dir `{}` is already owned by another live swarm-node: {error}",
+                data_dir.display()
+            ))
+        })?;
+        file.set_len(0)?;
+        writeln!(file, "pid={}", std::process::id())?;
+        file.sync_data()?;
+        Ok(Self { _file: file })
+    }
+}
+
 fn main() -> std::io::Result<()> {
-    let args = parse_args();
+    let args = parse_args()?;
     validate_startup_args(&args)?;
+
+    // Bind before touching persistent identity. A duplicate port must not
+    // increment epoch or create a second identity tree before AddrInUse.
+    let listener = TcpListener::bind((args.bind.as_str(), args.port))?;
+
+    // One OS advisory lock owns one data-dir. It is released automatically
+    // on normal exit and process death, so no stale PID-file recovery path is
+    // needed. A second port cannot run concurrently over the same journal.
+    let _state_lock = StateLock::acquire(&args.data_dir)?;
     let identity = journal::load_or_init_identity(&args.data_dir, &args.node_id)?;
     let journal = Journal::open(&args.data_dir)?;
     let lamport_start = journal.max_lamport();
@@ -354,11 +463,6 @@ fn main() -> std::io::Result<()> {
         auto_sync_snapshots: Mutex::new(HashMap::new()),
         started_at: Instant::now(),
     });
-
-    // Own the listen socket before any retry/heartbeat/auto-sync thread can
-    // mutate state. A duplicate unit must fail before it dials peers or
-    // materializes tasks, not several side effects later with AddrInUse.
-    let listener = TcpListener::bind((args.bind.as_str(), args.port))?;
 
     for addr in &args.connect {
         spawn_connect(&node, addr.clone());

@@ -50,6 +50,7 @@ fn spawn(port: u16, node_id: &str, data_dir: &Path, connect: Option<u16>) -> Nod
     cmd.arg("--node-id").arg(node_id);
     cmd.arg("--project").arg("itest");
     cmd.arg("--data-dir").arg(data_dir);
+    cmd.arg("--no-auto-sync");
     if let Some(p) = connect {
         cmd.arg("--connect").arg(format!("127.0.0.1:{p}"));
     }
@@ -94,6 +95,7 @@ fn startup_rejects_relative_data_dir() {
             "itest",
             "--data-dir",
             "relative-state",
+            "--no-auto-sync",
         ])
         .output()
         .unwrap();
@@ -119,10 +121,92 @@ fn startup_rejects_data_dir_owned_by_another_identity() {
         .arg("itest")
         .arg("--data-dir")
         .arg(&dir)
+        .arg("--no-auto-sync")
         .output()
         .unwrap();
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("identity mismatch"));
+}
+
+fn startup_command(port: u16, node_id: &str, dir: &Path) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_swarm-node"));
+    command
+        .arg("--port")
+        .arg(port.to_string())
+        .arg("--node-id")
+        .arg(node_id)
+        .arg("--project")
+        .arg("itest")
+        .arg("--data-dir")
+        .arg(dir)
+        .arg("--no-auto-sync");
+    command
+}
+
+#[test]
+fn duplicate_port_fails_before_mutating_identity() {
+    let port = alloc_ports(1);
+    let dir = data_dir("duplicate-port-no-mutation");
+    let _first = spawn(port, "one-owner", &dir, None);
+    let before = std::fs::read_to_string(dir.join("node.my")).unwrap();
+
+    let output = startup_command(port, "one-owner", &dir).output().unwrap();
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("Address already in use"));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("node.my")).unwrap(),
+        before
+    );
+    assert!(request(port, "(status)").starts_with("(status"));
+}
+
+#[test]
+fn shared_data_dir_rejects_second_live_process_on_another_port() {
+    let ports = alloc_ports(2);
+    let dir = data_dir("shared-data-dir-lock");
+    let _first = spawn(ports, "one-owner", &dir, None);
+    let before = std::fs::read_to_string(dir.join("node.my")).unwrap();
+
+    let output = startup_command(ports + 1, "one-owner", &dir)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("already owned"));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("node.my")).unwrap(),
+        before
+    );
+    assert!(TcpStream::connect(("127.0.0.1", ports + 1)).is_err());
+}
+
+#[test]
+fn startup_requires_explicit_task_sync_choice_and_rejects_unknown_args() {
+    let dir = data_dir("explicit-task-sync");
+    let without_choice = Command::new(env!("CARGO_BIN_EXE_swarm-node"))
+        .arg("--node-id")
+        .arg("strict")
+        .arg("--project")
+        .arg("itest")
+        .arg("--data-dir")
+        .arg(&dir)
+        .output()
+        .unwrap();
+    assert!(!without_choice.status.success());
+    assert!(String::from_utf8_lossy(&without_choice.stderr).contains("--no-auto-sync"));
+    assert!(!dir.exists(), "validation must precede state creation");
+
+    let unknown = startup_command(alloc_ports(1), "strict", &dir)
+        .arg("--aut-sync")
+        .output()
+        .unwrap();
+    assert!(!unknown.status.success());
+    assert!(String::from_utf8_lossy(&unknown.stderr).contains("unknown argument"));
+    assert!(
+        !dir.exists(),
+        "argument parsing must precede state creation"
+    );
 }
 
 /// One request/response round trip over a fresh connection, matching how
@@ -851,6 +935,7 @@ fn spawn_with_env(
     cmd.arg("--node-id").arg(node_id);
     cmd.arg("--project").arg("itest");
     cmd.arg("--data-dir").arg(data_dir);
+    cmd.arg("--no-auto-sync");
     cmd.env("SWARM_TEST_HELLO_DEADLINE_MS", deadline_ms.to_string());
     if let Some(p) = connect {
         cmd.arg("--connect").arg(format!("127.0.0.1:{p}"));

@@ -35,6 +35,12 @@
        (how-to (start-node wait-readiness join sync-tasks claim-task complete-task))
        (verify (metrics list-members list-task-state journal-event)))
      (reference
+       (topic swarm-node-startup)
+       (summary "Start exactly one process per persistent identity tree without silent defaults or pre-bind state mutation")
+       (authority (docs/swarm-mesh-v2.md docs/swarm-remote-access.md crates/swarm-node/src/main.rs packaging/systemd/swarm-node@.service))
+       (how-to (choose-stable-node-id choose-unique-absolute-data-dir choose-auto-sync-or-explicit-opt-out bind acquire-state-lock open-identity-and-journal verify-readiness))
+       (verify (exclusive-data-dir-lock unchanged-identity-on-failed-spawn explicit-task-sync-choice metrics)))
+     (reference
        (topic task-materialization)
        (summary "Move durable tasks.my definitions into journal facts and derived projection")
        (authority (tasks.my docs/swarm-mesh-v2.md crates/swarm-node/src/tasks_file.rs))

@@ -393,6 +393,15 @@
     (done . t)
     (context . "done 2026-08-31: strict startup validation, persisted node-id mismatch rejection, listener-first startup, immediate auto-sync, expanded readiness metrics, integration tests, and one canonical systemd template/environment example.")))
 
+  ("SWARM-NODE-SPAWN-OWNERSHIP-N1A" . (
+    (priority . 9.7)
+    (capabilities . (rust swarm startup locking testing documentation guard))
+    (depends-on . (SWARM-NODE-STRICT-STARTUP-N1))
+    (origin . my-lisp)
+    (description . "Close duplicate-spawn ownership gaps: bind before identity mutation, hold an OS-exclusive data-dir lock, reject unknown/malformed CLI arguments, and require an explicit task-sync mode.")
+    (done . t)
+    (context . "done 2026-08-31: reproduced epoch mutation on same-port failure and two live processes sharing one data-dir on different ports; fixed with bind-first ordering plus process-lifetime advisory lock. CLI now rejects unknown/duplicate/missing values and requires --auto-sync or explicit --no-auto-sync. Full swarm-node suite passes: 10 unit + 22 integration tests.")))
+
   ("WSM-GUARD-RUST-FACT-ADAPTER-G2" . (
     (priority . 8.8)
     (capabilities . (wsm rust guard systemd git swarm))
@@ -427,7 +436,7 @@
     (origin . my-lisp)
     (description . "Complete and verify the abandoned wsm-guard-slice: compile it in the workspace, evaluate real WSM policy rather than Python, preserve strict swarm startup, prove ALLOW/WARN/REJECT/UNKNOWN, malformed-input safety, and hot policy reload.")
     (done . t)
-    (context . "done 2026-08-31: corrected the unverified 72b915f prototype. Rust now validates bounded facts and embeds core+guard; WSM policy is reloaded per event; 4 targeted tests and live four-decision run pass; malformed input yields UNKNOWN; strict --auto-sync systemd contract restored.")))
+    (context . "done 2026-08-31: corrected the unverified 72b915f prototype. Rust now validates bounded facts and embeds core+guard; WSM policy is reloaded per event; 5 targeted tests and live four-decision run pass; malformed input yields UNKNOWN; strict --auto-sync systemd contract restored.")))
 
   ("WSM-GUARD-LSP-KNOWLEDGE-G3" . (
     (priority . 8.0)
