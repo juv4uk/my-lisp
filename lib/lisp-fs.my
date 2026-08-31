@@ -342,6 +342,14 @@
   (lambda (journal)
     (fs-journal-replay-onto journal (fs-empty))))
 
+(def fs-serialize-journal
+  (lambda (journal)
+    (write-to-string journal)))
+
+(def fs-deserialize-journal
+  (lambda (text)
+    (fs-journal-replay (read text))))
+
 ; F4 commit boundary model. Objects and journal may be written first, but a
 ; snapshot becomes visible only when the root-pointer stage completes.
 ; Модель межі commit F4. Objects і journal можна записати раніше, але

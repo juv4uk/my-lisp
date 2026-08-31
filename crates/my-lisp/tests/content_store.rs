@@ -17,6 +17,22 @@ fn eval_store(source: &str) -> String {
         .to_string()
 }
 
+fn eval_store_error(source: &str) -> String {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/persistent-map.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/world.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/content-store.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/lisp-fs.my"), &mut session).unwrap();
+    eval_program(source, &mut session)
+        .expect_err("malformed serialized data must fail closed")
+        .to_string()
+}
+
 #[test]
 fn lisp_fs_keeps_old_snapshot_and_reads_new_bindings() {
     assert_eq!(
@@ -275,6 +291,18 @@ fn lisp_fs_recovery_keeps_old_root_when_candidate_root_is_corrupt() {
         ),
         "(recovered ((format . wsm-fs-root) (version 0 1) (revision . 0) (bindings) (objects)) rejected-candidate)"
     );
+}
+
+#[test]
+fn lisp_fs_partial_object_and_journal_bytes_fail_closed() {
+    let object_error = eval_store_error(
+        r#"(fs-deserialize-object "((format . wsm-fs-object) (version 0 1) (value")"#,
+    );
+    assert!(!object_error.is_empty(), "{object_error}");
+    let journal_error = eval_store_error(
+        r#"(fs-deserialize-journal "((format . wsm-fs-event) (version 0 1) (op . write)")"#,
+    );
+    assert!(!journal_error.is_empty(), "{journal_error}");
 }
 
 #[test]
