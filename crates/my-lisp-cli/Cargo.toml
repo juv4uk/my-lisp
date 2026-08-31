@@ -19,6 +19,10 @@ path = "src/bin/guard-reference-schema-check.rs"
 name = "wsm-fs-record-producer"
 path = "src/bin/wsm-fs-record-producer.rs"
 
+[[bin]]
+name = "wsm-fs-record-consumer"
+path = "src/bin/wsm-fs-record-consumer.rs"
+
 [dependencies]
 my-lisp = { path = "../my-lisp" }
 my-lisp-host = { path = "../my-lisp-host" }
