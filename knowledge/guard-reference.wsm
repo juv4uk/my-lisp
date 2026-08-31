@@ -56,8 +56,8 @@
        (topic claim-complete-broadcast)
        (summary "Task claims and completions are visible to the whole agent team; completion identifies the actual pushed revision")
        (authority (../ecosystem/AGENTS.md ../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/plans/tasks.my))
-       (how-to (claim-task broadcast-claim do-work complete-task broadcast-completion-read-bus))
-       (verify (task-state claim-event completion-event commit-sha pushed-confirmed)))
+       (how-to (claim-task broadcast-claim do-work commit push-find-ci-run-wait-for-completion-read-failure-logs complete-task broadcast-completion-read-bus))
+       (verify (task-state claim-event commit-sha pushed-confirmed matching-ci-run final-ci-status completion-event)))
      (reference
        (topic working-tree-hygiene)
        (summary "Explain every uncommitted change before deciding whether to include, preserve, or escalate it")
