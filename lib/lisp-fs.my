@@ -70,3 +70,51 @@
 (def fs-contains?
   (lambda (fs name)
     (not (atom (map-get name (fs-bindings fs))))))
+
+; Versioned data-only envelopes. They are ordinary alists and are never
+; evaluated by the filesystem layer.
+; Версіоновані data-only оболонки є звичайними alist і ніколи не виконуються.
+(def *fs-format-version* (quote (0 1)))
+
+(def fs-object-package
+  (lambda (value)
+    (list
+      (cons (quote format) (quote wsm-fs-object))
+      (cons (quote version) *fs-format-version*)
+      (cons (quote address) (knowledge-content-address value))
+      (cons (quote value) value))))
+
+(def fs-root-package
+  (lambda (fs)
+    (list
+      (cons (quote format) (quote wsm-fs-root))
+      (cons (quote version) *fs-format-version*)
+      (cons (quote revision) (fs-revision fs))
+      (cons (quote bindings) (map->list (fs-bindings fs)))
+      (cons (quote objects) (map->list (fs-objects fs))))))
+
+(def fs-package-field
+  (lambda (name package)
+    (let ((entry (assoc name package)))
+      (cond ((atom entry) (quote ())) (t (cdr entry))))))
+
+(def fs-object-package-decision
+  (lambda (package)
+    (cond
+      ((atom package) (list (quote rejected) (quote invalid-package)))
+      ((not (eq (fs-package-field (quote format) package) (quote wsm-fs-object)))
+       (list (quote rejected) (quote invalid-format)))
+      ((not (equal? (fs-package-field (quote version) package) *fs-format-version*))
+       (list (quote rejected) (quote unsupported-version)))
+      ((not (equal? (fs-package-field (quote address) package)
+                    (knowledge-content-address (fs-package-field (quote value) package))))
+       (list (quote rejected) (quote address-mismatch)))
+      (t (list (quote accepted) (fs-package-field (quote value) package))))))
+
+(def fs-serialize-object
+  (lambda (value)
+    (write-to-string (fs-object-package value))))
+
+(def fs-deserialize-object
+  (lambda (text)
+    (fs-object-package-decision (read text))))

@@ -109,6 +109,33 @@ fn lisp_fs_empty_name_is_literal_and_unknown_object_address_is_not_found() {
 }
 
 #[test]
+fn lisp_fs_object_envelope_round_trips_and_rejects_bad_metadata() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let ((encoded (fs-serialize-object (quote (hello world)))))
+              (list
+                encoded
+                (fs-deserialize-object encoded)
+                (fs-object-package-decision
+                  (list
+                    (cons (quote format) (quote wsm-fs-object))
+                    (cons (quote version) (quote (9 9)))
+                    (cons (quote address) "wrong")
+                    (cons (quote value) (quote (hello world)))))
+                (fs-object-package-decision
+                  (list
+                    (cons (quote format) (quote wsm-fs-object))
+                    (cons (quote version) (quote (0 1)))
+                    (cons (quote address) "wrong")
+                    (cons (quote value) (quote (hello world)))))))
+            "#
+        ),
+        "(\"((format . wsm-fs-object) (version 0 1) (address . \\\"(hello world)\\\") (value hello world))\" (accepted (hello world)) (rejected unsupported-version) (rejected address-mismatch))"
+    );
+}
+
+#[test]
 fn stored_knowledge_is_retrievable_by_its_canonical_address() {
     assert_eq!(
         eval_store(
