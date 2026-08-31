@@ -391,6 +391,43 @@ pub(crate) fn oracle_check(source: &str, contract_version: &Value) -> (Value, bo
     }
 }
 
+/// Query the WSM-owned reference directory without duplicating its entries in
+/// Rust. The session already contains core.my; Guard and its directory are
+/// loaded as ordinary WSM libraries, then queried by a strictly validated
+/// topic. `None` lists the curated frequently-used tool names.
+pub(crate) fn oracle_help(session: &mut Session, topic: Option<&str>) -> Result<Value, String> {
+    const GUARD: &str = include_str!("../../../lib/guard.wsm");
+    const REFERENCE: &str = include_str!("../../../knowledge/guard-reference.wsm");
+    for (name, source) in [
+        ("lib/guard.wsm", GUARD),
+        ("knowledge/guard-reference.wsm", REFERENCE),
+    ] {
+        let ast = parse(source)
+            .map_err(|error| format!("cannot parse {name}: {}", error.render(source)))?;
+        eval_parsed_expressions_incremental(&ast, session)
+            .map_err(|error| format!("cannot load {name}: {}", error.render(source)))?;
+    }
+
+    let query = match topic {
+        None => "(guard-scripts *guard-script-directory*)".to_string(),
+        Some(topic)
+            if !topic.is_empty()
+                && topic
+                    .chars()
+                    .all(|character| character.is_ascii_alphanumeric() || character == '-') =>
+        {
+            format!("(guard-script (quote {topic}))")
+        }
+        Some(_) => {
+            return Err("oracle-help topic must contain only ASCII letters, digits, or '-'".into())
+        }
+    };
+    let ast = parse(&query).map_err(|error| error.render(&query))?;
+    eval_parsed_expressions_incremental(&ast, session)
+        .map(|result| result.value)
+        .map_err(|error| error.render(&query))
+}
+
 /// A single `notify`d message, kept in `run_tcp_repl_sexpr`'s in-memory
 /// mailbox — deliberately separate from any `Session`/`Environment`, so
 /// agent coordination never touches the isolated eval-oracle state each
@@ -976,7 +1013,11 @@ fn handle_sexpr_connection(
                     // parentheses.
                     Some("oracle-check") => match &source {
                         None => error_response(&id, "invalid-form", "op `oracle-check` requires a `source` field", &contract_version),
-                        Some(src) => oracle_check(src, &contract_version).0,
+                        Some(src) => ok_response(&id, oracle_check(src, &contract_version).0, &[], &contract_version),
+                    },
+                    Some("oracle-help") => match oracle_help(&mut session, topic.as_deref()) {
+                        Ok(reference) => ok_response(&id, reference, &[], &contract_version),
+                        Err(message) => error_response(&id, "invalid-form", &message, &contract_version),
                     },
                     Some("oracle-eval") => match &source {
                         None => error_response(&id, "invalid-form", "op `oracle-eval` requires a `source` field", &contract_version),

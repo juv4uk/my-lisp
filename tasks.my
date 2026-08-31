@@ -394,6 +394,16 @@
     (context . "done 2026-08-31: side-effect-free oracle-check is available over TCP and local CLI file/stdin. It reports stable parenthesis codes, exact byte span plus line/column, bilingual guidance, rendered caret, and conservative insert/delete suggestions. Suggested edits are never applied. Evidence: 4 Oracle unit tests, 2 CLI black-box tests, and live missing/extra/fixed protocol probes.")
   ))
 
+  ("WSM-ORACLE-AGENT-TOOL-DIRECTORY-O3" . (
+    (priority . 9.5)
+    (capabilities . (wsm rust oracle guard reference agents documentation testing))
+    (depends-on . (WSM-ORACLE-AGENT-SYNTAX-PREFLIGHT-O2 WSM-GUARD-REFERENCE-BUREAU-G1A))
+    (origin . my-lisp)
+    (description . "Expose one WSM-owned curated directory of frequently used agent tools through local --oracle-help and TCP oracle-help. Each entry must carry a Ukrainian summary, path, canonical invocation, risk, and verification evidence. Do not duplicate entries in Rust and do not list stale or unaudited scripts as canonical.")
+    (done . t)
+    (context . "done 2026-08-31: WSM guard-reference now owns nine curated frequently used tools with Ukrainian summary, path, canonical invocation, risk and verification evidence. Local --oracle-help lists or explains tools; TCP oracle-help accepts an optional topic. Rust evaluates the WSM directory instead of duplicating it. Stale registry-audit is deliberately excluded. Evidence: Guard 12/12, Oracle help CLI 2/2, live local list/detail and TCP detail PASS.")
+  ))
+
   ("SWARM-NODE-STRICT-STARTUP-N1" . (
     (priority . 9.3)
     (capabilities . (rust swarm systemd testing))

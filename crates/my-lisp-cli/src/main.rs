@@ -8,7 +8,7 @@ mod lsp_entry;
 mod repl;
 mod swarm;
 mod tcp_repl;
-use swarm::{dotted_alist_lookup, oracle_check, run_client, run_tcp_repl_sexpr};
+use swarm::{dotted_alist_lookup, oracle_check, oracle_help, run_client, run_tcp_repl_sexpr};
 use tcp_repl::run_tcp_repl;
 
 /// `--allow-process=git,cargo` restricts process execution for the
@@ -144,6 +144,7 @@ fn main() {
             );
             println!("  --lint                        Run the linter on the provided file and exit with non-zero if thresholds are exceeded");
             println!("  --oracle-check <file|->       Parse-only agent preflight; '-' reads stdin and emits oracle-result/1");
+            println!("  --oracle-help [tool]          List common agent tools or explain one from the WSM Guard directory");
             println!("  --tcp[=PORT]                 Serve the REPL over TCP on 127.0.0.1 (default port 9999) instead of stdio");
             println!("  --protocol=sexpr              With --tcp: strict (request (id) (op) (source)) / (response ...) envelope, no banner/prompt");
             println!("  --connect=HOST:PORT            P2P client: forward one sexpr request from stdin to a peer's TCP REPL, print the response");
@@ -208,6 +209,17 @@ fn main() {
             println!("{result}");
             if !valid {
                 process::exit(2);
+            }
+            return;
+        }
+
+        if arg == "--oracle-help" {
+            match oracle_help(&mut session, args.get(2).map(String::as_str)) {
+                Ok(reference) => println!("{reference}"),
+                Err(error) => {
+                    eprintln!("my-lisp: {error}");
+                    process::exit(2);
+                }
             }
             return;
         }

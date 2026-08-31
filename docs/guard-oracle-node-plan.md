@@ -59,6 +59,20 @@ Exit `0` означає синтаксично повне джерело, exit `
 parser-помилку. Це не semantic success: валідна форма все ще може містити
 невідомий symbol або runtime error.
 
+Oracle також є зручним входом до WSM-довідника часто вживаних агентних
+інструментів:
+
+```bash
+my-lisp --oracle-help
+my-lisp --oracle-help agent-send
+```
+
+Через TCP це `(op oracle-help)` з необов'язковим `(topic "agent-send")`.
+Список не дублюється в Rust: Oracle завантажує `lib/guard.wsm` і
+`knowledge/guard-reference.wsm`, а потім виконує WSM-запит. Кожний tool record
+містить український summary, path, canonical invocation, risk і verify.
+Відсутній інструмент повертає `UNKNOWN` із маршрутами, а не вигадану команду.
+
 Канонічний запуск ноди: одна identity → один unit → один абсолютний data-dir
 → один bootstrap peer → `--auto-sync` абсолютного `tasks.my`. Rust тепер
 відхиляє неявні `node-1`/`unknown`, відносний data-dir, відсутній auto-sync
@@ -120,6 +134,21 @@ printf '%s\n' '(def answer (+ 40 2))' | my-lisp --oracle-check -
 Exit `0` means syntactically complete source; exit `2` means a structured
 parser failure. This is not semantic success: a valid form may still contain
 an unknown symbol or runtime error.
+
+Oracle is also a convenient entry point into the WSM-owned directory of
+frequently used agent tools:
+
+```bash
+my-lisp --oracle-help
+my-lisp --oracle-help agent-send
+```
+
+The TCP form is `(op oracle-help)` with optional `(topic "agent-send")`.
+Rust does not duplicate the list: Oracle loads `lib/guard.wsm` and
+`knowledge/guard-reference.wsm`, then evaluates the WSM query. Every tool
+record carries a Ukrainian summary, path, canonical invocation, risk, and
+verification evidence. A missing tool returns UNKNOWN routes rather than an
+invented command.
 
 Canonical node startup is one identity → one unit → one absolute data-dir →
 one bootstrap peer → absolute `tasks.my` via `--auto-sync`. Rust rejects

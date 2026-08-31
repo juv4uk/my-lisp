@@ -123,3 +123,33 @@ fn reference_learning_preserves_review_and_provenance_boundaries() {
         "(../ecosystem/docs/VIVEKA-FINDINGS-2026-08-24.md manifest.scm channels.scm guix.scm evidence/GUIX-WITNESS-01)"
     );
 }
+
+#[test]
+fn agents_can_list_curated_frequently_used_tools() {
+    let tools = eval_guard(r#"(guard-scripts *guard-script-directory*)"#);
+    assert!(tools.contains("oracle-check"));
+    assert!(tools.contains("agent-send"));
+    assert!(tools.contains("resource-preflight"));
+    assert!(tools.contains("bilingual-docs-check"));
+    assert!(tools.contains("conformance-check"));
+    assert!(!tools.contains("registry-audit"));
+}
+
+#[test]
+fn script_reference_contains_path_invocation_risk_and_evidence() {
+    let tool = eval_guard(r#"(guard-script (quote agent-send))"#);
+    assert!(tool.contains("../ecosystem/scripts/agent-send"));
+    assert!(tool.contains("/home/agents/ecosystem/scripts/agent-send send"));
+    assert!(tool.contains("(risk writes-coordination-log)"));
+    assert!(tool.contains("(verify (admitted inbox-id wakeup-result))"));
+}
+
+#[test]
+fn unknown_script_routes_instead_of_guessing() {
+    let tool = eval_guard(r#"(guard-script (quote no-such-tool))"#);
+    assert!(tool.contains("tool-missing"));
+    assert!(tool.contains("(decision unknown)"));
+    assert!(tool.contains("(route ask-agent)"));
+    assert!(tool.contains("(route ask-owner)"));
+    assert!(tool.contains("(route research-web)"));
+}

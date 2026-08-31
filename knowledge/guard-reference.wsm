@@ -20,7 +20,7 @@
        (topic semantic-oracle)
        (summary "Expected semantic truth from the reference implementation")
        (authority (language-contract.my crates/my-lisp-cli/src/swarm.rs docs/guard-oracle-node-plan.md))
-       (how-to (oracle-eval contract-version))
+       (how-to (oracle-check oracle-eval oracle-help contract-version))
        (verify (oracle-result/1 source-digest contract-revision)))
      (reference
        (topic guard)
@@ -88,6 +88,102 @@
        (authority (../ecosystem/memory/OWNER-PROFILE.md))
        (how-to (read-before-work preserve-owner-wording))
        (verify (owner-profile-current))))))
+
+; Curated frequently-used tools. A record is navigation, not permission to run
+; the command. `risk` and `verify` tell an agent what must be checked afterward.
+; Добірка часто вживаних інструментів. Запис є навігацією, а не дозволом на
+; запуск. Поля `risk` і `verify` пояснюють потрібний доказ після команди.
+(def *guard-script-directory*
+  (quote
+    ((tool
+       (name oracle-check)
+       (summary "Безпечна перевірка синтаксису WSM без виконання · Parse-only WSM preflight without evaluation")
+       (path "target/debug/my-lisp")
+       (invoke "/home/agents/GitHub/my-lisp/target/debug/my-lisp --oracle-check <file|->")
+       (risk read-only)
+       (verify (exit-0-valid exit-2-structured-error rerun-after-edit)))
+     (tool
+       (name guard-reference)
+       (summary "Зберегти нову відповідь як pending-review candidate · Preserve a new answer as a review candidate")
+       (path "target/debug/guard-reference")
+       (invoke "/home/agents/GitHub/my-lisp/target/debug/guard-reference propose --inbox ABS --topic T --question Q --answer A --source S --route ROUTE --evidence E")
+       (risk append-only)
+       (verify (candidate-record status-pending-review provenance)))
+     (tool
+       (name agent-send)
+       (summary "Довговічне повідомлення агенту з окремим wakeup · Durable agent message followed by a separate wakeup")
+       (path "../ecosystem/scripts/agent-send")
+       (invoke "/home/agents/ecosystem/scripts/agent-send send --from AGENT --to TARGET --kind KIND MESSAGE")
+       (risk writes-coordination-log)
+       (verify (admitted inbox-id wakeup-result)))
+     (tool
+       (name agent-inbox)
+       (summary "Прочитати й підтвердити durable inbox · Read and acknowledge the durable inbox")
+       (path "../ecosystem/scripts/agent-inbox")
+       (invoke "/home/agents/ecosystem/scripts/agent-inbox read --agent AGENT; /home/agents/ecosystem/scripts/agent-inbox ack --agent AGENT --message ID")
+       (risk updates-ack-status)
+       (verify (message-id acknowledged)))
+     (tool
+       (name resource-preflight)
+       (summary "Перевірити load, RAM, disk і GPU перед важкою роботою · Check load, RAM, disk, and GPU before heavy work")
+       (path "../ecosystem/scripts/preflight.sh")
+       (invoke "bash /home/agents/ecosystem/scripts/preflight.sh [max-load]")
+       (risk read-only)
+       (verify (exit-0-go exit-1-wait)))
+     (tool
+       (name bilingual-docs-check)
+       (summary "Перевірити український відповідник змінених людських документів · Check Ukrainian coverage for changed human documentation")
+       (path "../ecosystem/scripts/check-bilingual-docs")
+       (invoke "/home/agents/ecosystem/scripts/check-bilingual-docs [files...]")
+       (risk read-only)
+       (verify (exit-0-covered english-only-report)))
+     (tool
+       (name version-drift-check)
+       (summary "Знайти cross-repo розбіжності версій контрактів · Detect cross-repository contract-version drift")
+       (path "../ecosystem/scripts/check-cross-repo-version-drift.py")
+       (invoke "python3 /home/agents/ecosystem/scripts/check-cross-repo-version-drift.py --root /home/agents/GitHub")
+       (risk read-only)
+       (verify (exit-0-no-drift drift-rows-reviewed)))
+     (tool
+       (name duplicate-task-check)
+       (summary "Знайти лише кандидатів на дублікати task IDs · Find advisory near-duplicate task candidates")
+       (path "../ecosystem/scripts/check-near-duplicate-task-ids.py")
+       (invoke "python3 /home/agents/ecosystem/scripts/check-near-duplicate-task-ids.py [task-state-dump]")
+       (risk read-only-advisory)
+       (verify (candidates-domain-reviewed no-auto-merge)))
+     (tool
+       (name conformance-check)
+       (summary "Прогнати незалежного TCP witness мовного контракту · Run the independent TCP language-contract witness")
+       (path "../ecosystem/scripts/conformance-check.py")
+       (invoke "python3 /home/agents/ecosystem/scripts/conformance-check.py [host:port]")
+       (risk bounded-test-run)
+       (verify (oracle-revision fixture-count exit-status))))))
+
+(def guard-script-find
+  (lambda (name tools)
+    (cond
+      ((atom tools) (quote ()))
+      ((eq (guard-reference-field (quote name) (car tools)) name) (car tools))
+      (t (guard-script-find name (cdr tools))))))
+
+(def guard-script
+  (lambda (name)
+    (let ((tool (guard-script-find name *guard-script-directory*)))
+      (cond
+        ((atom tool)
+         (list
+           (quote tool-missing)
+           (list (quote name) name)
+           (list (quote decision) (quote unknown))
+           (list (quote unknown-routes) (guard-unknown-routes))))
+        (t tool)))))
+
+(def guard-scripts
+  (lambda (tools)
+    (cond
+      ((atom tools) (quote ()))
+      (t (cons (guard-reference-field (quote name) (car tools))
+               (guard-scripts (cdr tools)))))))
 
 (def guard-reference-find
   (lambda (topic references)

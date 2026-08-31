@@ -97,6 +97,45 @@ fn oracle_check_valid_file_returns_zero_without_evaluating_it() {
 }
 
 #[test]
+fn oracle_help_lists_curated_agent_tools_from_wsm() {
+    let output = my_lisp()
+        .arg("--oracle-help")
+        .output()
+        .expect("binary should run");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("oracle-check"), "{stdout}");
+    assert!(stdout.contains("agent-send"), "{stdout}");
+    assert!(stdout.contains("bilingual-docs-check"), "{stdout}");
+}
+
+#[test]
+fn oracle_help_explains_one_tool_with_invocation_and_verification() {
+    let output = my_lisp()
+        .args(["--oracle-help", "agent-send"])
+        .output()
+        .expect("binary should run");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("../ecosystem/scripts/agent-send"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("/home/agents/ecosystem/scripts/agent-send send"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("(risk writes-coordination-log)"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("(verify (admitted inbox-id wakeup-result))"),
+        "{stdout}"
+    );
+}
+
+#[test]
 fn running_a_source_file_prints_its_result() {
     let dir = std::env::temp_dir();
     let path = dir.join("my-lisp-cli-test-ok.my");
