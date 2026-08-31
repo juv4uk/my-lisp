@@ -111,6 +111,7 @@ press Run, or run it from the terminal with `racket file.my`. See
 ### Docs
 
 - [`docs/language-core.md`](docs/language-core.md) — the language contract: primitives, bootstrap boundary, exact arithmetic.
+- [`docs/DATE-TIME-AND-SYNC-ARCHITECTURE-2026-08-31.md`](docs/DATE-TIME-AND-SYNC-ARCHITECTURE-2026-08-31.md) — date/time interfaces, NTP observation, timezone boundaries, filesystem timestamps, and Guard synchronization.
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — a beginner walkthrough of homoiconicity.
 - [`docs/advice-taker.md`](docs/advice-taker.md) — a tutorial on building and using the Advice Taker backward-chaining engine.
 - [`docs/advice-ingestion.md`](docs/advice-ingestion.md) — the guarded `understand → advise → reason → narrate` knowledge boundary.
@@ -196,6 +197,7 @@ raco pkg install --link --name my-lisp racket/
 ### Документація
 
 - [`docs/language-core.md`](docs/language-core.md) — контракт мови: примітиви, межа bootstrap, точна арифметика.
+- [`docs/DATE-TIME-AND-SYNC-ARCHITECTURE-2026-08-31.md`](docs/DATE-TIME-AND-SYNC-ARCHITECTURE-2026-08-31.md) — повна карта дати/часу, NTP-спостереження, timezone, меж файлової системи та policy синхронізації Guard.
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — вступний огляд гомоіконічності.
 - [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — маленький приклад символьного AI: унікація, написана самою my-lisp.
 - [`docs/advice-ingestion.md`](docs/advice-ingestion.md) — захищена межа знань `understand → advise → reason → narrate`.
