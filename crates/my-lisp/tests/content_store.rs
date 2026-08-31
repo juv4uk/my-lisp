@@ -306,6 +306,43 @@ fn lisp_fs_partial_object_and_journal_bytes_fail_closed() {
 }
 
 #[test]
+fn lisp_fs_replay_rejects_after_valid_prefix_without_returning_partial_state() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (fs-journal-replay
+              (list
+                (fs-journal-write-event "ok" (quote value))
+                (quote malformed-event)))
+            "#
+        ),
+        "(rejected invalid-event)"
+    );
+}
+
+#[test]
+fn lisp_fs_reconstruction_rejects_after_valid_object_without_partial_snapshot() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let* ((value (quote value))
+                   (written (fs-write (fs-empty) "ok" value))
+                   (root (fs-root-package (car written)))
+                   (valid (fs-object-package value))
+                   (invalid
+                     (list
+                       (cons (quote format) (quote wsm-fs-object))
+                       (cons (quote version) (quote (0 1)))
+                       (cons (quote address) "wrong")
+                       (cons (quote value) (quote other)))))
+              (fs-reconstruct-root root (list valid invalid)))
+            "#
+        ),
+        "(rejected address-mismatch)"
+    );
+}
+
+#[test]
 fn lisp_fs_fault_injection_keeps_old_root_until_pointer_is_published() {
     // Bounded temporary-medium witness for F4: only the root-pointer stage
     // may replace the visible root file. Objects/journal writes alone leave
