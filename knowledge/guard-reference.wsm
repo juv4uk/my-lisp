@@ -48,10 +48,10 @@
        (verify (task-definition journal-event list-task-state)))
      (reference
        (topic agent-messaging)
-       (summary "Direct messages and completion broadcasts between live agent runtimes")
+       (summary "Direct messages and completion broadcasts: durable inbox admission is separate from live-runtime wakeup; stale OpenCode sessions require re-registration")
        (authority (../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/scripts/agent-send))
-       (how-to (register-session send-direct broadcast-completion read-inbox))
-       (verify (durable-inbox-entry wakeup-result commit-sha)))
+       (how-to (start-opencode-serve register-live-session send-direct broadcast-completion read-inbox acknowledge-inbox))
+       (verify (durable-inbox-entry wakeup-result session-id-not-unknown commit-sha)))
      (reference
        (topic evidence)
        (summary "Record claims at the strength actually earned by tests and artifacts")
