@@ -233,6 +233,31 @@ fn lisp_fs_journal_replay_rejects_unknown_and_truncated_events() {
 }
 
 #[test]
+fn lisp_fs_recovery_keeps_old_root_until_root_pointer_commit() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let* ((old (fs-empty))
+                   (new (car (fs-write old "notes/today" (quote value)))))
+              (list
+                (fs-recover-commit old new (quote objects))
+                (fs-recover-commit old new (quote journal))
+                (fs-recover-commit old new (quote root-pointer))))
+            "#
+        ),
+        "((recovered (() () 0)) (recovered (() () 0)) (recovered ((\"value\" value 1 () ()) (\"notes/today\" \"value\" 1 () ()) 1)))"
+    );
+}
+
+#[test]
+fn lisp_fs_recovery_rejects_unknown_commit_stage() {
+    assert_eq!(
+        eval_store("(fs-recover-commit (fs-empty) (fs-empty) (quote upload))"),
+        "(rejected unknown-commit-stage)"
+    );
+}
+
+#[test]
 fn stored_knowledge_is_retrievable_by_its_canonical_address() {
     assert_eq!(
         eval_store(

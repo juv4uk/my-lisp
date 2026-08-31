@@ -341,3 +341,24 @@
 (def fs-journal-replay
   (lambda (journal)
     (fs-journal-replay-onto journal (fs-empty))))
+
+; F4 commit boundary model. Objects and journal may be written first, but a
+; snapshot becomes visible only when the root-pointer stage completes.
+; Модель межі commit F4. Objects і journal можна записати раніше, але
+; snapshot стає видимим лише після завершення root-pointer.
+(def fs-commit-stage?
+  (lambda (stage)
+    (cond
+      ((eq stage (quote objects)) t)
+      ((eq stage (quote journal)) t)
+      ((eq stage (quote root-pointer)) t)
+      (t (quote ())))))
+
+(def fs-recover-commit
+  (lambda (old-fs new-fs completed-stage)
+    (cond
+      ((not (fs-commit-stage? completed-stage))
+       (list (quote rejected) (quote unknown-commit-stage)))
+      ((eq completed-stage (quote root-pointer))
+       (list (quote recovered) new-fs))
+      (t (list (quote recovered) old-fs)))))
