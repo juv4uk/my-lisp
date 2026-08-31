@@ -53,6 +53,24 @@
        (how-to (start-opencode-serve register-live-session send-direct broadcast-completion read-inbox acknowledge-inbox))
        (verify (durable-inbox-entry wakeup-result session-id-not-unknown commit-sha)))
      (reference
+       (topic claim-complete-broadcast)
+       (summary "Task claims and completions are visible to the whole agent team; completion identifies the actual pushed revision")
+       (authority (../ecosystem/AGENTS.md ../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/plans/tasks.my))
+       (how-to (claim-task broadcast-claim do-work complete-task broadcast-completion-read-bus))
+       (verify (task-state claim-event completion-event commit-sha pushed-confirmed)))
+     (reference
+       (topic working-tree-hygiene)
+       (summary "Explain every uncommitted change before deciding whether to include, preserve, or escalate it")
+       (authority (../ecosystem/AGENTS.md ../ecosystem/docs/AGENT-RESOURCE-POLICY.md))
+       (how-to (git-status inspect-diff-check-generated-artifacts-check-agent-history-commit-scoped-files))
+       (verify (origin-identified or-unknown-with-checks no-unexplained-diff)))
+     (reference
+       (topic unknown-routing)
+       (summary "UNKNOWN is a useful epistemic result with an explicit route, not an implicit rejection")
+       (authority (../ecosystem/AGENTS.md ../ecosystem/plans/ECOSYSTEM-GUARD-ORACLE-ROADMAP.md))
+       (how-to (ask-agent-for-local-facts ask-owner-for-authority-intent-license research-web-for-current-external-facts))
+       (verify (route-recorded source-or-question-preserved no-silent-reject)))
+     (reference
        (topic evidence)
        (summary "Record claims at the strength actually earned by tests and artifacts")
        (authority (evidence/README.md docs/agent-doctrine.md))
