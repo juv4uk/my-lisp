@@ -136,6 +136,29 @@ fn lisp_fs_object_envelope_round_trips_and_rejects_bad_metadata() {
 }
 
 #[test]
+fn lisp_fs_root_envelope_round_trips_bindings_revision_and_addresses() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let* ((fs (car (fs-write (fs-empty) "notes/today" (quote (hello world)))))
+                   (encoded (fs-serialize-root fs))
+                   (bad
+                     (list
+                       (cons (quote format) (quote wsm-fs-root))
+                       (cons (quote version) (quote (9 9)))
+                       (cons (quote revision) 1)
+                       (cons (quote bindings) (quote ()))
+                       (cons (quote objects) (quote ())))))
+              (list encoded
+                    (car (fs-root-package-decision (read encoded)))
+                    (car (fs-root-package-decision bad))))
+            "#
+        ),
+        "(\"((format . wsm-fs-root) (version 0 1) (revision . 1) (bindings (\\\"notes/today\\\" . \\\"(hello world)\\\")) (objects \\\"(hello world)\\\"))\" accepted rejected)"
+    );
+}
+
+#[test]
 fn stored_knowledge_is_retrievable_by_its_canonical_address() {
     assert_eq!(
         eval_store(

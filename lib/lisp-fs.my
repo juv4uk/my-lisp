@@ -91,7 +91,14 @@
       (cons (quote version) *fs-format-version*)
       (cons (quote revision) (fs-revision fs))
       (cons (quote bindings) (map->list (fs-bindings fs)))
-      (cons (quote objects) (map->list (fs-objects fs))))))
+      (cons (quote objects) (fs-object-addresses (map->list (fs-objects fs)))))))
+
+(def fs-object-addresses
+  (lambda (entries)
+    (cond
+      ((atom entries) (quote ()))
+      (t (cons (car (car entries))
+               (fs-object-addresses (cdr entries)))))))
 
 (def fs-package-field
   (lambda (name package)
@@ -118,3 +125,27 @@
 (def fs-deserialize-object
   (lambda (text)
     (fs-object-package-decision (read text))))
+
+(def fs-root-package-decision
+  (lambda (package)
+    (cond
+      ((atom package) (list (quote rejected) (quote invalid-package)))
+      ((not (eq (fs-package-field (quote format) package) (quote wsm-fs-root)))
+       (list (quote rejected) (quote invalid-format)))
+      ((not (equal? (fs-package-field (quote version) package) *fs-format-version*))
+       (list (quote rejected) (quote unsupported-version)))
+      ((eq (fs-package-field (quote revision) package) (quote ()))
+       (list (quote rejected) (quote invalid-revision)))
+      ((not (knowledge-proper-list? (fs-package-field (quote bindings) package)))
+       (list (quote rejected) (quote invalid-bindings)))
+      ((not (knowledge-proper-list? (fs-package-field (quote objects) package)))
+       (list (quote rejected) (quote invalid-objects)))
+      (t (list (quote accepted) package)))))
+
+(def fs-serialize-root
+  (lambda (fs)
+    (write-to-string (fs-root-package fs))))
+
+(def fs-deserialize-root
+  (lambda (text)
+    (fs-root-package-decision (read text))))
