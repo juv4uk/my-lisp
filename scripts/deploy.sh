@@ -6,8 +6,17 @@ SERVER="root@100.113.68.50"
 echo "Building release binary locally via Guix..."
 guix shell -m manifest.scm -- cargo build --release -p my-lisp-cli
 
+# The semantic Oracle is a release-only service.  Fail closed if the build
+# produced no release artifact; never fall back to target/debug/my-lisp.
+ORACLE_BINARY="${ORACLE_BINARY:-/home/my-lisp/.cache/my-lisp-target/release/my-lisp}"
+if [ ! -x "$ORACLE_BINARY" ]; then
+  echo "ERROR: release Oracle binary missing or not executable: $ORACLE_BINARY" >&2
+  exit 1
+fi
+echo "Using release Oracle: $ORACLE_BINARY"
+
 echo "Uploading binary to server..."
-scp -o StrictHostKeyChecking=no /home/my-lisp/.cache/my-lisp-target/release/my-lisp $SERVER:/root/my-lisp-new
+scp -o StrictHostKeyChecking=no "$ORACLE_BINARY" $SERVER:/root/my-lisp-new
 
 echo "Executing deployment on server..."
 ssh -o StrictHostKeyChecking=no $SERVER 'bash -s' << 'EOF'

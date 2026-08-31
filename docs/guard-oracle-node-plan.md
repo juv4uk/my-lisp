@@ -51,8 +51,8 @@ Oracle ніколи не застосовує цю зміну сам: підка
 Найкоротший локальний шлях для агента не потребує запущеного TCP Oracle:
 
 ```bash
-my-lisp --oracle-check path/to/source.wsm
-printf '%s\n' '(def answer (+ 40 2))' | my-lisp --oracle-check -
+ target/release/my-lisp --oracle-check path/to/source.wsm
+ printf '%s\n' '(def answer (+ 40 2))' | target/release/my-lisp --oracle-check -
 ```
 
 Exit `0` означає синтаксично повне джерело, exit `2` — структуровану
@@ -132,11 +132,13 @@ parenthesis suggests deleting its exact span. The Oracle never applies edits
 silently: agents must verify a repair by running `oracle-check` again. The same
 diagnostic payload is now retained by `oracle-eval` errors.
 
-The shortest local agent path needs no running TCP Oracle:
+The shortest local agent path needs no running TCP Oracle. It must use the
+release binary; `target/debug` is for development only and is not the
+canonical Oracle because debug stack behaviour can differ on deep evaluation:
 
 ```bash
-my-lisp --oracle-check path/to/source.wsm
-printf '%s\n' '(def answer (+ 40 2))' | my-lisp --oracle-check -
+target/release/my-lisp --oracle-check path/to/source.wsm
+printf '%s\n' '(def answer (+ 40 2))' | target/release/my-lisp --oracle-check -
 ```
 
 Exit `0` means syntactically complete source; exit `2` means a structured
