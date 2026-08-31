@@ -83,6 +83,12 @@
        (how-to (oracle-check-for-syntax oracle-eval-for-semantics diagnose-for-errors contract-version-for-revision))
        (verify (operation-recorded parse-vs-eval-distinguished structured-result)))
      (reference
+       (topic oracle-release-deployment)
+       (summary "Release-only remote semantic Oracle deployment, service verification, and post-push CI boundary")
+       (authority (../ecosystem/docs/ORACLE-RELEASE-DEPLOYMENT.md scripts/deploy.sh docs/guard-oracle-node-plan.md))
+       (how-to (wait-for-green-main-ci run-release-deploy-helper verify-release-exec-path probe-backend-and-haproxy-record-implementation-revision))
+       (verify (green-ci-run release-binary service-active implementation-revision contract-version oracle-result-1)))
+     (reference
        (topic runtime-selection)
        (summary "Select the wakeup transport from the registered agent runtime; durable inbox remains the shared fallback")
        (authority (../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/scripts/agent-send ../ecosystem/.agents/sessions.json))
