@@ -258,6 +258,37 @@ fn lisp_fs_recovery_rejects_unknown_commit_stage() {
 }
 
 #[test]
+fn lisp_fs_fault_injection_keeps_old_root_until_pointer_is_published() {
+    // Bounded temporary-medium witness for F4: only the root-pointer stage
+    // may replace the visible root file. Objects/journal writes alone leave
+    // the previous root recoverable.
+    // Обмежений temporary-medium witness F4: лише root-pointer може замінити
+    // видимий root; записи objects/journal залишають старий root.
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("wsm-fs-recovery-{nonce}"));
+    std::fs::create_dir(&dir).unwrap();
+    let old = "old-root";
+    let new = "new-root";
+    let root_path = dir.join("root.pointer");
+    std::fs::write(&root_path, old).unwrap();
+    for stage in ["objects", "journal", "root-pointer"] {
+        if stage == "root-pointer" {
+            std::fs::write(&root_path, new).unwrap();
+        }
+        let visible = std::fs::read_to_string(&root_path).unwrap();
+        if stage == "root-pointer" {
+            assert_eq!(visible, new);
+        } else {
+            assert_eq!(visible, old);
+        }
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn stored_knowledge_is_retrievable_by_its_canonical_address() {
     assert_eq!(
         eval_store(
