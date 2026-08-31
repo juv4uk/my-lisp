@@ -466,4 +466,10 @@
     (description . "Expose Guard explanation/guidance/evidence through existing WSM LSP hover and diagnostics without duplicating knowledge in the IDE.")
     (done . ())
   ))
-  )))
+  ("WSM-FS-CANONICAL-SERIALIZATION-HARMONIZATION" . (
+    (priority . 9.0)
+    (capabilities . (wsm lisp filesystem serialization content-addressing contract testing))
+    (origin . my-lisp)
+    (description . "Define the canonical data-only serialization boundary for WSM FS objects, roots and journal events. Preserve content identity, name, logical revision, time and runtime location as distinct fields; prove deterministic address calculation, round-trip reconstruction, missing-object rejection and no evaluation. Publish the contract for CML/wsm-os consumers; do not add a target string ABI in this task.")
+    (done . ()))
+  ))))
