@@ -89,6 +89,12 @@
        (how-to (wait-for-green-main-ci run-release-deploy-helper verify-release-exec-path probe-backend-and-haproxy-record-implementation-revision))
        (verify (green-ci-run release-binary service-active implementation-revision contract-version oracle-result-1)))
      (reference
+       (topic oracle-local-runtime)
+       (summary "Local loopback release Oracle and comparison with the remote Oracle")
+       (authority (../ecosystem/docs/ORACLE-RELEASE-DEPLOYMENT.md scripts/start-local-oracle-release.sh scripts/stop-local-oracle-release.sh))
+       (how-to (start-local-release-oracle probe-contract compare-utc-and-timezone stop-local-release-oracle))
+       (verify (loopback-listener release-executable contract-version pid-metadata timezone-observation)))
+     (reference
        (topic runtime-selection)
        (summary "Select the wakeup transport from the registered agent runtime; durable inbox remains the shared fallback")
        (authority (../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/scripts/agent-send ../ecosystem/.agents/sessions.json))
@@ -156,6 +162,13 @@
        (invoke "/home/agents/GitHub/my-lisp/target/release/my-lisp --oracle-check <file|->")
        (risk read-only)
        (verify (exit-0-valid exit-2-structured-error rerun-after-edit)))
+     (tool
+       (name oracle-local-release)
+       (summary "Запустити локальний release Oracle · Start the local release Oracle")
+       (path "scripts/start-local-oracle-release.sh")
+       (invoke "bash /home/agents/GitHub/my-lisp/scripts/start-local-oracle-release.sh")
+       (risk local-service)
+       (verify (loopback-listener release-executable contract-version probe pid-metadata)))
      (tool
        (name guard-reference)
        (summary "Зберегти нову відповідь як pending-review candidate · Preserve a new answer as a review candidate")
