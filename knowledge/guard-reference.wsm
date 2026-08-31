@@ -59,6 +59,12 @@
        (how-to (claim-task broadcast-claim do-work commit push-find-ci-run-wait-for-completion-read-failure-logs complete-task broadcast-completion-read-bus))
        (verify (task-state claim-event commit-sha pushed-confirmed matching-ci-run final-ci-status completion-event)))
      (reference
+       (topic synchronized-commit-window)
+       (summary "Freeze commit/push activity before synchronization, complete the sync, record drift, then reopen the window")
+       (authority (lib/guard.wsm ../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/plans/ECOSYSTEM-GUARD-ORACLE-ROADMAP.md))
+       (how-to (announce-freeze stop-commit-and-push synchronize inspect-build-logs-record-drift reopen-commits))
+       (verify (freeze-observed sync-complete drift-record commit-window-reopened)))
+     (reference
        (topic working-tree-hygiene)
        (summary "Explain every uncommitted change before deciding whether to include, preserve, or escalate it")
        (authority (../ecosystem/AGENTS.md ../ecosystem/docs/AGENT-RESOURCE-POLICY.md))

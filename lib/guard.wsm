@@ -105,6 +105,49 @@
          (quote reconcile-observation-with-contract)
          evidence)))))
 
+; Synchronization is a guarded transaction: first establish a commit freeze,
+; then perform synchronization, then record observed drift before reopening
+; the window. This is policy guidance, not a hidden Git lock.
+; Синхронізація — guarded transaction: спершу freeze комітів, потім sync,
+; потім запис observed drift і лише після цього відкриття вікна. Це policy,
+; а не прихований Git lock.
+(def guard-sync-window
+  (lambda (commit-state sync-state drift-state evidence)
+    (cond
+      ((not (eq commit-state (quote frozen)))
+       (make-guard-finding
+         (quote reject) (quote confirmed) (quote ecosystem-sync)
+         commit-state (quote commits-frozen-before-sync)
+         (list (quote expected) (quote frozen) (quote observed) commit-state)
+         (quote concurrent-commits-can-create-unrecorded-drift)
+         (quote freeze-commits-before-synchronization)
+         evidence))
+      ((not (eq sync-state (quote completed)))
+       (make-guard-finding
+         (quote warn) (quote unresolved) (quote ecosystem-sync)
+         sync-state (quote synchronization-completed)
+         (list (quote expected) (quote completed) (quote observed) sync-state)
+         (quote drift-cannot-yet-be-classified)
+         (quote complete-sync-and-preserve-logs)
+         evidence))
+      ((not (eq drift-state (quote recorded)))
+       (make-guard-finding
+         (quote warn) (quote unresolved) (quote ecosystem-sync)
+         drift-state (quote drift-recorded)
+         (list (quote expected) (quote recorded) (quote observed) drift-state)
+         (quote synchronization-result-has-no-drift-record)
+         (quote record-drift-before-unfreezing-commits)
+         evidence))
+      (t
+       (make-guard-finding
+         (quote allow) (quote confirmed) (quote ecosystem-sync)
+         (list commit-state sync-state drift-state)
+         (quote freeze-sync-record-unfreeze)
+         (quote ())
+         (quote synchronization-boundary-observed)
+         (quote reopen-commit-window)
+         evidence)))))
+
 ; Reference records are ordinary data. The evolving ecosystem directory lives
 ; in knowledge/guard-reference.wsm; these accessors remain generic.
 ; Довідкові записи — звичайні дані. Змінний каталог екосистеми лежить у

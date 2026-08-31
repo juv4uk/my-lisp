@@ -30,6 +30,20 @@ fn guard_keeps_decision_and_evidence_status_separate() {
 }
 
 #[test]
+fn guard_requires_freeze_sync_drift_record_before_reopening_commits() {
+    let blocked = eval_guard(
+        r#"(guard-sync-window (quote open) (quote completed) (quote recorded)
+             (quote (git sync)))"#,
+    );
+    assert!(blocked.contains("freeze-commits-before-synchronization"));
+    let ready = eval_guard(
+        r#"(guard-sync-window (quote frozen) (quote completed) (quote recorded)
+             (quote (git sync drift-log)))"#,
+    );
+    assert!(ready.contains("reopen-commit-window"));
+}
+
+#[test]
 fn missing_evidence_is_unknown_not_reject() {
     let value = eval_guard(
         r#"(guard-unknown (quote swarm/peer) (quote peer-journal-unreadable) (quote inspect-peer))"#,
