@@ -1,0 +1,71 @@
+//! Emit the canonical two-record WSM FS F6 witness.
+//!
+//! This binary deliberately bootstraps libraries through the same sequential
+//! `eval_program` boundary used by the canonical Rust fixtures. It prints
+//! only data-only root/object envelopes, one per line.
+
+use my_lisp::{eval_program, Environment, Session, Value};
+
+const MAX_RECORD_BYTES: usize = 64 * 1024;
+
+fn main() {
+    let mut session = Session {
+        environment: Environment::root(),
+    };
+    for source in [
+        include_str!("../../../../lib/core.my"),
+        include_str!("../../../../lib/unify.my"),
+        include_str!("../../../../lib/reason.my"),
+        include_str!("../../../../lib/forward.my"),
+        include_str!("../../../../lib/knowledge.my"),
+        include_str!("../../../../lib/persistent-map.my"),
+        include_str!("../../../../lib/world.my"),
+        include_str!("../../../../lib/content-store.my"),
+        include_str!("../../../../lib/lisp-fs.my"),
+    ] {
+        if let Err(error) = eval_program(source, &mut session) {
+            eprintln!("wsm-fs-record-producer: library bootstrap failed: {error}");
+            std::process::exit(1);
+        }
+    }
+
+    let program = r#"
+      (let* ((value (quote (lambda (x) x)))
+             (written (fs-write (fs-empty) "code" value))
+             (fs (car written)))
+        (list (fs-serialize-root fs) (fs-serialize-object value)))
+    "#;
+    let result = match eval_program(program, &mut session) {
+        Ok(result) => result,
+        Err(error) => {
+            eprintln!("wsm-fs-record-producer: witness failed: {error}");
+            std::process::exit(1);
+        }
+    };
+    let mut records = Vec::new();
+    let mut value = result.value;
+    loop {
+        match &value {
+            Value::Pair(head, tail) => {
+                let Value::String(record) = &**head else {
+                    eprintln!("wsm-fs-record-producer: record is not a string");
+                    std::process::exit(1);
+                };
+                records.push(record.to_string());
+                value = (**tail).clone();
+            }
+            Value::Nil => break,
+            _ => {
+                eprintln!("wsm-fs-record-producer: result is not a proper list");
+                std::process::exit(1);
+            }
+        }
+    }
+    if records.len() != 2 || records.iter().any(|record| record.len() > MAX_RECORD_BYTES) {
+        eprintln!("wsm-fs-record-producer: invalid bounded record stream");
+        std::process::exit(1);
+    }
+    for record in records {
+        println!("{record}");
+    }
+}
