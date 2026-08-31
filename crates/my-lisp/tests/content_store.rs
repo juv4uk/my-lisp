@@ -10,10 +10,54 @@ fn eval_store(source: &str) -> String {
     eval_program(include_str!("../../../lib/persistent-map.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/world.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/content-store.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/lisp-fs.my"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap()
         .value
         .to_string()
+}
+
+#[test]
+fn lisp_fs_keeps_old_snapshot_and_reads_new_bindings() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let ((empty (fs-empty)))
+              (let ((first-write (fs-write empty "notes/today" (quote (hello world)))))
+                (let ((old (car first-write))
+                      (second-write (fs-write (car first-write)
+                                              "notes/tomorrow"
+                                              (quote (hello again)))))
+                  (let ((new (car second-write)))
+                    (list
+                      (fs-read old "notes/today")
+                      (fs-read old "notes/tomorrow")
+                      (fs-read new "notes/today")
+                      (fs-read new "notes/tomorrow")
+                      (fs-revision old)
+                      (fs-revision new))))))
+            "#
+        ),
+        "((found (hello world) \"(hello world)\") (not-found \"notes/tomorrow\") (found (hello world) \"(hello world)\") (found (hello again) \"(hello again)\") 1 2)"
+    );
+}
+
+#[test]
+fn lisp_fs_deduplicates_equal_objects_but_keeps_explicit_missing_status() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let ((empty (fs-empty)))
+              (let ((a (fs-write empty "a" (quote ()))))
+                (let ((b (fs-write (car a) "b" (quote ()))))
+                  (list
+                    (content-store-size (fs-objects (car b)))
+                    (fs-contains? (car b) "a")
+                    (fs-read (car b) "missing")))))
+            "#
+        ),
+        "(1 t (not-found \"missing\"))"
+    );
 }
 
 #[test]

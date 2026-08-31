@@ -1,0 +1,72 @@
+; Experimental immutable filesystem-shaped store for WSM.
+; This is a model of file objects and roots, not a disk driver or POSIX FS.
+;
+; Експериментальне незмінне сховище у формі файлової системи для WSM.
+; Це модель об'єктів і коренів, а не драйвер диска та не POSIX-файлова система.
+;
+; A filesystem snapshot is (fs objects bindings revision). Objects are kept
+; in the existing content-addressed store; bindings map names to addresses.
+; Every write returns a new snapshot and its address. The previous snapshot
+; is never mutated. Missing names return (not-found name), never bare nil.
+;
+; Snapshot: (fs objects bindings revision). Об'єкти живуть у наявному
+; content-store; bindings зіставляє імена з адресами. Кожен запис повертає
+; новий snapshot і адресу, попередній не змінюється. Відсутнє ім'я дає
+; (not-found name), а не голий nil.
+
+(def fs-objects car)
+(def fs-bindings second)
+(def fs-revision third)
+
+(def fs-empty
+  (lambda ()
+    (list (empty-content-store) map-empty 0)))
+
+(def fs-root-address
+  (lambda (fs)
+    (knowledge-content-address
+      (list (quote wsm-fs-root)
+            (fs-bindings fs)))))
+
+; fs-write returns (new-fs content-address). The caller chooses whether to
+; retain the old root, enabling immutable branching and rollback.
+; fs-write повертає (new-fs content-address); викликач сам вирішує, чи
+; зберігати старий корінь, тому branching і rollback лишаються можливими.
+(def fs-write
+  (lambda (fs name value)
+    (let ((address (knowledge-content-address value)))
+      (list
+        (list
+          (content-store-put (fs-objects fs) value)
+          (map-insert name address (fs-bindings fs))
+          (+ 1 (fs-revision fs)))
+        address))))
+
+; fs-read returns (found value address) or (not-found name).
+; fs-read повертає (found value address) або (not-found name).
+(def fs-read
+  (lambda (fs name)
+    (let ((binding (map-get name (fs-bindings fs))))
+      (cond
+        ((atom binding) (list (quote not-found) name))
+        (t
+          (let ((address (car binding)))
+            (cond
+              ((not (content-store-contains? (fs-objects fs) address))
+               (list (quote not-found) name))
+              (t
+                ; map-get is a maybe-list, so unwrap exactly once. This
+                ; preserves a legitimately stored nil value.
+                ; map-get повертає maybe-список, тому знімаємо рівно одну
+                ; оболонку й не втрачаємо законно збережений nil.
+                (list (quote found)
+                      (car (content-store-get (fs-objects fs) address))
+                      address)))))))))
+
+(def fs-list
+  (lambda (fs)
+    (map->list (fs-bindings fs))))
+
+(def fs-contains?
+  (lambda (fs name)
+    (not (atom (map-get name (fs-bindings fs))))))
