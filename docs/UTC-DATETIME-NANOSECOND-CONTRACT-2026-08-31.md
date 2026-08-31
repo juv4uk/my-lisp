@@ -32,7 +32,8 @@ integers. The calendar is proleptic Gregorian UTC; `nanosecond` is in
 
 ## Boundaries
 
-- Use `mono-ns` for elapsed durations and benchmarks.
+- Use `mono-ns` for elapsed durations and benchmarks; its nanosecond integer
+  representation is exact, but hardware clock resolution may be coarser.
 - Use `utc-now` for timestamping observations or operational receipts.
 - Do not use wall-clock time as content identity, logical FS revision, or
   distributed ordering.

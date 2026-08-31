@@ -270,7 +270,7 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
         ),
         "mono-ns" => (
             "(mono-ns)",
-            "Return exact monotonic nanoseconds",
+            "Return a monotonic nanosecond counter as an exact integer",
             Arity::Exact(0),
         ),
         "utc-now" => (

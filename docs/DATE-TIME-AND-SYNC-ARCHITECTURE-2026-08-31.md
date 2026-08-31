@@ -15,7 +15,7 @@ policy. It does not claim an OS clock setter or a complete timezone database.
 | Interface | Meaning | Use it for |
 |---|---|---|
 | `(mono-ms)` | monotonic milliseconds since process start | coarse durations |
-| `(mono-ns)` | exact monotonic nanoseconds since process start | precise durations/timeouts |
+| `(mono-ns)` | monotonic nanosecond counter with exact integer representation | precise duration measurements (subject to clock resolution) |
 | `(utc-now)` | `(utc year month day hour minute second nanosecond)` | UTC observation receipts |
 | `(internet-time-sync host timeout-ms)` | bounded NTP observation | compare with an external clock |
 | `(timezone-detect)` | explicit `TZ` or `/etc/timezone` observation | host timezone discovery |
@@ -24,7 +24,7 @@ policy. It does not claim an OS clock setter or a complete timezone database.
 | Інтерфейс | Значення | Для чого |
 |---|---|---|
 | `(mono-ms)` | монотонні мілісекунди від старту процесу | грубі тривалості |
-| `(mono-ns)` | точні монотонні наносекунди від старту процесу | точні тривалості/таймаути |
+| `(mono-ns)` | монотонний наносекундний лічильник із точним integer-представленням | вимірювання тривалості (з реальною роздільністю clock) |
 | `(utc-now)` | `(utc рік місяць день година хвилина секунда наносекунда)` | UTC-мітки спостережень |
 | `(internet-time-sync host timeout-ms)` | обмежене NTP-спостереження | порівняння із зовнішнім годинником |
 | `(timezone-detect)` | спостереження явного `TZ` або `/etc/timezone` | визначення timezone хоста |
