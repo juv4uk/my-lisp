@@ -30,7 +30,9 @@ def utc_ns(response: str) -> int:
 
 
 def sample(name: str, host: str, port: int, timeout: float) -> dict[str, int | str]:
-    request = b"(request (id 1) (op oracle-eval) (source \"(utc-now)\"))\n"
+    # `eval` is the stable wire operation supported by the deployed Oracle;
+    # `oracle-eval` is a newer agent-facing wrapper and is not universal.
+    request = b"(request (id 1) (op eval) (source \"(utc-now)\"))\n"
     started = time.monotonic_ns()
     wall_before = time.time_ns()
     with socket.create_connection((host, port), timeout=timeout) as sock:
