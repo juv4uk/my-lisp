@@ -258,6 +258,26 @@ fn lisp_fs_recovery_rejects_unknown_commit_stage() {
 }
 
 #[test]
+fn lisp_fs_recovery_keeps_old_root_when_candidate_root_is_corrupt() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let* ((old (fs-root-package (fs-empty)))
+                   (corrupt
+                     (list
+                       (cons (quote format) (quote wsm-fs-root))
+                       (cons (quote version) (quote (0 1)))
+                       (cons (quote revision) 2)
+                       (cons (quote bindings) (quote ()))
+                       (cons (quote objects) (quote broken)))))
+              (fs-recover-root-package old corrupt (quote root-pointer)))
+            "#
+        ),
+        "(recovered ((format . wsm-fs-root) (version 0 1) (revision . 0) (bindings) (objects)) rejected-candidate)"
+    );
+}
+
+#[test]
 fn lisp_fs_fault_injection_keeps_old_root_until_pointer_is_published() {
     // Bounded temporary-medium witness for F4: only the root-pointer stage
     // may replace the visible root file. Objects/journal writes alone leave

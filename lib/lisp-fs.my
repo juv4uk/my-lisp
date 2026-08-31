@@ -362,3 +362,15 @@
       ((eq completed-stage (quote root-pointer))
        (list (quote recovered) new-fs))
       (t (list (quote recovered) old-fs)))))
+
+(def fs-recover-root-package
+  (lambda (old-package candidate-package completed-stage)
+    (cond
+      ((not (eq completed-stage (quote root-pointer)))
+       (list (quote recovered) old-package))
+      (t
+        (let ((decision (fs-root-package-decision candidate-package)))
+          (cond
+            ((eq (car decision) (quote accepted))
+             (list (quote recovered) candidate-package))
+            (t (list (quote recovered) old-package (quote rejected-candidate)))))))))
