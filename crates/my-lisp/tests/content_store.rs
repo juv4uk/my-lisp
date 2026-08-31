@@ -159,6 +159,41 @@ fn lisp_fs_root_envelope_round_trips_bindings_revision_and_addresses() {
 }
 
 #[test]
+fn lisp_fs_reconstructs_immutable_root_from_valid_envelopes() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let* ((value (quote (hello world)))
+                   (written (fs-write (fs-empty) "notes/today" value))
+                   (fs (car written))
+                   (root (fs-root-package fs))
+                   (object (fs-object-package value))
+                   (rebuilt (fs-reconstruct-root root (list object))))
+              (list
+                (car rebuilt)
+                (fs-read (second rebuilt) "notes/today")
+                (fs-revision (second rebuilt))))
+            "#
+        ),
+        "(accepted (found (hello world) \"(hello world)\") 1)"
+    );
+}
+
+#[test]
+fn lisp_fs_reconstruction_rejects_missing_referenced_object() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let* ((written (fs-write (fs-empty) "notes/today" (quote value)))
+                   (root (fs-root-package (car written))))
+              (fs-reconstruct-root root (quote ())))
+            "#
+        ),
+        "(rejected missing-object)"
+    );
+}
+
+#[test]
 fn stored_knowledge_is_retrievable_by_its_canonical_address() {
     assert_eq!(
         eval_store(

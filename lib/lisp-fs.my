@@ -149,3 +149,70 @@
 (def fs-deserialize-root
   (lambda (text)
     (fs-root-package-decision (read text))))
+
+; Rebuild an in-memory snapshot from data-only envelopes. No envelope is
+; evaluated. Missing referenced objects are rejected before a snapshot is
+; returned, so reconstruction is atomic from the caller's perspective.
+; Відновлює snapshot із data-only оболонок. Жодна оболонка не виконується.
+; Відсутні object-и відхиляються до повернення snapshot, тому реконструкція
+; атомарна з погляду викликачa.
+(def fs-build-object-store
+  (lambda (packages store)
+    (cond
+      ((atom packages) (list (quote accepted) store))
+      (t
+        (let ((decision (fs-object-package-decision (car packages))))
+          (cond
+            ((not (eq (car decision) (quote accepted))) decision)
+            (t (fs-build-object-store
+                 (cdr packages)
+                 (content-store-put store (second decision))))))))))
+
+(def fs-all-addresses-present?
+  (lambda (addresses store)
+    (cond
+      ((atom addresses) t)
+      ((not (content-store-contains? store (car addresses))) (quote ()))
+      (t (fs-all-addresses-present? (cdr addresses) store)))))
+
+(def fs-binding-addresses-present?
+  (lambda (entries store)
+    (cond
+      ((atom entries) t)
+      ((not (content-store-contains? store (cdr (car entries)))) (quote ()))
+      (t (fs-binding-addresses-present? (cdr entries) store)))))
+
+(def fs-reconstruct-root
+  (lambda (root-package object-packages)
+    (let ((root-decision (fs-root-package-decision root-package)))
+      (cond
+        ((not (eq (car root-decision) (quote accepted))) root-decision)
+        (t
+          (let ((objects-decision
+                  (fs-build-object-store object-packages (empty-content-store))))
+            (cond
+              ((not (eq (car objects-decision) (quote accepted))) objects-decision)
+              ((not (fs-all-addresses-present?
+                      (fs-package-field (quote objects) root-package)
+                      (second objects-decision)))
+               (list (quote rejected) (quote missing-object)))
+              ((not (fs-binding-addresses-present?
+                      (fs-package-field (quote bindings) root-package)
+                      (second objects-decision)))
+               (list (quote rejected) (quote missing-object)))
+              (t
+                (list
+                  (quote accepted)
+                  (list
+                    (second objects-decision)
+                    (let ((bindings (fs-package-field (quote bindings) root-package)))
+                      (fs-bindings-from-list bindings map-empty))
+                    (fs-package-field (quote revision) root-package)))))))))))
+
+(def fs-bindings-from-list
+  (lambda (entries bindings)
+    (cond
+      ((atom entries) bindings)
+      (t (fs-bindings-from-list
+           (cdr entries)
+           (map-insert (car (car entries)) (cdr (car entries)) bindings))))))
