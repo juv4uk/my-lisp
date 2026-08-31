@@ -233,6 +233,26 @@ fn lisp_fs_journal_replay_matches_direct_construction() {
 }
 
 #[test]
+fn lisp_fs_journal_serialization_round_trips_into_the_same_snapshot() {
+    assert_eq!(
+        eval_store(
+            r#"
+            (let* ((journal
+                     (list
+                       (fs-journal-write-event "notes/today" (quote (hello world)))))
+                   (encoded (fs-serialize-journal journal))
+                   (replayed (fs-deserialize-journal encoded)))
+              (list
+                encoded
+                (car replayed)
+                (fs-read (second replayed) "notes/today")))
+            "#
+        ),
+        "(\"(((format . wsm-fs-event) (version 0 1) (op . write) (name . \\\"notes/today\\\") (value hello world)))\" accepted (found (hello world) \"(hello world)\"))"
+    );
+}
+
+#[test]
 fn lisp_fs_journal_replay_rejects_unknown_and_truncated_events() {
     assert_eq!(
         eval_store(
