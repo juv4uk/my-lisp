@@ -86,8 +86,8 @@
        (topic oracle-release-deployment)
        (summary "Release-only remote semantic Oracle deployment, service verification, and post-push CI boundary")
        (authority (../ecosystem/docs/ORACLE-RELEASE-DEPLOYMENT.md scripts/deploy.sh docs/guard-oracle-node-plan.md))
-       (how-to (wait-for-green-main-ci run-release-deploy-helper verify-release-exec-path probe-backend-and-haproxy-record-implementation-revision))
-       (verify (green-ci-run release-binary service-active implementation-revision contract-version oracle-result-1)))
+       (how-to (push-main wait-for-ci-completion inspect-build-logs-on-failure run-release-deploy-helper verify-release-exec-path probe-backend-and-haproxy-record-implementation-revision))
+       (verify (ci-run-id ci-conclusion build-log-reviewed green-ci-run release-binary service-active implementation-revision contract-version oracle-result-1)))
      (reference
        (topic oracle-local-runtime)
        (summary "Local loopback release Oracle and comparison with the remote Oracle")
@@ -169,6 +169,13 @@
        (invoke "bash /home/agents/GitHub/my-lisp/scripts/start-local-oracle-release.sh")
        (risk local-service)
        (verify (loopback-listener release-executable contract-version probe pid-metadata)))
+     (tool
+       (name oracle-local-release-stop)
+       (summary "Зупинити локальний release Oracle · Stop the local release Oracle")
+       (path "scripts/stop-local-oracle-release.sh")
+       (invoke "bash /home/agents/GitHub/my-lisp/scripts/stop-local-oracle-release.sh")
+       (risk local-service)
+       (verify (pid-validated process-stopped-pidfile-removed)))
      (tool
        (name guard-reference)
        (summary "Зберегти нову відповідь як pending-review candidate · Preserve a new answer as a review candidate")
