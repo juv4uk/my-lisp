@@ -71,6 +71,24 @@
        (how-to (ask-agent-for-local-facts ask-owner-for-authority-intent-license research-web-for-current-external-facts))
        (verify (route-recorded source-or-question-preserved no-silent-reject)))
      (reference
+       (topic oracle-usage)
+       (summary "Choose the narrowest Oracle operation: parse-only check, evaluation, diagnosis, or contract inspection")
+       (authority (crates/my-lisp-cli/src/main.rs crates/my-lisp-cli/src/swarm.rs docs/guard-oracle-node-plan.md))
+       (how-to (oracle-check-for-syntax oracle-eval-for-semantics diagnose-for-errors contract-version-for-revision))
+       (verify (operation-recorded parse-vs-eval-distinguished structured-result)))
+     (reference
+       (topic runtime-selection)
+       (summary "Select the wakeup transport from the registered agent runtime; durable inbox remains the shared fallback")
+       (authority (../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/scripts/agent-send ../ecosystem/.agents/sessions.json))
+       (how-to (inspect-agent-send-list register-live-runtime use-runtime-adapter read-inbox-on-wakeup-failure))
+       (verify (runtime-matches-process session-id-valid inbox-admitted wakeup-result-recorded)))
+     (reference
+       (topic resource-preflight)
+       (summary "Check load, memory, disk, and GPU before expensive or long-running work and keep commands bounded")
+       (authority (../ecosystem/docs/AGENT-RESOURCE-POLICY.md ../ecosystem/scripts/preflight.sh))
+       (how-to (run-preflight choose-bounded-command-set-timeout-stop-on-overload))
+       (verify (preflight-result timeout-set workload-class-recorded no-unbounded-job)))
+     (reference
        (topic evidence)
        (summary "Record claims at the strength actually earned by tests and artifacts")
        (authority (evidence/README.md docs/agent-doctrine.md))
