@@ -61,6 +61,14 @@ fn lisp_fs_deduplicates_equal_objects_but_keeps_explicit_missing_status() {
 }
 
 #[test]
+fn lisp_fs_conformance_fixture_is_deterministic() {
+    assert_eq!(
+        eval_store(include_str!("../../../tests/fixtures/lisp-fs-conformance.my")),
+        "((found (hello world) \"(hello world)\") (not-found \"notes/empty\") (found () \"()\") (not-found \"missing\") 2 1 2)"
+    );
+}
+
+#[test]
 fn stored_knowledge_is_retrievable_by_its_canonical_address() {
     assert_eq!(
         eval_store(
