@@ -813,6 +813,64 @@ fn conformance_tests_from_my() {
 }
 
 #[test]
+fn conformance_fixture_exprs_parse_as_single_form() {
+    let forms = parse(include_str!("../../../tests/fixtures/conformance.my"))
+        .expect("conformance.my should parse as valid my-lisp source");
+
+    for form in &forms {
+        let ExprKind::List(entries) = &form.kind else {
+            panic!("each top-level form in conformance.my should be an alist: {form:?}");
+        };
+        let expr = alist_str(entries, "expr").expect("fixture needs an \"expr\" string");
+        let expected_error = alist_str(entries, "error");
+
+        let parsed = parse(expr);
+        match (parsed, expected_error) {
+            (Ok(exprs), None) => {
+                assert!(
+                    !exprs.is_empty(),
+                    "fixture expr with expected value must parse as at least one form: {expr}"
+                );
+            }
+            (Ok(exprs), Some("NumericOverflow")) => {
+                assert!(
+                    !exprs.is_empty(),
+                    "fixture expr expecting NumericOverflow must parse as at least one form: {expr}"
+                );
+            }
+            (Err(e), Some("NumericOverflow")) => {
+                assert_eq!(
+                    e.kind,
+                    ErrorKind::NumericOverflow,
+                    "fixture expr expecting NumericOverflow must fail with NumericOverflow, got {:?}: {expr}",
+                    e.kind
+                );
+            }
+            (Err(e), Some(expected)) => {
+                panic!(
+                    "fixture expr expecting error {expected} failed to parse with {:?}: {expr}",
+                    e.kind
+                );
+            }
+            (Ok(exprs), Some(expected)) => {
+                assert_eq!(
+                    exprs.len(),
+                    1,
+                    "fixture expr expecting error {expected} must parse as exactly one form, got {}: {expr}",
+                    exprs.len()
+                );
+            }
+            (Err(e), None) => {
+                panic!(
+                    "fixture expr with expected value failed to parse with {:?}: {expr}",
+                    e.kind
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn macro_conformance_tests_from_my() {
     let forms = parse(include_str!("../../../tests/fixtures/macro-conformance.my"))
         .expect("macro-conformance.my should parse as valid my-lisp source");
