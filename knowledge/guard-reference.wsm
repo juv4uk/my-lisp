@@ -396,7 +396,7 @@
          (verify (vault-accessible tags-compliant no-dual-authority))
          (lifecycle current-contract)
          (provenance ecosystem commit d679789 inbox:ecosystem-vault-coordination)
-         (unknown-route ask-agent))))))
+         (unknown-route ask-agent)))))
 
 ; Curated frequently-used tools. A record is navigation, not permission to run
 ; the command. `risk` and `verify` tell an agent what must be checked afterward.

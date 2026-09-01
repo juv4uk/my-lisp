@@ -6,6 +6,7 @@
 //! - Empty authority/verify
 //! - Unreviewed inbox entries (pending-review)
 
+use my_lisp::parse;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -59,6 +60,14 @@ impl ValidationResult {
 fn parse_guard_reference(file_path: &Path) -> Result<Vec<TopicEntry>, String> {
     let content = fs::read_to_string(file_path)
         .map_err(|e| format!("cannot read {}: {}", file_path.display(), e))?;
+
+    // Parser-parity gate: the canonical WSM reader (the same `parse` used to
+    // load this file in --oracle-help) must accept the file before the
+    // line-based field extractor below is trusted. This closes the gap where a
+    // structurally invalid file (e.g. an unbalanced paren) would otherwise
+    // still be reported as "Schema validation PASSED".
+    parse(&content)
+        .map_err(|error| format!("cannot parse {}: {}", file_path.display(), error.render(&content)))?;
 
     // The catalogue is intentionally formatted one field per line. Parsing
     // those records line-by-line keeps this quality gate independent of the
@@ -308,7 +317,7 @@ mod tests {
        (verify (check1 check2))
        (lifecycle current-contract)
        (provenance commit abc123)
-       (unknown-route ask-agent))))"#
+       (unknown-route ask-agent)))))"#
             .into()
     }
 
@@ -387,6 +396,25 @@ mod tests {
             .errors
             .iter()
             .any(|e| e.contains("unknown-route must be")));
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn canonical_parse_gate_rejects_unbalanced_paren() {
+        let content = format!("{}\n)", sample_wsm());
+        let path = temp_file(&content, "unbalanced");
+        let err = parse_guard_reference(&path).unwrap_err();
+        assert!(err.contains("cannot parse"), "unexpected error: {}", err);
+        assert!(err.contains("unexpected closing parenthesis"), "unexpected error: {}", err);
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn canonical_parse_gate_accepts_balanced_directory() {
+        let path = temp_file(&sample_wsm(), "balanced");
+        let entries = parse_guard_reference(&path).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].topic, "test-topic");
         fs::remove_file(path).unwrap();
     }
 }
