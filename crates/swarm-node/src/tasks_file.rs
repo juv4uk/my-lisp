@@ -52,6 +52,22 @@ fn atom_text(sexp: &Sexp) -> Option<String> {
     }
 }
 
+/// A task's `done` value is `t` in two shapes actually used across this
+/// ecosystem's `tasks.my` files: the bare `(done . t)`, and the
+/// evidence-carrying `(done . (t . "who/when/what happened"))` -- the
+/// dotted pair's own car is still the atom `t`, its cdr is just a record
+/// of proof rather than nothing. Treat both as done; only `(done . ())`
+/// (or the field's absence) is not-done.
+fn is_done_value(sexp: &Sexp) -> bool {
+    if atom_text(sexp).as_deref() == Some("t") {
+        return true;
+    }
+    let Sexp::List(items) = sexp else {
+        return false;
+    };
+    matches!(items.as_slice(), [Sexp::Atom(t), Sexp::Atom(dot), _] if t == "t" && dot == ".")
+}
+
 /// Parses a whole `tasks.my` document: `((kind . tasks-my) (tasks . ((ID .
 /// ((priority . N) (capabilities . (a b)) (depends-on . (x y)) (done . t)
 /// (description . "..."))) ...)))`. Returns `Err` with a human-readable
@@ -100,8 +116,7 @@ pub fn parse_tasks_file(text: &str) -> Result<Vec<ParsedTask>, String> {
             .map(atoms_of)
             .unwrap_or_default();
         let done = dotted_get(fields, "done")
-            .and_then(atom_text)
-            .map(|s| s == "t")
+            .map(is_done_value)
             .unwrap_or(false);
         let description = dotted_get(fields, "description").and_then(atom_text);
         let origin = dotted_get(fields, "origin").and_then(atom_text);
@@ -156,5 +171,26 @@ mod tests {
         let tasks = parse_tasks_file(text).unwrap();
         assert_eq!(tasks[0].origin.as_deref(), Some("cml"));
         assert_eq!(tasks[1].origin, None);
+    }
+
+    #[test]
+    fn recognizes_done_with_evidence_not_just_bare_t() {
+        // (done . (t . "who/when/what happened")) is the predominant shape
+        // real completed tasks use across this ecosystem's tasks.my files
+        // (5 of them in my-lisp's own file alone as of 2026-09-01) -- only
+        // the older bare (done . t) had ever been tested here.
+        let text = r#"
+((kind . tasks-my)
+ (tasks .
+  (("WITH-EVIDENCE" . ((priority . 1) (done . (t . "nidana 2026-09-01: shipped, see commit db6f666"))))
+   ("BARE-DONE" . ((priority . 1) (done . t)))
+   ("NOT-DONE" . ((priority . 1) (done . ())))
+   ("NO-DONE-FIELD" . ((priority . 1))))))
+"#;
+        let tasks = parse_tasks_file(text).unwrap();
+        assert!(tasks[0].done, "evidence-carrying done . (t . ...) must count as done");
+        assert!(tasks[1].done);
+        assert!(!tasks[2].done);
+        assert!(!tasks[3].done);
     }
 }
