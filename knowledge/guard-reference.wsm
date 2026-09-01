@@ -562,3 +562,43 @@
        (cons
          (guard-reference-field (quote topic) (car references))
          (guard-topics (cdr references)))))))
+
+; One canonical entry point for a cold agent: "ask Guard" without needing
+; to know whether the answer lives in the tool directory or the reference
+; directory. Never silently prefers one over the other -- a name present
+; in both comes back tagged `ambiguous` with both full entries, so the
+; caller decides, instead of Guard guessing for them.
+; Єдина канонічна точка входу для холодного агента: "спитати Guard", не
+; знаючи наперед, чи відповідь лежить у директорії інструментів, чи в
+; довідковій директорії. Ніколи мовчки не надає перевагу одному з них --
+; ім'я, знайдене в обох, повертається позначеним `ambiguous` з обома
+; повними записами, і вибір лишається за викликачем.
+(def guard-ask
+  (lambda (name)
+    (let* ((tool (guard-script-find name *guard-script-directory*))
+           (reference (guard-reference-find name *guard-reference-directory*)))
+      (cond
+        ((atom tool)
+         (cond
+           ((atom reference)
+            (list (quote not-found)
+                  (list (quote query) name)
+                  (list (quote decision) (quote unknown))
+                  (list (quote unknown-routes) (guard-unknown-routes))))
+           (t
+            (list (quote result)
+                  (list (quote type) (quote reference-topic))
+                  (list (quote source) (quote knowledge/guard-reference.wsm))
+                  (list (quote entry) reference)))))
+        (t
+         (cond
+           ((atom reference)
+            (list (quote result)
+                  (list (quote type) (quote tool))
+                  (list (quote source) (quote guard-script-directory))
+                  (list (quote entry) tool)))
+           (t
+            (list (quote ambiguous)
+                  (list (quote query) name)
+                  (list (quote tool) tool)
+                  (list (quote reference-topic) reference)))))))))

@@ -141,6 +141,59 @@ fn oracle_help_explains_one_tool_with_invocation_and_verification() {
         stdout.contains("(verify (admitted inbox-id wakeup-result))"),
         "{stdout}"
     );
+    assert!(stdout.contains("(type tool)"), "{stdout}");
+}
+
+#[test]
+fn oracle_help_explains_a_reference_topic_that_is_not_a_tool() {
+    let output = my_lisp()
+        .args(["--oracle-help", "lsp-server"])
+        .output()
+        .expect("binary should run");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("(type reference-topic)"), "{stdout}");
+    assert!(
+        stdout.contains("(source knowledge/guard-reference.wsm)"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("docs/lsp-m0.md"), "{stdout}");
+}
+
+#[test]
+fn oracle_help_flags_a_name_present_in_both_directories_as_ambiguous() {
+    // resource-preflight is a real, currently-existing name collision: both
+    // a curated tool (guard-script-directory) and a reference topic
+    // (guard-reference-directory) use it. This proves guard-ask never
+    // silently prefers one -- the caller decides.
+    let output = my_lisp()
+        .args(["--oracle-help", "resource-preflight"])
+        .output()
+        .expect("binary should run");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.starts_with("(ambiguous"), "{stdout}");
+    assert!(
+        stdout.contains("(tool (tool (name resource-preflight)"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("(reference-topic (reference (topic resource-preflight)"),
+        "{stdout}"
+    );
+}
+
+#[test]
+fn oracle_help_reports_not_found_when_absent_from_both_directories() {
+    let output = my_lisp()
+        .args(["--oracle-help", "definitely-not-a-real-guard-name"])
+        .output()
+        .expect("binary should run");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.starts_with("(not-found"), "{stdout}");
+    assert!(stdout.contains("(decision unknown)"), "{stdout}");
+    assert!(stdout.contains("unknown-routes"), "{stdout}");
 }
 
 #[test]

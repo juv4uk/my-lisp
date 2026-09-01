@@ -462,7 +462,13 @@ pub(crate) fn oracle_check(source: &str, contract_version: &Value) -> (Value, bo
 /// its reference directory is read fresh from disk on every call, exactly
 /// like the LSP's `guard_knowledge.rs` already does — adding or editing a
 /// topic in `knowledge/guard-reference.wsm` takes effect immediately, no
-/// rebuild. `None` lists the curated frequently-used tool names.
+/// rebuild. `None` lists the curated frequently-used tool names. A named
+/// query goes through `guard-ask`, which searches the tool directory and
+/// the reference-topic directory together and tags the result `type
+/// tool` / `type reference-topic` / `ambiguous` (found in both) / a
+/// generic unknown-routed `not-found` — a cold agent asks one thing and
+/// never needs to know which of the two directories actually held the
+/// answer.
 pub(crate) fn oracle_help(session: &mut Session, topic: Option<&str>) -> Result<Value, String> {
     let reference = std::fs::read_to_string("knowledge/guard-reference.wsm").map_err(|error| {
         format!(
@@ -487,7 +493,7 @@ pub(crate) fn oracle_help(session: &mut Session, topic: Option<&str>) -> Result<
                     .chars()
                     .all(|character| character.is_ascii_alphanumeric() || character == '-') =>
         {
-            format!("(guard-script (quote {topic}))")
+            format!("(guard-ask (quote {topic}))")
         }
         Some(_) => {
             return Err("oracle-help topic must contain only ASCII letters, digits, or '-'".into())
