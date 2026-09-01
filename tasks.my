@@ -465,7 +465,7 @@
     (depends-on . (WSM-GUARD-RUST-FACT-ADAPTER-G2))
     (origin . my-lisp)
     (description . "Expose Guard explanation/guidance/evidence through existing WSM LSP hover and diagnostics without duplicating knowledge in the IDE.")
-    (done . ())
+    (done . (t . "prajna 2026-09-01: G3 done. hover + diagnostics consume live canonical guard files (lib/guard.wsm, knowledge/guard-reference.wsm) via the canonical my_lisp::parse, no Rust copy. commit 3808d0b pushed. 6 unit + 18 e2e PASS; slow live-latency tests #[ignore] (topic-parse ~3.4s release) pass explicitly. clippy clean. Impl checkpoint b484258 recovered by wsl-nidana-1 from interrupted session."))
   ))
   ("WSM-FS-CANONICAL-SERIALIZATION-HARMONIZATION" . (
     (priority . 9.0)
