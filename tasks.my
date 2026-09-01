@@ -526,6 +526,9 @@
   )
   ("YANTRA-EPISTEMIC-POISON-ATTACK" . (
     (priority . 7.5)
+    (created . 2026-09-01)
+    (last-validated . 2026-09-01)
+    (status . active)
     (capabilities . (wsm yantra agent-kernel correctness security testing))
     (origin . ecosystem)
     (context . "From docs/YANTRA-EPISTEMIC-POISON-ATTACK-2026-08-31.md (ecosystem): a read-only probe against lib/yantra.my's claims-execution?, run through the local WSM CLI on an isolated fixture, never against a real command. Status recorded there: BROKEN.")

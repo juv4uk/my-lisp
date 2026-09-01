@@ -405,7 +405,16 @@
          (verify (my-lisp-lsp-analyze-calls-my-lisp-parse-directly publishDiagnostics-on-textDocument/didChange))
          (lifecycle current-contract)
          (provenance my-lisp 2026-09-01: three real, independently-found breaks this exact class -- my-lisp/tasks.my db6f666, wsm-os/tasks.my 09eab6c, cml/tasks.my 5f0574c -- all silently unparseable via the canonical reader for an unknown prior duration, none caught until an explicit ecosystem-wide sync check)
-         (unknown-route ask-agent)))))
+         (unknown-route ask-agent))
+      (reference
+         (topic task-freshness)
+         (summary "A task's priority number does not stay trustworthy forever just because it was true when written. created/last-validated/status are separate fields from priority -- freshness (FRESH/REVIEW/STALE/UNKNOWN) is computed from last-validated, never from created, and never mathematically raises or lowers the stored priority. A stale P0 means 'verify this is still true,' not 'do it first.' No backfill on old tasks -- last-validated fills in the first time an agent actually revalidates that specific task. | Число priority задачі не лишається надійним вічно лише тому, що колись було правильним. created/last-validated/status -- окремі поля від priority; freshness (FRESH/REVIEW/STALE/UNKNOWN) рахується від last-validated, ніколи від created, і ніколи математично не підвищує чи не знижує збережений priority. Застарілий P0 означає 'перевір, чи це ще правда', а не 'роби першим'. Без backfill старих задач -- last-validated заповнюється, коли агент реально ревалідує саме цю задачу.")
+         (authority (../ecosystem/docs/TASK-FRESHNESS-NOT-PRIORITY-DECAY-2026-09-01.md))
+         (how-to (add-created-and-last-validated-to-new-tasks classify-freshness-by-hand-from-last-validated-until-a-primitive-exists never-backfill-old-tasks-in-bulk))
+         (verify (freshness-thresholds-3-and-7-days status-distinct-from-existing-done-field))
+         (lifecycle proposal)
+         (provenance ecosystem 2026-09-01: owner design decision, triggered by this session's tasks.my sync work and the GUARD PASS finding a task whose literal description was already stale)
+         (unknown-route ask-owner)))))
 
 ; Curated frequently-used tools. A record is navigation, not permission to run
 ; the command. `risk` and `verify` tell an agent what must be checked afterward.
