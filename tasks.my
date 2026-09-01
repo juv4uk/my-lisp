@@ -459,6 +459,7 @@
     (context . "done 2026-08-31: corrected the unverified 72b915f prototype. Rust now validates bounded facts and embeds core+guard; WSM policy is reloaded per event; 5 targeted tests and live four-decision run pass; malformed input yields UNKNOWN; strict --auto-sync systemd contract restored.")))
 
   ("WSM-GUARD-LSP-KNOWLEDGE-G3" . (
+    (claimed-by . prajna)
     (priority . 8.0)
     (capabilities . (wsm lsp guard documentation))
     (depends-on . (WSM-GUARD-RUST-FACT-ADAPTER-G2))
