@@ -462,6 +462,22 @@ Ship in stages, without breaking the three sibling agents mid-flight:
   WSL restarts, which would silently break that mapping — see
   `SWARM-WSL-PORTPROXY-RESILIENCE` for the follow-up.
 
+  **Correction, 2026-09-01 (owner's diagnosis, confirmed live):** the
+  "deliberately did not add a separate advertise address" call above was
+  wrong. It's only true for the *direct* hop that makes an observation —
+  it breaks across a second hop. Concretely: a node bound to `127.0.0.1`
+  (loopback-only) that dials *out* to a remote seed necessarily does so
+  from its real interface address (the OS has no other choice for a
+  cross-machine connection), so the seed correctly observes it there —
+  but that address is not where the node is actually listening, and
+  gossiping it onward sent other same-machine peers into a permanent
+  "Connection refused" loop against a port nothing was ever bound to,
+  despite being reachable via plain `127.0.0.1` the whole time. Added
+  `--advertise-host` (defaults to `--bind`; required for a wildcard
+  `0.0.0.0` bind) — see `Args::advertise_host` in `src/main.rs` and the
+  `bind`/`advertise`/`observed` regression tests in
+  `tests/integration.rs`.
+
 - **M0.12** — done: duplicate-identity rejection (cheap partial mitigation
   for the node-id spoofing gap M0.11 made real — Tailscale authenticates
   which *device* is on the tailnet, but nothing in the protocol itself
