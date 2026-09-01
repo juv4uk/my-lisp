@@ -19,9 +19,9 @@
 джерела.** Усе нижче писалось як загальне лісп-знання
 (`predicted`, по суті), без прямого читання статті McCarthy 1960.
 Того ж вечора первинне джерело реально прочитано й перевірено —
-`ecosystem/docs/mccarthy-1960-eval-apply-primary-source-2026-08-28.md`
+`ecosystem/docs/correspondence/mccarthy-1960-eval-apply-primary-source-2026-08-28.md`
 (транскрипція коду, провенанс) і
-`ecosystem/docs/mccarthy-1960-eval-apply-walkthrough-2026-08-28.md`
+`ecosystem/docs/correspondence/mccarthy-1960-eval-apply-walkthrough-2026-08-28.md`
 (покроковий розбір, два трасування), плюс реальна x86_64-реалізація
 в `ecosystem/prototypes/mccarthy_eval_x86_64/`, зібрана й запущена.
 Висновки цієї перевірки вписані нижче в §1 і §4.1 (`empirically

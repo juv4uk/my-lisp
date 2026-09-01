@@ -5,7 +5,7 @@
 2026-08-28 увечері у відповідь на прохання пояснити код докладно.
 Провенанс, точні цитати й дві історичні знахідки (errata McCarthy
 1959, самокритична виноска 1995, зізнання про NIL/false) — в
-`/home/agents/ecosystem/docs/mccarthy-1960-eval-apply-primary-source-2026-08-28.md`
+`/home/agents/ecosystem/docs/correspondence/mccarthy-1960-eval-apply-primary-source-2026-08-28.md`
 (окремий репозиторій; my-lisp не копіює звідти PDF чи первинні
 цитати, лише цей похідний, пояснювальний матеріал — федеративна
 модель ecosystem, жодна єдина копія не є "єдиним джерелом істини" для

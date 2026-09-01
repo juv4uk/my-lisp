@@ -88,7 +88,7 @@ freeze commit/push activity
 This is an explainable policy gate, not a hidden Git lock. `REJECT` means the
 freeze was not observed; `WARN` means sync or drift recording is incomplete;
 `ALLOW` means the complete sequence has evidence. See the ecosystem document
-`ecosystem/docs/GUARD-SYNC-COMMIT-FREEZE.md` and `guard-sync-window` in
+`ecosystem/docs/guard/GUARD-SYNC-COMMIT-FREEZE.md` and `guard-sync-window` in
 `lib/guard.wsm`.
 
 Це пояснювана policy gate, а не прихований Git lock. `REJECT` означає, що

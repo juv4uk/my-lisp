@@ -67,7 +67,7 @@
      (reference
        (topic agent-messaging)
        (summary "Direct messages and completion broadcasts: durable inbox admission is separate from live-runtime wakeup; stale OpenCode sessions require re-registration | Прямі повідомлення й broadcast завершення: durable inbox admission відокремлено від live-runtime wakeup; застарілі OpenCode сесії потребують re-registration")
-       (authority (../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/scripts/agent-send))
+       (authority (../ecosystem/docs/agent-coordination/AGENT-DIRECT-MESSAGING.md ../ecosystem/scripts/agent-send))
        (how-to (start-opencode-serve register-live-session send-direct broadcast-completion read-inbox acknowledge-inbox))
        (verify (durable-inbox-entry wakeup-result session-id-not-unknown commit-sha))
        (lifecycle current-contract)
@@ -76,7 +76,7 @@
      (reference
        (topic claim-complete-broadcast)
        (summary "Task claims and completions are visible to the whole agent team; completion identifies the actual pushed revision | Претензії та завершення задач видимі всім агентам; завершення ідентифікує фактичний pushed revision")
-       (authority (../ecosystem/AGENTS.md ../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/plans/tasks.my))
+       (authority (../ecosystem/AGENTS.md ../ecosystem/docs/agent-coordination/AGENT-DIRECT-MESSAGING.md ../ecosystem/plans/tasks.my))
        (how-to (claim-task broadcast-claim do-work commit push-find-ci-run-wait-for-completion-read-failure-logs complete-task broadcast-completion-read-bus))
        (verify (task-state claim-event commit-sha pushed-confirmed matching-ci-run final-ci-status completion-event))
        (lifecycle current-contract)
@@ -85,7 +85,7 @@
      (reference
        (topic synchronized-commit-window)
        (summary "Freeze commit/push activity before synchronization, complete the sync, record drift, then reopen the window | Заморозити commit/push до синхронізації, завершити sync, записати drift, повторно відкрити вікно")
-       (authority (lib/guard.wsm ../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/plans/ECOSYSTEM-GUARD-ORACLE-ROADMAP.md))
+       (authority (lib/guard.wsm ../ecosystem/docs/agent-coordination/AGENT-DIRECT-MESSAGING.md ../ecosystem/plans/ECOSYSTEM-GUARD-ORACLE-ROADMAP.md))
        (how-to (announce-freeze stop-commit-and-push synchronize inspect-build-logs-record-drift reopen-commits))
        (verify (freeze-observed sync-complete drift-record commit-window-reopened))
        (lifecycle current-design)
@@ -94,7 +94,7 @@
      (reference
        (topic working-tree-hygiene)
        (summary "Explain every uncommitted change before deciding whether to include, preserve, or escalate it | Пояснити кожну незакомічену зміну перед рішенням включити/зберегти/ескалювати")
-       (authority (../ecosystem/AGENTS.md ../ecosystem/docs/AGENT-RESOURCE-POLICY.md))
+       (authority (../ecosystem/AGENTS.md ../ecosystem/docs/agent-coordination/AGENT-RESOURCE-POLICY.md))
        (how-to (git-status inspect-diff-check-generated-artifacts-check-agent-history-commit-scoped-files))
        (verify (origin-identified or-unknown-with-checks no-unexplained-diff))
        (lifecycle current-contract)
@@ -121,7 +121,7 @@
      (reference
        (topic oracle-release-deployment)
        (summary "Release-only remote semantic Oracle deployment, service verification, and post-push CI boundary | Тільки-release віддалений семантичний Oracle: деплой, верифікація сервісу, post-push CI boundary")
-       (authority (../ecosystem/docs/ORACLE-RELEASE-DEPLOYMENT.md scripts/deploy.sh docs/guard-oracle-node-plan.md))
+       (authority (../ecosystem/docs/attacks/ORACLE-RELEASE-DEPLOYMENT.md scripts/deploy.sh docs/guard-oracle-node-plan.md))
        (how-to (push-main wait-for-ci-completion inspect-build-logs-on-failure run-release-deploy-helper verify-release-exec-path probe-backend-and-haproxy-record-implementation-revision))
        (verify (ci-run-id ci-conclusion build-log-reviewed green-ci-run release-binary service-active implementation-revision contract-version oracle-result-1))
        (lifecycle current-design)
@@ -130,7 +130,7 @@
      (reference
        (topic oracle-local-runtime)
        (summary "Local loopback release Oracle and comparison with the remote Oracle | Локальний loopback release Oracle та порівняння з віддаленим")
-       (authority (../ecosystem/docs/ORACLE-RELEASE-DEPLOYMENT.md scripts/start-local-oracle-release.sh scripts/stop-local-oracle-release.sh))
+       (authority (../ecosystem/docs/attacks/ORACLE-RELEASE-DEPLOYMENT.md scripts/start-local-oracle-release.sh scripts/stop-local-oracle-release.sh))
        (how-to (start-local-release-oracle probe-contract compare-utc-and-timezone stop-local-release-oracle))
        (verify (loopback-listener release-executable contract-version pid-metadata timezone-observation))
        (lifecycle current-design)
@@ -139,7 +139,7 @@
      (reference
        (topic runtime-selection)
        (summary "Select the wakeup transport from the registered agent runtime; durable inbox remains the shared fallback | Обрати транспорт wakeup від зареєстрованого agent runtime; durable inbox залишається спільним fallback")
-       (authority (../ecosystem/docs/AGENT-DIRECT-MESSAGING.md ../ecosystem/scripts/agent-send ../ecosystem/.agents/sessions.json))
+       (authority (../ecosystem/docs/agent-coordination/AGENT-DIRECT-MESSAGING.md ../ecosystem/scripts/agent-send ../ecosystem/.agents/sessions.json))
        (how-to (inspect-agent-send-list register-live-runtime use-runtime-adapter read-inbox-on-wakeup-failure))
        (verify (runtime-matches-process session-id-valid inbox-admitted wakeup-result-recorded))
        (lifecycle current-contract)
@@ -148,7 +148,7 @@
      (reference
        (topic resource-preflight)
        (summary "Check load, memory, disk, and GPU before expensive or long-running work and keep commands bounded | Перевірити load, RAM, disk, GPU перед важкою роботою та тримати команди обмеженими")
-       (authority (../ecosystem/docs/AGENT-RESOURCE-POLICY.md ../ecosystem/scripts/preflight.sh))
+       (authority (../ecosystem/docs/agent-coordination/AGENT-RESOURCE-POLICY.md ../ecosystem/scripts/preflight.sh))
        (how-to (run-preflight choose-bounded-command-set-timeout-stop-on-overload))
        (verify (preflight-result timeout-set workload-class-recorded no-unbounded-job))
        (lifecycle current-contract)
@@ -166,7 +166,7 @@
      (reference
        (topic guix)
        (summary "Reproducible environments, witnesses, relocatable packs, agent capsules, substitutes, Home, and VM images | Відтворювані середовища, свідки, relocatable packs, agent capsules, substitutes, Home, VM images")
-       (authority (../ecosystem/docs/VIVEKA-FINDINGS-2026-08-24.md manifest.scm channels.scm guix.scm evidence/GUIX-WITNESS-01))
+       (authority (../ecosystem/docs/sessions/VIVEKA-FINDINGS-2026-08-24.md manifest.scm channels.scm guix.scm evidence/GUIX-WITNESS-01))
        (how-to (choose-guix-capability pin-channels use-pure-environment record-provenance verify-independent-build))
        (verify (channels-revision manifest-digest derivation output-hash builder-identity))
        (lifecycle current-design)
@@ -175,7 +175,7 @@
      (reference
        (topic documentation-map)
        (summary "Curated links into existing ecosystem documentation by operational question | Кураторські посилання в існуючу документацію екосистеми за операційним питанням")
-       (authority (../ecosystem/docs/GUARD-REFERENCE-DIRECTORY.md))
+       (authority (../ecosystem/docs/guard/GUARD-REFERENCE-DIRECTORY.md))
        (how-to (choose-topic follow-authority-link avoid-duplicate-prose))
        (verify (linked-file-exists lifecycle-status-checked))
        (lifecycle current-design)
@@ -193,7 +193,7 @@
      (reference
        (topic reference-learning)
        (summary "Persist a useful answer missing from the directory as a reviewable candidate for future agents | Зберегти корисну відсутню відповідь як reviewable candidate для майбутніх агентів")
-       (authority (../ecosystem/knowledge/guard-reference-inbox.mylog ../ecosystem/docs/GUARD-REFERENCE-DIRECTORY.md crates/my-lisp-cli/src/bin/guard-reference.rs))
+       (authority (../ecosystem/knowledge/guard-reference-inbox.mylog ../ecosystem/docs/guard/GUARD-REFERENCE-DIRECTORY.md crates/my-lisp-cli/src/bin/guard-reference.rs))
        (how-to (search-directory choose-unknown-route collect-source-and-evidence append-pending-review review promote-or-reject))
        (verify (candidate-record provenance review-status curated-entry-or-rejection))
        (lifecycle current-contract)
@@ -202,7 +202,7 @@
      (reference
        (topic licenses)
        (summary "Decide whether third-party code or data may enter an ecosystem repository | Рішити, чи може сторонній код/дані потрапити в репозиторій екосистеми")
-       (authority (../ecosystem/docs/LICENSE-MATRIX.md))
+       (authority (../ecosystem/docs/policy/LICENSE-MATRIX.md))
        (how-to (check-license record-notice ask-owner-if-unresolved))
        (verify (license-entry notice provenance))
        (lifecycle current-contract)
@@ -292,7 +292,7 @@
       (reference
         (topic guix-capability-index)
         (summary "Dev-env CONFIRMED (channels.scm sole pin 5375f33f → rust 1.93.0); Witness PARTIAL (DEVIATIONS: no --no-substitutes, no time-machine pin); pack/capsules/substitutes/Home/VM = PROPOSED/UNRESOLVED | Dev-env CONFIRMED (channels.scm єдиний pin 5375f33f → rust 1.93.0); Witness PARTIAL (DEVIATIONS: немає --no-substitutes, немає time-machine pin); pack/capsules/substitutes/Home/VM = PROPOSED/UNRESOLVED")
-        (authority (../ecosystem/docs/VIVEKA-FINDINGS-2026-08-24.md manifest.scm channels.scm guix.scm evidence/GUIX-WITNESS-01 .agents/skills/guix/SKILL.md))
+        (authority (../ecosystem/docs/sessions/VIVEKA-FINDINGS-2026-08-24.md manifest.scm channels.scm guix.scm evidence/GUIX-WITNESS-01 .agents/skills/guix/SKILL.md))
         (how-to (choose-guix-capability pin-channels use-pure-environment record-provenance verify-independent-build))
         (verify (channels-revision manifest-digest derivation output-hash builder-identity))
         (lifecycle current-design)
@@ -328,7 +328,7 @@
 (reference
          (topic wsm-lisp-fs-block-capability-boundary)
          (summary "FileBlockMedium lacks OS capability restriction; broker-issued bounded handle with allowlisted logical identity, fixed geometry, lifetime/revocation required; design guidance until ratified+tested | FileBlockMedium не має OS capability restriction; потрібен broker-issued bounded handle з allowlisted logical identity, fixed geometry, lifetime/revocation; design guidance до ratified+tested")
-         (authority (../ecosystem/docs/WSM-LISP-FS-BLOCK-CAPABILITY-BOUNDARY-2026-08-31.md))
+         (authority (../ecosystem/docs/wsm-fs/WSM-LISP-FS-BLOCK-CAPABILITY-BOUNDARY-2026-08-31.md))
          (how-to (broker-handle allowlist-identity fixed-geometry lifetime-revocation))
          (verify (capability-enforced ratified tested))
          (lifecycle proposal)
@@ -382,7 +382,7 @@
       (reference
          (topic wsm-lisp-fs-cloud-hosted-witness)
          (summary "Cloud VM persistence witness protocol: disposable dedicated medium + green exact-SHA release → write objects+journal+root → flush → close/restart service → reopen/reconstruct → compare content identity. Records binary digest, VM/filesystem metadata, commands, timestamps. Proves cloud-hosted visibility/restart recovery only; power-loss durability requires separate evidence | Cloud VM persistence witness: disposable medium + green SHA → write/flush/close/restart/reopen/reconstruct → compare content identity. Запис: binary digest, VM metadata, commands, timestamps. Доведено: visibility/restart recovery; power-loss durability = окрема evidence")
-         (authority (../ecosystem/docs/WSM-LISP-FS-CLOUD-HOSTED-WITNESS-2026-08-31.md))
+         (authority (../ecosystem/docs/wsm-fs/WSM-LISP-FS-CLOUD-HOSTED-WITNESS-2026-08-31.md))
          (how-to (provision-medium green-sha write-flush-close-restart-reopen-reconstruct compare-content-identity))
          (verify (content-identity-match restart-recovery visibility-proven power-loss-open))
          (lifecycle proposal)
@@ -391,7 +391,7 @@
       (reference
          (topic ecosystem-vault-coordination)
          (summary "Obsidian Vault as semantic knowledge environment. Canonical path: /mnt/c/Users/user/Downloads/chatGPT-2023-2026/Obsidian (WSL). WSL symlink to derived corpus failed (EISDIR, Safe Mode). Architecture: WSL generated corpus = authority, Windows Vault = controlled local mirror. Structure: Corpus Home, Sources, Terms, Sutras, Passages, Commentaries, Evidence, Open Questions. Tagging: 4 axes (#project/, #type/, #status/, #domain/), types: note/decision/proposal/experiment/result/failure/evidence/spec/architecture/plan/journal/handoff/source/chat, statuses: proposed/active/confirmed/partial/unresolved/falsified/blocked/superseded/archival. Collaboration: Lead READ+WRITE, Shiva READ ONLY, Panini READ ONLY. MCP for semantic notes/taxonomy; agents read authoritative corpus directly from WSL filesystem for large data | Obsidian Vault як семантичне середовище знань. Канонічний шлях: /mnt/c/Users/user/Downloads/chatGPT-2023-2026/Obsidian (WSL). WSL symlink провалився (EISDIR, Safe Mode). Архітектура: WSL corpus = authority, Windows Vault = controlled mirror. Структура: Corpus Home, Sources, Terms, Sutras, Passages, Commentaries, Evidence, Open Questions. Тегування: 4 осі, types, statuses. Співпраця: Lead RW, Shiva/Panini RO. MCP для notes/taxonomy; авторитетний corpus — WSL filesystem")
-         (authority (../ecosystem/memory/OWNER-PROFILE.md ../ecosystem/docs/Vault-Tagging-Rule.md ../ecosystem/docs/VIVEKA-FINDINGS-2026-08-24.md))
+         (authority (../ecosystem/memory/OWNER-PROFILE.md ../ecosystem/docs/vault/Vault-Tagging-Rule.md ../ecosystem/docs/sessions/VIVEKA-FINDINGS-2026-08-24.md))
          (how-to (access-vault-wsl use-mcp-for-notes read-authoritative-from-wsl tag-4-axes))
          (verify (vault-accessible tags-compliant no-dual-authority))
          (lifecycle current-contract)
@@ -409,7 +409,7 @@
       (reference
          (topic task-freshness)
          (summary "A task's priority number does not stay trustworthy forever just because it was true when written. created/last-validated/status are separate fields from priority -- freshness (FRESH/REVIEW/STALE/UNKNOWN) is computed from last-validated, never from created, and never mathematically raises or lowers the stored priority. A stale P0 means 'verify this is still true,' not 'do it first.' No backfill on old tasks -- last-validated fills in the first time an agent actually revalidates that specific task. | Число priority задачі не лишається надійним вічно лише тому, що колись було правильним. created/last-validated/status -- окремі поля від priority; freshness (FRESH/REVIEW/STALE/UNKNOWN) рахується від last-validated, ніколи від created, і ніколи математично не підвищує чи не знижує збережений priority. Застарілий P0 означає 'перевір, чи це ще правда', а не 'роби першим'. Без backfill старих задач -- last-validated заповнюється, коли агент реально ревалідує саме цю задачу.")
-         (authority (../ecosystem/docs/TASK-FRESHNESS-NOT-PRIORITY-DECAY-2026-09-01.md))
+         (authority (../ecosystem/docs/sessions/TASK-FRESHNESS-NOT-PRIORITY-DECAY-2026-09-01.md))
          (how-to (add-created-and-last-validated-to-new-tasks classify-freshness-by-hand-from-last-validated-until-a-primitive-exists never-backfill-old-tasks-in-bulk))
          (verify (freshness-thresholds-3-and-7-days status-distinct-from-existing-done-field))
          (lifecycle proposal)

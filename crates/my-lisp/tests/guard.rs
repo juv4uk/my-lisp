@@ -135,7 +135,7 @@ fn reference_learning_preserves_review_and_provenance_boundaries() {
     );
     assert_eq!(
         eval_guard(r#"(guard-authority (quote guix))"#),
-        "(../ecosystem/docs/VIVEKA-FINDINGS-2026-08-24.md manifest.scm channels.scm guix.scm evidence/GUIX-WITNESS-01)"
+        "(../ecosystem/docs/sessions/VIVEKA-FINDINGS-2026-08-24.md manifest.scm channels.scm guix.scm evidence/GUIX-WITNESS-01)"
     );
 }
 
