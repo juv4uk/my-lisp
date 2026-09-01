@@ -428,7 +428,7 @@
     (depends-on . (WSM-GUARD-KNOWLEDGE-G1 WSM-GUARD-REFERENCE-BUREAU-G1A SWARM-NODE-STRICT-STARTUP-N1))
     (origin . my-lisp)
     (description . "Implement one bounded read-only Rust fact adapter for Git/systemd/swarm observations and feed normalized clauses to guard.wsm. No mutation or enforcement in this slice.")
-    (done . ())
+    (done . (t . "prajna 2026-09-01: crates/wsm-guard-facts added to workspace; one bounded fact per output line; probes time-boxed/capacity-limited/fail-closed; reloadable policy knowledge/guard-fact-policy.wsm owns classification (git clean allow / dirty warn, systemd active allow / inactive warn, swarm identity-present allow, else guard-unknown with routes); alist state so assoc works; 8/8 tests PASS, clippy clean; live smoke git-dirty->warn, missing unit->unknown, malformed->unknown; commit 4e522a1 pushed"))
   ))
 
   ("WSM-GUARD-REFERENCE-BUREAU-G1A" . (
