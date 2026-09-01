@@ -396,6 +396,15 @@
          (verify (vault-accessible tags-compliant no-dual-authority))
          (lifecycle current-contract)
          (provenance ecosystem commit d679789 inbox:ecosystem-vault-coordination)
+         (unknown-route ask-agent))
+      (reference
+         (topic wsm-file-paren-safety)
+         (summary "Hand-editing a .my/.wsm file blind risks a silent unbalanced-paren or malformed-dotted-pair break that only surfaces later when something finally runs the canonical reader against it -- edit through an LSP-connected session instead, which reports the exact same class of error live, on every keystroke, via the identical canonical parser. | Ручне редагування .my/.wsm-файлу наосліп ризикує мовчазним розбалансуванням дужок або malformed dotted-pair, який виявиться лише пізніше, коли щось нарешті прожене канонічний ридер. Редагуй через сесію, підключену до LSP -- вона показує той самий клас помилки живо, на кожному натисканні клавіші, тим самим канонічним парсером.")
+         (authority (crates/my-lisp-lsp/src/server.rs crates/my-lisp-lsp/src/analysis.rs))
+         (how-to (connect-my-lisp-lsp edit-through-lsp-session watch-live-diagnostics-on-didChange))
+         (verify (my-lisp-lsp-analyze-calls-my-lisp-parse-directly publishDiagnostics-on-textDocument/didChange))
+         (lifecycle current-contract)
+         (provenance my-lisp 2026-09-01: three real, independently-found breaks this exact class -- my-lisp/tasks.my db6f666, wsm-os/tasks.my 09eab6c, cml/tasks.my 5f0574c -- all silently unparseable via the canonical reader for an unknown prior duration, none caught until an explicit ecosystem-wide sync check)
          (unknown-route ask-agent)))))
 
 ; Curated frequently-used tools. A record is navigation, not permission to run
