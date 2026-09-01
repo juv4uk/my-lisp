@@ -188,7 +188,10 @@ mod tests {
    ("NO-DONE-FIELD" . ((priority . 1))))))
 "#;
         let tasks = parse_tasks_file(text).unwrap();
-        assert!(tasks[0].done, "evidence-carrying done . (t . ...) must count as done");
+        assert!(
+            tasks[0].done,
+            "evidence-carrying done . (t . ...) must count as done"
+        );
         assert!(tasks[1].done);
         assert!(!tasks[2].done);
         assert!(!tasks[3].done);

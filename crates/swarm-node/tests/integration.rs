@@ -1296,3 +1296,185 @@ fn auto_sync_periodically_imports_tasks_my_file() {
         "auto-sync should have imported AUTO-C's description: {c_def}"
     );
 }
+
+// --- bind / advertise / observed address model -----------------------
+//
+// Confirmed live 2026-09-01: several same-machine nodes bound to
+// `127.0.0.1` became silently unreachable from each other because their
+// address, as *observed* when they dialed out through a remote seed, got
+// gossiped onward as their dial-back address -- even though nothing was
+// bound to listen there. `bind` (where a process listens), `advertise`
+// (what it tells peers to use), and `observed` (what one specific peer's
+// socket happened to see) must never silently substitute for one another.
+// See `Args::advertise_host`'s doc comment in src/main.rs for the full
+// account. These tests prove: (1) a wildcard bind refuses to start
+// without an explicit advertise address (no unsafe default exists for
+// it), (2) a peer's self-declared advertise-host is what gossip actually
+// propagates to a third node, never the observed socket IP, and (3) a
+// peer that doesn't declare one (an older binary) still falls back to
+// the observed IP exactly as before -- this fix must not break
+// interop with live peers this session cannot restart.
+
+#[test]
+fn startup_rejects_wildcard_bind_without_advertise_host() {
+    let dir = data_dir("wildcard-bind-no-advertise");
+    let output = Command::new(env!("CARGO_BIN_EXE_swarm-node"))
+        .args([
+            "--port",
+            "15993",
+            "--node-id",
+            "wildcard-node",
+            "--project",
+            "itest",
+            "--data-dir",
+        ])
+        .arg(&dir)
+        .args(["--bind", "0.0.0.0", "--no-auto-sync"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("--advertise-host"),
+        "expected the wildcard-bind-without-advertise-host error: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// Spawns a node with its stdout/stderr redirected to a real file this
+/// test can poll -- `SWARM_TEST_LOGS` (used elsewhere in this file) is an
+/// opt-in env var for a human running tests locally; this needs the log
+/// unconditionally, for every run, to observe the exact address gossip
+/// actually dialed.
+fn spawn_logged(
+    port: u16,
+    node_id: &str,
+    data_dir: &Path,
+    connect: Option<u16>,
+) -> (Node, PathBuf) {
+    let log_dir = data_dir.parent().unwrap();
+    std::fs::create_dir_all(log_dir).unwrap();
+    let log_path = log_dir.join(format!("{node_id}.log"));
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_swarm-node"));
+    cmd.arg("--port").arg(port.to_string());
+    cmd.arg("--node-id").arg(node_id);
+    cmd.arg("--project").arg("itest");
+    cmd.arg("--data-dir").arg(data_dir);
+    cmd.arg("--no-auto-sync");
+    if let Some(p) = connect {
+        cmd.arg("--connect").arg(format!("127.0.0.1:{p}"));
+    }
+    let f = std::fs::File::create(&log_path).unwrap();
+    cmd.stdout(f.try_clone().unwrap()).stderr(f);
+    let child = cmd
+        .spawn()
+        .expect("failed to spawn swarm-node — did `cargo build -p swarm-node` run first?");
+    let node = Node { child };
+    wait_for_port(port);
+    wait_for_file(&data_dir.join("node.my"));
+    (node, log_path)
+}
+
+fn wait_for_log_containing(log_path: &Path, needle: &str, timeout: Duration) -> String {
+    let deadline = Instant::now() + timeout;
+    let mut last = String::new();
+    while Instant::now() < deadline {
+        if let Ok(text) = std::fs::read_to_string(log_path) {
+            if text.contains(needle) {
+                return text;
+            }
+            last = text;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    last
+}
+
+/// A raw, hand-spoken peer-hello over a real TCP connection to a real
+/// spawned node -- standing in for a peer whose OS-observed source IP
+/// (correctly, always 127.0.0.1 in this loopback-only test) would be
+/// wrong to trust as its actual dial-back address, matching the real
+/// scenario: a node reachable only via a different, non-observed address.
+/// Returns once the welcome is read, so the caller knows the handshake
+/// (and therefore `register_peer`) has completed before asserting on
+/// what the *other* node gossips onward.
+fn hand_speak_peer_hello(port: u16, node_id: &str, listen_port: u16, advertise_host: Option<&str>) {
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(3)))
+        .unwrap();
+    let advertise_field = match advertise_host {
+        Some(host) => format!(" (advertise-host {host})"),
+        None => String::new(),
+    };
+    writeln!(
+        stream,
+        "(peer-hello (protocol swarm/1) (node {node_id}) (epoch 0) (project itest) (listen-port {listen_port}){advertise_field})"
+    )
+    .unwrap();
+    let mut reader = BufReader::new(stream);
+    let mut line = String::new();
+    reader
+        .read_line(&mut line)
+        .expect("expected a peer-welcome reply");
+    assert!(
+        line.contains("peer-welcome"),
+        "expected peer-welcome, got: {line}"
+    );
+}
+
+#[test]
+fn gossip_relays_advertised_address_not_the_observed_socket_ip() {
+    let ports = alloc_ports(2);
+    let (port_b, port_c) = (ports, ports + 1);
+    let dir = data_dir("advertise-vs-observed");
+
+    let (_b, _log_b) = spawn_logged(port_b, "relay-b", &dir.join("b"), None);
+    let (_c, log_c) = spawn_logged(port_c, "relay-c", &dir.join("c"), Some(port_b));
+
+    // "zzz-fake-remote-a" declares a dial-back address nothing about its real
+    // TCP connection would reveal -- the only way this string can reach
+    // C's gossip log is through the advertise-host field, never the
+    // observed 127.0.0.1 source IP.
+    const MARKER: &str = "advertise-host-proof-marker";
+    hand_speak_peer_hello(port_b, "zzz-fake-remote-a", 19999, Some(MARKER));
+
+    let log = wait_for_log_containing(
+        &log_c,
+        "learned of zzz-fake-remote-a",
+        Duration::from_secs(5),
+    );
+    assert!(
+        log.contains(&format!("learned of zzz-fake-remote-a at {MARKER}:19999")),
+        "C should have gossip-learned zzz-fake-remote-a's advertised address from B, not an observed one: {log}"
+    );
+    assert!(
+        !log.contains("learned of zzz-fake-remote-a at 127.0.0.1:19999"),
+        "C used the observed socket IP instead of the peer's declared advertise-host: {log}"
+    );
+}
+
+#[test]
+fn gossip_falls_back_to_observed_ip_when_peer_omits_advertise_host() {
+    let ports = alloc_ports(2);
+    let (port_b, port_c) = (ports, ports + 1);
+    let dir = data_dir("advertise-fallback-compat");
+
+    let (_b, _log_b) = spawn_logged(port_b, "relay-b2", &dir.join("b"), None);
+    let (_c, log_c) = spawn_logged(port_c, "relay-c2", &dir.join("c"), Some(port_b));
+
+    // No advertise-host field at all -- simulates a peer still running
+    // the pre-fix binary. Must keep working exactly as before: this
+    // session cannot restart other agents' live nodes, so old and new
+    // binaries have to interoperate.
+    hand_speak_peer_hello(port_b, "zzz-fake-old-peer", 18888, None);
+
+    let log = wait_for_log_containing(
+        &log_c,
+        "learned of zzz-fake-old-peer",
+        Duration::from_secs(5),
+    );
+    assert!(
+        log.contains("learned of zzz-fake-old-peer at 127.0.0.1:18888"),
+        "an old peer with no advertise-host must still fall back to the observed IP: {log}"
+    );
+}

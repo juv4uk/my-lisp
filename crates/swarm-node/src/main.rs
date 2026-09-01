@@ -95,6 +95,9 @@ struct Node {
     identity: Identity,
     project: String,
     listen_port: u16,
+    /// What this node tells peers to dial back to reach it -- see `Args::advertise_host`
+    /// for why this is never inferred from an observed socket address.
+    advertise_host: String,
     journal: Mutex<Journal>,
     lamport: AtomicU64,
     peers: Mutex<HashMap<String, TcpStream>>,
@@ -192,13 +195,30 @@ struct Args {
     /// machines. Not validated/firewalled by swarm-node itself — whatever
     /// network the bind address is reachable from is who can talk to this
     /// node, so this is a deliberate, explicit opt-in, not a new default.
-    /// (No separate "advertise" address is needed: gossip already learns
-    /// a peer's dialable address from the observed source IP of its
-    /// connection — correct as-is for direct-routing overlays like
-    /// Tailscale, which don't rewrite addresses in transit. A NAT'd
-    /// deployment where the observed IP isn't reachable would need that
-    /// as a later addition, not preemptively built for an unconfirmed case.)
     bind: String,
+    /// What this node tells peers to dial back to reach it. `bind`,
+    /// `advertise`, and the observed source IP of an inbound connection
+    /// are three genuinely different things: where a process listens,
+    /// what it claims others should use, and what one specific peer
+    /// happened to see a connection arrive from. This used to not exist
+    /// -- gossip inferred a peer's dialable address purely from the
+    /// observed source IP, on the assumption that direct-routing overlays
+    /// like Tailscale never rewrite addresses in transit, so observed ==
+    /// dialable. That's only true for the direct hop that made the
+    /// observation; it breaks across a second hop. Confirmed live
+    /// 2026-09-01: a node bound to `127.0.0.1` (loopback-only) that dials
+    /// *out* to a remote seed necessarily does so from its real interface
+    /// address (the OS has no other choice), so the seed correctly
+    /// observes it there -- but that address is not where the node is
+    /// actually listening, and gossiping it onward sent other same-machine
+    /// peers to dial a port nothing was bound to, making them silently
+    /// unreachable from each other despite being on the same box. `None`
+    /// (no explicit `--advertise-host`) resolves to `bind` itself, which
+    /// covers both "loopback-only, advertise loopback" and "bound
+    /// directly to my real IP, advertise that same IP." A wildcard
+    /// `--bind 0.0.0.0` has no single correct default and requires
+    /// `--advertise-host` explicitly (see `validate_startup_args`).
+    advertise_host: Option<String>,
     /// M1.2 auto-sync: absolute paths to `tasks.my` files to periodically
     /// re-read and import into the task registry (same format as
     /// `(sync-tasks)`). Each path is re-read every `AUTO_SYNC_INTERVAL`;
@@ -222,6 +242,7 @@ fn parse_args() -> std::io::Result<Args> {
     let mut data_dir = PathBuf::from(".swarm-node");
     let mut connect = Vec::new();
     let mut bind = "127.0.0.1".to_string();
+    let mut advertise_host = None;
     let mut auto_sync = Vec::new();
     let mut no_auto_sync = false;
     let mut seen = HashSet::new();
@@ -274,6 +295,15 @@ fn parse_args() -> std::io::Result<Args> {
                     .next()
                     .ok_or_else(|| invalid_arg("--bind requires a value"))?;
             }
+            "--advertise-host" => {
+                if !seen.insert("--advertise-host") {
+                    return Err(invalid_arg("duplicate --advertise-host"));
+                }
+                advertise_host = Some(
+                    it.next()
+                        .ok_or_else(|| invalid_arg("--advertise-host requires a value"))?,
+                );
+            }
             "--connect" => {
                 connect.push(
                     it.next()
@@ -306,6 +336,7 @@ fn parse_args() -> std::io::Result<Args> {
         data_dir,
         connect,
         bind,
+        advertise_host,
         auto_sync,
         no_auto_sync,
     })
@@ -326,6 +357,11 @@ fn validate_startup_args(args: &Args) -> std::io::Result<()> {
     if !args.data_dir.is_absolute() {
         return Err(invalid(
             "--data-dir must be absolute so restart cannot create a second identity tree",
+        ));
+    }
+    if args.bind == "0.0.0.0" && args.advertise_host.is_none() {
+        return Err(invalid(
+            "a wildcard --bind 0.0.0.0 has no single correct dial-back address; pass --advertise-host explicitly",
         ));
     }
     if args.auto_sync.is_empty() && !args.no_auto_sync {
@@ -372,6 +408,9 @@ fn print_usage_and_exit() -> ! {
          \x20\x20                       is refused so restart cannot create a second identity tree)\n\
          \x20\x20--bind <ADDRESS>       Interface to listen on (default: 127.0.0.1, localhost-only;\n\
          \x20\x20                       pass 0.0.0.0 or a specific interface IP for cross-machine use)\n\
+         \x20\x20--advertise-host <HOST> What this node tells peers to dial back to reach it (default:\n\
+         \x20\x20                       the --bind value itself; required if --bind is 0.0.0.0, since\n\
+         \x20\x20                       a wildcard bind has no single correct dial-back address)\n\
          \x20\x20--connect <HOST:PORT>  Bootstrap peer to dial on startup (repeatable; one is enough,\n\
          \x20\x20                       gossip discovers the rest of the mesh)\n\
          \x20\x20--auto-sync <PATH>     Absolute path to a tasks.my file to periodically re-read and\n\
@@ -420,6 +459,14 @@ fn main() -> std::io::Result<()> {
     let args = parse_args()?;
     validate_startup_args(&args)?;
 
+    // See `Args::advertise_host`: defaults to `bind` itself (correct for
+    // both loopback-only and a concrete-IP bind); a wildcard bind requires
+    // this to have been given explicitly, already enforced above.
+    let advertise_host = args
+        .advertise_host
+        .clone()
+        .unwrap_or_else(|| args.bind.clone());
+
     // Bind before touching persistent identity. A duplicate port must not
     // increment epoch or create a second identity tree before AddrInUse.
     let listener = TcpListener::bind((args.bind.as_str(), args.port))?;
@@ -432,13 +479,15 @@ fn main() -> std::io::Result<()> {
     let journal = Journal::open(&args.data_dir)?;
     let lamport_start = journal.max_lamport();
     info!(
-        "swarm-node: node={} epoch={} project={} journal={} events={} listening on {}:{}",
+        "swarm-node: node={} epoch={} project={} journal={} events={} listening on {}:{}, advertising {}:{}",
         identity.node_id,
         identity.epoch,
         args.project,
         journal.path().display(),
         journal.events.len(),
         args.bind,
+        args.port,
+        advertise_host,
         args.port
     );
 
@@ -446,6 +495,7 @@ fn main() -> std::io::Result<()> {
         identity,
         project: args.project,
         listen_port: args.port,
+        advertise_host,
         journal: Mutex::new(journal),
         lamport: AtomicU64::new(lamport_start),
         peers: Mutex::new(HashMap::new()),
@@ -725,6 +775,10 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                     Sexp::atom("listen-port"),
                     Sexp::atom(node.listen_port.to_string()),
                 ]),
+                Sexp::list(vec![
+                    Sexp::atom("advertise-host"),
+                    Sexp::atom(&node.advertise_host),
+                ]),
             ]),
         );
         send_sync_hello(&node, &mut stream);
@@ -794,6 +848,11 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                     .field_atom("listen-port")
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0);
+                // The peer's own claimed dial-back address wins over the
+                // observed socket IP when present -- see `Args::advertise_host`.
+                // Older peers that don't send this field yet fall back to
+                // the observed IP exactly as before (backward compatible).
+                let their_addr = msg.field_atom("advertise-host").unwrap_or(&peer_ip);
                 if identity_already_live(&node, &their_node) {
                     warn!("swarm-node: rejecting peer-hello claiming node-id `{their_node}` from {peer_addr} -- that id already has a live connection (possible duplicate identity / spoofing attempt)");
                     continue;
@@ -817,10 +876,14 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                             Sexp::atom("listen-port"),
                             Sexp::atom(node.listen_port.to_string()),
                         ]),
+                        Sexp::list(vec![
+                            Sexp::atom("advertise-host"),
+                            Sexp::atom(&node.advertise_host),
+                        ]),
                     ]),
                 );
                 send_sync_hello(&node, &mut stream);
-                register_peer(&node, &their_node, &mut stream, &peer_ip, their_port);
+                register_peer(&node, &their_node, &mut stream, their_addr, their_port);
                 send_peer_list(&node, &their_node, &mut stream);
                 peer_node_id = Some(their_node);
             }
@@ -830,12 +893,13 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                     .field_atom("listen-port")
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0);
+                let their_addr = msg.field_atom("advertise-host").unwrap_or(&peer_ip);
                 if identity_already_live(&node, &their_node) {
                     warn!("swarm-node: rejecting peer-welcome claiming node-id `{their_node}` from {peer_addr} -- that id already has a live connection (possible duplicate identity / spoofing attempt)");
                     continue;
                 }
                 info!("swarm-node: peer-welcome from {their_node}");
-                register_peer(&node, &their_node, &mut stream, &peer_ip, their_port);
+                register_peer(&node, &their_node, &mut stream, their_addr, their_port);
                 send_peer_list(&node, &their_node, &mut stream);
                 peer_node_id = Some(their_node);
             }
