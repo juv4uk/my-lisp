@@ -11,6 +11,7 @@ members = [
     "crates/my-lisp-semantic",
     "crates/my-lisp-lsp",
     "crates/wsm-guard-slice",
+    "crates/wsm-guard-facts",
 ]
 
 # Use a single shared lock-file at the workspace root.
