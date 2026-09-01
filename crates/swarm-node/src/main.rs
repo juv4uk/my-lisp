@@ -25,7 +25,7 @@ use log::{log_info as info, log_warn as warn};
 
 use journal::{Event, Identity, Journal};
 use sexpr::Sexp;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
@@ -54,6 +54,19 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// network partition) can otherwise sit unnoticed far longer than a
 /// stalled write would take to fail.
 const STALE_PEER_TIMEOUT: Duration = Duration::from_secs(20);
+/// A `push-event` write a peer hasn't acked within this long is presumed
+/// lost and moved from `pending_acks` to `recent_delivery_failures` on
+/// the next heartbeat sweep -- see `Node::pending_acks`'s doc comment.
+/// Two heartbeat cycles' worth of grace: a live, healthy peer acks a
+/// push-event essentially immediately (journal append + one write), so
+/// this is a genuine-loss threshold, not a tuned-for-jitter one. The
+/// production default -- overridable via `SWARM_TEST_ACK_TIMEOUT_MS`
+/// (see `ack_timeout()`, same pattern as `hello_deadline`) so a test can
+/// prove the sweep fires without waiting out a real 10s timeout.
+const ACK_TIMEOUT: Duration = Duration::from_secs(10);
+/// `recent_delivery_failures` is a diagnostic ring, not a durable log --
+/// bounded so a genuinely partitioned peer can't grow it without limit.
+const RECENT_FAILURES_CAP: usize = 200;
 
 /// M1.1c fix A: how long the INITIATOR of an outbound connection waits for
 /// the peer's `peer-welcome` before closing and letting `spawn_connect`
@@ -88,6 +101,22 @@ fn hello_deadline(base: Duration) -> Duration {
     match ms {
         Some(ms) => Duration::from_millis(ms),
         None => base,
+    }
+}
+
+/// Test hook, same pattern as `hello_deadline`: overrides `ACK_TIMEOUT` so
+/// integration tests can prove the sweep fires in well under a second
+/// instead of waiting out a real production timeout.
+fn ack_timeout() -> Duration {
+    static OVERRIDE: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
+    let ms = *OVERRIDE.get_or_init(|| {
+        std::env::var("SWARM_TEST_ACK_TIMEOUT_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+    });
+    match ms {
+        Some(ms) => Duration::from_millis(ms),
+        None => ACK_TIMEOUT,
     }
 }
 
@@ -153,6 +182,26 @@ struct Node {
     auto_sync_snapshots: Mutex<HashMap<PathBuf, String>>,
     /// Process start time, for `(metrics)`'s uptime field.
     started_at: Instant,
+    /// `push-event` deliveries this node has written to a peer's socket
+    /// but not yet had confirmed: `write_all` succeeding only proves the
+    /// bytes reached the kernel's send buffer, never that the peer
+    /// actually journaled the event -- see `Args::advertise_host`'s
+    /// neighbor problem for the same class of "one signal silently
+    /// standing in for a different one" bug. Keyed by `(peer_id,
+    /// event_id)`; the heartbeat sweep (`ACK_TIMEOUT`) turns a stale
+    /// entry into a `recent_delivery_failures` record instead of letting
+    /// it vanish. Confirmed live via the original bug report
+    /// (SWARM-PUSH-EVENT-SILENT-LOSS, ecosystem/plans/tasks.my): the seed
+    /// connection cycling closed/reconnected every ~25s, and events
+    /// written into that window were never seen again by anyone.
+    pending_acks: Mutex<HashMap<(String, String), Instant>>,
+    /// Bounded ring (`RECENT_FAILURES_CAP`) of `(peer_id, event_id,
+    /// reason)` for deliveries that timed out without an ack. This is
+    /// deliberately NOT a durable retry queue -- the owner's explicit
+    /// scoping for this fix is "make failure honest and observable
+    /// first," not "make delivery automatically reliable." A real queue
+    /// with backoff/dedup is future work if reality shows it's needed.
+    recent_delivery_failures: Mutex<VecDeque<(String, String, String)>>,
 }
 
 impl Node {
@@ -512,6 +561,8 @@ fn main() -> std::io::Result<()> {
         auto_sync_paths: Mutex::new(args.auto_sync),
         auto_sync_snapshots: Mutex::new(HashMap::new()),
         started_at: Instant::now(),
+        pending_acks: Mutex::new(HashMap::new()),
+        recent_delivery_failures: Mutex::new(VecDeque::new()),
     });
 
     for addr in &args.connect {
@@ -584,6 +635,49 @@ fn send(stream: &mut TcpStream, msg: &Sexp) {
     let _ = stream.write_all(line.as_bytes());
 }
 
+/// Turns a `push-event` write that never got acked within `ACK_TIMEOUT`
+/// into an honest, observable failure instead of a silently-forgotten
+/// entry. This is deliberately the whole mechanism for now -- no retry,
+/// no backoff, no dedup beyond what `handle_push_event`'s journal check
+/// already gives a redelivery. See `Node::pending_acks`'s doc comment
+/// for why: make failure explicit first, decide whether automatic
+/// recovery is actually needed once that's real evidence, not before.
+fn sweep_timed_out_acks(node: &Arc<Node>) {
+    let now = Instant::now();
+    let timeout = ack_timeout();
+    let timed_out: Vec<(String, String)> = {
+        let mut pending = node
+            .pending_acks
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let expired: Vec<(String, String)> = pending
+            .iter()
+            .filter(|(_, sent_at)| now.duration_since(**sent_at) > timeout)
+            .map(|(key, _)| key.clone())
+            .collect();
+        for key in &expired {
+            pending.remove(key);
+        }
+        expired
+    };
+    if timed_out.is_empty() {
+        return;
+    }
+    let mut failures = node
+        .recent_delivery_failures
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    for (peer_id, event_id) in timed_out {
+        warn!(
+            "swarm-node: push-event {event_id} to {peer_id} never acked within {timeout:?} -- treating as failed, not silently dropping"
+        );
+        failures.push_back((peer_id, event_id, "ack-timeout".to_string()));
+        while failures.len() > RECENT_FAILURES_CAP {
+            failures.pop_front();
+        }
+    }
+}
+
 /// Background liveness maintenance (M0.10, `SWARM-P2P-HEARTBEAT`): every
 /// `HEARTBEAT_INTERVAL`, ping every connected peer and forcibly close any
 /// connection we haven't heard *anything* from in `STALE_PEER_TIMEOUT`.
@@ -608,6 +702,7 @@ fn spawn_heartbeat(node: &Arc<Node>) {
             ]),
         ]);
         broadcast_to_peers(&node, &beat, None);
+        sweep_timed_out_acks(&node);
 
         let now = Instant::now();
         // M1.1c fix B: a peer mid-replay of OUR catch-up flood cannot pong
@@ -922,7 +1017,17 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                 }
             }
             Some("push-event") => {
-                handle_push_event(&node, &msg);
+                handle_push_event(&node, &msg, &mut stream);
+            }
+            Some("event-ack") => {
+                if let (Some(from), Some(event_id)) =
+                    (peer_node_id.as_deref(), msg.field_atom("id"))
+                {
+                    node.pending_acks
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .remove(&(from.to_string(), event_id.to_string()));
+                }
             }
             Some("emit") => {
                 handle_emit(&node, &msg, &mut stream);
@@ -968,6 +1073,9 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             }
             Some("metrics") => {
                 handle_metrics(&node, &mut stream);
+            }
+            Some("delivery-status") => {
+                handle_delivery_status(&node, &mut stream);
             }
             Some("join") => {
                 handle_join(&node, &msg, &mut stream);
@@ -1424,7 +1532,13 @@ fn mark_caught_up(node: &Arc<Node>, from_node: &str) {
     }
 }
 
-fn handle_push_event(node: &Arc<Node>, msg: &Sexp) {
+/// Acks unconditionally once the event is confirmed IN the journal --
+/// whether freshly appended just now or already known from an earlier
+/// delivery (a duplicate is still, honestly, "the peer has it"). A
+/// malformed message or a genuine append failure gets no ack, which is
+/// the whole point: the sender's `pending_acks` entry times out and
+/// becomes an observable failure instead of a silent one.
+fn handle_push_event(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let Some(ev_sexp) = msg.field("event").and_then(|f| f.first()) else {
         return;
     };
@@ -1436,22 +1550,51 @@ fn handle_push_event(node: &Arc<Node>, msg: &Sexp) {
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     if journal.has(&ev.node, ev.incarnation.as_deref(), ev.seq) {
+        drop(journal);
+        send_event_ack(stream, &ev.id());
         return;
     }
     let lamport = ev.lamport;
     if journal.append(ev.clone()).is_ok() {
         node.lamport.fetch_max(lamport, Ordering::SeqCst);
         drop(journal);
+        send_event_ack(stream, &ev.id());
         broadcast_event(node, &ev, Some(&ev.node));
     }
 }
 
+fn send_event_ack(stream: &mut TcpStream, event_id: &str) {
+    send(
+        stream,
+        &Sexp::list(vec![
+            Sexp::atom("event-ack"),
+            Sexp::list(vec![Sexp::atom("id"), Sexp::atom(event_id)]),
+        ]),
+    );
+}
+
+/// Records one outstanding delivery per peer this event was actually
+/// written to -- see `Node::pending_acks`. Never called for anything
+/// other than `push-event`: heartbeats and other fire-and-forget
+/// broadcasts have no ack protocol and don't need one.
 fn broadcast_event(node: &Arc<Node>, event: &Event, skip_origin: Option<&str>) {
     let msg = Sexp::list(vec![
         Sexp::atom("push-event"),
         Sexp::list(vec![Sexp::atom("event"), event.to_sexp()]),
     ]);
-    broadcast_to_peers(node, &msg, skip_origin);
+    let written_to = broadcast_to_peers(node, &msg, skip_origin);
+    if written_to.is_empty() {
+        return;
+    }
+    let event_id = event.id();
+    let now = Instant::now();
+    let mut pending = node
+        .pending_acks
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    for peer_id in written_to {
+        pending.insert((peer_id, event_id.clone()), now);
+    }
 }
 
 /// Writes `line` to every connected peer WITHOUT holding the peers lock
@@ -1462,7 +1605,13 @@ fn broadcast_event(node: &Arc<Node>, event: &Event, skip_origin: Option<&str>) {
 /// bootstrap stalled mid-flood and even `(metrics)` stopped answering.
 /// Streams are cloned out under the lock; each write gets a bounded
 /// timeout and a failed peer is dropped afterwards.
-fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) {
+///
+/// Returns the peer ids `write_all` actually succeeded for -- callers
+/// that need delivery *confirmation*, not just a successful local write,
+/// must not treat this return value as that confirmation. See
+/// `Node::pending_acks`: a local `write_all` success only proves the
+/// bytes reached this machine's kernel send buffer.
+fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) -> Vec<String> {
     const PEER_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
     let line = format!("{}\n", msg.to_text());
     let targets: Vec<(String, std::net::TcpStream)> = {
@@ -1477,6 +1626,7 @@ fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) {
             .collect()
     };
     let mut dead = Vec::new();
+    let mut written_to = Vec::new();
     for (id, mut stream) in targets {
         // Review fix #4: serialize against other long-lived writers
         // (catch-up trains) on the same socket.
@@ -1491,6 +1641,8 @@ fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) {
         let _ = stream.set_write_timeout(Some(PEER_WRITE_TIMEOUT));
         if stream.write_all(line.as_bytes()).is_err() {
             dead.push(id);
+        } else {
+            written_to.push(id);
         }
     }
     if !dead.is_empty() {
@@ -1502,6 +1654,7 @@ fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) {
             peers.remove(id);
         }
     }
+    written_to
 }
 
 /// Local client injects a fact: `(emit (type evidence-created) (payload (...)))`.
@@ -2482,6 +2635,54 @@ fn handle_status(node: &Arc<Node>, stream: &mut TcpStream) {
             presence,
             members_sexp,
             tasks_sexp,
+        ]),
+    );
+}
+
+/// Local client op: `(delivery-status)`. The explicit answer to "did my
+/// push-event actually reach the mesh" that this protocol never had
+/// before -- see `Node::pending_acks`'s doc comment. `pending` is every
+/// write awaiting an ack right now (bounded implicitly by `ACK_TIMEOUT`
+/// -- nothing sits here longer than that before the sweep moves it to
+/// `recent-failures` or an ack removes it); `recent-failures` is the
+/// bounded diagnostic ring of deliveries that timed out unacked.
+fn handle_delivery_status(node: &Arc<Node>, stream: &mut TcpStream) {
+    let now = Instant::now();
+    let pending: Vec<Sexp> = node
+        .pending_acks
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .iter()
+        .map(|((peer_id, event_id), sent_at)| {
+            Sexp::list(vec![
+                Sexp::list(vec![Sexp::atom("peer"), Sexp::atom(peer_id)]),
+                Sexp::list(vec![Sexp::atom("event"), Sexp::atom(event_id)]),
+                Sexp::list(vec![
+                    Sexp::atom("age-ms"),
+                    Sexp::atom(now.duration_since(*sent_at).as_millis().to_string()),
+                ]),
+            ])
+        })
+        .collect();
+    let failures: Vec<Sexp> = node
+        .recent_delivery_failures
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .iter()
+        .map(|(peer_id, event_id, reason)| {
+            Sexp::list(vec![
+                Sexp::list(vec![Sexp::atom("peer"), Sexp::atom(peer_id)]),
+                Sexp::list(vec![Sexp::atom("event"), Sexp::atom(event_id)]),
+                Sexp::list(vec![Sexp::atom("reason"), Sexp::atom(reason)]),
+            ])
+        })
+        .collect();
+    send(
+        stream,
+        &Sexp::list(vec![
+            Sexp::atom("delivery-status"),
+            Sexp::list(vec![Sexp::atom("pending"), Sexp::list(pending)]),
+            Sexp::list(vec![Sexp::atom("recent-failures"), Sexp::list(failures)]),
         ]),
     );
 }

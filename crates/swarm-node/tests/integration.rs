@@ -1351,6 +1351,20 @@ fn spawn_logged(
     data_dir: &Path,
     connect: Option<u16>,
 ) -> (Node, PathBuf) {
+    spawn_logged_with_env(port, node_id, data_dir, connect, &[])
+}
+
+/// Same as `spawn_logged`, plus arbitrary env vars -- for the
+/// `SWARM_TEST_ACK_TIMEOUT_MS`-style overrides that let a test prove a
+/// background sweep fires without waiting out its real production
+/// interval.
+fn spawn_logged_with_env(
+    port: u16,
+    node_id: &str,
+    data_dir: &Path,
+    connect: Option<u16>,
+    env: &[(&str, &str)],
+) -> (Node, PathBuf) {
     let log_dir = data_dir.parent().unwrap();
     std::fs::create_dir_all(log_dir).unwrap();
     let log_path = log_dir.join(format!("{node_id}.log"));
@@ -1362,6 +1376,9 @@ fn spawn_logged(
     cmd.arg("--no-auto-sync");
     if let Some(p) = connect {
         cmd.arg("--connect").arg(format!("127.0.0.1:{p}"));
+    }
+    for (key, value) in env {
+        cmd.env(key, value);
     }
     let f = std::fs::File::create(&log_path).unwrap();
     cmd.stdout(f.try_clone().unwrap()).stderr(f);
@@ -1398,6 +1415,19 @@ fn wait_for_log_containing(log_path: &Path, needle: &str, timeout: Duration) -> 
 /// (and therefore `register_peer`) has completed before asserting on
 /// what the *other* node gossips onward.
 fn hand_speak_peer_hello(port: u16, node_id: &str, listen_port: u16, advertise_host: Option<&str>) {
+    hand_speak_peer_hello_and_keep_connected(port, node_id, listen_port, advertise_host);
+}
+
+/// Same handshake, but returns the still-open connection instead of
+/// dropping it -- for tests that need to observe (or deliberately not
+/// respond to) what the real node sends afterward, e.g. a `push-event`
+/// this fake peer will receive and silently never ack.
+fn hand_speak_peer_hello_and_keep_connected(
+    port: u16,
+    node_id: &str,
+    listen_port: u16,
+    advertise_host: Option<&str>,
+) -> BufReader<TcpStream> {
     let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
     stream
         .set_read_timeout(Some(Duration::from_secs(3)))
@@ -1420,6 +1450,7 @@ fn hand_speak_peer_hello(port: u16, node_id: &str, listen_port: u16, advertise_h
         line.contains("peer-welcome"),
         "expected peer-welcome, got: {line}"
     );
+    reader
 }
 
 #[test]
@@ -1477,4 +1508,114 @@ fn gossip_falls_back_to_observed_ip_when_peer_omits_advertise_host() {
         log.contains("learned of zzz-fake-old-peer at 127.0.0.1:18888"),
         "an old peer with no advertise-host must still fall back to the observed IP: {log}"
     );
+}
+
+// --- push-event delivery confirmation ---------------------------------
+//
+// Original bug (SWARM-PUSH-EVENT-SILENT-LOSS, ecosystem/plans/tasks.my,
+// still open as of 2026-09-01): a socket write succeeding only proves the
+// bytes reached this machine's kernel send buffer -- it was silently
+// treated as "delivered." The owner's framing: event-created !=
+// send-attempted != socket-write-ok != peer-accepted != mesh-converged.
+// These tests prove the fix's whole PASS criterion: a peer that accepts
+// a push-event but never acks it (indistinguishable, from the sender's
+// side, from the original bug's connection-cycling silent loss) must
+// never be silently treated as a successful delivery -- it shows up as
+// `pending`, then as an honest `recent-failures` entry, never neither.
+
+fn emit_event(port: u16, event_type: &str) -> String {
+    let response = request(port, &format!("(emit (type {event_type}) (payload ()))"));
+    assert!(
+        response.starts_with("(ok"),
+        "emit should have succeeded: {response}"
+    );
+    // (ok (id EVENT_ID)) -- pull EVENT_ID out without a full parser.
+    let after_id = response
+        .split("(id ")
+        .nth(1)
+        .expect("emit ok must carry an id");
+    after_id
+        .split(')')
+        .next()
+        .expect("malformed id field")
+        .to_string()
+}
+
+#[test]
+fn silent_peer_delivery_never_silently_counts_as_acked() {
+    let port_a = alloc_ports(1);
+    let dir = data_dir("silent-peer-delivery");
+    // Shrink ACK_TIMEOUT so this proves the sweep fires without waiting
+    // out a real 10s production timeout -- the heartbeat cadence itself
+    // (HEARTBEAT_INTERVAL, not overridden here) still bounds how soon
+    // after that a sweep tick actually runs.
+    let (_a, _log_a) = spawn_logged_with_env(
+        port_a,
+        "delivery-a",
+        &dir.join("a"),
+        None,
+        &[("SWARM_TEST_ACK_TIMEOUT_MS", "200")],
+    );
+
+    // A silent peer: completes the handshake normally (so A registers it
+    // as a live connected peer and will push events to it), then never
+    // sends anything back -- exactly what the original bug's
+    // connection-cycling looked like from A's side: the write succeeds,
+    // nothing useful ever comes back.
+    let mut silent_peer =
+        hand_speak_peer_hello_and_keep_connected(port_a, "zzz-silent-peer", 17777, None);
+
+    let event_id = emit_event(port_a, "test-delivery-event");
+
+    // A really did write the push-event onto the wire to the silent peer
+    // -- prove that first, so a later "it's gone" isn't just "it was
+    // never sent." The handshake's own sync-hello (empty: this fake peer
+    // never claimed to have anything) arrives first on the same
+    // connection; skip past it to the push-event.
+    let mut line = String::new();
+    loop {
+        line.clear();
+        silent_peer
+            .read_line(&mut line)
+            .expect("silent peer should have received the push-event");
+        if line.contains("push-event") {
+            break;
+        }
+    }
+    assert!(
+        line.contains(&event_id),
+        "expected the push-event for {event_id}, got: {line}"
+    );
+
+    // Immediately after: still within ACK_TIMEOUT, this delivery must be
+    // `pending`, not silently absent (which would be indistinguishable
+    // from "never happened" or "already confirmed").
+    let status = request(port_a, "(delivery-status)");
+    assert!(
+        status.contains(&event_id) && status.contains("pending"),
+        "delivery to the silent peer should be pending right after the write: {status}"
+    );
+
+    // Past ACK_TIMEOUT: the sweep must have moved it to recent-failures,
+    // and it must no longer be reported pending -- silence is never
+    // treated as success.
+    let final_status = eventually(port_a, "(delivery-status)", Duration::from_secs(8), |r| {
+        r.contains(&event_id) && r.contains("ack-timeout")
+    });
+    assert!(
+        final_status.contains("ack-timeout"),
+        "an unacked delivery must become an explicit recent-failure, never vanish silently: {final_status}"
+    );
+
+    // And the pending entry for THIS event is gone -- it moved, it didn't duplicate.
+    let pending_section = final_status
+        .split("recent-failures")
+        .next()
+        .unwrap_or(&final_status);
+    assert!(
+        !pending_section.contains(&event_id),
+        "the timed-out event must not still be listed as pending: {final_status}"
+    );
+
+    drop(silent_peer);
 }
