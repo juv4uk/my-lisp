@@ -5,7 +5,7 @@
 use my_lisp::{Environment, Value};
 use my_lisp_lsp::Harness as Server;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn raw(m: &str) -> String {
     m.to_string()
@@ -615,4 +615,91 @@ fn t16_workspace_scan_recognizes_wsm_extension() {
         r.contains("/a.wsm"),
         "cross-file definition must point into a.wsm: {r}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// G3: guard knowledge in hover + arity diagnostics (live WSM files)
+// ---------------------------------------------------------------------------
+
+/// The my-lisp repo root (parent of crates/my-lisp-lsp), used as the LSP
+/// workspace root so initialize loads guard knowledge from the REAL
+/// lib/guard.wsm and knowledge/guard-reference.wsm.
+fn my_lisp_repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..")
+}
+
+fn init_with_root(root: &Path) -> String {
+    request(
+        1,
+        "initialize",
+        &format!(
+            r#"{{"rootUri":{}}}"#,
+            json_string(&format!("file://{}", root.display()))
+        ),
+    )
+}
+
+/// Hover over a guard function name in ordinary source must surface its
+/// canonical defining form from lib/guard.wsm — the live file, not a
+/// Rust copy.
+#[test]
+fn t17_g3_guard_function_hover_from_live_lib_guard_wsm() {
+    let uri = "file:///g3fn.my";
+    let doc = "(guard-unknown subject missing-evidence guidance)\n";
+    let mut server = Server::new();
+    let replies = server.feed(&[
+        raw(&init_with_root(&my_lisp_repo_root())),
+        raw(&did_open(uri, doc)),
+        raw(&hover_msg(uri, 0, 2)),
+    ]);
+    assert_eq!(replies.len(), 3);
+    let r = replies[2].as_str();
+    assert!(r.contains("**guard function**"), "{r}");
+    // The canonical source must be the live def, structurally provable.
+    assert!(r.contains("(def guard-unknown"), "{r}");
+    assert!(r.contains("lib/guard.wsm"), "{r}");
+}
+
+/// A wrong-arity call to a live guard function is caught by arity
+/// diagnostics exactly like a runtime builtin would be.
+#[test]
+fn t18_g3_guard_function_wrong_arity_is_diagnosed() {
+    let uri = "file:///g3ar.my";
+    let doc = "(guard-unknown only-one-arg)\n"; // expects 3
+    let mut server = Server::new();
+    let replies = server.feed(&[
+        raw(&init_with_root(&my_lisp_repo_root())),
+        raw(&did_open(uri, doc)),
+    ]);
+    assert_eq!(replies.len(), 2);
+    let r = replies[1].as_str();
+    assert!(r.contains("publishDiagnostics"), "{r}");
+    assert!(r.contains("arity: guard-unknown expects"), "{r}");
+    assert!(
+        !r.contains("\"diagnostics\":[]"),
+        "must not be empty: {r}"
+    );
+}
+
+/// Hover over a guard topic symbol surfaces the reference-bureau entry.
+/// The topic directory parse is slow (~3.4s release / ~65s debug for the
+/// 47KB canonical file), so this stays explicit rather than slowing every
+/// `cargo test`. Run: `cargo test --release -p my-lisp-lsp -- --ignored`
+#[test]
+#[ignore = "guard-reference.wsm topic parse is slow; run explicitly in release"]
+fn t19_g3_guard_topic_hover_from_live_reference_wsm() {
+    let uri = "file:///g3tp.my";
+    let doc = "(guard)\n"; // `guard` as a bare symbol form, not a call
+    let mut server = Server::new();
+    let replies = server.feed(&[
+        raw(&init_with_root(&my_lisp_repo_root())),
+        raw(&did_open(uri, doc)),
+        raw(&hover_msg(uri, 0, 2)),
+    ]);
+    assert_eq!(replies.len(), 3);
+    let r = replies[2].as_str();
+    assert!(r.contains("**guard topic**"), "{r}");
+    // The summary must come from the live canonical file, and the
+    // unknown-route guidance (ASK-OWNER for guard) must travel along.
+    assert!(r.contains("**unknown route:**"), "{r}");
 }

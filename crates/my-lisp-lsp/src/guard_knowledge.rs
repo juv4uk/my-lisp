@@ -237,7 +237,7 @@ fn parse_topics(source: &str) -> HashMap<String, GuardReference> {
                     "authority" | "how-to" | "verify" => {
                         let collected: Vec<String> = values
                             .iter()
-                            .flat_map(|v| as_list(*v).unwrap_or(&[]).iter())
+                            .flat_map(|v| as_list(v).unwrap_or(&[]).iter())
                             .filter_map(as_symbol)
                             .map(str::to_string)
                             .collect();

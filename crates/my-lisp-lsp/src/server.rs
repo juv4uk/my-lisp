@@ -25,6 +25,10 @@ const METHOD_NOT_FOUND: i64 = -32601;
 pub struct Server {
     documents: HashMap<String, String>,
     workspace: WorkspaceIndex,
+    /// Guard knowledge loaded from the workspace root when it is the
+    /// my-lisp repo; empty otherwise. Functions load eagerly (cheap),
+    /// topics lazily on first guard-topic hover.
+    guard: crate::guard_knowledge::GuardKnowledge,
 }
 
 impl Server {
@@ -99,7 +103,8 @@ impl Server {
             .and_then(|u| as_str(Some(u)))
             .and_then(crate::workspace::uri_to_path)
         {
-            self.workspace.set_root(root_uri);
+            self.workspace.set_root(root_uri.clone());
+            self.guard = crate::guard_knowledge::GuardKnowledge::load_functions(&root_uri);
         }
         // Capabilities list exactly what is implemented — nothing more.
         let capabilities = concat!(
@@ -176,7 +181,7 @@ impl Server {
     fn publish(&self, uri: &str) -> String {
         let diagnostics = match self.documents.get(uri) {
             Some(text) => match analysis::analyze(text) {
-                Ok(_) => match analysis::arity_diagnostics(text) {
+                Ok(_) => match analysis::arity_diagnostics_with_items(text, &self.guard.arity_items()) {
                     Ok(diagnostics) => diagnostics
                         .into_iter()
                         .map(|diagnostic| {
@@ -234,7 +239,7 @@ impl Server {
         response(&incoming.id, Some(format!("[{}]", symbols.join(","))), None)
     }
 
-    fn hover(&self, incoming: &protocol::Incoming) -> String {
+    fn hover(&mut self, incoming: &protocol::Incoming) -> String {
         let Some((_, text)) = Self::uri_and_text(&incoming.params, &self.documents) else {
             return response(&incoming.id, Some("null".to_string()), None);
         };
@@ -272,6 +277,44 @@ impl Server {
             let value = format!(
                 "**{}** `{}`\n\n```my-lisp\n{}\n```\n\n{}",
                 kind, symbol, item.signature, item.documentation
+            );
+            let result = format!(
+                "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
+                str_lit(&value),
+                span_to_range(&text, sym_span.start, sym_span.end)
+            );
+            return response(&incoming.id, Some(result), None);
+        }
+        // Guard knowledge from the live canonical WSM files (G3): a guard
+        // function shows its defining form from lib/guard.wsm; a guard
+        // topic shows its reference-bureau entry. The source of truth is
+        // the workspace files themselves, never a Rust copy.
+        if let Some(function) = self.guard.function(&symbol) {
+            if let Some(source) = self.guard.source_of(function) {
+                let value = format!(
+                    "**guard function** `{}`\n\n```my-lisp\n{}\n```\n\nDefined in lib/guard.wsm (live file, not duplicated in the IDE).",
+                    function.name, source
+                );
+                let result = format!(
+                    "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
+                    str_lit(&value),
+                    span_to_range(&text, sym_span.start, sym_span.end)
+                );
+                return response(&incoming.id, Some(result), None);
+            }
+        }
+        self.guard.ensure_topics();
+        if let Some(reference) = self.guard.topic(&symbol) {
+            let value = format!(
+                "**guard topic** `{}`\n\n{}\n\n**authority:** {}\n\n**how-to:** {}\n\n**verify:** {}\n\n**lifecycle:** {}\n\n**provenance:** {}\n\n**unknown route:** {}",
+                reference.topic,
+                reference.summary,
+                reference.authority.join(", "),
+                reference.how_to.join(", "),
+                reference.verify.join(", "),
+                reference.lifecycle,
+                reference.provenance,
+                reference.unknown_route
             );
             let result = format!(
                 "{{\"contents\":{{\"kind\":\"markdown\",\"value\":{}}},\"range\":{}}}",
