@@ -1,10 +1,12 @@
 use crate::Value;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-/// **Known Risk:** Dropping a deeply nested `Environment` chain (thousands of levels)
-/// could cause a stack overflow because `Rc<RefCell<Frame>>` uses Rust's recursive `Drop`.
-/// This is not currently an issue since we only have one child level from root in most usage,
-/// but it could appear if deep nesting of `let` or currying patterns emerges.
+/// Dropping a deeply nested `Environment` chain (thousands of `let`/currying
+/// levels) would otherwise recurse through `Rc<RefCell<Frame>>`'s default
+/// `Drop` one stack frame per level and could overflow the stack. `Environment`
+/// has its own `Drop` below (mirroring `Value::Pair`'s iterative Drop in
+/// `value.rs`) that walks the parent chain with an explicit worklist instead,
+/// so this is fixed, not just documented as a live risk.
 /// Session-wide print transcript plus a consumer cursor, so hot hosts
 /// (REPL, LSP, swarm TCP) can take only the lines appended since their
 /// last read instead of re-cloning the whole history per evaluation.
@@ -240,6 +242,60 @@ impl Environment {
     }
 }
 
+impl Drop for Environment {
+    fn drop(&mut self) {
+        // Swap this Environment's real content out for a cheap, parentless
+        // sentinel so the field-drop that runs after this function returns
+        // is O(1), then manually walk the extracted frame chain iteratively
+        // instead of letting Rust's recursive Drop walk `Frame.parent`.
+        // Mirrors `Value::Pair`'s Drop in value.rs.
+        let taken = std::mem::replace(
+            self,
+            Environment(
+                Rc::new(RefCell::new(Frame {
+                    values: HashMap::new(),
+                    parent: None,
+                })),
+                Rc::new(RefCell::new(Transcript {
+                    lines: Vec::new(),
+                    taken: 0,
+                })),
+                Rc::new(RefCell::new(Limits::default())),
+            ),
+        );
+
+        let mut worklist = vec![taken];
+        while let Some(env) = worklist.pop() {
+            let env = std::mem::ManuallyDrop::new(env);
+            // SAFETY: `env` is ManuallyDrop, so each field is read out of it
+            // exactly once here and nothing double-drops when `env` itself
+            // goes out of scope at the end of this iteration (ManuallyDrop's
+            // own Drop is a no-op).
+            let frame_rc = unsafe { std::ptr::read(&env.0) };
+            let transcript_rc = unsafe { std::ptr::read(&env.1) };
+            let limits_rc = unsafe { std::ptr::read(&env.2) };
+            // Ordinary, non-recursive Rc drops -- Transcript/Limits never
+            // nest another Environment.
+            drop(transcript_rc);
+            drop(limits_rc);
+
+            if let Ok(cell) = Rc::try_unwrap(frame_rc) {
+                let mut frame = cell.into_inner();
+                // frame.values (HashMap<Rc<str>, Value>) drops normally at
+                // the end of this arm -- Value already has its own
+                // iterative Drop for long Pair chains, so this is safe
+                // regardless of how large a single frame's bindings are.
+                if let Some(parent) = frame.parent.take() {
+                    worklist.push(parent);
+                }
+            }
+            // Err case: frame_rc is still referenced elsewhere (shared via
+            // Environment::clone); dropping this handle just decrements the
+            // refcount, no recursion.
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Session {
     pub environment: Environment,
@@ -275,6 +331,23 @@ mod tests {
     fn get_on_unknown_name_returns_none() {
         let root = Environment::root();
         assert_eq!(root.get("does-not-exist"), None);
+    }
+
+    #[test]
+    fn dropping_a_very_deep_environment_chain_does_not_overflow_the_stack() {
+        // Regression for the stack-overflow-on-deep-drop risk this file
+        // used to document as live and unmitigated (see Environment's Drop
+        // impl above). Each child() holds the only strong reference to its
+        // parent's frame by the time this loop finishes reassigning
+        // `current`, so dropping the final Environment walks a genuine
+        // 300k-level singly-referenced chain through the iterative
+        // worklist -- the same order of magnitude as the long-list
+        // regression Value::Pair's Drop already guards against.
+        let mut current = Environment::root();
+        for _ in 0..300_000 {
+            current = current.child();
+        }
+        drop(current);
     }
 
     #[test]
