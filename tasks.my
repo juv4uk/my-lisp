@@ -501,5 +501,5 @@
     (capabilities . (wsm guard knowledge parsing testing regression))
     (origin . my-lisp)
     (description . "knowledge/guard-reference.wsm has an unbalanced paren at line 399 (one extra ')' closing the ecosystem-vault-coordination reference entry, introduced in a038df7) that makes the real WSM reader reject the file: 'my-lisp --oracle-help' exits 2 with a parse error. guard-reference-schema-check --check-inbox nonetheless reports 'Schema validation PASSED: 43 topics checked' against the same file, because parse_guard_reference in crates/my-lisp-cli/src/bin/guard-reference-schema-check.rs is a separate hand-rolled parser that does not agree with the canonical reader. Fix the paren, then close the actual gap: make the schema checker parse through the same canonical reader (or add a regression test asserting the two never diverge) so a future PASS is real evidence that --oracle-help and every other consumer of this file can actually load it, not just that this one custom parser accepted it.")
-    (done . ()))
+    (done . (t . "prajna 2026-09-01: fixed paren at guard-reference.wsm:399; schema-check now parses through canonical my_lisp::parse gate (same reader as --oracle-help), fail-closed; fixture balanced; +2 regression tests; 7/7 bin tests + 26 my-lisp-cli tests PASS; --oracle-help exit 0; commit 63fcde9 pushed"))
   ))))
