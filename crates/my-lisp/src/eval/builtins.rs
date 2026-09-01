@@ -207,7 +207,7 @@ pub(crate) fn install(environment: &Environment) {
         "atom",
         |args: &[Value], _env: &Environment, span: Span| {
             exact_args("atom", args, 1, span)?;
-            Ok(Value::Bool(args[0].is_atom()))
+            Ok(Value::truth(args[0].is_atom()))
         }
     );
 

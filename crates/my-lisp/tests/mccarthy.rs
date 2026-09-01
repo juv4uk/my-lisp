@@ -111,7 +111,7 @@ fn bare_large_integer_literals_remain_exact() {
     );
     assert_eq!(
         eval(&format!("(eq {literal} {literal})")),
-        Value::Bool(true)
+        Value::Symbol("t".into())
     );
 }
 
@@ -296,7 +296,7 @@ fn bootstrap_library_is_written_and_executed_in_my_lisp() {
         eval_program("(not (quote ()))", &mut session)
             .unwrap()
             .value,
-        Value::Bool(true)
+        Value::Symbol("t".into())
     );
 }
 
@@ -411,13 +411,16 @@ fn reader_supports_unicode_comments_and_quote_sugar() {
 #[test]
 fn implements_mccarthys_seven_primitives() {
     assert_eq!(eval("(quote radio)"), Value::Symbol("radio".into()));
-    assert_eq!(eval("(atom (quote radio))"), Value::Bool(true));
-    assert_eq!(eval("(atom (quote ()))"), Value::Bool(true));
-    assert_eq!(eval("(atom (quote (radio antenna)))"), Value::Bool(false));
-    assert_eq!(eval("(eq (quote radio) (quote radio))"), Value::Bool(true));
+    assert_eq!(eval("(atom (quote radio))"), Value::Symbol("t".into()));
+    assert_eq!(eval("(atom (quote ()))"), Value::Symbol("t".into()));
+    assert_eq!(eval("(atom (quote (radio antenna)))"), Value::Nil);
+    assert_eq!(
+        eval("(eq (quote radio) (quote radio))"),
+        Value::Symbol("t".into())
+    );
     assert_eq!(
         eval("(eq (quote radio) (quote antenna))"),
-        Value::Bool(false)
+        Value::Nil
     );
     assert_eq!(
         eval("(car (quote (radio antenna)))"),
@@ -456,7 +459,7 @@ fn lexical_child_reads_parent_without_mutating_it() {
     let parent = my_lisp::Environment::root();
     let child = parent.child();
     child.define("station", Value::Symbol("UR5ABC".into()));
-    assert_eq!(child.get("t"), Some(Value::Bool(true)));
+    assert_eq!(child.get("t"), Some(Value::Symbol("t".into())));
     assert_eq!(parent.get("station"), None);
 }
 
@@ -694,7 +697,7 @@ fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     assert_eq!(
         eval_program("(<= 1 1 2)", &mut session).unwrap().value,
-        Value::Bool(true)
+        Value::Symbol("t".into())
     );
     assert_eq!(
         eval_program("(<= 1 2 1)", &mut session).unwrap().value,
@@ -702,7 +705,7 @@ fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
     );
     assert_eq!(
         eval_program("(>= 3 3 2)", &mut session).unwrap().value,
-        Value::Bool(true)
+        Value::Symbol("t".into())
     );
     assert_eq!(
         eval_program("(>= 2 3)", &mut session).unwrap().value,
@@ -710,11 +713,11 @@ fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
     );
     assert_eq!(
         eval_program("(<= 1/2 0.5)", &mut session).unwrap().value,
-        Value::Bool(true)
+        Value::Symbol("t".into())
     );
     assert_eq!(
         eval_program("(<= 5)", &mut session).unwrap().value,
-        Value::Bool(true)
+        Value::Symbol("t".into())
     );
     assert_eq!(
         eval_program("(<=)", &mut session).unwrap_err().kind,
@@ -1068,10 +1071,15 @@ fn property_tests_from_my() {
 
             let result = eval_program(expr_str, &mut session)
                 .unwrap_or_else(|e| panic!("property {name} failed on iteration {iteration}: {e}"));
-            assert_eq!(
-                result.value,
-                Value::Bool(true),
-                "Property {name} failed on iteration {iteration}"
+            // Truthiness, not exact identity: different properties check
+            // equality with different predicates (`eq` -> Symbol("t")/Nil,
+            // numeric `=` -> Value::Bool -- both untouched here on purpose,
+            // see Value::truth), so a property "holding" only ever means
+            // "truthy", never one specific Value shape.
+            assert!(
+                result.value.is_truthy(),
+                "Property {name} failed on iteration {iteration}: got {:?}",
+                result.value
             );
         }
     }
@@ -1168,7 +1176,7 @@ fn symbol_predicate_is_a_my_lisp_function_not_a_rust_builtin() {
         eval_program("(symbol? (quote hello))", &mut session)
             .unwrap()
             .value,
-        Value::Bool(true)
+        Value::Symbol("t".into())
     );
     assert_eq!(
         eval_program("(symbol? 5)", &mut session).unwrap().value,
@@ -1193,7 +1201,7 @@ fn symbol_predicate_is_a_my_lisp_function_not_a_rust_builtin() {
         )
         .unwrap()
         .value,
-        Value::Bool(true)
+        Value::Symbol("t".into())
     );
     assert_eq!(
         eval_program("(symbol? (quote hello))", &mut Session::default())

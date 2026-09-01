@@ -506,19 +506,26 @@ fn canonical_values_round_trip_through_write_to_string_and_read() {
     }
 }
 
-// BLOCKER, found 2026-09-02 (owner-directed audit): `Value::Bool` and
-// `Value::Nil` are genuinely distinct values -- `PartialEq` never matches
-// them to each other -- and G6/S1 (docs/language-core-axioms.md) already
-// commit `read(write-to-string(v)) == v` as a tested constitutional
-// contract, verified above for symbols, strings, and structured records.
-// `Value::Bool` currently violates that same contract on both branches:
+// BLOCKER, found 2026-09-02 (owner-directed audit). Originally reproduced
+// via `eq`; updated 2026-09-02 when `eq`/`atom` stopped returning
+// `Value::Bool` (owner decision: Boolean-ness is a logic convention on
+// existing core types -- `t`/`Nil` -- not a separate core runtime
+// datatype; `eq`/`atom` now return `Value::truth`'s `t`/`Nil`, and `t`
+// itself became a self-evaluating symbol, see `environment.rs`). `eq`'s
+// own result round-trips fine now (both `Symbol` and `Nil` always did).
+// `Value::Bool` itself is untouched and still produced by code
+// deliberately left alone in that same change -- arithmetic/string
+// comparisons (`<`, `>`, `=`, `string<?`, ...), JSON, swarm, host --
+// so the underlying defect is reproduced here via `<` instead, still
+// live:
 //
 // - `write-to-string` renders `Bool(false)` with the *same* text as `Nil`
 //   ("()"), so `read` cannot tell them apart and always returns `Nil`.
-// - `Bool(true)` renders as "t", but reading "t" back always yields
-//   `Symbol("t")` (`read`/`quote` never evaluate) -- not `Bool(true)` --
-//   because `t` is an ordinary environment-bound symbol, not reader
-//   syntax, unlike `write-to-string`'s own printed form for it.
+// - `Bool(true)` renders as "t", but reading "t" back now yields `t`
+//   itself (the self-evaluating symbol, per the above) -- which is
+//   `eq` to `Value::Bool(true)`? No: `Symbol("t")` and `Bool(true)` are
+//   still different `Value` variants (`PartialEq` has no cross-arm
+//   match), so this direction still fails too.
 //
 // The smallest fix would need `read` -- which shares `crate::parse` with
 // every other Lisp source file, not a private data-only reader -- to
@@ -526,9 +533,9 @@ fn canonical_values_round_trip_through_write_to_string_and_read() {
 // change to the canonical parser, not a change local to `write-to-string`
 // alone, so per explicit scoping this stops here rather than touching the
 // shared reader. This test locks in today's actual behavior (`Nil` round-
-// trips correctly; `Bool` does not) so it can't silently regress further,
-// and becomes the fix-confirmation test the moment someone resolves the
-// reader-syntax question.
+// trips correctly; `Bool` -- wherever it's still produced -- does not)
+// so it can't silently regress further, and becomes the fix-confirmation
+// test the moment someone resolves the reader-syntax question.
 #[test]
 fn write_to_string_cannot_round_trip_bool_through_the_shared_reader() {
     let mut session = Session::default();
@@ -549,17 +556,19 @@ fn write_to_string_cannot_round_trip_bool_through_the_shared_reader() {
     assert_eq!(
         run(
             &mut session,
-            "(eq (read (write-to-string (eq 1 2))) (eq 1 2))"
-        ),
-        "()",
-        "known blocker: Bool(false) currently round-trips into Nil, not itself"
-    );
-    assert_eq!(
-        run(
-            &mut session,
             "(eq (read (write-to-string (eq 1 1))) (eq 1 1))"
         ),
+        "t",
+        "eq's own result now round-trips: it returns Symbol(\"t\")/Nil, not Bool -- if this fails, that changed again"
+    );
+    assert_eq!(
+        run(&mut session, "(eq (read (write-to-string (< 2 1))) (< 2 1))"),
         "()",
-        "known blocker: Bool(true) currently round-trips into Symbol(\"t\"), not itself"
+        "known blocker, still live: Bool(false) (here from `<`, untouched) round-trips into Nil, not itself"
+    );
+    assert_eq!(
+        run(&mut session, "(eq (read (write-to-string (< 1 2))) (< 1 2))"),
+        "()",
+        "known blocker, still live: Bool(true) (here from `<`, untouched) round-trips into Symbol(\"t\"), not itself"
     );
 }

@@ -72,7 +72,13 @@ impl Environment {
             })),
             Rc::new(RefCell::new(Limits::default())),
         );
-        environment.define("t", Value::Bool(true));
+        // `t` is the canonical truth value itself, not a variable that
+        // merely holds one: bound to the symbol `t` (self-referential),
+        // so `t` evaluates to `Symbol("t")` -- the exact value `eq`/`atom`
+        // (Value::truth) already return for true. Previously bound to
+        // Value::Bool(true), a different Value from Value::truth's own
+        // result, which made `(eq (eq 1 1) t)` false.
+        environment.define("t", Value::Symbol(Rc::from("t")));
         // contract 2.1: primitives enter the root environment as
         // first-class builtin values -- one runtime authority, no
         // head-only registry (docs/PROPOSAL-FIRST-CLASS-BUILTINS.md).
@@ -315,9 +321,13 @@ mod tests {
     use crate::Exactness;
 
     #[test]
-    fn root_predefines_t_as_true() {
+    fn root_predefines_t_as_the_self_evaluating_truth_symbol() {
+        // `t` is the canonical truth value, bound to itself, not to a
+        // separate Value::Bool -- see Environment::root's own comment
+        // and Value::truth. This keeps `(eq (eq 1 1) t)` == `t` honest:
+        // both sides are the identical Value, Symbol("t").
         let root = Environment::root();
-        assert_eq!(root.get("t"), Some(Value::Bool(true)));
+        assert_eq!(root.get("t"), Some(Value::Symbol(Rc::from("t"))));
     }
 
     #[test]

@@ -188,5 +188,5 @@ pub(crate) fn eq_values(left: Value, right: Value, span: Span) -> Result<Value, 
             span,
         ));
     }
-    Ok(Value::Bool(left == right))
+    Ok(Value::truth(left == right))
 }
