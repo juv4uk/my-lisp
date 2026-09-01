@@ -91,15 +91,29 @@ pub struct ArityDiagnostic {
 /// syntax-dispatched form. Unknown/dynamic heads and locally shadowed
 /// first-class builtins remain untouched; quoted subtrees are data.
 pub fn arity_diagnostics(source: &str) -> Result<Vec<ArityDiagnostic>, LanguageError> {
+    arity_diagnostics_with_items(source, &[])
+}
+
+/// Same as [`arity_diagnostics`], with additional known heads folded into
+/// the same canonical shape (e.g. live guard functions from
+/// `lib/guard.wsm`). Canonical `language_items()` win on name collision —
+/// guard files are lower authority than the language itself.
+pub fn arity_diagnostics_with_items(
+    source: &str,
+    extra: &[(String, LanguageItemKind, Arity)],
+) -> Result<Vec<ArityDiagnostic>, LanguageError> {
     let expressions = my_lisp::parse(source)?;
     let local_defs = collect_defs(&expressions)
         .into_iter()
         .map(|definition| definition.name)
         .collect::<HashSet<_>>();
-    let items = my_lisp::language_items()
+    let mut items = my_lisp::language_items()
         .into_iter()
         .map(|item| (item.name, (item.kind, item.arity)))
         .collect::<HashMap<_, _>>();
+    for (name, kind, arity) in extra {
+        items.entry(name.clone()).or_insert((*kind, *arity));
+    }
     let mut diagnostics = Vec::new();
     for expression in &expressions {
         collect_arity_diagnostics(expression, false, &local_defs, &items, &mut diagnostics);

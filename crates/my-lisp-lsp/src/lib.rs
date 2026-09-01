@@ -1,6 +1,7 @@
 //! Library face of my-lisp-lsp so integration tests (and future
 //! embedders) can drive the exact same server loop the stdio binary runs.
 pub mod analysis;
+pub mod guard_knowledge;
 pub mod jsonout;
 pub mod protocol;
 pub mod server;
