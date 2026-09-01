@@ -491,6 +491,8 @@
     (done . ()))
   )
   ("WSM-CONSTITUTION-DEPENDENCY-CLASSIFICATION" . (
+    (claimed-by . prajna)
+
     (priority . 9.4)
     (capabilities . (wsm constitution conformance libraries analysis))
     (origin . my-lisp)
