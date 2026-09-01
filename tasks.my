@@ -478,6 +478,7 @@
     (priority . 9.8)
     (capabilities . (wsm constitution conformance testing provenance))
     (origin . my-lisp)
+    (claimed-by . prajna)
     (description . "Generate stable fixture IDs and required-feature sets directly from my-lisp-constitution.my/conformance.my. Preserve tier, axiom, expected value or named error; do not create a second semantic authority.")
     (done . ()))
   )
