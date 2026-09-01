@@ -384,11 +384,20 @@ mod tests {
                 (quote read-only) (quote contract) (quote ()) (quote none)
                 (quote continue) (list fact))))"#;
         fs::write(&path, allow_policy).unwrap();
-        let first = process_line(&path, "source=git repo=/home/agents/GitHub/my-lisp");
+        // A real git-tracked directory that exists in ANY checkout, not
+        // just this one machine -- CARGO_MANIFEST_DIR is wherever this
+        // crate was actually built from, which is always inside the
+        // my-lisp repo `git -C` needs. The previous hardcoded
+        // /home/agents/GitHub/my-lisp only existed on the machine that
+        // wrote it, so this test had been silently failing in CI (a
+        // different checkout path) since the commit that added it --
+        // confirmed via `gh run list` history, not assumed.
+        let observation = format!("source=git repo={}", env!("CARGO_MANIFEST_DIR"));
+        let first = process_line(&path, &observation);
         fs::write(&path, allow_policy.replace("(quote allow)", "(quote warn)")).unwrap();
-        let second = process_line(&path, "source=git repo=/home/agents/GitHub/my-lisp");
+        let second = process_line(&path, &observation);
         fs::remove_file(path).unwrap();
-        assert!(first.contains("(decision allow)"));
-        assert!(second.contains("(decision warn)"));
+        assert!(first.contains("(decision allow)"), "{first}");
+        assert!(second.contains("(decision warn)"), "{second}");
     }
 }
