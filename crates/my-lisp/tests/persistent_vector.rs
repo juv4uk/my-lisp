@@ -9,7 +9,11 @@ use my_lisp::{eval_program, Session};
 fn eval_vec(source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/persistent-vector.my"), &mut session).unwrap();
+    eval_program(
+        include_str!("../../../lib/persistent-vector.my"),
+        &mut session,
+    )
+    .unwrap();
     eval_program(source, &mut session)
         .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
         .value
@@ -70,17 +74,18 @@ fn conj_in_ascending_order_stays_balanced_instead_of_degenerating_into_a_list() 
         (< (vnode-height (vec-tree v)) 15)
     "#;
     // build-range isn't in core.my; construct the 0..499 list inline.
-    let source = source.replace(
-        "(build-range 500 (quote ()))",
-        &{
-            let mut items = String::new();
-            for i in (0..500).rev() {
-                items.push_str(&format!("{i} "));
-            }
-            format!("(list {})", items.trim_end())
-        },
+    let source = source.replace("(build-range 500 (quote ()))", &{
+        let mut items = String::new();
+        for i in (0..500).rev() {
+            items.push_str(&format!("{i} "));
+        }
+        format!("(list {})", items.trim_end())
+    });
+    assert_eq!(
+        eval_vec(&source),
+        "t",
+        "height must stay logarithmic, not degrade to O(n) for 500 ascending inserts"
     );
-    assert_eq!(eval_vec(&source), "t", "height must stay logarithmic, not degrade to O(n) for 500 ascending inserts");
 }
 
 #[test]

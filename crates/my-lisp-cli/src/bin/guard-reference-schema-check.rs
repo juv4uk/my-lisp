@@ -249,7 +249,7 @@ fn main() {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let repo_root = manifest_dir.parent().unwrap().parent().unwrap(); // my-lisp/
     let guard_ref_path = repo_root.join("knowledge/guard-reference.wsm");
-    let inbox_path = repo_root.join("../ecosystem/knowledge/guard-reference-inbox.mylog");
+    let inbox_path = repo_root.join("../../ecosystem/knowledge/guard-reference-inbox.mylog");
 
     let entries = match parse_guard_reference(&guard_ref_path) {
         Ok(e) => e,

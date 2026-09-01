@@ -167,8 +167,12 @@ mod tests {
 
     #[test]
     fn broken_core_preload_is_reported_instead_of_installing_partial_session() {
-        let error = session_with_core_fasl(b"broken fasl").expect_err("if FASL loading fails, it must propagate rather than swallow the error");
-        assert!(error.contains("failed to decode") || error.contains("failed to preload"), "{error}");
+        let error = session_with_core_fasl(b"broken fasl")
+            .expect_err("if FASL loading fails, it must propagate rather than swallow the error");
+        assert!(
+            error.contains("failed to decode") || error.contains("failed to preload"),
+            "{error}"
+        );
     }
 
     #[test]

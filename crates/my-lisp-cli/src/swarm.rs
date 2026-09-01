@@ -38,10 +38,7 @@ enum RequestFrame {
 /// Read one newline-delimited frame without ever allocating more than `limit`
 /// bytes for it. Oversized frames are drained through the newline and then
 /// reported, so the connection cannot be desynchronised by the rejected data.
-fn read_request_frame(
-    reader: &mut BufReader<TcpStream>,
-    limit: usize,
-) -> io::Result<RequestFrame> {
+fn read_request_frame(reader: &mut BufReader<TcpStream>, limit: usize) -> io::Result<RequestFrame> {
     let mut bytes = Vec::with_capacity(limit.min(4096));
     let mut too_large = false;
     loop {
@@ -248,8 +245,14 @@ fn protocol_error(kind: &str, message: &str, contract_version: &Value) -> Value 
     Value::list([
         Value::Symbol("protocol-error".into()),
         Value::list([Value::Symbol("kind".into()), Value::Symbol(kind.into())]),
-        Value::list([Value::Symbol("message".into()), Value::String(message.into())]),
-        Value::list([Value::Symbol("contract-version".into()), contract_version.clone()]),
+        Value::list([
+            Value::Symbol("message".into()),
+            Value::String(message.into()),
+        ]),
+        Value::list([
+            Value::Symbol("contract-version".into()),
+            contract_version.clone(),
+        ]),
         Value::list([
             Value::Symbol("server-generation".into()),
             Value::Number(server_generation() as f64, Exactness::Exact),
@@ -912,189 +915,189 @@ fn handle_sexpr_connection(
         };
         let trimmed = line.trim();
         {
-                if trimmed.is_empty() {
+            if trimmed.is_empty() {
+                continue;
+            }
+            eprintln!("TCP REPL: {peer} > request-bytes={}", line.len());
+
+            // The request envelope itself is read as literal data
+            // (`quote`), never evaluated — `(op eval)` deciding to
+            // evaluate `source` is the only place code ever runs.
+            let quoted = format!("(quote {trimmed})");
+            let request = match parse(&quoted).ok().and_then(|ast| {
+                eval_parsed_expressions_incremental(&ast, &mut session)
+                    .ok()
+                    .map(|r| r.value)
+            }) {
+                Some(value) => value,
+                None => {
+                    let resp = error_response(
+                        &Value::Nil,
+                        "parse-error",
+                        "request envelope is not a valid s-expression",
+                        &contract_version,
+                    );
+                    let _ = writeln!(stream, "{resp}");
                     continue;
                 }
-                eprintln!("TCP REPL: {peer} > request-bytes={}", line.len());
+            };
 
-                // The request envelope itself is read as literal data
-                // (`quote`), never evaluated — `(op eval)` deciding to
-                // evaluate `source` is the only place code ever runs.
-                let quoted = format!("(quote {trimmed})");
-                let request = match parse(&quoted).ok().and_then(|ast| {
-                    eval_parsed_expressions_incremental(&ast, &mut session)
-                        .ok()
-                        .map(|r| r.value)
-                }) {
-                    Some(value) => value,
-                    None => {
-                        let resp = error_response(
-                            &Value::Nil,
-                            "parse-error",
-                            "request envelope is not a valid s-expression",
-                            &contract_version,
-                        );
-                        let _ = writeln!(stream, "{resp}");
-                        continue;
-                    }
+            let fields = list_items(&request);
+            // fields[0] is the `request` tag symbol itself.
+            let mut id = Value::Nil;
+            let mut id_seen = false;
+            let mut op: Option<String> = None;
+            let mut source: Option<String> = None;
+            let mut from: Option<String> = None;
+            let mut to: Option<String> = None;
+            let mut message: Option<String> = None;
+            let mut for_agent: Option<String> = None;
+            let mut since: u64 = 0;
+            let mut topic: Option<String> = None;
+            let mut topics: Vec<String> = Vec::new();
+            let mut task: Option<String> = None;
+            let mut project: Option<String> = None;
+            let mut capabilities: Vec<String> = Vec::new();
+            let mut priority: Option<f64> = None;
+            let mut depends_on: Vec<String> = Vec::new();
+            let mut needs: Option<String> = None;
+            let mut context: Option<String> = None;
+            let mut description: Option<String> = None;
+            let mut file: Option<String> = None;
+            for field in fields.iter().skip(1) {
+                let kv = list_items(field);
+                let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else {
+                    continue;
                 };
-
-                let fields = list_items(&request);
-                // fields[0] is the `request` tag symbol itself.
-                let mut id = Value::Nil;
-                let mut id_seen = false;
-                let mut op: Option<String> = None;
-                let mut source: Option<String> = None;
-                let mut from: Option<String> = None;
-                let mut to: Option<String> = None;
-                let mut message: Option<String> = None;
-                let mut for_agent: Option<String> = None;
-                let mut since: u64 = 0;
-                let mut topic: Option<String> = None;
-                let mut topics: Vec<String> = Vec::new();
-                let mut task: Option<String> = None;
-                let mut project: Option<String> = None;
-                let mut capabilities: Vec<String> = Vec::new();
-                let mut priority: Option<f64> = None;
-                let mut depends_on: Vec<String> = Vec::new();
-                let mut needs: Option<String> = None;
-                let mut context: Option<String> = None;
-                let mut description: Option<String> = None;
-                let mut file: Option<String> = None;
-                for field in fields.iter().skip(1) {
-                    let kv = list_items(field);
-                    let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else {
-                        continue;
-                    };
-                    if let Value::Symbol(name) = key {
-                        match &**name {
-                            "id" => {
-                                id_seen = true;
-                                id = val.clone();
+                if let Value::Symbol(name) = key {
+                    match &**name {
+                        "id" => {
+                            id_seen = true;
+                            id = val.clone();
+                        }
+                        "op" => {
+                            if let Value::Symbol(s) = val {
+                                op = Some(s.to_string());
                             }
-                            "op" => {
-                                if let Value::Symbol(s) = val {
-                                    op = Some(s.to_string());
-                                }
+                        }
+                        "source" => {
+                            if let Value::String(s) = val {
+                                source = Some(s.to_string());
                             }
-                            "source" => {
-                                if let Value::String(s) = val {
-                                    source = Some(s.to_string());
-                                }
+                        }
+                        "from" => {
+                            if let Value::String(s) = val {
+                                from = Some(s.to_string());
                             }
-                            "from" => {
-                                if let Value::String(s) = val {
-                                    from = Some(s.to_string());
-                                }
+                        }
+                        "to" => {
+                            if let Value::String(s) = val {
+                                to = Some(s.to_string());
                             }
-                            "to" => {
-                                if let Value::String(s) = val {
-                                    to = Some(s.to_string());
-                                }
+                        }
+                        "message" => {
+                            if let Value::String(s) = val {
+                                message = Some(s.to_string());
                             }
-                            "message" => {
-                                if let Value::String(s) = val {
-                                    message = Some(s.to_string());
-                                }
+                        }
+                        "for" => {
+                            if let Value::String(s) = val {
+                                for_agent = Some(s.to_string());
                             }
-                            "for" => {
-                                if let Value::String(s) = val {
-                                    for_agent = Some(s.to_string());
-                                }
+                        }
+                        "since" => {
+                            if let Value::Number(n, _) = val {
+                                since = *n as u64;
                             }
-                            "since" => {
-                                if let Value::Number(n, _) = val {
-                                    since = *n as u64;
-                                }
+                        }
+                        "topic" => {
+                            if let Value::String(s) = val {
+                                topic = Some(s.to_string());
                             }
-                            "topic" => {
-                                if let Value::String(s) = val {
-                                    topic = Some(s.to_string());
-                                }
-                            }
-                            "topics" => {
-                                topics = list_items(val)
-                                    .into_iter()
-                                    .filter_map(|item| match &item {
-                                        Value::String(s) => Some(s.to_string()),
-                                        Value::Symbol(s) => Some(s.to_string()),
-                                        _ => None,
-                                    })
-                                    .collect();
-                            }
-                            "task" => {
-                                if let Value::String(s) = val {
-                                    task = Some(s.to_string());
-                                }
-                            }
-                            "project" => {
-                                if let Value::String(s) = val {
-                                    project = Some(s.to_string());
-                                }
-                            }
-                            "capabilities" => {
-                                capabilities = list_items(val)
-                                    .into_iter()
-                                    .filter_map(|item| match &item {
-                                        Value::String(s) => Some(s.to_string()),
-                                        Value::Symbol(s) => Some(s.to_string()),
-                                        _ => None,
-                                    })
-                                    .collect();
-                            }
-                            "priority" => {
-                                if let Value::Number(n, _) = val {
-                                    priority = Some(*n);
-                                }
-                            }
-                            "depends-on" => {
-                                depends_on = list_items(val)
-                                    .into_iter()
-                                    .filter_map(|item| match &item {
-                                        Value::String(s) => Some(s.to_string()),
-                                        Value::Symbol(s) => Some(s.to_string()),
-                                        _ => None,
-                                    })
-                                    .collect();
-                            }
-                            "needs" => {
-                                needs = match val {
+                        }
+                        "topics" => {
+                            topics = list_items(val)
+                                .into_iter()
+                                .filter_map(|item| match &item {
                                     Value::String(s) => Some(s.to_string()),
                                     Value::Symbol(s) => Some(s.to_string()),
                                     _ => None,
-                                };
-                            }
-                            "context" => {
-                                if let Value::String(s) = val {
-                                    context = Some(s.to_string());
-                                }
-                            }
-                            "description" => {
-                                if let Value::String(s) = val {
-                                    description = Some(s.to_string());
-                                }
-                            }
-                            "file" => {
-                                if let Value::String(s) = val {
-                                    file = Some(s.to_string());
-                                }
-                            }
-                            _ => {}
+                                })
+                                .collect();
                         }
+                        "task" => {
+                            if let Value::String(s) = val {
+                                task = Some(s.to_string());
+                            }
+                        }
+                        "project" => {
+                            if let Value::String(s) = val {
+                                project = Some(s.to_string());
+                            }
+                        }
+                        "capabilities" => {
+                            capabilities = list_items(val)
+                                .into_iter()
+                                .filter_map(|item| match &item {
+                                    Value::String(s) => Some(s.to_string()),
+                                    Value::Symbol(s) => Some(s.to_string()),
+                                    _ => None,
+                                })
+                                .collect();
+                        }
+                        "priority" => {
+                            if let Value::Number(n, _) = val {
+                                priority = Some(*n);
+                            }
+                        }
+                        "depends-on" => {
+                            depends_on = list_items(val)
+                                .into_iter()
+                                .filter_map(|item| match &item {
+                                    Value::String(s) => Some(s.to_string()),
+                                    Value::Symbol(s) => Some(s.to_string()),
+                                    _ => None,
+                                })
+                                .collect();
+                        }
+                        "needs" => {
+                            needs = match val {
+                                Value::String(s) => Some(s.to_string()),
+                                Value::Symbol(s) => Some(s.to_string()),
+                                _ => None,
+                            };
+                        }
+                        "context" => {
+                            if let Value::String(s) = val {
+                                context = Some(s.to_string());
+                            }
+                        }
+                        "description" => {
+                            if let Value::String(s) = val {
+                                description = Some(s.to_string());
+                            }
+                        }
+                        "file" => {
+                            if let Value::String(s) = val {
+                                file = Some(s.to_string());
+                            }
+                        }
+                        _ => {}
                     }
                 }
+            }
 
-                if !id_seen || matches!(id, Value::Nil) {
-                    let response = protocol_error(
-                        "missing-id",
-                        "request requires a non-nil id",
-                        &contract_version,
-                    );
-                    let _ = writeln!(stream, "{response}");
-                    continue;
-                }
+            if !id_seen || matches!(id, Value::Nil) {
+                let response = protocol_error(
+                    "missing-id",
+                    "request requires a non-nil id",
+                    &contract_version,
+                );
+                let _ = writeln!(stream, "{response}");
+                continue;
+            }
 
-                let response = match op.as_deref() {
+            let response = match op.as_deref() {
                     Some("contract-version") => ok_response(&id, contract_version.clone(), &[], &contract_version),
                     // `parse` renders the canonical structure via the same
                     // `quote`-and-print path the request envelope itself
@@ -2069,9 +2072,9 @@ fn handle_sexpr_connection(
                     None => error_response(&id, "invalid-form", "request is missing an `op` field", &contract_version),
                 };
 
-                if writeln!(stream, "{response}").is_err() {
-                    break;
-                }
+            if writeln!(stream, "{response}").is_err() {
+                break;
+            }
         }
     }
     eprintln!("TCP REPL: {peer} disconnected");

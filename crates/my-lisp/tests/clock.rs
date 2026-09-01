@@ -4,7 +4,10 @@ use my_lisp::{eval_program, Session};
 fn utc_now_returns_utc_calendar_with_nanosecond_field() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    let value = eval_program("(utc-now)", &mut session).unwrap().value.to_string();
+    let value = eval_program("(utc-now)", &mut session)
+        .unwrap()
+        .value
+        .to_string();
     let fields: Vec<&str> = value.trim_matches(['(', ')']).split_whitespace().collect();
     assert_eq!(fields.len(), 8, "utc-now shape: {value}");
     assert_eq!(fields[0], "utc");
@@ -27,7 +30,10 @@ fn timezone_detection_is_explicit_and_ntp_requires_host_string() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
-    let timezone = eval_program("(timezone-detect)", &mut session).unwrap().value.to_string();
+    let timezone = eval_program("(timezone-detect)", &mut session)
+        .unwrap()
+        .value
+        .to_string();
     assert!(timezone.starts_with("(detected ") || timezone.starts_with("(unknown "));
     assert!(eval_program("(internet-time-sync 123 100)", &mut session).is_err());
     assert_eq!(

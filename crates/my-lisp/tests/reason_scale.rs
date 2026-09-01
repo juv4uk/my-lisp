@@ -98,9 +98,8 @@ fn time_scan(session: &mut Session, n: usize) -> (u128, usize) {
     // pre-build the chain untimed: (def chainN (build-chain N))
     eval_session(session, &format!("(def chain{n} (build-chain {n}))"));
     // goal: (edge (var x) <n>)  -> only edge (n-1, n) matches, after full scan
-    let source = format!(
-        "(length (reason (list (quote edge) (logic-var (quote x)) {n}) chain{n}))"
-    );
+    let source =
+        format!("(length (reason (list (quote edge) (logic-var (quote x)) {n}) chain{n}))");
     let t = Instant::now();
     let value = eval_session(session, &source).to_string();
     let elapsed = t.elapsed().as_nanos();
@@ -143,7 +142,8 @@ fn run_profile() {
     eval_session(&mut session, def);
 
     let sizes = [100usize, 500, 1000];
-    let mut table = String::from("reason scale profile (edge chain, full-scan goal, 64 MiB stack)\n");
+    let mut table =
+        String::from("reason scale profile (edge chain, full-scan goal, 64 MiB stack)\n");
     table.push_str("  N     elapsed_ns     results\n");
     for n in sizes {
         let (ns, results) = time_scan(&mut session, n);

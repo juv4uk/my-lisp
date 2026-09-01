@@ -78,9 +78,21 @@ fn internet_time_sync_value(
     let timeout_ms = timeout_ms.min(5_000);
     let address = (host, 123)
         .to_socket_addrs()
-        .map_err(|_| crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync cannot resolve host", span))?
+        .map_err(|_| {
+            crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "internet-time-sync cannot resolve host",
+                span,
+            )
+        })?
         .next()
-        .ok_or_else(|| crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync host has no address", span))?;
+        .ok_or_else(|| {
+            crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "internet-time-sync host has no address",
+                span,
+            )
+        })?;
     let socket = UdpSocket::bind("0.0.0.0:0")
         .and_then(|socket| {
             socket.set_read_timeout(Some(Duration::from_millis(timeout_ms)))?;
@@ -88,7 +100,13 @@ fn internet_time_sync_value(
             socket.connect(address)?;
             Ok(socket)
         })
-        .map_err(|_| crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync socket unavailable", span))?;
+        .map_err(|_| {
+            crate::LanguageError::new(
+                crate::ErrorKind::Type,
+                "internet-time-sync socket unavailable",
+                span,
+            )
+        })?;
     let mut request = [0u8; 48];
     request[0] = 0x23; // LI=0, version=4, client mode=3.
     if socket.send(&request).is_err() {
@@ -394,11 +412,25 @@ pub(crate) fn install(environment: &Environment) {
             exact_args("internet-time-sync", args, 2, span)?;
             let host = match &args[0] {
                 Value::String(value) => value.as_ref(),
-                _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync expects host string", span)),
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "internet-time-sync expects host string",
+                        span,
+                    ))
+                }
             };
             let timeout = match &args[1] {
-                Value::Number(value, Exactness::Exact) if *value >= 0.0 && value.fract() == 0.0 => *value as u64,
-                _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type, "internet-time-sync expects exact timeout milliseconds", span)),
+                Value::Number(value, Exactness::Exact) if *value >= 0.0 && value.fract() == 0.0 => {
+                    *value as u64
+                }
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "internet-time-sync expects exact timeout milliseconds",
+                        span,
+                    ))
+                }
             };
             internet_time_sync_value(host, timeout, span)
         }
