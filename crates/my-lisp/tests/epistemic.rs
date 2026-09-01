@@ -505,3 +505,61 @@ fn canonical_values_round_trip_through_write_to_string_and_read() {
         );
     }
 }
+
+// BLOCKER, found 2026-09-02 (owner-directed audit): `Value::Bool` and
+// `Value::Nil` are genuinely distinct values -- `PartialEq` never matches
+// them to each other -- and G6/S1 (docs/language-core-axioms.md) already
+// commit `read(write-to-string(v)) == v` as a tested constitutional
+// contract, verified above for symbols, strings, and structured records.
+// `Value::Bool` currently violates that same contract on both branches:
+//
+// - `write-to-string` renders `Bool(false)` with the *same* text as `Nil`
+//   ("()"), so `read` cannot tell them apart and always returns `Nil`.
+// - `Bool(true)` renders as "t", but reading "t" back always yields
+//   `Symbol("t")` (`read`/`quote` never evaluate) -- not `Bool(true)` --
+//   because `t` is an ordinary environment-bound symbol, not reader
+//   syntax, unlike `write-to-string`'s own printed form for it.
+//
+// The smallest fix would need `read` -- which shares `crate::parse` with
+// every other Lisp source file, not a private data-only reader -- to
+// recognize a new literal token for `Bool`. That is a reader-syntax
+// change to the canonical parser, not a change local to `write-to-string`
+// alone, so per explicit scoping this stops here rather than touching the
+// shared reader. This test locks in today's actual behavior (`Nil` round-
+// trips correctly; `Bool` does not) so it can't silently regress further,
+// and becomes the fix-confirmation test the moment someone resolves the
+// reader-syntax question.
+#[test]
+fn write_to_string_cannot_round_trip_bool_through_the_shared_reader() {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+
+    let run = |session: &mut Session, source: &str| {
+        eval_program(source, session)
+            .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
+            .value
+            .to_string()
+    };
+
+    assert_eq!(
+        run(&mut session, "(eq (read (write-to-string ())) ())"),
+        "t",
+        "Nil round-trips correctly today; if this fails, something else broke"
+    );
+    assert_eq!(
+        run(
+            &mut session,
+            "(eq (read (write-to-string (eq 1 2))) (eq 1 2))"
+        ),
+        "()",
+        "known blocker: Bool(false) currently round-trips into Nil, not itself"
+    );
+    assert_eq!(
+        run(
+            &mut session,
+            "(eq (read (write-to-string (eq 1 1))) (eq 1 1))"
+        ),
+        "()",
+        "known blocker: Bool(true) currently round-trips into Symbol(\"t\"), not itself"
+    );
+}
