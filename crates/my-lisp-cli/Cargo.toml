@@ -27,4 +27,5 @@ path = "src/bin/wsm-fs-record-consumer.rs"
 my-lisp = { path = "../my-lisp" }
 my-lisp-host = { path = "../my-lisp-host" }
 my-lisp-lsp = { path = "../my-lisp-lsp" }
+wsm-guard-core = { path = "../wsm-guard-core" }
 rustyline = { version = "14.0.0", features = ["with-file-history"] }

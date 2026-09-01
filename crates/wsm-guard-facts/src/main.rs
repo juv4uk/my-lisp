@@ -17,7 +17,6 @@
 //! класифікує їх. Політика перечитується для кожного події з абсолютного
 //! шляху, тож класифікацію можна змінювати без перекомпіляції адаптера.
 
-use my_lisp::{Session, eval_program};
 use std::env;
 use std::fs;
 use std::io::{self, BufRead};
@@ -25,8 +24,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const CORE: &str = include_str!("../../../lib/core.my");
-const GUARD: &str = include_str!("../../../lib/guard.wsm");
 const MAX_OBSERVATION_ID_BYTES: usize = 256;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(10);
 const PROBE_CAPACITY_BYTES: usize = 64 * 1024;
@@ -110,7 +107,11 @@ fn git_fact(repo: &str) -> Result<Fact, String> {
     let status = run_probe("git", &["-C", repo, "status", "--porcelain"])?;
     let head = head.trim();
     let branch = branch.trim();
-    let dirty = if status.trim().is_empty() { "clean" } else { "dirty" };
+    let dirty = if status.trim().is_empty() {
+        "clean"
+    } else {
+        "dirty"
+    };
     if !identifier(head) || !identifier(branch) {
         return Err("invalid-git-probe-output".into());
     }
@@ -207,10 +208,6 @@ fn observe_line(line: &str) -> Result<Fact, String> {
 }
 
 fn evaluate(policy: &str, fact: &Fact) -> Result<String, String> {
-    let mut session = Session::default();
-    eval_program(CORE, &mut session).map_err(|error| format!("core: {error}"))?;
-    eval_program(GUARD, &mut session).map_err(|error| format!("guard: {error}"))?;
-    eval_program(policy, &mut session).map_err(|error| format!("policy: {error}"))?;
     let call = format!(
         "(guard-fact-evaluate (quote (fact (source {}) (subject {}) (state {}) {})))",
         fact.source,
@@ -218,20 +215,7 @@ fn evaluate(policy: &str, fact: &Fact) -> Result<String, String> {
         fact.state,
         fact.error.as_deref().unwrap_or("")
     );
-    let result = eval_program(&call, &mut session).map_err(|error| format!("evaluate: {error}"))?;
-    let rendered = result.value.to_string();
-    if ![
-        "(decision allow)",
-        "(decision warn)",
-        "(decision reject)",
-        "(decision unknown)",
-    ]
-    .iter()
-    .any(|decision| rendered.contains(decision))
-    {
-        return Err("policy-result-without-valid-decision".into());
-    }
-    Ok(rendered)
+    wsm_guard_core::evaluate(policy, &call)
 }
 
 fn adapter_error(reason: &str) -> String {
@@ -295,10 +279,7 @@ mod tests {
 
     #[test]
     fn normalizes_a_bounded_git_fact() {
-        assert_eq!(
-            run_probe("true", &[]).unwrap(),
-            ""
-        );
+        assert_eq!(run_probe("true", &[]).unwrap(), "");
         // malformed observation rejected before any probe
         assert!(observe_line("source=git repo=not=valid field").is_err());
         assert!(observe_line("source=git").is_err());

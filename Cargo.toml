@@ -10,6 +10,7 @@ members = [
     "crates/my-lisp-host",
     "crates/my-lisp-semantic",
     "crates/my-lisp-lsp",
+    "crates/wsm-guard-core",
     "crates/wsm-guard-slice",
     "crates/wsm-guard-facts",
 ]

@@ -5,15 +5,12 @@
 //! the decision. The policy file is read again for every event, so policy can
 //! change without recompiling or restarting this process.
 
-use my_lisp::{Session, eval_program};
 use std::env;
 use std::fs;
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-const CORE: &str = include_str!("../../../lib/core.my");
-const GUARD: &str = include_str!("../../../lib/guard.wsm");
 const MAX_EVENT_BYTES: usize = 16 * 1024;
 
 #[derive(Debug, PartialEq)]
@@ -61,28 +58,11 @@ fn parse_event(line: &str) -> Result<Event, String> {
 }
 
 fn evaluate(policy: &str, event: &Event) -> Result<String, String> {
-    let mut session = Session::default();
-    eval_program(CORE, &mut session).map_err(|error| format!("core: {error}"))?;
-    eval_program(GUARD, &mut session).map_err(|error| format!("guard: {error}"))?;
-    eval_program(policy, &mut session).map_err(|error| format!("policy: {error}"))?;
     let call = format!(
         "(guard-evaluate (quote {}) (quote {}) (quote {}))",
         event.kind, event.subject, event.evidence
     );
-    let result = eval_program(&call, &mut session).map_err(|error| format!("evaluate: {error}"))?;
-    let rendered = result.value.to_string();
-    if ![
-        "(decision allow)",
-        "(decision warn)",
-        "(decision reject)",
-        "(decision unknown)",
-    ]
-    .iter()
-    .any(|decision| rendered.contains(decision))
-    {
-        return Err("policy-result-without-valid-decision".into());
-    }
-    Ok(rendered)
+    wsm_guard_core::evaluate(policy, &call)
 }
 
 fn adapter_error(reason: &str) -> String {

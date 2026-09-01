@@ -221,6 +221,7 @@ dependencies = [
  "my-lisp-host",
  "my-lisp-lsp",
  "rustyline",
+ "wsm-guard-core",
 ]
 
 [[package]]
@@ -750,17 +751,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
-name = "wsm-guard-facts"
+name = "wsm-guard-core"
 version = "0.1.0"
 dependencies = [
  "my-lisp",
 ]
 
 [[package]]
+name = "wsm-guard-facts"
+version = "0.1.0"
+dependencies = [
+ "wsm-guard-core",
+]
+
+[[package]]
 name = "wsm-guard-slice"
 version = "0.1.0"
 dependencies = [
- "my-lisp",
+ "wsm-guard-core",
 ]
 
 [[package]]

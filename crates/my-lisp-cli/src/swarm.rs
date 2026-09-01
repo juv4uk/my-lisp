@@ -457,15 +457,21 @@ pub(crate) fn oracle_check(source: &str, contract_version: &Value) -> (Value, bo
 }
 
 /// Query the WSM-owned reference directory without duplicating its entries in
-/// Rust. The session already contains core.my; Guard and its directory are
-/// loaded as ordinary WSM libraries, then queried by a strictly validated
-/// topic. `None` lists the curated frequently-used tool names.
+/// Rust. The session already contains core.my; Guard is the one shared
+/// embed in `wsm-guard-core` (same library every Guard consumer uses), but
+/// its reference directory is read fresh from disk on every call, exactly
+/// like the LSP's `guard_knowledge.rs` already does — adding or editing a
+/// topic in `knowledge/guard-reference.wsm` takes effect immediately, no
+/// rebuild. `None` lists the curated frequently-used tool names.
 pub(crate) fn oracle_help(session: &mut Session, topic: Option<&str>) -> Result<Value, String> {
-    const GUARD: &str = include_str!("../../../lib/guard.wsm");
-    const REFERENCE: &str = include_str!("../../../knowledge/guard-reference.wsm");
+    let reference = std::fs::read_to_string("knowledge/guard-reference.wsm").map_err(|error| {
+        format!(
+            "cannot read knowledge/guard-reference.wsm (run from the my-lisp repo root): {error}"
+        )
+    })?;
     for (name, source) in [
-        ("lib/guard.wsm", GUARD),
-        ("knowledge/guard-reference.wsm", REFERENCE),
+        ("lib/guard.wsm", wsm_guard_core::GUARD),
+        ("knowledge/guard-reference.wsm", reference.as_str()),
     ] {
         let ast = parse(source)
             .map_err(|error| format!("cannot parse {name}: {}", error.render(source)))?;
