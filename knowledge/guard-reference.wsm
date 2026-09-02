@@ -17,7 +17,7 @@
        (how-to (read-contract run-conformance-fixtures))
        (verify (cargo-test-workspace evidence/README.md))
        (lifecycle current-contract)
-       (provenance my-lisp commit 6584789+df28a21)
+       (provenance "my-lisp commit 6584789+df28a21")
        (unknown-route ask-agent))
      (reference
        (topic semantic-oracle)
@@ -26,7 +26,7 @@
        (how-to (oracle-check oracle-eval oracle-help contract-version))
        (verify (oracle-result/1 source-digest contract-revision))
        (lifecycle current-contract)
-       (provenance my-lisp commit 4756010+00a77cf+3e870c3)
+       (provenance "my-lisp commit 4756010+00a77cf+3e870c3")
        (unknown-route ask-agent))
      (reference
        (topic guard)
@@ -35,7 +35,7 @@
        (how-to (guard-reference guard-explain guard-how-to guard-verify))
        (verify (schema-guard/1 decision evidence-status evidence))
        (lifecycle current-contract)
-       (provenance my-lisp commit d8aa166+ecosystem c517c66+fec5f53+80e95cf)
+       (provenance "my-lisp commit d8aa166+ecosystem c517c66+fec5f53+80e95cf")
        (unknown-route ask-agent))
      (reference
        (topic swarm-coordination)
@@ -44,7 +44,7 @@
        (how-to (start-node wait-readiness join sync-tasks claim-task complete-task))
        (verify (metrics list-members list-task-state journal-event))
        (lifecycle current-design)
-       (provenance my-lisp commit 6584789+df28a21+ecosystem 6ae6809)
+       (provenance "my-lisp commit 6584789+df28a21+ecosystem 6ae6809")
        (unknown-route ask-agent))
      (reference
        (topic swarm-node-startup)
@@ -53,7 +53,7 @@
        (how-to (choose-stable-node-id choose-unique-absolute-data-dir choose-auto-sync-or-explicit-opt-out bind acquire-state-lock open-identity-and-journal verify-readiness))
        (verify (exclusive-data-dir-lock unchanged-identity-on-failed-spawn explicit-task-sync-choice metrics))
        (lifecycle current-contract)
-       (provenance my-lisp commit 6584789+df28a21+ecosystem 6ae6809)
+       (provenance "my-lisp commit 6584789+df28a21+ecosystem 6ae6809")
        (unknown-route ask-agent))
      (reference
        (topic task-materialization)
@@ -62,7 +62,7 @@
        (how-to (edit-tasks.my auto-sync-or-sync-tasks verify-projection verify-peer-convergence))
        (verify (task-definition journal-event list-task-state))
        (lifecycle current-design)
-       (provenance my-lisp commit 6584789+df28a21+ecosystem 6e60790)
+       (provenance "my-lisp commit 6584789+df28a21+ecosystem 6e60790")
        (unknown-route ask-agent))
      (reference
        (topic agent-messaging)
@@ -71,7 +71,7 @@
        (how-to (start-opencode-serve register-live-session send-direct broadcast-completion read-inbox acknowledge-inbox))
        (verify (durable-inbox-entry wakeup-result session-id-not-unknown commit-sha))
        (lifecycle current-contract)
-       (provenance ecosystem commit 337e275+8a5a99a+80e95cf)
+       (provenance "ecosystem commit 337e275+8a5a99a+80e95cf")
        (unknown-route ask-agent))
      (reference
        (topic claim-complete-broadcast)
@@ -80,7 +80,7 @@
        (how-to (claim-task broadcast-claim do-work commit push-find-ci-run-wait-for-completion-read-failure-logs complete-task broadcast-completion-read-bus))
        (verify (task-state claim-event commit-sha pushed-confirmed matching-ci-run final-ci-status completion-event))
        (lifecycle current-contract)
-       (provenance ecosystem commit 80e95cf+6ec7318+03accba)
+       (provenance "ecosystem commit 80e95cf+6ec7318+03accba")
        (unknown-route ask-agent))
      (reference
        (topic synchronized-commit-window)
@@ -89,7 +89,7 @@
        (how-to (announce-freeze stop-commit-and-push synchronize inspect-build-logs-record-drift reopen-commits))
        (verify (freeze-observed sync-complete drift-record commit-window-reopened))
        (lifecycle current-design)
-       (provenance my-lisp commit d8aa166+ecosystem c517c66)
+       (provenance "my-lisp commit d8aa166+ecosystem c517c66")
        (unknown-route ask-agent))
      (reference
        (topic working-tree-hygiene)
@@ -98,7 +98,7 @@
        (how-to (git-status inspect-diff-check-generated-artifacts-check-agent-history-commit-scoped-files))
        (verify (origin-identified or-unknown-with-checks no-unexplained-diff))
        (lifecycle current-contract)
-       (provenance ecosystem commit c517c66+8a5a99a)
+       (provenance "ecosystem commit c517c66+8a5a99a")
        (unknown-route ask-agent))
      (reference
        (topic unknown-routing)
@@ -107,7 +107,7 @@
        (how-to (ask-agent-for-local-facts ask-owner-for-authority-intent-license research-web-for-current-external-facts))
        (verify (route-recorded source-or-question-preserved no-silent-reject))
        (lifecycle current-contract)
-       (provenance ecosystem commit fec5f53+80e95cf)
+       (provenance "ecosystem commit fec5f53+80e95cf")
        (unknown-route ask-owner))
      (reference
        (topic oracle-usage)
@@ -116,7 +116,7 @@
        (how-to (oracle-check-for-syntax oracle-eval-for-semantics diagnose-for-errors contract-version-for-revision))
        (verify (operation-recorded parse-vs-eval-distinguished structured-result))
        (lifecycle current-contract)
-       (provenance my-lisp commit 4756010+00a77cf+3e870c3+e1f5528)
+       (provenance "my-lisp commit 4756010+00a77cf+3e870c3+e1f5528")
        (unknown-route ask-agent))
      (reference
        (topic oracle-release-deployment)
@@ -125,7 +125,7 @@
        (how-to (push-main wait-for-ci-completion inspect-build-logs-on-failure run-release-deploy-helper verify-release-exec-path probe-backend-and-haproxy-record-implementation-revision))
        (verify (ci-run-id ci-conclusion build-log-reviewed green-ci-run release-binary service-active implementation-revision contract-version oracle-result-1))
        (lifecycle current-design)
-       (provenance ecosystem commit 9161930+d12f744+31428de)
+       (provenance "ecosystem commit 9161930+d12f744+31428de")
        (unknown-route ask-owner))
      (reference
        (topic oracle-local-runtime)
@@ -134,7 +134,7 @@
        (how-to (start-local-release-oracle probe-contract compare-utc-and-timezone stop-local-release-oracle))
        (verify (loopback-listener release-executable contract-version pid-metadata timezone-observation))
        (lifecycle current-design)
-       (provenance ecosystem commit 9161930+d12f744)
+       (provenance "ecosystem commit 9161930+d12f744")
        (unknown-route ask-agent))
      (reference
        (topic runtime-selection)
@@ -143,7 +143,7 @@
        (how-to (inspect-agent-send-list register-live-runtime use-runtime-adapter read-inbox-on-wakeup-failure))
        (verify (runtime-matches-process session-id-valid inbox-admitted wakeup-result-recorded))
        (lifecycle current-contract)
-       (provenance ecosystem commit 337e275+8a5a99a)
+       (provenance "ecosystem commit 337e275+8a5a99a")
        (unknown-route ask-agent))
      (reference
        (topic resource-preflight)
@@ -152,7 +152,7 @@
        (how-to (run-preflight choose-bounded-command-set-timeout-stop-on-overload))
        (verify (preflight-result timeout-set workload-class-recorded no-unbounded-job))
        (lifecycle current-contract)
-       (provenance ecosystem commit 8a5a99a)
+       (provenance "ecosystem commit 8a5a99a")
        (unknown-route ask-agent))
      (reference
        (topic evidence)
@@ -161,7 +161,7 @@
        (how-to (classify-evidence record-command record-revision record-result))
        (verify (artifact commit-sha reproducible-command))
        (lifecycle current-contract)
-       (provenance my-lisp commit f00f610+d8aa166+ecosystem 8a5a99a)
+       (provenance "my-lisp commit f00f610+d8aa166+ecosystem 8a5a99a")
        (unknown-route ask-agent))
      (reference
        (topic guix)
@@ -170,7 +170,7 @@
        (how-to (choose-guix-capability pin-channels use-pure-environment record-provenance verify-independent-build))
        (verify (channels-revision manifest-digest derivation output-hash builder-identity))
        (lifecycle current-design)
-       (provenance my-lisp commit 51f401d+ecosystem 6e60790)
+       (provenance "my-lisp commit 51f401d+ecosystem 6e60790")
        (unknown-route ask-agent))
      (reference
        (topic documentation-map)
@@ -179,7 +179,7 @@
        (how-to (choose-topic follow-authority-link avoid-duplicate-prose))
        (verify (linked-file-exists lifecycle-status-checked))
        (lifecycle current-design)
-       (provenance ecosystem commit 8a5a99a+6e60790)
+       (provenance "ecosystem commit 8a5a99a+6e60790")
        (unknown-route ask-agent))
      (reference
        (topic wsm-lisp-filesystem)
@@ -188,7 +188,7 @@
        (how-to (fs-empty fs-write fs-read fs-list fs-contains? retain-old-root))
        (verify (fs-conformance-fixture immutable-root old-value not-found stored-nil logical-revision ci-run))
        (lifecycle proposal)
-       (provenance my-lisp commit 6711de1+dfcd74a+eb83c91+271875c+ecosystem 7700f5e)
+       (provenance "my-lisp commit 6711de1+dfcd74a+eb83c91+271875c+ecosystem 7700f5e")
        (unknown-route ask-agent))
      (reference
        (topic reference-learning)
@@ -197,7 +197,7 @@
        (how-to (search-directory choose-unknown-route collect-source-and-evidence append-pending-review review promote-or-reject))
        (verify (candidate-record provenance review-status curated-entry-or-rejection))
        (lifecycle current-contract)
-       (provenance ecosystem commit 8a5a99a+6e60790+8a5a99a)
+       (provenance "ecosystem commit 8a5a99a+6e60790+8a5a99a")
        (unknown-route ask-agent))
      (reference
        (topic licenses)
@@ -206,7 +206,7 @@
        (how-to (check-license record-notice ask-owner-if-unresolved))
        (verify (license-entry notice provenance))
        (lifecycle current-contract)
-       (provenance ecosystem commit de41e93)
+       (provenance "ecosystem commit de41e93")
        (unknown-route ask-owner))
 (reference
         (topic owner-context)
@@ -215,7 +215,7 @@
         (how-to (read-before-work preserve-owner-wording))
         (verify (owner-profile-current))
         (lifecycle current-contract)
-        (provenance ecosystem commit 6e60790+8a5a99a)
+        (provenance "ecosystem commit 6e60790+8a5a99a")
         (unknown-route ask-owner))
       (reference
         (topic swarm-node-spawn-ownership)
@@ -224,7 +224,7 @@
         (how-to (choose-stable-node-id choose-unique-absolute-data-dir choose-auto-sync-or-explicit-opt-out bind acquire-state-lock open-identity-and-journal verify-readiness))
         (verify (exclusive-data-dir-lock unchanged-identity-on-failed-spawn explicit-task-sync-choice metrics))
         (lifecycle current-contract)
-        (provenance my-lisp commit 6584789+df28a21+ecosystem 6ae6809)
+        (provenance "my-lisp commit 6584789+df28a21+ecosystem 6ae6809")
         (unknown-route ask-agent))
       (reference
         (topic capabilities)
@@ -233,7 +233,7 @@
         (how-to (read-capabilities verify-tier1 verify-tier2 verify-tier3))
         (verify (conformance-tier-map.md language-core-axioms.md eval/mod.rs))
         (lifecycle current-contract)
-        (provenance my-lisp commit 6584789+df28a21)
+        (provenance "my-lisp commit 6584789+df28a21")
         (unknown-route ask-agent))
       (reference
         (topic lsp-server)
@@ -242,7 +242,7 @@
         (how-to (cargo build --workspace lsp-subcommand standalone-binary))
         (verify (e2e t01..t09 stdio release_parity publishDiagnostics-from-LanguageError))
         (lifecycle current-contract)
-        (provenance my-lisp commit 4756010+00a77cf)
+        (provenance "my-lisp commit 4756010+00a77cf")
         (unknown-route ask-agent))
       (reference
         (topic symbolic-reasoning)
@@ -251,7 +251,7 @@
         (how-to (reason run run-multi run-jtms-multi advise import-knowledge-package))
         (verify (explain-proof provenance JTMS-retraction fixture-tests))
         (lifecycle current-contract)
-        (provenance my-lisp commit 6584789+df28a21)
+        (provenance "my-lisp commit 6584789+df28a21")
         (unknown-route ask-agent))
       (reference
         (topic conformance)
@@ -260,7 +260,7 @@
         (how-to (cargo test workspace conformance-check.py :9999))
         (verify (fixtures 193+ tier-axioms-fields exit-1-on-failure))
         (lifecycle current-contract)
-        (provenance my-lisp commit 6584789+df28a21)
+        (provenance "my-lisp commit 6584789+df28a21")
         (unknown-route ask-agent))
       (reference
         (topic knowledge-package-format)
@@ -269,7 +269,7 @@
         (how-to (import-knowledge-package import-knowledge-file))
         (verify (version-rejection canonical-vars fixture-coverage))
         (lifecycle current-contract)
-        (provenance my-lisp commit 6584789+df28a21)
+        (provenance "my-lisp commit 6584789+df28a21")
         (unknown-route ask-agent))
       (reference
         (topic immutable-world)
@@ -278,7 +278,7 @@
         (how-to (empty-world world-tell world-retract world-clauses))
         (verify (structural-sharing persistent-AVL identity content-addressable))
         (lifecycle current-contract)
-        (provenance my-lisp commit 6584789+df28a21)
+        (provenance "my-lisp commit 6584789+df28a21")
         (unknown-route ask-agent))
       (reference
         (topic wsm-lisp-filesystem-reconciliation)
@@ -287,7 +287,7 @@
         (how-to (fs-empty fs-write fs-read fs-list fs-contains? retain-old-root fs-object-package fs-root-package fs-serialize-object fs-deserialize-object fs-object-package-decision))
         (verify (fs-conformance-fixture immutable-root old-value not-found stored-nil logical-revision ci-run))
         (lifecycle proposal)
-        (provenance my-lisp commit 6711de1+dfcd74a+eb83c91+271875c+ecosystem 7700f5e)
+        (provenance "my-lisp commit 6711de1+dfcd74a+eb83c91+271875c+ecosystem 7700f5e")
         (unknown-route ask-agent))
       (reference
         (topic guix-capability-index)
@@ -296,7 +296,7 @@
         (how-to (choose-guix-capability pin-channels use-pure-environment record-provenance verify-independent-build))
         (verify (channels-revision manifest-digest derivation output-hash builder-identity))
         (lifecycle current-design)
-        (provenance my-lisp commit 51f401d+ecosystem 6e60790)
+        (provenance "my-lisp commit 51f401d+ecosystem 6e60790")
         (unknown-route ask-agent))
       (reference
         (topic hardware-toolchain-index)
@@ -305,7 +305,7 @@
         (how-to (gowin-synth-pnr gw_sh.exe build.tcl cudarc cuda-12000 sm_61 qemu-uefi-run run-qemu-uefi.sh))
         (verify (real-pnr-numbers live-cuda observed-qemu transcripts estimate-separated))
         (lifecycle current-contract)
-        (provenance ecosystem commit 6ec7318+03accba)
+        (provenance "ecosystem commit 6ec7318+03accba")
         (unknown-route ask-agent))
       (reference
         (topic fpga-lisp-index)
@@ -314,7 +314,7 @@
         (how-to (isa-contract gowin-synth-pnr iverilog-sim hardware-flash cml-heterogeneous))
         (verify (real-pnr-numbers rtl-sim-harness g8-truth contract-version hardware-verified))
         (lifecycle current-contract)
-        (provenance fpga-lisp commit 092aa3b+271875c+ecosystem dff147f)
+        (provenance "fpga-lisp commit 092aa3b+271875c+ecosystem dff147f")
         (unknown-route ask-agent))
       (reference
         (topic ci-committed-bin-closure)
@@ -323,7 +323,7 @@
         (how-to (cargo build --bin NAME git push find-gh-run wait inspect-logs))
         (verify (source-committed gh-run-matched logs-inspected))
         (lifecycle current-contract)
-        (provenance my-lisp commit a41332e+ecosystem 80e95cf)
+        (provenance "my-lisp commit a41332e+ecosystem 80e95cf")
         (unknown-route ask-agent))
 (reference
          (topic wsm-lisp-fs-block-capability-boundary)
@@ -332,7 +332,7 @@
          (how-to (broker-handle allowlist-identity fixed-geometry lifetime-revocation))
          (verify (capability-enforced ratified tested))
          (lifecycle proposal)
-         (provenance ecosystem commit 4160b1a+docs)
+         (provenance "ecosystem commit 4160b1a+docs")
          (unknown-route ask-owner))
       (reference
          (topic cross-repo-document-duplication)
@@ -341,7 +341,7 @@
          (how-to (inventory-find-ls verify-exact-paths))
          (verify (exact-paths-verified duplication-count-authority-drift))
          (lifecycle current-contract)
-         (provenance ecosystem commit 6ec7318+03accba inbox:cross-repo-document-duplication)
+         (provenance "ecosystem commit 6ec7318+03accba inbox:cross-repo-document-duplication")
          (unknown-route ask-agent))
       (reference
          (topic document-lifecycle-classification)
@@ -350,7 +350,7 @@
          (how-to (regex-classify-filenames cross-reference-contents-before-promotion))
          (verify (heuristic-reproducible classification-unverified))
          (lifecycle proposal)
-         (provenance ecosystem commit 6ec7318+03accba inbox:document-lifecycle-classification+document-lifecycle-verification)
+         (provenance "ecosystem commit 6ec7318+03accba inbox:document-lifecycle-classification+document-lifecycle-verification")
          (unknown-route ask-agent))
       (reference
          (topic documentation-volume-by-repo)
@@ -359,7 +359,7 @@
          (how-to (find-maxdepth-count-dirs))
          (verify (file-counts-verified scope-bounded))
          (lifecycle current-contract)
-         (provenance ecosystem commit 6ec7318+03accba inbox:documentation-volume-by-repo)
+         (provenance "ecosystem commit 6ec7318+03accba inbox:documentation-volume-by-repo")
          (unknown-route ask-agent))
       (reference
          (topic fpga-wsm-p0-parity)
@@ -368,7 +368,7 @@
          (how-to (check-compatibility.my run-testbenches verify-hardware))
          (verify (p0-profile-listed 35-tb-pass hw-verified unsupported-explicit))
          (lifecycle current-contract)
-         (provenance fpga-lisp commit 092aa3b+271875c+ecosystem dff147f inbox:fpga-wsm-p0-parity)
+         (provenance "fpga-lisp commit 092aa3b+271875c+ecosystem dff147f inbox:fpga-wsm-p0-parity")
          (unknown-route ask-agent))
       (reference
          (topic wsm-os-qemu-local-rebuild)
@@ -377,7 +377,7 @@
          (how-to (rebuild-kernel rebuild-uefi run-rebuild-and-run-qemu.sh))
          (verify (qemu-boot-parity abi-match serial-match no-stale-image))
          (lifecycle proposal)
-         (provenance wsm-os commit 656a54d inbox:wsm-os-qemu-local-rebuild)
+         (provenance "wsm-os commit 656a54d inbox:wsm-os-qemu-local-rebuild")
          (unknown-route ask-agent))
       (reference
          (topic wsm-lisp-fs-cloud-hosted-witness)
@@ -386,7 +386,7 @@
          (how-to (provision-medium green-sha write-flush-close-restart-reopen-reconstruct compare-content-identity))
          (verify (content-identity-match restart-recovery visibility-proven power-loss-open))
          (lifecycle proposal)
-         (provenance ecosystem commit d3afa74 inbox:wsm-lisp-fs-cloud-hosted-witness)
+         (provenance "ecosystem commit d3afa74 inbox:wsm-lisp-fs-cloud-hosted-witness")
          (unknown-route ask-agent))
       (reference
          (topic ecosystem-vault-coordination)
@@ -395,7 +395,7 @@
          (how-to (access-vault-wsl use-mcp-for-notes read-authoritative-from-wsl tag-4-axes))
          (verify (vault-accessible tags-compliant no-dual-authority))
          (lifecycle current-contract)
-         (provenance ecosystem commit d679789 inbox:ecosystem-vault-coordination)
+         (provenance "ecosystem commit d679789 inbox:ecosystem-vault-coordination")
          (unknown-route ask-agent))
       (reference
          (topic wsm-file-paren-safety)
@@ -404,7 +404,7 @@
          (how-to (connect-my-lisp-lsp edit-through-lsp-session watch-live-diagnostics-on-didChange))
          (verify (my-lisp-lsp-analyze-calls-my-lisp-parse-directly publishDiagnostics-on-textDocument/didChange))
          (lifecycle current-contract)
-         (provenance my-lisp 2026-09-01: three real, independently-found breaks this exact class -- my-lisp/tasks.my db6f666, wsm-os/tasks.my 09eab6c, cml/tasks.my 5f0574c -- all silently unparseable via the canonical reader for an unknown prior duration, none caught until an explicit ecosystem-wide sync check)
+         (provenance "my-lisp 2026-09-01: three real, independently-found breaks this exact class -- my-lisp/tasks.my db6f666, wsm-os/tasks.my 09eab6c, cml/tasks.my 5f0574c -- all silently unparseable via the canonical reader for an unknown prior duration, none caught until an explicit ecosystem-wide sync check")
          (unknown-route ask-agent))
       (reference
          (topic task-freshness)
@@ -413,7 +413,7 @@
          (how-to (add-created-and-last-validated-to-new-tasks classify-freshness-by-hand-from-last-validated-until-a-primitive-exists never-backfill-old-tasks-in-bulk))
          (verify (freshness-thresholds-3-and-7-days status-distinct-from-existing-done-field))
          (lifecycle proposal)
-         (provenance ecosystem 2026-09-01: owner design decision, triggered by this session's tasks.my sync work and the GUARD PASS finding a task whose literal description was already stale)
+         (provenance "ecosystem 2026-09-01: owner design decision, triggered by this session's tasks.my sync work and the GUARD PASS finding a task whose literal description was already stale")
          (unknown-route ask-owner))
       (reference
          (topic swarm-peer-addressing)
@@ -422,7 +422,7 @@
          (how-to (set-advertise-host-explicitly-when-binding-non-loopback expect-wildcard-bind-to-fail-closed-without-it fall-back-to-observed-ip-only-for-old-peers))
          (verify (gossip_relays_advertised_address_not_the_observed_socket_ip gossip_falls_back_to_observed_ip_when_peer_omits_advertise_host startup_rejects_wildcard_bind_without_advertise_host))
          (lifecycle current-contract)
-         (provenance my-lisp commit d79b04b + docs correction 2a31e8b, 2026-09-01: owner-diagnosed via live inspection of a stalled node's stdout.log showing continuous connection-refused to the machine's own Tailscale IP, cross-referenced with ip-addr-show -- fix ships in source/tests only, no live process restarted)
+         (provenance "my-lisp commit d79b04b + docs correction 2a31e8b, 2026-09-01: owner-diagnosed via live inspection of a stalled node's stdout.log showing continuous connection-refused to the machine's own Tailscale IP, cross-referenced with ip-addr-show -- fix ships in source/tests only, no live process restarted")
          (unknown-route ask-agent))
       (reference
          (topic swarm-push-event-delivery)
@@ -431,7 +431,7 @@
          (how-to (query-delivery-status-after-emit-instead-of-trusting-the-immediate-ok treat-anything-in-recent-delivery-failures-as-actually-failed dont-conflate-with-sync-tasks-or-seed-connection-instability))
          (verify (silent_peer_delivery_never_silently_counts_as_acked event-ack-sent-only-after-own-journal-confirms pending_acks-populated-from-broadcast-write-success-list))
          (lifecycle current-contract)
-         (provenance my-lisp commit 5f32a75, ecosystem 28bb231, 2026-09-01: owner-scoped fix, deliberately not mixed with sync-tasks/Git-vs-swarm-state gap -- SWARM-SEED-CONNECTION-INSTABILITY (why the seed connection itself cycles closed roughly every 25s) remains a separate, unresolved root cause -- this topic covers the SILENT half of the loss only)
+         (provenance "my-lisp commit 5f32a75, ecosystem 28bb231, 2026-09-01: owner-scoped fix, deliberately not mixed with sync-tasks/Git-vs-swarm-state gap -- SWARM-SEED-CONNECTION-INSTABILITY (why the seed connection itself cycles closed roughly every 25s) remains a separate, unresolved root cause -- this topic covers the SILENT half of the loss only")
          (unknown-route ask-agent))
       (reference
          (topic crashed-agent-session-reconciliation)
@@ -440,7 +440,7 @@
          (how-to (cross-reference-sessions-json-against-live-processes distinguish-dead-session-from-active-agent stage-only-coherent-additive-non-destructive-pieces attribute-the-commit-to-whose-work-it-actually-was))
          (verify (sessions-json-entry-with-no-corresponding-live-process append-only-or-purely-additive-diff-confirmed-before-staging))
          (lifecycle current-contract)
-         (provenance ecosystem commits bb867c4 ae8a782, 2026-09-01: Kriyā the Antigravity-IDE agent registered itself in memory/OWNER-PROFILE.md and .agents/sessions.json, plus an LSP-plugin config and a durable-inbox backlog from several other concurrently active agents, then its session ended before any of it was committed -- reconciled and committed on Kriyā's behalf once confirmed dead, owner-directed to fix it since the session had died)
+         (provenance "ecosystem commits bb867c4 ae8a782, 2026-09-01: Kriyā the Antigravity-IDE agent registered itself in memory/OWNER-PROFILE.md and .agents/sessions.json, plus an LSP-plugin config and a durable-inbox backlog from several other concurrently active agents, then its session ended before any of it was committed -- reconciled and committed on Kriyā's behalf once confirmed dead, owner-directed to fix it since the session had died")
          (unknown-route ask-agent)))))
 
 ; Curated frequently-used tools. A record is navigation, not permission to run
