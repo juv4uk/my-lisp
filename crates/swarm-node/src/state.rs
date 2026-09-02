@@ -247,6 +247,164 @@ pub fn membership(journal: &Journal) -> HashMap<String, Member> {
     members
 }
 
+/// A node's self-reported, structured work state (P2P-WORK-VISIBILITY):
+/// current-action/blocker/status only, never chain-of-thought. Folded from
+/// `work-state` events, last one per node wins (same "last-one-wins per
+/// key" shape as `task_def`) — a node re-announcing its state overwrites
+/// the projection, it does not accumulate history here (the journal itself
+/// keeps every prior announcement, this is only the current view).
+#[derive(Debug, Clone, Default)]
+pub struct WorkState {
+    pub repo: Option<String>,
+    pub task: Option<String>,
+    pub current_action: Option<String>,
+    pub blocker: Option<String>,
+    pub status: Option<String>,
+    pub capabilities: Vec<String>,
+    pub help_needed: Option<String>,
+    pub evidence_produced: Vec<String>,
+    /// Lamport clock of the announcing event -- a monotonic, replay-safe
+    /// stand-in for "last seen" (wall-clock timestamps from different
+    /// machines are not comparable across the mesh; lamport order is).
+    pub last_seen_lamport: u64,
+}
+
+/// One entry per subject node, keyed by the payload's own `node` field
+/// (falling back to the envelope's `Event::node` for any event that
+/// omits it) rather than the envelope alone — compaction re-emits a
+/// node's last-known work-state under the *compacting* node's own
+/// identity (same pattern `agent-joined`/`membership` already uses), so
+/// the subject the fact is actually about has to travel inside the
+/// payload to survive that re-attribution.
+pub fn work_states(journal: &Journal) -> HashMap<String, WorkState> {
+    let mut states: HashMap<String, WorkState> = HashMap::new();
+    for ev in &journal.events {
+        if ev.typ != "work-state" {
+            continue;
+        }
+        let subject = ev
+            .payload
+            .field_atom("node")
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| ev.node.clone());
+        states.insert(
+            subject,
+            WorkState {
+                repo: ev.payload.field_atom("repo").map(|s| s.to_string()),
+                task: ev.payload.field_atom("task").map(|s| s.to_string()),
+                current_action: ev
+                    .payload
+                    .field_atom("current-action")
+                    .map(|s| s.to_string()),
+                blocker: ev.payload.field_atom("blocker").map(|s| s.to_string()),
+                status: ev.payload.field_atom("status").map(|s| s.to_string()),
+                capabilities: string_list(&ev.payload, "capabilities"),
+                help_needed: ev.payload.field_atom("help-needed").map(|s| s.to_string()),
+                evidence_produced: string_list(&ev.payload, "evidence-produced"),
+                last_seen_lamport: ev.lamport,
+            },
+        );
+    }
+    states
+}
+
+/// A `help-request` announcement plus every `help-offer` that named it
+/// (append-only history, not last-one-wins -- multiple peers may each
+/// offer help on the same request, and a request is never silently
+/// replaced). An offer is visible here purely as a proposal: publishing it
+/// is not accepting it and does not transfer task ownership (REQUEST !=
+/// ASSIGNMENT, OFFER != AUTHORITY, ACCEPT != OWNERSHIP TRANSFER -- the
+/// requester decides what to do with an offer out of band, this reducer
+/// only makes offers visible).
+#[derive(Debug, Clone, Default)]
+pub struct HelpRequest {
+    pub id: String,
+    pub requester: String,
+    pub need: Option<String>,
+    pub offers: Vec<HelpOffer>,
+}
+
+#[derive(Debug, Clone)]
+pub struct HelpOffer {
+    pub agent: String,
+    pub capability: Option<String>,
+}
+
+/// Requests in first-seen order (stable iteration for callers/tests),
+/// offers attached in the order they were journaled.
+pub fn help_requests(journal: &Journal) -> Vec<HelpRequest> {
+    let mut order: Vec<String> = Vec::new();
+    let mut requests: HashMap<String, HelpRequest> = HashMap::new();
+    for ev in &journal.events {
+        match ev.typ.as_str() {
+            "help-request" => {
+                let Some(id) = ev.payload.field_atom("id") else {
+                    continue;
+                };
+                let existing_offers = requests.get(id).map(|r| r.offers.clone()).unwrap_or_default();
+                if !requests.contains_key(id) {
+                    order.push(id.to_string());
+                }
+                let requester = ev
+                    .payload
+                    .field_atom("requester")
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| ev.node.clone());
+                requests.insert(
+                    id.to_string(),
+                    HelpRequest {
+                        id: id.to_string(),
+                        requester,
+                        need: ev.payload.field_atom("need").map(|s| s.to_string()),
+                        offers: existing_offers,
+                    },
+                );
+            }
+            "help-offer" => {
+                let Some(request_id) = ev.payload.field_atom("request") else {
+                    continue;
+                };
+                let agent = ev
+                    .payload
+                    .field_atom("agent")
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| ev.node.clone());
+                let offer = HelpOffer {
+                    agent,
+                    capability: ev.payload.field_atom("capability").map(|s| s.to_string()),
+                };
+                match requests.get_mut(request_id) {
+                    Some(r) => r.offers.push(offer),
+                    None => {
+                        // An offer that arrived (via anti-entropy sync)
+                        // before its request -- keep it rather than drop
+                        // it silently; the request event, once folded,
+                        // will not retroactively pick it up since we only
+                        // just saw it here, so seed a placeholder entry.
+                        if !order.contains(&request_id.to_string()) {
+                            order.push(request_id.to_string());
+                        }
+                        requests.insert(
+                            request_id.to_string(),
+                            HelpRequest {
+                                id: request_id.to_string(),
+                                requester: String::new(),
+                                need: None,
+                                offers: vec![offer],
+                            },
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    order
+        .into_iter()
+        .filter_map(|id| requests.remove(&id))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

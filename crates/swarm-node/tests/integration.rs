@@ -1619,3 +1619,173 @@ fn silent_peer_delivery_never_silently_counts_as_acked() {
 
     drop(silent_peer);
 }
+
+// ---------------------------------------------------------------------------
+// P2P work-state visibility / help-request / help-offer (2026-09-02)
+// ---------------------------------------------------------------------------
+
+/// The full acceptance witness the feature was scoped against: three local
+/// nodes, no central coordinator -- A announces work-state, B sees it (not
+/// via A relaying to B, but via each node's own gossip-connected peer set
+/// folding the same replicated journal); A publishes a help-request; C
+/// (connected only to A, must gossip-discover B/A's mesh) sees it and
+/// publishes an offer; A sees the offer; B disconnects and reconnects and
+/// recovers the current swarm view from whatever the event model already
+/// supports (anti-entropy sync on reconnect, same mechanism every other
+/// event type already relies on -- no special-cased "resync work-state"
+/// path was needed or written).
+#[test]
+fn p2p_presence_work_visibility_help_request_offer_and_reconnect() {
+    let base = alloc_ports(3);
+    let (port_a, port_b, port_c) = (base, base + 1, base + 2);
+    let dir_b = data_dir("p2p-b");
+
+    let _a = spawn(port_a, "agent-a", &data_dir("p2p-a"), None);
+    let mut b = spawn(port_b, "agent-b", &dir_b, Some(port_a));
+    let _c = spawn(port_c, "agent-c", &data_dir("p2p-c"), Some(port_a));
+
+    // P2P-PRESENCE-PASS: gossip discovery reaches full mesh (same
+    // guarantee gossip_peer_discovery_reaches_full_mesh already covers;
+    // re-asserted narrowly here as this test's own precondition).
+    let c_presence = eventually(port_c, "(presence)", Duration::from_secs(3), |r| {
+        r.contains("agent-b")
+    });
+    assert!(
+        c_presence.contains("agent-b"),
+        "P2P-PRESENCE-PASS failed: agent-c never discovered agent-b via gossip through agent-a: {c_presence}"
+    );
+
+    // A announces work-state -- through the generic `emit` op (no
+    // dedicated `work-state` write command exists; Rust does not parse
+    // these fields, `state::work_states` just folds whatever arrives
+    // typed `work-state`).
+    let announce = request(
+        port_a,
+        "(emit (type work-state) (payload ((node agent-a) (repo my-lisp) (task macro-semantics) (current-action \"auditing eq/macro value roundtrip\") (status working))))",
+    );
+    assert!(announce.starts_with("(ok"), "A's work-state announce should succeed: {announce}");
+
+    // P2P-WORK-VISIBILITY-PASS: B sees A's work-state, purely through
+    // gossip/anti-entropy -- B never talked to A about this directly
+    // except via the peer connection already established for presence.
+    let b_sees_a = eventually(port_b, "(list-work-state)", Duration::from_secs(3), |r| {
+        r.contains("agent-a") && r.contains("macro-semantics")
+    });
+    assert!(
+        b_sees_a.contains("agent-a") && b_sees_a.contains("macro-semantics") && b_sees_a.contains("working"),
+        "P2P-WORK-VISIBILITY-PASS failed: agent-b never saw agent-a's work-state: {b_sees_a}"
+    );
+
+    // A publishes a help-request, again through generic `emit`.
+    let req = request(
+        port_a,
+        "(emit (type help-request) (payload ((id request-x) (requester agent-a) (need \"need independent witness for macro value roundtrip\"))))",
+    );
+    assert!(req.starts_with("(ok"), "A's help-request should succeed: {req}");
+
+    // P2P-HELP-REQUEST-PASS: C sees the request.
+    let c_sees_request = eventually(port_c, "(list-help)", Duration::from_secs(3), |r| {
+        r.contains("request-x") && r.contains("independent witness")
+    });
+    assert!(
+        c_sees_request.contains("request-x"),
+        "P2P-HELP-REQUEST-PASS failed: agent-c never saw agent-a's help-request: {c_sees_request}"
+    );
+
+    // C publishes a help-offer responding to A's request, through emit.
+    let offer = request(
+        port_c,
+        "(emit (type help-offer) (payload ((request request-x) (agent agent-c) (capability testing))))",
+    );
+    assert!(offer.starts_with("(ok"), "C's help-offer should succeed: {offer}");
+
+    // P2P-HELP-OFFER-PASS: A sees C's offer nested under its own request --
+    // an offer is a proposal, not an assignment: this assertion only
+    // checks visibility, not that A's task ownership or status changed.
+    let a_sees_offer = eventually(port_a, "(list-help)", Duration::from_secs(3), |r| {
+        r.contains("request-x") && r.contains("agent-c") && r.contains("testing")
+    });
+    assert!(
+        a_sees_offer.contains("agent-c") && a_sees_offer.contains("testing"),
+        "P2P-HELP-OFFER-PASS failed: agent-a never saw agent-c's help-offer: {a_sees_offer}"
+    );
+
+    // B disconnects and reconnects (same process-restart pattern as
+    // restart_preserves_incarnation_epoch_increments_seq_continues) and
+    // must recover the current swarm view -- work-state AND help-request/
+    // offer visibility, via the same reconnect/anti-entropy path that
+    // already restores task/membership state after a restart.
+    kill(&mut b);
+    drop(b);
+    let _b2 = spawn(port_b, "agent-b", &dir_b, Some(port_a));
+
+    // P2P-RECONNECT-PASS.
+    let b_recovers_work = eventually(port_b, "(list-work-state)", Duration::from_secs(3), |r| {
+        r.contains("agent-a") && r.contains("macro-semantics")
+    });
+    assert!(
+        b_recovers_work.contains("agent-a") && b_recovers_work.contains("macro-semantics"),
+        "P2P-RECONNECT-PASS (work-state) failed: agent-b did not recover A's work-state after reconnect: {b_recovers_work}"
+    );
+    let b_recovers_help = eventually(port_b, "(list-help)", Duration::from_secs(3), |r| {
+        r.contains("request-x") && r.contains("agent-c")
+    });
+    assert!(
+        b_recovers_help.contains("request-x") && b_recovers_help.contains("agent-c"),
+        "P2P-RECONNECT-PASS (help) failed: agent-b did not recover the request/offer pair after reconnect: {b_recovers_help}"
+    );
+}
+
+/// Compaction must not silently erase P2P work-state / help-request /
+/// help-offer facts -- the same "derive current view, re-emit fresh"
+/// safety argument the module doc already makes for task/membership state,
+/// checked narrowly here for the three new event types.
+#[test]
+fn compaction_preserves_work_state_and_help_requests() {
+    let port = alloc_ports(1);
+    let _a = spawn(port, "compact-node", &data_dir("p2p-compact"), None);
+
+    request(
+        port,
+        "(emit (type work-state) (payload ((node compact-node) (repo my-lisp) (task macro-semantics) (status working))))",
+    );
+    request(
+        port,
+        "(emit (type help-request) (payload ((id req-1) (requester compact-node) (need \"witness\"))))",
+    );
+    request(
+        port,
+        "(emit (type help-offer) (payload ((request req-1) (agent compact-node) (capability testing))))",
+    );
+
+    let before_work = request(port, "(list-work-state)");
+    let before_help = request(port, "(list-help)");
+
+    let compacted = request(port, "(compact)");
+    assert!(compacted.starts_with("(ok"), "compact should succeed: {compacted}");
+
+    let after_work = request(port, "(list-work-state)");
+    let after_help = request(port, "(list-help)");
+    // `last-seen-lamport` is expected to change -- compaction re-emits
+    // work-state under a fresh lamport (same "re-derive, re-emit fresh"
+    // strategy the module doc already describes for task facts; those
+    // just have no lamport-derived field in their read projection to
+    // expose the same expected drift). Strip it before comparing so the
+    // assertion checks the semantic fields that must actually survive,
+    // not a freshness counter that is not meant to.
+    fn strip_lamport(s: &str) -> String {
+        match s.find("(last-seen-lamport") {
+            Some(i) => format!("{}...", &s[..i]),
+            None => s.to_string(),
+        }
+    }
+    assert_eq!(
+        strip_lamport(&before_work),
+        strip_lamport(&after_work),
+        "work-state projection (excluding last-seen-lamport, which compaction legitimately refreshes) must survive compaction: before={before_work} after={after_work}"
+    );
+    assert_eq!(
+        before_help, after_help,
+        "help-request/offer projection must be byte-identical before/after compaction"
+    );
+}

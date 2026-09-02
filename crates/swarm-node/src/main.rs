@@ -1065,6 +1065,18 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
             Some("next-best-action") => {
                 handle_next_best_action(&node, &msg, &mut stream);
             }
+            // work-state/help-request/help-offer are written through the
+            // existing generic `emit` op below (no dedicated write op —
+            // see the doc comment on handle_list_work_state for why);
+            // these two remain dedicated because they are projections/
+            // folds, the same architectural role list-task-state and
+            // list-members already have.
+            Some("list-work-state") => {
+                handle_list_work_state(&node, &mut stream);
+            }
+            Some("list-help") => {
+                handle_list_help(&node, &mut stream);
+            }
             Some("presence") => {
                 handle_presence(&node, &mut stream);
             }
@@ -2542,6 +2554,141 @@ fn handle_next_best_action(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream)
             &Sexp::list(vec![Sexp::atom("next-best-action"), Sexp::List(vec![])]),
         ),
     }
+}
+
+/// Announce a node's own work-state through the existing generic
+/// `(emit (type work-state) (payload (...)))` op -- deliberately NOT a
+/// dedicated `work-state` command. Rust does not parse or validate these
+/// payload fields on write; `emit` already appends+broadcasts any
+/// `(type T) (payload P)` opaquely (see `handle_emit`), matching this
+/// ecosystem's own "small Rust core, WSM owns meaning" principle
+/// (docs/language-core.md; precedent: `crates/wsm-guard-slice`, a minimal
+/// event-driven Rust mechanism that frames one bounded event per line and
+/// lets WSM policy own the decision). The shape below is the field
+/// convention `state::work_states`'s reducer reads back out, not a
+/// contract Rust enforces:
+/// `(emit (type work-state) (payload
+///   ((node <own-node-id>) (repo r) (task t) (current-action a)
+///    (blocker b) (status s) (capabilities (..)) (help-needed h)
+///    (evidence-produced (..)))))`
+/// `node` inside the payload is what compaction re-attributes the fact to
+/// after it re-emits under the compacting node's own envelope identity —
+/// see `state::work_states`'s doc comment. All fields optional. This is
+/// P2P-WORK-VISIBILITY: a node's own structured self-report (never
+/// another node's internal reasoning).
+///
+/// `help-request`/`help-offer` follow the identical convention through
+/// the same generic `emit`:
+/// `(emit (type help-request) (payload ((id r-1) (requester <own-node-id>) (need "..."))))`
+/// `(emit (type help-offer) (payload ((request r-1) (agent <own-node-id>) (capability "..."))))`
+/// Publishing an offer is a proposal, not an assignment: it does not
+/// require the requester's task to exist as a swarm-node task and does
+/// not claim it — REQUEST != ASSIGNMENT, OFFER != AUTHORITY, ACCEPT !=
+/// OWNERSHIP TRANSFER. What a node does with a visible request/offer is
+/// its own decision, made wherever policy already lives for this
+/// ecosystem (not here) — this Rust layer only makes them visible.
+///
+/// Local client op: `(list-work-state)`. Read-only projection over
+/// `work-state` events -- every node currently visible in this way is by
+/// definition being seen P2P, through the same gossip/anti-entropy path
+/// every other event uses, not a central dispatcher.
+fn handle_list_work_state(node: &Arc<Node>, stream: &mut TcpStream) {
+    let journal = node
+        .journal
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let states = state::work_states(&journal);
+    drop(journal);
+    let mut rows: Vec<(&String, &state::WorkState)> = states.iter().collect();
+    rows.sort_by(|a, b| a.0.cmp(b.0));
+    let items = rows
+        .into_iter()
+        .map(|(node_id, ws)| {
+            let mut fields = vec![Sexp::list(vec![Sexp::atom("node"), Sexp::atom(node_id)])];
+            let opt = |k: &str, v: &Option<String>| {
+                Sexp::list(vec![
+                    Sexp::atom(k),
+                    match v {
+                        Some(s) => Sexp::string(s),
+                        None => Sexp::List(vec![]),
+                    },
+                ])
+            };
+            fields.push(opt("repo", &ws.repo));
+            fields.push(opt("task", &ws.task));
+            fields.push(opt("current-action", &ws.current_action));
+            fields.push(opt("blocker", &ws.blocker));
+            fields.push(opt("status", &ws.status));
+            fields.push(Sexp::list(vec![
+                Sexp::atom("capabilities"),
+                Sexp::list(ws.capabilities.iter().map(Sexp::atom).collect()),
+            ]));
+            fields.push(opt("help-needed", &ws.help_needed));
+            fields.push(Sexp::list(vec![
+                Sexp::atom("evidence-produced"),
+                Sexp::list(ws.evidence_produced.iter().map(Sexp::atom).collect()),
+            ]));
+            fields.push(Sexp::list(vec![
+                Sexp::atom("last-seen-lamport"),
+                Sexp::atom(ws.last_seen_lamport.to_string()),
+            ]));
+            Sexp::list(std::iter::once(Sexp::atom("work-state")).chain(fields).collect())
+        })
+        .collect();
+    send(
+        stream,
+        &Sexp::list(vec![Sexp::atom("work-states"), Sexp::list(items)]),
+    );
+}
+
+/// Local client op: `(list-help)`. Every `help-request` seen so far (this
+/// node's own and every peer's, via the same gossip/anti-entropy path as
+/// everything else) with its `help-offer`s nested underneath.
+fn handle_list_help(node: &Arc<Node>, stream: &mut TcpStream) {
+    let journal = node
+        .journal
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let requests = state::help_requests(&journal);
+    drop(journal);
+    let items = requests
+        .into_iter()
+        .map(|r| {
+            let offers = r
+                .offers
+                .into_iter()
+                .map(|o| {
+                    Sexp::list(vec![
+                        Sexp::list(vec![Sexp::atom("agent"), Sexp::atom(&o.agent)]),
+                        Sexp::list(vec![
+                            Sexp::atom("capability"),
+                            match &o.capability {
+                                Some(c) => Sexp::string(c),
+                                None => Sexp::List(vec![]),
+                            },
+                        ]),
+                    ])
+                })
+                .collect();
+            Sexp::list(vec![
+                Sexp::atom("help-request"),
+                Sexp::list(vec![Sexp::atom("id"), Sexp::atom(&r.id)]),
+                Sexp::list(vec![Sexp::atom("requester"), Sexp::atom(&r.requester)]),
+                Sexp::list(vec![
+                    Sexp::atom("need"),
+                    match &r.need {
+                        Some(n) => Sexp::string(n),
+                        None => Sexp::List(vec![]),
+                    },
+                ]),
+                Sexp::list(vec![Sexp::atom("offers"), Sexp::list(offers)]),
+            ])
+        })
+        .collect();
+    send(
+        stream,
+        &Sexp::list(vec![Sexp::atom("help-requests"), Sexp::list(items)]),
+    );
 }
 
 /// Local client op: `(presence)`. Derived live from currently-open

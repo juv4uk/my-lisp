@@ -154,6 +154,88 @@ pub fn compact(
         }
     }
 
+    // P2P work-state/help-request/help-offer facts fold the same way task
+    // definitions do (last-write-wins per key), so they compact the same
+    // way: re-derive the current view and re-emit it fresh rather than
+    // preserving every historical announcement. Without this, compaction
+    // would silently erase every node's visible work-state and every open
+    // help-request/offer, which nothing else in this module's existing
+    // task/membership loops would catch.
+    let work_states = state::work_states(journal);
+    let mut work_node_ids: Vec<&String> = work_states.keys().collect();
+    work_node_ids.sort();
+    for id in work_node_ids {
+        let ws = &work_states[id];
+        let opt = |k: &str, v: &Option<String>| {
+            v.as_ref()
+                .map(|s| Sexp::list(vec![Sexp::atom(k), Sexp::string(s)]))
+        };
+        let mut fields = vec![Sexp::list(vec![Sexp::atom("node"), Sexp::atom(id)])];
+        fields.extend(opt("repo", &ws.repo));
+        fields.extend(opt("task", &ws.task));
+        fields.extend(opt("current-action", &ws.current_action));
+        fields.extend(opt("blocker", &ws.blocker));
+        fields.extend(opt("status", &ws.status));
+        fields.push(Sexp::list(vec![
+            Sexp::atom("capabilities"),
+            Sexp::list(ws.capabilities.iter().map(Sexp::atom).collect()),
+        ]));
+        fields.extend(opt("help-needed", &ws.help_needed));
+        fields.push(Sexp::list(vec![
+            Sexp::atom("evidence-produced"),
+            Sexp::list(ws.evidence_produced.iter().map(Sexp::atom).collect()),
+        ]));
+        // Envelope is re-emitted under self_node_id like every other
+        // compacted fact (see module doc); the true subject travels in
+        // the payload's own `node` field above, which is what
+        // state::work_states() actually keys on -- same split
+        // envelope/payload identity membership already relies on for
+        // agent-joined/agent-left.
+        new_events.push(Event {
+            node: self_node_id.to_string(),
+            incarnation: Some(self_incarnation.to_string()),
+            seq: fresh(),
+            lamport: fresh_lamport(),
+            typ: "work-state".to_string(),
+            payload: Sexp::list(fields),
+        });
+    }
+
+    for req in state::help_requests(journal) {
+        let mut fields = vec![
+            Sexp::list(vec![Sexp::atom("id"), Sexp::atom(&req.id)]),
+            Sexp::list(vec![Sexp::atom("requester"), Sexp::atom(&req.requester)]),
+        ];
+        if let Some(need) = &req.need {
+            fields.push(Sexp::list(vec![Sexp::atom("need"), Sexp::string(need)]));
+        }
+        new_events.push(Event {
+            node: self_node_id.to_string(),
+            incarnation: Some(self_incarnation.to_string()),
+            seq: fresh(),
+            lamport: fresh_lamport(),
+            typ: "help-request".to_string(),
+            payload: Sexp::list(fields),
+        });
+        for offer in &req.offers {
+            let mut ofields = vec![
+                Sexp::list(vec![Sexp::atom("request"), Sexp::atom(&req.id)]),
+                Sexp::list(vec![Sexp::atom("agent"), Sexp::atom(&offer.agent)]),
+            ];
+            if let Some(cap) = &offer.capability {
+                ofields.push(Sexp::list(vec![Sexp::atom("capability"), Sexp::string(cap)]));
+            }
+            new_events.push(Event {
+                node: self_node_id.to_string(),
+                incarnation: Some(self_incarnation.to_string()),
+                seq: fresh(),
+                lamport: fresh_lamport(),
+                typ: "help-offer".to_string(),
+                payload: Sexp::list(ofields),
+            });
+        }
+    }
+
     let after = new_events.len();
     journal.replace_all(new_events)?;
     Ok((before, after))
