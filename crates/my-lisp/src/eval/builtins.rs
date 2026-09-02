@@ -652,7 +652,7 @@ pub(crate) fn install(environment: &Environment) {
         |args: &[Value], _env: &Environment, span: Span| {
             exact_args("numeric-buffer?", args, 1, span)?;
             Ok(if matches!(args[0], Value::NumericBuffer(_)) {
-                Value::Bool(true)
+                Value::truth(true)
             } else {
                 Value::Nil
             })

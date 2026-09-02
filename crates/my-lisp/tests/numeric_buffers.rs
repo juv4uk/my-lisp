@@ -26,6 +26,13 @@ fn constructors_make_distinct_immutable_numeric_values() {
 fn accessors_preserve_element_domain() {
     assert_eq!(eval("(numeric-buffer? #i32())"), "t");
     assert_eq!(eval("(numeric-buffer? (vector 1))"), "()");
+    // Regression (owner-directed Bool audit, 2026-09-02): numeric-buffer?
+    // used to return Value::Bool(true) on its true branch while returning
+    // Value::Nil on its false branch -- a leftover, inconsistent mix from
+    // before eq/atom stopped producing Value::Bool. Printed output alone
+    // ("t") could not catch this, since Bool(true) and the now-canonical
+    // Symbol("t") print identically; `eq` against `t` is what exposes it.
+    assert_eq!(eval("(eq (numeric-buffer? #i32(1 2 3)) t)"), "t");
     assert_eq!(eval("(numeric-buffer-type #f32())"), "f32");
     assert_eq!(eval("(numeric-buffer-length #i32(4 5 6))"), "3");
     assert_eq!(eval("(numeric-buffer-ref #i32(-7) 0)"), "-7");
