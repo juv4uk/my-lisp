@@ -169,19 +169,19 @@ fn arithmetic_promotes_exact_integers_and_preserves_inexact_numbers() {
 
 #[test]
 fn comparisons_chain_and_promote_exact_inexact_like_arithmetic() {
-    assert_eq!(eval("(< 1 2 3)"), Value::Bool(true));
-    assert_eq!(eval("(< 1 3 2)"), Value::Bool(false));
-    assert_eq!(eval("(> 3 2 1)"), Value::Bool(true));
-    assert_eq!(eval("(> 3 1 2)"), Value::Bool(false));
-    assert_eq!(eval("(= 1 1 1)"), Value::Bool(true));
-    assert_eq!(eval("(= 1 2)"), Value::Bool(false));
+    assert_eq!(eval("(< 1 2 3)"), Value::truth(true));
+    assert_eq!(eval("(< 1 3 2)"), Value::truth(false));
+    assert_eq!(eval("(> 3 2 1)"), Value::truth(true));
+    assert_eq!(eval("(> 3 1 2)"), Value::truth(false));
+    assert_eq!(eval("(= 1 1 1)"), Value::truth(true));
+    assert_eq!(eval("(= 1 2)"), Value::truth(false));
     // One inexact operand makes the whole comparison inexact, same rule as +/-/*.
-    assert_eq!(eval("(= 1 1.0)"), Value::Bool(true));
+    assert_eq!(eval("(= 1 1.0)"), Value::truth(true));
     // Cross-multiplication compares exact fractions without ever going through f64.
-    assert_eq!(eval("(= 1/2 0.5)"), Value::Bool(true));
-    assert_eq!(eval("(< (/ 1 3) (/ 1 2))"), Value::Bool(true));
+    assert_eq!(eval("(= 1/2 0.5)"), Value::truth(true));
+    assert_eq!(eval("(< (/ 1 3) (/ 1 2))"), Value::truth(true));
     // A single argument is vacuously ordered/equal.
-    assert_eq!(eval("(< 5)"), Value::Bool(true));
+    assert_eq!(eval("(< 5)"), Value::truth(true));
 }
 
 #[test]
@@ -1538,9 +1538,9 @@ fn string_append_wrong_arity_is_an_arity_error() {
 
 #[test]
 fn string_less_than_orders_strings_lexicographically() {
-    assert_eq!(eval(r#"(string<? "a" "b")"#), Value::Bool(true));
-    assert_eq!(eval(r#"(string<? "b" "a")"#), Value::Bool(false));
-    assert_eq!(eval(r#"(string<? "a" "a")"#), Value::Bool(false));
+    assert_eq!(eval(r#"(string<? "a" "b")"#), Value::truth(true));
+    assert_eq!(eval(r#"(string<? "b" "a")"#), Value::truth(false));
+    assert_eq!(eval(r#"(string<? "a" "a")"#), Value::truth(false));
 }
 
 #[test]
@@ -1559,4 +1559,64 @@ fn string_less_than_wrong_arity_is_an_arity_error() {
     let error = eval_program(r#"(string<? "only-one")"#, &mut Session::default())
         .expect_err("string<? with one argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Arity);
+}
+
+// --- CORE predicates return canonical WSM t/() (Value::truth), not a
+// hidden Value::Bool -------------------------------------------------
+//
+// `<`/`=`/`>`/`string<?`/`string?` used to construct `Value::Bool`
+// directly. That is a real Rust datatype with no WSM syntax of its own —
+// it printed identically to Nil/t but was a DIFFERENT runtime
+// representation, discoverable only via `eq`. This mattered concretely:
+// `closures::value_to_expr` (used by macro expansion) maps
+// `Value::Bool(false)` to the same empty-list syntax as `Nil`, and
+// re-evaluating that empty list yields `Value::Nil` — so a macro whose
+// body computed a CORE predicate's `Bool(false)` as its own expansion
+// value silently returned `Nil` instead, while the same predicate called
+// directly stayed `Bool(false)`: the identical expression `(< 2 1)`
+// disagreed with itself depending on whether it crossed a macro
+// boundary. Migrating these five CORE producers to `Value::truth`
+// removes the hidden Bool entirely from CORE, so there is nothing left
+// for that boundary to lose. json-parse/swarm-protocol/host `Value::Bool`
+// uses are untouched — those are real external booleans (JSON's own
+// true/false/null triple, wire-protocol acks), not WSM predicate results.
+
+#[test]
+fn core_predicates_are_eq_to_canonical_t_or_nil_not_a_hidden_bool() {
+    // A printer-only check is insufficient here: Bool(false) and Nil
+    // both print as "()" (this was true before this fix too). `eq`
+    // is the only way to observe the underlying representation.
+    assert_eq!(eval("(eq (< 1 2) t)"), Value::truth(true));
+    assert_eq!(eval("(eq (< 2 1) (quote ()))"), Value::truth(true));
+    assert_eq!(eval("(eq (= 1 1) t)"), Value::truth(true));
+    assert_eq!(eval("(eq (= 1 2) (quote ()))"), Value::truth(true));
+    assert_eq!(eval(r#"(eq (string<? "a" "b") t)"#), Value::truth(true));
+    assert_eq!(
+        eval(r#"(eq (string<? "b" "a") (quote ()))"#),
+        Value::truth(true)
+    );
+    assert_eq!(eval(r#"(eq (string? "x") t)"#), Value::truth(true));
+    assert_eq!(eval("(eq (string? 5) (quote ()))"), Value::truth(true));
+}
+
+#[test]
+fn macro_expansion_no_longer_changes_the_identity_of_a_core_predicate_result() {
+    // The live witness that motivated this fix: the same expression
+    // `(< 2 1)` used to disagree with itself depending on whether it
+    // was called directly or returned as a macro's own expansion value
+    // (closures::value_to_expr's Bool(false)->empty-list conversion,
+    // re-evaluated, used to silently produce Nil instead of Bool(false)).
+    let mut session = Session::default();
+    let direct = eval_program("(< 2 1)", &mut session)
+        .expect("direct comparison should succeed")
+        .value;
+    let via_macro = eval_program(
+        "(defmacro yields-false-bool () (< 2 1)) (yields-false-bool)",
+        &mut session,
+    )
+    .expect("macro expansion should succeed")
+    .value;
+    assert_eq!(direct, Value::truth(false));
+    assert_eq!(via_macro, Value::truth(false));
+    assert_eq!(direct, via_macro);
 }

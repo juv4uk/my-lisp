@@ -539,38 +539,43 @@ fn canonical_values_round_trip_through_write_to_string_and_read() {
     }
 }
 
-// BLOCKER, found 2026-09-02 (owner-directed audit). Originally reproduced
-// via `eq`; updated 2026-09-02 when `eq`/`atom` stopped returning
-// `Value::Bool` (owner decision: Boolean-ness is a logic convention on
-// existing core types -- `t`/`Nil` -- not a separate core runtime
-// datatype; `eq`/`atom` now return `Value::truth`'s `t`/`Nil`, and `t`
-// itself became a self-evaluating symbol, see `environment.rs`). `eq`'s
-// own result round-trips fine now (both `Symbol` and `Nil` always did).
-// `Value::Bool` itself is untouched and still produced by code
-// deliberately left alone in that same change -- arithmetic/string
-// comparisons (`<`, `>`, `=`, `string<?`, ...), JSON, swarm, host --
-// so the underlying defect is reproduced here via `<` instead, still
-// live:
+// BLOCKER, found 2026-09-02 (owner-directed audit), CLOSED for CORE
+// 2026-09-02 (owner-directed follow-up audit). History:
 //
-// - `write-to-string` renders `Bool(false)` with the *same* text as `Nil`
-//   ("()"), so `read` cannot tell them apart and always returns `Nil`.
-// - `Bool(true)` renders as "t", but reading "t" back now yields `t`
-//   itself (the self-evaluating symbol, per the above) -- which is
-//   `eq` to `Value::Bool(true)`? No: `Symbol("t")` and `Bool(true)` are
-//   still different `Value` variants (`PartialEq` has no cross-arm
-//   match), so this direction still fails too.
+// 1. Originally reproduced via `eq`; updated when `eq`/`atom` stopped
+//    returning `Value::Bool` (Boolean-ness is a logic convention on
+//    existing core types -- `t`/`Nil` -- not a separate core runtime
+//    datatype; `eq`/`atom` now return `Value::truth`'s `t`/`Nil`, and `t`
+//    itself became a self-evaluating symbol, see `environment.rs`).
+// 2. The blocker was then reproduced via `<` instead: `Value::Bool`
+//    (from arithmetic/string comparisons) doesn't round-trip through
+//    `write-to-string`/`read` -- `Bool(false)` prints identically to
+//    `Nil` ("()"), so reading it back always yields `Nil`, not itself.
+// 3. This was traced to something sharper than a printer/reader gap: a
+//    live semantic inconsistency. `closures::value_to_expr` (macro
+//    expansion's data->code conversion) maps `Bool(false)` to the same
+//    empty-list syntax as `Nil`, and re-evaluating that syntax yields
+//    `Nil` -- so the SAME expression `(< 2 1)` disagreed with itself
+//    depending on whether it crossed a macro boundary (witness:
+//    `(eq (< 2 1) (yields-false-bool-via-macro))` => `()`, not `t`).
+// 4. Root cause traced past `value_to_expr` to the actual producer: `<`,
+//    `=`, `>`, `string<?`, `string?` (every remaining CORE predicate)
+//    were constructing `Value::Bool` directly instead of the canonical
+//    `Value::truth`. Migrated all five (crates/my-lisp/src/eval/
+//    arithmetic.rs, crates/my-lisp/src/eval/special_forms/strings.rs).
+//    `Value::Bool` itself is untouched and still legitimately used at
+//    real external boundaries this fix deliberately does not touch:
+//    JSON (`json-parse`'s own true/false/null triple), the swarm wire
+//    protocol, host capabilities (`tcp-close`'s ack).
 //
-// The smallest fix would need `read` -- which shares `crate::parse` with
-// every other Lisp source file, not a private data-only reader -- to
-// recognize a new literal token for `Bool`. That is a reader-syntax
-// change to the canonical parser, not a change local to `write-to-string`
-// alone, so per explicit scoping this stops here rather than touching the
-// shared reader. This test locks in today's actual behavior (`Nil` round-
-// trips correctly; `Bool` -- wherever it's still produced -- does not)
-// so it can't silently regress further, and becomes the fix-confirmation
-// test the moment someone resolves the reader-syntax question.
+// Net effect: every CORE-reachable path now round-trips correctly (see
+// the first four assertions below, all now passing). The round-trip gap
+// is still real, but only for a genuinely external `Value::Bool` --
+// `json-parse`'s output -- which this fix explicitly does not touch,
+// since JSON's own true/false/null are real boundary values, not a
+// leaked Rust implementation detail (last assertion below).
 #[test]
-fn write_to_string_cannot_round_trip_bool_through_the_shared_reader() {
+fn write_to_string_round_trips_every_core_predicate_result_bool_stays_a_boundary_concern() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
 
@@ -596,12 +601,22 @@ fn write_to_string_cannot_round_trip_bool_through_the_shared_reader() {
     );
     assert_eq!(
         run(&mut session, "(eq (read (write-to-string (< 2 1))) (< 2 1))"),
-        "()",
-        "known blocker, still live: Bool(false) (here from `<`, untouched) round-trips into Nil, not itself"
+        "t",
+        "FIXED: `<` now returns Value::truth, not Value::Bool -- round-trips like Nil/t always did"
     );
     assert_eq!(
         run(&mut session, "(eq (read (write-to-string (< 1 2))) (< 1 2))"),
+        "t",
+        "FIXED: same for the true case"
+    );
+    assert_eq!(
+        run(
+            &mut session,
+            r#"(eq (read (write-to-string (json-parse "false"))) (json-parse "false"))"#
+        ),
         "()",
-        "known blocker, still live: Bool(true) (here from `<`, untouched) round-trips into Symbol(\"t\"), not itself"
+        "still true, and correctly so: json-parse's Bool(false) is a real JSON boundary value \
+         (JSON has its own true/false/null triple), deliberately not migrated -- this pins that \
+         the boundary is untouched, not that it's still broken"
     );
 }

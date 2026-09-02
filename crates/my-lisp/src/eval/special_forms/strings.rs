@@ -142,7 +142,7 @@ pub(crate) fn evaluate_string_less_than(
             span,
         ));
     };
-    Ok(Value::Bool(left.as_ref() < right.as_ref()))
+    Ok(Value::truth(left.as_ref() < right.as_ref()))
 }
 
 /// The minimal symbol/string introspection this project held off on for a
@@ -157,7 +157,7 @@ pub(crate) fn evaluate_string_predicate(
     span: Span,
 ) -> Result<Value, LanguageError> {
     exact_arity("string?", arguments, 1, span)?;
-    Ok(Value::Bool(matches!(
+    Ok(Value::truth(matches!(
         evaluate(&arguments[0], environment)?,
         Value::String(_)
     )))

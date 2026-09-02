@@ -325,7 +325,11 @@ pub(super) fn comparison_on_values(
             .windows(2)
             .all(|pair| compare(operator, pair[0].to_exact(), pair[1].to_exact()))
     };
-    Ok(Value::Bool(holds))
+    // CORE predicate result: canonical WSM t/() (Value::truth), not a
+    // hidden Rust-only Bool. `<`/`=`/`>` are registered directly on this
+    // function's return value (eval/builtins.rs), so this is the actual
+    // Lisp-visible result of a comparison, not an internal detail.
+    Ok(Value::truth(holds))
 }
 
 pub(super) fn order_pair(
@@ -334,8 +338,5 @@ pub(super) fn order_pair(
     right: &Value,
     span: Span,
 ) -> Result<bool, LanguageError> {
-    match comparison_on_values(operator, &[left.clone(), right.clone()], span)? {
-        Value::Bool(holds) => Ok(holds),
-        _ => unreachable!("comparison_on_values returns Bool"),
-    }
+    Ok(comparison_on_values(operator, &[left.clone(), right.clone()], span)?.is_truthy())
 }
