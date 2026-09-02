@@ -111,6 +111,7 @@ press Run, or run it from the terminal with `racket file.my`. See
 ### Docs
 
 - [`docs/language-core.md`](docs/language-core.md) — the language contract: primitives, bootstrap boundary, exact arithmetic.
+- [`docs/FUNCTIONS.md`](docs/FUNCTIONS.md) — a generated reference of every built-in and `lib/*.my` function, one section per library.
 - [`docs/DATE-TIME-AND-SYNC-ARCHITECTURE-2026-08-31.md`](docs/DATE-TIME-AND-SYNC-ARCHITECTURE-2026-08-31.md) — date/time interfaces, NTP observation, timezone boundaries, filesystem timestamps, and Guard synchronization.
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — a beginner walkthrough of homoiconicity.
 - [`docs/advice-taker.md`](docs/advice-taker.md) — a tutorial on building and using the Advice Taker backward-chaining engine.
@@ -197,6 +198,7 @@ raco pkg install --link --name my-lisp racket/
 ### Документація
 
 - [`docs/language-core.md`](docs/language-core.md) — контракт мови: примітиви, межа bootstrap, точна арифметика.
+- [`docs/FUNCTIONS.md`](docs/FUNCTIONS.md) — згенерований довідник кожної built-in та `lib/*.my`-функції, по розділу на бібліотеку.
 - [`docs/DATE-TIME-AND-SYNC-ARCHITECTURE-2026-08-31.md`](docs/DATE-TIME-AND-SYNC-ARCHITECTURE-2026-08-31.md) — повна карта дати/часу, NTP-спостереження, timezone, меж файлової системи та policy синхронізації Guard.
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — вступний огляд гомоіконічності.
 - [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — маленький приклад символьного AI: унікація, написана самою my-lisp.
@@ -282,6 +284,7 @@ DrRacket öffnen und mit Run ausführen, oder im Terminal mit
 ### Dokumentation
 
 - [`docs/language-core.md`](docs/language-core.md) — der Sprachvertrag: Primitive, Bootstrap-Grenze, exakte Arithmetik.
+- [`docs/FUNCTIONS.md`](docs/FUNCTIONS.md) — eine generierte Referenz jeder eingebauten und `lib/*.my`-Funktion, ein Abschnitt pro Bibliothek.
 - [`docs/quote-tutorial.md`](docs/quote-tutorial.md) — ein Einsteiger-Rundgang durch Homoikonizität.
 - [`docs/unify-tutorial.md`](docs/unify-tutorial.md) — ein kleines symbolisches KI-Beispiel: Unifikation, geschrieben in my-lisp selbst.
 - [`docs/advice-ingestion.md`](docs/advice-ingestion.md) — die geschützte Wissensgrenze `understand → advise → reason → narrate`.
