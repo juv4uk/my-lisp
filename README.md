@@ -73,6 +73,11 @@ This repository is the canonical Rust implementation:
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly bindings powering the browser REPL above.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — literate-Markdown source-offset mapping.
 - [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — Language Server Protocol adapter over the canonical parser (diagnostics, document symbols, hover, same-file go-to-definition); also exposed as `my-lisp lsp`.
+- [`crates/my-lisp-host`](crates/my-lisp-host) — the OS capability layer (filesystem, subprocess, TCP), installed into the core's capability registry only when an embedder opts in; the core crate itself has zero OS access.
+- [`crates/my-lisp-semantic`](crates/my-lisp-semantic) — EXPERIMENTAL: a Sanskrit/Pāṇinian semantic layer (transliteration, the Semantic Atom Registry, the twelve dhātu roots, kāraka roles), not yet wired into the parser/evaluator.
+- [`crates/wsm-guard-core`](crates/wsm-guard-core) — the single shared embed of `lib/core.my` + `lib/guard.wsm` and the evaluate-and-validate path every Guard consumer uses.
+- [`crates/wsm-guard-slice`](crates/wsm-guard-slice) — a minimal event-driven Rust mechanism that frames one bounded event per line and lets WSM policy own the decision.
+- [`crates/wsm-guard-facts`](crates/wsm-guard-facts) — a bounded, read-only fact adapter normalizing Git/systemd/swarm observations into `(fact ...)` clauses for Guard policy to classify.
 - [`crates/swarm-node`](crates/swarm-node) — standalone swarm coordination node.
 - [`racket/`](racket/) — a `#lang my-lisp` plugin for Racket/DrRacket using the Chez Scheme JIT.
 - [`lib/core.my`](lib/core.my) — the bootstrapped standard library.
@@ -160,6 +165,11 @@ Rust надає лише те, що робить особливо добре —
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-біндінги для браузерного REPL вище.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — зіставлення зміщень початкового коду literate-Markdown.
 - [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — адаптер протоколу Language Server над канонічним парсером (діагностика, символи документа, hover, перехід до визначення в межах файла); також доступний як `my-lisp lsp`.
+- [`crates/my-lisp-host`](crates/my-lisp-host) — шар OS-можливостей (файлова система, subprocess, TCP), встановлюється в capability-реєстр ядра лише коли embedder свідомо це вмикає; саме ядро не має жодного доступу до ОС.
+- [`crates/my-lisp-semantic`](crates/my-lisp-semantic) — ЕКСПЕРИМЕНТАЛЬНО: санскритсько-паніянівський семантичний шар (транслітерація, Semantic Atom Registry, дванадцять коренів dhātu, ролі kāraka), ще не підключений до парсера/evaluator'а.
+- [`crates/wsm-guard-core`](crates/wsm-guard-core) — єдиний спільний embed `lib/core.my` + `lib/guard.wsm` та шлях evaluate-and-validate, яким користується кожен споживач Guard.
+- [`crates/wsm-guard-slice`](crates/wsm-guard-slice) — мінімальний event-driven Rust-механізм, що обрамляє одну обмежену подію на рядок і лишає рішення за політикою WSM.
+- [`crates/wsm-guard-facts`](crates/wsm-guard-facts) — обмежений read-only адаптер фактів, що нормалізує спостереження Git/systemd/swarm у clause `(fact ...)` для класифікації політикою Guard.
 - [`crates/swarm-node`](crates/swarm-node) — окремий вузол swarm-координації.
 - [`racket/`](racket/) — плагін `#lang my-lisp` для Racket/DrRacket на базі Chez Scheme JIT.
 - [`lib/core.my`](lib/core.my) — bootstrapped стандартна бібліотека.
@@ -246,6 +256,11 @@ Dieses Repository ist die kanonische Rust-Implementierung:
 - [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly-Bindings für den Browser-REPL oben.
 - [`crates/my-lisp-literate`](crates/my-lisp-literate) — Offset-Zuordnung von literate-Markdown-Quellcode.
 - [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — Language-Server-Protocol-Adapter über dem kanonischen Parser (Diagnostik, Dokumentsymbole, Hover, Go-to-Definition innerhalb einer Datei); auch als `my-lisp lsp` verfügbar.
+- [`crates/my-lisp-host`](crates/my-lisp-host) — die OS-Fähigkeitsschicht (Dateisystem, Subprozesse, TCP), installiert im Capability-Register des Kerns nur, wenn ein Embedder dies bewusst aktiviert; der Kern selbst hat keinerlei OS-Zugriff.
+- [`crates/my-lisp-semantic`](crates/my-lisp-semantic) — EXPERIMENTELL: eine Sanskrit-/Pāṇini-Semantikschicht (Transliteration, Semantic Atom Registry, die zwölf dhātu-Wurzeln, kāraka-Rollen), noch nicht an Parser/Evaluator angebunden.
+- [`crates/wsm-guard-core`](crates/wsm-guard-core) — der eine gemeinsame Embed von `lib/core.my` + `lib/guard.wsm` und der Evaluate-and-Validate-Pfad, den jeder Guard-Verbraucher nutzt.
+- [`crates/wsm-guard-slice`](crates/wsm-guard-slice) — ein minimaler ereignisgesteuerter Rust-Mechanismus, der ein begrenztes Ereignis pro Zeile rahmt und die Entscheidung der WSM-Policy überlässt.
+- [`crates/wsm-guard-facts`](crates/wsm-guard-facts) — ein begrenzter, nur lesender Fakten-Adapter, der Git-/systemd-/Swarm-Beobachtungen in `(fact ...)`-Clauses für die Klassifikation durch die Guard-Policy normalisiert.
 - [`crates/swarm-node`](crates/swarm-node) — eigenständiger Swarm-Koordinationsknoten.
 - [`racket/`](racket/) — ein `#lang my-lisp`-Plugin für Racket/DrRacket mit dem Chez-Scheme-JIT.
 - [`lib/core.my`](lib/core.my) — die gebootstrappte Standardbibliothek.
