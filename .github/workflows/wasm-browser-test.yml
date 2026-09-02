@@ -15,7 +15,7 @@ jobs:
   browser-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The repository's local Guix/offline profile points Cargo at a generated
       # vendor/ tree which is intentionally not committed. Hosted runners are
