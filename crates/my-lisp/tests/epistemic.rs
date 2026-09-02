@@ -1,5 +1,5 @@
 //! epistemic.my v0: opt-in proof-of-expression / epistemic-status data
-//! layer (observation/claim/evidence/intent, source-ref, evidence-supports?,
+//! layer (observation/claim/evidence/intent, source-ref, supporting-evidence,
 //! intent-capabilities-satisfied?). Kept separate from other test files
 //! since this module isn't wired into core.my/reason.my/knowledge.my —
 //! see lib/epistemic.my's own header comment and the three source docs
@@ -391,25 +391,35 @@ fn intent_accessors_extract_the_bare_values() {
     );
 }
 
-// --- evidence-supports? ------------------------------------------------
+// --- supporting-evidence -------------------------------------------------
+// Renamed from evidence-supports? (owner-directed audit, 2026-09-02):
+// once every check passes, the function is already holding the matched
+// `evidence` record, so it returns that record instead of a bare `t` --
+// a retrieval function, not a predicate, per the audit's own three-way
+// split (structural predicate / classification / retrieval). `()` on
+// no match is unchanged, so `cond`/`if` truthiness callers need no
+// change at all -- only callers who want the evidence itself gain
+// something.
 
 #[test]
-fn evidence_supports_is_true_for_matching_supports_outcome_and_claim_ref() {
+fn supporting_evidence_returns_the_matching_record_for_a_supports_outcome_and_claim_ref() {
     assert_eq!(
         eval_epistemic(
-            r#"(evidence-supports?
-                 (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (digest "d")))
-                 (quote (claim-ref cml-build-available)))"#
+            r#"(equal?
+                 (supporting-evidence
+                   (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (digest "d")))
+                   (quote (claim-ref cml-build-available)))
+                 (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (digest "d"))))"#
         ),
         "t"
     );
 }
 
 #[test]
-fn evidence_supports_is_false_when_outcome_is_not_supports() {
+fn supporting_evidence_is_nil_when_outcome_is_not_supports() {
     assert_eq!(
         eval_epistemic(
-            r#"(evidence-supports?
+            r#"(supporting-evidence
                  (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote contradicts) (quote (digest "d")))
                  (quote (claim-ref cml-build-available)))"#
         ),
@@ -418,10 +428,10 @@ fn evidence_supports_is_false_when_outcome_is_not_supports() {
 }
 
 #[test]
-fn evidence_supports_is_false_when_claim_ref_does_not_match() {
+fn supporting_evidence_is_nil_when_claim_ref_does_not_match() {
     assert_eq!(
         eval_epistemic(
-            r#"(evidence-supports?
+            r#"(supporting-evidence
                  (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (digest "d")))
                  (quote (claim-ref some-other-claim)))"#
         ),
@@ -430,16 +440,39 @@ fn evidence_supports_is_false_when_claim_ref_does_not_match() {
 }
 
 #[test]
-fn evidence_supports_matches_structural_claim_refs_via_equal() {
+fn supporting_evidence_matches_structural_claim_refs_via_equal() {
     assert_eq!(
         eval_epistemic(
-            r#"(evidence-supports?
+            r#"(equal?
+                 (supporting-evidence
+                   (make-evidence
+                     (quote (claim-ref (claim (statement (build cml succeeds)) (source (observation local-run)) (review proposed))))
+                     (quote live-test) (quote supports) (quote (digest "d")))
+                   (quote (claim-ref (claim (statement (build cml succeeds)) (source (observation local-run)) (review proposed)))))
                  (make-evidence
                    (quote (claim-ref (claim (statement (build cml succeeds)) (source (observation local-run)) (review proposed))))
-                   (quote live-test) (quote supports) (quote (digest "d")))
-                 (quote (claim-ref (claim (statement (build cml succeeds)) (source (observation local-run)) (review proposed)))))"#
+                   (quote live-test) (quote supports) (quote (digest "d"))))"#
         ),
         "t"
+    );
+}
+
+#[test]
+fn supporting_evidence_still_works_as_a_cond_truthiness_check() {
+    // The exact case the audit's own next step asked to verify: a
+    // caller who only wants flow control, not the evidence itself,
+    // needs no change at all -- `cond` already treats any non-Nil
+    // value (including a full evidence record) as truthy.
+    assert_eq!(
+        eval_epistemic(
+            r#"(cond
+                 ((supporting-evidence
+                    (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (digest "d")))
+                    (quote (claim-ref cml-build-available)))
+                  (quote flows-through))
+                 (t (quote unreachable)))"#
+        ),
+        "flows-through"
     );
 }
 

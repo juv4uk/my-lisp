@@ -1,6 +1,6 @@
 ; epistemic.my — opt-in proof-of-expression / epistemic-status data layer:
 ; observation/claim/evidence/intent shapes, a tagged source-ref, and the
-; narrow relations evidence-supports? and intent-capabilities-satisfied?.
+; narrow relations supporting-evidence and intent-capabilities-satisfied?.
 ; Design reconciled against the live codebase in an earlier design-only
 ; session (verdict: EXPRESSIBLE AS-IS — no kernel/evaluator change, no
 ; language-contract.my change); this file is that design's Phase 2
@@ -17,7 +17,7 @@
 ;
 ; epistemic.my — опційний шар даних proof-of-expression / epistemic-
 ; status: форми observation/claim/evidence/intent, тегований source-ref
-; і вузькі відношення evidence-supports? та
+; і вузькі відношення supporting-evidence та
 ; intent-capabilities-satisfied?. Дизайн узгоджено з живим кодом в
 ; окремій, суто дизайнерській сесії (вердикт: EXPRESSIBLE AS-IS — без
 ; зміни kernel/evaluator, без зміни language-contract.my); цей файл —
@@ -76,7 +76,7 @@
       (t (quote ())))))
 
 ; claim-ref shape check — no claim-ref? predicate is spec-mandated (and
-; none is added as a public export), but evidence-supports? below needs
+; none is added as a public export), but supporting-evidence below needs
 ; a shape check somewhere. Applying the same "structurally strict,
 ; semantically weak" philosophy as source-ref?: car must be the symbol
 ; claim-ref, cdr nonempty. Architect-decision extension of the
@@ -209,7 +209,7 @@
 
 ; --- Narrow relations -------------------------------------------------
 
-; evidence-supports? — the spec leaves it open whether "supports" means
+; supporting-evidence — the spec leaves it open whether "supports" means
 ; only the outcome tag or also a specific claim match. Resolved here
 ; (architect decision, not spec-literal) as: both the outcome tag must
 ; be `supports` AND the evidence's own claim-ref must structurally equal
@@ -217,14 +217,27 @@
 ; compound structural references) — a piece of evidence "supports" a
 ; *specific* claim, not just any supports-tagged evidence floating
 ; around unattached to the claim in question.
-(def evidence-supports?
+;
+; Retrieval, not a predicate (owner-directed audit, 2026-09-02): once
+; every check has passed, the function is already holding the matched
+; `evidence` -- returning bare `t` there would be exactly the
+; information collapse the audit was looking for (a search/retrieval
+; function that finds something concrete and then throws it away in
+; favor of a flag). Returns `()` (no support found) or the matching
+; `evidence` record itself. `cond`/`if` need no change: `()` stays
+; falsy, any non-Nil value -- including this evidence record -- stays
+; truthy, so `(cond ((supporting-evidence e c) ...))` still works
+; exactly like the old evidence-supports? did; callers who want the
+; evidence itself, not just the fact of its existence, now have it for
+; free instead of re-deriving it.
+(def supporting-evidence
   (lambda (evidence claim-ref)
     (cond
       ((not (evidence? evidence)) (quote ()))
       ((not (epistemic--claim-ref? claim-ref)) (quote ()))
       ((not (eq (evidence-outcome evidence) (quote supports))) (quote ()))
       ((not (equal? (evidence-claim-ref evidence) claim-ref)) (quote ()))
-      (t t))))
+      (t evidence))))
 
 ; local helper for intent-capabilities-satisfied? — no every?/all? helper
 ; exists in lib/core.my (confirmed directly, not assumed), so this small
