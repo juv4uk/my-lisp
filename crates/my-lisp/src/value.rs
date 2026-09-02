@@ -65,17 +65,17 @@ pub enum DecimalLiteralError {
     InvalidSyntax,
     /// The token is a syntactically valid decimal literal, but constructing it
     /// would exceed a parser resource limit (an exponent magnitude beyond the
-    /// hardcoded ±100000 cap that bounds the `10^N` digit-string allocation).
+    /// hardcoded ±10000 cap that bounds the `10^N` digit-string allocation).
     /// This is the S3-shaped case: the limit must fail *named* (`NumericOverflow`),
     /// never silently turn a valid numeric literal into an identifier.
     /// Token — syntaksychno korektnyi desiatkovyi literal, ale yoho pobudova
     /// perevyshchyla b resursnu mezhu parsera (velychyna eksponenty ponad
-    /// zakladenu mezhu ±100000, yaka obmezhuie alokatsiiu tsyfrovoi riadky `10^N`).
+    /// zakladenu mezhu ±10000, yaka obmezhuie alokatsiiu tsyfrovoi riadky `10^N`).
     /// Tse vypadok formy S3: mezha musi provaliuvatys *nazvano* (`NumericOverflow`),
     /// nikoly ne peretvoriuvaty movchky validnyi chyslovyi literal na identyfikator.
     /// Das Token ist ein syntaktisch gültiges Dezimal-Literal, aber seine
     /// Konstruktion würde eine Parser-Ressourcengrenze überschreiten (eine
-    /// Exponentengröße jenseits der hartkodierten ±100000-Grenze, die die
+    /// Exponentengröße jenseits der hartkodierten ±10000-Grenze, die die
     /// Ziffernstring-Allokation von `10^N` begrenzt). Das ist der S3-Fall: Die
     /// Grenze muss *benannt* fehlschlagen (`NumericOverflow`), niemals ein
     /// gültiges numerisches Literal still in einen Bezeichner verwandeln.
@@ -111,6 +111,26 @@ impl Ord for Rational {
             .cmp(&other.numerator.mul(&self.denominator))
     }
 }
+
+/// R2 (owner-directed, 2026-09-02, follows R1 in commit d7f3118): bounds
+/// the decimal digit-count `from_decimal_literal` will ever materialize
+/// for a scientific-notation literal's `10^N` multiplier -- exponent
+/// *magnitude* is the direct, exact proxy for that digit-count here (an
+/// exponent of N means N digits), so bounding one bounds the other with
+/// no separate size computation needed. Was ±100_000 -- itself never
+/// exercised at the boundary in tests (see `parser.rs`'s
+/// `decimal_literals_within_the_resource_limit_still_parse`) because
+/// `10^100000`'s GCD reduction is minutes-long; the previous comment
+/// there called that boundary value itself "an internal DoS-hedge, not
+/// a contract fact" -- exactly the license this lowers it under. Chosen
+/// empirically, not guessed: ±10_000 gives a measured worst-case parse of
+/// ~0.08s (`crates/wsm-guard-core/examples/profile_reader_scaling.rs`,
+/// this session's scratch tool) while staying a 10x margin above every
+/// currently-tested legitimate literal (`1e1000`/`1e-1000`/`1.25e1000`/
+/// `1.25e-1000`, still comfortably inside the bound). Small enough that,
+/// unlike the old ±100_000, the exact boundary itself is now cheap
+/// enough to exercise directly in a test.
+const MAX_DECIMAL_LITERAL_EXPONENT_MAGNITUDE: i32 = 10_000;
 
 impl Rational {
     pub fn new(numerator: i64, denominator: i64) -> Option<Self> {
@@ -183,7 +203,9 @@ impl Rational {
             .checked_sub(decimal_exp)
             .ok_or(DecimalLiteralError::ResourceLimitExceeded)?;
 
-        if !(-100_000..=100_000).contains(&total_exp) {
+        if !(-MAX_DECIMAL_LITERAL_EXPONENT_MAGNITUDE..=MAX_DECIMAL_LITERAL_EXPONENT_MAGNITUDE)
+            .contains(&total_exp)
+        {
             return Err(DecimalLiteralError::ResourceLimitExceeded);
         }
 

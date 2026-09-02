@@ -452,15 +452,15 @@ mod tests {
     /// A syntactically valid decimal literal whose exponent exceeds the parser's
     /// resource cap must fail *named* (`NumericOverflow`), never silently become
     /// an ordinary symbol (S3) — and it must refuse to serve as an identifier,
-    /// exactly the hole that used to let `(def 1e100001 5)` define a symbol.
+    /// exactly the hole that used to let `(def 1e10001 5)` define a symbol.
     /// Syntaksychno korektnyi desiatkovyi literal, chyia eksponenta perevyshchuie
     /// resursnu mezhu parsera, musi provaliuvatys *nazvano* (`NumericOverflow`),
     /// nikoly ne staiaty movchky zvychainym symvolom (S3) — i musi vidmovliatys
-    /// sluzhyty identyfikatorom, tse toi samyi otvir, yakym `(def 1e100001 5)`
+    /// sluzhyty identyfikatorom, tse toi samyi otvir, yakym `(def 1e10001 5)`
     /// ranishe vyznachav symvol.
     #[test]
     fn decimal_literals_past_the_resource_limit_fail_named_not_as_symbols() {
-        for literal in ["1e100001", "1e-100001"] {
+        for literal in ["1e10001", "1e-10001"] {
             let error = parse(literal).expect_err(&format!("{literal} should be refused"));
             assert_eq!(
                 error.kind,
@@ -471,37 +471,48 @@ mod tests {
         }
     }
 
-    /// `(def 1e100001 5)` must NOT define an identifier named `1e100001` — a
+    /// `(def 1e10001 5)` must NOT define an identifier named `1e10001` — a
     /// valid numeric literal past the resource limit is a parse failure, not a
     /// symbol name. This is the exact regression the S3 fix closes.
-    /// `(def 1e100001 5)` NE maie vyznachaty identyfikator na imia `1e100001` —
+    /// `(def 1e10001 5)` NE maie vyznachaty identyfikator na imia `1e10001` —
     /// korektnyi chyslovyi literal ponad resursnu mezhu tse proval parsera, ne
     /// imia symvola. Tse tochno ta rehresiia, yaku zakryvaie fiks S3.
     #[test]
     fn a_giant_decimal_literal_cannot_serve_as_an_identifier() {
-        let error = parse("(def 1e100001 5)").expect_err("should be refused");
+        let error = parse("(def 1e10001 5)").expect_err("should be refused");
         assert_eq!(error.kind, ErrorKind::NumericOverflow);
     }
 
-    /// Exponent magnitudes comfortably below the cap must still parse. The
-    /// exact ±100000 boundary itself is deliberately *not* exercised here:
-    /// reducing `10^100000` by GCD is quadratic in the bignum's decimal
-    /// digits (see `bignum.rs`'s `div_rem`) and turns a unit test into a
-    /// minutes-long computation — the boundary behavior is already pinned by
-    /// the overflow tests above (`1e100001`/`1e-100001`) and the boundary
-    /// value itself is an internal DoS-hedge, not a contract fact.
+    /// Exponent magnitudes comfortably below the cap must still parse.
     /// Velychyny eksponenty, komfortno nyzhchi za mezhu, musi vse shche
-    /// parsytsia. Tochna mezha ±100000 svidomo *ne* pereviriaietsia tut:
-    /// skorochennia `10^100000` za GCD kvadratychne za desiatkovymy tsyframy
-    /// bignum (dyv. `div_rem` u `bignum.rs`) i peretvoriuie yunit-test na
-    /// bahatokhvylvynne obchyslennia — povedinka mezhovoho znachennia vzhe
-    /// zakriplena testamy overflow vyshche (`1e100001`/`1e-100001`), a same
-    /// znachennia mezhі — vnutrishnii DoS-zakhyst, ne fakt kontraktu.
+    /// parsytsia.
     #[test]
     fn decimal_literals_within_the_resource_limit_still_parse() {
         for literal in ["1e1000", "1e-1000", "1.25e1000", "1.25e-1000"] {
             parse(literal).unwrap_or_else(|e| panic!("{literal} is within the limit, failed: {e}"));
         }
+    }
+
+    /// R2 (owner-directed, 2026-09-02, follows R1 in commit d7f3118): the
+    /// exact ±10000 boundary is now cheap enough (~0.08s measured via
+    /// crates/wsm-guard-core/examples/profile_reader_scaling.rs, this
+    /// session's scratch tool) to exercise directly, unlike the old
+    /// ±100000 boundary, whose minutes-long GCD reduction was the reason
+    /// `decimal_literals_within_the_resource_limit_still_parse` above
+    /// deliberately never tested it directly. Lowering the cap closes
+    /// that coverage gap as a side effect, not just the resource risk.
+    /// Tochna mezha ±10000 teper dostatno deshevа (~0.08s zamiriano),
+    /// shchob pereviriaty ii napriamu — na vidminu vid staroi mezhi
+    /// ±100000, chyie khvylynne skorochennia za GCD i bulo prychynoiu,
+    /// chomu test vyshche ii navmysno ne pereviriav.
+    #[test]
+    fn the_exact_exponent_boundary_parses_at_10000_and_overflows_at_10001() {
+        parse("1e10000").expect("exponent magnitude exactly at the cap must still parse");
+        parse("1e-10000").expect("negative exponent magnitude exactly at the cap must still parse");
+        let error = parse("1e10001").expect_err("one past the cap must be refused");
+        assert_eq!(error.kind, ErrorKind::NumericOverflow);
+        let error = parse("1e-10001").expect_err("one past the cap (negative) must be refused");
+        assert_eq!(error.kind, ErrorKind::NumericOverflow);
     }
 
     #[test]
