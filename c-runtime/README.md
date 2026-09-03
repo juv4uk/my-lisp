@@ -1,0 +1,43 @@
+# c-runtime — third substrate for my-lisp (Rust, fpga-lisp, **C+asm**)
+
+**Статус: щойно розпочато (2026-09-03), порожній каркас, жодного коду.**
+Третій субстрат для principle 4 (`docs/language-core-axioms.md`) —
+повернутий свідомим рішенням власника того самого дня (реверс рішення
+2026-08-09, задокументовано в тому самому файлі). Мета — не переписати
+Rust-реалізацію на C, а незалежно довести ті самі мовні факти на
+третьому, фізично іншому шляху.
+
+## Дисципліна цієї роботи
+
+За прямою вказівкою власника: **перший крок кожної нової теми — його,
+не агента.** Агент лише орієнтує (питання, вказівка на файли), не пише
+реалізацію заздалегідь. Той самий підхід, що вже застосовується для
+MINIX-3/HECI паралельно.
+
+## Джерело істини (не вигадувати заново)
+
+- `docs/language-core-axioms.md` — прозова семантика (G1-G8, S1-S3)
+- `my-lisp-constitution.my` — згенерована, виконувана проекція
+- `tests/fixtures/conformance.my` — сирі факти-фікстури, ті самі, що
+  й Rust, і `fpga-lisp` перевіряють
+
+## Ціль першого milestone (Tier 1, McCarthy's seven primitives)
+
+Десять `role . "constitutive"` фікстур Рівня 1 з `my-lisp-constitution.my`
+— рівно ті, що безпосередньо викликають один із семи оригінальних
+примітивів МакКарті (`quote atom eq car cdr cons cond`):
+
+```text
+(quote radio)                                    => radio
+(atom (quote radio))                             => t
+(atom (quote ()))                                => t
+(atom (quote (radio antenna)))                   => ()
+(eq (quote radio) (quote radio))                 => t
+(eq (quote radio) (quote antenna))                => ()
+(car (quote (radio antenna)))                    => radio
+(cdr (quote (radio antenna)))                    => (antenna)
+(cons (quote radio) (quote (antenna)))           => (radio antenna)
+(cond (() (quote wrong)) (t (quote right)))      => right
+```
+
+Жодного рядка C-коду тут ще немає.
