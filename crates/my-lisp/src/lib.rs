@@ -19,7 +19,7 @@ pub mod syntax;
 mod value;
 
 pub use environment::{Environment, Session};
-pub use error::{ErrorKind, LanguageError};
+pub use error::{Classification, ErrorKind, LanguageError};
 pub use language_items::{language_items, Arity, LanguageItem, LanguageItemKind};
 
 pub use eval::exact_arity;

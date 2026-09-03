@@ -47,6 +47,58 @@ pub enum ErrorKind {
     DivisionByZero,
 }
 
+/// A second, orthogonal axis over `ErrorKind`: not *which* named failure
+/// happened (that's the S2-contractual `kind`), but what *sort* of thing it
+/// is. Added because `UnknownSymbol` doesn't behave like the others: `(car
+/// 5)` or `(/ 1 0)` describe a program that did something wrong, but a bare
+/// unbound symbol just hasn't been given a value *yet* — closer to "no
+/// binding found" than to "you made a mistake". `OutOfMemory` and
+/// `NumericOverflow` already said as much in their own doc comments above,
+/// years before this type existed to say it in code. Deliberately additive,
+/// non-contractual: `kind` is what S2 ratifies; `classification` is a
+/// presentation-layer fact derived from it, free to evolve without a
+/// contract-version bump (see `docs/language-core-axioms.md` S2's own line,
+/// "the wording may differ; the category is the contract").
+/// Друга, ортогональна до `ErrorKind` вісь: не *яка саме* названа помилка
+/// сталася (це контрактний за S2 `kind`), а *якого вона штибу*.
+/// `UnknownSymbol` поводиться не так, як решта: голий необв'язаний символ
+/// ще просто не отримав значення, а не "програма зробила щось не так".
+/// Навмисно додаткове, неконтрактне поле.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Classification {
+    /// A reference with no binding yet — not a malformed operation.
+    Unresolved,
+    /// A resource/magnitude boundary, not a logic error (`OutOfMemory`,
+    /// `NumericOverflow` already argued this in their own doc comments).
+    Limit,
+    /// The program did something the evaluator can't make sense of.
+    Fault,
+}
+
+impl Classification {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Classification::Unresolved => "unresolved",
+            Classification::Limit => "limit",
+            Classification::Fault => "fault",
+        }
+    }
+}
+
+impl ErrorKind {
+    pub fn classification(&self) -> Classification {
+        match self {
+            ErrorKind::UnknownSymbol => Classification::Unresolved,
+            ErrorKind::OutOfMemory | ErrorKind::NumericOverflow => Classification::Limit,
+            ErrorKind::Parse
+            | ErrorKind::Arity
+            | ErrorKind::Type
+            | ErrorKind::InvalidForm
+            | ErrorKind::DivisionByZero => Classification::Fault,
+        }
+    }
+}
+
 /// Structured errors let the IDE underline the exact source range later.
 /// Strukturovana pomylka dozvolyt IDE pidkreslyty tochne mistse v kodi.
 /// Strukturierte Fehler ermöglichen der IDE später, den genauen Quellbereich zu markieren.

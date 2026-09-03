@@ -241,6 +241,48 @@ fn error_response(id: &Value, kind: &str, message: &str, contract_version: &Valu
     ])
 }
 
+/// Same wire shape as `error_response`, plus one additive `(classification
+/// ...)` field for a genuine `ErrorKind`-derived failure (evaluator/parser
+/// errors only — request-shape validation like "missing field" has no
+/// `ErrorKind` to classify and keeps using `error_response`). `status`
+/// stays `error` and `kind` stays exactly as before, so an existing
+/// consumer that only reads those two fields (e.g. `conformance-check.py`,
+/// `mccarthy.rs`) is unaffected — this is Stage 1 of a two-stage design
+/// (`ecosystem/decisions/`), not a protocol-version change.
+fn error_response_classified(
+    id: &Value,
+    kind: &str,
+    classification: my_lisp::Classification,
+    message: &str,
+    contract_version: &Value,
+) -> Value {
+    Value::list([
+        Value::Symbol("response".into()),
+        Value::list([Value::Symbol("id".into()), id.clone()]),
+        Value::list([
+            Value::Symbol("status".into()),
+            Value::Symbol("error".into()),
+        ]),
+        Value::list([Value::Symbol("kind".into()), Value::Symbol(kind.into())]),
+        Value::list([
+            Value::Symbol("classification".into()),
+            Value::Symbol(classification.as_str().into()),
+        ]),
+        Value::list([
+            Value::Symbol("message".into()),
+            Value::String(message.into()),
+        ]),
+        Value::list([
+            Value::Symbol("contract-version".into()),
+            contract_version.clone(),
+        ]),
+        Value::list([
+            Value::Symbol("server-generation".into()),
+            Value::Number(server_generation() as f64, Exactness::Exact),
+        ]),
+    ])
+}
+
 fn protocol_error(kind: &str, message: &str, contract_version: &Value) -> Value {
     Value::list([
         Value::Symbol("protocol-error".into()),
@@ -1130,7 +1172,7 @@ fn handle_sexpr_connection(
                                 }
                             }
                             Ok(_) => error_response(&id, "invalid-form", "op `parse` accepts exactly one top-level form", &contract_version),
-                            Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                            Err(e) => error_response_classified(&id, error_kind_symbol(&e.kind), e.kind.classification(), &e.message, &contract_version),
                         },
                     },
                     // Agent-facing syntax preflight. Unlike `oracle-eval`,
@@ -1185,9 +1227,9 @@ fn handle_sexpr_connection(
                         Some(src) => match parse(src) {
                             Ok(ast) => match eval_parsed_expressions(&ast, &mut session) {
                                 Ok(result) => ok_response(&id, result.value, &result.output, &contract_version),
-                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                                Err(e) => error_response_classified(&id, error_kind_symbol(&e.kind), e.kind.classification(), &e.message, &contract_version),
                             },
-                            Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                            Err(e) => error_response_classified(&id, error_kind_symbol(&e.kind), e.kind.classification(), &e.message, &contract_version),
                         },
                     },
                     Some("notify") => match (&from, &message) {
@@ -1597,9 +1639,10 @@ fn handle_sexpr_connection(
                             Ok(content) => match parse(&content) {
                                 Err(e) => {
                                     let (line, column) = line_col_at(&content, e.span.start);
-                                    error_response(
+                                    error_response_classified(
                                         &id,
                                         error_kind_symbol(&e.kind),
+                                        e.kind.classification(),
                                         &format!("{} (line {line}, column {column})", e.message),
                                         &contract_version,
                                     )
@@ -1696,7 +1739,7 @@ fn handle_sexpr_connection(
                         Some(path) => match fs::read_to_string(path) {
                             Err(e) => error_response(&id, "io-error", &format!("cannot read `{path}`: {e}"), &contract_version),
                             Ok(content) => match parse(&content) {
-                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                                Err(e) => error_response_classified(&id, error_kind_symbol(&e.kind), e.kind.classification(), &e.message, &contract_version),
                                 Ok(ast) if ast.len() != 1 => error_response(
                                     &id,
                                     "invalid-form",
@@ -1828,7 +1871,7 @@ fn handle_sexpr_connection(
                         Some(path) => match fs::read_to_string(path) {
                             Err(e) => error_response(&id, "io-error", &format!("cannot read `{path}`: {e}"), &contract_version),
                             Ok(content) => match parse(&content) {
-                                Err(e) => error_response(&id, error_kind_symbol(&e.kind), &e.message, &contract_version),
+                                Err(e) => error_response_classified(&id, error_kind_symbol(&e.kind), e.kind.classification(), &e.message, &contract_version),
                                 Ok(ast) if ast.len() != 1 => error_response(
                                     &id,
                                     "invalid-form",
