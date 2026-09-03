@@ -1,33 +1,42 @@
-# wsm (my-lisp)
+# my-lisp
 
 **A small language that grows itself · Маленька мова, що вирощує себе · Eine kleine Sprache, die sich selbst wachsen lässt**
 
 [English](#english) · [Українська](#українська) · [Deutsch](#deutsch)
 
-> **Renamed 2026-08-27 (`ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME`): the
-> project is now `wsm` — a different, pre-existing "MyLisp" project
-> already exists, and the old name invited real confusion between the
-> two. `.wsm` is the new canonical source extension; `.my` and `.lisp`
-> remain fully supported, not deprecated. Only this README reflects the
-> new name so far — every other doc, comment, path, and crate name in
-> this repo (and across the ecosystem: my-lisp-panini, chess-lisp-zero,
-> fpga-lisp, cml) still says "my-lisp" on purpose. That is not drift to
-> fix on sight: the rename decision was deliberately scoped to name +
-> extension only, with repo/crate/doc migration left for a later,
-> separately scoped pass. Don't rename anything else on the strength of
-> this note alone.**
+> **Superseded 2026-09-03 (`ECO-DECISION-2026-09-03-MYLISP-WSM-NAME-CLARIFICATION`):
+> this project keeps the name **`my-lisp`** going forward. The
+> 2026-08-27 rename below left one question explicitly open — whether
+> the repository/project identity itself became `wsm`, or only the
+> file extension did — and that question is now answered by
+> circumstance: a genuinely separate repository, [`juv4uk/wsm`](https://github.com/juv4uk/wsm)
+> ("independent research project, starting from `()`"), now exists for
+> unrelated foundational research and has nothing to do with this
+> language project. `wsm` names *that* project (and its
+> hardware-execution counterpart, `wsm-os`) — not this one. **`.wsm`
+> remains a fully supported source extension here, unchanged** — only
+> the project-name question is resolved, not the extension decision.
+>
+> **Скасовано (замінено) 2026-09-03 (`ECO-DECISION-2026-09-03-MYLISP-WSM-NAME-CLARIFICATION`):**
+> цей проєкт надалі лишається **`my-lisp`**. Рішення від 2026-08-27
+> (нижче) свідомо лишало відкритим одне питання — чи стає `wsm`
+> ідентичністю самого репозиторію/проєкту, чи лише розширення файлів —
+> і це питання тепер вирішене обставинами: з'явився окремий, реальний
+> репозиторій [`juv4uk/wsm`](https://github.com/juv4uk/wsm)
+> ("незалежний дослідницький проєкт, що починається з `()`") для геть
+> іншого фундаментального дослідження, ніяк не пов'язаного з цим
+> мовним проєктом. `wsm` тепер називає *той* проєкт (і його апаратний
+> аналог, `wsm-os`) — не цей. **`.wsm` лишається повністю підтримуваним
+> розширенням тут, без змін** — вирішено лише питання назви проєкту, не
+> рішення про розширення.
+>
+> Оригінальне рішення від 2026-08-27, для історії:
 >
 > **Перейменовано 2026-08-27 (`ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME`):
 > проєкт тепер називається `wsm` — уже існує інший, чужий проєкт
 > "MyLisp", і стара назва провокувала реальну плутанину. `.wsm` — нове
 > канонічне розширення, `.my`/`.lisp` лишаються повністю підтримуваними,
-> не депрекейтяться. Наразі нову назву відображає лише цей README — уся
-> решта документації, коментарів, шляхів і назв crate'ів у цьому репо
-> (і в екосистемі: my-lisp-panini, chess-lisp-zero, fpga-lisp, cml)
-> навмисно й далі каже "my-lisp". Це не дрейф, який треба виправляти —
-> рішення про перейменування свідомо обмежене назвою й розширенням,
-> міграція репо/crate'ів/документації лишена на окремий, майбутній крок.
-> Не перейменовуй нічого іншого лише на підставі цієї нотатки.**
+> не депрекейтяться.**
 
 ## Quick try · Швидко спробувати · Schnell ausprobieren
 
@@ -132,7 +141,7 @@ press Run, or run it from the terminal with `racket file.my`. See
 - [`docs/benchmarks.md`](docs/benchmarks.md) — benchmark methodology and a local baseline.
 - [`docs/versioning.md`](docs/versioning.md) — why this repo's version history looks the way it does.
 
-`my-lisp` began inside a broader IDE project, [`my-idea`](https://github.com/juv4uk/my-idea), and was extracted here to stand on its own. A second implementation of the same language — a from-scratch Lisp-machine HDL core, `fpga-lisp` — is developed as a separate, parallel repository. A previously-planned third implementation (a C core for embedded targets) was dropped by explicit decision; two independent implementations is the current commitment.
+`my-lisp` began inside a broader IDE project, [`my-idea`](https://github.com/juv4uk/my-idea), and was extracted here to stand on its own. This repo is the canonical Rust implementation — the mature oracle every other substrate is checked against — but it is not the only one, and the language contract (`docs/language-core-axioms.md`, principle 4) exists specifically so no single implementation gets to define semantics. A second, physically independent implementation — a from-scratch Lisp-machine HDL core, `fpga-lisp` — is developed as a separate, parallel repository (real silicon, not a soft-core CPU running an interpreter). **A third substrate, [`c-runtime/`](c-runtime/) (C + hand-written x86_64 assembly), was reinstated 2026-09-03** — a previously-planned C core had been dropped 2026-08-09 over confusion risk, then that decision was itself explicitly reversed by the owner once he judged three independent, cross-checking substrates (plus Guile as an unversioned semantic-reference lab, not a fourth production target) strengthens the same falsifiability principle 4 already commits to, rather than weakening it — see `docs/language-core-axioms.md`'s own dated note on the reversal.
 
 A fifth sibling repository, [`my-lisp-panini`](https://github.com/juv4uk/my-lisp-panini), researches Pāṇini's Sanskrit grammar (*Aṣṭādhyāyī*) as a formal system in its own right, producing the `panini-foundation` that this repo's own Sanskrit semantic-atom migration (`docs/sanskrit-semantic-migration.md`, the `SANSKRIT-P*` tasks) draws on. It does not touch `my-lisp` until its own machine-model gate review is complete — see that repo's `AGENTS.md` for the full research mandate.
 
@@ -223,7 +232,7 @@ raco pkg install --link --name my-lisp racket/
 - [`docs/benchmarks.md`](docs/benchmarks.md) — методологія бенчмарків і локальний baseline.
 - [`docs/versioning.md`](docs/versioning.md) — чому історія версій цього репо саме така.
 
-`my-lisp` починалась усередині ширшого IDE-проєкту [`my-idea`](https://github.com/juv4uk/my-idea) й була виділена сюди, щоб існувати самостійно. Друга реалізація тієї ж мови — HDL-ядро Lisp-машини з нуля, `fpga-lisp` — розробляється як окремий, паралельний репозиторій. Раніше запланована третя реалізація (C-ядро для embedded-цілей) прибрана свідомим рішенням; дві незалежні реалізації — поточне зобов'язання.
+`my-lisp` починалась усередині ширшого IDE-проєкту [`my-idea`](https://github.com/juv4uk/my-idea) й була виділена сюди, щоб існувати самостійно. Цей репозиторій — канонічна Rust-реалізація, зрілий oracle, з яким звіряється кожен інший субстрат — але не єдина реалізація, і мовний контракт (`docs/language-core-axioms.md`, принцип 4) існує саме для того, щоб жодна окрема реалізація не мала права визначати семантику. Друга, фізично незалежна реалізація тієї ж мови — HDL-ядро Lisp-машини з нуля, `fpga-lisp` — розробляється як окремий, паралельний репозиторій (справжній кремній, не soft-core CPU, що виконує інтерпретатор). **Третій субстрат, [`c-runtime/`](c-runtime/) (C + рукописний x86_64 asm), повернуто 2026-09-03** — раніше заплановане C-ядро прибрали 2026-08-09 через ризик плутанини, а потім власник сам свідомо скасував те рішення, дійшовши висновку, що три незалежні, взаємоперевірні субстрати (плюс Guile як неверсійована семантична лабораторія-довідник, не четвертий production-субстрат) підсилюють той самий принцип фальсифіковності з принципу 4, а не послаблюють його — див. власну датовану примітку в `docs/language-core-axioms.md`.
 
 П'ятий сестринський репозиторій, [`my-lisp-panini`](https://github.com/juv4uk/my-lisp-panini), досліджує санскритську граматику Паніні (*Aṣṭādhyāyī*) як формальну систему саму по собі, виробляючи `panini-foundation`, на яку спирається власна санскритська семантична міграція цього репозиторію (`docs/sanskrit-semantic-migration.md`, задачі `SANSKRIT-P*`). Він не торкається `my-lisp`, доки не завершено власний machine-model gate review — повний дослідницький мандат дивись у `AGENTS.md` того репозиторію.
 
@@ -233,7 +242,7 @@ raco pkg install --link --name my-lisp racket/
 
 Exakte rationale Arithmetik ist ein Kernziel, kein Extra: `/` bleibt bei Ganzzahlen/rationalen Zahlen exakt (`5/336`, nicht `0.0148...`), nach Rackets exakt/inexakt-Unterscheidung. `.wsm` ist die kanonische Quellcodedateiendung; `.my` und `.lisp` bleiben vollständig unterstützte Aliase, nicht veraltet.
 
-Die zentrale Architektur ist eine gemeinsame Struktursprache für Programme, Fakten, Regeln und Beweise. Maschinen tauschen Wissen statt Ausführungsbefehle aus und schließen lokal unter demselben Konformitätsvertrag für Rust- und FPGA-Implementierungen.
+Die zentrale Architektur ist eine gemeinsame Struktursprache für Programme, Fakten, Regeln und Beweise. Maschinen tauschen Wissen statt Ausführungsbefehle aus und schließen lokal unter demselben Konformitätsvertrag für Rust-, C/asm- (`c-runtime/`, seit 2026-09-03) und FPGA-Implementierungen.
 
 ### Philosophie
 
