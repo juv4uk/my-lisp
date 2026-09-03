@@ -552,5 +552,21 @@
     (origin . ecosystem)
     (context . "From docs/YANTRA-EPISTEMIC-POISON-ATTACK-2026-08-31.md (ecosystem): a read-only probe against lib/yantra.my's claims-execution?, run through the local WSM CLI on an isolated fixture, never against a real command. Status recorded there: BROKEN.")
     (description . "lib/yantra.my's valid-final? gates whether an assistant turn may finish without owned tool-result evidence, using claims-execution? (lib/yantra.my:347) to decide whether the turn's text claims a command was executed. claims-execution? is markers-contained? over claim-markers (lib/yantra.my:337, e.g. \"executed\", \"ran \", \"виконав\") -- a bare substring search with no negation, tense, subject, or ownership awareness. Confirmed both directions on an isolated fixture: false positive -- \"the command was not executed\" contains \"executed\" as a substring and is wrongly flagged as an execution claim (would demand tool-result backing for a truthful denial); false negative -- \"I inspected pwd and found /tmp\" makes no literal marker match and is wrongly treated as claiming nothing, even though it implicitly asserts an observed execution result. The existing 10 yantra.rs tests (crates/my-lisp/tests/) pass but do not cover negation, tense, paraphrase, or multi-call ownership -- they were never adversarial against this specific boundary. Add bounded fixtures for each of these four attack classes first (to pin down the actual intended contract honestly, not to guess a fix), then correct claims-execution?/valid-final? against that fixture set. Do not silently widen claim-markers with more substrings -- that is the same failure class, just larger; the fix must reason about negation/tense/ownership structurally or be explicit that it still doesn't and stays a heuristic prefilter. Keep the invalid-completion-nudge behavior (system message asking for real tool evidence) once the detector is trustworthy.")
+    (done . ())))
+
+  ("CONFORMANCE-TIER-MAP-RETIRE-OR-UPDATE" . (
+    (priority . 4.0)
+    (capabilities . (documentation conformance))
+    (origin . my-lisp)
+    (context . "Found 2026-09-04 (WSM-RUST-DELETION-AUDIT, ecosystem session): docs/conformance-tier-map.md already self-flags STALE (last synced ~fixture 91 of 193) but is still readable and was almost cited as current -- its note that car/cdr/cons/eq/atom are 'syntax, dispatched before env lookup, never shadowable' describes a pre-2.1 contract state; tests/fixtures/conformance.my's own current fixture (line 145, since-contract (2 1)) and a live oracle test both confirm they are ordinary shadowable first-class builtins today.")
+    (description . "Either retire this file (delete, pointing readers to conformance.my's own fields as the doc's own text already recommends) or bring it fully current through fixture 193 -- a half-stale reference doc that reads as authoritative is worse than no doc, since a future reader (agent or human) has no way to tell which specific claims in it are still true without re-deriving each one against conformance.my by hand, as this audit had to.")
+    (done . ())))
+
+  ("WSM-ORACLE-OUTCOME-STAGE2-AWAITING-OWNER-DECISION" . (
+    (priority . 5.0)
+    (capabilities . (rust protocol design))
+    (origin . ecosystem)
+    (context . "Stage 1 shipped this session (commit ddd538c): additive (classification unresolved|limit|fault) field alongside unchanged status/kind. Stage 2 (replacing status with an outcome sum type: value|unresolved|fault|limit) is fully designed -- ecosystem/decisions/2026-09-04-oracle-outcome-stage2-proposal.md, PROPOSED status -- but deliberately NOT implemented: it changes the observable wire contract, needs a contract-version bump (recommended 3.0->4.0 in the proposal, with reasoning, not decided unilaterally), and ecosystem/scripts/conformance-check.py:159 asserts status=='error' directly today.")
+    (description . "This entry exists so Stage 2 isn't forgotten between sessions, not to prompt implementation on its own. Do not implement until the owner has read the proposal doc and decided: whether to do Stage 2 at all, which contract-version number, and which migration path (hard cutover vs. one-cycle deprecation window, both laid out in the proposal).")
     (done . ()))
   ))))
