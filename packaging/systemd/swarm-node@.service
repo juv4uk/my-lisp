@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 EnvironmentFile=%h/.config/swarm-node/%i.env
-ExecStart=%h/GitHub/my-lisp/target/release/swarm-node --port ${SWARM_PORT} --node-id %i --project ${SWARM_PROJECT} --data-dir ${SWARM_DATA_DIR} --bind ${SWARM_BIND} --connect ${SWARM_BOOTSTRAP} --auto-sync ${SWARM_TASKS_FILE}
+ExecStart=/bin/bash -c 'exec %h/GitHub/my-lisp/target/release/swarm-node --port ${SWARM_PORT} --node-id %i --project ${SWARM_PROJECT} --data-dir ${SWARM_DATA_DIR} --bind ${SWARM_BIND} --connect ${SWARM_BOOTSTRAP} --auto-sync ${SWARM_TASKS_FILE} ${SWARM_EXTRA_ARGS}'
 Restart=on-failure
 RestartSec=3
 

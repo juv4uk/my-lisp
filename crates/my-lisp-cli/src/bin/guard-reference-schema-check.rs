@@ -66,8 +66,13 @@ fn parse_guard_reference(file_path: &Path) -> Result<Vec<TopicEntry>, String> {
     // line-based field extractor below is trusted. This closes the gap where a
     // structurally invalid file (e.g. an unbalanced paren) would otherwise
     // still be reported as "Schema validation PASSED".
-    parse(&content)
-        .map_err(|error| format!("cannot parse {}: {}", file_path.display(), error.render(&content)))?;
+    parse(&content).map_err(|error| {
+        format!(
+            "cannot parse {}: {}",
+            file_path.display(),
+            error.render(&content)
+        )
+    })?;
 
     // The catalogue is intentionally formatted one field per line. Parsing
     // those records line-by-line keeps this quality gate independent of the
@@ -405,7 +410,11 @@ mod tests {
         let path = temp_file(&content, "unbalanced");
         let err = parse_guard_reference(&path).unwrap_err();
         assert!(err.contains("cannot parse"), "unexpected error: {}", err);
-        assert!(err.contains("unexpected closing parenthesis"), "unexpected error: {}", err);
+        assert!(
+            err.contains("unexpected closing parenthesis"),
+            "unexpected error: {}",
+            err
+        );
         fs::remove_file(path).unwrap();
     }
 
