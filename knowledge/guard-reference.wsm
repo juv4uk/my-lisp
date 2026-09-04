@@ -441,7 +441,25 @@
          (verify (sessions-json-entry-with-no-corresponding-live-process append-only-or-purely-additive-diff-confirmed-before-staging))
          (lifecycle current-contract)
          (provenance "ecosystem commits bb867c4 ae8a782, 2026-09-01: Kriyā the Antigravity-IDE agent registered itself in memory/OWNER-PROFILE.md and .agents/sessions.json, plus an LSP-plugin config and a durable-inbox backlog from several other concurrently active agents, then its session ended before any of it was committed -- reconciled and committed on Kriyā's behalf once confirmed dead, owner-directed to fix it since the session had died")
-         (unknown-route ask-agent)))))
+         (unknown-route ask-agent))
+      (reference
+        (topic ukrainian-legal-tradition-and-hfl)
+        (summary "Foundational 1000-year Ukrainian legal corpus (Ruska Pravda, Statutes, Zboriv, Hadiach, Orlyk 1710, Istoria Rusiv, Knyha Buttya 1846, UNR 1918, 1991 Act, 1996 Constitution) and axioms for Human Freedom License | Фундаментальний 1000-річний український правовий корпус та аксіоми для Human Freedom License")
+        (authority (../ecosystem/docs/policy/research/ ../ecosystem/docs/policy/semantics/ ../ecosystem/memory/ukrainian-legal-tradition-and-time-tools.md ../ecosystem/tasks.my))
+        (how-to (read-research-corpus read-semantics-pipeline consult-hfl-axioms))
+        (verify (oracle-checked-tasks 104-tasks-completed 17-research-docs 8-semantics-docs))
+        (lifecycle current-contract)
+        (provenance "ecosystem 2026-09-04: Darshana / Antigravity closed all 104 policy tasks, established HFL principles (anti-vassalage, covenant, emergency forking, privacy, conscientious objection)")
+        (unknown-route ask-agent))
+      (reference
+        (topic swarm-time-perception)
+        (summary "Five complementary instruments for agents to measure and feel time: git commit rhythm, Guard inbox backlog age, physical Oracle clock offset, swarm comms pulse, and task incubation lifecycles | П'ять взаємодоповнюючих інструментів для відчуття часу агентами: ритм комітів, вік беклогу Guard, зсув годинників Oracle, пульс спілкування та інкубація задач")
+        (authority (../ecosystem/memory/agent-time-perception-tools.md ../ecosystem/memory/ukrainian-legal-tradition-and-time-tools.md))
+        (how-to (run-repo-time-rhythm run-guard-inbox-latency run-compare-oracle-time run-swarm-comms-pulse run-task-incubation-pulse))
+        (verify (exit-0-readout median-latency-reported active-dormant-classified))
+        (lifecycle current-contract)
+        (provenance "ecosystem 2026-09-04: Darshana / Antigravity with project owner, expanded toolsuite from 3 to 5 real time perception instruments")
+        (unknown-route ask-agent)))))
 
 ; Curated frequently-used tools. A record is navigation, not permission to run
 ; the command. `risk` and `verify` tell an agent what must be checked afterward.
@@ -532,7 +550,36 @@
        (path "../ecosystem/scripts/conformance-check.py")
        (invoke "python3 /home/agents/ecosystem/scripts/conformance-check.py [host:port]")
        (risk bounded-test-run)
-       (verify (oracle-revision fixture-count exit-status))))))
+       (verify (oracle-revision fixture-count exit-status))))
+      (tool
+        (name repo-time-rhythm)
+        (summary "Відчути пульс і щільність роботи репозиторію через історію git · Feel repo work rhythm and lulls from git history")
+        (path "../ecosystem/scripts/repo-time-rhythm.py")
+        (invoke "python3 /home/agents/ecosystem/scripts/repo-time-rhythm.py [repo-path]")
+        (risk read-only)
+        (verify (commit-count median-interval longest-silences hourly-histogram)))
+      (tool
+        (name guard-inbox-latency)
+        (summary "Виміряти затримку рецензування та вік кандидатів у черзі Guard · Measure review latency and candidate aging in Guard inbox")
+        (path "../ecosystem/scripts/guard-inbox-latency.py")
+        (invoke "python3 /home/agents/ecosystem/scripts/guard-inbox-latency.py [inbox-path]")
+        (risk read-only)
+        (verify (reviewed-latency-stats unreviewed-count oldest-candidates)))
+      (tool
+        (name swarm-comms-pulse)
+        (summary "Відчути пульс спілкування рою, свіжість присутності агентів та паузи в етері · Feel swarm conversational tempo, presence, and silence")
+        (path "../ecosystem/scripts/swarm-comms-pulse.py")
+        (invoke "python3 /home/agents/ecosystem/scripts/swarm-comms-pulse.py [comms-log-path]")
+        (risk read-only)
+        (verify (unique-messages median-delay active-dormant-status conversational-pauses)))
+      (tool
+        (name task-incubation-pulse)
+        (summary "Виміряти реальний життєвий цикл і час визрівання задач рою та естафету передачі · Measure task lifecycles, duration spectrum, and inter-agent handoffs")
+        (path "../ecosystem/scripts/task-incubation-pulse.py")
+        (invoke "python3 /home/agents/ecosystem/scripts/task-incubation-pulse.py [comms-log-path]")
+        (risk read-only)
+        (verify (paired-tasks median-duration duration-spectrum inter-agent-handoffs)))))
+
 
 (def guard-script-find
   (lambda (name tools)
