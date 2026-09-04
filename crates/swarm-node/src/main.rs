@@ -17,6 +17,7 @@
 mod compact;
 mod journal;
 mod log;
+mod retry;
 mod sexpr;
 mod state;
 mod tasks_file;
@@ -196,12 +197,16 @@ struct Node {
     /// written into that window were never seen again by anyone.
     pending_acks: Mutex<HashMap<(String, String), Instant>>,
     /// Bounded ring (`RECENT_FAILURES_CAP`) of `(peer_id, event_id,
-    /// reason)` for deliveries that timed out without an ack. This is
-    /// deliberately NOT a durable retry queue -- the owner's explicit
-    /// scoping for this fix is "make failure honest and observable
-    /// first," not "make delivery automatically reliable." A real queue
-    /// with backoff/dedup is future work if reality shows it's needed.
+    /// reason)` for deliveries that timed out without an ack. Diagnostic /
+    /// observability view of recent failures; it is *not* the recovery
+    /// path. Recovery is the durable `retry_queue` below, which any failure
+    /// recorded here is also fed into (`sweep_timed_out_acks`, write-failure
+    /// path of `broadcast_to_peers`).
     recent_delivery_failures: Mutex<VecDeque<(String, String, String)>>,
+    /// Durable per-peer redelivery of `push-event`s that failed. Persisted
+    /// at `<data-dir>/retry-queue.my`, drained back onto a peer's fresh
+    /// stream when it reconnects (`register_peer`) -- see `retry.rs`.
+    retry_queue: Mutex<retry::RetryQueue>,
 }
 
 impl Node {
@@ -563,6 +568,7 @@ fn main() -> std::io::Result<()> {
         started_at: Instant::now(),
         pending_acks: Mutex::new(HashMap::new()),
         recent_delivery_failures: Mutex::new(VecDeque::new()),
+        retry_queue: Mutex::new(retry::RetryQueue::open(&args.data_dir)),
     });
 
     for addr in &args.connect {
@@ -667,14 +673,24 @@ fn sweep_timed_out_acks(node: &Arc<Node>) {
         .recent_delivery_failures
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    for (peer_id, event_id) in timed_out {
+    for (peer_id, event_id) in &timed_out {
         warn!(
-            "swarm-node: push-event {event_id} to {peer_id} never acked within {timeout:?} -- treating as failed, not silently dropping"
+            "swarm-node: push-event {event_id} to {peer_id} never acked within {timeout:?} -- treating as failed, queueing for retry"
         );
-        failures.push_back((peer_id, event_id, "ack-timeout".to_string()));
+        failures.push_back((peer_id.clone(), event_id.clone(), "ack-timeout".to_string()));
         while failures.len() > RECENT_FAILURES_CAP {
             failures.pop_front();
         }
+    }
+    drop(failures);
+    // Durable redelivery: every ack-timeout becomes a retry-queue entry so
+    // it is re-pushed to the peer on its next reconnect (`register_peer`).
+    let mut rq = node
+        .retry_queue
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    for (peer_id, event_id) in &timed_out {
+        rq.push(peer_id, event_id);
     }
 }
 
@@ -701,7 +717,7 @@ fn spawn_heartbeat(node: &Arc<Node>) {
                 Sexp::atom(node.identity.epoch.to_string()),
             ]),
         ]);
-        broadcast_to_peers(&node, &beat, None);
+        let _ = broadcast_to_peers(&node, &beat, None);
         sweep_timed_out_acks(&node);
 
         let now = Instant::now();
@@ -1027,6 +1043,15 @@ fn handle_connection(node: Arc<Node>, mut stream: TcpStream, initiator: bool) {
                         .lock()
                         .unwrap_or_else(|poisoned| poisoned.into_inner())
                         .remove(&(from.to_string(), event_id.to_string()));
+                    // A confirmed delivery no longer needs redelivery: drop
+                    // any queued retry entry for it (e.g. a peer that
+                    // stalled in-place and resumed without a re-handshake
+                    // still acks on the original socket -- that ack should
+                    // clear the stale queued copy, not wait for a reconnect).
+                    node.retry_queue
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .remove(from, event_id);
                 }
             }
             Some("emit") => {
@@ -1190,6 +1215,106 @@ fn register_peer(
         if is_new {
             announce_peer(node, their_node, their_ip, their_port);
         }
+    }
+    // Reconnect redelivery: this peer has a fresh stream again, so re-push
+    // any of our events whose delivery to it failed while it was away
+    // (`SWARM-PUSH-EVENT-RETRY-QUEUE`). Receiver dedups via `Journal::has()`,
+    // so re-pushing is idempotent; events no longer in the journal (e.g.
+    // compacted away) are dropped with their queue entry.
+    drain_retry_for_peer(node, their_node, stream);
+}
+
+/// Re-pushes every event queued for `peer_id` (see `retry.rs`) onto the
+/// freshly reconnected `stream`. Payloads are re-read from the journal by
+/// event-id, so the retry file itself stays tiny and never diverges from
+/// the authoritative event store.
+fn drain_retry_for_peer(node: &Arc<Node>, peer_id: &str, stream: &mut TcpStream) {
+    let taken = {
+        let mut rq = node
+            .retry_queue
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        rq.take_for(peer_id)
+    };
+    if taken.is_empty() {
+        return;
+    }
+    // Span the journal lookups into one lock hold, then write outside it.
+    let mut events: Vec<(String, Event)> = Vec::new();
+    {
+        let journal = node
+            .journal
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        for (_p, event_id) in &taken {
+            // Look up by id: matches on the full `node:incarnation:seq` (or
+            // legacy `node:seq`) id that the queue recorded.
+            if let Some(ev) = journal
+                .events
+                .iter()
+                .find(|e| &e.id() == event_id)
+                .cloned()
+            {
+                events.push((event_id.clone(), ev));
+            }
+            // Missing -> compaction removed it; redelivery impossible, drop.
+        }
+    }
+    if events.is_empty() {
+        return;
+    }
+    info!(
+        "swarm-node: redelivering {} queued push-event(s) to reconnected peer {peer_id}",
+        events.len()
+    );
+    let lock = Arc::clone(
+        node.peer_write_locks
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .entry(peer_id.to_string())
+            .or_insert_with(|| Arc::new(Mutex::new(()))),
+    );
+    let _guard = lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut redelivered: Vec<String> = Vec::new();
+    for (event_id, ev) in &events {
+        let msg = Sexp::list(vec![
+            Sexp::atom("push-event"),
+            Sexp::list(vec![Sexp::atom("event"), ev.to_sexp()]),
+        ]);
+        if stream
+            .write_all(format!("{}\n", msg.to_text()).as_bytes())
+            .is_ok()
+        {
+            redelivered.push(event_id.clone());
+        }
+    }
+    // Only count what actually reached the kernel's send buffer as
+    // redelivered; anything that failed gets re-queued for the *next*
+    // reconnect (take_for already drained it, so put it back).
+    let mut rq = node
+        .retry_queue
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    for (event_id, _ev) in &events {
+        if !redelivered.contains(event_id) {
+            rq.push(peer_id, event_id);
+        }
+    }
+    drop(rq);
+    if redelivered.is_empty() {
+        info!("swarm-node: redelivery to {peer_id} could not be written; re-queued");
+        return;
+    }
+    // Track redelivered events under the same ack protocol as normal
+    // `broadcast_event`s, so a redelivery that is written but never acked
+    // is itself swept and re-queued rather than silently forgotten twice.
+    let now = Instant::now();
+    let mut pending = node
+        .pending_acks
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    for event_id in redelivered {
+        pending.insert((peer_id.to_string(), event_id), now);
     }
 }
 
@@ -1594,11 +1719,23 @@ fn broadcast_event(node: &Arc<Node>, event: &Event, skip_origin: Option<&str>) {
         Sexp::atom("push-event"),
         Sexp::list(vec![Sexp::atom("event"), event.to_sexp()]),
     ]);
-    let written_to = broadcast_to_peers(node, &msg, skip_origin);
+    let (written_to, dead) = broadcast_to_peers(node, &msg, skip_origin);
+    let event_id = event.id();
+    if !dead.is_empty() {
+        // Socket-level write failure: queue a durable redelivery for each
+        // peer we couldn't even write to, so the event re-pushes on its
+        // next reconnect instead of being silently lost.
+        let mut rq = node
+            .retry_queue
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        for peer_id in &dead {
+            rq.push(peer_id, &event_id);
+        }
+    }
     if written_to.is_empty() {
         return;
     }
-    let event_id = event.id();
     let now = Instant::now();
     let mut pending = node
         .pending_acks
@@ -1618,12 +1755,19 @@ fn broadcast_event(node: &Arc<Node>, event: &Event, skip_origin: Option<&str>) {
 /// Streams are cloned out under the lock; each write gets a bounded
 /// timeout and a failed peer is dropped afterwards.
 ///
-/// Returns the peer ids `write_all` actually succeeded for -- callers
-/// that need delivery *confirmation*, not just a successful local write,
-/// must not treat this return value as that confirmation. See
-/// `Node::pending_acks`: a local `write_all` success only proves the
-/// bytes reached this machine's kernel send buffer.
-fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) -> Vec<String> {
+/// Returns the peer ids `write_all` actually succeeded for, and the ids
+/// whose socket write failed (they are dropped from the peer table).
+/// Callers that need delivery *confirmation*, not just a successful local
+/// write, must not treat `written_to` as that confirmation. See
+/// `Node::pending_acks`: a local `write_all` success only proves the bytes
+/// reached this machine's kernel send buffer. The `dead` list is what a
+/// caller feeds into the retry queue when it needs the message redelivered
+/// after the peer reconnects.
+fn broadcast_to_peers(
+    node: &Arc<Node>,
+    msg: &Sexp,
+    skip_origin: Option<&str>,
+) -> (Vec<String>, Vec<String>) {
     const PEER_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
     let line = format!("{}\n", msg.to_text());
     let targets: Vec<(String, std::net::TcpStream)> = {
@@ -1652,6 +1796,7 @@ fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) -
         let _guard = lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let _ = stream.set_write_timeout(Some(PEER_WRITE_TIMEOUT));
         if stream.write_all(line.as_bytes()).is_err() {
+            warn!("swarm-node: write to peer {id} failed/errored -- dropping and queueing for retry");
             dead.push(id);
         } else {
             written_to.push(id);
@@ -1666,7 +1811,7 @@ fn broadcast_to_peers(node: &Arc<Node>, msg: &Sexp, skip_origin: Option<&str>) -
             peers.remove(id);
         }
     }
-    written_to
+    (written_to, dead)
 }
 
 /// Local client injects a fact: `(emit (type evidence-created) (payload (...)))`.
@@ -1949,7 +2094,7 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .insert(key.clone(), tx);
 
-    broadcast_to_peers(
+    let _ = broadcast_to_peers(
         node,
         &Sexp::list(vec![
             Sexp::atom("claim-proposal"),
@@ -2824,12 +2969,37 @@ fn handle_delivery_status(node: &Arc<Node>, stream: &mut TcpStream) {
             ])
         })
         .collect();
+    let (queued_len, queued): (usize, Vec<Sexp>) = {
+        let rq = node
+            .retry_queue
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let count = rq.len();
+        let list = rq
+            .entries()
+            .into_iter()
+            .map(|(peer_id, event_id)| {
+                Sexp::list(vec![
+                    Sexp::list(vec![Sexp::atom("peer"), Sexp::atom(peer_id)]),
+                    Sexp::list(vec![Sexp::atom("event"), Sexp::atom(event_id)]),
+                ])
+            })
+            .collect();
+        (count, list)
+    };
     send(
         stream,
         &Sexp::list(vec![
             Sexp::atom("delivery-status"),
             Sexp::list(vec![Sexp::atom("pending"), Sexp::list(pending)]),
             Sexp::list(vec![Sexp::atom("recent-failures"), Sexp::list(failures)]),
+            Sexp::list(vec![
+                Sexp::atom("queued-retries"),
+                Sexp::list(vec![
+                    Sexp::list(vec![Sexp::atom("count"), Sexp::atom(queued_len.to_string())]),
+                    Sexp::list(vec![Sexp::atom("entries"), Sexp::list(queued)]),
+                ]),
+            ]),
         ]),
     );
 }

@@ -1607,6 +1607,15 @@ fn silent_peer_delivery_never_silently_counts_as_acked() {
         "an unacked delivery must become an explicit recent-failure, never vanish silently: {final_status}"
     );
 
+    // SWARM-PUSH-EVENT-RETRY-QUEUE: the same failed delivery must ALSO be
+    // captured in the durable retry queue (`queued-retries`), so it is not
+    // merely observable but actually recoverable on the peer's reconnect --
+    // not just a diagnostic ring that forgets the event on restart.
+    assert!(
+        final_status.contains("queued-retries") && final_status.contains(&event_id),
+        "an unacked delivery must also be queued for durable redelivery: {final_status}"
+    );
+
     // And the pending entry for THIS event is gone -- it moved, it didn't duplicate.
     let pending_section = final_status
         .split("recent-failures")
@@ -1618,6 +1627,85 @@ fn silent_peer_delivery_never_silently_counts_as_acked() {
     );
 
     drop(silent_peer);
+}
+
+/// The actual *recovery* half of SWARM-PUSH-EVENT-RETRY-QUEUE: a delivery
+/// that failed (never acked) must not just be diagnosed -- it must be
+/// re-pushed once the peer comes back. Proves the full round-trip:
+/// queued-on-timeout -> drained-on-reconnect -> acked -> cleared.
+#[test]
+fn failed_delivery_is_redelivered_after_peer_reconnects() {
+    let port_a = alloc_ports(1);
+    let dir = data_dir("retry-redelivery");
+    // Shrink ACK_TIMEOUT so the failed delivery is swept without waiting
+    // out a real 10s production timeout.
+    let (_a, _log_a) = spawn_logged_with_env(
+        port_a,
+        "retry-a",
+        &dir.join("a"),
+        None,
+        &[("SWARM_TEST_ACK_TIMEOUT_MS", "200")],
+    );
+
+    // First connection: a peer that gets the push-event but never acks
+    // (the connection-cycling / silent-loss scenario from the wire).
+    let silent =
+        hand_speak_peer_hello_and_keep_connected(port_a, "zzz-retry-peer", 17788, None);
+    let event_id = emit_event(port_a, "test-redeliver-event");
+
+    // After ACK_TIMEOUT the delivery must be captured in the durable
+    // `queued-retries` (the retry queue), not just the diagnostic ring.
+    // Note: the event id also appears in `pending`/`recent-failures`; this
+    // predicate specifically requires it inside the trailing
+    // `queued-retries` section, so an early `pending` hit doesn't satisfy it.
+    eventually(port_a, "(delivery-status)", Duration::from_secs(15), |r| {
+        r.split("queued-retries")
+            .nth(1)
+            .unwrap_or("")
+            .contains(&event_id)
+    });
+
+    // The old connection dies (peer "went away") -- the only way redelivery
+    // is triggered is a genuinely fresh reconnect registering the same id.
+    drop(silent);
+
+    // Reconnect as the SAME node id, but this time a cooperative peer that
+    // acks what it receives. `register_peer` must drain the queue and
+    // re-push the lost event onto this fresh stream.
+    let mut conn =
+        hand_speak_peer_hello_and_keep_connected(port_a, "zzz-retry-peer", 17788, None);
+    let mut line = String::new();
+    let mut redelivered = false;
+    for _ in 0..50 {
+        line.clear();
+        match conn.read_line(&mut line) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
+        }
+        if line.contains("push-event") && line.contains(&event_id) {
+            redelivered = true;
+            writeln!(conn.get_mut(), "(event-ack (id {event_id}))").unwrap();
+            conn.get_mut().flush().unwrap();
+            break;
+        }
+    }
+    assert!(
+        redelivered,
+        "expected the queued event to be redelivered to the reconnected peer"
+    );
+
+    // Once acked, the retry queue must be empty for this event -- the
+    // `(queued-retries ...)` section (the last, after `recent-failures`)
+    // no longer lists it.
+    let done = eventually(port_a, "(delivery-status)", Duration::from_secs(15), |r| {
+        !r.split("queued-retries").nth(1).unwrap_or("").contains(&event_id)
+    });
+    assert!(
+        !done.split("queued-retries").nth(1).unwrap_or("").contains(&event_id),
+        "an acked redelivery must clear the retry queue: {done}"
+    );
+
+    drop(conn);
 }
 
 // ---------------------------------------------------------------------------
