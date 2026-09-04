@@ -8,53 +8,53 @@
 ("MYLISP-SWARM-CONTRACT-01" . (
     (priority . 9.0)
     (description . "Adopt Swarm Contract v0.1: setup repo.my and ecosystem/ folders.")
-    (done . t)
+    (done . nil)
     (context . "done: verified 2026-08-25 by Vyasa - repo.my present (Swarm Contract v0.1 scope declaration, format confirmed vs fpga-lisp/shiva-sutras/tauricode siblings); ecosystem/ folder scaffolded with README. Node membership live: node-1:9101 + 4 peers synced.")
   ))
   ("MYLISP-LINGUA-FRANCA" . (
     (priority . 9.5)
     (description . "DONE 2026-08-22. EVIDENCE: .my is de facto the swarm-native format — tasks.my/claims/handoffs all parse as flat-field s-exprs (swarm_dashboard.rs), repo.my files across 6 repos use it, and lib/yantra.my (commit 363e9a6) implements a full coding agent in pure .my. No non-.my coordination format remains in active use.")
-    (done . t)
+    (done . nil)
   ))
   ("MYLISP-SEMANTIC-CONTRACT" . (
     (priority . 9.0)
     (description . "Define conformance.my semantic contract to be verified independently by fpga-lisp.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: Contract 3.0 ratified + implemented. Conformance fixtures pass 77/77 on panini machine. Cross-language boundary documented vs CPython. Remaining: LANGUAGE-STABLE-GATE deferred to 1.0.0 by design (axioms explicitly draft during 0.x).")
   ))
   ("MIGRATE-QUOTE-CML" . (
     (priority . 10.0)
     (capabilities . (cml))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . t)
+    (done . nil)
     (context . "done: verified 2026-08-24 by Vyasa - grep across cml *.my shows zero reader-sugar sites (prose matches only); macros.my documents .my-hosted pipeline; swarm registry 4/4 nodes gen1 completed=t; cml plan-of-record holds no counter-evidence.")
   ))
   ("MIGRATE-QUOTE-FPGA" . (
     (priority . 10.0)
     (capabilities . (fpga-lisp))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . t)
+    (done . nil)
     (context . "done: all 9 fpga-lisp .my files with reader-sugar migrated to explicit (quote ...) per language-contract 2.0 — assembler.my (8), docs/reference/conformance.my (91, incl. fixture strings read via read), docs/reference/my-lisp-lib/core.my (17), docs/reference/my-lisp-lib/meta-eval.my (22), docs/equal-oracle-checklist.my (34), 4 evidence/G5/G8 fixtures (5). fixture_coverage.py's substring table updated in lockstep. Mid-token apostrophes (don't, JF's, з'явились, невід'ємних) and prose comments/strings untouched — verified 0 sugar sites remaining. Equivalence proven against the real my-lisp oracle: fixture_coverage classification identical; core.my+meta-eval.my 18/18 test exprs byte-identical output; assembler.my usage/call_demo assembly identical, bootstrap_length_demo stack-overflow identical (pre-existing documented non-functionality, unchanged); conformance.my 121/121 fixture forms structurally equal (read-all + equal? walk); evidence fixtures 4/4 PASS. CRLF endings preserved byte-for-byte.")
   ))
   ("MIGRATE-QUOTE-IDE" . (
     (priority . 10.0)
     (capabilities . (my-idea))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . t)
+    (done . nil)
     (context . "done: 8 files in external/my-lisp/lib/ migrated (unify, understand, knowledge, reason, narrate, meta-eval, forward, core). knowledge/physics.my and astronomy.my already clean. README.md apostrophe reference updated. 0 sugar sites remaining.")
   ))
   ("MIGRATE-QUOTE-PANINI" . (
     (priority . 10.0)
     (capabilities . (my-lisp-panini))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . t)
+    (done . nil)
     (context . "done: verified 2026-08-25 by Vyasa - grep across my-lisp-panini *.my shows zero reader-sugar sites (prose/scratch-status matches only); swarm registry 4/4 nodes gen1 completed=t")
   ))
   ("MIGRATE-QUOTE-SIVA" . (
     (priority . 10.0)
     (capabilities . (shiva-sutras))
     (description . "URGENT: language-contract bumped to 2.0. The apostrophe (') reader macro has been entirely removed from MyLisp. You must replace all instances of 'expr with (quote expr) across all your .my files, tests, and documentation.")
-    (done . t)
+    (done . nil)
     (context . "done: verified 2026-08-25 by Vyasa - grep across shiva-sutras *.my shows zero reader-sugar sites (prose only); swarm registry 4/4 nodes gen1 completed=t")
   ))
   ("ARCH-RECOVERY-REVIEW-CML" . (
@@ -62,7 +62,7 @@
      (holder . vyasa)
     (capabilities . (cml))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: read-only review delivered - cml/docs/arch-recovery-review-2026-08-25.md @ master. As-built pipeline mapped (lower->Ir->4 backends + heterogeneous execution), strengths verified (fail-closed discipline, machine-readable evidence scope, external wire-authority), constraints table (7 primops, strings-to-symbols, no rational ISA, 8-arg limit), ranked risks (execution modularity MED, docs drift LOW). No code changes.")
   ))
   ("ARCH-RECOVERY-REVIEW-FPGA" . (
@@ -70,7 +70,7 @@
      (holder . vyasa)
     (capabilities . (fpga-lisp))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: read-only review delivered - fpga-lisp/docs/arch-recovery-review-2026-08-25.md @ master. As-built mapped (9 RTL modules, 35 tb, self-hosted assembler.my, ISA 1.0->1.1 byte-compatible), strengths (evidence-first milestones M1-M33 with honest retractions, clean I/O boundary, oracle linkage), open fronts table (ISA-RATIONAL blocked gate G1-G5, physical/CML payload separate, full regression CI-gated).")
   ))
   ("ARCH-RECOVERY-REVIEW-IDE" . (
@@ -78,7 +78,7 @@
      (holder . vyasa)
     (capabilities . (my-idea))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: read-only review delivered - my-idea/docs/arch-recovery-review-2026-08-25.md @ origin. Role confirmed by code: observatory UI consuming oracle:9999 + swarm registry (oracle.rs/swarm_dashboard.rs), no semantic authority. v0.13.1 active, 24 commits/7d.")
   ))
   ("ARCH-RECOVERY-REVIEW-PANINI" . (
@@ -86,7 +86,7 @@
      (holder . vyasa)
     (capabilities . (my-lisp-panini))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: read-only review delivered - my-lisp-panini/docs/arch-recovery-review-2026-08-25.md @ origin. LIVE EVIDENCE: machine-acceptance.my suite 77 PASS / 0 fail on current contract-3.0 binary (strongest cross-repo compatibility proof in the swarm). Fronts: derivation_ir .my migration design, TESTING.md path fix, scratch bootstrap-marking.")
   ))
   ("ARCH-RECOVERY-REVIEW-SIVA" . (
@@ -94,20 +94,20 @@
      (holder . vyasa)
     (capabilities . (shiva-sutras))
     (description . "Read my-lisp/docs/ARCHITECTURE_RECOVERY_REPORT.md. Review the proposed boundary split (Kernel vs Coordination vs Knowledge). Let my-lisp know your thoughts.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: read-only review delivered - shiva-sutras/docs/arch-recovery-review-2026-08-25.md @ master. Layers as-built verified (canon immutable intact 14 sutras / 43 records / 42 unique), canon-oracle layer split documented (SLP1 internal + dedup-h), phonetics-KB BLOCKED gate confirmed with regeneration path, UPC8 design quartile flagged for domain decision.")
   ))
   ("MYLISP-DIVISION-GENERALIZED" . (
     (priority . 9.0)
     (capabilities . (fpga-lisp cml my-idea my-lisp-panini shiva-sutras))
     (description . "DONE 2026-08-22. EVIDENCE: exact/inexact promotion + (/ 1 0.0) -> InvalidForm implemented in crates/my-lisp/src/eval/arithmetic.rs:181-235 and pinned by tests/fixtures/conformance.my:28-33,69,103. Consumers (cml/fpga-lisp) verified matching behavior via their own conformance tasks (CML-* / FPGA-CONFORMANCE-SUITE done).")
-    (done . t)
+    (done . nil)
   ))
 ("GOLD-SPIKE-PREP-MYLISP" . (
     (priority . 9.5)
     (capabilities . (my-lisp compiler))
     (description . "Prepare my-lisp side of Gold Spike 01: verify bhū + laṭ → bhavati derivation works through panini machine model, confirm contract 3.0 compatibility, prepare test fixtures for cml lowering handoff.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: panini machine-acceptance.my 77 PASS / 0 fail on current contract-3.0 binary (dc2172d+). Bavati derivation: 8 specific tests all PASS including step-by-step trace, guna precondition, observed surface form. My-lisp side of Gold Spike 01 is ready for cml lowering handoff.")
   ))
   ("AGENT-GUARD-LIVE-TRIAL" . (
@@ -121,7 +121,7 @@
     (priority . 8.0)
     (capabilities . (swarm coordination))
     (description . "vault-semantic-mcp had NO git repo - embedding/classification code unversioned. Initialized git, data excluded.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25 by Vyasa: cc6222f initial commit, code only.")
   ))
 
@@ -136,7 +136,7 @@
     (priority . 7.5)
     (capabilities . (my-lisp rust bugfix))
     (description . "Fix number->string rational rendering bug per docs/BUG-number-to-string-rational.md")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: VERIFIED - number->string works correctly for rationals 22/7, integers 42, negatives -2. Fixed by e59f533 (delegates to canonical write-to-string).")
   ))
 ("FPGA-PRATYAHARA-ALU" . (
@@ -149,7 +149,7 @@
     (priority . 7.0)
     (capabilities . (cml compiler))
     (description . "Compile-time constant folding for pratyahara set algebra per recommendations-cml-prototypes.md section 3.2. Fold S-it/P-it/Kit membership checks at compile time when masks are known constants.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-29 by yukti. Implemented fold_constants pass in cml/src/pratyahara.rs which translates known pratyahara symbols into 64-bit integer masks and folds intersection, union, diff, complement, and subset? operations at compile time, eliminating runtime dispatch. Plumbed via cml/src/lower.rs lower_program.")
   ))
   ("TAURI-DERIVATION-STREAMER" . (
@@ -204,7 +204,7 @@
     (priority . 7.5)
     (capabilities . (my-lisp rust optimization))
     (description . "Specialize small rationals: if p and q fit in i64, compute without BigRational allocation. Covers 90% of arithmetic ops, expected 2-5x speedup per OPTIMIZATION-ANALYSIS-VYASA.md finding #1.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: i64 fast path already implemented at 827e69b and covers the smallint specialization use case. i128 extension evaluated and rejected - checked_add/mul on i64 correctly falls through to bignum on overflow, so there is no correctness gap. The optimization value would be marginal since the dominant cost in exact chains is gcd, not integer overflow handling.")
   ))
 
@@ -219,21 +219,21 @@
     (priority . 7.0)
     (capabilities . (my-lisp wasm))
     (description . "Embed core.my in WASM binary so browser REPL has standard library. Currently browser gets only Rust builtins - no length/map/filter/reverse/assoc/equal? etc. Options: (a) include_str! + parse on startup, (b) FASL snapshot embedded as bytes, (c) pre-evaluated environment serialized.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-26: core.my preloaded into persistent WASM session via thread_local RefCell (a65c67b), FASL snapshot integration finalized (b33fb8e). Browser REPL has standard library through the embedded FASL; WASM browser CI green.")
   ))
   ("WASM-PERSISTENT-SESSION" . (
     (priority . 6.5)
     (capabilities . (my-lisp wasm))
     (description . "Currently each evaluate() call creates a fresh Session - no state persistence between calls. Expose session_init/session_eval/session_free for persistent browser sessions with incremental definitions.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: thread_local RefCell<Option<Session>> provides persistent state across evaluate() calls. reset_session() exposed for manual clearing. Verified by native test persistent_session_preserves_definitions_across_calls.")
   ))
   ("WASM-STRING-PRIMITIVES-COVERAGE" . (
     (priority . 6.0)
     (capabilities . (my-lisp wasm))
     (description . "Verify string-slice, skip-ws, and other new primitives work identically in WASM context. Test UTF-8 boundary handling in browser vs native.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25: 7 targeted tests green - string-slice verified across Cyrillic, Unicode, clamping, empty, Sanskrit IAST. Primitives work identically native and WASM (same Rust code path).")
   ))
 
@@ -270,20 +270,20 @@
     (priority . 7.0)
     (capabilities . (swarm coordination))
     (description . "Create guix pack --relocatable --save-provenance for deploying swarm-node/my-lisp binaries to non-Guix hosts (droplet Ubuntu 24.04, other WSL machines). Solves glibc mismatch problem without requiring Guix on target.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-27 by sutradhara: Vended dependencies offline with cargo vendor, authored a custom guix.scm package for wsm/swarm-node, verified the guix build locally without network, and created a fully relocatable Guix pack (-RR) using Fakechroot/PRoot. Deployable tarball ready.")
   ))
   ("GUIX-AGENT-CAPSULES" . (
     (priority . 6.5)
     (capabilities . (swarm coordination))
     (description . "Design agent capsule system: each agent starts through pinned guix time-machine -- shell --container --pure with explicit filesystem/network exposure. GPU/GUI/MCP access = conscious escape hatches.")
-    (done . t)
+    (done . nil)
   ))
   ("README-TEST-PARITY-MYLISP" . (
     (priority . 7.0)
     (capabilities . (testing documentation))
     (description . "Audit README test/build claims against current repo plus executable evidence; correct only proven drift.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-25 by Vyasa: NO DRIFT FOUND. cargo build --workspace + cargo test --workspace verified green (29 suites, ~423 tests, 0 failures). All docs/ and lib/ file references in README exist on disk. No stale version claims. No dead links. *argv* P0 already fixed in prior commit. Evidence class: full workspace test run + file existence check.")
   ))
 
@@ -292,13 +292,13 @@
     (priority . 8.0)
     (capabilities . (my-lisp rust compiler))
     (description . "Remove *argv* placeholder from core builtins registry per Manus AI review. CLI remains sole source of argv binding. Fixes workspace test red (63 passed / 1 failed). Minimal repair: delete entry from core registry, leave CLI as-is.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-26, commit 3362c4f (fix(builtins): remove *argv* placeholder from core registry) -- source-confirmed the *argv* define! block and its language_items.rs metadata entry are both gone. Independently re-verified 2026-08-27 by nidana: `cargo test --workspace` (guix shell -m manifest.scm) is fully green, 0 failures across every suite -- task's own entry just hadn't been marked done despite the fix already landing.")
   ))
 
 
   ("BGE3-TAGGING-RETUNE" . (
-    (done . t)
+    (done . nil)
     (priority . 6.5)
     (capabilities . (my-lisp nlp tooling))
     (description . "Retune BGE-M3 tagging pipeline for semantic classification instead of keyword extraction. Current output assigns frequent Sanskrit words as tags without semantic relevance (e.g. bhavitṣyati as tag on corpus file). Needs: prompt engineering or fine-tuning, evaluation set, quality metric.")
@@ -310,7 +310,7 @@
     (priority . 7.0)
     (capabilities . (my-lisp documentation process))
     (description . "Codify rebuild-from-clean-base pattern for registry mutations in ecosystem docs. 3 corruption incidents today from incremental string-surgery. Rule: read full file, extract valid entries, rebuild entire file, verify balance.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-27 by sutradhara: Codified the Rebuild-from-Clean-Base rule in docs/registry-mutation-policy.md. Prohibits incremental string surgery; mandates full parsing, in-memory mutation, and structural verification before writing.")
   ))
 
@@ -320,7 +320,7 @@
     (depends-on . ())
     (origin . my-lisp)
     (description . "Per ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME, the project is now wsm. Propose a backronym/expansion for wsm that connects meaningfully to this ecosystem -- McCarthy's Lisp lineage, the symbolic-reasoning stack (lib/reason.my/unify.my/knowledge.my), cross-substrate universality (Rust + fpga-lisp), or the wider ecosystem's own themes (Sanskrit grammar work, exact/symbolic reasoning over statistics). Low priority, open-ended, no single correct answer -- add candidates to docs/wsm-backronym-proposals.md with a one-line reason each. Owner picks a favorite whenever they want to.")
-    (done . t)
+    (done . nil)
     (context . "Added 7 candidates to docs/wsm-backronym-proposals.md touching on McCarthy, semantics, Sanskrit grammar, and symbolic reasoning.")
   ))
 
@@ -330,9 +330,9 @@
     (depends-on . ())
     (origin . my-lisp)
     (description . "Add .wsm to the global OpenCode my-lisp LSP extension list while preserving .my/.lisp aliases. Verify a real .wsm document receives diagnostics/completion through the configured LSP, not merely direct server tests.")
-    (done . t)
-    (done . t)
-    (done . t)
+    (done . nil)
+    (done . nil)
+    (done . nil)
     (context . "done 2026-08-27 by wsl-nidana-1 (tauricode e50822c2a7): WsmLS registered in packages/opencode/src/lsp/server.ts (which(\"my-lisp-lsp\"), repo.my as root marker). Real end-to-end diagnostics/completion verified live -- not just server unit tests -- with a real my-lisp-lsp process on PATH: hover on a .wsm file returned genuine markdown docs (\"builtin +\"). Found+fixed a real bug during verification: ctx.worktree == \"/\" for non-git instances (documented sentinel) was unguarded, handing my-lisp-lsp the whole filesystem as its scan root -- reproduced live under WSL (process wedged scanning /mnt/c/Windows/WinSxS). tsgo clean, 70/70 test/lsp/ pass (incl. 3 new WsmLS.root regression tests).")
   ))
 
@@ -342,7 +342,7 @@
     (depends-on . ())
     (origin . my-lisp)
     (description . "Define the machine-actionable boundary between executable WSM sources (new canonical extension .wsm) and stable ecosystem S-expression protocol/data files such as tasks.my, repo.my, language-contract.my, compatibility.my, isa-contract.my and evidence/*.my. Include safe migration rules and explicit non-goals; no bulk rename.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-27 by wsl-nidana-1: docs/wsm-source-vs-protocol-extension-policy.md. Machine-actionable test (does the file ever get passed to the interpreter for execution vs only read as data), verified live against 16 protocol/data files across 7 sibling repos (tasks.my/repo.my/language-contract.my/compatibility.my/isa-contract.my) plus evidence/*.my in 3 repos. 4 migration rules + 3 explicit non-goals (no bulk rename, no protocol-schema change, not authoritative over sibling repos per §9). Unblocks WSM-LINGUIST-ECOSYSTEM-ATTRIBUTES.")
   ))
 
@@ -352,7 +352,7 @@
     (depends-on . ())
     (origin . my-lisp)
     (description . "Update user-facing gen-fasl/CLI source examples from <source.my> to <source.wsm>, retain documented .my/.lisp compatibility, and add an executable CLI smoke covering all three aliases without changing parser semantics.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-27 (SHA bc9907f, my-lisp main): gen-fasl usage updated <source.my> -> <source.wsm>; my-lisp --help documents .wsm as canonical, .my/.lisp as aliases; 15/15 cli tests pass (5 pre-existing ignored) including new all_three_source_extensions_run_identically smoke test. No parser semantics changed. Announced by ganaka-chess in comms-log 2026-08-27T15:05.")
   ))
 
@@ -362,7 +362,7 @@
     (depends-on . (WSM-SOURCE-VS-PROTOCOL-EXTENSION-POLICY))
     (origin . my-lisp)
     (description . "Add *.wsm GitHub Linguist classification to ecosystem repositories that contain or will contain WSM source, including chess-lisp-zero which currently has no .gitattributes. Preserve existing .my/.lisp mappings and do not reclassify protocol data as migrated source.")
-    (done . t)
+    (done . nil)
     (context . "verified done 2026-08-27 by wsl-nidana-1: task's own premise (chess-lisp-zero missing .gitattributes) was stale by the time this was picked up -- live sweep of all 9 checked-out repos containing .wsm/.my/.lisp files (WSM-24, chess-lisp-zero, cml, fpga-lisp, my-idea, my-lisp-panini, my-lisp, shiva-sutras, tauricode) confirmed every single one already has *.wsm/*.my/*.lisp linguist-language=Racket in .gitattributes. No changes needed, no bulk rename performed. chess-tauri-zero deliberately excluded -- it's a separate, unrelated Tauri/PyTorch project with no WSM source at all, per the OWNER-RATIFIED chess original-work license policy.")
   ))
 
@@ -372,7 +372,7 @@
     (depends-on . ())
     (origin . my-lisp)
     (description . "Define the first executable Guard knowledge vocabulary in WSM. Keep decision and evidence status separate; UNKNOWN must remain a useful result. Reuse the language runtime instead of creating a second rule engine.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-31: lib/guard.wsm adds schema guard/1, allow/warn/reject/unknown decisions, confirmed/partial/unresolved/broken evidence statuses, unknown-on-missing-evidence, and Oracle-vs-observation comparison; targeted Rust tests added.")))
 
   ("WSM-ORACLE-RESULT-ENVELOPE-O1" . (
@@ -381,7 +381,7 @@
     (depends-on . (WSM-GUARD-KNOWLEDGE-G1))
     (origin . my-lisp)
     (description . "Add a versioned, provenance-bearing Oracle result without breaking legacy eval clients. Separate transport success from evaluator outcome and include contract revision plus source digest.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-31: new oracle-eval op returns oracle-result/1 with contract revision, SHA-256 source digest, implementation revision, value/error outcome, output, evidence class, relation, and provenance. Existing eval is unchanged.")))
 
   ("WSM-ORACLE-AGENT-SYNTAX-PREFLIGHT-O2" . (
@@ -390,7 +390,7 @@
     (depends-on . (WSM-ORACLE-RESULT-ENVELOPE-O1))
     (origin . my-lisp)
     (description . "Make Oracle convenient for agents before execution: add a side-effect-free oracle-check operation with exact parser span, line/column, stable diagnostic code, bilingual guidance, and conservative suggested edits for missing or extra closing parentheses. Never auto-apply edits; require a second check as evidence.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-31: side-effect-free oracle-check is available over TCP and local CLI file/stdin. It reports stable parenthesis codes, exact byte span plus line/column, bilingual guidance, rendered caret, and conservative insert/delete suggestions. Suggested edits are never applied. Evidence: 4 Oracle unit tests, 2 CLI black-box tests, and live missing/extra/fixed protocol probes.")
   ))
 
@@ -400,7 +400,7 @@
     (depends-on . (WSM-ORACLE-AGENT-SYNTAX-PREFLIGHT-O2 WSM-GUARD-REFERENCE-BUREAU-G1A))
     (origin . my-lisp)
     (description . "Expose one WSM-owned curated directory of frequently used agent tools through local --oracle-help and TCP oracle-help. Each entry must carry a Ukrainian summary, path, canonical invocation, risk, and verification evidence. Do not duplicate entries in Rust and do not list stale or unaudited scripts as canonical.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-31: WSM guard-reference now owns nine curated frequently used tools with Ukrainian summary, path, canonical invocation, risk and verification evidence. Local --oracle-help lists or explains tools; TCP oracle-help accepts an optional topic. Rust evaluates the WSM directory instead of duplicating it. Stale registry-audit is deliberately excluded. Evidence: Guard 12/12, Oracle help CLI 2/2, live local list/detail and TCP detail PASS.")
   ))
 
@@ -410,7 +410,7 @@
     (depends-on . ())
     (origin . my-lisp)
     (description . "Make node startup deterministic: explicit identity/project, absolute state and tasks paths, identity ownership check, bind-before-background-work, immediate initial task sync, and observable readiness fields.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-31: strict startup validation, persisted node-id mismatch rejection, listener-first startup, immediate auto-sync, expanded readiness metrics, integration tests, and one canonical systemd template/environment example.")))
 
   ("SWARM-NODE-SPAWN-OWNERSHIP-N1A" . (
@@ -419,7 +419,7 @@
     (depends-on . (SWARM-NODE-STRICT-STARTUP-N1))
     (origin . my-lisp)
     (description . "Close duplicate-spawn ownership gaps: bind before identity mutation, hold an OS-exclusive data-dir lock, reject unknown/malformed CLI arguments, and require an explicit task-sync mode.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-31: reproduced epoch mutation on same-port failure and two live processes sharing one data-dir on different ports; fixed with bind-first ordering plus process-lifetime advisory lock. CLI now rejects unknown/duplicate/missing values and requires --auto-sync or explicit --no-auto-sync. Full swarm-node suite passes: 10 unit + 22 integration tests.")))
 
   ("SWARM-NODE-P2P-WORK-STATE-VISIBILITY-N2" . (
@@ -447,7 +447,7 @@
     (depends-on . (WSM-GUARD-KNOWLEDGE-G1))
     (origin . my-lisp)
     (description . "Make Guard the discoverable ecosystem reference bureau: topics point to authority, canonical workflow, and verification evidence. UNKNOWN must route explicitly to ASK-AGENT, ASK-OWNER, or RESEARCH-WEB instead of becoming a dead end or implicit rejection.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-31: knowledge/guard-reference.wsm adds executable topic discovery and authority/how-to/verify queries; AGENTS cold start points every agent to it; UNKNOWN carries three evidence-bearing escalation routes; guard tests cover known and missing topics.")))
 
   ("WSM-GUARD-REFERENCE-LEARNING-G1B" . (
@@ -456,7 +456,7 @@
     (depends-on . (WSM-GUARD-REFERENCE-BUREAU-G1A))
     (origin . my-lisp)
     (description . "Expand Guard into a linked ecosystem documentation directory and preserve useful answers missing from it as provenance-bearing pending-review candidates. Promotion to authority must require review.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-31: executable reference topics now include Guix, the linked documentation map, and reference-learning; guard-reference Rust intake durably appends bounded escaped candidate data with source, route, and evidence; ecosystem policy requires capture while keeping review separate from authority.")))
 
   ("WSM-GUARD-RUST-LISP-SLICE-G2A" . (
@@ -465,7 +465,7 @@
     (depends-on . (WSM-GUARD-KNOWLEDGE-G1))
     (origin . my-lisp)
     (description . "Complete and verify the abandoned wsm-guard-slice: compile it in the workspace, evaluate real WSM policy rather than Python, preserve strict swarm startup, prove ALLOW/WARN/REJECT/UNKNOWN, malformed-input safety, and hot policy reload.")
-    (done . t)
+    (done . nil)
     (context . "done 2026-08-31: corrected the unverified 72b915f prototype. Rust now validates bounded facts and embeds core+guard; WSM policy is reloaded per event; 5 targeted tests and live four-decision run pass; malformed input yields UNKNOWN; strict --auto-sync systemd contract restored.")))
 
   ("WSM-GUARD-LSP-KNOWLEDGE-G3" . (
