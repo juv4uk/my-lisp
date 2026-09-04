@@ -550,7 +550,7 @@
        (path "../ecosystem/scripts/conformance-check.py")
        (invoke "python3 /home/agents/ecosystem/scripts/conformance-check.py [host:port]")
        (risk bounded-test-run)
-       (verify (oracle-revision fixture-count exit-status))))
+       (verify (oracle-revision fixture-count exit-status)))
       (tool
         (name repo-time-rhythm)
         (summary "Відчути пульс і щільність роботи репозиторію через історію git · Feel repo work rhythm and lulls from git history")
@@ -578,7 +578,7 @@
         (path "../ecosystem/scripts/task-incubation-pulse.py")
         (invoke "python3 /home/agents/ecosystem/scripts/task-incubation-pulse.py [comms-log-path]")
         (risk read-only)
-        (verify (paired-tasks median-duration duration-spectrum inter-agent-handoffs)))))
+        (verify (paired-tasks median-duration duration-spectrum inter-agent-handoffs))))))
 
 
 (def guard-script-find
