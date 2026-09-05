@@ -190,7 +190,9 @@ Translation from surface spelling (`"атом"`) to canonical identity (`PRIM_AT
 - If reader destructively turned the text `"атом"` into `"atom"`, `read` and `print` would violate the property of faithful homoiconicity (re-printing would mangle user language).
 - Preserving the symbol's original print name while associating it with a `CanonicalId` preserves both homoiconicity and linguistic autonomy.
 
-### Finding 3: The Role of `core` Form
-The proposal in [`docs/PROPOSAL-INVIOLABLE-PRIMITIVES.md`](file:///home/agents/GitHub/my-lisp/docs/PROPOSAL-INVIOLABLE-PRIMITIVES.md) is empirically verified by this analysis:
-- Without `(core ...)`, Model C degenerates into Model B whenever a user shadows a name.
-- With `(core ...)`, the language achieves the true synthesis: **complete local expressive freedom without loss of semantic truth**.
+### Finding 3: The Status of the Proposed `core` Form
+The proposal in [`docs/PROPOSAL-INVIOLABLE-PRIMITIVES.md`](file:///home/agents/GitHub/my-lisp/docs/PROPOSAL-INVIOLABLE-PRIMITIVES.md) was analyzed against these requirements:
+- **Design consistency (not empirical verification):** This analysis demonstrates that Model C is *consistent with the stated design goals* of preserving local rebinding without permanently destroying canonical access.
+- **Status is strictly PROPOSED:** Neither `(core ...)` nor the fallback precedence is an established language fact; both remain architectural candidates under investigation.
+- **Risk of Semantic Creep:** Introducing `(core ...)` as an inviolable special form carries the risk of accidentally creating an unadmitted pseudo-primitive or evaluator privilege, which requires separate critical investigation before any admission.
+
