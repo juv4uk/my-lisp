@@ -235,7 +235,7 @@ Meaning does not.
 
 | Proposal | Status |
 | :--- | :--- |
-| Variant B: protected `canon:*` prefix | **REJECTED** — introduces privileged lexical class, increases ontology, blocks C/FPGA |
+| Variant B: protected `canon:*` prefix | **REJECTED** — introduces privileged lexical class, increases ontology, complicates C/FPGA implementation (requires prefix-aware string inspection in binders) |
 | Variant C: separate ROM dispatch map | **REJECTED** — reinvents `(core ...)` under namespace syntax |
 | `(core ...)` special form | **REJECTED** — would create an 8th primitive via backdoor |
 | Destructive normalization `атом → atom` at reader | **REJECTED** — destroys homoiconicity |
