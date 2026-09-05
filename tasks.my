@@ -577,5 +577,15 @@
     (origin . ecosystem)
     (context . "Stage 1 shipped this session (commit ddd538c): additive (classification unresolved|limit|fault) field alongside unchanged status/kind. Stage 2 (replacing status with an outcome sum type: value|unresolved|fault|limit) is fully designed -- ecosystem/decisions/2026-09-04-oracle-outcome-stage2-proposal.md, PROPOSED status -- but deliberately NOT implemented: it changes the observable wire contract, needs a contract-version bump (recommended 3.0->4.0 in the proposal, with reasoning, not decided unilaterally), and ecosystem/scripts/conformance-check.py:159 asserts status=='error' directly today.")
     (description . "This entry exists so Stage 2 isn't forgotten between sessions, not to prompt implementation on its own. Do not implement until the owner has read the proposal doc and decided: whether to do Stage 2 at all, which contract-version number, and which migration path (hard cutover vs. one-cycle deprecation window, both laid out in the proposal).")
-    (done . ()))
-  ))))
+    (done . ())))
+
+  ("SI-DEFINING-CONSTANTS-EXACT-RATIONAL" . (
+    (priority . 8.5)
+    (capabilities . (my-lisp physics mathematics rationals constants prelude))
+    (origin . my-lisp)
+    (context . "Owner architectural synthesis 2026-09-05: McCarthy's 7 axiomatic language primitives (quote atom eq car cdr cons cond) complemented by BIPM SI 2019's 7 defining physical constants (delta-nu-cs, c, h, e, k, n-a, k-cd). SI defines these values as exact terminating decimals with zero experimental uncertainty, making them representable as exact normalized rationals without floating point.")
+    (description . "Define the 7 BIPM SI defining constants as exact rational constants in a dedicated prelude/physics module: c (299792458), delta-nu-cs (9192631770), k-cd (683), n-a (602214076000000000000000), e (801088317/5000000000000000000000000000), k (1380649/100000000000000000000000000000), h (132521403/200000000000000000000000000000000000000000). Keep them strictly as predefined library/prelude bindings, not core language primitives.")
+    (done . ())))
+  )))
+
+
