@@ -623,7 +623,28 @@
         (path "../ecosystem/scripts/task-incubation-pulse.py")
         (invoke "python3 /home/agents/ecosystem/scripts/task-incubation-pulse.py [comms-log-path]")
         (risk read-only)
-        (verify (paired-tasks median-duration duration-spectrum inter-agent-handoffs))))))
+        (verify (paired-tasks median-duration duration-spectrum inter-agent-handoffs)))
+      (tool
+        (name memory-freshness-check)
+        (summary "Механічний контроль свіжості пам'яті екосистеми та відставання від комітів · Mechanical check of ecosystem memory freshness and commit drift")
+        (path "../ecosystem/scripts/memory-freshness-check.sh")
+        (invoke "bash /home/agents/ecosystem/scripts/memory-freshness-check.sh [memory-dir]")
+        (risk read-only)
+        (verify (exit-0-reported days-since-updated commits-behind-head)))
+      (tool
+        (name check-guard-reference-schema)
+        (summary "Швидка лексична перевірка валідності записів схеми довідника Guard · Bounded lexical schema gate for Guard reference directory")
+        (path "../ecosystem/scripts/check-guard-reference-schema.py")
+        (invoke "python3 /home/agents/ecosystem/scripts/check-guard-reference-schema.py --catalogue /home/agents/GitHub/my-lisp/knowledge/guard-reference.wsm")
+        (risk read-only)
+        (verify (exit-0-pass references-count topics-count inbox-checked)))
+      (tool
+        (name volnost-lint)
+        (summary "Лінтер нормативних і семантичних дефектів для дослідницьких матеріалів pravda · Linter for normative and semantic defects in pravda research")
+        (path "../GitHub/pravda/scripts/volnost_lint.py")
+        (invoke "python3 /home/agents/GitHub/pravda/scripts/volnost_lint.py [path]")
+        (risk read-only)
+        (verify (exit-0-clean no-forbidden-teleology no-paraphrase-drift))))))
 
 
 (def guard-script-find
