@@ -1,28 +1,36 @@
-; Sanskrit Cyrillic Keyboard — AutoHotkey MVP
-; ===========================================
+; Sanskrit Cyrillic Keyboard — AutoHotkey MVP (Corrected)
+; ========================================================
+; Architecture: Ukrainian base layout + phonological gesture layer
 ; Base: Ukrainian layout (untouched)
-; Modifier: Win key toggles modes
-; Dead keys: RETRO, LONG, PAL (toggled via Win+R/L/P)
+; Gesture layer: Win-key toggled modes (dead-key equivalents)
+; Principle: Ukrainian VedaBase-UA surface = authority
+;            Latin/IAST compose sequences REMOVED
 ;
-; Usage:
-;   Win+R  → toggle RETRO mode (dot below: retroflex)
-;   Win+L  → toggle LONG mode (macron: long vowels)
-;   Win+P  → toggle PAL mode (palatal: acute/tilde)
-;   Win+A  → toggle ASP mode (aspirated digraphs)
-;   Win+V  → toggle VOC mode (vocalic r/l)
-;   Win+S  → toggle VIS mode (visarga)
+; Modes (Win + key toggle):
+;   Win+R → RETRO (retroflex: dot below)
+;   Win+L → LONG  (vowel length: macron)
+;   Win+P → PAL   (palatal: acute/tilde)
+;   Win+A → ASP   (aspiration: digraphs per VedaBase)
+;   Win+V → VOC   (vocalic r/l: dot below)
+;   Win+S → VIS   (visarga: dot below on х)
 ;
 ; Gestures (when mode active):
-;   RETRO: т→т̣  д→д̣  н→н̣  ш→ш̣  р→р̣
-;   LONG:  а→а̄  і→ı̄  у→ӯ  е→е̄  о→о̄
-;   PAL:   ш→ш́  н→н̃
-;   ASP:   к→кг  ґ→ґг  д→дг  б→бг  п→пг
-;   VOC:   р→р̣  л→л̣
+;   RETRO: т→т̣ д→д̣ н→н̣ ш→ш̣ р→р̣ с→с̣
+;   LONG:  а→а̄ і→ı̄ у→ӯ е→е̄ о→о̄
+;   PAL:   ш→ш́ н→н̃ с→с́ з→з́
+;   ASP:   к→кг ґ→ґг д→дг б→бг п→пг т→тг
+;   VOC:   р→р̣ л→л̣
 ;   VIS:   х→х̣
 ;
-; Compose (always active, no mode needed):
-;   Ctrl+Alt+j+n → джн̃
-;   Ctrl+Alt+s+t → шт̣
+; Conjuncts: via mode combinations (not Latin compose)
+;   RETRO+PAL: шт̣
+;   PAL+NASAL: джн̃
+;
+; Controls:
+;   Win+Space → show active modes
+;   Win+Esc   → disable all modes
+;   Win+Ctrl+S → suspend/resume
+;   Win+Ctrl+R → reload script
 
 #NoEnv
 #SingleInstance Force
@@ -62,7 +70,7 @@ global VisMode := false
     ShowModeTip("PAL", PalMode)
     return
 
-; Win+A → ASP (aspirated digraphs)
+; Win+A → ASP (aspiration)
 ~LWin & a::
     AspMode := !AspMode
     ShowModeTip("ASP", AspMode)
@@ -94,7 +102,7 @@ RemoveToolTip:
 }
 
 ; ============================================================================
-; RETRO MODE GESTURES (dot below for retroflex)
+; RETRO MODE (dot below for retroflex)
 ; ============================================================================
 #If RetroMode
     ; т → т̣ (U+0442 + U+0323)
@@ -107,7 +115,7 @@ RemoveToolTip:
     n::Send {U+043D}{U+0323}
     
     ; ш → ш̣ (U+0448 + U+0323)
-    SC013::Send {U+0448}{U+0323}  ; ш key (SC013 on standard UA)
+    SC013::Send {U+0448}{U+0323}
     
     ; р → р̣ (U+0440 + U+0323)
     r::Send {U+0440}{U+0323}
@@ -117,7 +125,7 @@ RemoveToolTip:
 #If
 
 ; ============================================================================
-; LONG MODE GESTURES (macron for long vowels)
+; LONG MODE (macron for long vowels)
 ; ============================================================================
 #If LongMode
     ; а → а̄ (U+0430 + U+0304)
@@ -137,7 +145,7 @@ RemoveToolTip:
 #If
 
 ; ============================================================================
-; PAL MODE (palatal: acute on ш, tilde on н)
+; PAL MODE (palatal: acute on ш/с/з, tilde on н)
 ; ============================================================================
 #If PalMode
     ; ш → ш́ (U+0448 + U+0301)
@@ -146,15 +154,15 @@ RemoveToolTip:
     ; н → н̃ (U+043D + U+0303)
     n::Send {U+043D}{U+0303}
     
-    ; с → с́ (palatal s)
+    ; с → с́ (U+0441 + U+0301)
     s::Send {U+0441}{U+0301}
     
-    ; з → з́ (palatal z)
+    ; з → з́ (U+0437 + U+0301)
     z::Send {U+0437}{U+0301}
 #If
 
 ; ============================================================================
-; ASP MODE (aspirated digraphs per VedaBase)
+; ASP MODE (aspirated digraphs per VedaBase-UA)
 ; ============================================================================
 #If AspMode
     ; к → кг
@@ -177,13 +185,13 @@ RemoveToolTip:
 #If
 
 ; ============================================================================
-; VOC MODE (vocalic r/l)
+; VOC MODE (vocalic r/l: dot below)
 ; ============================================================================
 #If VocMode
-    ; р → р̣
+    ; р → р̣ (U+0440 + U+0323)
     r::Send {U+0440}{U+0323}
     
-    ; л → л̣
+    ; л → л̣ (U+043B + U+0323)
     l::Send {U+043B}{U+0323}
 #If
 
@@ -191,57 +199,20 @@ RemoveToolTip:
 ; VIS MODE (visarga on х)
 ; ============================================================================
 #If VisMode
-    ; х → х̣
+    ; х → х̣ (U+0445 + U+0323)
     h::Send {U+0445}{U+0323}
 #If
 
 ; ============================================================================
-; ALWAYS-ACTIVE COMPOSE SEQUENCES (Ctrl+Alt)
+; CONJUNCT SEQUENCES (mode combinations, NOT Latin compose)
 ; ============================================================================
-; Ctrl+Alt+j+n → джн̃ (jñ)
-^!j::
-    SendEvent {Ctrl up}{Alt up}джн̃
-    return
+; RETRO + PAL → шт̣ (SA_TTA_CONJ)
+; Enter: RETRO mode, then PalMode, type ш then т
+; Or: enable both modes, type ш then т
 
-; Ctrl+Alt+s+t → шт̣ (ṣṭ)
-^!s::
-    SendEvent {Ctrl up}{Alt up}шт̣
-    return
-
-; Ctrl+Alt+d+h → дг (dh)
-^!d::
-    SendEvent {Ctrl up}{Alt up}дг
-    return
-
-; Ctrl+Alt+k+h → кг (kh)
-^!k::
-    SendEvent {Ctrl up}{Alt up}кг
-    return
-
-; Ctrl+Alt+g+h → ґг (gh)
-^!g::
-    SendEvent {Ctrl up}{Alt up}ґг
-    return
-
-; Ctrl+Alt+b+h → бг (bh)
-^!b::
-    SendEvent {Ctrl up}{Alt up}бг
-    return
-
-; Ctrl+Alt+p+h → пг (ph)
-^!p::
-    SendEvent {Ctrl up}{Alt up}пг
-    return
-
-; Ctrl+Alt+t+h → тг (th)
-^!t::
-    SendEvent {Ctrl up}{Alt up}тг
-    return
-
-; Ctrl+Alt+j+n → джн̃ (jñ)
-^!j::
-    SendEvent {Ctrl up}{Alt up}джн̃
-    return
+; PAL + NASAL → джн̃ (SA_JNYA)
+; Enter: PalMode, type дж then NASAL+н
+; Implementation: use existing PalMode+n for н̃, precede with дж
 
 ; ============================================================================
 ; STATUS DISPLAY (Win+Space shows current modes)
