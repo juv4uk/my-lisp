@@ -1,4 +1,13 @@
 ((tasks . (
+  ("VOLNOST-ECOSYSTEM-TRANSITION" . (
+    (priority . 10.0)
+    (capabilities . (governance licensing policy audit))
+    (origin . ecosystem)
+    (context . "done: 2026-09-05 owner directive executed. Adopted VOLNOST in my-lisp (commit ea66daf) and across all 20 owned ecosystem repos. Guard bureau updated in knowledge/guard-reference.wsm (commit 1f45c53).")
+    (description . "DONE 2026-09-05: Adopt VOLNOST plain-philosophy license in my-lisp and synchronize ecosystem guard reference bureau with the new licensing architecture.")
+    (done . (2026-09-05 "Verified and live under VOLNOST"))
+  ))
+
      ("BILINGUAL-DOCUMENTATION-AUDIT" .
     ((priority . 9.0)
      (capabilities . (documentation translation audit policy))
