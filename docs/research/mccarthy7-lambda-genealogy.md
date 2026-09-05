@@ -100,8 +100,66 @@ REQUIRES ADMITTED EVALUATOR CAPABILITY (AEC)
 
 ---
 
-## 7. Next Steps & Independent Witness / Наступні кроки та незалежний свідок
+## 7. Independent Witness B: Metacircular Evaluator (`lib/meta-eval.my`)
+## Незалежний свідок B: Метациркулярний обчислювач (`lib/meta-eval.my`)
 
-1. **Independent Witness Pass:** Construct an isolated executable demonstration in `meta-eval.my` or Guile that tests whether closure capture and operator application can be isolated from the evaluator's primitive set.
-2. **Decomposition Verification:** Verify whether the surface syntax `(lambda (x) ...)` can be formally desugared once environment capture and application hooks are explicitly admitted.
-3. **Classification Transition:** Once the independent witness is recorded, propose an update to ADR-004 transitioning `lambda` from `? UNRESOLVED` to `AEC: Lexical-Closure & Application Capability`.
+To establish whether the necessity of evaluator intervention is merely an artifact of the Rust runtime (`crates/my-lisp/src/eval/`) or an intrinsic property of the observable semantics, a second independent witness was executed against `lib/meta-eval.my` via test `meta_eval_lambda_witness_env_capture_and_application` in `crates/my-lisp/tests/mccarthy.rs`.
+
+Щоб перевірити, чи потреба у втручанні обчислювача є лише артефактом Rust-рантайму (`crates/my-lisp/src/eval/`), чи іманентною властивістю спостережуваної семантики, виконано другого незалежного свідка над `lib/meta-eval.my` через тест `meta_eval_lambda_witness_env_capture_and_application` у `crates/my-lisp/tests/mccarthy.rs`.
+
+### Witness A (Explicit Lexical Environment Capture):
+In `lib/meta-eval.my`, `my-eval` receives the lexical environment `env` as an explicit evaluation parameter:
+```lisp
+((eq (car expr) (quote lambda))
+ (list (quote closure) (second expr) (cdr (cdr expr)) env))
+```
+When evaluating `(lambda (x) outer)` under `witness-env = ((outer . 7))`:
+- The surface expression does **not** mention `witness-env`.
+- The evaluation produces the observable tagged list data:
+  ```lisp
+  (closure (x) (outer) ((outer . 7)))
+  ```
+- **Conclusion:** Constructing the tagged list is ordinary list algebra (`cons`, `quote`), but obtaining the implicit lexical environment `env` requires the evaluator's internal context.
+
+### Witness B (Operator Application & Frame Extension):
+In `lib/meta-eval.my`, `my-apply` detects the closure tag and binds arguments:
+```lisp
+((eq (car fn) (quote closure))
+ (my-eval-body (third fn)
+   (bind-params (second fn) args (car (cdr (cdr (cdr fn)))))))
+```
+When evaluating `(my-apply closure-val (cons 42 (quote ())))`:
+- `bind-params` creates an extended association list: `((x . 42) (outer . 7))`.
+- Parameter binding itself is pure list algebra (`cons`, `car`, `cdr`).
+- However, ordinary expression application `((lambda (x) outer) 42)` requires the evaluator to recognize the closure value in operator position and invoke the application protocol instead of treating `closure` as an undefined function name.
+
+Both independent implementations (Rust host evaluator and `meta-eval.my` in Lisp) exhibit the identical boundary:
+1. **List algebra** handles parameter binding, alist representation, and closure records.
+2. **Evaluator capability** is required for implicit lexical environment capture and operator-position application dispatch.
+
+---
+
+## 8. Refined Decomposed Status / Уточнений декомпонований статус
+
+```text
+┌────────────────────────────────────────┬───────────────────────────────────────────┐
+│ Component / Компонент                  │ Proven Semantic Status                    │
+├────────────────────────────────────────┼───────────────────────────────────────────┤
+│ Surface syntax `(lambda (x) ...)`      │ DERIVED (syntactic sugar over capture)    │
+│ Parameter binding (`bind-params`)      │ DERIVED (pure McCarthy-7 list algebra)    │
+│ Closure data structure                 │ ADMITTED DATA (tagged pair/list domain)   │
+│ Lexical environment capture            │ ADMITTED EVALUATOR CAPABILITY (AEC)       │
+│ Operator-position application hook     │ ADMITTED EVALUATOR CAPABILITY (AEC)       │
+└────────────────────────────────────────┴───────────────────────────────────────────┘
+```
+
+**Normative State (ADR-004):**
+In ADR-004 (`docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`), `lambda` remains cataloged as `? UNRESOLVED` until the owner decides whether to formally graduate it as an Admitted Evaluator Capability (AEC) or keep it in the diagnostic tier.
+
+---
+
+## 9. Next Steps / Наступні кроки
+
+1. Present the two independent witnesses (Rust evaluator + `meta-eval.my`) and the decomposed taxonomy to the owner.
+2. If accepted, formulate the precise wording for ADR-004 to categorize `lambda` not as an 8th primitive, but as an Admitted Evaluator Capability (AEC) over closure values.
+
