@@ -676,7 +676,16 @@
         (verify (gh-repo-visibility-checked ecosystem-is-private-confirmed))
         (lifecycle current-contract)
         (provenance "ecosystem decision and gh release execution 2026-09-05")
-        (unknown-route ask-owner)))))
+        (unknown-route ask-owner))
+      (reference
+        (topic remote-droplet-deployment-and-sync)
+        (summary "DigitalOcean droplet 100.113.68.50 (ubuntu-s-1vcpu-512mb-10gb-ams3) in Tailnet: runs canonical remote semantic oracle :9999 (HAProxy -> :10000) and swarm-node node-1 :9101; access via ed25519 in ~/.ssh/droplet-keys/<agent>/ with agentops user; live git clone /root/my-lisp kept in sync via git pull --ff-only origin main | Дроплет DigitalOcean 100.113.68.50 у Tailnet: запускає віддалений оракул :9999 та swarm-node node-1 :9101; доступ через ed25519-ключі агента під юзером agentops; клон /root/my-lisp синхронізується з origin/main")
+        (authority (../ecosystem/shared/DROPLET-ACCESS.md ../ecosystem/memory/swarm-node-ops.md scripts/compare-oracle-time.py))
+        (how-to (verify-tailscale-active check-ssh-droplet-key test-remote-oracle-eval pull-root-my-lisp-ff-only compare-oracle-time))
+        (verify (tailscale-ping-ok ssh-agentops-ok remote-eval-protocol-ok git-ff-only-clean))
+        (lifecycle current-operation)
+        (provenance "droplet sync and verification pass 2026-09-05")
+        (unknown-route ask-agent)))))
 
 ; Curated frequently-used tools. A record is navigation, not permission to run
 ; the command. `risk` and `verify` tell an agent what must be checked afterward.
