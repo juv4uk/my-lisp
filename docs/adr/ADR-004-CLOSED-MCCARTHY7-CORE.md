@@ -138,17 +138,39 @@ The canonical identity table is an autonomous normative entity separate from any
 
 Канонічна таблиця тотожностей є автономною нормативною сутністю, відокремленою від будь-якого середовища обчислення чи коду диспетчеризації. Вона формалізує відношення між семантичною сутністю та людськими знаковими системами:
 
+#### Surface Correspondence Principle / Принцип відповідності поверхні
+
+> **A surface name is not a definition of the canonical identity it represents.**
+>
+> `atom` ≠ definition of `PRIM_ATOM`  
+> `атом` ≠ definition of `PRIM_ATOM`  
+> `aṇu`  ≠ definition of `PRIM_ATOM`
+>
+> All admitted surface signs point to the same canonical identity. None of them *defines* it. A surface name is admitted when:
+> 1. It does not contradict the canonical semantic contract.
+> 2. It provides good human intuition toward the operation.
+> 3. It is natural in its human language.
+> 4. It does not introduce new semantics.
+
+> **Принцип:** Поверхнева назва — не визначення канонічної тотожності, яку вона позначає. `atom`, `атом` і `aṇu` — три незалежні людські проєкції однієї й тієї самої canonical identity. Жодна з них не є формальним визначенням операції.
+
 | Canonical Identity | Lineage (McCarthy 1960) | Ukrainian (`uk`) | Sanskrit (`sa`) | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | `PRIM_QUOTE` | `quote` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
-| `PRIM_ATOM` | `atom` | `атом` | ? | **L0 Primitive Identity** |
-| `PRIM_EQ` | `eq` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
-| `PRIM_CAR` | `car` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
-| `PRIM_CDR` | `cdr` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
-| `PRIM_CONS` | `cons` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
-| `PRIM_COND` | `cond` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
+| `PRIM_ATOM` | `atom` | **`атом`** ✅ | **`aṇu` / अणु** ✅ | **L0 Primitive Identity** |
+| `PRIM_EQ` | `eq` | ? *(досліджується)* | ? *(досліджується)* | **L0 Primitive Identity** |
+| `PRIM_CAR` | `car` | **`перше`** ✅ | **`ādi` / आदि** ✅ | **L0 Primitive Identity** |
+| `PRIM_CDR` | `cdr` | **`решта`** ✅ | **`śeṣa` / शेष** ✅ | **L0 Primitive Identity** |
+| `PRIM_CONS` | `cons` | ? *(досліджується)* | ? *(досліджується)* | **L0 Primitive Identity** |
+| `PRIM_COND` | `cond` | ? *(досліджується)* | ? *(досліджується)* | **L0 Primitive Identity** |
 
-> **Rule on Surface Spellings:** We do not rush to invent or prematurely freeze translations for the remaining six primitives. In particular, `car` and `cdr` are historical hardware register acronyms from the IBM 704 architecture; identifying their essential operation and discovering faithful Ukrainian terms requires genuine linguistic and conceptual research, not mechanical transliteration. Unverified slots remain explicitly marked with `?`.
+**Evidence for accepted entries (2026-09-06):**
+
+- `PRIM_ATOM → атом / aṇu`: `атом` — established Ukrainian technical term carrying correct structural intuition (non-decomposable object). `aṇu` — Vaiśeṣika-sūtra 7.1.10–11 and Nyāyasūtra 2.2.24 confirm `aṇu` as a structural category (not merely physical). Rejected `niravayava` (without parts) — too definitional; `paramāṇu` — too tied to specific Vaiśeṣika ontology.
+- `PRIM_CAR → перше / ādi`: `перше` — operationally transparent Ukrainian: «give me the first». `ādi` — Vaiśeṣika-sūtra 4.2.9 (`āditva` = structural primacy), Nyāyasūtra 2.2.13 (`ādimatva` = property of being first). As standalone word, no et-cetera ambiguity.
+- `PRIM_CDR → решта / śeṣa`: `решта` — directly names the operation: «what remains after the first». `śeṣa` — Nyāyasūtra 1.1.5 `śeṣavat` is one of the three canonical forms of inference; `śeṣa` = «that which structurally remains after exclusion» — precise logical term, not merely colloquial «remainder».
+
+> **Rule on Surface Spellings:** Unverified slots remain explicitly marked with `?`. Do not rush to invent or prematurely freeze surface names. `car` and `cdr` lineage names are IBM 704 register acronyms — understanding the *operation* first, then finding the human sign.
 
 ---
 
