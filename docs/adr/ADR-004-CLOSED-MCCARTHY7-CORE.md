@@ -156,19 +156,30 @@ The canonical identity table is an autonomous normative entity separate from any
 
 | Canonical Identity | Lineage (McCarthy 1960) | Ukrainian (`uk`) | Sanskrit (`sa`) | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| `PRIM_QUOTE` | `quote` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
+| `PRIM_QUOTE` | `quote` | ? *(досліджується — див. примітку)* | ? *(досліджується)* | **L0 Primitive Identity** |
 | `PRIM_ATOM` | `atom` | **`атом`** ✅ | **`aṇu` / अणु** ✅ | **L0 Primitive Identity** |
-| `PRIM_EQ` | `eq` | ? *(досліджується)* | ? *(досліджується)* | **L0 Primitive Identity** |
+| `PRIM_EQ` | `eq` | **`тотожне`** ✅ | **`abheda` / अभेद** ✅ | **L0 Primitive Identity** |
 | `PRIM_CAR` | `car` | **`перше`** ✅ | **`ādi` / आदि** ✅ | **L0 Primitive Identity** |
 | `PRIM_CDR` | `cdr` | **`решта`** ✅ | **`śeṣa` / शेष** ✅ | **L0 Primitive Identity** |
-| `PRIM_CONS` | `cons` | ? *(досліджується)* | ? *(досліджується)* | **L0 Primitive Identity** |
-| `PRIM_COND` | `cond` | ? *(досліджується)* | ? *(досліджується)* | **L0 Primitive Identity** |
+| `PRIM_CONS` | `cons` | **`сполучити`** ✅ | **`saṃyuj` / संयुज्** ✅ | **L0 Primitive Identity** |
+| `PRIM_COND` | `cond` | ? *(досліджується — див. примітку)* | ? *(досліджується)* | **L0 Primitive Identity** |
 
 **Evidence for accepted entries (2026-09-06):**
 
-- `PRIM_ATOM → атом / aṇu`: `атом` — established Ukrainian technical term carrying correct structural intuition (non-decomposable object). `aṇu` — Vaiśeṣika-sūtra 7.1.10–11 and Nyāyasūtra 2.2.24 confirm `aṇu` as a structural category (not merely physical). Rejected `niravayava` (without parts) — too definitional; `paramāṇu` — too tied to specific Vaiśeṣika ontology.
-- `PRIM_CAR → перше / ādi`: `перше` — operationally transparent Ukrainian: «give me the first». `ādi` — Vaiśeṣika-sūtra 4.2.9 (`āditva` = structural primacy), Nyāyasūtra 2.2.13 (`ādimatva` = property of being first). As standalone word, no et-cetera ambiguity.
-- `PRIM_CDR → решта / śeṣa`: `решта` — directly names the operation: «what remains after the first». `śeṣa` — Nyāyasūtra 1.1.5 `śeṣavat` is one of the three canonical forms of inference; `śeṣa` = «that which structurally remains after exclusion» — precise logical term, not merely colloquial «remainder».
+- `PRIM_ATOM → атом / aṇu`: `атом` — established Ukrainian technical term, correct structural intuition (non-decomposable). `aṇu` — Vaiśeṣika-sūtra 7.1.10–11 and Nyāyasūtra 2.2.24: structural size-category, not merely physical. Rejected: `niravayava` (too definitional), `paramāṇu` (too tied to Vaiśeṣika ontology).
+- `PRIM_EQ → тотожне / abheda`: `тотожне` — Ukrainian technical term for identity (not numeric equality, not similarity). `abheda` (अभेद, lit. non-difference) — Nyāya term for identity relation at the ontological level. Preferred over `sama` (too broad: equal in measure/kind) and `tulya` (equal in quantity). McCarthy `eq` tests atom identity, not structural equality — `abheda` points precisely there. `тотожне` avoids confusion with numeric `=`. Source: Tarkasaṅgraha §80 `anyonyābhāva`/`tādātmya` semantic field.
+- `PRIM_CAR → перше / ādi`: `перше` — operationally transparent Ukrainian. `ādi` — Vaiśeṣika-sūtra 4.2.9 (`āditva` = structural primacy), Nyāyasūtra 2.2.13 (`ādimatva`). As standalone word: no et-cetera ambiguity.
+- `PRIM_CDR → решта / śeṣa`: `решта` — «what remains after the first». `śeṣa` — Nyāyasūtra 1.1.5 `śeṣavat`: canonical inference type; `śeṣa` = «that which structurally remains after exclusion».
+- `PRIM_CONS → сполучити / saṃyuj`: names the *action*, not the result. `сполучити` — Ukrainian «to join/couple». `saṃyuj` (संयुज्, √yuj + sam-) — verb form, action of construction. Preferred over `saṃyoga` (state, a guṇa in Vaiśeṣika) and `yugma` (result: a pair). Source: Tarkasaṅgraha §27. Structural algebra:
+  ```
+  сполучити A B → (A . B)     saṃyuj A B → (A . B)
+  перше (A . B) → A           ādi    (A . B) → A
+  решта (A . B) → B           śeṣa   (A . B) → B
+  ```
+
+> **Open: `PRIM_COND`** — `якщо` is a tempting Ukrainian candidate but `cond` is not a single `if`. It selects the first true clause from a sequence. A sign closer to «when / upon condition / select» may be more precise. Research deliberately deferred.
+
+> **Open: `PRIM_QUOTE`** — semantically the most treacherous. `quote` means «do not evaluate; return the expression as-is». Ukrainian `дослівно` (literally / word-for-word) is a strong candidate. For Sanskrit: seek not «quotation» but «in this very form / without transformation». Research deliberately deferred.
 
 > **Rule on Surface Spellings:** Unverified slots remain explicitly marked with `?`. Do not rush to invent or prematurely freeze surface names. `car` and `cdr` lineage names are IBM 704 register acronyms — understanding the *operation* first, then finding the human sign.
 
