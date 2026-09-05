@@ -200,3 +200,49 @@ An operation or syntactic form cannot be declared `L2 DERIVED` simply because it
 1. **Freedom from Ontological Creep:** Future agents, implementers, and backends are prohibited from promoting convenience operations (such as `add` or `eval`) to primitive status.
 2. **Honest Roadmap for Simplification:** The `? UNRESOLVED` column identifies the exact semantic debt of the Rust implementation. Subsequent milestones will systematically resolve each `?` into either an admitted value domain, a proven derived form, an external capability, or a cleanly sequestered host tool.
 3. **Substrate Neutrality:** `my-lisp` remains an autonomous mathematical creation that presides above Rust, C, and FPGA silicon.
+
+---
+
+## 8. Closed: Canon Access Architecture (2026-09-06)
+## 8. Закрито: Архітектура доступу до канону (2026-09-06)
+
+The question of canonical access semantics (initiated during the canon-namespace-shadowing research cycle, `docs/research/canon-namespace-shadowing.md`) is **closed with the following decision:**
+
+Питання семантики доступу до канону (досліджене в `docs/research/canon-namespace-shadowing.md`) **закрите з таким рішенням:**
+
+**Chosen: Variant A — No privileged `canon:*` namespace. / Обрано: Варіант A — без привілейованого простору імен `canon:*`.**
+
+The two requirements that were at risk of being conflated:
+
+```text
+Canon must be immutable
+  ≠
+User must always have a magic unshadowable path to Canon
+```
+
+**Resolution:** The Canon is an invariant of the specification and the conformance harness — **not** an invariant enforced in the runtime lexical environment. Any surface name (`atom`, `атом`, `canon:atom`) is an ordinary symbol that may be shadowed in a local scope. Shadowing a surface name does not alter, redefine, or pollute the canonical semantic identity it refers to. `PRIM_ATOM` remains what it is regardless of what the local scope says about the word `atom`.
+
+**The closed formula:**
+
+```text
+CANON defines meaning.
+Environment binds names.
+Names may change.
+Meaning does not.
+```
+
+**What this closes permanently:**
+
+| Proposal | Status |
+| :--- | :--- |
+| Variant B: protected `canon:*` prefix | **REJECTED** — introduces privileged lexical class, increases ontology, blocks C/FPGA |
+| Variant C: separate ROM dispatch map | **REJECTED** — reinvents `(core ...)` under namespace syntax |
+| `(core ...)` special form | **REJECTED** — would create an 8th primitive via backdoor |
+| Destructive normalization `атом → atom` at reader | **REJECTED** — destroys homoiconicity |
+| `canon:*` as semantic-privileged namespace | **REJECTED** — `canon:*` may exist as library convention only |
+
+**What remains open** (not affected by this decision):
+
+- Ukrainian surface spellings for `PRIM_CAR`, `PRIM_CDR`, `PRIM_CONS`, `PRIM_COND`, `PRIM_EQ`, `PRIM_QUOTE` — deliberately `?` in §4.1 above.
+- `lambda` genealogy — ADR-004 §5 status `? UNRESOLVED`, next research target after this closure.
+

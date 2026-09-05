@@ -8,6 +8,75 @@
 
 ---
 
+## DECISION (Owner, 2026-09-06) / РІШЕННЯ
+
+**Variant A is chosen. Research cycle on canon namespace access is closed.**  
+**Обрано Варіант A. Дослідницький цикл питань доступу до канону закрито.**
+
+```text
+CANON-NAMESPACE-SHADOWING — DECISION
+
+Choose Variant A.
+
+- Canonical semantic identities remain immutable.
+- Surface names remain ordinary lexical symbols.
+- No reserved `canon:*` prefix.
+- No binder prefix checks.
+- No evaluator privilege.
+- No `(core ...)`.
+- No requirement that canonical access remain unshadowable inside a scope.
+- Shadowing a surface name does not mutate or redefine the Canon.
+- Conformance observes Canon independently of Environment.
+
+`canon:*` may later exist as an ordinary library/prelude naming convention,
+but it has no privileged semantic status.
+```
+
+**The formula / Формула:**
+
+```text
+CANON defines meaning.
+Environment binds names.
+Names may change.
+Meaning does not.
+```
+
+**Reasoning / Обґрунтування:**
+
+Two requirements that must not be conflated:
+
+```text
+Canon must be immutable
+  ≠
+User must always have a magic unshadowable path to Canon
+```
+
+The Canon is an invariant of the specification and conformance harness — not an invariant of the runtime lexical environment. A user who writes `(let ((atom 42)) atom)` shadows the word, not `PRIM_ATOM`. `PRIM_ATOM` has not changed; conformance still observes it. Variant B would introduce a privileged lexical class (reserved prefix symbols), increasing language ontology and making clean FPGA/C implementation harder — without any semantic necessity.
+
+```text
+              CANON (immutable specification entity)
+                          │
+               semantic mappings
+                          │
+             ┌────────────┼────────────┐
+             ▼            ▼            ▼
+           atom          атом      canon:atom
+             │            │            │
+             └──────── ordinary symbols ──────┐
+                                              ▼
+                                        Environment
+                                              │
+                                        may shadow any
+```
+
+Conformance harness checks:
+- `"atom"`, `"атом"` → resolve to `PRIM_ATOM` when admitted
+- `PRIM_ATOM` semantics = invariant
+
+Not: whether any particular name can be shadowed inside a scope.
+
+---
+
 ## 1. The Core Tension / Головне протиріччя
 
 If `canon:atom` (or Ukrainian `canon:атом`) is introduced as the canonical escape hatch to access the immutable primitive `PRIM_ATOM`:
