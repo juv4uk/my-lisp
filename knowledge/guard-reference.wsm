@@ -513,7 +513,16 @@
         (verify (primary-vs-secondary-distinguished file-line-citations gained consent-before-propagation))
         (lifecycle current-contract)
         (provenance "runs/2026-09-05-author-understanding, tula/big-pickle 2026-09-05: read-only reconstruction, hostile review passed")
-        (unknown-route ask-owner)))))
+        (unknown-route ask-owner))
+      (reference
+        (topic cml-index)
+        (summary "CML single shared IR pipeline (parser->ast->macros->lower->ir; backends consume Ir, fail-closed validate_ir); hand-written fpga-lisp register ABI (docs/abi.md: R0 args, R4 env, R11 sw stack, R14 link, R15 result; no register survives a different subexpr); five backends sharing one IR (FPGA hardware-verified, C vs oracle, x86_64 freestanding bounded slice, CUDA LIVE GTX 1050 Ti, WGPU optional); compatibility.my contract 2.0 vs upstream 3.0 (status upgrade-required), P0 profile, compute-contract.my v0.28; conformance via single blind tests/conformance_test.rs over my-lisp fixtures; semantic.rs fail-closed admission (dup lambda params, multi-expr lambda bodies) | CML спільний IR pipeline (parser->ast->macros->lower->ir; backends споживають Ir, fail-closed validate_ir); рукописний fpga-lisp register ABI (docs/abi.md: R0 аргументи, R4 env, R11 sw stack, R14 link, R15 результат; жоден регістр не виживає в іншій pід-виразі); п'ять backends на одному IR (FPGA на апаратурі, C проти oracle, x86_64 freestanding bounded slice, CUDA LIVE GTX 1050 Ti, WGPU optional); compatibility.my contract 2.0 проти upstream 3.0 (status upgrade-required), P0 profile, compute-contract.my v0.28; conformance через єдиний blind tests/conformance_test.rs над my-lisp fixtures; semantic.rs fail-closed admission (dup lambda params, багатовиразові lambda bodies)")
+        (authority (../cml/docs/heterogeneous-backends.md ../cml/docs/abi.md ../cml/compatibility.my ../cml/compute-contract.my ../cml/src/compiler.rs ../cml/src/semantic.rs ../cml/src/compute.rs ../cml/tests/conformance_test.rs ../cml/README.md))
+        (how-to (read-heterogeneous-backends.md read-abi.md check-compatibility.my run-conformance-test verify-cuda-live))
+        (verify (ir-shared backends-classified p0-profile-listed blind-conformance-tested semantic-gate-tested contract-status-honest))
+        (lifecycle current-contract)
+        (provenance "cml 2026-09-01 GUARD-REF-CML: 6 inbox candidates consolidated into one index; sources verified 2026-09-05 (tula)")
+        (unknown-route ask-agent)))))
 
 ; Curated frequently-used tools. A record is navigation, not permission to run
 ; the command. `risk` and `verify` tell an agent what must be checked afterward.
