@@ -208,93 +208,184 @@ for compactness and verb-action orientation, consistent with naming the *operati
 
 ---
 
-## Open: PRIM_QUOTE — Research Path
+## Open: PRIM_QUOTE — Research Path (calibrated 2026-09-06)
 
-**Semantic contract:** `(quote expr)` — return `expr` unevaluated, as-is.
-
-**Core question:** not «what is the Sanskrit word for quotation?» but
-«what Sanskrit root/concept expresses 'in this very form / without transformation'?»
-
-**Candidate dhātu in my-lisp-panini registry:**
+**Semantic contract:**
 ```
-canonical: vac    (adādi, gaṇa 2, parasmaipada, aniṭ)
-meaning: «говорити / to speak»
+(quote expr) → expr    — returned unevaluated, as the form itself
 ```
-- `vac` → `vāc` (speech, word as stated) — the feminine action-noun.
-- `yathāvac` or `yathā-ukta` — «as stated» — a possible direction.
-- But `vac` points to utterance, not to non-evaluation.
 
-**Better candidate: `tathā / yathā`** family:
-- `yathā` = «as, in the manner of» — relational, not a primitive name.
+**What QUOTE does NOT mean:**
+```
+QUOTE ≠ immutability       (the object may be mutated later)
+QUOTE ≠ copying unchanged  (no copy is made)
+QUOTE ≠ preservation in general sense
+```
 
-**Stronger candidate: `avikṛta` (अविकृत)**
-- `a-` + `vikṛta` (kta-participle from `vi-√kṛ` = to modify/transform)
-- `avikṛta` = «unmodified, untransformed, as-is»
-- Morphologically: standard nañ + kta-participle. Clean.
-- Semantic fit: `(quote x)` returns x *avikṛta* — x as-is, without transformation.
+`(quote x)` specifically suppresses the *evaluation mode* applied to x:
+«do not interpret x as an instruction; treat x as the form itself».
 
-**This is a CANDIDATE, not a decision.** Needs primary text evidence.
-Research path: find `avikṛta` in a philosophical context meaning «returned in its
-original form without processing» in `sanskritworld_texts`.
+**Why `avikṛta` is REJECTED:**
+`avikṛta` = «unmodified/untransformed» — speaks about the *state* of the object,
+not about the *evaluation suppression*. It would read as «x is unmodified»,
+which overclaims: quote does not guarantee object immutability, it only
+suppresses evaluation. Under criterion 4 (must not introduce new semantics):
+REJECTED.
 
-Ukrainian path: `дослівно` (literally / word-for-word) — strong candidate.
-«(дослівно x)» = «take x literally, don't process it» — correct intuition.
+**Correct semantic axis:**
+Not «preserved/unchanged», but: «taken as named / as the form stated / as-is-in-itself».
+
+**Candidate investigation — `vac` family (from my-lisp-panini registry):**
+```
+√vac  gaṇa 2, parasmaipada, aniṭ
+traditional_meaning: «говорити / to speak»
+kta-participle: ukta (उक्त) = «spoken, stated, named»
+ghañ nominal: vāka / vāc (वाच्) = «speech, utterance»
+```
+
+**`ukta / उक्त` — kta-participle from √vac:**
+- Vaiśeṣika-sūtra 7.1.1: `uktā guṇāḥ` = «the guṇas [thus] stated/named»
+  `ukta` = «what has been said / what has been named» — the form as named.
+- Morphologically: regular kta-passive participle, fully attested.
+- Semantic reading: `(ukta x)` = «x as stated / x as named» — the form x, not its value.
+- Risk: `ukta` implies something *already said*, pointing backward. Quote is prospective.
+
+**`svarūpa / स्वरूप` — «own form / as-it-is-in-itself»:**
+- Tarkasaṅgraha §56: `svarūpāsiddha` — «unestablished in its own form» — technical
+  logical term for «failing to be what it presents itself as».
+- `svarūpa` = `sva` (own) + `rūpa` (form) — «the thing's own form, as-it-is».
+- Not from √vac lineage, but directly captures «treat x in its own form, not
+  as an instruction to evaluate».
+- `(svarūpa x)` = «return x in its own form» — semantically very close to quote.
+- Risk: may read as «the nature/essence of x» in philosophical contexts.
+
+**`svārtha / स्वार्थ` — «its own meaning/referent»:**
+- Tarkasaṅgraha §48: `svārtham` — «for its own sake / its own referent».
+- But this points to what an expression *means*, not to the form itself. Too indirect.
+
+**Current state: OPEN — three candidates under investigation.**
+```
+ukta     (uktā guṇāḥ — VS 7.1.1)    — kta form, «as stated»
+svarūpa  (svarūpāsiddha — TS §56)    — «in its own form / as-is»
+[unknown] — vac-family further needed
+```
+Neither is yet admitted. Need: primary text evidence for the reading
+«return this in its own form without evaluation/transformation».
 
 ---
 
-## Open: PRIM_COND — Research Path
+## Open: PRIM_COND — Research Path (calibrated 2026-09-06)
 
 **Semantic contract:**
 ```
 (cond ((p₁) e₁) ((p₂) e₂) ... ((pₙ) eₙ))
-→ eᵢ where pᵢ is the first true predicate
+→ eᵢ where pᵢ is the FIRST true predicate (ordered selection)
 ```
 
-**Core question:** not «if», but «select the first true branch».
+**The crucial structural feature:** `cond` is not just «choice» or «alternative» —
+it is **ordered sequential scanning**: evaluate p₁, if true return e₁; else
+evaluate p₂, etc. Order matters. Termination on first success.
 
-**Why `yadi` (यदि, «if») is weak:**
-`yadi` = conditional conjunction = introduces a single condition.
-`cond` is a *selection* over a sequence — closer to discriminative choice.
+**Why `vikalpa` is INSUFFICIENT:**
+- Nyāyasūtra `vikalpa` = mutually exclusive alternatives (either-or disjunction).
+- In Pāṇini, `vikalpa` = optional rule application (may or may not apply) — unordered.
+- Neither captures the *ordered* and *first-true* structure of `cond`.
+- `vikalpa` admits all alternatives as coequal; `cond` has a priority order.
+- STATUS: `vikalpa` REJECTED for now. Weaker than needed.
 
-**Candidate concepts:**
-- `vibhāga` (विभाग) = division, partition, selection — from `vi + √bhaj`
-- `vikalpa` (विकल्प) = alternative, option — from `vi + √kḷp`
-  NS 1.1.44: `vikalpa` = disjunction / either-or option in Nyāya
-- `nirṇaya` (निर्णय) = determination, decision — from `nir + √nī`
-- `prakaraṇa` (प्रकरण) = context-based selection
+**Candidates still open:**
+- `krama` (क्रम) = sequence, order — from `√kram` (to step). Captures order, not selection.
+- `kramavikalpа` — compound? Non-standard, not in primary texts.
+- `anukrama` (अनुक्रम) = sequential order — from `anu + √kram`.
+  Used in technical Sanskrit for «in order, step by step».
+- `nirṇaya` (निर्णय) = determination, decision — from `nir + √nī`.
+  NS: `nirṇaya` = arriving at a definite conclusion. Captures the *resolution* but
+  not the sequential scanning.
 
-**`vikalpa` is the strongest candidate:**
-- Nyāyasūtra uses `vikalpa` for mutually exclusive alternatives: select one.
-- `(vikalpa ...)` = «select from alternatives» — maps to cond's sequential selection.
-- But: `vikalpa` in Pāṇini also means «optionality» in rules (the rule may or may not apply).
-  Semantic overlap possible.
+**The right question for further research:**
+Is there a Sanskrit technical term for «evaluate in order, take the first that applies»?
+This is closer to the Mīmāṃsā method of rule application (`prāptapratipratipatti`?)
+than to Nyāya `vikalpa`.
 
-**Ukrainian path:** `якщо` is too single-conditional.
-Candidates: `коли` (when — sequential), `залежно` (depending on), `вибір` (choice/selection).
-`вибір` (choice) may be the cleanest: `(вибір ...)` = «make a choice from conditions».
+**Ukrainian candidates (open):**
+- `якщо` — single conditional, too weak for sequential selection. ❌
+- `вибір` — choice, but implies unordered selection.
+- `за умовою` — prepositional phrase, not a natural function name.
+- `коли перше` — too verbose.
+- No clear winner yet. **OPEN.**
 
-**Research path:** find `vikalpa` in Nyāya context as «selection of first applicable
-alternative» in `sanskritworld_texts`. Then compare with `vibhāga`.
+**Research path:** examine Mīmāṃsā and Nyāya for terms describing
+ordered rule application / first-applicable-rule semantics.
+Check `sanskritworld_texts/shastra/philosophy/mimamsa/`.
 
 ---
 
-## Summary / Підсумок
+## Grammatical Form Policy / Правило граматичної форми
 
-| Primitive | UK surface | UK status | SA surface | SA status | Pāṇinian form |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `PRIM_ATOM` | `атом` | ✅ | `aṇu` | ✅ | nominal primary |
-| `PRIM_EQ` | `тотожне` | ✅ | `abheda` | ✅ | nañ-compound (a+bheda) |
-| `PRIM_CAR` | `перше` | ✅ | `ādi` | ✅ | nominal primary |
-| `PRIM_CDR` | `решта` | ✅ | `śeṣa` | ✅ | kṛt-a from √śiṣ |
-| `PRIM_CONS` | `сполучити` | ✅ | `saṃyuj` | ✅ | root+upasarga (√yuj+sam) |
-| `PRIM_QUOTE` | `дослівно` | 🟡 candidate | `avikṛta`? | 🟡 unverified | kta-participle from vi-√kṛ |
-| `PRIM_COND` | `вибір`? | 🟡 candidate | `vikalpa`? | 🟡 unverified | vi+√kḷp nominal |
+*(Added 2026-09-06 after owner calibration)*
+
+Sanskrit surface names for PRIM_* **may be of any grammatical class**
+provided the form is natural and readable as a Lisp operator name.
+No single part of speech is required across all seven.
+
+```text
+Criterion E (chosen): natural as a technical operator in its language.
+
+aṇu    — nominal adjective/noun (not dhātu-derived)
+ādi    — nominal (primary)
+śeṣa   — kṛt-a nominal from √śiṣ
+abheda — nañ-compound nominal
+saṃyuj — dhātu + upasarga (root-form as compact action sign)
+```
+
+**Calibration note on `saṃyuj`:**
+`saṃyuj` is a verbal root-form (dhātu + upasarga), not a nominal.
+This is explicitly noted and accepted: `cons` itself is a compressed operational
+label, not a natural-language noun. `saṃyuj` as a surface sign is consistent
+with the Surface Correspondence Principle — it names the *action* without
+defining the primitive. Alternative nominal forms:
+- `saṃyojana` (kṛt -ana = action noun, «act of joining») — equally valid, more nominal
+- `saṃyoga` (ghañ = state noun, «state of being joined») — REJECTED (state ≠ action)
+Decision: `saṃyuj` retained as compact action-oriented sign.
+
+**Pāṇinian role:** Pāṇini **verifies the form** (morphological legitimacy,
+root attestation, suffix regularity). Pāṇini does NOT determine what PRIM_*
+means. The authority chain:
+
+```text
+CANON
+  ↓
+semantic invariant (owner authority)
+  ↓
+surface candidate
+  ↓
+Pāṇinian morphological witness  ← verifies form only
+  ↓
+lexical/textual witness          ← confirms register and usage
+  ↓
+owner admission
+```
+
+---
+
+## Summary / Підсумок (calibrated 2026-09-06)
+
+| Primitive | UK surface | UK status | SA surface | SA status | Pāṇinian form | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `PRIM_ATOM` | `атом` | ✅ | `aṇu` | ✅ | nominal primary | |
+| `PRIM_EQ` | `тотожне` | ✅ | `abheda` | ✅ | nañ + bheda | semantic caution documented |
+| `PRIM_CAR` | `перше` | ✅ | `ādi` | ✅ | nominal primary | standalone only |
+| `PRIM_CDR` | `решта` | ✅ | `śeṣa` | ✅ | kṛt-a from √śiṣ | strongest of five |
+| `PRIM_CONS` | `сполучити` | ✅ | `saṃyuj` | ✅ | √yuj+sam root form | form policy §above |
+| `PRIM_QUOTE` | `дослівно` | 🟡 | `ukta`/`svarūpa`? | 🟡 open | — | avikṛta REJECTED |
+| `PRIM_COND` | ? | 🟡 | ? | 🟡 open | — | vikalpa REJECTED |
 
 **Sources used:**
 - `my-lisp-panini/panini/registry/dhatu/yuj.yaml` — √yuj gaṇa 7, ubhayapada
 - `my-lisp-panini/panini/registry/dhatu/vac.yaml` — √vac gaṇa 2, aniṭ
 - `my-lisp-panini/panini/sastra/pratyaya.md` — kṛt suffix taxonomy
 - `my-lisp-panini/panini/sastra/dhatu.md` — dhātu definition and 4-layer model
-- `sanskritworld_texts/shastra/philosophy/vaisheshika/vaisheShikasUtra.txt` — VS 4.2.9, 7.1.10-11
+- `sanskritworld_texts/shastra/philosophy/vaisheshika/vaisheShikasUtra.txt` — VS 4.2.9, 7.1.1, 7.1.10-11
 - `sanskritworld_texts/shastra/philosophy/nyaya/nyAyasUtra.txt` — NS 1.1.5, 2.2.24
-- `sanskritworld_texts/shastra/philosophy/nyaya/tarkasaNgraha.txt` — §25, §27, §80
+- `sanskritworld_texts/shastra/philosophy/nyaya/tarkasaNgraha.txt` — §25, §27, §56, §80
+
