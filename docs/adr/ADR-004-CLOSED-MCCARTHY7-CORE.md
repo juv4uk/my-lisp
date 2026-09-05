@@ -19,28 +19,32 @@ The current Rust implementation in `crates/my-lisp` provides a rich set of facil
 ## 2. Normative Decision / Нормативне рішення
 
 ### English:
-1. **The primitive semantic set of `my-lisp` is permanently closed.** It consists of exactly seven semantic primitives:
+1. **The closed McCarthy-7 core consists of exactly seven canonical semantic identities:**
    ```text
-   { quote, atom, eq, car, cdr, cons, cond }
+   { PRIM_QUOTE, PRIM_ATOM, PRIM_EQ, PRIM_CAR, PRIM_CDR, PRIM_CONS, PRIM_COND }
    ```
-2. **No eighth primitive may be admitted.** No implementation, compiler backend, runtime substrate, standard library, or future architectural extension may enlarge this set.
-3. **Canonical Conformance Formulation:**
-   > *“A conforming implementation may expose many language capabilities, but it shall classify exactly seven operations as semantic primitives: `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, and `cond`. No other capability may acquire primitive status.”*
-4. **Implementation convenience cannot create language ontology.** The presence of an instruction in hardware (e.g. FPGA `ADD`, x86 `lea`) or an execution helper in a substrate runtime (e.g. `wsm_add`, `wsm_pci_config_read16`) does not make that operation a semantic primitive of `my-lisp`.
-5. **No Self-Proving Introspection:** The language shall **not** define an internal introspection form (such as `primitive-names`). Verification of the closed set belongs exclusively to external conformance test manifests and testing harnesses.
-6. **Negative Invariant:** Any implementation manifest or conformance report that includes additional entries (such as `add`, `eval`, `lambda`, or `read`) in the primitive set shall be rejected fail-closed as `PRIMITIVE_SET_VIOLATION`.
+   Historical McCarthy spellings (`quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond`) and all human-language spellings (e.g. Ukrainian `атом`, Sanskrit representations) are surface representations that resolve to these identities; no surface spelling is itself the semantic identity.
+2. **Canonical Identifiers as Ontological Descriptors:** Identifiers such as `PRIM_ATOM` are normative descriptors of semantic identity in documentation, architecture, and conformance manifests. An implementation is free to represent them as opcodes, machine integers, enums, symbols, or resolution tables — implementation representation does not define semantics.
+3. **No eighth primitive may be admitted.** No implementation, compiler backend, runtime substrate, standard library, or future architectural extension may enlarge this set of identities.
+4. **Canonical Conformance Formulation:**
+   > *“A conforming implementation may expose many language capabilities and surface spellings, but it shall classify exactly seven operations as semantic primitive identities: `PRIM_QUOTE`, `PRIM_ATOM`, `PRIM_EQ`, `PRIM_CAR`, `PRIM_CDR`, `PRIM_CONS`, and `PRIM_COND`. Verification tests conformance of these seven semantic identities, not textual ASCII spellings. No other capability may acquire primitive status.”*
+5. **Implementation convenience cannot create language ontology.** The presence of an instruction in hardware (e.g. FPGA `ADD`, x86 `lea`) or an execution helper in a substrate runtime (e.g. `wsm_add`, `wsm_pci_config_read16`) does not make that operation a semantic primitive of `my-lisp`.
+6. **No Self-Proving Introspection:** The language shall **not** define an internal introspection form (such as `primitive-names`). Verification of the closed set belongs exclusively to external conformance test manifests and testing harnesses.
+7. **Negative Invariant:** Any implementation manifest or conformance report that admits additional primitive identities (such as `add`, `eval`, `lambda`, or `read`) shall be rejected fail-closed as `PRIMITIVE_SET_VIOLATION`.
 
 ### Українська:
-1. **Набір семантичних примітивів `my-lisp` є замкненим назавжди.** Він складається рівно із семи семантичних примітивів:
+1. **Замкнене ядро McCarthy-7 складається рівно із семи канонічних семантичних тотожностей:**
    ```text
-   { quote, atom, eq, car, cdr, cons, cond }
+   { PRIM_QUOTE, PRIM_ATOM, PRIM_EQ, PRIM_CAR, PRIM_CDR, PRIM_CONS, PRIM_COND }
    ```
-2. **Восьмий примітив не може бути доданий.** Жодна реалізація, компіляторний бекенд, рантайм-субстрат, стандартна бібліотека чи майбутнє розширення не мають права розширювати цей набір.
-3. **Канонічне конформне формулювання:**
-   > *«Конформна реалізація може надавати багато мовних можливостей, але статус семантичного примітива мають рівно сім операцій: `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond`. Жодна інша можливість не може набути статусу примітива.»*
-4. **Зручність реалізації не створює онтологію мови.** Наявність апаратної інструкції (наприклад, FPGA `ADD`, x86 `lea`) або допоміжної функції рантайму субстрату (наприклад, `wsm_add`, `wsm_pci_config_read16`) не робить цю операцію семантичним примітивом `my-lisp`.
-5. **Без самостверджувальної інтроспекції:** Мова **не** повинна містити внутрішньої операції переліку примітивів (на кшталт `primitive-names`). Перевірка замкненості множини належить виключно зовнішньому маніфесту відповідності та тестовому harness.
-6. **Негативний інваріант:** Будь-який маніфест реалізації чи звіт конформності, який включає додаткові операції (наприклад, `add`, `eval`, `lambda`, `read`) до множини примітивів, бракується за правилом fail-closed із результатом `PRIMITIVE_SET_VIOLATION`.
+   Історичні назви Маккарті (`quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond`) та відповідники людськими мовами (наприклад, українське `атом`, санскритські позначення) є поверхневими представленнями, що резолвляться в ці тотожності; жодне конкретне написання саме по собі не є семантичною тотожністю.
+2. **Канонічні ідентифікатори як онтологічні дескриптори:** Позначення на кшталт `PRIM_ATOM` є нормативними дескрипторами семантичних тотожностей у документації, архітектурі та маніфестах конформності. Реалізація може кодувати їх числовим кодом/опкодом, enum'ом, символом або таблицею розпізнавання — форма представлення не визначає семантику.
+3. **Восьмий примітив не може бути доданий.** Жодна реалізація, компіляторний бекенд, рантайм-субстрат, стандартна бібліотека чи майбутнє розширення не мають права розширювати цей набір тотожностей.
+4. **Канонічне конформне формулювання:**
+   > *«Конформна реалізація може надавати багато мовних можливостей та поверхневих назв, але статус семантичних примітивів мають рівно сім канонічних тотожностей: `PRIM_QUOTE`, `PRIM_ATOM`, `PRIM_EQ`, `PRIM_CAR`, `PRIM_CDR`, `PRIM_CONS`, `PRIM_COND`. Конформність перевіряє саме наявність та семантику цих семи тотожностей, а не текстові ASCII-рядки. Жодна інша можливість не може набути статусу примітива.»*
+5. **Зручність реалізації не створює онтологію мови.** Наявність апаратної інструкції (наприклад, FPGA `ADD`, x86 `lea`) або допоміжної функції рантайму субстрату (наприклад, `wsm_add`, `wsm_pci_config_read16`) не робить цю операцію семантичним примітивом `my-lisp`.
+6. **Без самостверджувальної інтроспекції:** Мова **не** повинна містити внутрішньої операції переліку примітивів (на кшталт `primitive-names`). Перевірка замкненості множини належить виключно зовнішньому маніфесту відповідності та тестовому harness.
+7. **Негативний інваріант:** Будь-який маніфест реалізації чи звіт конформності, який включає додаткові тотожності (наприклад, `add`, `eval`, `lambda`, `read`) до множини примітивів, бракується за правилом fail-closed із результатом `PRIMITIVE_SET_VIOLATION`.
 
 ---
 
@@ -78,8 +82,9 @@ Substrates do not sit as a language layer. The language exists purely as semanti
                MY-LISP SEMANTIC PYRAMID
                           │
   ┌──────────────────────────────────────────────┐
-  │ L0: CLOSED SEMANTIC CORE                     │
-  │     quote, atom, eq, car, cdr, cons, cond    │
+  │ L0: CLOSED CANONICAL PRIMITIVE IDENTITIES    │
+  │     PRIM_QUOTE, PRIM_ATOM, PRIM_EQ,          │
+  │     PRIM_CAR, PRIM_CDR, PRIM_CONS, PRIM_COND │
   └───────────────────────┬──────────────────────┘
                           ▼
   ┌──────────────────────────────────────────────┐
@@ -101,6 +106,22 @@ Substrates do not sit as a language layer. The language exists purely as semanti
   └──────────────────────────────────────────────┘
 
 ────────────────────────────────────────────────────────
+CANONICAL IDENTITY RESOLUTION (SURFACE LEXICONS):
+
+       surface text:       "atom"         "атом"        "..."
+                             │              │            │
+                             └───────┬──────┘            │
+                                     ▼                   ▼
+                           [READER / RESOLVER]
+                                     │
+                                     ▼
+                            CANONICAL IDENTITY:
+                                 PRIM_ATOM
+                                     │
+                                     ▼
+                                 SEMANTICS
+
+────────────────────────────────────────────────────────
 SUBSTRATES ARE ORTHOGONAL IMPLEMENTATION OBSERVERS:
 
                    my-lisp contract
@@ -111,6 +132,24 @@ SUBSTRATES ARE ORTHOGONAL IMPLEMENTATION OBSERVERS:
        (software)     (freestanding) (silicon gates)
 ```
 
+### 4.1 Canonical Identity Table / Канонічна таблиця тотожностей
+
+The canonical identity table is an autonomous normative entity separate from any environment, host runtime, or evaluator dispatch code. It formalizes the relation between the semantic identity and human-language surface signs:
+
+Канонічна таблиця тотожностей є автономною нормативною сутністю, відокремленою від будь-якого середовища обчислення чи коду диспетчеризації. Вона формалізує відношення між семантичною сутністю та людськими знаковими системами:
+
+| Canonical Identity | Lineage (McCarthy 1960) | Ukrainian (`uk`) | Sanskrit (`sa`) | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `PRIM_QUOTE` | `quote` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
+| `PRIM_ATOM` | `atom` | `атом` | ? | **L0 Primitive Identity** |
+| `PRIM_EQ` | `eq` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
+| `PRIM_CAR` | `car` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
+| `PRIM_CDR` | `cdr` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
+| `PRIM_CONS` | `cons` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
+| `PRIM_COND` | `cond` | ? *(досліджується)* | ? | **L0 Primitive Identity** |
+
+> **Rule on Surface Spellings:** We do not rush to invent or prematurely freeze translations for the remaining six primitives. In particular, `car` and `cdr` are historical hardware register acronyms from the IBM 704 architecture; identifying their essential operation and discovering faithful Ukrainian terms requires genuine linguistic and conceptual research, not mechanical transliteration. Unverified slots remain explicitly marked with `?`.
+
 ---
 
 ## 5. Audit of Current Rust Implementation / Аудит поточної Rust-реалізації
@@ -119,13 +158,13 @@ We do not disguise the current state of `crates/my-lisp` by asserting that every
 
 | Feature / Surface Form | Current Rust Mechanism | Semantic Status in `my-lisp` | Note / Rationale |
 | :--- | :--- | :--- | :--- |
-| `quote` | special form (`eval/mod.rs`) | **L0 PRIMITIVE** | McCarthy-7 core |
-| `atom` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE** | McCarthy-7 core |
-| `eq` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE** | McCarthy-7 core |
-| `car` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE** | McCarthy-7 core |
-| `cdr` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE** | McCarthy-7 core |
-| `cons` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE** | McCarthy-7 core |
-| `cond` | special form (`eval/mod.rs`) | **L0 PRIMITIVE** | McCarthy-7 core |
+| `quote` | special form (`eval/mod.rs`) | **L0 PRIMITIVE (PRIM_QUOTE)** | Historical lineage surface spelling |
+| `atom` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE (PRIM_ATOM)** | Historical lineage surface spelling |
+| `eq` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE (PRIM_EQ)** | Historical lineage surface spelling |
+| `car` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE (PRIM_CAR)** | Historical lineage surface spelling |
+| `cdr` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE (PRIM_CDR)** | Historical lineage surface spelling |
+| `cons` | builtin (`eval/builtins.rs`) | **L0 PRIMITIVE (PRIM_CONS)** | Historical lineage surface spelling |
+| `cond` | special form (`eval/mod.rs`) | **L0 PRIMITIVE (PRIM_COND)** | Historical lineage surface spelling |
 | `symbols` | `Value::Symbol`, interning | **L1 ADMITTED DOMAIN** | Admitted atomic value |
 | `pairs` | `Value::Pair` | **L1 ADMITTED DOMAIN** | Compound data domain |
 | `exact integers` | `BigInt` (`bignum.rs`) | **L1 ADMITTED DOMAIN** | Admitted numeric domain |
