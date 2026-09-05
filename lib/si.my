@@ -1,0 +1,34 @@
+; lib/si.my — 7 BIPM SI defining constants as exact rational values
+; 7 визначальних констант SI (BIPM 2019) як точні раціональні значення
+;
+; Reference: BIPM SI Brochure (9th edition, 2019)
+; McCarthy: 7 axiomatic primitives (quote, atom, eq, car, cdr, cons, cond)
+; SI 2019:  7 defining physical constants with exact decimal definitions.
+;
+; In SI, these defining values are exact terminating decimals with zero
+; experimental uncertainty, allowing exact rational representation without floats:
+;
+; 1. delta-nu-cs = 9192631770 Hz (defining the second)
+; 2. c           = 299792458 m/s (defining the metre)
+; 3. h           = 6.62607015 x 10^-34 J s = 132521403 / 200000000000000000000000000000000000000000 (defining the kilogram)
+; 4. e           = 1.602176634 x 10^-19 C  = 801088317 / 5000000000000000000000000000 (defining the ampere)
+; 5. k           = 1.380649 x 10^-23 J/K   = 1380649 / 100000000000000000000000000000 (defining the kelvin)
+; 6. n-a         = 6.02214076 x 10^23 mol^-1 = 602214076000000000000000 (defining the mole)
+; 7. k-cd        = 683 lm/W (defining the candela)
+
+(def delta-nu-cs 9192631770)
+(def c 299792458)
+(def h (/ 132521403 200000000000000000000000000000000000000000))
+(def e (/ 801088317 5000000000000000000000000000))
+(def k (/ 1380649 100000000000000000000000000000))
+(def n-a 602214076000000000000000)
+(def k-cd 683)
+
+;; Prefixed aliases under si: namespace / Префіксні псевдоніми в просторі si:
+(def si:delta-nu-cs delta-nu-cs)
+(def si:c c)
+(def si:h h)
+(def si:e e)
+(def si:k k)
+(def si:n-a n-a)
+(def si:k-cd k-cd)

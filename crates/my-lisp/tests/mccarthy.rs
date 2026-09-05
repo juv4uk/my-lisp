@@ -1620,3 +1620,79 @@ fn macro_expansion_no_longer_changes_the_identity_of_a_core_predicate_result() {
     assert_eq!(via_macro, Value::truth(false));
     assert_eq!(direct, via_macro);
 }
+
+#[test]
+fn si_defining_constants_exact_rationals() {
+    let mut session = Session::default();
+    let si_source = std::fs::read_to_string("lib/si.my")
+        .or_else(|_| std::fs::read_to_string("../../lib/si.my"))
+        .expect("lib/si.my must exist and be readable");
+    eval_program(&si_source, &mut session).expect("lib/si.my must evaluate cleanly");
+
+    // 1. delta-nu-cs = 9 192 631 770 Hz
+    let cs = eval_program("delta-nu-cs", &mut session).unwrap().value;
+    assert_eq!(cs, Value::Number(9192631770.0, Exactness::Exact));
+
+    // 2. c = 299 792 458 m/s
+    let c = eval_program("c", &mut session).unwrap().value;
+    assert_eq!(c, Value::Number(299792458.0, Exactness::Exact));
+
+    // 3. h = 132521403 / 200000000000000000000000000000000000000000 J s
+    let h = eval_program("h", &mut session).unwrap().value;
+    let expected_h = Rational::from_literal(
+        "132521403",
+        "200000000000000000000000000000000000000000",
+    )
+    .unwrap();
+    assert_eq!(h, Value::Rational(expected_h.clone()));
+    assert_eq!(
+        format!("{}", expected_h),
+        "132521403/200000000000000000000000000000000000000000"
+    );
+
+    // Exact rational arithmetic: (* 2 h) simplifies denominator by 2
+    let two_h = eval_program("(* 2 h)", &mut session).unwrap().value;
+    let expected_2h = Rational::from_literal(
+        "132521403",
+        "100000000000000000000000000000000000000000",
+    )
+    .unwrap();
+    assert_eq!(two_h, Value::Rational(expected_2h));
+
+    // 4. e = 801088317 / 5000000000000000000000000000 C
+    let e = eval_program("e", &mut session).unwrap().value;
+    let expected_e = Rational::from_literal("801088317", "5000000000000000000000000000").unwrap();
+    assert_eq!(e, Value::Rational(expected_e.clone()));
+    assert_eq!(
+        format!("{}", expected_e),
+        "801088317/5000000000000000000000000000"
+    );
+
+    // 5. k = 1380649 / 100000000000000000000000000000 J/K
+    let k = eval_program("k", &mut session).unwrap().value;
+    let expected_k = Rational::from_literal("1380649", "100000000000000000000000000000").unwrap();
+    assert_eq!(k, Value::Rational(expected_k.clone()));
+    assert_eq!(
+        format!("{}", expected_k),
+        "1380649/100000000000000000000000000000"
+    );
+
+    // 6. n-a = 602214076000000000000000 mol^-1
+    let na = eval_program("n-a", &mut session).unwrap().value;
+    let expected_na = Rational::from_literal("602214076000000000000000", "1").unwrap();
+    assert_eq!(na, Value::Rational(expected_na.clone()));
+    assert_eq!(format!("{}", expected_na), "602214076000000000000000");
+
+    // 7. k-cd = 683 lm/W
+    let k_cd = eval_program("k-cd", &mut session).unwrap().value;
+    assert_eq!(k_cd, Value::Number(683.0, Exactness::Exact));
+
+    // Prefixed namespace si: aliases
+    assert_eq!(eval_program("si:c", &mut session).unwrap().value, c);
+    assert_eq!(eval_program("si:h", &mut session).unwrap().value, h);
+    assert_eq!(eval_program("si:e", &mut session).unwrap().value, e);
+    assert_eq!(eval_program("si:k", &mut session).unwrap().value, k);
+    assert_eq!(eval_program("si:n-a", &mut session).unwrap().value, na);
+    assert_eq!(eval_program("si:k-cd", &mut session).unwrap().value, k_cd);
+    assert_eq!(eval_program("si:delta-nu-cs", &mut session).unwrap().value, cs);
+}
