@@ -504,6 +504,15 @@
         (verify (live-evidence-over-memory hostile-review-passed no-sycophancy-confirmed))
         (lifecycle current-contract)
         (provenance "ecosystem 2026-09-05: systematic cross-repo reconstruction across 12 repositories and Obsidian vault, approved by owner")
+        (unknown-route ask-owner))
+      (reference
+        (topic owner-primary-voice-locations)
+        (summary "Where the owner's own words live (primary voice) vs agent-authored reconstructions (secondary), and the epistemic rules for quoting them | Де лежить первинний голос власника (власні слова) на противагу агентським реконструкціям (secondary), і правила цитування")
+        (authority (../ecosystem/docs/correspondence/volodymyr-nil-empty-list-own-words-2026-09-02.md ../ecosystem/runs/2026-09-05-author-understanding/README.md ./Розуміння Володимира.md))
+        (how-to (read-primary-voice-before-secondary label-secondary-explicitly cite-file-line))
+        (verify (primary-vs-secondary-distinguished file-line-citations gained consent-before-propagation))
+        (lifecycle current-contract)
+        (provenance "runs/2026-09-05-author-understanding, tula/big-pickle 2026-09-05: read-only reconstruction, hostile review passed")
         (unknown-route ask-owner)))))
 
 ; Curated frequently-used tools. A record is navigation, not permission to run
