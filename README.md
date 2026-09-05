@@ -328,4 +328,4 @@ Ein fünftes Schwester-Repository, [`my-lisp-panini`](https://github.com/juv4uk/
 
 ## License · Ліцензія · Lizenz
 
-[MIT](LICENSE)
+[ВОЛЬНІСТЬ](LICENSE)
