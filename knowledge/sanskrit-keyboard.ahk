@@ -1,36 +1,62 @@
-; Sanskrit Cyrillic Keyboard — AutoHotkey MVP (Corrected)
-; ========================================================
-; Architecture: Ukrainian base layout + phonological gesture layer
-; Base: Ukrainian layout (untouched)
-; Gesture layer: Win-key toggled modes (dead-key equivalents)
+; Sanskrit Cyrillic Keyboard — AutoHotkey MVP (AltGr one-shot)
+; =============================================================
+; Architecture: Ukrainian base layout + phonological gesture layer on AltGr
+; Base: Ukrainian layout (untouched, CapsLock untouched)
+; Modifier: Right Alt (AltGr) for one-shot phonological gestures
 ; Principle: Ukrainian VedaBase-UA surface = authority
 ;            Latin/IAST compose sequences REMOVED
+;            CapsLock untouched
 ;
-; Modes (Win + key toggle):
-;   Win+R → RETRO (retroflex: dot below)
-;   Win+L → LONG  (vowel length: macron)
-;   Win+P → PAL   (palatal: acute/tilde)
-;   Win+A → ASP   (aspiration: digraphs per VedaBase)
-;   Win+V → VOC   (vocalic r/l: dot below)
-;   Win+S → VIS   (visarga: dot below on х)
+; One-shot gestures (hold AltGr, press base key, release):
+;   AltGr + т → т̣ (retroflex)
+;   AltGr + д → д̣
+;   AltGr + н → н̣
+;   AltGr + ш → ш̣
+;   AltGr + р → р̣
+;   AltGr + с → с̣
 ;
-; Gestures (when mode active):
-;   RETRO: т→т̣ д→д̣ н→н̣ ш→ш̣ р→р̣ с→с̣
-;   LONG:  а→а̄ і→ı̄ у→ӯ е→е̄ о→о̄
-;   PAL:   ш→ш́ н→н̃ с→с́ з→з́
-;   ASP:   к→кг ґ→ґг д→дг б→бг п→пг т→тг
-;   VOC:   р→р̣ л→л̣
-;   VIS:   х→х̣
+;   AltGr + а → а̄ (macron)
+;   AltGr + і → і̄
+;   AltGr + у → ӯ
+;   AltGr + е → е̄
+;   AltGr + о → о̄
 ;
-; Conjuncts: via mode combinations (not Latin compose)
-;   RETRO+PAL: шт̣
-;   PAL+NASAL: джн̃
+;   AltGr + ш → ш́ (palatal acute)
+;   AltGr + н → н̃ (palatal nasal tilde)
+;   AltGr + с → с́
+;   AltGr + з → з́
+;
+;   AltGr + к → кг (aspirated digraph)
+;   AltGr + ґ → ґг
+;   AltGr + д → дг
+;   AltGr + б → бг
+;   AltGr + п → пг
+;   AltGr + т → тг
+;
+;   AltGr + р → р̣ (vocalic r)
+;   AltGr + л → л̣
+;
+;   AltGr + х → х̣ (visarga)
+;
+; Conjuncts (mode combos):
+;   RETRO then PAL: шт̣
+;   PAL then NASAL: джн̃
+;
+; Toggles (Win key for mode-based input):
+;   Win+R → RETRO mode (sticky)
+;   Win+L → LONG mode
+;   Win+P → PAL mode
+;   Win+A → ASP mode (sticky for multiple aspirates)
+;   Win+V → VOC mode
+;   Win+S → VIS mode
 ;
 ; Controls:
 ;   Win+Space → show active modes
-;   Win+Esc   → disable all modes
+;   Win+Esc → disable all modes
 ;   Win+Ctrl+S → suspend/resume
 ;   Win+Ctrl+R → reload script
+;
+; CapsLock: UNTOUCHED (preserves Windows uppercase semantics)
 
 #NoEnv
 #SingleInstance Force
@@ -39,7 +65,7 @@ SendMode Input
 SetWorkingDir %A_ScriptDir%
 
 ; ============================================================================
-; GLOBAL STATE
+; GLOBAL STATE (for mode-based toggles)
 ; ============================================================================
 global RetroMode := false
 global LongMode := false
@@ -49,44 +75,137 @@ global VocMode := false
 global VisMode := false
 
 ; ============================================================================
-; MODE TOGGLES (Win + key)
+; ONE-SHOT GESTURES (AltGr = Right Alt)
 ; ============================================================================
 
-; Win+R → RETRO
+; --- RETROFLEX (dot below) ---
+>!t::Send {U+0442}{U+0323}  ; т → т̣
+>!d::Send {U+0434}{U+0323}  ; д̣
+>!n::Send {U+043D}{U+0323}  ; н̣
+>!s::Send {U+0448}{U+0323}  ; ш̣
+>!r::Send {U+0440}{U+0323}  ; р̣
+>!s::Send {U+0441}{U+0323}  ; с̣ (using s for с̣)
+
+; --- LONG VOWELS (macron) ---
+>!a::Send {U+0430}{U+0304}  ; а̄
+>!i::Send {U+0456}{U+0304}  ; і̄
+>!u::Send {U+0443}{U+0304}  ; ӯ
+>!e::Send {U+0435}{U+0304}  ; е̄
+>!o::Send {U+043E}{U+0304}  ; о̄
+
+; --- PALATAL (acute/tilde) ---
+>!s::Send {U+0448}{U+0301}  ; ш́ (SC013 = ш key)
+>!n::Send {U+043D}{U+0303}  ; н̃
+>!s::Send {U+0441}{U+0301}  ; с́
+>!z::Send {U+0437}{U+0301}  ; з́
+
+; --- ASPIRATED DIGRAPHS (VedaBase-UA convention) ---
+>!k::Send кг
+>!g::Send ґг
+>!d::Send дг
+>!b::Send бг
+>!p::Send пг
+>!t::Send тг
+
+; --- VOCALIC (dot below on р/л) ---
+>!r::Send {U+0440}{U+0323}  ; р̣
+>!l::Send {U+043B}{U+0323}  ; л̣
+
+; --- VISARGA ---
+>!h::Send {U+0445}{U+0323}  ; х̣ (h key = х on UA layout)
+
+; ============================================================================
+; MODE TOGGLES (Win + key) — sticky modes for repeated use
+; ============================================================================
+
+global RetroMode := false
+global LongMode := false
+global PalMode := false
+global AspMode := false
+global VocMode := false
+global VisMode := false
+
+; Win+R → RETRO mode (sticky)
 ~LWin & r::
     RetroMode := !RetroMode
     ShowModeTip("RETRO", RetroMode)
     return
 
-; Win+L → LONG
+; Win+L → LONG mode
 ~LWin & l::
     LongMode := !LongMode
     ShowModeTip("LONG", LongMode)
     return
 
-; Win+P → PAL (palatal)
+; Win+P → PAL mode
 ~LWin & p::
     PalMode := !PalMode
     ShowModeTip("PAL", PalMode)
     return
 
-; Win+A → ASP (aspiration)
+; Win+A → ASP mode (sticky for multiple aspirates)
 ~LWin & a::
     AspMode := !AspMode
     ShowModeTip("ASP", AspMode)
     return
 
-; Win+V → VOC (vocalic r/l)
+; Win+V → VOC mode
 ~LWin & v::
     VocMode := !VocMode
     ShowModeTip("VOC", VocMode)
     return
 
-; Win+S → VIS (visarga)
+; Win+S → VIS mode
 ~LWin & s::
     VisMode := !VisMode
     ShowModeTip("VIS", VisMode)
     return
+
+; ============================================================================
+; MODE-BASED GESTURES (when sticky mode active)
+; ============================================================================
+
+#If RetroMode
+    t::Send {U+0442}{U+0323}
+    d::Send {U+0434}{U+0323}
+    n::Send {U+043D}{U+0323}
+    SC013::Send {U+0448}{U+0323}
+    r::Send {U+0440}{U+0323}
+    s::Send {U+0441}{U+0323}
+#If
+
+#If LongMode
+    a::Send {U+0430}{U+0304}
+    i::Send {U+0456}{U+0304}
+    u::Send {U+0443}{U+0304}
+    e::Send {U+0435}{U+0304}
+    o::Send {U+043E}{U+0304}
+#If
+
+#If PalMode
+    SC013::Send {U+0448}{U+0301}
+    n::Send {U+043D}{U+0303}
+    s::Send {U+0441}{U+0301}
+    z::Send {U+0437}{U+0301}
+#If
+
+#If AspMode
+    k::Send кг
+    g::Send ґг
+    d::Send дг
+    b::Send бг
+    p::Send пг
+    t::Send тг
+#If
+
+#If VocMode
+    r::Send {U+0440}{U+0323}
+    l::Send {U+043B}{U+0323}
+#If
+
+#If VisMode
+    h::Send {U+0445}{U+0323}
+#If
 
 ; ============================================================================
 ; HELPER: Show mode tooltip
@@ -102,121 +221,10 @@ RemoveToolTip:
 }
 
 ; ============================================================================
-; RETRO MODE (dot below for retroflex)
+; CONTROLS
 ; ============================================================================
-#If RetroMode
-    ; т → т̣ (U+0442 + U+0323)
-    t::Send {U+0442}{U+0323}
-    
-    ; д → д̣ (U+0434 + U+0323)
-    d::Send {U+0434}{U+0323}
-    
-    ; н → н̣ (U+043D + U+0323)
-    n::Send {U+043D}{U+0323}
-    
-    ; ш → ш̣ (U+0448 + U+0323)
-    SC013::Send {U+0448}{U+0323}
-    
-    ; р → р̣ (U+0440 + U+0323)
-    r::Send {U+0440}{U+0323}
-    
-    ; с → с̣ (retroflex s)
-    s::Send {U+0441}{U+0323}
-#If
 
-; ============================================================================
-; LONG MODE (macron for long vowels)
-; ============================================================================
-#If LongMode
-    ; а → а̄ (U+0430 + U+0304)
-    a::Send {U+0430}{U+0304}
-    
-    ; і → і̄ (U+0456 + U+0304)
-    i::Send {U+0456}{U+0304}
-    
-    ; у → ӯ (U+0443 + U+0304)
-    u::Send {U+0443}{U+0304}
-    
-    ; е → е̄ (U+0435 + U+0304)
-    e::Send {U+0435}{U+0304}
-    
-    ; о → о̄ (U+043E + U+0304)
-    o::Send {U+043E}{U+0304}
-#If
-
-; ============================================================================
-; PAL MODE (palatal: acute on ш/с/з, tilde on н)
-; ============================================================================
-#If PalMode
-    ; ш → ш́ (U+0448 + U+0301)
-    SC013::Send {U+0448}{U+0301}
-    
-    ; н → н̃ (U+043D + U+0303)
-    n::Send {U+043D}{U+0303}
-    
-    ; с → с́ (U+0441 + U+0301)
-    s::Send {U+0441}{U+0301}
-    
-    ; з → з́ (U+0437 + U+0301)
-    z::Send {U+0437}{U+0301}
-#If
-
-; ============================================================================
-; ASP MODE (aspirated digraphs per VedaBase-UA)
-; ============================================================================
-#If AspMode
-    ; к → кг
-    k::Send кг
-    
-    ; ґ → ґг
-    g::Send ґг
-    
-    ; д → дг
-    d::Send дг
-    
-    ; б → бг
-    b::Send бг
-    
-    ; п → пг
-    p::Send пг
-    
-    ; т → тг
-    t::Send тг
-#If
-
-; ============================================================================
-; VOC MODE (vocalic r/l: dot below)
-; ============================================================================
-#If VocMode
-    ; р → р̣ (U+0440 + U+0323)
-    r::Send {U+0440}{U+0323}
-    
-    ; л → л̣ (U+043B + U+0323)
-    l::Send {U+043B}{U+0323}
-#If
-
-; ============================================================================
-; VIS MODE (visarga on х)
-; ============================================================================
-#If VisMode
-    ; х → х̣ (U+0445 + U+0323)
-    h::Send {U+0445}{U+0323}
-#If
-
-; ============================================================================
-; CONJUNCT SEQUENCES (mode combinations, NOT Latin compose)
-; ============================================================================
-; RETRO + PAL → шт̣ (SA_TTA_CONJ)
-; Enter: RETRO mode, then PalMode, type ш then т
-; Or: enable both modes, type ш then т
-
-; PAL + NASAL → джн̃ (SA_JNYA)
-; Enter: PalMode, type дж then NASAL+н
-; Implementation: use existing PalMode+n for н̃, precede with дж
-
-; ============================================================================
-; STATUS DISPLAY (Win+Space shows current modes)
-; ============================================================================
+; Win+Space → show active modes
 #LWin & Space::
     modes := ""
     modes .= (RetroMode ? "RETRO " : "")
@@ -231,9 +239,7 @@ RemoveToolTip:
     SetTimer RemoveToolTip, -3000
     return
 
-; ============================================================================
-; TOGGLE ALL OFF (Win+Esc)
-; ============================================================================
+; Win+Esc → disable all modes
 #LWin & Esc::
     RetroMode := false
     LongMode := false
@@ -245,19 +251,15 @@ RemoveToolTip:
     SetTimer RemoveToolTip, -1500
     return
 
-; ============================================================================
-; RELOAD SCRIPT (Win+Ctrl+R)
-; ============================================================================
-#LWin & ^r::
-    Reload
-    return
-
-; ============================================================================
-; SUSPEND (Win+Ctrl+S)
-; ============================================================================
+; Win+Ctrl+S → suspend/resume
 #LWin & ^s::
     Suspend
     ToolTip Sanskrit layer % (A_IsSuspended ? "SUSPENDED" : "ACTIVE"), A_CaretX + 20, A_CaretY - 20
     SetTimer RemoveToolTip, -1500
+    return
+
+; Win+Ctrl+R → reload script
+#LWin & ^r::
+    Reload
     return
 
