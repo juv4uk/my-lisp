@@ -32,7 +32,13 @@ Natural-language apostrophes must pass through the reader without being interpre
 
 ## McCarthy foundation · Основа Маккарті · McCarthy-Grundlage
 
-The first contract contains the seven elementary Lisp operations described by John McCarthy:
+The primitive semantic set of `my-lisp` is permanently closed (ratified in `docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`):
+
+```text
+{ quote, atom, eq, car, cdr, cons, cond }
+```
+
+A conforming implementation may expose many language capabilities, but it shall classify exactly seven operations as semantic primitives: `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, and `cond`. No other capability may acquire primitive status.
 
 - `quote` returns data without evaluating it;
 - `atom` recognizes atoms, including the empty list;
@@ -42,7 +48,9 @@ The first contract contains the seven elementary Lisp operations described by Jo
 - `cons` prepends an element to a list;
 - `cond` evaluates clauses in order and selects the first true one.
 
-`t` is the canonical true value. Invalid list operations produce explicit errors. Automated semantic tests are the compatibility contract for the future Rust core.
+`t` is the canonical true value. Invalid list operations produce explicit errors. Automated semantic tests are the compatibility contract for all conforming engines.
+
+Семантичний набір примітивів `my-lisp` є замкненим назавжди (ратифіковано в `docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`). Конформна реалізація може надавати багато мовних можливостей, але статус семантичного примітива мають рівно сім операцій: `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond`. Жодна інша можливість не може набути статусу примітива.
 
 Перший контракт містить сім елементарних операцій Lisp: `quote`, `atom`, `eq`, `car`, `cdr`, `cons` і `cond`. Значення `t` є канонічною істиною. Некоректні операції зі списками повертають явні структуровані помилки, а автоматичні семантичні тести є контрактом сумісності.
 
