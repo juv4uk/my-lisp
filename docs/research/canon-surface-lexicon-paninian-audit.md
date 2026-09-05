@@ -389,3 +389,227 @@ owner admission
 - `sanskritworld_texts/shastra/philosophy/nyaya/nyAyasUtra.txt` — NS 1.1.5, 2.2.24
 - `sanskritworld_texts/shastra/philosophy/nyaya/tarkasaNgraha.txt` — §25, §27, §56, §80
 
+
+---
+
+## QUOTE CONCEPT AUDIT — Deep Pass (2026-09-06)
+
+### 1. Observable Contract of PRIM_QUOTE
+
+```text
+(quote expr) → expr
+
+Contract:
+- expr is NOT evaluated as a computation instruction
+- expr is returned AS THE FORM ITSELF
+- the evaluation mode is suppressed, not the object's content
+
+What this IS:
+  suppression of evaluation mode → take-as-form
+
+What this IS NOT:
+  immutability of object
+  copying
+  preservation of state
+  protection from future modification
+```
+
+### 2. Required Distinctions / Необхідні розрізнення
+
+For a Sanskrit surface sign to be valid, the tradition must have a term that
+targets the right distinction in the following map:
+
+```text
+expression
+    │
+    ├── (A) as instruction / as computation target
+    │         → normal eval mode
+    │
+    └── (B) as the form itself / as the named thing
+              → QUOTE mode
+```
+
+The sign must point to (B) without importing unwanted meanings from adjacent concepts.
+
+### 3. Candidate Audit
+
+---
+
+#### `ukta / उक्त` — kta-participle from √vac
+
+**ROOT:** √vac, gaṇa 2, aniṭ (my-lisp-panini registry: unverified).
+**FORM:** kta-passive participle: `vakta → ukta` (irregular strong → weak).
+**MEANING:** «spoken, stated, named» — the form as uttered.
+
+**PRIMARY WITNESS:**
+- VS 7.1.1: `uktā guṇāḥ` — «the guṇas [thus] stated» — past reference.
+- Tarkasaṅgraha §59: `āptavākyaṃ śabdaḥ` — word/śabda as reliable utterance.
+
+**MATCH TO QUOTE:**
+`ukta` captures «what has been said» — i.e., the form as stated, not its referent.
+Semantic reading: `(ukta x)` = «x as stated, as it was uttered».
+The form, not its evaluated content.
+
+**OVERCLAIM RISK:**
+`ukta` is retrospective — it points to something *already said*.
+`(quote x)` is prospective: «do not evaluate the following x».
+The temporal direction differs. Moderate risk.
+
+**VERDICT:** 🟡 Directionally correct, temporal mismatch.
+
+---
+
+#### `svarūpa / स्वरूप` — «own form»
+
+**FORM:** `sva` (own) + `rūpa` (form) — bahuvrihi compound.
+**MEANING:** «own form, the form as it is in itself».
+
+**PRIMARY WITNESS:**
+- Tarkasaṅgraha §56: `svarūpāsiddha` — «unestablished in its own form» —
+  logical fallacy where the *own form* of the proposed reason is not established.
+  `svarūpa` here = «what the thing IS in its own right, before any predication».
+
+**KEY WITNESS — Aṣṭādhyāyī 1.1.68:**
+```
+svaṃ rūpaṃ śabdasyāśabdasaṃjñā
+```
+«A word's own form [denotes itself], unless it functions as a non-phonetic
+technical term (aśabdasaṃjñā).»
+
+This sūtra establishes a **binary distinction within Pāṇini's grammar**:
+```text
+śabda used as saṃjñā (technical term)  → refers to its DEFINED CLASS
+                                           (not to its phonetic shape)
+śabda in svaṃ rūpam mode               → refers to ITSELF AS A FORM
+                                           (not to what it usually means)
+```
+
+This is PRECISELY the distinction `(quote expr)` makes:
+```text
+expr in normal eval mode  → processed as instruction (like saṃjñā → class)
+expr under QUOTE          → taken as its own form (like svaṃ rūpam mode)
+```
+
+**MATCH TO QUOTE:** Very strong. AS 1.1.68 is the primary witness.
+The grammatical operation «take this word in its svaṃ rūpam» =
+«do not treat it as pointing to a class / do not process its reference chain».
+This maps directly to `(quote x)` = «take x as its own form, not as instruction».
+
+**OVERCLAIM RISK:**
+In philosophical contexts, `svarūpa` can mean «the essence/nature of X» —
+which is a different claim. But in grammatical context (AS 1.1.68), the reading
+is technical and precise: the phonetic form, not the class it names.
+The risk is context-leakage from philosophy into grammar. Moderate, but the
+AS 1.1.68 primary witness controls it.
+
+**VERDICT:** ✅ **STRONGEST CANDIDATE.** Primary witness is AS 1.1.68 itself.
+
+---
+
+#### `saṃjñā / संज्ञा` — technical designation
+
+**FORM:** `sam + jñā` (√jñā = to know, with sam-).
+**MEANING:** Technical name/designation, a label that enables reference to a class.
+
+**PRIMARY WITNESS:**
+- AS 1.1.1: `vṛddhir ādaic` — «ā, ai, au are [called] vṛddhi» — saṃjñā-sūtra.
+- Tarkasaṅgraha §58: `saṃjñā-saṃjñi-sambandha-jñānam upamitih` —
+  «knowledge of the relation between the name (saṃjñā) and the named (saṃjñin)».
+- AS 1.4.1: single saṃjñā per entity (conflict resolution).
+- sarvam-hostile-review.md [TEXTUAL EVIDENCE]: saṃjñā *enables reference*, does not restrict.
+
+**CRITICAL FINDING:**
+`saṃjñā` is NOT a candidate for `QUOTE`. Rather, it reveals the architectural
+intersection of CANON and QUOTE:
+
+```text
+CANON                               QUOTE (PRIM_QUOTE)
+  │                                       │
+identity ≠ spelling               form ≠ evaluation-of-form
+  │                                       │
+PRIM_ATOM is the semantic identity   (quote x) suppresses
+behind 'atom'/'атом'/'aṇu'           the evaluation of x
+  │                                       │
+saṃjñā mechanism:                  svaṃ rūpam mechanism:
+  label → class reference            form → form itself
+  (technical term mode)              (own-form mode)
+              │                           │
+              └──────────┬────────────────┘
+                         ↓
+              AS 1.1.68 is the junction:
+              the sūtra that distinguishes
+              these two modes
+```
+
+**VERDICT for `saṃjñā` as QUOTE name:** ❌ NOT a surface sign for PRIM_QUOTE.
+But `saṃjñā` reveals that AS 1.1.68's `svaṃ rūpam` is the **structural key**.
+
+---
+
+#### `abhidhā / abhidhāna / अभिधा, अभिधान`
+
+**ROOT:** `abhi + dhā` (to place upon, to name).
+**MEANING:** `abhidhāna` = «naming, denotation, the act of indicating»; `abhidhā` = «primary denotation».
+Nyāya-Vaiśeṣika: `śakti` = denotative power; `abhidhā` = how a word refers to its primary meaning.
+
+**PRIMARY WITNESS:**
+- Tarkasaṅgraha §59: `śaktaṃ padam` — «a word [is] one that has [denotative] capacity».
+  `abhidhā` is the *power of denotation*, not the form itself.
+
+**MATCH TO QUOTE:**
+`abhidhā` points to the *relationship between sign and referent* — the power of
+denotation. Quote suppresses denotation, but is not *about* denotation.
+`(abhidhā x)` would read as «the denotative aspect of x» — overclaims the
+mechanism, not the form.
+
+**VERDICT:** ❌ Wrong axis. `abhidhā` is about denotation; QUOTE suppresses evaluation.
+
+---
+
+#### `śabda / शब्द` — word/sound/utterance
+
+**PRIMARY WITNESS:**
+- Tarkasaṅgraha §59: `āptavākyaṃ śabdaḥ` — reliable testimony.
+  `śabda` = word-as-testimony, word-as-pramāṇa (valid means of knowledge).
+- §63: `vākyārthajñānaṃ śabdajñānam` — knowledge of sentence-meaning = śabda-knowledge.
+
+**MATCH TO QUOTE:**
+`śabda` in Nyāya is a pramāṇa (source of valid knowledge) — the opposite direction
+from QUOTE. QUOTE *suppresses* the word from functioning as instruction. `śabda` is
+about the word as a *source of knowledge*. Fundamentally misaligned.
+
+**VERDICT:** ❌ Opposite direction.
+
+---
+
+### 4. Synthesis / Синтез
+
+**AS 1.1.68 is the primary conceptual witness for PRIM_QUOTE.**
+
+The sūtra `svaṃ rūpaṃ śabdasyāśabdasaṃjñā` establishes a binary:
+```text
+MODE A (normal): word functions as technical term → refers to class
+MODE B (svaṃ rūpam): word taken in its own form → refers to itself
+
+PRIM_QUOTE invokes MODE B on any expression:
+(quote expr) → take expr in svaṃ rūpam, not as instruction.
+```
+
+**`svarūpa` is the strongest Sanskrit candidate** for PRIM_QUOTE surface sign:
+- Morphologically regular compound (sva + rūpa).
+- Primary witness: AS 1.1.68 (svaṃ rūpaṃ).
+- Technical reading in grammar: «the form itself, not the class it refers to».
+- Operational reading: «take this in its own form / without processing its reference».
+- Risk: in philosophy, can mean «own nature/essence» — context-leakage. Moderate.
+
+**`saṃjñā` reveals the intersection with CANON** but is NOT the surface sign.
+
+**Intersection finding (new, 2026-09-06):**
+AS 1.1.68 is the junction where CANON and QUOTE meet:
+- CANON uses the saṃjñā mode (PRIM_ATOM is a technical label for a semantic identity).
+- QUOTE uses the svaṃ rūpam mode (take the form, not its evaluation).
+Both live under the same sūtra, on opposite sides of its distinction.
+
+**Current admitted status:** `svarūpa` = CANDIDATE UNDER REVIEW, not yet admitted.
+Needs: owner ratification. The AS 1.1.68 witness is strong.
+**`ukta`, `abhidhā`, `śabda`, `avikṛta`:** all REJECTED.
