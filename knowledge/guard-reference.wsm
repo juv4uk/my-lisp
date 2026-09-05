@@ -495,7 +495,16 @@
         (verify (h-encoding-1-tested counterexamples-audited verifiable-commit-evidence))
         (lifecycle current-contract)
         (provenance "pravda commit 387d394, ecosystem commit e56dd09, 2026-09-05: sections AA and BB established blind clustering and counterexample falsification protocol")
-        (unknown-route ask-agent)))))
+        (unknown-route ask-agent))
+      (reference
+        (topic author-mind-model-and-epistemic-principles)
+        (summary "Model of Volodymyr's (Waldemar's) thought, core epistemic axioms, external observer rule, zero-dependency philosophy, and cross-project invariants | Модель мислення Володимира (Вальдемара), базові епістемічні аксіоми, правило зовнішнього спостерігача, філософія zero-dependency та інваріанти проєктів")
+        (authority (../ecosystem/memory/OWNER-PROFILE.md ../ecosystem/memory/CORE-RULE-honesty-over-beauty.md ../ecosystem/memory/author-mind-model-reconstruction.md))
+        (how-to (read-owner-profile verify-against-live-evidence external-witness-always honesty-over-beauty reject-teleology-and-overclaims))
+        (verify (live-evidence-over-memory hostile-review-passed no-sycophancy-confirmed))
+        (lifecycle current-contract)
+        (provenance "ecosystem 2026-09-05: systematic cross-repo reconstruction across 12 repositories and Obsidian vault, approved by owner")
+        (unknown-route ask-owner)))))
 
 ; Curated frequently-used tools. A record is navigation, not permission to run
 ; the command. `risk` and `verify` tell an agent what must be checked afterward.
