@@ -10,12 +10,12 @@
 ; The actual primitive operation is still supplied by the native substrate;
 ; this evaluator owns name resolution, lexical shadowing, application shape,
 ; macro expansion, closure environments, chained comparison policy,
-; self-recursive top-level function binding, and variadic/dotted lambda
-; parameter binding.
+; self-recursive and finite mutually recursive top-level function binding,
+; and variadic/dotted lambda parameter binding.
 ;
 ; This remains an explicit self-hosting witness, not the always-loaded runtime.
-; Named-error parity and mutually recursive top-level definitions are still
-; known gaps and must not be claimed as complete self-hosting.
+; Named-error parity and arbitrary later-binding visibility are still known
+; gaps and must not be claimed as complete self-hosting.
 
 (def my-primitive
   (lambda (name)
@@ -79,11 +79,31 @@
       ((atom value) (quote ()))
       (t (eq (car value) (quote recursive-closure))))))
 
+; A mutually-recursive group is also finite Lisp data. Every member stores the
+; same raw group and captured outer environment; my-apply reconstructs the
+; group's bindings at call time rather than relying on a cyclic host object.
+;
+; Shape:
+;   (recursive-group-closure name params body group captured-env)
+(def my-group-closure?
+  (lambda (value)
+    (cond
+      ((atom value) (quote ()))
+      (t (eq (car value) (quote recursive-group-closure))))))
+
 (def my-lambda-form?
   (lambda (form)
     (cond
       ((atom form) (quote ()))
       ((atom (car form)) (eq (car form) (quote lambda)))
+      (t (quote ())))))
+
+(def my-lambda-def-form?
+  (lambda (form)
+    (cond
+      ((atom form) (quote ()))
+      ((eq (car form) (quote def))
+       (my-lambda-form? (third form)))
       (t (quote ())))))
 
 (def my-fourth
@@ -93,6 +113,10 @@
 (def my-fifth
   (lambda (values)
     (car (cdr (cdr (cdr (cdr values)))))))
+
+(def my-sixth
+  (lambda (values)
+    (car (cdr (cdr (cdr (cdr (cdr values))))))))
 
 (def my-compare-two
   (lambda (operator left right)
@@ -174,6 +198,55 @@
        (my-eval (second (car clauses)) env))
       (t (my-eval-cond (cdr clauses) env)))))
 
+(def my-take-lambda-def-group
+  (lambda (forms)
+    (cond
+      ((atom forms) (quote ()))
+      ((my-lambda-def-form? (car forms))
+       (cons (car forms)
+             (my-take-lambda-def-group (cdr forms))))
+      (t (quote ())))))
+
+(def my-drop-lambda-def-group
+  (lambda (forms)
+    (cond
+      ((atom forms) (quote ()))
+      ((my-lambda-def-form? (car forms))
+       (my-drop-lambda-def-group (cdr forms)))
+      (t forms))))
+
+(def my-group-closure-from-def
+  (lambda (form group captured-env)
+    (let ((lambda-form (third form)))
+      (list (quote recursive-group-closure)
+            (second form)
+            (second lambda-form)
+            (cdr (cdr lambda-form))
+            group
+            captured-env))))
+
+; Build onto the captured environment so later definitions in a contiguous
+; top-level group appear earlier in the alist, matching same-frame overwrite
+; order without requiring mutable or cyclic host environment state.
+(def my-build-group-env-onto
+  (lambda (forms group captured-env out)
+    (cond
+      ((atom forms) out)
+      (t
+       (let ((form (car forms)))
+         (my-build-group-env-onto
+           (cdr forms)
+           group
+           captured-env
+           (cons
+             (cons (second form)
+                   (my-group-closure-from-def form group captured-env))
+             out)))))))
+
+(def my-build-group-env
+  (lambda (group captured-env)
+    (my-build-group-env-onto group group captured-env captured-env)))
+
 (def my-apply
   (lambda (fn args)
     (cond
@@ -197,6 +270,15 @@
              (third fn)
              args
              self-env))))
+      ((my-group-closure? fn)
+       (let ((group-env
+               (my-build-group-env (my-fifth fn) (my-sixth fn))))
+         (my-eval-body
+           (my-fourth fn)
+           (bind-params
+             (third fn)
+             args
+             group-env))))
       ((my-macro? fn)
        (my-eval-body
          (third fn)
@@ -235,10 +317,10 @@
 ; Top-level sequencing. `def` and `defmacro` return `(new-env . value)` so
 ; the immutable alist environment can be threaded explicitly to the next form.
 ;
-; A top-level `(def name (lambda ...))` is represented specially as finite
-; recursive-closure data. This gives self-recursion language-owned semantics
-; without requiring mutation or a cyclic Rust Environment. Non-lambda values
-; keep the ordinary evaluate-then-bind path.
+; `my-eval-program` recognizes each contiguous top-level lambda-definition
+; block as one finite recursive group, so its members can refer to one another
+; without a cyclic host Environment. A direct single-form `my-eval-top-form`
+; keeps the smaller recursive-closure representation for self recursion.
 (def my-eval-top-form
   (lambda (form env)
     (cond
@@ -268,7 +350,17 @@
 
 (def my-eval-program
   (lambda (forms env)
-    (let ((result (my-eval-top-form (car forms) env)))
-      (cond
-        ((atom (cdr forms)) result)
-        (t (my-eval-program (cdr forms) (car result)))))))
+    (cond
+      ((my-lambda-def-form? (car forms))
+       (let ((group (my-take-lambda-def-group forms)))
+         (let ((rest (my-drop-lambda-def-group forms)))
+           (let ((group-env (my-build-group-env group env)))
+             (cond
+               ((atom rest)
+                (cons group-env (cdr (car group-env))))
+               (t (my-eval-program rest group-env)))))))
+      (t
+       (let ((result (my-eval-top-form (car forms) env)))
+         (cond
+           ((atom (cdr forms)) result)
+           (t (my-eval-program (cdr forms) (car result)))))))))
