@@ -116,6 +116,62 @@ fn utc_now_exists_only_after_language_time_layer_loads() {
 }
 
 #[test]
+fn ntp_field_interpretation_is_language_owned() {
+    let mut session = time_session();
+
+    assert_eq!(
+        eval_program(
+            "(internet-time-fields->observation \"clock.example\" 4 1 2208988800 0)",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(accepted \"clock.example\" 0 0)"
+    );
+    assert_eq!(
+        eval_program(
+            "(internet-time-fields->observation \"clock.example\" 5 15 2208988801 2147483648)",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(accepted \"clock.example\" 1 500000000)"
+    );
+    assert_eq!(
+        eval_program(
+            "(internet-time-fields->observation \"clock.example\" 3 1 2208988800 0)",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(rejected invalid-response)"
+    );
+    assert_eq!(
+        eval_program(
+            "(internet-time-fields->observation \"clock.example\" 4 0 2208988800 0)",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(rejected invalid-response)"
+    );
+    assert_eq!(
+        eval_program(
+            "(internet-time-fields->observation \"clock.example\" 4 1 2208988799 0)",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(rejected invalid-epoch)"
+    );
+}
+
+#[test]
 fn internet_time_timestamp_interpretation_is_language_owned() {
     let mut session = time_session();
 
