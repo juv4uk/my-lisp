@@ -165,6 +165,17 @@
       (t
        (list (quote unknown) (quote host-declaration-unavailable))))))
 
+; Transitional ownership split: preserve the current host observation under a
+; raw name, then make the public `timezone-detect` binding a Lisp closure.
+; The next host reduction will change the raw capability itself to return only
+; declaration values, after which this wrapper will call the pure interpreter
+; above. Until then, the host still performs declaration source selection.
+(def timezone-detect-raw timezone-detect)
+
+(def timezone-detect
+  (lambda ()
+    (timezone-detect-raw)))
+
 (def timezone-config
   (lambda (name offset-seconds)
     (cond
