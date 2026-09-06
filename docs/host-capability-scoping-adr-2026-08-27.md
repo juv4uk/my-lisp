@@ -1,142 +1,165 @@
 # ADR: Scoped host capabilities (filesystem/network) — 2026-08-27
 
-**Статус:** PROPOSED — потребує ратифікації власником (задача сама
-названа "owner-ratifiable"; цей документ пропонує дизайн, не
-самопроголошує його прийнятим).
+**Статус:** PARTIALLY IMPLEMENTED / EMBEDDING MECHANISM CONFIRMED — 2026-09-07.
 
-**Частково superseded 2026-08-29:** власник ратифікував unrestricted
-`process-run` для trusted native Lisp-machine profile. Exact allowlist
-залишається механізмом для обмежених embeddings і TCP/oracle boundary;
-решта filesystem/network proposal цим рішенням не ратифікована.
-**Задача:** `MYLISP-HOST-CAPABILITY-SCOPING-ADR` (my-lisp tasks.my,
-пріоритет 7.5, без залежностей). Розблоковує
-`MYLISP-HOST-CAPABILITY-SCOPING-IMPLEMENT` (реалізація — окрема
-задача, свідомо не тут).
-**Мотивація задачі:** дизайн потрібен ДО того, як native CLI почнуть
-використовувати як рантайм для автономних агентів — зараз обмеження
-все-або-нічого, підходить для довіреної локальної розробки, не
-підходить для агента, якому довіряють частково.
+The original design was owner-ratifiable and began as PROPOSED. The repository-wide
+repair pass implemented the narrow, backward-compatible embedding mechanism without
+changing the trusted native default:
+
+- `Environment::with_fs_read_roots(...)`;
+- `Environment::with_fs_write_roots(...)`;
+- `Environment::with_tcp_connect_allowlist(...)`;
+- `Environment::with_tcp_listen_allowlist(...)`;
+- `None` for any dimension remains unrestricted;
+- lexical child environments share the same session policy;
+- filesystem canonicalization/enforcement stays in `my-lisp-host`, not the semantic core;
+- connect and listen remain independent policy dimensions.
+
+Executable evidence: `crates/my-lisp-host/tests/capability_scoping.rs`, workspace
+CI #1038 (tests/build + zero-warning clippy).
+
+**Not yet ratified as a public CLI contract:** the originally proposed
+`--allow-fs-read`, `--allow-fs-write`, `--allow-tcp-connect`, and
+`--allow-tcp-listen` flag surface has not been added. The confirmed claim is the
+programmatic per-session embedding boundary, not that every CLI entry point is now
+sandboxed.
+
+**Historical process decision, unchanged:** unrestricted process execution is the
+trusted native Lisp-machine profile. Exact `process` allowlists remain available for
+restricted embeddings/TCP-oracle sessions.
 
 ---
 
-## 1. Живий поточний стан (перевірено читанням коду, не припущено)
+## 1. Current implementation
 
-`crates/my-lisp-host/src/lib.rs` + `crates/my-lisp/src/environment.rs`:
+`crates/my-lisp/src/environment.rs` carries policy data only. The semantic core still
+does not perform filesystem or network operations and `Environment::root()` does not
+install host capabilities.
 
-- **`process-run`** — вже реально scoped: `Environment::with_process_allowlist(programs)`
-  приймає список дозволених імен програм; відмова — іменована помилка
-  (`process-run: {program} is not on this session's allowlist`,
-  тримовна, S2-стиль). Саме цей механізм ми самі щойно використали
-  цієї сесії (`--allow-process=git,cargo,sed` для `scripts/release.my`)
-  — і зіткнулись живцем із тим, що `sed` довелось додавати окремо,
-  коли скрипт викликав його неявно.
-- **`read-file`/`write-file`/`read-file-bytes`/`write-file-bytes`/`read-dir`**
-  — **немає жодного root-обмеження**. Будь-який шлях, доступний
-  процесу ОС, доступний і my-lisp-програмі, щойно `my_lisp_host::install()`
-  викликано. Все-або-нічого.
-- **`tcp-connect`/`tcp-listen`/`tcp-accept`** — так само, все-або-нічого:
-  будь-який host:port, щойно host-шар встановлено.
-- `Environment::root()` сам по собі **не** встановлює host-примітиви —
-  `my_lisp_host::install()` — окремий, явний виклик хоста (CLI). Ядро
-  без хоста не має жодного I/O взагалі (комітить до цього
-  `crates/my-lisp-host/src/lib.rs:4-11`'s власний коментар).
+```text
+Environment session policy
+├── process_allowlist
+├── fs_read_roots
+├── fs_write_roots
+├── tcp_connect_allowlist
+└── tcp_listen_allowlist
 
-## 2. Проблема
+None          → unrestricted trusted profile
+Some([])      → deny all for that dimension
+Some(entries) → explicit allow scope
+```
 
-`process_allowlist` вже довів патерн: тонке, іменоване, явне
-розширення можливостей замість install/no-install перемикача. Файлова
-система й мережа — досі груба межа. Для довіреного локального
-розробника це не проблема (він і так має повний доступ до своєї
-машини). Для автономного агента, якому дають my-lisp-скрипт
-запустити — це реальний, невиправданий надлишок довіри: скрипт, якому
-потрібен лише `read-file` на одну директорію конфігурації, зараз
-технічно може прочитати/переписати будь-що в файловій системі.
+`crates/my-lisp-host/src/lib.rs` owns enforcement:
 
-## 3. Пропонований дизайн
+- `read-file`, `read-file-bytes`, `read-dir`, and `load` use the read roots;
+- `write-file` and `write-file-bytes` use the write roots;
+- `tcp-connect` checks the connect allowlist before opening a socket;
+- `tcp-listen-raw` checks the listen allowlist before binding;
+- an already-created TCP handle is not re-authorized on each read/write/accept/close.
 
-Той самий патерн, що вже працює для `process_allowlist`, поширений на
-файлову систему й мережу — не новий механізм, розширення наявного:
+This keeps the boundary:
+
+```text
+core                    host
+policy data     →       canonicalize / bind / connect / filesystem I/O
+(no OS access)          (OS mechanism + enforcement)
+```
+
+## 2. Filesystem rule
+
+A filesystem operation is permitted only when the canonical target lies below one
+of the configured canonical roots.
+
+For reads, the target must already exist and is canonicalized directly.
+
+For writes:
+
+- an existing target is canonicalized directly;
+- for a new file, its existing parent directory is canonicalized and the final file
+  name is joined afterward.
+
+This rejects `..`/component escapes and symlink escapes without requiring the core to
+touch the filesystem. A write into a parent directory that itself does not exist is
+not authorized by this check; `write-file` does not create parent directories anyway.
+
+The regression suite includes a Unix symlink inside an allowed root that points to an
+outside file; the read is denied before contents are returned.
+
+## 3. Network rule
+
+Connect and listen are independent because they represent different authority.
+Each entry is currently stored as:
 
 ```rust
-// crates/my-lisp/src/environment.rs, struct Limits
-struct Limits {
-    process_allowlist: Option<Vec<String>>,       // вже є
-    fs_read_roots: Option<Vec<PathBuf>>,           // новий
-    fs_write_roots: Option<Vec<PathBuf>>,          // новий
-    tcp_connect_policy: Option<Vec<HostPortSpec>>, // новий
-    tcp_listen_policy: Option<Vec<BindSpec>>,      // новий
-}
+(host_or_bind_address, first_port, last_port)
 ```
 
-- **`fs_read_roots`/`fs_write_roots`** — списки директорій; шлях
-  дозволений, якщо канонізується (`std::fs::canonicalize`, ловить
-  symlink-обхід і `..`) всередину одного з коренів. `None` (не
-  викликано `with_fs_read_roots`) = поточна поведінка, необмежено —
-  **зворотна сумісність за замовчуванням**, той самий вибір, що вже
-  зробив `process_allowlist`.
-- **`tcp_connect_policy`** — список `(host, port-range)` специфікацій.
-  `tcp-connect` перевіряє призначення проти списку до фактичного
-  з'єднання.
-- **`tcp_listen_policy`** — окремо від connect (слухати на порту — інша
-  загроза-модель, ніж підключатись назовні; вже неявно так у
-  `tcp_repl.rs`'s власному коментарі про loopback-only).
-- **CLI-прапори**, той самий стиль, що й `--allow-process`:
-  `--allow-fs-read=<root1>,<root2>`, `--allow-fs-write=<root>`,
-  `--allow-tcp-connect=<host:port-range>`, `--allow-tcp-listen=<bind:port-range>`.
-  Ручний парсер (без `clap`), той самий аргумент, що вже
-  задокументований у `main.rs`: один прапор не виправдовує нову
-  залежність, чотири прапори того самого патерну — теж ні.
+with an inclusive port range. Matching is exact on the supplied host/address string;
+DNS identity expansion is deliberately not claimed.
 
-## 4. Іменовані помилки відмови (S2, той самий формат, що вже є)
+Tests prove deny-all is enforced **before** network access/bind and that listen can be
+allowed while a connect outside its independent port range remains denied.
 
-```
-read-file: {path} is not under an allowed read root · ...
-write-file: {path} is not under an allowed write root · ...
-tcp-connect: {host}:{port} is not on this session's allowed destinations · ...
-tcp-listen: {bind}:{port} is not on this session's allowed bind targets · ...
+## 4. Named denial
+
+Scoped denial is an `ErrorKind::InvalidForm` host-boundary failure with a stable
+English marker:
+
+```text
+outside this session's capability scope
 ```
 
-Тримовно (UK/EN/DE), як уже є `process-run`'s помилка — консистентність
-формату, не новий стиль.
+The message also carries Ukrainian/German explanatory text. This does not create a
+new language error category or a new semantic primitive.
 
-## 5. Взаємодія з наявним `process_allowlist`
+## 5. Backward compatibility
 
-Незалежні виміри одного й того самого `Limits`-об'єкта, не
-ієрархія. Сесія може мати `process_allowlist` без `fs_read_roots` (як
-зараз, `scripts/release.my`) — процес-виклики обмежені, файли й мережа
-все ще все-або-нічого, доки хтось явно не додасть нові прапори. Кожен
-вимір opt-in окремо, як і задача сама каже: "scope is granularity, not
-moving host I/O into core."
+No scope configured means the same trusted behavior as before this implementation.
+Existing native CLI/REPL code therefore does not silently become sandboxed.
 
-## 6. Зворотна сумісність
+This matters: capability scoping is opt-in embedding policy, not a redefinition of
+`read-file`, `write-file`, or TCP semantics.
 
-Жоден наявний виклик `my-lisp`/CLI без нових прапорів не змінює
-поведінку — усі нові поля `Limits` типу `Option<...>`, `None` = стара
-поведінка. `scripts/release.my` (цієї сесії, `--allow-process=git,cargo,sed`)
-продовжує працювати без жодної зміни.
+## 6. Executable adversarial evidence
 
-## 7. Explicit non-goals
+`capability_scoping.rs` currently attempts to break the boundary through:
 
-- **Не переносить host I/O в ядро.** `Environment::root()` і далі не
-  встановлює жодних host-примітивів — розмежування залишається, це
-  задача про granularity всередині хоста, не про межу ядро/хост.
-- **Не реалізація.** Цей документ — дизайн. Реалізація (`Limits`,
-  парсинг прапорів, canonicalize-перевірка, самі помилки) —
-  `MYLISP-HOST-CAPABILITY-SCOPING-IMPLEMENT`, окрема задача, свідомо
-  заблокована цією ADR, доки власник не ратифікує дизайн.
-- **Не змінює `process_allowlist`.** Наявний механізм лишається як є,
-  нові виміри додаються поруч, не переписують його.
+1. unrestricted-default compatibility;
+2. allowed read vs outside read;
+3. allowed new write vs outside write (and verifies denial creates no file);
+4. `load` as a potential read-scope bypass;
+5. Unix symlink escape;
+6. TCP connect deny-all before connection attempt;
+7. TCP listen deny-all before bind;
+8. independent connect/listen policies.
 
-## 8. Відкриті питання для власника
+CI #1038 passed workspace tests/build and `cargo clippy --workspace --all-targets -- -D warnings`.
 
-1. `fs_read_roots`/`fs_write_roots` — окремі списки (файл читаний, але
-   не записуваний) чи один спільний "root" з прапорцем read/write на
-   кожен? Документ пропонує окремі (гнучкіше, той самий підхід, що й
-   Unix file permissions), але це вартий явного підтвердження вибір.
-2. Символічні посилання, що ведуть ЗА межі дозволеного кореня —
-   відмовляти завжди, чи дозволяти конфігурованим прапором? Документ
-   пропонує "завжди відмовляти" як безпечний дефолт.
-3. Чи потрібен `--allow-fs-read=/` як явний "без обмежень" escape-hatch
-   для довіреної локальної розробки (щоб не ламати поточний робочий
-   процес, коли обмеження не потрібне), чи просто відсутність прапора
-   вже це дає (поточна пропозиція)?
+## 7. Remaining migration gate
+
+The embedding API is confirmed. What remains is a user-facing/operational decision,
+not an unimplemented security primitive:
+
+- whether the native CLI should expose the four originally proposed scope flags;
+- whether those flags should constrain only the local execution session, TCP/oracle
+  sessions, or both;
+- how the CLI should encode hostnames/IPv6/port ranges without ambiguous parsing;
+- whether unauthenticated TCP/oracle should move from current process-only explicit
+  restriction toward a default deny policy for filesystem/network too.
+
+Those choices can now be made on top of tested enforcement rather than designing and
+shipping the policy simultaneously.
+
+## 8. Epistemic status
+
+```text
+core/host capability separation                 confirmed
+process per-session allowlist                    confirmed
+filesystem per-session read/write scopes         confirmed (tested boundary)
+load obeys filesystem read scope                 confirmed
+tcp connect/listen independent scopes            confirmed (tested boundary)
+symlink escape prevention                        confirmed on Unix regression
+trusted default unchanged                        confirmed
+public CLI flags                                 not implemented
+complete sandbox against every OS namespace      NOT claimed
+```
