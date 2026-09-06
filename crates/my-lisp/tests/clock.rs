@@ -55,6 +55,34 @@ fn utc_calendar_conversion_is_language_owned() {
 }
 
 #[test]
+fn internet_time_timestamp_interpretation_is_language_owned() {
+    let mut session = Session::default();
+    load_core_library(&mut session).unwrap();
+    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+
+    assert_eq!(
+        eval_program(
+            "(internet-time-observation->utc (quote (accepted \"clock.example\" 946684800 42)))",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(accepted \"clock.example\" (utc 2000 1 1 0 0 0 42))"
+    );
+    assert_eq!(
+        eval_program(
+            "(internet-time-observation->utc (quote (rejected receive-failed)))",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(rejected receive-failed)"
+    );
+}
+
+#[test]
 fn timezone_detection_is_explicit_and_ntp_requires_host_string() {
     let mut session = Session::default();
     load_core_library(&mut session).unwrap();
