@@ -146,6 +146,28 @@ pub fn evaluate(expression: &Expr, environment: &Environment) -> Result<Value, L
     }
 }
 
+/// Canonical surface spellings resolve to the already-ratified primitive
+/// implementations. Historical McCarthy names stay available for compatibility.
+/// Direct user bindings win first, so canonical builtin spellings preserve the
+/// ordinary lexical-shadowing contract of first-class builtins.
+fn canonical_builtin_target(name: &str) -> Option<&'static str> {
+    match name {
+        // Ukrainian surface.
+        "атом?" => Some("atom"),
+        "тотожне?" => Some("eq"),
+        "сполучити" => Some("cons"),
+        "перше" => Some("car"),
+        "решта" => Some("cdr"),
+        // Sanskrit / IAST surface.
+        "aṇu" => Some("atom"),
+        "abheda" => Some("eq"),
+        "saṃyuj" => Some("cons"),
+        "ādi" => Some("car"),
+        "śeṣa" => Some("cdr"),
+        _ => None,
+    }
+}
+
 pub(crate) fn evaluate_step(
     expression: &Expr,
     environment: &Environment,
@@ -155,13 +177,22 @@ pub(crate) fn evaluate_step(
         ExprKind::Rational(rational) => Ok(EvalStep::Value(Value::Rational(rational.clone()))),
         ExprKind::NumericBuffer(buffer) => Ok(EvalStep::Value(Value::NumericBuffer(buffer.clone()))),
         ExprKind::String(value) => Ok(EvalStep::Value(Value::String(value.clone()))),
-        ExprKind::Symbol(symbol) => environment.get(symbol).map(EvalStep::Value).ok_or_else(|| {
-            LanguageError::new(
-                ErrorKind::UnknownSymbol,
-                format!("unknown symbol · nevidomyi symvol · unbekanntes Symbol: {symbol}"),
-                expression.span,
-            )
-        }),
+        ExprKind::Symbol(symbol) => environment
+            .get(symbol)
+            .or_else(|| {
+                canonical_builtin_target(symbol)
+                    .and_then(|historical_name| environment.get(historical_name))
+            })
+            .map(EvalStep::Value)
+            .ok_or_else(|| {
+                LanguageError::new(
+                    ErrorKind::UnknownSymbol,
+                    format!("unknown symbol · nevidomyi symvol · unbekanntes Symbol: {symbol}"),
+                    expression.span,
+                )
+            }),
+        // Canon 0: the empty source list evaluates directly to the canonical
+        // empty-list value. `Value::Nil` remains only the Rust implementation name.
         ExprKind::List(items) if items.is_empty() => Ok(EvalStep::Value(Value::Nil)),
         ExprKind::List(items) => evaluate_list(items, environment, expression.span),
         ExprKind::Pair(_, _) => Err(LanguageError::new(
@@ -179,11 +210,11 @@ fn evaluate_list(
 ) -> Result<EvalStep, LanguageError> {
     let arguments = &items[1..];
     // Special forms stay explicit because they control which arguments are evaluated.
-    // Spetsialni formy lyshaiutsia yavnymy, bo vony keruiut obchyslenniam arhumentiv.
-    // Sonderformen bleiben explizit, weil sie die Auswertung ihrer Argumente steuern.
+    // Ukrainian and Sanskrit canonical spellings are syntax-equivalent surfaces,
+    // not distinct primitive implementations.
     match items[0].kind.as_symbol() {
-        Some("quote") => {
-            special_forms::exact_arity("quote", arguments, 1, span)?;
+        Some(name @ ("quote" | "як-є" | "svarūpa")) => {
+            special_forms::exact_arity(name, arguments, 1, span)?;
             let value = special_forms::quoted(&arguments[0])?;
             Ok(EvalStep::Value(value))
         }
@@ -196,7 +227,9 @@ fn evaluate_list(
         Some("defmacro") => {
             special_forms::evaluate_defmacro(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("cond") => special_forms::evaluate_cond(arguments, environment, span),
+        Some("cond" | "за-умовою" | "anukrama") => {
+            special_forms::evaluate_cond(arguments, environment, span)
+        }
         Some("print") => {
             special_forms::evaluate_print(arguments, environment, span).map(EvalStep::Value)
         }
@@ -245,9 +278,6 @@ fn evaluate_list(
                 .map(EvalStep::Value)
         }
         // NOTE: abs/min/max/min-list/max-list are first-class builtins
-        // (eval/builtins.rs), NOT special forms — resolving them through the
-        // environment keeps the ratified lexical-shadowing contract intact:
-        // user `(def min ...)` must win over the builtin.
         // (eval/builtins.rs), NOT special forms — resolving them through the
         // environment keeps the ratified lexical-shadowing contract intact:
         // user `(def min ...)` must win over the builtin.
@@ -348,5 +378,74 @@ mod single_pass_eval_tests {
         let mut session = Session::default();
         let result = eval_program(source, &mut session).expect("eval should succeed");
         assert_eq!(result.value.to_string(), "1/6");
+    }
+
+    #[test]
+    fn canon_zero_empty_list_evaluates_directly() {
+        let mut session = Session::default();
+        let result = eval_program("()", &mut session).expect("Canon 0 should evaluate");
+        assert_eq!(result.value.to_string(), "()");
+    }
+
+    #[test]
+    fn ukrainian_canonical_surface_executes_the_core() {
+        let source = r#"
+            (за-умовою
+              ((атом? (як-є кіт))
+               (перше
+                 (сполучити
+                   (як-є груша)
+                   (сполучити (як-є слива) ()))))
+              (t (як-є помилка)))
+        "#;
+        let mut session = Session::default();
+        let result = eval_program(source, &mut session)
+            .expect("Ukrainian canonical surface should evaluate");
+        assert_eq!(result.value.to_string(), "груша");
+    }
+
+    #[test]
+    fn ukrainian_rest_obeys_proper_list_semantics() {
+        let mut session = Session::default();
+        let result = eval_program("(решта (як-є (яблуко груша слива)))", &mut session)
+            .expect("решта should return the structural remainder");
+        assert_eq!(result.value.to_string(), "(груша слива)");
+    }
+
+    #[test]
+    fn ukrainian_double_projection_reads_the_tree() {
+        let mut session = Session::default();
+        let result = eval_program(
+            "(перше (решта (як-є (яблуко груша слива))))",
+            &mut session,
+        )
+        .expect("canonical composition should evaluate");
+        assert_eq!(result.value.to_string(), "груша");
+    }
+
+    #[test]
+    fn sanskrit_canonical_surface_executes_the_same_core() {
+        let source = r#"
+            (anukrama
+              ((aṇu (svarūpa phalam))
+               (ādi
+                 (saṃyuj
+                   (svarūpa prathama)
+                   (saṃyuj (svarūpa śeṣaḥ) ()))))
+              (t (svarūpa doṣa)))
+        "#;
+        let mut session = Session::default();
+        let result = eval_program(source, &mut session)
+            .expect("Sanskrit canonical surface should evaluate");
+        assert_eq!(result.value.to_string(), "prathama");
+    }
+
+    #[test]
+    fn canonical_builtin_spelling_remains_shadowable() {
+        let source = "(def перше (lambda (x) (як-є затінено))) (перше 42)";
+        let mut session = Session::default();
+        let result = eval_program(source, &mut session)
+            .expect("canonical builtin surface should preserve lexical shadowing");
+        assert_eq!(result.value.to_string(), "затінено");
     }
 }
