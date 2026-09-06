@@ -35,8 +35,8 @@ This is the same surgical sequence used for `mono-ms`, `utc-now`, and the NTP in
 | `civil-from-days` | `lib/time.my` | deterministic Gregorian semantics | LANGUAGE-OWNED |
 | `utc-from-unix` | `lib/time.my` | deterministic UTC interpretation | LANGUAGE-OWNED |
 | `utc-now` | `lib/time.my` | derived public clock meaning | HOST REMOVED |
-| raw NTP query | Rust host | bounded UDP query + extraction of fixed-width response fields | KEEP mechanism |
-| `internet-time-sync` | `lib/time.my` after time-layer load | public NTP interpretation | LANGUAGE-OWNED |
+| `ntp-query-raw` | Rust host | bounded UDP NTP query + extraction of fixed-width response fields | KEEP mechanism |
+| `internet-time-sync` | `lib/time.my` | public NTP interpretation | LANGUAGE-OWNED |
 | `internet-time-fields->observation` | `lib/time.my` | mode/stratum validation, NTP epoch conversion, fraction-to-nanoseconds | LANGUAGE-OWNED |
 | `internet-time-observation->utc` | `lib/time.my` | calendar interpretation/policy | LANGUAGE-OWNED |
 | `timezone-detect` | Rust host | host environment observation | KEEP observation |
@@ -64,7 +64,7 @@ The NTP chain is now:
 ```text
 UDP socket / NTP packet
   ↓
-Rust: bounded query + fixed-width field extraction
+Rust: ntp-query-raw
   ↓
 (ntp-fields host mode stratum ntp-seconds fraction)
   ↓
@@ -79,7 +79,7 @@ Lisp: internet-time-observation->utc
 
 Rust no longer decides whether mode/stratum are semantically acceptable, no longer translates the NTP epoch to Unix time, and no longer computes the fractional second in nanoseconds. Those transformations are deterministic language-owned semantics. Transport failures and short packets remain host-level observations because they arise before a complete protocol field set exists.
 
-The root host builtin still temporarily carries the historical public name `internet-time-sync`; `lib/time.my` captures it as the raw capability and replaces the public binding with a Lisp closure. Renaming the host-only capability to a neutral mechanism name is cleanup, not a semantic migration, and should happen only with the same ownership tests and green CI discipline.
+The host capability now also has a mechanism-only name: `ntp-query-raw`. The public name `internet-time-sync` exists only in `lib/time.my`; before the time layer loads it is absent, and after the time layer loads it is a Lisp closure over the raw host capability. Naming now exposes the same ownership boundary that the implementation already enforces.
 
 ## Core capability boundary
 
@@ -182,12 +182,12 @@ Lisp: civil-from-days + utc-from-unix + utc-now
 
 The normal CLI, plain TCP REPL, and sexpr/oracle bootstrap paths load the language-owned time layer. The ownership test requires `utc-now` to be absent from the root host environment and to appear only as a Lisp closure after `load_time_library`. CI passed before the Rust duplicate and Gregorian helper were removed.
 
-### NTP response semantics
+### NTP response semantics and host naming
 
 Before:
 
 ```text
-Rust:
+Rust internet-time-sync:
   UDP query
   + mode/stratum acceptance
   + NTP epoch conversion
@@ -198,18 +198,18 @@ Rust:
 After:
 
 ```text
-Rust:
+Rust ntp-query-raw:
   UDP query
   + fixed-width field extraction
 
-Lisp:
+Lisp internet-time-sync:
   mode/stratum acceptance
   + NTP epoch conversion
   + fraction -> nanoseconds
-  + public internet-time-sync meaning
+  + public internet-time meaning
 ```
 
-Deterministic fixtures prove mode 4/5 acceptance, invalid mode/stratum rejection, epoch rejection, and exact `2147483648 -> 500000000 ns` conversion. The public `internet-time-sync` binding is required to be a Lisp closure after the time layer loads while the captured raw capability remains a Rust builtin. CI #884 passed before this HSS status was updated.
+Deterministic fixtures prove mode 4/5 acceptance, invalid mode/stratum rejection, epoch rejection, and exact `2147483648 -> 500000000 ns` conversion. Ownership tests require `internet-time-sync` to be absent before `lib/time.my`, then appear as a Lisp closure, while `ntp-query-raw` remains the Rust builtin. CI #884 proved the semantic split before the final mechanism-only host rename.
 
 ## Principle
 
