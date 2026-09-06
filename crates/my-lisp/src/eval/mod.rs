@@ -4,8 +4,9 @@
 //!
 //! The evaluator is split by concern: this module owns the trampoline loop and
 //! dispatch table, `arithmetic` owns exact/inexact number handling, `special_forms`
-//! owns the McCarthy primitives plus `def`/`defmacro`/`cond`, and `closures` owns
-//! `lambda` construction and function/macro application.
+//! owns the McCarthy primitives plus compatibility `def`/`defmacro`/`cond`,
+//! `necessary_forms` owns the immutable DEFINE/LAMBDA identities, and `closures`
+//! owns lambda construction and function/macro application.
 pub(crate) use special_forms::digest::sha256 as digest_sha256;
 
 mod arithmetic;
@@ -13,6 +14,7 @@ pub(crate) mod builtins;
 mod canon;
 mod capabilities;
 mod closures;
+mod necessary_forms;
 mod special_forms;
 
 pub use capabilities::{
@@ -139,7 +141,7 @@ pub(crate) fn evaluate_step(
         ExprKind::Symbol(symbol) => environment
             .get(symbol)
             // Canonical fallback is semantic, not lexical: resolve the
-            // spelling directly to CANON.  Rebinding `car` can no longer
+            // spelling directly to CANON. Rebinding `car` can no longer
             // mutate what `перше` or `ādi` mean.
             .or_else(|| canon::value_for_surface(symbol))
             .map(EvalStep::Value)
@@ -150,7 +152,7 @@ pub(crate) fn evaluate_step(
                     expression.span,
                 )
             }),
-        // Canon 0 is a value in its own right.  `Value::Nil` is only its
+        // Canon 0 is a value in its own right. `Value::Nil` is only its
         // current Rust representation, not its public canonical name.
         ExprKind::List(items) if items.is_empty() => Ok(EvalStep::Value(
             canon::ground_value(canon::CanonicalIdentity::EmptyList)
@@ -177,9 +179,20 @@ fn evaluate_list(
             let value = special_forms::quoted(&arguments[0])?;
             Ok(EvalStep::Value(value))
         }
-        Some("lambda") => {
+        Some(name)
+            if necessary_forms::identity_for_surface(name)
+                == Some(necessary_forms::NecessaryFormIdentity::Lambda) =>
+        {
             closures::create_lambda(arguments, environment, span).map(EvalStep::Value)
         }
+        Some(name)
+            if necessary_forms::identity_for_surface(name)
+                == Some(necessary_forms::NecessaryFormIdentity::Define) =>
+        {
+            special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
+        }
+        // `def` is retained as a compatibility surface while code migrates to
+        // canonical `define`. It is deliberately absent from NECESSARY_FORMS.
         Some("def") => {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
         }
@@ -287,6 +300,30 @@ mod single_pass_eval_tests {
         let result = eval_parsed_expressions(&forms, &mut session)
             .expect("eval_parsed_expressions should succeed");
         assert_eq!(result.value.to_string(), "(1/3)");
+    }
+
+    #[test]
+    fn canonical_define_introduces_a_binding() {
+        let source = "(define x 41) (+ x 1)";
+        let mut session = Session::default();
+        let result = eval_program(source, &mut session).expect("define should bind x");
+        assert_eq!(result.value.to_string(), "42");
+    }
+
+    #[test]
+    fn canonical_define_and_lambda_support_recursion() {
+        let source = r#"
+            (define count-down
+              (lambda (n)
+                (cond
+                  ((eq n 0) (quote done))
+                  (t (count-down (- n 1))))))
+            (count-down 1000)
+        "#;
+        let mut session = Session::default();
+        let result = eval_program(source, &mut session)
+            .expect("DEFINE + LAMBDA should preserve recursive binding semantics");
+        assert_eq!(result.value.to_string(), "done");
     }
 
     #[test]
