@@ -256,6 +256,10 @@ fn evaluate_list(
             special_forms::evaluate_codepoint_to_string(arguments, environment, span)
                 .map(EvalStep::Value)
         }
+        Some("string->codepoint") => {
+            special_forms::evaluate_string_to_codepoint(arguments, environment, span)
+                .map(EvalStep::Value)
+        }
         Some("sha256-hex") => {
             special_forms::evaluate_sha256_hex(arguments, environment, span).map(EvalStep::Value)
         }
