@@ -422,9 +422,8 @@ fn evaluate_tcp_read_raw(
     ))
 }
 
-/// Transitional raw write boundary. The host accepts already-interpreted bytes
-/// and performs only the socket write. The legacy text `tcp-write` remains
-/// registered until the language-owned wrapper is exercised by CI.
+/// `(tcp-write-raw connection byte-list)` writes exactly the supplied bytes.
+/// The host performs no text encoding and returns the original byte list.
 fn evaluate_tcp_write_raw(
     arguments: &[Expr],
     environment: &Environment,
@@ -443,32 +442,6 @@ fn evaluate_tcp_write_raw(
     let bytes = expect_tcp_byte_list(&bytes_value, arguments[1].span)?;
     tcp_write_raw(connection, &bytes, span)?;
     Ok(bytes_value)
-}
-
-fn evaluate_tcp_write(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("tcp-write", arguments, 2, span)?;
-    let connection_value = eval_expr(&arguments[0], environment)?;
-    let Value::TcpConnection(ref connection) = connection_value else {
-        return Err(LanguageError::new(
-            ErrorKind::Type,
-            "tcp-write expects a TCP connection · tcp-write ochikuie TCP-ziednannia · tcp-write erwartet eine TCP-Verbindung",
-            arguments[0].span,
-        ));
-    };
-    let content_value = eval_expr(&arguments[1], environment)?;
-    let Value::String(ref content) = content_value else {
-        return Err(LanguageError::new(
-            ErrorKind::Type,
-            "tcp-write expects a string as its second argument · tcp-write ochikuie riadok druhym arhumentom · tcp-write erwartet eine Zeichenkette als zweites Argument",
-            arguments[1].span,
-        ));
-    };
-    tcp_write(connection, content, span)?;
-    Ok(content_value)
 }
 
 fn evaluate_tcp_close(
@@ -592,24 +565,6 @@ fn tcp_write_raw(
     })
 }
 
-fn tcp_write(
-    connection: &std::cell::RefCell<std::net::TcpStream>,
-    content: &str,
-    span: Span,
-) -> Result<(), LanguageError> {
-    use std::io::Write;
-    connection
-        .borrow_mut()
-        .write_all(content.as_bytes())
-        .map_err(|error| {
-            LanguageError::new(
-                ErrorKind::InvalidForm,
-                format!("tcp-write: failed to write to the connection: {error}"),
-                span,
-            )
-        })
-}
-
 fn tcp_close(
     connection: &std::cell::RefCell<std::net::TcpStream>,
     span: Span,
@@ -674,7 +629,6 @@ pub fn install() {
     register_capability("tcp-accept", evaluate_tcp_accept);
     register_capability("tcp-read-raw", evaluate_tcp_read_raw);
     register_capability("tcp-write-raw", evaluate_tcp_write_raw);
-    register_capability("tcp-write", evaluate_tcp_write);
     register_capability("tcp-close", evaluate_tcp_close);
 }
 
@@ -696,7 +650,6 @@ mod install_tests {
             "tcp-accept",
             "tcp-read-raw",
             "tcp-write-raw",
-            "tcp-write",
             "tcp-close",
         ] {
             assert!(installed.iter().any(|n| n == name), "{name} not registered");
