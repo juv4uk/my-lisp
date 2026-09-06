@@ -151,7 +151,7 @@
     (- (mono-ns) started-ns)))
 
 ; Interpret raw host timezone declarations without performing host I/O here.
-; The migration target for the host is:
+; The host contract is:
 ;   (timezone-declarations tz-value etc-timezone-value)
 ; where each value is either a non-empty string or (). Lisp owns source
 ; precedence and the public detected/unknown result shape.
@@ -165,16 +165,21 @@
       (t
        (list (quote unknown) (quote host-declaration-unavailable))))))
 
-; Transitional ownership split: preserve the current host observation under a
-; raw name, then make the public `timezone-detect` binding a Lisp closure.
-; The next host reduction will change the raw capability itself to return only
-; declaration values, after which this wrapper will call the pure interpreter
-; above. Until then, the host still performs declaration source selection.
-(def timezone-detect-raw timezone-detect)
+; Adapt the mechanism-only host observation to public timezone meaning.
+(def timezone-raw->observation
+  (lambda (raw)
+    (cond
+      ((eq (car raw) (quote timezone-declarations))
+       (timezone-declarations->observation
+         (second raw)
+         (third raw)))
+      (t
+       (list (quote rejected) (quote invalid-timezone-observation))))))
 
 (def timezone-detect
   (lambda ()
-    (timezone-detect-raw)))
+    (timezone-raw->observation
+      (timezone-declarations-raw))))
 
 (def timezone-config
   (lambda (name offset-seconds)
