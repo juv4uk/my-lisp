@@ -23,51 +23,6 @@ fn builtin(name: &'static str, func: Native) -> Value {
     Value::Builtin(std::rc::Rc::new(crate::value::Builtin { name, func }))
 }
 
-// Convert whole UTC days since 1970-01-01 to a proleptic Gregorian date.
-// This keeps the core dependency-free while making the wall-clock result
-// unambiguous and deterministic to decode.
-fn civil_from_days(days: i64) -> (i64, i64, i64) {
-    let z = days + 719_468;
-    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = mp + if mp < 10 { 3 } else { -9 };
-    let year = y + if m <= 2 { 1 } else { 0 };
-    (year, m, d)
-}
-
-fn utc_now_value(span: Span) -> Result<Value, crate::LanguageError> {
-    let duration = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|_| crate::LanguageError::new(
-            crate::ErrorKind::Type,
-            "utc-now is unavailable before the Unix epoch · utc-now nedostupnyi do Unix epoch · utc-now ist vor der Unix-Epoche nicht verfügbar",
-            span,
-        ))?;
-    let seconds = duration.as_secs();
-    let days = (seconds / 86_400) as i64;
-    let day_seconds = seconds % 86_400;
-    let (year, month, day) = civil_from_days(days);
-    let hour = (day_seconds / 3_600) as i64;
-    let minute = ((day_seconds % 3_600) / 60) as i64;
-    let second = (day_seconds % 60) as i64;
-    let number = |value: i64| exact_value(Rational::integer(value));
-    Ok(Value::list([
-        Value::Symbol(std::rc::Rc::from("utc")),
-        number(year),
-        number(month),
-        number(day),
-        number(hour),
-        number(minute),
-        number(second),
-        number(duration.subsec_nanos() as i64),
-    ]))
-}
-
 fn internet_time_sync_value(
     host: &str,
     timeout_ms: u64,
@@ -395,22 +350,6 @@ pub(crate) fn install(environment: &Environment) {
                 exact_value(Rational::integer(seconds)),
                 exact_value(Rational::integer(duration.subsec_nanos() as i64)),
             ]))
-        }
-    );
-
-    // (utc-now) -> (utc year month day hour minute second nanosecond).
-    // The calendar is UTC and the final field preserves the clock reading
-    // to nanosecond resolution; this is wall-clock observation, not a
-    // monotonic timer and must not replace logical FS revisions.
-    // (utc-now) -> (utc рік місяць день година хвилина секунда наносекунда).
-    // Календар UTC, останнє поле зберігає показ до наносекунди; це спостереження
-    // годинника, а не монотонний таймер і не заміна логічних revision FS.
-    define!(
-        environment,
-        "utc-now",
-        |args: &[Value], _env: &Environment, span: Span| {
-            exact_args("utc-now", args, 0, span)?;
-            utc_now_value(span)
         }
     );
 
@@ -868,7 +807,6 @@ pub(crate) fn install(environment: &Environment) {
             let _ = span;
             let mut items = Vec::new();
             for (name, value) in env.snapshot() {
-                // skip the marker boolean t's own entry noise? keep everything:
                 items.push(crate::Value::Pair(
                     std::rc::Rc::new(crate::Value::String(name)),
                     std::rc::Rc::new(value),
