@@ -305,6 +305,52 @@ fn mono_ms_binding_is_owned_by_lisp_after_time_library_loads() {
 }
 
 #[test]
+fn timezone_declaration_policy_is_language_owned() {
+    let mut session = time_session();
+
+    assert_eq!(
+        eval_program(
+            "(timezone-declarations->observation \"Europe/Kyiv\" \"Etc/UTC\")",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(detected \"Europe/Kyiv\" TZ)"
+    );
+    assert_eq!(
+        eval_program(
+            "(timezone-declarations->observation (quote ()) \"Europe/Kyiv\")",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(detected \"Europe/Kyiv\" etc-timezone)"
+    );
+    assert_eq!(
+        eval_program(
+            "(timezone-declarations->observation \"\" \"Europe/Kyiv\")",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(detected \"Europe/Kyiv\" etc-timezone)"
+    );
+    assert_eq!(
+        eval_program(
+            "(timezone-declarations->observation (quote ()) (quote ()))",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(unknown host-declaration-unavailable)"
+    );
+}
+
+#[test]
 fn timezone_detection_is_explicit_and_ntp_requires_host_string() {
     let mut session = time_session();
     let timezone = eval_program("(timezone-detect)", &mut session)
