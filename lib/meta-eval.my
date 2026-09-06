@@ -202,7 +202,7 @@
        (cond
          ((eq params (quote ())) (quote ()))
          (t t)))
-      (t (my-rest-param? (cdr params)))))))
+      (t (my-rest-param? (cdr params))))))
 
 (def my-arity-ok?
   (lambda (params args)
