@@ -263,11 +263,6 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "Mutate a vector slot",
             Arity::Exact(3),
         ),
-        "mono-ms" => (
-            "(mono-ms)",
-            "Return exact monotonic milliseconds",
-            Arity::Exact(0),
-        ),
         "mono-ns" => (
             "(mono-ns)",
             "Return a monotonic nanosecond counter as an exact integer",
