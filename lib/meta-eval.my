@@ -2,25 +2,27 @@
 ;
 ; The important ownership boundary in this version is contract 2.1:
 ; ordinary primitive names are no longer recognized by a head-symbol dispatch
-; inside my-eval.  They resolve through the metacircular environment as
-; first-class `(primitive name)` values.  Therefore lexical bindings can
+; inside my-eval. They resolve through the metacircular environment as
+; first-class `(primitive name)` values. Therefore lexical bindings can
 ; shadow `+`, `car`, `eq`, etc. using the same lookup rule as any other name.
 ;
 ; Only syntax-only forms remain syntax dispatch here: quote, cond, lambda.
 ; The actual primitive operation is still supplied by the native substrate;
 ; this evaluator owns name resolution, lexical shadowing, application shape,
-; macro expansion, closure environments and chained comparison policy.
+; macro expansion, closure environments, chained comparison policy, and
+; self-recursive top-level function binding.
 ;
 ; This remains an explicit self-hosting witness, not the always-loaded runtime.
-; Named-error parity, variadic/dotted lambda lists and recursive top-level def
-; are still known gaps and must not be claimed as complete self-hosting.
+; Named-error parity, variadic/dotted lambda lists and mutually recursive
+; top-level definitions are still known gaps and must not be claimed as
+; complete self-hosting.
 
 (def my-primitive
   (lambda (name)
     (list (quote primitive) name)))
 
 ; Root primitive meanings are represented as values, not as special cases in
-; expression-head dispatch.  An unbound non-primitive atom remains itself;
+; expression-head dispatch. An unbound non-primitive atom remains itself;
 ; this preserves the existing metacircular self-evaluation convention for
 ; numbers, strings, t and currently-unclassified symbols.
 (def my-default-binding
@@ -64,6 +66,34 @@
       ((atom value) (quote ()))
       (t (eq (car value) (quote closure))))))
 
+; A recursive closure is finite Lisp data. It does not require a cyclic host
+; Environment. At call time my-apply reconstructs the one self-binding that
+; the function needs, then ordinary parameter bindings are placed in front of
+; it so lexical parameters still shadow the function name when appropriate.
+;
+; Shape:
+;   (recursive-closure name params body captured-env)
+(def my-recursive-closure?
+  (lambda (value)
+    (cond
+      ((atom value) (quote ()))
+      (t (eq (car value) (quote recursive-closure))))))
+
+(def my-lambda-form?
+  (lambda (form)
+    (cond
+      ((atom form) (quote ()))
+      ((atom (car form)) (eq (car form) (quote lambda)))
+      (t (quote ())))))
+
+(def my-fourth
+  (lambda (values)
+    (car (cdr (cdr (cdr values))))))
+
+(def my-fifth
+  (lambda (values)
+    (car (cdr (cdr (cdr (cdr values)))))))
+
 (def my-compare-two
   (lambda (operator left right)
     (cond
@@ -83,7 +113,7 @@
        (my-compare-chain operator (cdr values)))
       (t (quote ())))))
 
-; Primitive *identity* is a Lisp value.  This function is the narrow bridge
+; Primitive *identity* is a Lisp value. This function is the narrow bridge
 ; from that identity to the admitted native operation mechanism.
 (def my-apply-primitive
   (lambda (name args)
@@ -143,14 +173,24 @@
          (bind-params
            (second fn)
            args
-           (car (cdr (cdr (cdr fn)))))))
+           (my-fourth fn))))
+      ((my-recursive-closure? fn)
+       (let ((self-env
+               (cons (cons (second fn) fn)
+                     (my-fifth fn))))
+         (my-eval-body
+           (my-fourth fn)
+           (bind-params
+             (third fn)
+             args
+             self-env))))
       ((my-macro? fn)
        (my-eval-body
          (third fn)
          (bind-params
            (second fn)
            args
-           (car (cdr (cdr (cdr fn)))))))
+           (my-fourth fn))))
       (t (list (quote not-callable) fn)))))
 
 (def my-eval
@@ -179,15 +219,31 @@
          (my-eval (car expr) env)
          (my-eval-list (cdr expr) env))))))
 
-; Top-level sequencing.  `def` and `defmacro` return `(new-env . value)` so
+; Top-level sequencing. `def` and `defmacro` return `(new-env . value)` so
 ; the immutable alist environment can be threaded explicitly to the next form.
+;
+; A top-level `(def name (lambda ...))` is represented specially as finite
+; recursive-closure data. This gives self-recursion language-owned semantics
+; without requiring mutation or a cyclic Rust Environment. Non-lambda values
+; keep the ordinary evaluate-then-bind path.
 (def my-eval-top-form
   (lambda (form env)
     (cond
       ((atom form) (cons env (my-eval form env)))
       ((eq (car form) (quote def))
-       (let ((value (my-eval (third form) env)))
-         (cons (cons (cons (second form) value) env) value)))
+       (let ((value-form (third form)))
+         (cond
+           ((my-lambda-form? value-form)
+            (let ((value
+                    (list (quote recursive-closure)
+                          (second form)
+                          (second value-form)
+                          (cdr (cdr value-form))
+                          env)))
+              (cons (cons (cons (second form) value) env) value)))
+           (t
+            (let ((value (my-eval value-form env)))
+              (cons (cons (cons (second form) value) env) value))))))
       ((eq (car form) (quote defmacro))
        (let ((macro-val
                (list (quote macro)
