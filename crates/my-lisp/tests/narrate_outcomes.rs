@@ -99,4 +99,12 @@ fn malformed_or_unknown_outcome_shape_is_presented_as_invalid() {
         eval_outcome_narration(r#"(narrate-outcome (quote (mystery payload)))"#),
         "(invalid outcome-tag mystery)"
     );
+    assert_eq!(
+        eval_outcome_narration(r#"(narrate-outcome (quote (unknown)))"#),
+        "(invalid outcome-shape (unknown))"
+    );
+    assert_eq!(
+        eval_outcome_narration(r#"(narrate-outcome (quote ((bad-tag) payload)))"#),
+        "(invalid outcome-tag (bad-tag))"
+    );
 }
