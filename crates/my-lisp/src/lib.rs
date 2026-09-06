@@ -81,18 +81,19 @@ pub fn load_time_library(session: &mut Session) -> Result<EvalResult, LanguageEr
     eval_program(TIME_LIBRARY_SOURCE, session)
 }
 
-/// Load the language-owned byte/text and process-result semantic layers.
-/// The definitions can be installed in a capability-free session, but calling
-/// `process-run-text` requires an embedder to provide `process-run-raw`.
+/// Load the shared byte/text adapters used by process and TCP boundaries.
+/// `load_process_library` remains the compatibility entry point already used
+/// by native embedders, so it now installs both language-owned text adapters:
+/// public `process-run` over `process-run-raw`, and public `tcp-read` over
+/// `tcp-read-raw`. Neither raw capability is required merely to define them.
 pub fn load_process_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     eval_program(UTF8_LIBRARY_SOURCE, session)?;
-    eval_program(PROCESS_LIBRARY_SOURCE, session)
+    eval_program(PROCESS_LIBRARY_SOURCE, session)?;
+    eval_program(TCP_LIBRARY_SOURCE, session)
 }
 
-/// Load language-owned TCP text semantics over the raw socket read boundary.
-/// The session should already have core.my available; an embedder that wants
-/// real network I/O must additionally install the host `tcp-read-raw`
-/// capability (alongside connect/listen/accept/write/close as needed).
+/// Load language-owned TCP text semantics explicitly when an embedder does
+/// not otherwise need the process adapter.
 pub fn load_tcp_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     eval_program(UTF8_LIBRARY_SOURCE, session)?;
     eval_program(TCP_LIBRARY_SOURCE, session)
