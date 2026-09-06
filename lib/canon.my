@@ -64,11 +64,17 @@
       (решта (сполучити (quote кіт) 42))
       42)))
 
+; EQ is atom-only.  Therefore the proper-list witness is checked by projecting
+; the returned pair chain into atoms instead of comparing two lists structurally.
 (def canon-law-cdr-proper
   (lambda ()
-    (тотожне?
-      (решта (як-є (1 2 3)))
-      (як-є (2 3)))))
+    (за-умовою
+      ((тотожне? (перше (решта (як-є (1 2 3)))) 2)
+       (за-умовою
+         ((тотожне? (перше (решта (решта (як-є (1 2 3))))) 3)
+          (тотожне? (решта (решта (решта (як-є (1 2 3))))) (як-є ())))
+         (t (як-є ()))))
+      (t (як-є ())))))
 
 ; EQ is atom-only, so structural equality is not used for the improper result;
 ; project it back into atom witnesses instead.
