@@ -1,10 +1,9 @@
-use my_lisp::{eval_program, Session};
+use my_lisp::{eval_program, load_core_library, Session};
 
 #[test]
 fn ukrainian_surface_defines_functions_without_rust_knowing_ukrainian_form_names() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
-        .expect("core.my should preload");
+    load_core_library(&mut session).expect("canonical macro + core bootstrap should preload");
     eval_program(include_str!("../../../lib/surface/uk.my"), &mut session)
         .expect("Ukrainian surface should preload");
 
