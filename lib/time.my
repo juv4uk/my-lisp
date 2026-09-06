@@ -40,6 +40,22 @@
             (third civil)
             hour minute second-of-minute nanosecond))))
 
+; The host NTP capability intentionally returns a raw observation:
+;   (accepted host unix-seconds nanosecond)
+; or a rejected result. Turning the accepted timestamp into calendar meaning is
+; language policy, so keep that interpretation here rather than teaching Rust
+; about another calendar-shaped network result.
+(def internet-time-observation->utc
+  (lambda (observation)
+    (cond
+      ((eq (car observation) (quote accepted))
+       (list (quote accepted)
+             (second observation)
+             (utc-from-unix
+               (third observation)
+               (car (cdr (cdr (cdr observation)))))))
+      (t observation))))
+
 (def timezone-config
   (lambda (name offset-seconds)
     (cond
