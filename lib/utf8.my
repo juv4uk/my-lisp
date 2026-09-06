@@ -1,15 +1,17 @@
-; UTF-8 decoding semantics owned by Lisp.
-; Семантика декодування UTF-8, якою володіє Lisp.
+; UTF-8 encoding and decoding semantics owned by Lisp.
+; Семантика кодування й декодування UTF-8, якою володіє Lisp.
 ;
-; Input is a proper list of exact byte integers 0..255. The decoder returns:
+; Decoder input is a proper list of exact byte integers 0..255 and returns:
 ;   (decoded (codepoint ...))
 ; or
 ;   (rejected invalid-byte)
 ;   (rejected invalid-utf8)
 ;
-; Unicode sequence validation and byte-to-scalar interpretation stay here in
-; Lisp. The runtime exposes only the irreducible codepoint->string mechanism
-; needed to materialize one already-validated Unicode scalar as a String.
+; Encoder input is a runtime String and returns its exact UTF-8 bytes as a
+; proper list of integers 0..255. Unicode sequence validation and both
+; byte<->scalar interpretations stay here in Lisp. The runtime exposes only
+; the minimal scalar/string bridges `codepoint->string` and
+; `string->codepoint`; neither bridge knows UTF-8.
 
 (def utf8-continuation-byte?
   (lambda (b)
@@ -151,3 +153,40 @@
          (list (quote decoded)
                (unicode-scalars->string (car (cdr decoded)))))
         (t decoded)))))
+
+; Encode one runtime String by observing one Unicode scalar at a time. The
+; accumulator is kept in reverse byte order so the recursive call remains in
+; tail position and one final reverse restores wire order.
+(def utf8-encode-string-onto
+  (lambda (text out)
+    (cond
+      ((string-empty? text) (reverse out))
+      (t
+       (let* ((character (string-first text))
+              (rest (string-rest text))
+              (scalar (string->codepoint character)))
+         (cond
+           ((<= scalar 127)
+            (utf8-encode-string-onto rest (cons scalar out)))
+           ((<= scalar 2047)
+            (utf8-encode-string-onto
+              rest
+              (cons (+ 128 (mod scalar 64))
+                    (cons (+ 192 (quotient scalar 64)) out))))
+           ((<= scalar 65535)
+            (utf8-encode-string-onto
+              rest
+              (cons (+ 128 (mod scalar 64))
+                    (cons (+ 128 (mod (quotient scalar 64) 64))
+                          (cons (+ 224 (quotient scalar 4096)) out)))))
+           (t
+            (utf8-encode-string-onto
+              rest
+              (cons (+ 128 (mod scalar 64))
+                    (cons (+ 128 (mod (quotient scalar 64) 64))
+                          (cons (+ 128 (mod (quotient scalar 4096) 64))
+                                (cons (+ 240 (quotient scalar 262144)) out))))))))))))
+
+(def utf8-encode-string
+  (lambda (text)
+    (utf8-encode-string-onto text (quote ()))))
