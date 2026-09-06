@@ -58,34 +58,44 @@ The current canonical source extension is **`.wsm`**. **`.my`** and **`.lisp`** 
 Use these terms consistently:
 
 ```text
-semantic authority      = contract + ratified decisions + executable conformance
+semantic authority       = contract + ratified decisions + executable conformance
 reference implementation = crates/my-lisp (Rust)
-independent substrate    = fpga-lisp / c-runtime / other conformance target
+independent substrate     = fpga-lisp / c-runtime / other conformance target
 ```
 
 Avoid “canonical Rust implementation” when the intended meaning is “reference implementation”. A canonical implementation would imply that Rust itself defines semantics, which contradicts the conformance architecture.
 
 ## Host boundary
 
-A host operation earns its place by providing information or effects unavailable inside pure language semantics. A useful test is:
+A host operation earns its place by providing information/effects unavailable inside pure language semantics or by enforcing an embedding security boundary that untrusted language code must not be able to self-grant.
 
-> Does this operation reveal a new fact about the external world, or does it merely transform facts the language already has?
+Two different meanings of “policy” must not be collapsed:
 
-Examples:
+1. **semantic/application policy** — what an observation means, how bytes become text, which default bind address a language API chooses, how a Guard finding is reasoned about. Move this into Lisp when it is derivable and doing so reduces duplicate semantic authority;
+2. **embedding authorization policy** — which filesystem roots, process names, connect targets, or listen targets a partially-trusted session is permitted to touch. This belongs to the host boundary because the program being constrained must not be able to redefine or self-grant the check.
+
+A useful split is:
 
 ```text
-mono-ns        -> host observation
-mono-ms        -> Lisp derivation
-unix-time-now  -> host observation
-UTC/Gregorian  -> Lisp interpretation
-filesystem I/O -> host capability
-path/policy     -> Lisp whenever derivable
+mono-ns                       -> host observation
+mono-ms                       -> Lisp derivation
+unix-time-now                 -> host observation
+UTC/Gregorian                 -> Lisp interpretation
+raw process/TCP/filesystem I/O -> host mechanism
+UTF-8/result/default API policy -> Lisp when derivable
+Guard decision semantics      -> Lisp
+Guard protocol validation     -> trusted boundary adapter
+filesystem/TCP authorization  -> host embedding policy
 ```
 
-See `docs/host-semantic-surface.md` for the living inventory.
+Thus “shrink Rust, grow Lisp” is not a security rule. It concerns semantic ownership. A tiny host-side authorization check can be architecturally correct even when the corresponding language-level meaning is Lisp-owned.
+
+Current per-session host scopes are documented in `docs/host-capability-scoping-adr-2026-08-27.md`; the living host semantic inventory is `docs/host-semantic-surface.md`.
 
 ## Documentation rule
 
 New prose that states a contract-level fact should link to the authoritative source instead of re-specifying the fact in a new independent wording. If repetition is necessary for teaching, phrase it as a summary and keep a drift test for facts that are easy to contradict mechanically.
+
+Dated reviews such as `docs/capabilities.md` snapshots may remain valuable evidence even after implementation advances; their date/status must not be mistaken for current authority. Current implementation claims should be rechecked against PLAN, current ADR status, source, and executable evidence.
 
 The goal is not fewer documents at any cost. The goal is one authority for each kind of claim.
