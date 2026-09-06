@@ -60,15 +60,16 @@
       ((result-tagged? result) (cdr result))
       (t (quote ())))))
 
-; Proper-list validation is deliberately local: B1 needs to reject a malformed
-; query as `invalid` before it reaches `reason`, but it does not revalidate the
-; entire trusted rule store on every query. External knowledge is validated at
-; the existing advise/advise-all ingestion boundary.
+; Proper-list validation follows the same atom-first shape as
+; knowledge-proper-list?: `eq` is an atom operation, so a pair must never be
+; passed to it merely to ask whether that pair is `()`.
 (def result-proper-list?
   (lambda (value)
     (cond
-      ((eq value (quote ())) t)
-      ((atom value) (quote ()))
+      ((atom value)
+       (cond
+         ((eq value (quote ())) t)
+         (t (quote ()))))
       (t (result-proper-list? (cdr value))))))
 
 (def result-goal?
