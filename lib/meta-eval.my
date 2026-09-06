@@ -177,7 +177,7 @@
       (t
        (my-apply
          (my-eval (car expr) env)
-         (my-eval-list (cdr expr) env)))))))
+         (my-eval-list (cdr expr) env))))))
 
 ; Top-level sequencing.  `def` and `defmacro` return `(new-env . value)` so
 ; the immutable alist environment can be threaded explicitly to the next form.
