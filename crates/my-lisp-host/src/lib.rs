@@ -196,6 +196,41 @@ fn expect_byte_list(value: &Value, span: Span) -> Result<Vec<u8>, LanguageError>
     }
 }
 
+fn expect_tcp_byte_list(value: &Value, span: Span) -> Result<Vec<u8>, LanguageError> {
+    let mut bytes = Vec::new();
+    let mut current = value;
+    loop {
+        match current {
+            Value::Nil => return Ok(bytes),
+            Value::Pair(head, tail) => {
+                let Value::Number(number, _) = **head else {
+                    return Err(LanguageError::new(
+                        ErrorKind::Type,
+                        "tcp-write-raw expects a list of integers 0-255 · tcp-write-raw ochikuie spysok tsilykh chysel 0-255 · tcp-write-raw erwartet eine Liste von Ganzzahlen 0-255",
+                        span,
+                    ));
+                };
+                if number.fract() != 0.0 || !(0.0..=255.0).contains(&number) {
+                    return Err(LanguageError::new(
+                        ErrorKind::Type,
+                        "tcp-write-raw expects each element to be an integer between 0 and 255 · tcp-write-raw ochikuie, shchob kozhen element buv tsilym chyslom vid 0 do 255 · tcp-write-raw erwartet, dass jedes Element eine Ganzzahl zwischen 0 und 255 ist",
+                        span,
+                    ));
+                }
+                bytes.push(number as u8);
+                current = tail;
+            }
+            _ => {
+                return Err(LanguageError::new(
+                    ErrorKind::Type,
+                    "tcp-write-raw expects a proper list of integers 0-255 · tcp-write-raw ochikuie pravylnyi spysok tsilykh chysel 0-255 · tcp-write-raw erwartet eine echte Liste von Ganzzahlen 0-255",
+                    span,
+                ))
+            }
+        }
+    }
+}
+
 /// Shared with `io::evaluate_load` — `pub(super)` so both submodules of
 /// `special_forms` use the one path to the filesystem.
 #[cfg(not(target_arch = "wasm32"))]
@@ -312,7 +347,7 @@ fn write_file_bytes(_path: &str, _bytes: &[u8], span: Span) -> Result<(), Langua
     ))
 }
 
-// TCP handles and byte transport only. Text decoding is language-owned.
+// TCP handles and byte transport only. Text encoding/decoding is language-owned.
 
 fn evaluate_tcp_connect(
     arguments: &[Expr],
@@ -385,6 +420,29 @@ fn evaluate_tcp_read_raw(
             .into_iter()
             .map(|byte| Value::Number(byte as f64, Exactness::Exact)),
     ))
+}
+
+/// Transitional raw write boundary. The host accepts already-interpreted bytes
+/// and performs only the socket write. The legacy text `tcp-write` remains
+/// registered until the language-owned wrapper is exercised by CI.
+fn evaluate_tcp_write_raw(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("tcp-write-raw", arguments, 2, span)?;
+    let connection_value = eval_expr(&arguments[0], environment)?;
+    let Value::TcpConnection(ref connection) = connection_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "tcp-write-raw expects a TCP connection · tcp-write-raw ochikuie TCP-ziednannia · tcp-write-raw erwartet eine TCP-Verbindung",
+            arguments[0].span,
+        ));
+    };
+    let bytes_value = eval_expr(&arguments[1], environment)?;
+    let bytes = expect_tcp_byte_list(&bytes_value, arguments[1].span)?;
+    tcp_write_raw(connection, &bytes, span)?;
+    Ok(bytes_value)
 }
 
 fn evaluate_tcp_write(
@@ -519,6 +577,21 @@ fn tcp_read_raw(
     Ok(buffer[..read].to_vec())
 }
 
+fn tcp_write_raw(
+    connection: &std::cell::RefCell<std::net::TcpStream>,
+    bytes: &[u8],
+    span: Span,
+) -> Result<(), LanguageError> {
+    use std::io::Write;
+    connection.borrow_mut().write_all(bytes).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("tcp-write-raw: failed to write to the connection: {error}"),
+            span,
+        )
+    })
+}
+
 fn tcp_write(
     connection: &std::cell::RefCell<std::net::TcpStream>,
     content: &str,
@@ -600,6 +673,7 @@ pub fn install() {
     register_capability("tcp-listen", evaluate_tcp_listen);
     register_capability("tcp-accept", evaluate_tcp_accept);
     register_capability("tcp-read-raw", evaluate_tcp_read_raw);
+    register_capability("tcp-write-raw", evaluate_tcp_write_raw);
     register_capability("tcp-write", evaluate_tcp_write);
     register_capability("tcp-close", evaluate_tcp_close);
 }
@@ -621,6 +695,7 @@ mod install_tests {
             "tcp-listen",
             "tcp-accept",
             "tcp-read-raw",
+            "tcp-write-raw",
             "tcp-write",
             "tcp-close",
         ] {
