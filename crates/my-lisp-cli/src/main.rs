@@ -129,6 +129,15 @@ fn main() {
     #[allow(unused_variables)]
     let core_lib = CORE_SRC;
 
+    // The sexpr/oracle server creates a fresh Session for every connection.
+    // Give those sessions the same semantic bootstrap order as the local CLI:
+    // language-owned macros first, then core. Keep this as one immutable
+    // process-lifetime string because the threaded server accepts a 'static seed.
+    static SEXPR_BOOTSTRAP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    let sexpr_bootstrap_lib: &'static str = SEXPR_BOOTSTRAP
+        .get_or_init(|| format!("{}\n{}", my_lisp::MACRO_LIBRARY_SOURCE, CORE_SRC))
+        .as_str();
+
     if args.len() > 1 {
         let arg = &args[1];
 
@@ -171,7 +180,7 @@ fn main() {
             if sexpr_protocol {
                 run_tcp_repl_sexpr(
                     port,
-                    core_lib,
+                    sexpr_bootstrap_lib,
                     allowed_for_tcp,
                     contract_major,
                     contract_minor,
