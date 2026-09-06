@@ -349,32 +349,12 @@ pub(crate) fn install(environment: &Environment) {
         }
     );
 
-    // (mono-ms) — monotonie milliseconds since first call in this process.
-    // Wall-clock-independent, so diffs measure true elapsed time of a block:
-    //   (define t0 (mono-ms)) <block> (- (mono-ms) t0)
-    // Library-before-core doctrine: this is the minimal host primitive that
-    // CANNOT be expressed in the language itself; everything else (lap
-    // timers, `timed` wrappers) stays library-level.
-    define!(
-        environment,
-        "mono-ms",
-        |args: &[Value], _env: &Environment, span: Span| {
-            exact_args("mono-ms", args, 0, span)?;
-            static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
-            let elapsed = START.get_or_init(std::time::Instant::now).elapsed();
-            Ok(Value::Number(elapsed.as_millis() as f64, Exactness::Exact))
-        }
-    );
-
-    // (mono-ns) — same doctrine as `mono-ms`, at nanosecond resolution.
-    // Goes through `exact_value`/`Rational` rather than `mono-ms`'s direct
-    // `as f64` cast: an `f64` only represents integers losslessly up to
-    // 2^53, which `mono-ms` never reaches at millisecond resolution
-    // (~285000 years), but a nanosecond count reaches it after ~104 days of
-    // process uptime — a real risk for a long-running agent process, not a
-    // hypothetical one. `exact_value` falls back to a `Rational` past that
-    // point instead of silently rounding, so `(mono-ns)` stays exact for
-    // the life of the process.
+    // (mono-ns) — the single host monotonic clock observation primitive.
+    // It goes through `exact_value`/`Rational`: an `f64` only represents
+    // integers losslessly up to 2^53, which a nanosecond count reaches after
+    // ~104 days of process uptime. `exact_value` falls back to a `Rational`
+    // past that point instead of silently rounding, so `(mono-ns)` stays exact
+    // for the life of the process. Millisecond views are derived in Lisp.
     define!(
         environment,
         "mono-ns",
