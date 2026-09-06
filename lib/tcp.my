@@ -1,10 +1,22 @@
-; TCP text interpretation owned by Lisp.
-; Інтерпретація TCP-тексту, якою володіє Lisp.
+; TCP text interpretation and public listen policy owned by Lisp.
+; Інтерпретація TCP-тексту й публічна політика listen, якими володіє Lisp.
 ;
-; Host capabilities `tcp-read-raw` and `tcp-write-raw` move exact bytes only.
-; This layer owns UTF-8 decoding/encoding and the public text meanings of
-; `tcp-read` and `tcp-write`.
+; Host capabilities `tcp-listen-raw`, `tcp-read-raw`, and `tcp-write-raw`
+; expose mechanism only. This layer owns the historical default bind address,
+; UTF-8 decoding/encoding, and the public meanings of `tcp-listen`, `tcp-read`,
+; and `tcp-write`.
 ; Load `lib/utf8.my` before this file.
+
+; Preserve the historical public behavior explicitly in Lisp: listen on all
+; IPv4 interfaces. Callers that need an explicit address can bypass that policy
+; through tcp-listen-on without changing the host substrate.
+(def tcp-listen-on
+  (lambda (address port)
+    (tcp-listen-raw address port)))
+
+(def tcp-listen
+  (lambda (port)
+    (tcp-listen-on "0.0.0.0" port)))
 
 (def tcp-read-bytes->text
   (lambda (bytes)
