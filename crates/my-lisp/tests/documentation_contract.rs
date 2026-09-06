@@ -39,10 +39,19 @@ fn public_docs_point_to_semantic_authority_instead_of_inventing_one() {
 fn host_semantic_surface_documentation_tracks_time_ownership() {
     let hss = include_str!("../../../docs/host-semantic-surface.md");
     let time = include_str!("../../../lib/time.my");
+    let builtins = include_str!("../src/eval/builtins.rs");
 
     assert!(hss.contains("mono-ns"));
     assert!(hss.contains("unix-time-now"));
-    assert!(hss.contains("utc-now"));
+    assert!(hss.contains("`utc-now` | `lib/time.my` | derived public clock meaning | HOST REMOVED"));
     assert!(time.contains("(def mono-ms"));
     assert!(time.contains("(def utc-now"));
+
+    assert!(
+        !builtins.contains("fn civil_from_days")
+            && !builtins.contains("fn utc_now_value")
+            && !builtins.contains("\"utc-now\","),
+        "Rust must not regain Gregorian utc-now semantics after the completed migration"
+    );
+    assert!(builtins.contains("\"unix-time-now\","));
 }
