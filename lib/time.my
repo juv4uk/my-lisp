@@ -56,6 +56,18 @@
                (car (cdr (cdr (cdr observation)))))))
       (t observation))))
 
+; Nanoseconds are the one monotonic host observation. Milliseconds are only a
+; coarser language-level view, so derive them instead of requiring a second
+; host clock primitive. For the non-negative monotonic counter, quotient gives
+; whole elapsed milliseconds (floor toward zero == floor here).
+(def milliseconds-from-nanoseconds
+  (lambda (nanoseconds)
+    (quotient nanoseconds 1000000)))
+
+(def mono-ms
+  (lambda ()
+    (milliseconds-from-nanoseconds (mono-ns))))
+
 ; Monotonic counters are host observations; deadline arithmetic is language
 ; semantics. Keep a pure pair of helpers so scheduler logic can be tested
 ; without sleeping, then expose convenience wrappers over the host counter.
