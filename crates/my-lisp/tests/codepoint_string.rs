@@ -31,3 +31,27 @@ fn codepoint_to_string_rejects_non_scalars_and_inexact_values() {
         assert_eq!(error.kind, ErrorKind::Type, "source: {source}");
     }
 }
+
+#[test]
+fn string_to_codepoint_observes_exactly_one_unicode_scalar() {
+    let mut session = Session::default();
+    for (text, expected) in [("A", "65"), ("¢", "162"), ("€", "8364"), ("😀", "128512")] {
+        let result = eval_program(&format!("(string->codepoint \"{text}\")"), &mut session)
+            .expect("one Unicode scalar should expose its exact value");
+        assert_eq!(result.value.to_string(), expected);
+    }
+}
+
+#[test]
+fn string_to_codepoint_rejects_non_string_empty_and_multi_character_inputs() {
+    for source in [
+        "(string->codepoint 65)",
+        "(string->codepoint \"\")",
+        "(string->codepoint \"ab\")",
+        "(string->codepoint \"😀x\")",
+    ] {
+        let error = eval_program(source, &mut Session::default())
+            .expect_err("string->codepoint accepts exactly one scalar character");
+        assert_eq!(error.kind, ErrorKind::Type, "source: {source}");
+    }
+}
