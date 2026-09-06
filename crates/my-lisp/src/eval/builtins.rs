@@ -80,35 +80,25 @@ fn internet_time_sync_value(
             ]));
         }
     };
-    let reason = if size < 48 {
-        Some("short-response")
-    } else {
-        let mode = response[0] & 0x07;
-        let stratum = response[1];
-        let seconds = u32::from_be_bytes([response[40], response[41], response[42], response[43]]);
-        if !(mode == 4 || mode == 5) || stratum == 0 || stratum > 15 {
-            Some("invalid-response")
-        } else if seconds < 2_208_988_800 {
-            Some("invalid-epoch")
-        } else {
-            None
-        }
-    };
-    if let Some(reason) = reason {
+    if size < 48 {
         return Ok(Value::list([
             Value::Symbol(std::rc::Rc::from("rejected")),
-            Value::Symbol(std::rc::Rc::from(reason)),
+            Value::Symbol(std::rc::Rc::from("short-response")),
         ]));
     }
+
+    let mode = response[0] & 0x07;
+    let stratum = response[1];
     let seconds = u32::from_be_bytes([response[40], response[41], response[42], response[43]]);
     let fraction = u32::from_be_bytes([response[44], response[45], response[46], response[47]]);
-    let unix_seconds = (seconds - 2_208_988_800) as i64;
-    let nanosecond = ((fraction as u64 * 1_000_000_000) >> 32) as i64;
+
     Ok(Value::list([
-        Value::Symbol(std::rc::Rc::from("accepted")),
+        Value::Symbol(std::rc::Rc::from("ntp-fields")),
         Value::String(std::rc::Rc::from(host)),
-        exact_value(Rational::integer(unix_seconds)),
-        exact_value(Rational::integer(nanosecond)),
+        exact_value(Rational::integer(i64::from(mode))),
+        exact_value(Rational::integer(i64::from(stratum))),
+        exact_value(Rational::integer(i64::from(seconds))),
+        exact_value(Rational::integer(i64::from(fraction))),
     ]))
 }
 
@@ -353,9 +343,10 @@ pub(crate) fn install(environment: &Environment) {
         }
     );
 
-    // (internet-time-sync host timeout-ms) performs one bounded NTP query.
-    // It returns data, never changes the operating-system clock, and caps the
-    // timeout at five seconds. Internet time is an external observation.
+    // (internet-time-sync host timeout-ms) is the raw NTP transport boundary.
+    // It performs one bounded query and returns fixed-width protocol fields
+    // without validating NTP mode/stratum, translating epochs, or computing
+    // nanoseconds. Those meanings belong to lib/time.my.
     define!(
         environment,
         "internet-time-sync",
