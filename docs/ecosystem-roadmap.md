@@ -1,8 +1,14 @@
 # Ecosystem roadmap · Roadmap екосистеми · Ökosystem-Roadmap
 
+> **Domain-roadmap.** Global priority is defined by [`../PLAN.md`](../PLAN.md).
+> This document owns cross-repository compatibility and execution milestones;
+> it does not override the active Advice Taker order of work.
+
 ## English
 
 The product is one vertical system with three independently versioned repositories: `my-lisp` owns source semantics and canonical results; `fpga-lisp` owns tagged words, ISA, calling convention, image format, and physical execution; `cml` owns the AOT mapping between those contracts. Compatibility is the pair `(language contract, ISA contract)` plus the exact SHAs tested—not matching repository release numbers.
+
+The ordering rule is value-driven: first keep `my-lisp` source semantics and Advice Taker observations correct and portable; then expand CML/FPGA only where an independently executed subset strengthens conformance or moves `core.my → unify.my → reason.my` toward a second backend. New ISA surface is not a goal by itself.
 
 Verified on 2026-08-11: FPGA already has the seven basic operations, environments, closures, `cond`, a complete `eval(expr, env)`, and a CML end-to-end testbench. CML compiles variables, conditionals, closures, calls, quoted lists, strings, dotted lists, and variadic arguments, and has a partial Tier-1 conformance runner. The remaining problem is a complete, reproducible boundary:
 
@@ -20,6 +26,8 @@ Verified on 2026-08-11: FPGA already has the seven basic operations, environment
 
 Продукт — одна вертикальна система з трьох незалежно версіонованих репозиторіїв: `my-lisp` володіє semantics джерела й канонічними результатами; `fpga-lisp` — tagged words, ISA, calling convention, image format і фізичним виконанням; `cml` — AOT-відображенням між цими контрактами. Сумісність — це пара `(language contract, ISA contract)` плюс точні перевірені SHA, а не однакові версії релізів.
 
+Правило порядку — за цінністю: спочатку коректні й переносні source semantics та Advice Taker observations у `my-lisp`; далі CML/FPGA розширюються лише там, де незалежне виконання підсилює conformance або реально веде `core.my → unify.my → reason.my` до другого backend. Нова ISA surface сама по собі не є метою.
+
 Перевірено 2026-08-11: FPGA вже має сім базових операцій, environments, closures, `cond`, повний `eval(expr, env)` і CML E2E testbench. CML компілює variables, conditionals, closures, calls, quoted lists, strings, dotted lists і variadic arguments та має частковий Tier-1 conformance runner. Залишилась повна відтворювана межа:
 
 1. ✅ ISA contract `fpga-lisp` `0.2` фіксує tags, opcodes, registers, calling convention, program image і limits.
@@ -35,6 +43,8 @@ Verified on 2026-08-11: FPGA already has the seven basic operations, environment
 ## Deutsch
 
 Das Produkt ist ein vertikales System aus drei unabhängig versionierten Repositories: `my-lisp` besitzt Quellsemantik und kanonische Ergebnisse; `fpga-lisp` besitzt Tagged Words, ISA, Aufrufkonvention, Image-Format und physische Ausführung; `cml` besitzt die AOT-Abbildung zwischen beiden Verträgen. Kompatibilität ist das Paar `(Sprachvertrag, ISA-Vertrag)` plus die tatsächlich geprüften SHAs—nicht gleiche Release-Versionen.
+
+Die Reihenfolge ist wertgetrieben: zuerst korrekte und portable Quellsemantik sowie Advice-Taker-Beobachtungen in `my-lisp`; danach wird CML/FPGA nur dort erweitert, wo unabhängige Ausführung die Konformität stärkt oder `core.my → unify.my → reason.my` tatsächlich zu einem zweiten Backend bringt. Neue ISA-Oberfläche ist kein Selbstzweck.
 
 Am 2026-08-11 verifiziert: Das FPGA besitzt die sieben Basisoperationen, Environments, Closures, `cond`, ein vollständiges `eval(expr, env)` und eine CML-End-to-End-Testbench. CML kompiliert Variablen, Bedingungen, Closures, Aufrufe, zitierte Listen, Strings, Dotted Lists und variadische Argumente und besitzt einen partiellen Tier-1-Konformitätsrunner. Offen bleibt eine vollständige reproduzierbare Grenze:
 
