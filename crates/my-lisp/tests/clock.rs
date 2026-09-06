@@ -83,6 +83,42 @@ fn internet_time_timestamp_interpretation_is_language_owned() {
 }
 
 #[test]
+fn mono_ms_is_derived_from_nanoseconds_in_lisp() {
+    let mut session = Session::default();
+    load_core_library(&mut session).unwrap();
+    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+
+    assert_eq!(
+        eval_program("(milliseconds-from-nanoseconds 0)", &mut session)
+            .unwrap()
+            .value
+            .to_string(),
+        "0"
+    );
+    assert_eq!(
+        eval_program("(milliseconds-from-nanoseconds 999999)", &mut session)
+            .unwrap()
+            .value
+            .to_string(),
+        "0"
+    );
+    assert_eq!(
+        eval_program("(milliseconds-from-nanoseconds 1000000)", &mut session)
+            .unwrap()
+            .value
+            .to_string(),
+        "1"
+    );
+    assert_eq!(
+        eval_program("(milliseconds-from-nanoseconds 1999999)", &mut session)
+            .unwrap()
+            .value
+            .to_string(),
+        "1"
+    );
+}
+
+#[test]
 fn timezone_detection_is_explicit_and_ntp_requires_host_string() {
     let mut session = Session::default();
     load_core_library(&mut session).unwrap();
