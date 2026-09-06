@@ -1,23 +1,25 @@
 //! MY-LISP-YANTRA: the smallest Chebupelka-style coding agent whose
 //! control logic lives entirely in lib/yantra.my. The host boundary is
-//! `process-run` (bash tool + curl transport) and `json-parse` (wire-format
-//! decode) — no agent logic in Rust.
+//! `process-run-raw` (bash tool + curl transport bytes) and `json-parse`
+//! (wire-format decode); public `process-run` semantics live in Lisp.
 //!
 //! The LLM is stubbed per test with scripted assistant messages, so the
 //! control loop, completion validation, id correlation and MAX_TURNS are
 //! verified deterministically. The bash tool itself is REAL: tests 2-4
 //! execute actual subprocesses and assert on their genuine output.
 
-use my_lisp::{eval_program, Environment, Session};
+use my_lisp::{eval_program, load_core_library, load_process_library, Environment, Session};
 
 fn agent_session() -> Session {
-    // The bash tool is a host capability now - install it like the CLI does,
-    // then opt this session into exactly the programs the agent may run.
+    // Install only the OS capability layer, opt this session into the exact
+    // programs the agent may run, then bootstrap public process semantics in
+    // Lisp over the raw byte-preserving host capability.
     my_lisp_host::install();
     let environment =
         Environment::root().with_process_allowlist(vec!["bash".into(), "curl".into()]);
     let mut session = Session { environment };
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    load_core_library(&mut session).unwrap();
+    load_process_library(&mut session).unwrap();
     eval_program(include_str!("../../../lib/yantra.my"), &mut session).unwrap();
     session
 }
