@@ -135,12 +135,17 @@
             (make-proved opposite opposite-results))
            (t (make-unknown goal))))))))
 
-; Knowledge-module adapter. Missing module is a narrower `unknown`, exactly as
-; the original ADR already described; known modules reuse the same observation
-; algebra over their current journal projection.
+; Knowledge-module adapter. Validation precedes lookup: malformed input is an
+; `invalid` observation even when the named module does not exist. Only a
+; well-formed question about a well-formed but absent module becomes
+; `(unknown (module-not-found ...))`.
 (def reason-in-observe
   (lambda (module-name goal)
     (cond
+      ((not (symbol? module-name))
+       (make-invalid (quote invalid-module) module-name))
+      ((not (result-goal? goal))
+       (make-invalid (quote invalid-goal) goal))
       ((module-known? module-name)
        (reason-observe goal (module-clauses-now module-name)))
       (t
