@@ -56,6 +56,29 @@
                (car (cdr (cdr (cdr observation)))))))
       (t observation))))
 
+; Monotonic counters are host observations; deadline arithmetic is language
+; semantics. Keep a pure pair of helpers so scheduler logic can be tested
+; without sleeping, then expose convenience wrappers over the host counter.
+(def deadline-from
+  (lambda (now-ns delta-ns)
+    (+ now-ns delta-ns)))
+
+(def deadline-reached-at?
+  (lambda (now-ns deadline-ns)
+    (>= now-ns deadline-ns)))
+
+(def deadline-after-ns
+  (lambda (delta-ns)
+    (deadline-from (mono-ns) delta-ns)))
+
+(def deadline-reached?
+  (lambda (deadline-ns)
+    (deadline-reached-at? (mono-ns) deadline-ns)))
+
+(def elapsed-ns
+  (lambda (started-ns)
+    (- (mono-ns) started-ns)))
+
 (def timezone-config
   (lambda (name offset-seconds)
     (cond
