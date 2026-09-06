@@ -36,6 +36,25 @@ pub use syntax::fasl::{
     decode_program as fasl_decode_program, encode_program as fasl_encode_program,
 };
 
+/// Language-owned macro substrate layer. This must be evaluated before
+/// `CORE_LIBRARY_SOURCE`: core.my defines macros such as `and`, `or`, and
+/// `let`, and after this layer is present their `defmacro` surface resolves
+/// to the macro implemented in my-lisp rather than the evaluator fallback.
+pub const MACRO_LIBRARY_SOURCE: &str = include_str!("../../../lib/macro.my");
+
+/// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
+pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.my");
+
+/// Load the language-owned macro layer and then the ordinary core library.
+///
+/// This is the canonical bootstrap order for embedders that want `core.my`.
+/// Keeping the order in one API prevents each caller from silently falling
+/// back to Rust's compatibility `defmacro` while the migration is in flight.
+pub fn load_core_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
+    eval_program(MACRO_LIBRARY_SOURCE, session)?;
+    eval_program(CORE_LIBRARY_SOURCE, session)
+}
+
 /// Convenience: FASL-encode already-parsed expressions bound to a source hash.
 pub fn fasl_encode(expressions: &[Expr], source_hash: &[u8; 32]) -> Vec<u8> {
     syntax::fasl::encode_program(expressions, source_hash)
