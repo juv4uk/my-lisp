@@ -312,16 +312,8 @@ fn write_file_bytes(_path: &str, _bytes: &[u8], span: Span) -> Result<(), Langua
     ))
 }
 
-// `tcp-connect`/`tcp-listen`/`tcp-accept`/`tcp-read`/`tcp-write`/`tcp-close`
-// (PLAN.md item 21) — "talk to other AI systems" (principle 3, extended to
-// LLM APIs/other agents), the raw byte pipe only: no HTTP/TLS logic lives
-// here, a caller builds that itself with `string-append`/`tcp-write`.
+// TCP handles and byte transport only. Text decoding is language-owned.
 
-/// `(tcp-connect host port)` — the outbound-client half: opens a TCP
-/// connection, returns a `Value::TcpConnection` handle. The caller writes
-/// an HTTP request itself with `tcp-write`/`string-append` and reads the
-/// response with `tcp-read`; connection failures fail named,
-/// `ErrorKind::InvalidForm`, never silently (S2).
 fn evaluate_tcp_connect(
     arguments: &[Expr],
     environment: &Environment,
@@ -338,13 +330,9 @@ fn evaluate_tcp_connect(
     };
     let port = expect_port(&arguments[1], environment)?;
     let stream = tcp_connect(host, port, span)?;
-    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(
-        stream,
-    ))))
+    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
 }
 
-/// `(tcp-listen port)` — the inbound-server half: binds and starts listening,
-/// returns a `Value::TcpListener` handle for `tcp-accept`.
 fn evaluate_tcp_listen(
     arguments: &[Expr],
     environment: &Environment,
@@ -356,9 +344,6 @@ fn evaluate_tcp_listen(
     Ok(Value::TcpListener(Rc::new(listener)))
 }
 
-/// `(tcp-accept listener)` — blocks until one inbound connection arrives on
-/// `listener`, returns it as a `Value::TcpConnection` (the same handle type
-/// `tcp-connect` produces).
 fn evaluate_tcp_accept(
     arguments: &[Expr],
     environment: &Environment,
@@ -374,33 +359,34 @@ fn evaluate_tcp_accept(
         ));
     };
     let stream = tcp_accept(listener, span)?;
-    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(
-        stream,
-    ))))
+    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
 }
 
-/// `(tcp-read connection)` — one `read()` call, up to 64 KiB, returned as a
-/// string; `""` means the peer closed the connection (EOF), not an error.
-fn evaluate_tcp_read(
+/// `(tcp-read-raw connection)` performs one read of up to 64 KiB and returns
+/// the exact bytes as a proper list of exact integers 0..255. Empty list is
+/// EOF. No UTF-8 interpretation occurs in the host.
+fn evaluate_tcp_read_raw(
     arguments: &[Expr],
     environment: &Environment,
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("tcp-read", arguments, 1, span)?;
+    exact_arity("tcp-read-raw", arguments, 1, span)?;
     let connection_value = eval_expr(&arguments[0], environment)?;
     let Value::TcpConnection(ref connection) = connection_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "tcp-read expects a TCP connection · tcp-read ochikuie TCP-ziednannia · tcp-read erwartet eine TCP-Verbindung",
+            "tcp-read-raw expects a TCP connection · tcp-read-raw ochikuie TCP-ziednannia · tcp-read-raw erwartet eine TCP-Verbindung",
             arguments[0].span,
         ));
     };
-    let text = tcp_read(connection, span)?;
-    Ok(Value::String(Rc::from(text.as_str())))
+    let bytes = tcp_read_raw(connection, span)?;
+    Ok(Value::list(
+        bytes
+            .into_iter()
+            .map(|byte| Value::Number(byte as f64, Exactness::Exact)),
+    ))
 }
 
-/// `(tcp-write connection content)` — writes `content`'s UTF-8 bytes,
-/// returns `content` unchanged (composes like `print`/`write-file`).
 fn evaluate_tcp_write(
     arguments: &[Expr],
     environment: &Environment,
@@ -427,9 +413,6 @@ fn evaluate_tcp_write(
     Ok(content_value)
 }
 
-/// `(tcp-close connection)` — explicitly shuts down both directions of the
-/// connection rather than waiting for the handle to be dropped, so the
-/// peer sees the close promptly. Returns `t`.
 fn evaluate_tcp_close(
     arguments: &[Expr],
     environment: &Environment,
@@ -511,38 +494,29 @@ fn tcp_accept(
     listener: &std::net::TcpListener,
     span: Span,
 ) -> Result<std::net::TcpStream, LanguageError> {
-    listener
-        .accept()
-        .map(|(stream, _addr)| stream)
-        .map_err(|error| {
-            LanguageError::new(
-                ErrorKind::InvalidForm,
-                format!("tcp-accept: failed to accept a connection: {error}"),
-                span,
-            )
-        })
+    listener.accept().map(|(stream, _)| stream).map_err(|error| {
+        LanguageError::new(
+            ErrorKind::InvalidForm,
+            format!("tcp-accept: failed to accept a connection: {error}"),
+            span,
+        )
+    })
 }
 
-fn tcp_read(
+fn tcp_read_raw(
     connection: &std::cell::RefCell<std::net::TcpStream>,
     span: Span,
-) -> Result<String, LanguageError> {
+) -> Result<Vec<u8>, LanguageError> {
     use std::io::Read;
     let mut buffer = [0u8; 65536];
     let read = connection.borrow_mut().read(&mut buffer).map_err(|error| {
         LanguageError::new(
             ErrorKind::InvalidForm,
-            format!("tcp-read: failed to read from the connection: {error}"),
+            format!("tcp-read-raw: failed to read from the connection: {error}"),
             span,
         )
     })?;
-    String::from_utf8(buffer[..read].to_vec()).map_err(|error| {
-        LanguageError::new(
-            ErrorKind::InvalidForm,
-            format!("tcp-read: received bytes that aren't valid UTF-8: {error}"),
-            span,
-        )
-    })
+    Ok(buffer[..read].to_vec())
 }
 
 fn tcp_write(
@@ -579,9 +553,6 @@ fn tcp_close(
         })
 }
 
-/// `load` reads a my-lisp source file from disk and evaluates each
-/// top-level form into the current environment - a filesystem capability
-/// like the rest of this crate, not a language primitive.
 fn evaluate_load(
     arguments: &[Expr],
     environment: &Environment,
@@ -617,23 +588,18 @@ fn evaluate_load(
     Ok(last_value)
 }
 
-/// Install every host capability into the canonical registry. Idempotent:
-/// later calls replace earlier handlers with identical ones.
 pub fn install() {
-    // filesystem
     register_capability("read-file", evaluate_read_file);
     register_capability("read-dir", evaluate_read_dir);
     register_capability("read-file-bytes", evaluate_read_file_bytes);
     register_capability("write-file", evaluate_write_file);
     register_capability("write-file-bytes", evaluate_write_file_bytes);
-    // processes (allowlist-gated inside)
     register_capability("process-run-raw", process_raw::evaluate_process_run_raw);
     register_capability("load", evaluate_load);
-    // sockets
     register_capability("tcp-connect", evaluate_tcp_connect);
     register_capability("tcp-listen", evaluate_tcp_listen);
     register_capability("tcp-accept", evaluate_tcp_accept);
-    register_capability("tcp-read", evaluate_tcp_read);
+    register_capability("tcp-read-raw", evaluate_tcp_read_raw);
     register_capability("tcp-write", evaluate_tcp_write);
     register_capability("tcp-close", evaluate_tcp_close);
 }
@@ -654,7 +620,7 @@ mod install_tests {
             "tcp-connect",
             "tcp-listen",
             "tcp-accept",
-            "tcp-read",
+            "tcp-read-raw",
             "tcp-write",
             "tcp-close",
         ] {
