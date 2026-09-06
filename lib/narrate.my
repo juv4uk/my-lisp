@@ -17,7 +17,7 @@
 ; an unresolved variable if that particular rule's own head wasn't fully
 ; grounded by the point of derivation; this is documented, not hidden.
 ;
-; Друга половина мосту "текст <-> структура" з private/lisp-to-knowledge.md
+; Друга половина мосту "text <-> structure" з private/lisp-to-knowledge.md
 ; §6 — `lib/understand.my` йде від списку слів текстової форми до
 ; знаннєвого clause; `narrate` — у зворотний бік, від структури до списку
 ; слів текстової форми. Той самий контрольований, нестатистичний дух:
@@ -108,3 +108,65 @@
         ((atom derivations) (narrate-fact goal))
         (t (append (narrate-fact goal)
                    (cons (quote because) (narrate-derivation derivations))))))))
+
+; ----------------------------------------------------------------------
+; Structured reasoning-outcome presentation (B2)
+; ----------------------------------------------------------------------
+; Semantic meaning stays in lib/result-status.my. These functions only turn a
+; canonical outcome into a controlled word/data list for presentation. They
+; deliberately keep the status word visible so `unknown`, `disputed`,
+; `blocked`, and `invalid` can never collapse back into one "cannot prove"
+; sentence.
+
+(def narrate-proved-outcome
+  (lambda (outcome)
+    (let ((statement (second outcome))
+          (results (third outcome)))
+      (cond
+        ((atom results)
+         (list (quote proved) statement (quote without-proof-result)))
+        (t
+         (append
+           (list (quote proved))
+           (narrate-answer statement (second (car results)))))))))
+
+(def narrate-outcome
+  (lambda (outcome)
+    (cond
+      ((atom outcome)
+       (list (quote invalid) (quote outcome-shape) outcome))
+      ((eq (car outcome) (quote proved))
+       (narrate-proved-outcome outcome))
+      ((eq (car outcome) (quote unknown))
+       (list
+         (quote unknown)
+         (quote because)
+         (quote no-proof-found-for)
+         (second outcome)))
+      ((eq (car outcome) (quote partial))
+       (list
+         (quote partial)
+         (quote value)
+         (second outcome)
+         (quote bound)
+         (third outcome)))
+      ((eq (car outcome) (quote blocked))
+       (list
+         (quote blocked)
+         (quote because)
+         (second outcome)))
+      ((eq (car outcome) (quote disputed))
+       (list
+         (quote disputed)
+         (quote because)
+         (quote both-sides-have-evidence)
+         (second outcome)))
+      ((eq (car outcome) (quote invalid))
+       (list
+         (quote invalid)
+         (quote because)
+         (second outcome)
+         (quote payload)
+         (third outcome)))
+      (t
+       (list (quote invalid) (quote outcome-tag) (car outcome))))))
