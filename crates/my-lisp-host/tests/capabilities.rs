@@ -1,15 +1,27 @@
 //! Capability-surface tests for my-lisp-host. Moved verbatim from
 //! crates/my-lisp/tests/mccarthy.rs during the core/host split (2026-08-22):
-//! these forms are installed by this crate now, so their contracts are
-//! verified here against an installed registry.
+//! host forms are installed by this crate and verified against an installed
+//! registry. Public `process-run` is now a Lisp wrapper over `process-run-raw`.
 
-use my_lisp::{eval_program, Environment, ErrorKind, Exactness, Session, Value};
+use my_lisp::{
+    eval_program, load_core_library, load_process_library, Environment, ErrorKind, Exactness,
+    Session, Value,
+};
 use my_lisp_host::install;
 
 fn capability_session() -> Session {
     install();
     Session::default()
 }
+
+fn process_session(environment: Environment) -> Session {
+    install();
+    let mut session = Session { environment };
+    load_core_library(&mut session).unwrap();
+    load_process_library(&mut session).unwrap();
+    session
+}
+
 fn eval_cap_error(source: &str) -> my_lisp::LanguageError {
     let mut session = capability_session();
     eval_program(source, &mut session).unwrap_err()
@@ -39,7 +51,6 @@ fn write_file_then_read_file_round_trips_the_same_content() {
     let source = format!(r#"(write-file "{path_str}" "hello from my-lisp")"#);
     let mut session = capability_session();
     let result = eval_program(&source, &mut session).expect("write-file should succeed");
-    // write-file returns its content argument unchanged, like print does with its value.
     assert_eq!(result.value, Value::String("hello from my-lisp".into()));
 
     let read_back = eval_program(&format!(r#"(read-file "{path_str}")"#), &mut session)
@@ -52,11 +63,6 @@ fn write_file_then_read_file_round_trips_the_same_content() {
 #[test]
 fn write_file_overwrites_rather_than_appends() {
     let path = std::env::temp_dir().join("my-lisp-write-file-overwrite.txt");
-    // Forward slashes only: my-lisp's string reader treats an unrecognized
-    // backslash escape as "drop the backslash, keep the character" (only
-    // \n/\t/\"/\\ are special — see parser.rs's `string` method), so a raw
-    // Windows path like `C:\Users\...` embedded in a double-quoted literal
-    // would silently lose every backslash instead of erroring.
     let path_str = path
         .to_str()
         .expect("temp path should be valid UTF-8")
@@ -156,8 +162,6 @@ fn write_file_bytes_then_read_file_bytes_round_trips_non_utf8_bytes() {
         .to_str()
         .expect("temp path should be valid UTF-8")
         .replace('\\', "/");
-    // 255 and 254 are not valid standalone UTF-8 bytes — this is the exact
-    // case write-file (String-based) cannot represent.
     let source = format!(r#"(write-file-bytes "{path_str}" (quote (0 1 2 255 65 254)))"#);
     let mut session = capability_session();
     let result = eval_program(&source, &mut session).expect("write-file-bytes should succeed");
@@ -245,9 +249,10 @@ fn read_file_bytes_wrong_arity_is_an_arity_error() {
 
 #[test]
 fn process_run_is_unrestricted_in_a_native_root_session() {
+    let mut session = process_session(Environment::root());
     let result = eval_program(
         r#"(process-run "git" (quote ("--version")))"#,
-        &mut Session::default(),
+        &mut session,
     )
     .expect("the trusted native root session should run a named program");
     let Value::Pair(ref exit_code, ref rest) = result.value else {
@@ -265,15 +270,9 @@ fn process_run_is_unrestricted_in_a_native_root_session() {
 
 #[test]
 fn process_run_succeeds_for_an_explicitly_allowed_program() {
-    let mut session = Session {
-        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
-    };
-    // `git --version` runs on every platform this project builds for
-    // (Linux/macOS/Windows CI runners all have `git` — the workflow
-    // itself checks out the repo with it) without going through a
-    // platform-specific shell (`cmd` on Windows, `sh`/`echo` elsewhere
-    // aren't the same program), while still proving args are passed
-    // through without a shell interpreting them as one string.
+    let mut session = process_session(
+        Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    );
     let source = r#"(process-run "git" (quote ("--version")))"#;
     let result =
         eval_program(source, &mut session).expect("an explicitly allowed program should run");
@@ -287,17 +286,12 @@ fn process_run_succeeds_for_an_explicitly_allowed_program() {
     let Value::String(ref stdout) = **stdout else {
         panic!("stdout should be a string");
     };
-    assert!(
-        stdout.contains("git version"),
-        "expected stdout to contain (quote git) version', got {stdout:?}"
-    );
+    assert!(stdout.contains("git version"));
 }
 
 #[test]
 fn process_run_is_deny_all_for_an_explicit_empty_allowlist() {
-    let mut session = Session {
-        environment: Environment::root().with_process_allowlist(Vec::new()),
-    };
+    let mut session = process_session(Environment::root().with_process_allowlist(Vec::new()));
     let error = eval_program(r#"(process-run "git" (quote ("--version")))"#, &mut session)
         .expect_err("an explicit empty embedding allowlist must remain deny-all");
     assert_eq!(error.kind, ErrorKind::InvalidForm);
@@ -305,9 +299,9 @@ fn process_run_is_deny_all_for_an_explicit_empty_allowlist() {
 
 #[test]
 fn process_run_rejects_a_program_not_on_the_allowlist() {
-    let mut session = Session {
-        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
-    };
+    let mut session = process_session(
+        Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    );
     let error = eval_program(
         r#"(process-run "cmd" (quote ("/C" "echo" "hi")))"#,
         &mut session,
@@ -318,9 +312,9 @@ fn process_run_rejects_a_program_not_on_the_allowlist() {
 
 #[test]
 fn process_run_rejects_a_non_string_program() {
-    let mut session = Session {
-        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
-    };
+    let mut session = process_session(
+        Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    );
     let error = eval_program("(process-run 42 (list \"x\"))", &mut session)
         .expect_err("a non-string program name must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
@@ -328,9 +322,9 @@ fn process_run_rejects_a_non_string_program() {
 
 #[test]
 fn process_run_rejects_a_non_list_args_argument() {
-    let mut session = Session {
-        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
-    };
+    let mut session = process_session(
+        Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    );
     let error = eval_program(r#"(process-run "git" "not-a-list")"#, &mut session)
         .expect_err("a non-list args argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
@@ -338,9 +332,9 @@ fn process_run_rejects_a_non_list_args_argument() {
 
 #[test]
 fn process_run_rejects_a_non_string_element_in_args() {
-    let mut session = Session {
-        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
-    };
+    let mut session = process_session(
+        Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    );
     let error = eval_program("(process-run \"git\" (quote (42)))", &mut session)
         .expect_err("a non-string element in args must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
@@ -348,9 +342,9 @@ fn process_run_rejects_a_non_string_element_in_args() {
 
 #[test]
 fn process_run_wrong_arity_is_an_arity_error() {
-    let mut session = Session {
-        environment: Environment::root().with_process_allowlist(vec!["git".to_string()]),
-    };
+    let mut session = process_session(
+        Environment::root().with_process_allowlist(vec!["git".to_string()]),
+    );
     let error = eval_program(r#"(process-run "git")"#, &mut session)
         .expect_err("process-run with one argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Arity);
@@ -407,12 +401,6 @@ fn load_a_missing_file_fails_named_not_panics() {
     .expect_err("loading a nonexistent file must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::InvalidForm);
 }
-
-// --- car / cdr / cons / cond error paths (special_forms/core.rs) ---------
-// The happy paths for these are exercised constantly throughout this suite
-// via ordinary list code; the type/arity/malformed-clause error paths are
-// not, despite being exactly where a regression would silently start
-// panicking instead of returning a named LanguageError.
 
 #[test]
 fn car_on_a_non_pair_fails_named_not_panics() {
