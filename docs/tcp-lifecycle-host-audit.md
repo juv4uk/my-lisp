@@ -1,22 +1,24 @@
 # TCP lifecycle host audit / Аудит lifecycle-межі TCP
 
-Status: architectural audit; no lifecycle cut yet. Text read/write semantics are already language-owned. This document audits the remaining `tcp-connect`, `tcp-listen`, `tcp-accept`, and `tcp-close` host surface before changing it.
+Status: focused `tcp-listen` policy cut completed; `tcp-connect`, `tcp-accept`, and `tcp-close` remain under audit. Text read/write semantics are already language-owned.
 
 ## Current boundary
 
-After the completed text I/O split, the TCP surface is conceptually:
+The TCP surface now separates public listen policy from the host mechanism:
 
 ```text
 Lisp protocol / UTF-8 / application meaning
             ↓
-  tcp-connect / tcp-listen / tcp-accept
+  tcp-connect
+  Lisp tcp-listen → tcp-listen-raw(address, port)
+  tcp-accept
   tcp-read-raw / tcp-write-raw
   tcp-close
             ↓
         OS sockets
 ```
 
-The byte transport boundary is already mechanism-only. The remaining question is whether lifecycle calls still hide deterministic policy that can move upward.
+The byte transport boundary is mechanism-only, and the historical bind-address default is no longer hidden in Rust.
 
 ## `tcp-connect`
 
@@ -45,49 +47,37 @@ The first is boundary validation and may legitimately remain near the mechanism.
 
 No cut is justified yet merely to move these few checks.
 
-## `tcp-listen`
+## `tcp-listen` — completed focused cut
 
-Current public call is:
+Historically the public call was:
 
 ```text
 (tcp-listen port)
 ```
 
-but the Rust host implements it by binding:
+while the Rust host silently bound:
 
 ```text
 ("0.0.0.0", port)
 ```
 
-This is the strongest lifecycle policy leak found in this audit.
-
-`0.0.0.0` is not an unavoidable socket mechanism. It is a deterministic choice of bind scope: listen on all IPv4 interfaces. A different host could make a different default, which would make the same Lisp program observably platform-dependent.
-
-### Candidate split
-
-Do **not** implement this until the replacement is proved.
+That mixed mechanism with deterministic bind-scope policy. The split is now:
 
 ```text
-Rust: tcp-listen-raw(address, port)
-            ↑
 Lisp: tcp-listen(port)
-      chooses the compatibility default
-      "0.0.0.0"
+      ↓ chooses compatibility default "0.0.0.0"
+Lisp: tcp-listen-on(address, port)
+      ↓
+Rust: tcp-listen-raw(address, port)
+      ↓
+OS bind
 ```
 
-A future richer Lisp API could expose explicit loopback/interface binding without changing the raw host mechanism.
+The host registry contains `tcp-listen-raw` and no public `tcp-listen`. After `load_tcp_library`, `tcp-listen` appears as a Lisp closure. Existing callers keep the historical all-IPv4 default, while callers can now request an explicit address without expanding the host API.
 
-### Evidence gate
+The dedicated raw-bind witness binds `127.0.0.1` through `tcp-listen-raw` and proves that a real TCP client can connect to that requested address. Existing TCP integration tests continue to exercise the public compatibility path through Lisp-owned `tcp-listen`.
 
-Before removing current host `tcp-listen` semantics:
-
-1. add `tcp-listen-raw` with explicit bind address + port;
-2. prove raw loopback/all-interface behavior with deterministic socket tests where practical;
-3. define public `tcp-listen` in Lisp preserving today's `0.0.0.0` behavior;
-4. prove `tcp-listen` is absent from host registry and appears as a Lisp closure after the TCP layer loads;
-5. migrate consumers;
-6. require workspace tests/build/clippy green;
-7. only then remove the host-owned public form.
+This is an HSS reduction because a platform-dependent default moved out of the host without removing the underlying socket effect.
 
 ## `tcp-accept`
 
@@ -118,17 +108,17 @@ No present evidence requires half-close. Therefore introducing direction control
 
 ## Result
 
-The audit does **not** justify a broad TCP lifecycle rewrite.
-
-It identifies one focused candidate:
+The lifecycle audit has produced one evidenced reduction:
 
 ```text
-tcp-listen
-  currently = socket bind mechanism + hidden 0.0.0.0 policy
+before:
+Rust tcp-listen(port)
+  = socket bind + hidden 0.0.0.0 policy
 
-candidate:
-tcp-listen-raw(address, port)
-  + Lisp-owned default bind policy
+after:
+Rust tcp-listen-raw(address, port)
+Lisp tcp-listen(port)
+  = explicit language-owned 0.0.0.0 compatibility policy
 ```
 
 `tcp-connect`, `tcp-accept`, and `tcp-close` remain provisionally host-owned mechanisms/contracts until stronger evidence shows removable policy.
@@ -137,7 +127,7 @@ tcp-listen-raw(address, port)
 
 For "Lisp jumping between hosts", the important property is not that every OS uses the same socket API. It is that the same Lisp program does not silently inherit different host defaults.
 
-A hidden bind-address default is exactly the kind of difference that should be moved into the language layer if we can preserve behavior with a smaller explicit mechanism.
+The bind-address choice is now part of the Lisp layer rather than a Rust/Linux accident. A future Windows, WASM-like, embedded, or FPGA/SoC host only needs to implement the explicit bind mechanism when TCP listening exists.
 
 ## Principle
 
