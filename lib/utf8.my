@@ -125,13 +125,23 @@
   (lambda (bytes)
     (eq (car (utf8-decode bytes)) (quote decoded))))
 
+; Keep text materialization in tail position. The previous direct recursion
+; accumulated one host evaluator frame per Unicode scalar while waiting to
+; string-append on unwind; ordinary network payloads could therefore exhaust
+; the smaller stacks of worker threads even though byte validation itself was
+; tail-recursive.
+(def unicode-scalars->string-onto
+  (lambda (scalars out)
+    (cond
+      ((atom scalars) out)
+      (t
+       (unicode-scalars->string-onto
+         (cdr scalars)
+         (string-append out (codepoint->string (car scalars))))))))
+
 (def unicode-scalars->string
   (lambda (scalars)
-    (cond
-      ((atom scalars) "")
-      (t (string-append
-           (codepoint->string (car scalars))
-           (unicode-scalars->string (cdr scalars)))))))
+    (unicode-scalars->string-onto scalars "")))
 
 (def utf8-decode-string
   (lambda (bytes)
