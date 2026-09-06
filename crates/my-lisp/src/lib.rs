@@ -45,6 +45,11 @@ pub const MACRO_LIBRARY_SOURCE: &str = include_str!("../../../lib/macro.my");
 /// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
 pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.my");
 
+/// Language-owned time semantics. Host clocks expose raw observations such as
+/// `mono-ns` and `unix-time-now`; this library derives coarser clocks,
+/// calendar interpretation, UTC structure, and deadline arithmetic.
+pub const TIME_LIBRARY_SOURCE: &str = include_str!("../../../lib/time.my");
+
 /// Load the language-owned macro layer and then the ordinary core library.
 ///
 /// This is the canonical bootstrap order for embedders that want `core.my`.
@@ -53,6 +58,14 @@ pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.my");
 pub fn load_core_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     eval_program(MACRO_LIBRARY_SOURCE, session)?;
     eval_program(CORE_LIBRARY_SOURCE, session)
+}
+
+/// Load language-owned time semantics into a session that already has the
+/// ordinary core library. Keeping this separate from `load_core_library`
+/// preserves the closed language core while giving embedders one canonical
+/// time-layer loader instead of ad-hoc `include_str!` calls.
+pub fn load_time_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
+    eval_program(TIME_LIBRARY_SOURCE, session)
 }
 
 /// Convenience: FASL-encode already-parsed expressions bound to a source hash.
