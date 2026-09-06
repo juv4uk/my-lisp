@@ -208,6 +208,29 @@ fn raw_ntp_observation_boundary_is_interpreted_by_lisp() {
 }
 
 #[test]
+fn internet_time_sync_is_language_owned_after_time_library_loads() {
+    let mut session = Session::default();
+    load_core_library(&mut session).unwrap();
+
+    assert!(matches!(
+        session.environment.get("internet-time-sync"),
+        Some(Value::Builtin(_))
+    ));
+    assert!(session.environment.get("internet-time-sync-raw").is_none());
+
+    load_time_library(&mut session).unwrap();
+
+    assert!(matches!(
+        session.environment.get("internet-time-sync"),
+        Some(Value::Closure(_))
+    ));
+    assert!(matches!(
+        session.environment.get("internet-time-sync-raw"),
+        Some(Value::Builtin(_))
+    ));
+}
+
+#[test]
 fn internet_time_timestamp_interpretation_is_language_owned() {
     let mut session = time_session();
 
