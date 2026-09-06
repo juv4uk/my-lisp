@@ -124,6 +124,18 @@ fn main() {
             }
         },
     }
+
+    // Time is a language-owned semantic layer, not part of the closed core.
+    // Load it explicitly after core so local CLI/REPL sessions keep `utc-now`
+    // even after the old Rust calendar builtin is removed.
+    if let Err(e) = my_lisp::load_time_library(&mut session) {
+        eprintln!(
+            "Error loading time.my: {}",
+            e.render(my_lisp::TIME_LIBRARY_SOURCE)
+        );
+        process::exit(1);
+    }
+
     // Text form stays in scope for downstream consumers (tcp repl seed,
     // --lint path) without re-reading the file.
     #[allow(unused_variables)]
@@ -131,11 +143,19 @@ fn main() {
 
     // The sexpr/oracle server creates a fresh Session for every connection.
     // Give those sessions the same semantic bootstrap order as the local CLI:
-    // language-owned macros first, then core. Keep this as one immutable
-    // process-lifetime string because the threaded server accepts a 'static seed.
+    // language-owned macros first, then core, then language-owned time.
+    // Keep this as one immutable process-lifetime string because the threaded
+    // server accepts a 'static seed.
     static SEXPR_BOOTSTRAP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     let sexpr_bootstrap_lib: &'static str = SEXPR_BOOTSTRAP
-        .get_or_init(|| format!("{}\n{}", my_lisp::MACRO_LIBRARY_SOURCE, CORE_SRC))
+        .get_or_init(|| {
+            format!(
+                "{}\n{}\n{}",
+                my_lisp::MACRO_LIBRARY_SOURCE,
+                CORE_SRC,
+                my_lisp::TIME_LIBRARY_SOURCE
+            )
+        })
         .as_str();
 
     if args.len() > 1 {
