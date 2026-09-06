@@ -201,8 +201,8 @@ fn evaluate_list(
         // only a compatibility fallback for legacy/bootstrap sessions that
         // have not loaded the derived macro layer yet.
         Some("defmacro") => {
-            if let Some(Value::Macro(closure)) = environment.get("defmacro") {
-                closures::apply_macro(closure, arguments, environment, span)
+            if let Some(Value::Macro(ref closure)) = environment.get("defmacro") {
+                closures::apply_macro(closure.clone(), arguments, environment, span)
             } else {
                 special_forms::evaluate_defmacro(arguments, environment, span).map(EvalStep::Value)
             }
