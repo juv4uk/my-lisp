@@ -1,49 +1,19 @@
-//! Exercises the TCP primitives (PLAN.md item 21): tcp-connect/tcp-listen/
-//! tcp-accept/tcp-read/tcp-write/tcp-close. The outbound-client half of
-//! "talk to other AI systems" (principle 3 extended to LLM APIs/other
-//! agents) and the inbound-server half (accepting connections from other
-//! agents). Each test runs a server on its own OS thread — a separate
-//! `Session`/`Environment` per thread, no `Rc` crosses a thread boundary,
-//! same as any two independent my-lisp processes talking over a real
-//! socket would be.
-//! Pereviriaie TCP-prymityvy (PLAN.md, punkt 21): tcp-connect/tcp-listen/
-//! tcp-accept/tcp-read/tcp-write/tcp-close. Vykhidna/kliientska polovyna
-//! "spilkuvatys z inshymy AI-systemamy" (pryntsyp 3, poshyrenyi na LLM
-//! API/inshykh ahentiv) i vkhidna/serverna polovyna (pryiom ziednan vid
-//! inshykh ahentiv). Kozhen test zapuskaie server na vlasnomu OS-pototsi —
-//! okremi `Session`/`Environment` na potik, zhoden `Rc` ne peretynaie mezhu
-//! potoku, tak samo yak dva nezalezhni protsesy my-lisp, shcho spilkuiutsia cherez
-//! realnyi soket.
+//! TCP capability and language-owned read-semantics integration tests.
+//! TCP integration tests use real sockets and separate sessions per endpoint.
 
-use my_lisp::{eval_program, ErrorKind, Session, Value};
+use my_lisp::{eval_program, load_core_library, load_tcp_library, ErrorKind, Session, Value};
 use my_lisp_host::install;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 
-/// Grabs a free port by binding to port 0 and reading back what the OS
-/// assigned, then immediately releasing it — avoids hardcoding a port
-/// number that could collide with another test or a real service.
-/// Zaimaie vilnyi port, prybindyvshys do portu 0 i zchytavshy pryznachenyi
-/// OS nomer, todi odrazu zvilniaie yoho — unykaie zhorstko zakodovanoho
-/// nomera portu, yakyi mih by zitknutysia z inshym testom chy realnym servisom.
-/// Runs a client-side my-lisp program, retrying the whole thing a few
-/// times if it fails — a guard against exactly one kind of flakiness,
-/// not a general retry-until-it-works: the server thread's `tcp-listen`
-/// needs a moment to actually bind and start accepting after
-/// `thread::spawn` returns, and under a fully parallel `cargo test` run
-/// (296 tests, real thread contention) a fixed short sleep isn't always
-/// enough. Each retry is a fresh `tcp-connect` attempt; the server's
-/// single `tcp-accept` call just waits longer, unaffected either way.
-/// Zapuskaie kliientsku my-lisp-prohramu, povtoriuiuchy vse kilka raziv u
-/// razi provalu — zakhyst same vid odnoho vydu nestabilnosti, ne
-/// zahalnyi "povtoriui, poky ne spratsiuie": `tcp-listen` servernoho potoku
-/// potrebuie myti, shchob realno zabindytys i pochaty pryimaty ziednannia
-/// pislia povernennia z `thread::spawn`, i pid povnistiu paralelnym
-/// prohonom `cargo test` (296 testiv, realna konkurentsiia za potoky)
-/// fiksovanyi korotkyi son ne zavzhdy dostatnii. Kozhna povtorna sproba —
-/// svizhyi vyklyk `tcp-connect`; yedynyi vyklyk `tcp-accept` servera prosto
-/// chekaie dovshe, baiduzhe v obokh vypadkakh.
+fn tcp_session() -> Session {
+    let mut session = Session::default();
+    load_core_library(&mut session).unwrap();
+    load_tcp_library(&mut session).unwrap();
+    session
+}
+
 fn eval_client_with_retry(
     source: &str,
     session: &mut Session,
@@ -55,18 +25,6 @@ fn eval_client_with_retry(
         }
         match eval_program(source, session) {
             Ok(result) => return Ok(result),
-            // Only a `tcp-connect` failure is safe to retry: the server's
-            // single `tcp-accept` hasn't consumed anything yet in that
-            // case. Any other error (e.g. something failed *after* a
-            // successful connect) must not retry — a second connection
-            // attempt would race a server that already accepted-and-
-            // exited on the first one, trading a clear failure for a hang.
-            // Lyshe proval `tcp-connect` bezpechno povtoriuvaty: yedynyi
-            // `tcp-accept` servera v tsomu vypadku shche nichoho ne spozhyv.
-            // Bud-yaka insha pomylka (napr. shchos provalylos *pislia*
-            // uspishnoho pidkliuchennia) ne maie povtoriuvatys — druha sproba
-            // ziednannia zmahalasia b iz serverom, shcho vzhe pryiniav i zavershyvsia
-            // na pershomu, miniaiuchy chitku pomylku na zavysannia.
             Err(error) if error.message.contains("tcp-connect:") => last_error = Some(error),
             Err(error) => return Err(error),
         }
@@ -83,7 +41,8 @@ fn free_port() -> u16 {
 }
 
 fn load_knowledge(session: &mut Session) {
-    eval_program(include_str!("../../../lib/core.my"), session).unwrap();
+    load_core_library(session).unwrap();
+    load_tcp_library(session).unwrap();
     eval_program(include_str!("../../../lib/unify.my"), session).unwrap();
     eval_program(include_str!("../../../lib/reason.my"), session).unwrap();
     eval_program(include_str!("../../../lib/forward.my"), session).unwrap();
@@ -96,7 +55,7 @@ fn client_and_server_exchange_one_message_each_way() {
     let port = free_port();
 
     let server = thread::spawn(move || {
-        let mut session = Session::default();
+        let mut session = tcp_session();
         let source = format!(
             r#"
             (def listener (tcp-listen {port}))
@@ -107,32 +66,15 @@ fn client_and_server_exchange_one_message_each_way() {
             request
             "#
         );
-        // `Value` wraps `Rc`, which isn't `Send` — a thread's return value
-        // must be, so this converts to an owned `String` before crossing
-        // the thread boundary, the same way any two real my-lisp processes
-        // would only ever exchange bytes over the socket, never a shared
-        // in-memory `Value`.
-        // `Value` ohortaie `Rc`, yakyi ne `Send` — znachennia, shcho povertaie
-        // potik, musyt buty, tozh tut konvertatsiia v `String` pered mezheiu
-        // potoku, tak samo yak dva realni protsesy my-lisp obminiuvalys by
-        // lyshe baitamy cherez soket, nikoly spilnym `Value` u pamiati.
         eval_program(&source, &mut session)
             .expect("server-side program should evaluate without error")
             .value
             .to_string()
     });
 
-    // Give the server a moment to bind and start listening before the
-    // client tries to connect — tcp-connect fails named (not silently)
-    // if it loses this race, which would make the test's own failure
-    // message point straight at the real cause instead of a hang.
-    // Daie serveru moment prybindytys i pochaty slukhaty, persh nizh kliient
-    // sprobuie pidkliuchytys — tcp-connect provaliuietsia nazvano (ne
-    // movchky), yakshcho prohraie tsiu honku, tozh vlasne povidomlennia pro
-    // proval testu vkazhe priamo na realnu prychynu, ne na zavysannia.
     thread::sleep(std::time::Duration::from_millis(200));
 
-    let mut client_session = Session::default();
+    let mut client_session = tcp_session();
     let client_source = format!(
         r#"
         (def conn (tcp-connect "127.0.0.1" {port}))
@@ -149,16 +91,10 @@ fn client_and_server_exchange_one_message_each_way() {
         client_result.value,
         Value::String("echo: hello from client".into())
     );
-
-    // `Value::to_string()` is the `write`/`prin1` form (quoted, escaped —
-    // see value.rs's `Display`), not the raw text, so a `Value::String`
-    // round-trips as `"hello from client"` with literal quote characters.
-    // `Value::to_string()` — tse forma `write`/`prin1` (u lapkakh,
-    // ekranovana — dyv. `Display` u value.rs), ne syryi tekst, tozh
-    // `Value::String` povertaietsia yak `"hello from client"` iz bukvalnymy
-    // symvolamy lapok.
-    let server_saw = server.join().expect("server thread should not panic");
-    assert_eq!(server_saw, "\"hello from client\"");
+    assert_eq!(
+        server.join().expect("server thread should not panic"),
+        "\"hello from client\""
+    );
 }
 
 #[test]
@@ -179,7 +115,7 @@ fn send_knowledge_package_transmits_one_canonical_expression_then_eof() {
         (def connection (tcp-connect "127.0.0.1" {port}))
         (send-knowledge-package connection (quote exchange)
           (quote (((planet earth)) ((has-mass (var x)) (planet (var x))))))
-    "#
+        "#
     );
     eval_program(&source, &mut session).unwrap();
     assert_eq!(
@@ -201,7 +137,7 @@ fn receive_knowledge_package_drains_chunks_and_atomically_imports() {
             (def connection (tcp-accept listener))
             (receive-knowledge-package connection)
             (car (car (reason-in (quote exchange) (quote (has-mass earth)))))
-        "#
+            "#
         );
         eval_program(&source, &mut session)
             .unwrap()
@@ -234,7 +170,7 @@ fn framed_exchange_returns_an_accepted_receipt_to_the_sender() {
             (def listener (tcp-listen {port}))
             (def connection (tcp-accept listener))
             (accept-knowledge-exchange connection)
-        "#
+            "#
         );
         eval_program(&source, &mut session)
             .unwrap()
@@ -247,7 +183,7 @@ fn framed_exchange_returns_an_accepted_receipt_to_the_sender() {
         r#"
         (def connection (tcp-connect "127.0.0.1" {port}))
         (exchange-knowledge-package connection (quote exchange) (quote (((planet earth)))))
-    "#
+        "#
     );
     let receipt = eval_client_with_retry(&source, &mut client).unwrap();
     assert_eq!(
@@ -271,7 +207,7 @@ fn framed_exchange_returns_conflict_and_does_not_install_the_new_fact() {
             (def connection (tcp-accept listener))
             (def decision (accept-knowledge-exchange connection))
             (list (car decision) (reason-in (quote exchange) (quote (planet pluto))))
-        "#
+            "#
         );
         eval_program(&source, &mut session)
             .unwrap()
@@ -284,7 +220,7 @@ fn framed_exchange_returns_conflict_and_does_not_install_the_new_fact() {
         r#"
         (def connection (tcp-connect "127.0.0.1" {port}))
         (exchange-knowledge-package connection (quote exchange) (quote (((planet pluto)))))
-    "#
+        "#
     );
     let receipt = eval_client_with_retry(&source, &mut client).unwrap();
     assert_eq!(
@@ -300,7 +236,7 @@ fn tcp_read_returns_an_empty_string_on_a_closed_connection() {
     let port = free_port();
 
     let server = thread::spawn(move || {
-        let mut session = Session::default();
+        let mut session = tcp_session();
         let source = format!(
             r#"
             (def listener (tcp-listen {port}))
@@ -314,7 +250,7 @@ fn tcp_read_returns_an_empty_string_on_a_closed_connection() {
 
     thread::sleep(std::time::Duration::from_millis(200));
 
-    let mut client_session = Session::default();
+    let mut client_session = tcp_session();
     let client_source = format!(
         r#"
         (def conn (tcp-connect "127.0.0.1" {port}))
@@ -331,14 +267,8 @@ fn tcp_read_returns_an_empty_string_on_a_closed_connection() {
 #[test]
 fn tcp_connect_to_a_closed_port_fails_named_not_silently() {
     install();
-    // A port grabbed and immediately released by free_port() above is very
-    // likely to have nothing listening on it in the brief window before
-    // the OS could reassign it — connecting there should fail cleanly.
-    // Port, zainiatyi i odrazu zvilnenyi `free_port()` vyshche, z vysokoiu
-    // ymovirnistiu ne maie nichoho, shcho slukhaie, u korotkomu vikni do toho, yak
-    // OS mohla b perepryznachyty yoho — ziednannia tudy maie provalytys chysto.
     let port = free_port();
-    let mut session = Session::default();
+    let mut session = tcp_session();
     let source = format!(r#"(tcp-connect "127.0.0.1" {port})"#);
     let error = eval_program(&source, &mut session)
         .expect_err("connecting to a port nothing listens on must fail named, not hang or panic");
@@ -348,7 +278,7 @@ fn tcp_connect_to_a_closed_port_fails_named_not_silently() {
 #[test]
 fn tcp_connect_rejects_a_non_string_host() {
     install();
-    let error = eval_program("(tcp-connect 42 8099)", &mut Session::default())
+    let error = eval_program("(tcp-connect 42 8099)", &mut tcp_session())
         .expect_err("a non-string host must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
 }
@@ -358,7 +288,7 @@ fn tcp_connect_rejects_an_out_of_range_port() {
     install();
     let error = eval_program(
         r#"(tcp-connect "127.0.0.1" 99999)"#,
-        &mut Session::default(),
+        &mut tcp_session(),
     )
     .expect_err("a port past 65535 must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
@@ -367,9 +297,47 @@ fn tcp_connect_rejects_an_out_of_range_port() {
 #[test]
 fn tcp_read_rejects_a_non_connection_argument() {
     install();
-    let error = eval_program(r#"(tcp-read "not a connection")"#, &mut Session::default())
+    let error = eval_program(r#"(tcp-read "not a connection")"#, &mut tcp_session())
         .expect_err("a non-connection argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
+}
+
+#[test]
+fn tcp_raw_read_preserves_non_utf8_bytes_and_public_read_rejects_them_in_lisp() {
+    install();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        stream.write_all(&[255]).unwrap();
+    });
+
+    let mut raw_session = tcp_session();
+    let raw = eval_program(
+        &format!(
+            r#"(def c (tcp-connect "127.0.0.1" {port})) (tcp-read-raw c)"#
+        ),
+        &mut raw_session,
+    )
+    .unwrap();
+    assert_eq!(raw.value.to_string(), "(255)");
+    server.join().unwrap();
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        stream.write_all(&[255]).unwrap();
+    });
+    let mut text_session = tcp_session();
+    let interpreted = eval_program(
+        &format!(r#"(def c (tcp-connect "127.0.0.1" {port})) (tcp-read c)"#),
+        &mut text_session,
+    )
+    .unwrap();
+    assert_eq!(interpreted.value.to_string(), "(rejected invalid-utf8)");
+    server.join().unwrap();
 }
 
 #[test]
@@ -377,7 +345,7 @@ fn tcp_write_returns_its_content_argument_unchanged() {
     install();
     let port = free_port();
     let server = thread::spawn(move || {
-        let mut session = Session::default();
+        let mut session = tcp_session();
         let source = format!(
             r#"
             (def listener (tcp-listen {port}))
@@ -392,7 +360,7 @@ fn tcp_write_returns_its_content_argument_unchanged() {
 
     thread::sleep(std::time::Duration::from_millis(200));
 
-    let mut client_session = Session::default();
+    let mut client_session = tcp_session();
     let client_source = format!(
         r#"
         (def conn (tcp-connect "127.0.0.1" {port}))
