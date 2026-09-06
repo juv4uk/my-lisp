@@ -1,39 +1,12 @@
-//! The one place that embeds Guard's Rust+Lisp foundation.
-//! Єдине місце, де вбудовано раст+лісп-основу Guard.
-//!
-//! Before this crate existed, `lib/core.my` and `lib/guard.wsm` were each
-//! embedded via a separate `include_str!` in three different places
-//! (`wsm-guard-slice`, `wsm-guard-facts`, `my-lisp-cli`'s `--oracle-help`),
-//! and the session-setup + decision-validation sequence around them was
-//! duplicated near-verbatim between the two adapter binaries. Guard is one
-//! mechanism, not three: this crate is the single embed and the single
-//! evaluate-and-validate path every Rust consumer shares.
-//!
-//! What stays compiled in (`CORE`, `GUARD`) is executable Lisp code shipped
-//! with the binary, exactly like a standard library — changing it is a
-//! logic change that deserves a rebuild and review. What must NOT be
-//! compiled in is *data* — policy files and the `knowledge/guard-reference.wsm`
-//! reference directory are read fresh from disk by their own callers
-//! (`--policy PATH`, or a plain `fs::read_to_string` for the reference
-//! directory), so adding a new reference entry or changing a policy never
-//! requires touching Rust at all.
+//! Shared Rust adapter for the Lisp-owned Guard schema.
+//! Rust loads the executable WSM policy and validates the returned value's
+//! outer protocol shape. Meaning and policy remain in lib/guard.wsm.
 
-use my_lisp::{Session, eval_program};
+use my_lisp::{eval_program, Session, Value};
 
-/// The my-lisp language core. Single source of truth for every Guard
-/// consumer that needs a session to evaluate `guard.wsm` at all.
 pub const CORE: &str = include_str!("../../../lib/core.my");
-
-/// The shared guard-finding function library (`guard-evaluate`,
-/// `guard-fact-evaluate`, `make-guard-finding`, ...). Single source of
-/// truth — no other crate embeds this file.
 pub const GUARD: &str = include_str!("../../../lib/guard.wsm");
 
-/// Load `CORE` and `GUARD` into a fresh session, on top of which a caller
-/// can evaluate its own WSM policy and query expressions. Exposed
-/// separately from `evaluate` for callers (like `--oracle-help`) whose
-/// interaction shape is "load the guard library, then query it" rather
-/// than "evaluate one bounded decision and validate its shape."
 pub fn load_session() -> Result<Session, String> {
     let mut session = Session::default();
     eval_program(CORE, &mut session).map_err(|error| format!("core: {error}"))?;
@@ -41,28 +14,94 @@ pub fn load_session() -> Result<Session, String> {
     Ok(session)
 }
 
-/// Load `CORE` + `GUARD` + the caller's `policy`, evaluate `call` against
-/// that session, and validate that the result is one of the four decision
-/// shapes Guard promises. This is the exact sequence `wsm-guard-slice` and
-/// `wsm-guard-facts` each re-implemented independently before this crate
-/// existed; both now delegate here.
+fn proper_list<'a>(value: &'a Value) -> Option<Vec<&'a Value>> {
+    let mut items = Vec::new();
+    let mut cursor = value;
+    loop {
+        match cursor {
+            Value::Nil => return Some(items),
+            Value::Pair(head, tail) => {
+                items.push(head.as_ref());
+                cursor = tail.as_ref();
+            }
+            _ => return None,
+        }
+    }
+}
+
+fn symbol(value: &Value) -> Option<&str> {
+    match value {
+        Value::Symbol(value) => Some(value.as_ref()),
+        _ => None,
+    }
+}
+
+/// Guard's Rust boundary validates structure, never rendered substrings.
+/// A valid finding is exactly:
+/// `(guard-finding (schema guard/1) (decision ...) ... (unknown-routes ...))`.
+fn valid_guard_finding(value: &Value) -> bool {
+    let Some(items) = proper_list(value) else {
+        return false;
+    };
+    if items.len() != 12 || symbol(items[0]) != Some("guard-finding") {
+        return false;
+    }
+
+    const FIELDS: [&str; 11] = [
+        "schema",
+        "decision",
+        "evidence-status",
+        "subject",
+        "state",
+        "contract",
+        "difference",
+        "impact",
+        "guidance",
+        "evidence",
+        "unknown-routes",
+    ];
+
+    let mut values = Vec::with_capacity(FIELDS.len());
+    for (entry, expected_name) in items[1..].iter().zip(FIELDS) {
+        let Some(pair) = proper_list(entry) else {
+            return false;
+        };
+        if pair.len() != 2 || symbol(pair[0]) != Some(expected_name) {
+            return false;
+        }
+        values.push(pair[1]);
+    }
+
+    if symbol(values[0]) != Some("guard/1") {
+        return false;
+    }
+
+    if !matches!(
+        symbol(values[1]),
+        Some("allow" | "warn" | "reject" | "unknown")
+    ) {
+        return false;
+    }
+
+    matches!(
+        symbol(values[2]),
+        Some("confirmed" | "partial" | "unresolved" | "broken")
+    )
+}
+
+/// Load CORE + GUARD + policy, evaluate one call, and accept only an exact
+/// guard/1 value. The rendered string is returned only after structure has
+/// been validated.
 pub fn evaluate(policy: &str, call: &str) -> Result<String, String> {
     let mut session = load_session()?;
     eval_program(policy, &mut session).map_err(|error| format!("policy: {error}"))?;
     let result = eval_program(call, &mut session).map_err(|error| format!("evaluate: {error}"))?;
-    let rendered = result.value.to_string();
-    if ![
-        "(decision allow)",
-        "(decision warn)",
-        "(decision reject)",
-        "(decision unknown)",
-    ]
-    .iter()
-    .any(|decision| rendered.contains(decision))
-    {
-        return Err("policy-result-without-valid-decision".into());
+
+    if !valid_guard_finding(&result.value) {
+        return Err("policy-result-without-valid-guard-finding".into());
     }
-    Ok(rendered)
+
+    Ok(result.value.to_string())
 }
 
 #[cfg(test)]
@@ -97,7 +136,49 @@ mod tests {
             "(guard-evaluate (quote read) (quote docs) (quote confirmed))",
         )
         .unwrap_err();
-        assert_eq!(error, "policy-result-without-valid-decision");
+        assert_eq!(error, "policy-result-without-valid-guard-finding");
+    }
+
+    #[test]
+    fn nested_decision_text_cannot_spoof_the_guard_protocol() {
+        // The old validator rendered the whole value and searched for
+        // "(decision allow)", so this malformed outer value was accepted.
+        let spoof = r#"
+          (def guard-evaluate
+            (lambda (kind subject evidence)
+              (quote (not-a-guard-finding (decision allow)))))"#;
+        let error = evaluate(
+            spoof,
+            "(guard-evaluate (quote read) (quote docs) (quote confirmed))",
+        )
+        .unwrap_err();
+        assert_eq!(error, "policy-result-without-valid-guard-finding");
+    }
+
+    #[test]
+    fn wrong_schema_is_rejected_even_with_a_valid_decision() {
+        let wrong_schema = r#"
+          (def guard-evaluate
+            (lambda (kind subject evidence)
+              (quote
+                (guard-finding
+                  (schema guard/999)
+                  (decision allow)
+                  (evidence-status confirmed)
+                  (subject docs)
+                  (state read)
+                  (contract test)
+                  (difference ())
+                  (impact no-impact)
+                  (guidance no-action)
+                  (evidence ())
+                  (unknown-routes ()))))))"#;
+        let error = evaluate(
+            wrong_schema,
+            "(guard-evaluate (quote read) (quote docs) (quote confirmed))",
+        )
+        .unwrap_err();
+        assert_eq!(error, "policy-result-without-valid-guard-finding");
     }
 
     #[test]
