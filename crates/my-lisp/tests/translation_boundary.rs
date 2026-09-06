@@ -216,7 +216,11 @@ fn versioned_translation_corpus_is_data_only_and_contains_all_b4_modes() {
     assert_eq!(forms.len(), 1, "corpus must be one versioned data value");
 
     assert!(corpus.contains("(translation-corpus/1"));
-    assert_eq!(corpus.matches("(translation-case/1").count(), 6);
+    let case_count = corpus
+        .lines()
+        .filter(|line| line.trim_start().starts_with("(translation-case/1"))
+        .count();
+    assert_eq!(case_count, 6);
 
     for id in [
         "direct-fact",
