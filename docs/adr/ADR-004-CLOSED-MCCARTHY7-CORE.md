@@ -163,12 +163,12 @@ The canonical identity table is an autonomous normative entity separate from any
 | `PRIM_ATOM` | $x \mapsto \text{Bool}$ (non-pair predicate) | **`атом?`** / **`просте?`** | **contested** (open) | `непара?` (negative definition), `неподільне?` (verbose), `одиничне?` (number 1 bias) | VS 7.1.10–11 *aṇu* (**PARTIAL ANALOGUE**: physical ontology) |
 | `PRIM_EQ` | $(x, y) \mapsto \text{Bool}$ (atom identity) | **`тотожне?`** | **stable** | `рівне?` (conflates with numeric/structural equal), `одне?` (ambiguous) | TS §80 *abheda* / *tādātmya* (**PARTIAL ANALOGUE**) |
 | `PRIM_CAR` | $\pi_1 : (x . y) \mapsto x$ (first coordinate) | **`перше`** | **stable** | `голова` (list-only bias), `лівий` (spatial metaphor), `початок` (temporal bias) | VS 4.2.9 *āditva* (**WEAK ANALOGUE**: linear/temporal metaphor) |
-| `PRIM_CDR` | $\pi_2 : (x . y) \mapsto y$ (second coordinate) | **`друге`** | **stable** | `хвіст` (catastrophic on dotted pairs), `решта` (list-only bias on pairs) | NS 1.1.5 *śeṣa* / *śeṣavat* (**PARTIAL ANALOGUE**) |
+| `PRIM_CDR` | $\pi_2 : (x . y) \mapsto y$ (residual coordinate) | **`решта`** | **stable** | `хвіст` (pure list bias), `друге` (false expectation on lists: returns (2 3), not 2) | NS 1.1.5 *śeṣa* / *śeṣavat* (**PARTIAL ANALOGUE**: inference by residual) |
 | `PRIM_CONS` | $(x, y) \mapsto (x . y)$ (pair allocator) | **`сполучити`** | **stable** | `пара` (noun of result), `зліпити` (slang), `скласти` (addition bias) | TS §27 $\sqrt{yuj}$ / *saṃyuj* (**PARTIAL ANALOGUE**) |
 | `PRIM_COND` | Ordered guarded first-match selection | **`за-умовою`** | **provisional-stable** | `якщо` (single-branch bias), `вибір` (unordered selection bias) | Mīmāṃsā *krama* (**PARTIAL ANALOGUE**: first-match unproven) |
 
 #### Canonical Status Breakdown:
-- **5 Stable:** `PRIM_QUOTE` (`як-є`), `PRIM_EQ` (`тотожне?`), `PRIM_CAR` (`перше`), `PRIM_CDR` (`друге`), `PRIM_CONS` (`сполучити`).
+- **5 Stable:** `PRIM_QUOTE` (`як-є`), `PRIM_EQ` (`тотожне?`), `PRIM_CAR` (`перше`), `PRIM_CDR` (`решта`), `PRIM_CONS` (`сполучити`).
 - **1 Provisional-Stable:** `PRIM_COND` (`за-умовою`). Note: the ordered first-match execution semantics is guaranteed by the specification, not by the surface sign alone.
 - **1 Contested (Deliberately Open):** `PRIM_ATOM` (`атом?` vs `просте?`). `атом?` preserves conservative CS tradition; `просте?` gives immediate vernacular clarity but carries mathematical baggage (prime numbers, simple types). Kept openly contested to avoid false closure.
 
@@ -182,17 +182,24 @@ List behavior is derived from recursive cons structure,
 not part of the primitive meaning.
 ```
 
-Canonical Cons-Cell Projections Test:
+Canonical Triple Cons-Structure Test (Pair + Proper List + Improper List):
+`решта` wins over `друге` due to avoiding cognitive collision on recursive cons-cells:
 ```lisp
-;; Canonical Dotted Pair Test:
-(призначити p (сполучити 'кіт 42))
+;; 1. Proper List:
+(перше '(1 2 3)) ;; → 1
+(решта '(1 2 3)) ;; → (2 3)  [NB: "друге" фатально провокувало б очікування числа 2!]
 
+;; 2. Canonical Dotted Pair:
+(призначити p (сполучити 'кіт 42))
 (перше p) ;; → кіт
-(друге p) ;; → 42 (НЕ "решта" і НЕ "хвіст"!)
+(решта p) ;; → 42  [буквально: те, що лишилося після відокремлення першої координати]
+
+;; 3. Improper List:
+(решта '(1 2 . 3)) ;; → (2 . 3)
 ```
 
-- **Core Primitives (Pair Foundation):** `сполучити`, `перше`, `друге`.
-- **List Library Vocabulary (Derived APIs):** `решта`, `голова`, `хвіст` MAY exist as high-level convenience functions over proper lists (`(A B C)`), but MUST NOT be conflated with the primitive pair coordinate projections $\pi_1$ and $\pi_2$.
+- **Core Primitives (Pair Foundation):** `сполучити`, `перше`, `решта`.
+- **List Library Vocabulary (Derived APIs):** `голова`, `хвіст` MAY exist as high-level convenience aliases over proper lists (`(A B C)`), but `решта` is the primitive coordinate extractor $\pi_2$ interpreting $y$ as the residual element after $x$.
 
 ---
 
