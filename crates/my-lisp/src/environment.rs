@@ -1,5 +1,5 @@
 use crate::Value;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, path::PathBuf, rc::Rc};
 
 /// Dropping a deeply nested `Environment` chain (thousands of `let`/currying
 /// levels) would otherwise recurse through `Rc<RefCell<Frame>>`'s default
@@ -29,34 +29,24 @@ struct Frame {
     parent: Option<Environment>,
 }
 
-/// Opt-in resource caps for one session, shared across every `Environment`
-/// in its lexical tree (same sharing pattern as the output transcript) —
-/// added 2026-08-09 so S1/S3's own named examples (`NumericOverflow`,
-/// `OutOfMemory`) are real, testable categories, not just words in a
-/// document. `None` (the default, via `root()`) means unbounded — the
-/// Rust reference implementation's own choice, not a claim every future
-/// implementation must match (see S1's open note).
-/// Optsiini mezhi resursu dlia odniiei sesii, spilni dlia kozhnoho
-/// `Environment` u yii leksychnomu derevi (toi samyi patern, shcho y u
-/// transkryptu vyvodu) — dodano 2026-08-09, shchob vlasni nazvani pryklady
-/// S1/S3 (`NumericOverflow`, `OutOfMemory`) staly realnymy, perevirianymy
-/// katehoriiamy, ne lyshe slovamy v dokumenti. `None` (typovo, cherez
-/// `root()`) oznachaie neobmezheno — vlasnyi vybir Rust-realizatsii, ne
-/// tverdzhennia, shcho kozhna maibutnia realizatsiia musyt tse povtoryty (dyv.
-/// vidkrytu prymitku v S1).
+/// Opt-in resource/capability limits for one session, shared across every
+/// lexical child. `None` remains the trusted native profile: unrestricted for
+/// that dimension once the host capability layer is installed. Embeddings can
+/// opt into narrower policies without changing language semantics.
 #[derive(Debug, Default)]
 struct Limits {
     cons_limit: Option<usize>,
     cons_count: usize,
     numeric_bit_limit: Option<usize>,
-    /// `None` (the default, via `root()`) means unrestricted named-program
-    /// execution once a native host installs `process-run`. This is the
-    /// trusted Lisp-machine profile: programs can compose the host instead
-    /// of requiring a per-executable grant. `Some(programs)` remains an
-    /// embedding boundary for untrusted entry points such as the loopback
-    /// TCP oracle; an empty list disables process execution there. Commands
-    /// still never pass through a shell.
+    /// Exact program-name policy. `None` = unrestricted, `Some([])` = deny all.
     process_allowlist: Option<Vec<String>>,
+    /// Filesystem roots are stored as caller-supplied paths. The host layer,
+    /// not the language core, owns canonicalization/symlink enforcement.
+    fs_read_roots: Option<Vec<PathBuf>>,
+    fs_write_roots: Option<Vec<PathBuf>>,
+    /// (host-or-bind-address, first-port, last-port), inclusive.
+    tcp_connect_allowlist: Option<Vec<(String, u16, u16)>>,
+    tcp_listen_allowlist: Option<Vec<(String, u16, u16)>>,
 }
 
 impl Environment {
@@ -75,60 +65,92 @@ impl Environment {
         // `t` is the canonical truth value itself, not a variable that
         // merely holds one: bound to the symbol `t` (self-referential),
         // so `t` evaluates to `Symbol("t")` -- the exact value `eq`/`atom`
-        // (Value::truth) already return for true. Previously bound to
-        // Value::Bool(true), a different Value from Value::truth's own
-        // result, which made `(eq (eq 1 1) t)` false.
+        // (Value::truth) already return for true.
         environment.define("t", Value::Symbol(Rc::from("t")));
-        // contract 2.1: primitives enter the root environment as
-        // first-class builtin values -- one runtime authority, no
-        // head-only registry (docs/PROPOSAL-FIRST-CLASS-BUILTINS.md).
+        // contract 2.1: primitives enter the root environment as first-class
+        // builtin values -- one runtime authority, no head-only registry.
         crate::eval::builtins::install(&environment);
         environment
     }
 
     /// Opts this session into a maximum `cons` allocation count — past it,
     /// `cons` returns `ErrorKind::OutOfMemory` instead of succeeding.
-    /// Simulates a genuinely bounded heap (an FPGA with 4096 cons cells,
-    /// S3's own example) without needing real hardware to test the claim
-    /// "bounded implementations fail named, never silently redefine `cons`."
-    /// Vmykaie dlia tsiiei sesii maksymalnu kilkist `cons`-vydilen — ponad
-    /// nei `cons` povertaie `ErrorKind::OutOfMemory` zamist uspikhu. Imituie
-    /// spravdi obmezhenu kupu (FPGA z 4096 cons-komirkamy, vlasnyi pryklad
-    /// S3) bez potreby v realnomu zalizi, shchob pereviryty tverdzhennia
-    /// "obmezheni realizatsii provaliuiutsia nazvano, nikoly ne pereoznachaiut
-    /// sens `cons` movchky".
     pub fn with_cons_limit(self, limit: usize) -> Self {
         self.2.borrow_mut().cons_limit = Some(limit);
         self
     }
 
     /// Opts this session into a maximum bit width for exact arithmetic
-    /// results — past it, `+`/`-`/`*`/`/` return `ErrorKind::NumericOverflow`
-    /// instead of continuing to compute (never falling back to an inexact
-    /// approximation — that would violate S1, not satisfy it).
-    /// Vmykaie dlia tsiiei sesii maksymalnu shyrynu v bitakh dlia rezultativ
-    /// tochnoi aryfmetyky — ponad nei `+`/`-`/`*`/`/` povertaiut
-    /// `ErrorKind::NumericOverflow` zamist prodovzhennia obchyslennia (nikoly
-    /// ne vidkochuiuchys do netochnoho nablyzhennia — tse porushylo b S1, ne
-    /// zadovolnylo b yoho).
+    /// results — past it arithmetic returns `ErrorKind::NumericOverflow`.
     pub fn with_numeric_bit_limit(self, limit: usize) -> Self {
         self.2.borrow_mut().numeric_bit_limit = Some(limit);
         self
     }
 
-    /// Restricts `process-run` to the exact program names in `programs`.
-    /// This is an embedding/network policy, not the native machine default.
+    /// Restricts process execution to exact program names.
     pub fn with_process_allowlist(self, programs: Vec<String>) -> Self {
         self.2.borrow_mut().process_allowlist = Some(programs);
         self
     }
 
+    /// Restricts host filesystem reads (`read-file`, `read-file-bytes`,
+    /// `read-dir`, `load`) to paths under one of these roots. Canonicalization
+    /// and symlink checks are deliberately performed by `my-lisp-host`.
+    pub fn with_fs_read_roots(self, roots: Vec<PathBuf>) -> Self {
+        self.2.borrow_mut().fs_read_roots = Some(roots);
+        self
+    }
+
+    /// Restricts host filesystem writes (`write-file`, `write-file-bytes`) to
+    /// paths under one of these roots.
+    pub fn with_fs_write_roots(self, roots: Vec<PathBuf>) -> Self {
+        self.2.borrow_mut().fs_write_roots = Some(roots);
+        self
+    }
+
+    /// Restricts outbound TCP connects to explicit host + inclusive port
+    /// ranges. `None` remains unrestricted; an empty list is deny-all.
+    pub fn with_tcp_connect_allowlist(self, entries: Vec<(String, u16, u16)>) -> Self {
+        self.2.borrow_mut().tcp_connect_allowlist = Some(entries);
+        self
+    }
+
+    /// Restricts TCP listen/bind operations independently from connect.
+    pub fn with_tcp_listen_allowlist(self, entries: Vec<(String, u16, u16)>) -> Self {
+        self.2.borrow_mut().tcp_listen_allowlist = Some(entries);
+        self
+    }
+
+    /// Host-owned canonicalization needs a snapshot of the configured roots;
+    /// exposing data does not give the core any filesystem behavior itself.
+    pub fn fs_read_roots(&self) -> Option<Vec<PathBuf>> {
+        self.2.borrow().fs_read_roots.clone()
+    }
+
+    pub fn fs_write_roots(&self) -> Option<Vec<PathBuf>> {
+        self.2.borrow().fs_write_roots.clone()
+    }
+
+    pub fn is_tcp_connect_allowed(&self, host: &str, port: u16) -> bool {
+        match &self.2.borrow().tcp_connect_allowlist {
+            Some(entries) => entries.iter().any(|(allowed_host, first, last)| {
+                allowed_host == host && *first <= port && port <= *last
+            }),
+            None => true,
+        }
+    }
+
+    pub fn is_tcp_listen_allowed(&self, address: &str, port: u16) -> bool {
+        match &self.2.borrow().tcp_listen_allowlist {
+            Some(entries) => entries.iter().any(|(allowed_address, first, last)| {
+                allowed_address == address && *first <= port && port <= *last
+            }),
+            None => true,
+        }
+    }
+
     /// Called by `cons` before allocating; `Err(())` means the configured
-    /// limit (if any) is already reached. No-op (always `Ok`) when this
-    /// session never opted into a limit.
-    /// Vyklykaietsia `cons` pered vydilenniam; `Err(())` oznachaie, shcho
-    /// nalashtovana mezha (yakshcho ye) uzhe dosiahnuta. Nichoho ne robyt (zavzhdy
-    /// `Ok`), yakshcho tsia sesiia nikoly ne vmykala mezhu.
+    /// limit (if any) is already reached. No-op when unbounded.
     pub(crate) fn try_alloc_cons(&self) -> Result<(), ()> {
         let mut limits = self.2.borrow_mut();
         if let Some(limit) = limits.cons_limit {
@@ -140,8 +162,6 @@ impl Environment {
         Ok(())
     }
 
-    /// The configured numeric bit-width cap, if this session opted into one.
-    /// Nalashtovana mezha shyryny chysla v bitakh, yakshcho tsia sesiia yii vvimknula.
     pub(crate) fn numeric_bit_limit(&self) -> Option<usize> {
         self.2.borrow().numeric_bit_limit
     }
@@ -155,19 +175,8 @@ impl Environment {
         }
     }
 
-    /// A child frame is the future lexical boundary captured by a closure.
-    /// It shares the parent's output sink (the second field, cloned as the
-    /// same `Rc`, not reinitialized) so `print` inside a closure body still
-    /// lands in the one session-wide transcript rather than a per-call one.
-    /// Dochirnii freim stane maibutnoiu leksychnoiu mezheiu, yaku zberihatyme
-    /// zamykannia. Vin dilyt sink vyvodu batka (druhe pole, klonuietsia yak
-    /// toi samyi `Rc`, ne pereinitsializuietsia), tozh `print` useredyni tila
-    /// zamykannia vse odno potrapliaie v odyn spilnyi na sesiiu transkrypt.
-    /// Ein untergeordneter Frame ist die künftige lexikalische Grenze einer
-    /// Closure. Er teilt sich die Ausgabesenke des Elternteils (das zweite
-    /// Feld, als derselbe `Rc` geklont, nicht neu initialisiert), sodass
-    /// `print` im Rumpf einer Closure weiterhin im einen sitzungsweiten
-    /// Transkript landet statt in einem pro Aufruf.
+    /// A child frame is the future lexical boundary captured by a closure. It
+    /// shares transcript and all session policy/limits with its parent.
     pub fn child(&self) -> Self {
         Self(
             Rc::new(RefCell::new(Frame {
@@ -179,28 +188,14 @@ impl Environment {
         )
     }
 
-    /// Appends a line to the session-wide output transcript, shared by every
-    /// `Environment` in this session's lexical tree (root and all closures).
-    /// Dodaie riadok do transkryptu vyvodu, spilnoho na vsiu sesiiu — yoho
-    /// podiliaiut usi `Environment` u leksychnomu derevi tsiiei sesii.
-    /// Hängt eine Zeile an das sitzungsweite Ausgabetranskript an, das sich
-    /// jede `Environment` im lexikalischen Baum dieser Sitzung teilt.
     pub fn print(&self, line: String) {
         self.1.borrow_mut().lines.push(line);
     }
 
-    /// A snapshot of everything `print` has produced so far in this session.
-    /// Znimok usoho, shcho `print` uzhe vyviv u tsii sesii.
-    /// Ein Schnappschuss von allem, was `print` in dieser Sitzung bisher ausgegeben hat.
     pub fn output_snapshot(&self) -> Vec<String> {
         self.1.borrow().lines.clone()
     }
 
-    /// Returns and consumes the lines printed since the previous call —
-    /// O(new lines), not O(session output). Full-history reads stay
-    /// available through `output_snapshot`.
-    /// Povertaie i pohlynaie riadky, nadrukovani z poperednoho vyklyku —
-    /// O(novykh riadkiv), ne O(usoho vyvodu sesii).
     pub fn output_take_new(&self) -> Vec<String> {
         let mut transcript = self.1.borrow_mut();
         let new = transcript.lines[transcript.taken..].to_vec();
@@ -208,9 +203,8 @@ impl Environment {
         new
     }
 
-    /// Snapshot of every visible binding, root-first, shadowed names
-    /// resolved to their innermost value (contract 2.1: builtins live in
-    /// the environment now, so introspection is possible).
+    /// Snapshot of every visible binding, root-first, shadowed names resolved
+    /// to their innermost value.
     pub fn snapshot(&self) -> Vec<(Rc<str>, Value)> {
         let mut frames = Vec::new();
         let mut current = Some(self.clone());
@@ -251,10 +245,7 @@ impl Environment {
 impl Drop for Environment {
     fn drop(&mut self) {
         // Swap this Environment's real content out for a cheap, parentless
-        // sentinel so the field-drop that runs after this function returns
-        // is O(1), then manually walk the extracted frame chain iteratively
-        // instead of letting Rust's recursive Drop walk `Frame.parent`.
-        // Mirrors `Value::Pair`'s Drop in value.rs.
+        // sentinel, then walk the extracted parent chain iteratively.
         let taken = std::mem::replace(
             self,
             Environment(
@@ -273,31 +264,19 @@ impl Drop for Environment {
         let mut worklist = vec![taken];
         while let Some(env) = worklist.pop() {
             let env = std::mem::ManuallyDrop::new(env);
-            // SAFETY: `env` is ManuallyDrop, so each field is read out of it
-            // exactly once here and nothing double-drops when `env` itself
-            // goes out of scope at the end of this iteration (ManuallyDrop's
-            // own Drop is a no-op).
+            // SAFETY: `env` is ManuallyDrop, so each field is read exactly once.
             let frame_rc = unsafe { std::ptr::read(&env.0) };
             let transcript_rc = unsafe { std::ptr::read(&env.1) };
             let limits_rc = unsafe { std::ptr::read(&env.2) };
-            // Ordinary, non-recursive Rc drops -- Transcript/Limits never
-            // nest another Environment.
             drop(transcript_rc);
             drop(limits_rc);
 
             if let Ok(cell) = Rc::try_unwrap(frame_rc) {
                 let mut frame = cell.into_inner();
-                // frame.values (HashMap<Rc<str>, Value>) drops normally at
-                // the end of this arm -- Value already has its own
-                // iterative Drop for long Pair chains, so this is safe
-                // regardless of how large a single frame's bindings are.
                 if let Some(parent) = frame.parent.take() {
                     worklist.push(parent);
                 }
             }
-            // Err case: frame_rc is still referenced elsewhere (shared via
-            // Environment::clone); dropping this handle just decrements the
-            // refcount, no recursion.
         }
     }
 }
@@ -322,10 +301,6 @@ mod tests {
 
     #[test]
     fn root_predefines_t_as_the_self_evaluating_truth_symbol() {
-        // `t` is the canonical truth value, bound to itself, not to a
-        // separate Value::Bool -- see Environment::root's own comment
-        // and Value::truth. This keeps `(eq (eq 1 1) t)` == `t` honest:
-        // both sides are the identical Value, Symbol("t").
         let root = Environment::root();
         assert_eq!(root.get("t"), Some(Value::Symbol(Rc::from("t"))));
     }
@@ -345,14 +320,6 @@ mod tests {
 
     #[test]
     fn dropping_a_very_deep_environment_chain_does_not_overflow_the_stack() {
-        // Regression for the stack-overflow-on-deep-drop risk this file
-        // used to document as live and unmitigated (see Environment's Drop
-        // impl above). Each child() holds the only strong reference to its
-        // parent's frame by the time this loop finishes reassigning
-        // `current`, so dropping the final Environment walks a genuine
-        // 300k-level singly-referenced chain through the iterative
-        // worklist -- the same order of magnitude as the long-list
-        // regression Value::Pair's Drop already guards against.
         let mut current = Environment::root();
         for _ in 0..300_000 {
             current = current.child();
@@ -370,12 +337,6 @@ mod tests {
 
     #[test]
     fn child_definitions_do_not_leak_into_the_parent() {
-        // Lexical scoping requires that a child frame's bindings stay local:
-        // a closure's parameters must never become visible outside its call.
-        // Leksychnyi skoup vymahaie, shchob zv’yazuvannia dochirnoho freimu lyshalys
-        // lokalnymy: parametry zamykannia ne povynni stavaty vydymymy zovni vyklyku.
-        // Lexikalischer Scope verlangt, dass Bindungen eines Kind-Frames lokal
-        // bleiben: Parameter einer Closure dürfen außerhalb ihres Aufrufs nie sichtbar werden.
         let root = Environment::root();
         let child = root.child();
         child.define("local", Value::Number(2.0, Exactness::Exact));
@@ -398,5 +359,28 @@ mod tests {
         root.define("x", Value::Number(1.0, Exactness::Exact));
         root.define("x", Value::Number(2.0, Exactness::Exact));
         assert_eq!(root.get("x"), Some(Value::Number(2.0, Exactness::Exact)));
+    }
+
+    #[test]
+    fn host_policies_are_unrestricted_by_default_and_shared_with_children() {
+        let root = Environment::root();
+        assert!(root.fs_read_roots().is_none());
+        assert!(root.fs_write_roots().is_none());
+        assert!(root.is_tcp_connect_allowed("example.org", 443));
+        assert!(root.is_tcp_listen_allowed("0.0.0.0", 9999));
+
+        let root = root
+            .with_fs_read_roots(vec![PathBuf::from("/safe/read")])
+            .with_fs_write_roots(vec![PathBuf::from("/safe/write")])
+            .with_tcp_connect_allowlist(vec![("127.0.0.1".into(), 8000, 9000)])
+            .with_tcp_listen_allowlist(vec![("127.0.0.1".into(), 9999, 9999)]);
+        let child = root.child();
+
+        assert_eq!(child.fs_read_roots(), Some(vec![PathBuf::from("/safe/read")]));
+        assert_eq!(child.fs_write_roots(), Some(vec![PathBuf::from("/safe/write")]));
+        assert!(child.is_tcp_connect_allowed("127.0.0.1", 8080));
+        assert!(!child.is_tcp_connect_allowed("example.org", 8080));
+        assert!(child.is_tcp_listen_allowed("127.0.0.1", 9999));
+        assert!(!child.is_tcp_listen_allowed("0.0.0.0", 9999));
     }
 }
