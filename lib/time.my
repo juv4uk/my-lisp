@@ -40,6 +40,16 @@
             (third civil)
             hour minute second-of-minute nanosecond))))
 
+; Contract for the future minimal wall-clock host capability:
+;   (unix-time seconds nanosecond)
+; The host observes only the Unix clock. Calendar meaning stays here in Lisp.
+(def unix-time-observation->utc
+  (lambda (observation)
+    (cond
+      ((eq (car observation) (quote unix-time))
+       (utc-from-unix (second observation) (third observation)))
+      (t (list (quote rejected) (quote invalid-unix-time-observation))))))
+
 ; The host NTP capability intentionally returns a raw observation:
 ;   (accepted host unix-seconds nanosecond)
 ; or a rejected result. Turning the accepted timestamp into calendar meaning is
