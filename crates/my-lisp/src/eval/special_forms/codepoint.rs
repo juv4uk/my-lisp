@@ -24,6 +24,35 @@ pub(crate) fn evaluate_codepoint_to_string(
     Ok(Value::String(Rc::from(character.to_string().as_str())))
 }
 
+/// Minimal inverse bridge for UTF-8 encoding owned by Lisp. The runtime only
+/// exposes the scalar value of exactly one already-materialized character;
+/// byte encoding, validation policy, and transport meaning remain in Lisp.
+pub(crate) fn evaluate_string_to_codepoint(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string->codepoint", arguments, 1, span)?;
+    let value = evaluate(&arguments[0], environment)?;
+    let Value::String(ref text) = value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "string->codepoint expects a one-character string · string->codepoint ochikuie riadok z odnoho symvolu · string->codepoint erwartet eine Zeichenkette mit genau einem Zeichen",
+            span,
+        ));
+    };
+
+    let mut characters = text.chars();
+    let Some(character) = characters.next() else {
+        return Err(invalid_character_string(span));
+    };
+    if characters.next().is_some() {
+        return Err(invalid_character_string(span));
+    }
+
+    Ok(Value::Number(character as u32 as f64, Exactness::Exact))
+}
+
 fn exact_scalar_value(value: &Value, span: Span) -> Result<u32, LanguageError> {
     let integer = match value {
         Value::Number(number, Exactness::Exact)
@@ -51,6 +80,14 @@ fn invalid_scalar(span: Span) -> LanguageError {
     LanguageError::new(
         ErrorKind::Type,
         "codepoint->string expects an exact Unicode scalar integer (0..0x10FFFF excluding surrogates) · codepoint->string ochikuie tochne tsile skaliarne znachennia Unicode · codepoint->string erwartet eine exakte Unicode-Skalarzahl",
+        span,
+    )
+}
+
+fn invalid_character_string(span: Span) -> LanguageError {
+    LanguageError::new(
+        ErrorKind::Type,
+        "string->codepoint expects exactly one Unicode scalar character · string->codepoint ochikuie rivno odyn skaliarnyi symvol Unicode · string->codepoint erwartet genau ein Unicode-Skalarzeichen",
         span,
     )
 }
