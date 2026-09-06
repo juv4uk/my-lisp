@@ -378,35 +378,35 @@ pub(crate) fn install(environment: &Environment) {
         }
     );
 
-    // (timezone-detect) observes the host's explicit timezone declaration.
-    // It does not guess from coordinates and does not mutate the host.
+    // (timezone-declarations-raw) observes candidate host declarations only.
+    // It deliberately does not choose which declaration wins and does not
+    // shape the public detected/unknown result; lib/time.my owns that policy.
     define!(
         environment,
-        "timezone-detect",
+        "timezone-declarations-raw",
         |args: &[Value], _env: &Environment, span: Span| {
-            exact_args("timezone-detect", args, 0, span)?;
-            if let Ok(value) = std::env::var("TZ") {
-                if !value.is_empty() {
-                    return Ok(Value::list([
-                        Value::Symbol(std::rc::Rc::from("detected")),
-                        Value::String(std::rc::Rc::from(value)),
-                        Value::Symbol(std::rc::Rc::from("TZ")),
-                    ]));
-                }
-            }
-            if let Ok(value) = std::fs::read_to_string("/etc/timezone") {
-                let value = value.trim();
-                if !value.is_empty() {
-                    return Ok(Value::list([
-                        Value::Symbol(std::rc::Rc::from("detected")),
-                        Value::String(std::rc::Rc::from(value)),
-                        Value::Symbol(std::rc::Rc::from("etc-timezone")),
-                    ]));
-                }
-            }
+            exact_args("timezone-declarations-raw", args, 0, span)?;
+
+            let tz_value = std::env::var("TZ")
+                .ok()
+                .filter(|value| !value.is_empty())
+                .map(|value| Value::String(std::rc::Rc::from(value)))
+                .unwrap_or(Value::Nil);
+
+            // `/etc/timezone` is conventionally a one-line declaration. Keep
+            // whitespace normalization at the host boundary for now; source
+            // precedence and public interpretation live in Lisp.
+            let etc_timezone_value = std::fs::read_to_string("/etc/timezone")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+                .map(|value| Value::String(std::rc::Rc::from(value)))
+                .unwrap_or(Value::Nil);
+
             Ok(Value::list([
-                Value::Symbol(std::rc::Rc::from("unknown")),
-                Value::Symbol(std::rc::Rc::from("host-declaration-unavailable")),
+                Value::Symbol(std::rc::Rc::from("timezone-declarations")),
+                tz_value,
+                etc_timezone_value,
             ]))
         }
     );
