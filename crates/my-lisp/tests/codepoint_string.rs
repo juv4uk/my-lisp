@@ -21,7 +21,9 @@ fn codepoint_to_string_rejects_non_scalars_and_inexact_values() {
         "(codepoint->string -1)",
         "(codepoint->string 55296)",
         "(codepoint->string 1114112)",
-        "(codepoint->string 65.0)",
+        // Decimal literals are exact in my-lisp. JSON numbers are a real
+        // source of inexact runtime values, so use that boundary here.
+        "(codepoint->string (json-parse \"65.0\"))",
         "(codepoint->string 1/2)",
     ] {
         let error = eval_program(source, &mut Session::default())
