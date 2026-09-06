@@ -17,7 +17,7 @@ fn utf8_materialization_stays_stack_safe_on_a_worker_thread() {
             let result = eval_program(&source, &mut session)
                 .expect("a 1 KiB ASCII payload should materialize without growing the Rust stack");
 
-            let Value::String(text) = result.value else {
+            let Value::String(ref text) = result.value else {
                 panic!("valid ASCII bytes should decode to a string");
             };
             assert_eq!(text.len(), 1024);
