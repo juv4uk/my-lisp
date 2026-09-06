@@ -1,16 +1,17 @@
-# FUNCTION REFERENCE — my-lisp (regenerated)
+# FUNCTION REFERENCE — my-lisp
 
-**Згенеровано:** 2026-09-02 · база `8b4529f` · Claude Sonnet 5 (Ecosystem Lead)
-**Джерело:** live `(env)` через `scripts/gen-functions.my` (contract 2.1: builtins живуть у середовищі) + статичний прохід `lib/*.my`, що тепер збирає і `(def NAME ...)`, і `(defmacro NAME ...)` (попередня регенерація захоплювала лише `def`, тому пропускала кожен `defmacro` — `let`/`let*`/`and`/`or`/`->`/`->>` в `core.my`, `defmodule`/`advise`/`tell-knowledge`/... в `knowledge.my`/`world.my`, `assert-fact!`/`run-tms!`/... в `forward.my`).
-**Всього:** 32 builtin'ів + 482 бібліотечних функцій у 17 файлах.
+**Live builtin section refreshed:** 2026-09-06 · base `fdec3dec`
+**Library inventory base:** 2026-09-02 · `8b4529f`
+**Source:** root `(env)` / `language_items.rs` for builtins; static `lib/*.my` scan for the library sections below.
+**Builtin count:** 32 root builtins. `mono-ms` is no longer a host builtin; it is derived in `lib/time.my`. `unix-time-now` is the raw wall-clock host observation added in its place in the time architecture.
 
-> Оновлення: перезапусти `scripts/gen-functions.my` для live-секції; lib-секції — статичні до наступної регенерації.
+> Regeneration rule: use `scripts/gen-functions.my` for a full refresh. The library sections are a generated snapshot and do not define semantic authority; see [`semantic-authority-map.md`](semantic-authority-map.md).
 
 ## 1. Builtin'и ядра (live env)
 
-`*`, `+`, `-`, `/`, `<`, `=`, `>`, `abs`, `atom`, `car`, `cdr`, `cons`, `env`, `eq`, `f32-buffer`, `i32-buffer`, `internet-time-sync`, `make-vector`, `max`, `max-list`, `min`, `min-list`, `mono-ms`, `mono-ns`, `numeric-buffer-length`, `numeric-buffer-map`, `numeric-buffer-ref`, `numeric-buffer-type`, `numeric-buffer?`, `string-slice`, `timezone-detect`, `utc-now`, `vector`, `vector-length`, `vector-ref`, `vector-set!`
+`*`, `+`, `-`, `/`, `<`, `=`, `>`, `abs`, `atom`, `car`, `cdr`, `cons`, `env`, `eq`, `f32-buffer`, `i32-buffer`, `internet-time-sync`, `make-vector`, `max`, `max-list`, `min`, `min-list`, `mono-ns`, `numeric-buffer-length`, `numeric-buffer-map`, `numeric-buffer-ref`, `numeric-buffer-type`, `numeric-buffer?`, `string-slice`, `timezone-detect`, `unix-time-now`, `utc-now`, `vector`, `vector-length`, `vector-ref`, `vector-set!`
 
-> `<`, `=`, `>` return the canonical WSM truth value (`t`/`()`), not a hidden `Value::Bool`, as of `8b4529f` — see [`docs/language-core.md`](language-core.md).
+> `utc-now` is still present as a legacy root builtin while `lib/time.my` now replaces its binding with a language-owned closure built from `unix-time-now`. Removal of the Rust duplicate waits for the consumer/bootstrap audit. See [`host-semantic-surface.md`](host-semantic-surface.md).
 
 ### clips-import.my (40)
 
@@ -28,7 +29,7 @@
 
 `claim-review`, `claim-statement`, `claim?`, `epistemic--all-required-present?`, `epistemic--claim-ref?`, `evidence-claim-ref`, `evidence-method`, `evidence-outcome`, `evidence-source-ref`, `evidence?`, `intent-capabilities-satisfied?`, `intent-goal`, `intent-produces`, `intent-requires`, `intent-stop-on`, `intent?`, `make-claim`, `make-evidence`, `make-intent`, `make-observation`, `observation-source`, `observation-statement`, `observation?`, `source-ref?`, `supporting-evidence`
 
-> `evidence-supports?` was renamed to `supporting-evidence` (`10061fb`, this session): it now returns the matched evidence record itself, not a bare `t`, when the outcome is `supports` — the smallest experiment proving rich information need not collapse to a flag just because it's used in a `cond` test. See [`docs/language-core.md`](language-core.md).
+> `evidence-supports?` was renamed to `supporting-evidence` (`10061fb`): it returns the matched evidence record itself, not a bare `t`, when the outcome is `supports`.
 
 ### forward.my (83)
 
@@ -57,8 +58,6 @@
 ### persistent-vector.my (23)
 
 `vbalance`, `vbalance-factor`, `vec->list`, `vec-conj`, `vec-count`, `vec-empty`, `vec-from-list`, `vec-from-list-onto`, `vec-nth`, `vec-tree`, `vheight-of`, `vmake-balanced-node`, `vmax2`, `vnode-height`, `vnode-index`, `vnode-left`, `vnode-right`, `vnode-value`, `vrotate-left`, `vrotate-right`, `vtree->list`, `vtree-get`, `vtree-insert`
-
-> Missing from the previous regeneration entirely — a persistent, AVL-balanced vector counterpart to `persistent-map.my`, added since the last pass.
 
 ### reason.my (20)
 
