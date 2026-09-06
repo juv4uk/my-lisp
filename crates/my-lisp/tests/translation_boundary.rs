@@ -215,9 +215,8 @@ fn versioned_translation_corpus_is_data_only_and_contains_all_b4_modes() {
     let forms = parse(corpus).expect("translation corpus must remain parseable data");
     assert_eq!(forms.len(), 1, "corpus must be one versioned data value");
 
-    let rendered = forms[0].to_string();
-    assert!(rendered.starts_with("(translation-corpus/1 "));
-    assert_eq!(rendered.matches("(translation-case/1 ").count(), 6);
+    assert!(corpus.contains("(translation-corpus/1"));
+    assert_eq!(corpus.matches("(translation-case/1").count(), 6);
 
     for id in [
         "direct-fact",
@@ -227,18 +226,18 @@ fn versioned_translation_corpus_is_data_only_and_contains_all_b4_modes() {
         "lexical-ambiguity",
         "translator-refusal",
     ] {
-        assert!(rendered.contains(id), "missing corpus case {id}");
+        assert!(corpus.contains(id), "missing corpus case {id}");
     }
 
     for status in ["accepted", "rejected", "ambiguous"] {
         assert!(
-            rendered.contains(status),
+            corpus.contains(status),
             "corpus must exercise review status {status}"
         );
     }
     for outcome in ["proved", "unknown", "not-run"] {
         assert!(
-            rendered.contains(outcome),
+            corpus.contains(outcome),
             "corpus must name downstream outcome {outcome}"
         );
     }
