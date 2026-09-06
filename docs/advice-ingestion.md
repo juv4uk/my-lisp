@@ -2,7 +2,47 @@
 
 ## English
 
-`advise` is the data-only write boundary between an untrusted translator and
+The Advice Taker has two distinct boundaries and neither gives an external
+translator semantic authority.
+
+### 1. External translation proposal
+
+An external parser, model or LLM may emit only versioned Lisp data:
+
+```lisp
+(translation/1 candidate clause
+  "Socrates is human."
+  ((human socrates)))
+```
+
+`lib/translation.my` owns the review protocol. The translator status is one of
+`candidate`, `ambiguous`, or `rejected`; the kind is `clause`, `batch`, or
+`query`. `translation-review` validates the protocol shell and then reuses the
+existing knowledge validators and `advice-decision` / `advice-all-decision`.
+It is pure with respect to the knowledge journal: even an `accepted` review
+writes nothing.
+
+```lisp
+(def proposal
+  '(translation/1 candidate clause
+     "Socrates is human."
+     ((human socrates))))
+
+(def review (translation-review 'science proposal))
+; => (translation-review/1 accepted knowledge-accepted ...)
+
+(translation-admission-payload review)
+; => ((human socrates))
+```
+
+Rejected and ambiguous translations are observations, not knowledge.
+`translation-evidence-next` can retain their structured reviews in a
+caller-owned evidence journal. A proposal with one alternative cannot claim
+`ambiguous`: ambiguity requires at least two structurally valid alternatives.
+
+### 2. Knowledge admission
+
+`advise` is the data-only write boundary between reviewed candidate data and
 the symbolic knowledge journal. It accepts exactly one `lib/reason.my` clause,
 validates the complete structure (including canonical `(var name)` variables),
 checks for an explicitly known opposite, and mutates the journal only on
@@ -10,77 +50,160 @@ acceptance. It never treats failure to prove a statement as proof of its
 negation.
 
 ```lisp
-(advise astronomy (understand '(earth is a planet)))
-(advise astronomy (understand '(all planet have mass)))
-
-(def goal '(has earth mass))
-(def proof (second (car (reason-in 'astronomy goal))))
-(narrate-answer goal proof)
-; => (earth has mass because earth is a planet)
+(def review (translation-review 'astronomy proposal))
+(advise astronomy (translation-admission-payload review))
 ```
 
-Results are stable data shapes rather than printed messages:
+For several mutually dependent clauses use `advise-all`; the entire non-empty
+batch is validated atomically against both current and proposed knowledge.
+The journal receives every clause in one update or receives none.
 
-- `(accepted (module name) (knowledge clause))`
-- `(rejected (reason invalid-module|invalid-clause) (input value))`
+Results remain stable data shapes rather than printed messages:
+
+- `(accepted (module name) (knowledge clause-or-clauses))`
+- `(rejected (reason invalid-module|invalid-clause|invalid-batch) (input value))`
 - `(conflict (new clause) (existing opposite) (proof result))`
 
 Explicit negative knowledge uses a head such as `((not (planet pluto)))`.
 This is distinct from `(not goal)` inside a rule body, where the reasoning
 engine implements negation as failure.
 
-For translator output containing several clauses, use `advise-all`. It
-validates the complete non-empty batch against both the current module and
-the proposed clauses, including contradictions derived through proposed
-rules. The journal receives every clause in one update or receives none:
+The resulting authority chain is therefore:
 
-```lisp
-(advise-all astronomy
-  '(((planet earth))
-    ((has-mass (var x)) (planet (var x)))))
+```text
+external translator
+        ↓
+(translation/1 ...)
+        ↓
+translation-review          Lisp-owned, no write
+        ↓
+accepted knowledge payload?
+        ├── no  → structured evidence only
+        └── yes → explicit advise / advise-all
+                        ↓
+                 knowledge journal
+                        ↓
+                reason-in-observe
+                        ↓
+                 narrate-outcome
 ```
+
+The versioned adversarial corpus is
+`tests/fixtures/translation-corpus-v1.wsm`; executable boundary tests live in
+`crates/my-lisp/tests/translation_boundary.rs`.
 
 ## Українська
 
-`advise` — data-only межа запису між недовіреним перекладачем і символьним
-журналом знань. Вона приймає рівно один clause у форматі `lib/reason.my`,
-перевіряє всю структуру (включно з канонічними змінними `(var name)`), шукає
-явно відому протилежність і змінює журнал лише після прийняття. Неможливість
-довести твердження ніколи не вважається доказом його заперечення.
+Advice Taker тепер має **дві окремі брами**, і жодна з них не передає
+зовнішньому перекладачу семантичної влади.
 
-Наскрізний приклад вище проходить шлях `understand → advise → reason-in →
-narrate-answer` і повертає пояснену відповідь. Результати `accepted`,
-`rejected` та `conflict` є стабільними структурами даних, а не текстом,
-прив'язаним до інтерфейсу.
+### 1. Пропозиція перекладу
 
-Явне негативне знання має голову на кшталт `((not (planet pluto)))`. Це не
-те саме, що `(not goal)` у тілі правила, де reasoning-рушій використовує
-negation as failure.
+Зовнішній parser, модель або LLM може лише запропонувати versioned Lisp-дані:
 
-Для результату перекладача з кількох clause слід використовувати
-`advise-all`. Вона атомарно перевіряє весь непорожній пакет разом із чинним
-модулем, включно із суперечностями, виведеними запропонованими правилами:
-журнал отримує або всі clause одним оновленням, або жодної.
+```lisp
+(translation/1 candidate clause
+  "Socrates is human."
+  ((human socrates)))
+```
+
+`lib/translation.my` належить Lisp-рівню і вирішує, чи сама пропозиція
+структурно коректна. Статус перекладача — `candidate`, `ambiguous` або
+`rejected`; вид — `clause`, `batch` або `query`.
+
+`translation-review` не пише у `*knowledge-journal*`. Навіть результат
+`accepted` означає лише: «цей кандидат пройшов Lisp-перевірку і може бути
+переданий до брами знань». Він **ще не є знанням**.
+
+Відхилені та неоднозначні переклади лишаються evidence. Функція
+`translation-evidence-next` може додати структурований review до окремого
+журналу спостережень. `ambiguous` вимагає щонайменше двох валідних
+альтернатив — одна альтернатива не може маскуватися під неоднозначність.
+
+### 2. Приймання знання
+
+`advise` лишається єдиною data-only брамою запису одного clause у символьний
+журнал знань. Вона перевіряє всю структуру, канонічні `(var name)` і явно
+відому протилежність, та змінює журнал лише після `accepted`.
+
+Для кількох взаємозалежних clause використовується `advise-all`: пакет
+перевіряється атомарно разом із чинними й запропонованими знаннями — або
+записуються всі clause, або жодного.
+
+Тому повний шлях тепер такий:
+
+```text
+зовнішній translator
+        ↓
+(translation/1 ...)
+        ↓
+translation-review          ← рішення Lisp, без запису
+        ↓
+кандидат допустимий?
+        ├── ні  → evidence, не knowledge
+        └── так → явний advise / advise-all
+                         ↓
+                    knowledge
+                         ↓
+                 reason-in-observe
+                         ↓
+                  narrate-outcome
+```
+
+Неможливість довести твердження не є доказом його заперечення. Явне негативне
+знання (`((not (...)))`) також не змішується з negation-as-failure у тілі
+правила.
+
+Versioned корпус для руйнівної перевірки цієї межі —
+`tests/fixtures/translation-corpus-v1.wsm`; executable tests —
+`crates/my-lisp/tests/translation_boundary.rs`.
 
 ## Deutsch
 
-`advise` ist die reine Datengrenze zwischen einem nicht vertrauenswürdigen
-Übersetzer und dem symbolischen Wissensjournal. Sie nimmt genau eine Clause
-im Format von `lib/reason.my` entgegen, prüft die gesamte Struktur
-(einschließlich kanonischer `(var name)`-Variablen), sucht einen explizit
-bekannten Gegensatz und verändert das Journal nur nach Annahme. Ein nicht
-beweisbarer Satz gilt niemals als Beweis seiner Verneinung.
+Der Advice Taker besitzt jetzt **zwei getrennte Grenzen**; keine davon gibt
+einem externen Übersetzer semantische Autorität.
 
-Das durchgängige Beispiel oben führt über `understand → advise → reason-in →
-narrate-answer` zu einer erklärten Antwort. Die Ergebnisse `accepted`,
-`rejected` und `conflict` sind stabile Datenstrukturen, keine an eine
-Oberfläche gebundenen Meldungen.
+### 1. Übersetzungsvorschlag
 
-Explizit negatives Wissen verwendet einen Kopf wie `((not (planet pluto)))`.
-Das unterscheidet sich von `(not goal)` in einem Regelrumpf, wo die
-Inferenz-Engine Negation als Fehlschlag verwendet.
+Ein externer Parser, ein Modell oder LLM darf nur versionierte Lisp-Daten
+vorschlagen:
 
-Für Übersetzerausgaben mit mehreren Clauses dient `advise-all`. Sie prüft das
-gesamte nichtleere Paket atomar zusammen mit dem vorhandenen Modul,
-einschließlich durch vorgeschlagene Regeln abgeleiteter Widersprüche. Das
-Journal erhält entweder alle Clauses in einer Aktualisierung oder keine.
+```lisp
+(translation/1 candidate clause
+  "Socrates is human."
+  ((human socrates)))
+```
+
+`lib/translation.my` prüft die Protokollform sowie die vorhandenen
+Wissensregeln. `translation-review` verändert das Wissensjournal nicht. Auch
+ein `accepted`-Review bedeutet nur, dass der Kandidat die Lisp-Prüfung bestanden
+hat und an die eigentliche Wissensgrenze weitergegeben werden darf.
+
+`ambiguous` und `rejected` bleiben strukturierte Evidenz, niemals Wissen.
+Mehrdeutigkeit erfordert mindestens zwei gültige Alternativen.
+
+### 2. Wissensaufnahme
+
+`advise` bleibt die data-only Schreibgrenze für eine Clause;
+`advise-all` ist die atomare Variante für mehrere voneinander abhängige
+Clauses. Struktur, `(var name)`-Variablen und explizite Gegenbeweise werden vor
+dem Schreiben geprüft. Ein fehlender Beweis wird nie als Beweis der Negation
+behandelt.
+
+Damit lautet die Autoritätskette:
+
+```text
+externer Übersetzer
+        ↓
+versionierte Lisp-Daten
+        ↓
+translation-review          Lisp besitzt die Entscheidung
+        ↓
+explizites advise / advise-all
+        ↓
+Wissensjournal → reason-in-observe → narrate-outcome
+```
+
+Der versionierte adversariale Korpus liegt in
+`tests/fixtures/translation-corpus-v1.wsm`; die ausführbaren Grenztests in
+`crates/my-lisp/tests/translation_boundary.rs`.
