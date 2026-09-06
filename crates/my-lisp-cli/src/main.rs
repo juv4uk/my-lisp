@@ -148,6 +148,13 @@ fn main() {
         process::exit(1);
     }
 
+    // `process-run` is now supplied by lib/process.my. Withdraw the old host
+    // semantic duplicate from this executable profile; only `process-run-raw`
+    // remains available to the language-owned wrapper. The registry is global,
+    // so future plain-TCP and sexpr/oracle sessions in this process see the
+    // same reduced host boundary and must bootstrap process.my themselves.
+    my_lisp::unregister_capability("process-run");
+
     // Text form stays in scope for downstream consumers (tcp repl seed,
     // --lint path) without re-reading the file.
     #[allow(unused_variables)]
