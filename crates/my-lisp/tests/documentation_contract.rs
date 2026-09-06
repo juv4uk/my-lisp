@@ -87,6 +87,7 @@ fn reasoning_function_reference_tracks_live_library_definitions() {
     for (file, source) in [
         ("result-status.my", include_str!("../../../lib/result-status.my")),
         ("narrate.my", include_str!("../../../lib/narrate.my")),
+        ("translation.my", include_str!("../../../lib/translation.my")),
     ] {
         let names = defined_names(source);
         let section = function_reference_section(reference, file);
