@@ -1,7 +1,7 @@
 //! TCP capability and language-owned read-semantics integration tests.
 //! TCP integration tests use real sockets and separate sessions per endpoint.
 
-use my_lisp::{eval_program, load_core_library, load_tcp_library, ErrorKind, Session, Value};
+use my_lisp::{eval_program, load_tcp_library, ErrorKind, Session, Value};
 use my_lisp_host::install;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -9,7 +9,7 @@ use std::thread;
 
 fn tcp_session() -> Session {
     let mut session = Session::default();
-    load_core_library(&mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     load_tcp_library(&mut session).unwrap();
     session
 }
@@ -41,7 +41,7 @@ fn free_port() -> u16 {
 }
 
 fn load_knowledge(session: &mut Session) {
-    load_core_library(session).unwrap();
+    eval_program(include_str!("../../../lib/core.my"), session).unwrap();
     load_tcp_library(session).unwrap();
     eval_program(include_str!("../../../lib/unify.my"), session).unwrap();
     eval_program(include_str!("../../../lib/reason.my"), session).unwrap();
