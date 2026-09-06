@@ -58,16 +58,16 @@
           string->symbol string-first string-rest sha256-hex json-parse)))
 
 ; crates/my-lisp/src/eval/builtins.rs environment.define registrations.
-; Derived time operations such as mono-ms, utc-now, and internet-time-sync
-; intentionally do not appear here: they are defined by lib/time.my.
-; unix-time-now is the raw wall-clock observation and ntp-query-raw is the
-; raw bounded NTP query mechanism that remain Rust builtins.
+; Derived time operations such as mono-ms, utc-now, internet-time-sync, and
+; timezone-detect intentionally do not appear here: they are defined by
+; lib/time.my. The retained host-facing time operations expose observations
+; only: mono-ns, unix-time-now, ntp-query-raw, timezone-declarations-raw.
 (def core-builtins
   (quote (* + - / < = > abs atom car cdr cons env eq f32 f32-buffer i32
           i32-buffer make-vector max max-list min min-list mono-ns
           ntp-query-raw numeric-buffer-length numeric-buffer-map
           numeric-buffer-ref numeric-buffer-type numeric-buffer? string-slice
-          timezone-detect unix-time-now vector vector-length vector-ref
+          timezone-declarations-raw unix-time-now vector vector-length vector-ref
           vector-set!)))
 
 ; crates/my-lisp-host/src/lib.rs register_capability calls
