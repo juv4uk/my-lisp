@@ -1,0 +1,44 @@
+; Process-result interpretation owned by Lisp.
+; Інтерпретація результату процесу, якою володіє Lisp.
+;
+; Host capability `process-run-raw` owns only process execution, allowlisting,
+; exit observation, and byte capture. This layer owns UTF-8 interpretation.
+; Load `lib/utf8.my` before this file.
+
+(def process-raw-exit-code
+  (lambda (raw)
+    (second raw)))
+
+(def process-raw-stdout-bytes
+  (lambda (raw)
+    (third raw)))
+
+(def process-raw-stderr-bytes
+  (lambda (raw)
+    (car (cdr (cdr (cdr raw))))))
+
+(def process-result->text
+  (lambda (raw)
+    (cond
+      ((not (eq (car raw) (quote process-result)))
+       (list (quote rejected) (quote invalid-process-result)))
+      (t
+       (let* ((stdout-result
+                (utf8-decode-string (process-raw-stdout-bytes raw)))
+              (stderr-result
+                (utf8-decode-string (process-raw-stderr-bytes raw))))
+         (cond
+           ((not (eq (car stdout-result) (quote decoded)))
+            (list (quote rejected) (quote stdout-invalid-utf8)))
+           ((not (eq (car stderr-result) (quote decoded)))
+            (list (quote rejected) (quote stderr-invalid-utf8)))
+           (t
+            (list
+              (quote decoded-process)
+              (process-raw-exit-code raw)
+              (second stdout-result)
+              (second stderr-result)))))))))
+
+(def process-run-text
+  (lambda (program args)
+    (process-result->text (process-run-raw program args))))
