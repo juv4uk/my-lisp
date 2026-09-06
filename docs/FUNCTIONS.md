@@ -2,6 +2,7 @@
 
 **Live builtin section refreshed:** 2026-09-06 · base `e58209f`
 **Library inventory base:** 2026-09-02 · `8b4529f`
+**Incremental library refresh:** 2026-09-07 · `narrate.my` + `result-status.my`
 **Source:** root `(env)` / `language_items.rs` for builtins; static `lib/*.my` scan for the library sections below.
 **Builtin count:** 35 root builtins. `mono-ms`, `utc-now`, `internet-time-sync`, and `timezone-detect` are language-owned in `lib/time.my`. `mono-ns`, `unix-time-now`, `ntp-query-raw`, and `timezone-declarations-raw` are the retained raw host observations/mechanisms.
 
@@ -47,9 +48,9 @@
 
 `bind-params`, `env-lookup`, `my-apply`, `my-eval`, `my-eval-body`, `my-eval-cond`, `my-eval-list`, `my-eval-program`, `my-eval-top-form`, `my-macro?`
 
-### narrate.my (8)
+### narrate.my (12)
 
-`narrate-answer`, `narrate-derivation`, `narrate-fact`, `narrate-provenance`, `provenance-derived-from`, `provenance-goal`, `provenance-rule`, `provenance-source`
+`narrate-answer`, `narrate-derivation`, `narrate-fact`, `narrate-invalid-outcome-shape`, `narrate-outcome`, `narrate-outcome-arity?`, `narrate-provenance`, `narrate-proved-outcome`, `provenance-derived-from`, `provenance-goal`, `provenance-rule`, `provenance-source`
 
 ### persistent-map.my (17)
 
@@ -63,9 +64,9 @@
 
 `add-usage`, `count-usage`, `count-usage-list`, `explain-proof`, `explain-proof-list`, `explain-proof-node`, `map-goal-results`, `map-proofs`, `merge-usage`, `print-indent`, `prove-goal`, `prove-goal-state`, `prove-goals`, `prove-rule`, `provenance`, `provenance-list`, `reason`, `reason-explain`, `rename-vars`, `source-of`
 
-### result-status.my (7)
+### result-status.my (15)
 
-`make-blocked`, `make-disputed`, `make-partial`, `make-unknown`, `result-payload`, `result-status`, `result-tagged?`
+`make-blocked`, `make-disputed`, `make-invalid`, `make-partial`, `make-proved`, `make-unknown`, `reason-in-observe`, `reason-observe`, `result-goal?`, `result-negated-goal?`, `result-opposite-goal`, `result-payload`, `result-proper-list?`, `result-status`, `result-tagged?`
 
 ### understand.my (8)
 
