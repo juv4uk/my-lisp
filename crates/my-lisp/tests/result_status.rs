@@ -1,7 +1,6 @@
-//! MYLISP-UNKNOWN-RESULT-SEMANTICS-DESIGN: lib/result-status.my's opt-in
-//! tagged-result constructors (unknown/partial/blocked/disputed), kept
-//! separate from lib/reason.my/lib/knowledge.my's tests since this
-//! module isn't wired into either — see docs/adr/unknown-result-semantics.md.
+//! Canonical data-only reasoning outcomes.
+//! `reason` / `reason-in` keep their historical compatibility results while
+//! result-status.my provides explicit observations without information collapse.
 
 use my_lisp::{eval_program, Session};
 
@@ -15,8 +14,44 @@ fn eval_result_status(source: &str) -> String {
         .to_string()
 }
 
+fn eval_reason_observation(source: &str) -> String {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/result-status.my"), &mut session).unwrap();
+    eval_program(source, &mut session)
+        .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
+        .value
+        .to_string()
+}
+
+fn eval_knowledge_observation(source: &str) -> String {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/result-status.my"), &mut session).unwrap();
+    eval_program(source, &mut session)
+        .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
+        .value
+        .to_string()
+}
+
 #[test]
-fn make_unknown_tags_a_reason() {
+fn make_proved_preserves_statement_and_all_results() {
+    assert_eq!(
+        eval_result_status(
+            r#"(make-proved (quote (parent alice bob)) (quote ((subst-a proof-a) (subst-b proof-b))))"#
+        ),
+        "(proved (parent alice bob) ((subst-a proof-a) (subst-b proof-b)))"
+    );
+}
+
+#[test]
+fn make_unknown_tags_a_subject() {
     assert_eq!(
         eval_result_status(r#"(make-unknown (quote no-rules-for-predicate))"#),
         "(unknown no-rules-for-predicate)"
@@ -42,7 +77,7 @@ fn make_blocked_tags_a_reason() {
 }
 
 #[test]
-fn make_disputed_tags_a_proof_list() {
+fn make_disputed_tags_evidence() {
     assert_eq!(
         eval_result_status(r#"(make-disputed (list (quote proof-a) (quote proof-b)))"#),
         "(disputed (proof-a proof-b))"
@@ -50,15 +85,25 @@ fn make_disputed_tags_a_proof_list() {
 }
 
 #[test]
-fn result_status_extracts_the_tag() {
+fn make_invalid_keeps_reason_and_payload() {
     assert_eq!(
-        eval_result_status(r#"(result-status (make-unknown (quote x)))"#),
-        "unknown"
+        eval_result_status(r#"(make-invalid (quote malformed-goal) 42)"#),
+        "(invalid malformed-goal 42)"
     );
-    assert_eq!(
-        eval_result_status(r#"(result-status (make-blocked (quote x)))"#),
-        "blocked"
-    );
+}
+
+#[test]
+fn result_status_extracts_every_canonical_tag() {
+    for (source, expected) in [
+        ("(result-status (make-proved (quote x) (quote ())))", "proved"),
+        ("(result-status (make-unknown (quote x)))", "unknown"),
+        ("(result-status (make-partial 1 2))", "partial"),
+        ("(result-status (make-blocked (quote x)))", "blocked"),
+        ("(result-status (make-disputed (quote ())))", "disputed"),
+        ("(result-status (make-invalid (quote x) 1))", "invalid"),
+    ] {
+        assert_eq!(eval_result_status(source), expected);
+    }
 }
 
 #[test]
@@ -71,21 +116,98 @@ fn result_payload_extracts_everything_after_the_tag() {
 
 #[test]
 fn an_ordinary_value_is_not_a_tagged_result() {
-    // A ordinary my-lisp value (including a plain list) must not be
-    // mistaken for a tagged result just because it has a car — the
-    // whole point of the four-tag gate in result-tagged? is precision.
     assert_eq!(eval_result_status(r#"(result-tagged? 42)"#), "()");
     assert_eq!(
         eval_result_status(r#"(result-tagged? (quote (a b c)))"#),
         "()"
-    );
-    assert_eq!(
-        eval_result_status(r#"(result-tagged? (make-disputed (quote ())))"#),
-        "t"
     );
 }
 
 #[test]
 fn result_status_of_an_untagged_value_is_nil() {
     assert_eq!(eval_result_status(r#"(result-status 42)"#), "()");
+}
+
+#[test]
+fn reason_observe_reports_positive_proof_without_changing_reason() {
+    let source = r#"
+        (let ((rules (quote (((parent alice bob))))))
+          (reason-observe (quote (parent alice bob)) rules))
+    "#;
+    assert_eq!(
+        eval_reason_observation(source),
+        "(proved (parent alice bob) ((() (proved (parent alice bob) (parent alice bob) ()))))"
+    );
+}
+
+#[test]
+fn reason_observe_distinguishes_unknown_from_false() {
+    let source = r#"
+        (let ((rules (quote (((parent alice bob))))))
+          (reason-observe (quote (parent bob alice)) rules))
+    "#;
+    assert_eq!(
+        eval_reason_observation(source),
+        "(unknown (parent bob alice))"
+    );
+}
+
+#[test]
+fn reason_observe_reports_an_explicit_negative_as_proved_opposite() {
+    let source = r#"
+        (let ((rules (quote (((not (mortal socrates)))))))
+          (second (reason-observe (quote (mortal socrates)) rules)))
+    "#;
+    assert_eq!(
+        eval_reason_observation(source),
+        "(not (mortal socrates))"
+    );
+}
+
+#[test]
+fn reason_observe_reports_dispute_when_both_sides_are_provable() {
+    let source = r#"
+        (let ((rules (quote (
+                 ((mortal socrates))
+                 ((not (mortal socrates)))
+               ))))
+          (let ((outcome (reason-observe (quote (mortal socrates)) rules)))
+            (list (result-status outcome) (length (second outcome)))))
+    "#;
+    assert_eq!(eval_reason_observation(source), "(disputed 2)");
+}
+
+#[test]
+fn reason_observe_preserves_every_successful_alternative() {
+    let source = r#"
+        (let ((rules (quote (
+                 ((edge a z))
+                 ((edge b z))
+                 ((edge c z))
+               ))))
+          (length
+            (third
+              (reason-observe
+                (list (quote edge) (logic-var (quote x)) (quote z))
+                rules))))
+    "#;
+    assert_eq!(eval_reason_observation(source), "3");
+}
+
+#[test]
+fn reason_observe_rejects_malformed_goal_as_data() {
+    assert_eq!(
+        eval_reason_observation(r#"(reason-observe 42 (quote ()))"#),
+        "(invalid invalid-goal 42)"
+    );
+}
+
+#[test]
+fn reason_in_observe_names_a_missing_module_as_unknown() {
+    assert_eq!(
+        eval_knowledge_observation(
+            r#"(reason-in-observe (quote missing-module) (quote (parent alice bob)))"#
+        ),
+        "(unknown (module-not-found missing-module))"
+    );
 }
