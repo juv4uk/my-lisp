@@ -82,7 +82,7 @@
     (cond
       ((atom goal) (quote ()))
       ((not (result-proper-list? goal)) (quote ()))
-      ((not (atom (car goal))) (quote ()))
+      ((not (symbol? (car goal))) (quote ()))
       ((eq (car goal) (quote not))
        (cond
          ((= (length goal) 2) (result-goal? (second goal)))
