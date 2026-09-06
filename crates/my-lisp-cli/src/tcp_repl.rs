@@ -4,7 +4,7 @@
 
 use my_lisp::{
     eval_parsed_expressions, eval_parsed_expressions_incremental, eval_program, parse, Environment,
-    Session, MACRO_LIBRARY_SOURCE,
+    Session, MACRO_LIBRARY_SOURCE, TIME_LIBRARY_SOURCE,
 };
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener};
@@ -63,11 +63,14 @@ pub(crate) fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
 
         // Keep the same language bootstrap invariant as the local CLI:
         // establish the language-owned `defmacro` before core.my defines
-        // its macros. `core_lib` remains caller-provided here so this path
-        // can keep its existing per-connection isolation contract.
+        // its macros, then install the language-owned time semantics. The
+        // host contributes only raw clock observations such as mono-ns and
+        // unix-time-now.
         if eval_program(MACRO_LIBRARY_SOURCE, &mut session).is_ok() {
             if let Ok(core_ast) = parse(core_lib) {
-                let _ = eval_parsed_expressions(&core_ast, &mut session);
+                if eval_parsed_expressions(&core_ast, &mut session).is_ok() {
+                    let _ = eval_program(TIME_LIBRARY_SOURCE, &mut session);
+                }
             }
         }
 
