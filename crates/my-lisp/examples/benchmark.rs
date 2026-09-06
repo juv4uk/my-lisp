@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, parse, Session};
+use my_lisp::{eval_program, load_core_library, parse, Session};
 use std::{fs, hint::black_box, time::Instant};
 
 const CASES: &[(&str, &str)] = &[
@@ -44,8 +44,7 @@ const WARM_SETUP: &str = r#"
 
 fn warm(name: &str, source: &str, iterations: usize) {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
-        .expect("core.my should preload");
+    load_core_library(&mut session).expect("canonical macro + core bootstrap should preload");
     eval_program(WARM_SETUP, &mut session).expect("warm setup");
     for _ in 0..3 {
         black_box(eval_program(source, &mut session).expect("warm-up"));
