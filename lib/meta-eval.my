@@ -29,10 +29,7 @@
 ; Root primitive meanings are represented as values, not as special cases in
 ; expression-head dispatch. An unbound non-primitive atom remains itself;
 ; this preserves the existing metacircular self-evaluation convention for
-; numbers, strings, t and currently-unclassified symbols. In operator position
-; `my-apply` uses the language-owned `symbol?` from core.my to distinguish an
-; unresolved name from a literal non-callable atom without adding a new Rust or
-; Canon primitive for the meta-evaluator.
+; numbers, strings, t and currently-unclassified symbols.
 (def my-default-binding
   (lambda (name)
     (cond
@@ -56,11 +53,35 @@
       ((eq (car (car env)) name) (cdr (car env)))
       (t (env-lookup name (cdr env))))))
 
+(def env-bound?
+  (lambda (name env)
+    (cond
+      ((atom env) (quote ()))
+      ((eq (car (car env)) name) t)
+      (t (env-bound? name (cdr env))))))
+
 (def my-primitive?
   (lambda (value)
     (cond
       ((atom value) (quote ()))
       (t (eq (car value) (quote primitive))))))
+
+; UnknownSymbol belongs to name resolution, not application. A symbol produced
+; as a value (for example by quote) is not an unresolved lookup and therefore
+; must later fail as not-callable/Type if placed in operator position.
+;
+; `symbol?` itself is language-owned in core.my, derived without a Rust builtin,
+; so this distinction adds no primitive to the closed Canon.
+(def my-unresolved-name?
+  (lambda (name env)
+    (cond
+      ((symbol? name)
+       (cond
+         ((eq name t) (quote ()))
+         ((env-bound? name env) (quote ()))
+         ((my-primitive? (my-default-binding name)) (quote ()))
+         (t t)))
+      (t (quote ())))))
 
 (def my-macro?
   (lambda (value)
@@ -258,11 +279,8 @@
 (def my-apply
   (lambda (fn args)
     (cond
-      ; `symbol?` is derived in core.my rather than a Rust builtin. Reusing it
-      ; here keeps failure classification language-owned: an unresolved symbol
-      ; is a name-resolution failure, while every other atomic value is a Type
-      ; failure because it simply is not callable.
-      ((symbol? fn) (my-error (quote unbound-symbol) fn))
+      ; Application owns only callability. UnknownSymbol has already been
+      ; decided by the operator-name resolution path in my-eval.
       ((atom fn) (my-error (quote not-callable) fn))
       ((my-primitive? fn)
        (my-apply-primitive (second fn) args))
@@ -312,7 +330,12 @@
          ((eq (car expr) (quote cond)) (my-eval-cond (cdr expr) env))
          ((eq (car expr) (quote lambda))
           (list (quote closure) (second expr) (cdr (cdr expr)) env))
-         ; Every ordinary name is resolved through the environment first.
+         ; UnknownSymbol is a lookup observation, not a property of the value
+         ; that eventually reaches apply. This preserves the distinction between
+         ; `(missing)` and `((quote missing))`.
+         ((my-unresolved-name? (car expr) env)
+          (my-error (quote unbound-symbol) (car expr)))
+         ; Every resolved ordinary name uses the same value-level apply path.
          (t
           (let ((fn (my-eval (car expr) env)))
             (cond
@@ -321,7 +344,8 @@
                (my-eval (my-apply fn (cdr expr)) env))
               (t
                (my-apply fn (my-eval-list (cdr expr) env))))))))
-      ; Computed operator position uses the same value-level apply path.
+      ; Computed operator position uses the same value-level apply path; a symbol
+      ; produced here is already a value and therefore fails as not-callable.
       (t
        (my-apply
          (my-eval (car expr) env)
