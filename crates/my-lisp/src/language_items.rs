@@ -278,9 +278,9 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "Perform one bounded NTP query and return raw protocol fields",
             Arity::Exact(2),
         ),
-        "timezone-detect" => (
-            "(timezone-detect)",
-            "Observe the host timezone declaration",
+        "timezone-declarations-raw" => (
+            "(timezone-declarations-raw)",
+            "Observe raw TZ and /etc/timezone declaration candidates",
             Arity::Exact(0),
         ),
         "i32-buffer" => (
