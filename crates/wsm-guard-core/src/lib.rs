@@ -170,7 +170,7 @@ mod tests {
                   (impact no-impact)
                   (guidance no-action)
                   (evidence ())
-                  (unknown-routes ()))))))"#;
+                  (unknown-routes ())))))"#;
         let error = evaluate(
             wrong_schema,
             "(guard-evaluate (quote read) (quote docs) (quote confirmed))",
