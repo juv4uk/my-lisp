@@ -72,13 +72,22 @@
          (t (quote ()))))
       (t (result-proper-list? (cdr value))))))
 
+; Minimal standalone goal validation for the observation adapter. Ordinary
+; predicate goals require a symbol head and a proper list. The one reserved
+; logical shape, `(not goal)`, additionally requires exactly one recursively
+; valid nested goal, so malformed `(not)` / `(not a b)` cannot be mislabeled as
+; logical `unknown`.
 (def result-goal?
   (lambda (goal)
     (cond
       ((atom goal) (quote ()))
       ((not (result-proper-list? goal)) (quote ()))
-      ((atom (car goal)) t)
-      (t (quote ())))))
+      ((not (atom (car goal))) (quote ()))
+      ((eq (car goal) (quote not))
+       (cond
+         ((= (length goal) 2) (result-goal? (second goal)))
+         (t (quote ()))))
+      (t t))))
 
 ; `(not goal)` is the explicit logical opposite used by the knowledge layer.
 ; A well-shaped top-level negative query asks about its positive counterpart;
@@ -87,10 +96,8 @@
   (lambda (goal)
     (cond
       ((not (result-goal? goal)) (quote ()))
-      ((not (eq (car goal) (quote not))) (quote ()))
-      ((atom (cdr goal)) (quote ()))
-      ((not (atom (cddr goal))) (quote ()))
-      (t t))))
+      ((eq (car goal) (quote not)) t)
+      (t (quote ())))))
 
 (def result-opposite-goal
   (lambda (goal)
