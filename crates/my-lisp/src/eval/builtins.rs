@@ -23,7 +23,7 @@ fn builtin(name: &'static str, func: Native) -> Value {
     Value::Builtin(std::rc::Rc::new(crate::value::Builtin { name, func }))
 }
 
-fn internet_time_sync_value(
+fn ntp_query_raw_value(
     host: &str,
     timeout_ms: u64,
     span: Span,
@@ -36,7 +36,7 @@ fn internet_time_sync_value(
         .map_err(|_| {
             crate::LanguageError::new(
                 crate::ErrorKind::Type,
-                "internet-time-sync cannot resolve host",
+                "ntp-query-raw cannot resolve host",
                 span,
             )
         })?
@@ -44,7 +44,7 @@ fn internet_time_sync_value(
         .ok_or_else(|| {
             crate::LanguageError::new(
                 crate::ErrorKind::Type,
-                "internet-time-sync host has no address",
+                "ntp-query-raw host has no address",
                 span,
             )
         })?;
@@ -58,7 +58,7 @@ fn internet_time_sync_value(
         .map_err(|_| {
             crate::LanguageError::new(
                 crate::ErrorKind::Type,
-                "internet-time-sync socket unavailable",
+                "ntp-query-raw socket unavailable",
                 span,
             )
         })?;
@@ -343,21 +343,21 @@ pub(crate) fn install(environment: &Environment) {
         }
     );
 
-    // (internet-time-sync host timeout-ms) is the raw NTP transport boundary.
+    // (ntp-query-raw host timeout-ms) is the raw NTP transport boundary.
     // It performs one bounded query and returns fixed-width protocol fields
     // without validating NTP mode/stratum, translating epochs, or computing
     // nanoseconds. Those meanings belong to lib/time.my.
     define!(
         environment,
-        "internet-time-sync",
+        "ntp-query-raw",
         |args: &[Value], _env: &Environment, span: Span| {
-            exact_args("internet-time-sync", args, 2, span)?;
+            exact_args("ntp-query-raw", args, 2, span)?;
             let host = match &args[0] {
                 Value::String(value) => value.as_ref(),
                 _ => {
                     return Err(crate::LanguageError::new(
                         crate::ErrorKind::Type,
-                        "internet-time-sync expects host string",
+                        "ntp-query-raw expects host string",
                         span,
                     ))
                 }
@@ -369,12 +369,12 @@ pub(crate) fn install(environment: &Environment) {
                 _ => {
                     return Err(crate::LanguageError::new(
                         crate::ErrorKind::Type,
-                        "internet-time-sync expects exact timeout milliseconds",
+                        "ntp-query-raw expects exact timeout milliseconds",
                         span,
                     ))
                 }
             };
-            internet_time_sync_value(host, timeout, span)
+            ntp_query_raw_value(host, timeout, span)
         }
     );
 
