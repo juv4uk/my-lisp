@@ -62,3 +62,33 @@ fn non_callable_values_are_type_failures_not_unknown_symbols() {
         );
     }
 }
+
+#[test]
+fn fixed_lambda_arity_mismatch_is_named_lisp_data() {
+    for (source, expected) in [
+        (
+            "((lambda (x y) x) 1)",
+            "(error arity (expected (exact 2) received 1))",
+        ),
+        (
+            "((lambda (x y) x) 1 2 3)",
+            "(error arity (expected (exact 2) received 3))",
+        ),
+    ] {
+        let via_meta = eval_meta(source);
+        let via_native = eval_native_error(source, ErrorKind::Arity, expected);
+
+        assert_eq!(via_meta, via_native, "fixed arity parity failed for {source}");
+    }
+}
+
+#[test]
+fn dotted_lambda_reports_minimum_arity_not_exact_arity() {
+    let source = "((lambda (x y . rest) x) 1)";
+    let expected = "(error arity (expected (at-least 2) received 1))";
+
+    let via_meta = eval_meta(source);
+    let via_native = eval_native_error(source, ErrorKind::Arity, expected);
+
+    assert_eq!(via_meta, via_native, "dotted arity parity failed for {source}");
+}
