@@ -83,6 +83,40 @@ fn raw_unix_clock_observation_is_interpreted_by_lisp() {
 }
 
 #[test]
+fn utc_now_binding_is_owned_by_lisp_after_time_library_loads() {
+    let mut session = Session::default();
+    load_core_library(&mut session).unwrap();
+
+    assert!(matches!(
+        session.environment.get("utc-now"),
+        Some(Value::Builtin(_))
+    ));
+    assert!(matches!(
+        session.environment.get("unix-time-now"),
+        Some(Value::Builtin(_))
+    ));
+
+    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+
+    assert!(matches!(
+        session.environment.get("utc-now"),
+        Some(Value::Closure(_))
+    ));
+    assert!(matches!(
+        session.environment.get("unix-time-now"),
+        Some(Value::Builtin(_))
+    ));
+
+    let value = eval_program("(utc-now)", &mut session)
+        .unwrap()
+        .value
+        .to_string();
+    let fields: Vec<&str> = value.trim_matches(['(', ')']).split_whitespace().collect();
+    assert_eq!(fields.len(), 8, "language-owned utc-now shape: {value}");
+    assert_eq!(fields[0], "utc");
+}
+
+#[test]
 fn internet_time_timestamp_interpretation_is_language_owned() {
     let mut session = Session::default();
     load_core_library(&mut session).unwrap();
