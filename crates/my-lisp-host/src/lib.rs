@@ -16,6 +16,8 @@ use my_lisp::{
 };
 use std::rc::Rc;
 
+mod process_raw;
+
 // File-system primitives: `read-file`/`write-file` and their byte-level
 // counterparts (`read-file-bytes`/`write-file-bytes`), plus the raw
 // `read_file`/`write_file`/`read_file_bytes`/`write_file_bytes` host calls
@@ -726,6 +728,7 @@ pub fn install() {
     register_capability("write-file-bytes", evaluate_write_file_bytes);
     // processes (allowlist-gated inside)
     register_capability("process-run", evaluate_process_run);
+    register_capability("process-run-raw", process_raw::evaluate_process_run_raw);
     register_capability("load", evaluate_load);
     // sockets
     register_capability("tcp-connect", evaluate_tcp_connect);
@@ -749,6 +752,7 @@ mod install_tests {
             "write-file",
             "write-file-bytes",
             "process-run",
+            "process-run-raw",
             "tcp-connect",
             "tcp-listen",
             "tcp-accept",
