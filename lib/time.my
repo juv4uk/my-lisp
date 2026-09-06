@@ -56,11 +56,35 @@
   (lambda ()
     (unix-time-observation->utc (unix-time-now))))
 
-; The host NTP capability intentionally returns a raw observation:
+; Interpret protocol fields from one complete NTP response. Packet I/O and
+; extracting fixed-width fields are host mechanisms; deciding whether those
+; fields are acceptable, mapping the NTP epoch to Unix, and converting the
+; 32-bit fractional second into nanoseconds are language semantics.
+;
+; Expected host-side field contract for a complete response:
+;   host, mode, stratum, ntp-seconds, fraction
+; Successful interpretation preserves the existing public observation shape:
+;   (accepted host unix-seconds nanosecond)
+(def internet-time-fields->observation
+  (lambda (host mode stratum ntp-seconds fraction)
+    (cond
+      ((not (or (= mode 4) (= mode 5)))
+       (list (quote rejected) (quote invalid-response)))
+      ((or (= stratum 0) (> stratum 15))
+       (list (quote rejected) (quote invalid-response)))
+      ((< ntp-seconds 2208988800)
+       (list (quote rejected) (quote invalid-epoch)))
+      (t
+       (list (quote accepted)
+             host
+             (- ntp-seconds 2208988800)
+             (quotient (* fraction 1000000000) 4294967296))))))
+
+; The host NTP capability currently returns the public observation shape:
 ;   (accepted host unix-seconds nanosecond)
 ; or a rejected result. Turning the accepted timestamp into calendar meaning is
-; language policy, so keep that interpretation here rather than teaching Rust
-; about another calendar-shaped network result.
+; language policy. `internet-time-fields->observation` above is the migration
+; target for the validation/epoch/fraction semantics that still live in Rust.
 (def internet-time-observation->utc
   (lambda (observation)
     (cond
