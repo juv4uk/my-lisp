@@ -89,8 +89,6 @@ fn lambda_application_binds_parameters_and_evaluates_the_body() {
 
 #[test]
 fn multi_expression_lambda_bodies_evaluate_in_sequence_returning_the_last() {
-    // (+ x y) runs and is discarded; (* x y) is the returned value — proves
-    // my-eval-body actually sequences instead of only ever reading the head.
     assert_eq!(
         eval_meta("((lambda (x y) (+ x y) (* x y)) 3 4)", "(quote ())"),
         "12"
@@ -99,8 +97,6 @@ fn multi_expression_lambda_bodies_evaluate_in_sequence_returning_the_last() {
 
 #[test]
 fn closures_capture_free_variables_from_the_calling_env() {
-    // env = ((x . 5)); the lambda only takes y, so x must resolve through
-    // the captured/passed-in env, not through its own parameter list.
     assert_eq!(
         eval_meta(
             "((lambda (y) (+ x y)) 10)",
@@ -121,10 +117,6 @@ fn higher_order_functions_pass_a_closure_as_an_argument() {
     );
 }
 
-/// PLAN.md item 8: `my-eval` itself has no `def` — `my-eval-program`
-/// threads an extended env across a sequence of top-level forms instead,
-/// the same functional-fold shape used elsewhere in this project (e.g.
-/// `lib/knowledge.my`'s journal projection) rather than real mutation.
 #[test]
 fn def_extends_the_environment_visible_to_later_top_level_forms() {
     assert_eq!(eval_meta_program("(def x 10) (def y (+ x 5))", "y"), "15");
@@ -140,9 +132,6 @@ fn def_can_bind_a_lambda_callable_from_a_later_top_level_form() {
 
 #[test]
 fn defmacro_expands_before_evaluating_using_unevaluated_argument_forms() {
-    // `my-if`'s params are bound to the raw (unevaluated) call-site forms —
-    // `then`/`else` here are `(quote yes)`/`(quote no)`, not their values —
-    // and my-eval runs the expansion once more after the macro body builds it.
     assert_eq!(
         eval_meta_program(
             "(defmacro my-if (test then else) \
@@ -154,11 +143,6 @@ fn defmacro_expands_before_evaluating_using_unevaluated_argument_forms() {
     );
 }
 
-/// The strongest claim PLAN.md item 8 makes: `my-eval-program` can load a
-/// verbatim slice of the real `lib/core.my` bootstrap library — not a
-/// hand-simplified stand-in — through `read-all`, then run the functions
-/// it defines through `my-eval` itself, getting the same answer the host
-/// Rust evaluator gives for the identical call.
 #[test]
 fn loads_a_real_verbatim_slice_of_lib_core_my_and_runs_it_through_my_eval() {
     let core_slice = r#"
@@ -183,29 +167,33 @@ fn loads_a_real_verbatim_slice_of_lib_core_my_and_runs_it_through_my_eval() {
     );
 }
 
-/// Documented, not hidden (PLAN.md item 8, mccarthy-principles.md §7): a
-/// top-level `def` whose value refers to its own name doesn't see itself,
-/// because environments here are an immutable alist, not the host's real
-/// mutable frame (`environment.rs:70`) — the closure captures `env` from
-/// *before* its own binding exists.
-///
-/// The metacircular evaluator does not yet own native `LanguageError` parity.
-/// Therefore the semantic witness is the explicit Lisp failure value below,
-/// not the accidental Rust `Type` error that the older implementation leaked
-/// when it tried to take `car` of an unbound atom. This test pins the actual
-/// limitation without turning substrate behavior into language semantics.
+/// Self-recursive top-level binding is now owned by the evaluator written in
+/// Lisp. `my-eval-top-form` stores a finite recursive-closure value rather
+/// than relying on a cyclic/mutable Rust Environment; `my-apply` reconstructs
+/// the self-binding at call time.
 #[test]
-fn self_recursive_top_level_def_reports_unbound_self_as_not_callable() {
-    let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
-    let source = r#"
-        (let ((loaded (my-eval-program
-                        (read-all "(def count-down (lambda (n) (cond ((eq n 0) (quote done)) (t (count-down (- n 1))))))")
-                        (quote ()))))
-          (my-eval (read "(count-down 3)") (car loaded)))
-    "#;
-    let result = eval_program(source, &mut session)
-        .expect("the meta-evaluator should represent this known semantic limitation explicitly");
-    assert_eq!(result.value.to_string(), "(not-callable count-down)");
+fn self_recursive_top_level_def_sees_its_own_binding() {
+    assert_eq!(
+        eval_meta_program(
+            "(def count-down (lambda (n) (cond ((eq n 0) (quote done)) (t (count-down (- n 1))))))",
+            "(count-down 20)"
+        ),
+        "done"
+    );
+}
+
+#[test]
+fn recursive_factorial_matches_native_language_meaning() {
+    let program = "(def fact (lambda (n) (cond ((eq n 0) 1) (t (* n (fact (- n 1)))))))";
+    let via_meta = eval_meta_program(program, "(fact 6)");
+
+    let mut native = Session::default();
+    let native_source = format!("{program} (fact 6)");
+    let via_native = eval_program(&native_source, &mut native)
+        .expect("native evaluator should execute the same recursive definition")
+        .value
+        .to_string();
+
+    assert_eq!(via_meta, "720");
+    assert_eq!(via_meta, via_native);
 }
