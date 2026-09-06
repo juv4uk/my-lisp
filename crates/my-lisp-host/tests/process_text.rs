@@ -1,11 +1,10 @@
-use my_lisp::{eval_program, load_core_library, Session};
+use my_lisp::{eval_program, load_core_library, load_process_library, Session, Value};
 
 fn process_session() -> Session {
     my_lisp_host::install();
     let mut session = Session::default();
     load_core_library(&mut session).unwrap();
-    eval_program(include_str!("../../../lib/utf8.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/process.my"), &mut session).unwrap();
+    load_process_library(&mut session).unwrap();
     session
 }
 
@@ -48,4 +47,26 @@ fn process_run_text_composes_raw_host_bytes_with_lisp_utf8() {
 
     let result = eval_program(source, &mut session).expect("process text adapter should succeed");
     assert_eq!(result.value.to_string(), "(decoded-process 0 \"€\" \"¢\")");
+}
+
+#[test]
+fn public_process_run_binding_is_already_a_lisp_closure() {
+    let mut session = process_session();
+    assert!(matches!(
+        session.environment.get("process-run"),
+        Some(Value::Closure(_))
+    ));
+
+    // Literal `(process-run ...)` still dispatches to the transitional host
+    // capability. Capture the environment binding under a capability-free
+    // spelling to prove the closure itself already implements the public
+    // compatibility result shape through process-run-raw.
+    let source = r#"
+        (def language-process-run process-run)
+        (language-process-run
+          "python3"
+          (quote ("-c" "print('language-owned')")))
+    "#;
+    let result = eval_program(source, &mut session).expect("language-owned process closure should run");
+    assert_eq!(result.value.to_string(), "(0 \"language-owned\n\" \"\")");
 }
