@@ -138,42 +138,72 @@ tcp listen address/port ranges
 Не заявляється повний sandbox. Public CLI flags ще не є ратифікованим contract;
 див. `docs/host-capability-scoping-adr-2026-08-27.md`.
 
+## A7. Lisp-owned external translation admission — B4 first milestone
+
+Зовнішній translator більше не потребує й не отримує semantic authority.
+Versioned protocol живе в `lib/translation.my`:
+
+```lisp
+(translation/1 candidate|ambiguous|rejected clause|batch|query source payload)
+```
+
+Підтверджена межа:
+
+- ✅ `translation-review` структурно перевіряє protocol shell у Lisp;
+- ✅ candidate clause/batch повторно проходить чинні knowledge validators і
+  `advice-decision` / `advice-all-decision`;
+- ✅ candidate query проходить `knowledge-goal-valid?`;
+- ✅ review є pure щодо `*knowledge-journal*` — навіть `accepted` нічого не пише;
+- ✅ лише accepted clause/batch відкриває `translation-admission-payload`;
+- ✅ actual knowledge write лишається явним `advise` / `advise-all`;
+- ✅ existing explicit opposite перемагає зовнішню candidate-пропозицію;
+- ✅ ambiguous/rejected review може зберігатися як evidence, не knowledge;
+- ✅ ambiguity вимагає щонайменше двох валідних alternatives;
+- ✅ versioned data-only corpus покриває accepted/rejected/ambiguous та
+  downstream `proved`/`unknown`/`not-run` modes.
+
+Evidence: `translation_boundary.rs`, `translation-corpus-v1.wsm`; substantive
+B4 tests/build/clippy пройшли в repair sequence #1050/#1051, final current-head
+CI лишається authority перед сильнішим claim.
+
 ---
 
 # B. Головний активний фронт — Advice Taker
 
-## B4. Natural-language / external translator bridge — **NEXT**
+## B4. Natural-language / external translator bridge — **BOUNDARY ESTABLISHED**
 
-Стабільні structured outcomes існують, тому зовнішній translator можна
-під'єднувати без передачі йому semantic authority:
+Перший milestone виконаний: існують versioned candidate data, Lisp-owned
+validation/review, accepted/rejected/ambiguous distinction та evidence path.
+Зовнішній provider/LLM adapter, якщо його додавати, повинен лише породжувати
+`translation/1` data і не отримує API прямого запису knowledge state.
+
+Нормативний pipeline:
 
 ```text
 external translator
         ↓
-candidate Lisp data
+(translation/1 ...) data
         ↓
-validate / advise / advise-all
+translation-review          ← Lisp semantic authority
         ↓
-reason-in-observe
-        ↓
-canonical semantic outcome
-        ↓
-narrate-outcome
+accepted knowledge candidate?
+        ├── no  → evidence only
+        └── yes → explicit advise / advise-all
+                         ↓
+                  reason-in-observe
+                         ↓
+                  canonical outcome
+                         ↓
+                   narrate-outcome
 ```
 
-Перший milestone — невеликий versioned corpus:
+Наступний B4 крок потрібен лише разом із конкретним зовнішнім translator:
+adapter має пройти той самий versioned corpus і не мати bypass до knowledge
+journal. Не будувати provider-specific semantic layer наперед.
 
-- input text;
-- expected candidate clause/query data;
-- accepted / rejected / ambiguous translation status;
-- downstream Advice Taker outcome;
-- rejected/ambiguous cases зберігаються як evidence, не як знання.
+## B5. Reasoning performance — **NEXT; вимірювати перед indexing**
 
-LLM або інший translator **не** отримує права напряму змінювати knowledge state.
-
-## B5. Reasoning performance — вимірювати перед indexing
-
-Stack-safety і N=100/500/1000 ordinary-stack completion вже підтверджені.
+Stack-safety і N=100/500/1000 ordinary-stack completion уже підтверджені.
 Наступне питання — performance, не correctness.
 
 Перед predicate/head indexing:
@@ -234,17 +264,19 @@ Programmatic embedding enforcement уже confirmed. Залишилися окр
 :910x swarm-node coordination plane
 ```
 
-`docs/swarm-mesh-v2.md` уже фіксує operational migration: шість агентів пройшли
-onboarding, `swarm-node` має replacement operations, а `:9999` coordination ops
-названі неактуальним шляхом going forward. Отже migration gate 1 — **evidence-backed**.
+Підтверджено:
+
+- ✅ `docs/swarm-mesh-v2.md` має operational onboarding evidence;
+- ✅ machine-readable deprecation: `knowledge/swarm-legacy-deprecation.wsm`;
+- ✅ replacement mapping + two-plane migration regression;
+- ✅ `AGENTS.md` більше не навчає legacy `:9999` coordination як first-class path.
 
 Залишок перед фізичним видаленням legacy coordination code:
 
-1. зробити deprecation machine/tool-visible, не лише prose;
-2. мати migration/replacement regression;
-3. перевірити відсутність живих callers legacy ops;
-4. лише тоді видалити broker/claims/presence/task coordination з `:9999`,
-   не зачіпаючи semantic oracle.
+1. довести відсутність живих callers legacy ops (`no-live-callers`);
+2. лише тоді видалити broker/claims/presence/task coordination з `:9999`;
+3. regression має довести, що `eval` / `parse` / `diagnose` semantic oracle не
+   змінилися.
 
 ---
 
@@ -272,14 +304,13 @@ onboarding, `swarm-node` має replacement operations, а `:9999` coordination 
 # Поточний порядок робіт
 
 ```text
-1. B4 — versioned external/NL translator corpus
-2. B4 — candidate-data validation + rejected/ambiguous evidence path
-3. B5 — realistic Advice Taker performance profile
-4. indexing лише якщо вимірювання це виправдовує
-5. swarm legacy deprecation + migration regression
-6. CLI host-scope surface лише після explicit operational decision
-7. later-binding / deeper self-hosting proof, якщо Advice Taker його потребує
-8. CML/FPGA subset за реальною цінністю для reasoning
+1. B5 — realistic Advice Taker performance profile
+2. indexing лише якщо вимірювання це виправдовує
+3. B4 external-provider adapter лише разом із конкретним translator і corpus proof
+4. swarm — no-live-callers proof, потім physical legacy removal
+5. CLI host-scope surface лише після explicit operational decision
+6. later-binding / deeper self-hosting proof, якщо Advice Taker його потребує
+7. CML/FPGA subset за реальною цінністю для reasoning
 ```
 
 ## Стоп-умови
@@ -291,7 +322,7 @@ onboarding, `swarm-node` має replacement operations, а `:9999` coordination 
 - failure mode прихований human-readable string замість stable data;
 - `unknown` використовується як synonym для false / invalid / blocked / disputed;
 - новий primitive пропонується до перевірки, чи це можна виразити бібліотекою;
-- зовнішній translator може обійти `advise`/validation і прямо писати knowledge;
+- зовнішній translator може обійти `translation-review` / `advise` і прямо писати knowledge;
 - security mechanism декларується без adversarial bypass test;
 - робота розширює систему до спроби зруйнувати поточну.
 
