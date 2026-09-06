@@ -11,20 +11,27 @@
 ; this evaluator owns name resolution, lexical shadowing, application shape,
 ; macro expansion, closure environments, chained comparison policy,
 ; self-recursive and finite mutually recursive top-level function binding,
-; and variadic/dotted lambda parameter binding.
+; variadic/dotted lambda parameter binding, and the first named failure
+; observation for an unresolved callable name.
 ;
 ; This remains an explicit self-hosting witness, not the always-loaded runtime.
-; Named-error parity and arbitrary later-binding visibility are still known
+; Full named-error parity and arbitrary later-binding visibility are still known
 ; gaps and must not be claimed as complete self-hosting.
 
 (def my-primitive
   (lambda (name)
     (list (quote primitive) name)))
 
+(def my-error
+  (lambda (kind detail)
+    (list (quote error) kind detail)))
+
 ; Root primitive meanings are represented as values, not as special cases in
 ; expression-head dispatch. An unbound non-primitive atom remains itself;
 ; this preserves the existing metacircular self-evaluation convention for
-; numbers, strings, t and currently-unclassified symbols.
+; numbers, strings, t and currently-unclassified symbols. The operator path
+; below turns an unresolved callable atom into named Lisp error data; a future
+; not-callable parity step will distinguish literal atoms from unresolved names.
 (def my-default-binding
   (lambda (name)
     (cond
@@ -250,7 +257,12 @@
 (def my-apply
   (lambda (fn args)
     (cond
-      ((atom fn) (list (quote not-callable) fn))
+      ; First named failure owned as Lisp data. In ordinary call position an
+      ; unresolved name reaches apply as an atom because env-lookup preserves
+      ; self-evaluating atoms. Literal/not-callable distinction is deliberately
+      ; left to the next error-parity milestone rather than adding `symbol?`
+      ; to the closed primitive core just for this proof.
+      ((atom fn) (my-error (quote unbound-symbol) fn))
       ((my-primitive? fn)
        (my-apply-primitive (second fn) args))
       ((my-closure? fn)
