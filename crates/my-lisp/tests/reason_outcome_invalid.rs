@@ -1,5 +1,5 @@
-//! Adversarial B1 validation: malformed explicit-negation syntax is an
-//! `invalid` observation, never logical `unknown`.
+//! Adversarial B1 validation: malformed goal syntax is an `invalid`
+//! observation, never logical `unknown`.
 
 use my_lisp::{eval_program, Session};
 
@@ -28,6 +28,14 @@ fn not_with_multiple_nested_forms_is_invalid() {
     assert_eq!(
         observe(r#"(reason-observe (quote (not (planet earth) extra)) (quote ()))"#),
         "(invalid invalid-goal (not (planet earth) extra))"
+    );
+}
+
+#[test]
+fn non_symbol_predicate_head_is_invalid() {
+    assert_eq!(
+        observe(r#"(reason-observe (quote (42 earth)) (quote ()))"#),
+        "(invalid invalid-goal (42 earth))"
     );
 }
 
