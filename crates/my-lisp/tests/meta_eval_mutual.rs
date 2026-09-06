@@ -1,14 +1,13 @@
 use my_lisp::{eval_program, Session};
 
-fn eval_group_program(program_source: &str, probe_source: &str) -> String {
+fn eval_meta_program(program_source: &str, probe_source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/meta-eval-mutual.my"), &mut session).unwrap();
 
     let source = format!(
-        r#"(let ((loaded (my-eval-program-with-groups (read-all "{}") (quote ()))))
-             (my-group-eval (read "{}") (car loaded)))"#,
+        r#"(let ((loaded (my-eval-program (read-all "{}") (quote ()))))
+             (my-eval (read "{}") (car loaded)))"#,
         program_source.replace('\\', "\\\\").replace('"', "\\\""),
         probe_source.replace('\\', "\\\\").replace('"', "\\\""),
     );
@@ -29,7 +28,7 @@ fn eval_native(program_source: &str, probe_source: &str) -> String {
 }
 
 #[test]
-fn consecutive_top_level_functions_can_refer_to_each_other() {
+fn consecutive_top_level_functions_can_refer_to_each_other_in_main_meta_eval() {
     let program = r#"
 (def even?
   (lambda (n)
@@ -44,14 +43,14 @@ fn consecutive_top_level_functions_can_refer_to_each_other() {
 "#;
 
     for probe in ["(even? 20)", "(odd? 21)", "(even? 19)", "(odd? 20)"] {
-        let via_meta = eval_group_program(program, probe);
+        let via_meta = eval_meta_program(program, probe);
         let via_native = eval_native(program, probe);
         assert_eq!(via_meta, via_native, "mutual-recursion parity failed for {probe}");
     }
 }
 
 #[test]
-fn three_member_recursive_group_is_finite_lisp_data_not_host_cycle() {
+fn three_member_recursive_group_is_finite_lisp_data_in_main_meta_eval() {
     let program = r#"
 (def mod0?
   (lambda (n)
@@ -71,7 +70,7 @@ fn three_member_recursive_group_is_finite_lisp_data_not_host_cycle() {
 "#;
 
     for probe in ["(mod0? 30)", "(mod1? 31)", "(mod2? 32)"] {
-        let via_meta = eval_group_program(program, probe);
+        let via_meta = eval_meta_program(program, probe);
         let via_native = eval_native(program, probe);
         assert_eq!(via_meta, via_native, "three-member group parity failed for {probe}");
     }
