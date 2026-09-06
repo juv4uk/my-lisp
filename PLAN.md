@@ -6,28 +6,24 @@
 
 Цей файл містить актуальний порядок пріоритетів і коротку карту вже
 підтвердженого фундаменту. Завершені деталі живуть у git history, ADR,
-conformance-тестах та спеціалізованих evidence-документах, а не повертаються в
-backlog як псевдо-задачі.
+conformance-тестах та evidence-документах, а не повертаються в backlog як
+псевдо-задачі.
 
 ## Ієрархія планів
 
 1. **`PLAN.md`** — єдиний активний порядок пріоритетів для `my-lisp`.
-2. **`CLEAN_CODE_PLAN.md`** — domain-roadmap якості й API; не може самостійно
-   перевизначати пріоритети цього файлу.
-3. **`docs/ecosystem-roadmap.md`** — roadmap сумісності `my-lisp` / `cml` /
-   `fpga-lisp`; підпорядкований цінності для Advice Taker та conformance.
-4. **ADR і language contract** — нормативні рішення; roadmap не може їх
-   переписувати без окремого процесу ратифікації.
-5. **Тести й CI** — доказ стану. Claim не може бути сильнішим за найсильніший
-   експеримент, який його підтримує.
+2. **`CLEAN_CODE_PLAN.md`** — domain-roadmap якості й API.
+3. **`docs/ecosystem-roadmap.md`** — roadmap `my-lisp` / `cml` / `fpga-lisp`.
+4. **ADR і language contract** — нормативні рішення; roadmap не може їх переписувати.
+5. **Тести й CI** — доказ стану. Claim не може бути сильнішим за найсильніший експеримент.
 
 ## Правило пріоритету
 
-Перед новою роботою ставимо три питання:
+Перед новою роботою:
 
-1. Чи наближає це Advice Taker — reasoning, knowledge, explanation або natural-language bridge?
-2. Якщо це робота над ядром: чи усуває вона реальну semantic dependency, яка заважає пункту 1?
-3. Чи є негативний тест або інший спосіб спробувати зруйнувати твердження до його розширення?
+1. Чи наближає це Advice Taker — reasoning, knowledge, explanation або NL bridge?
+2. Якщо це ядро: чи усуває це реальну semantic dependency, яка заважає пункту 1?
+3. Чи є негативний тест або інший спосіб спробувати зруйнувати твердження?
 
 Якщо відповідь на перші два питання «ні», робота не є активним пріоритетом,
 навіть якщо технічно цікава.
@@ -36,18 +32,16 @@ backlog як псевдо-задачі.
 
 # A. Підтверджений фундамент — не розширювати без причини
 
-Це не backlog. Це база, яку слід зберігати зеленою.
-
 ## A1. Closed semantic core
 
-- ✅ Canon 0: порожній список `()` як ground object.
+- ✅ Canon 0: `()` як ground object.
 - ✅ Закритий McCarthy-7 semantic operation set.
-- ✅ `lambda` / `define` лишаються evaluator capabilities, а не новими primitive identities.
+- ✅ `lambda` / `define` — evaluator capabilities, не primitive identities.
 - ✅ Language-owned похідні операції не повинні тихо повертатися в Rust builtins.
 
 ## A2. Meta-evaluator ownership
 
-Головний `lib/meta-eval.my` уже має підтверджені main-path докази для:
+Підтверджені main-path slices:
 
 - ✅ lexical closures;
 - ✅ first-class builtins і lexical shadowing;
@@ -56,30 +50,30 @@ backlog як псевдо-задачі.
 - ✅ self recursion;
 - ✅ variadic і dotted lambda;
 - ✅ finite mutual-recursion groups без cyclic host environment;
-- ✅ failure observation для unresolved callable name (`UnknownSymbol`);
-- ✅ distinction unresolved name vs non-callable value (`Type` / `not-callable`);
-- ✅ fixed/rest lambda arity (`Arity`);
-- ✅ malformed lambda-list structure (`InvalidForm`): non-symbol parameter,
-  duplicate parameter, invalid dotted rest.
+- ✅ unresolved callable `UnknownSymbol`;
+- ✅ unresolved name vs non-callable `Type`;
+- ✅ fixed/rest lambda `Arity`;
+- ✅ malformed lambda-list `InvalidForm`.
 
-### Відомі межі meta-evaluator
+Відомі межі:
 
-- arbitrary later-binding visibility ще не доведена як загальна властивість;
+- arbitrary later-binding visibility не доведена як загальна властивість;
 - повна parity усіх native error classes не заявляється;
-- `meta-eval` лишається explicit self-hosting witness, а не always-loaded runtime.
+- `meta-eval` — explicit self-hosting witness, не always-loaded runtime.
 
-Ці межі не є автоматичним backlog. Їх беремо лише коли вони блокують Advice Taker,
-conformance або конкретний self-hosting proof.
+Не виправляти later-binding через dynamic-scope shortcut. Сильніший proof має
+лишатися lexical і finite-data.
 
 ## A3. Advice Taker reasoning stability — B0/B1
 
 Підтверджено 2026-09-07:
 
-- ✅ `prove-goal` rule scan переписаний на tail-recursive accumulator + один
-  `reverse`, без старого `append(... recursive-scan ...)`;
-- ✅ full scan на 256 правил проходить на звичайному test-thread stack;
-- ✅ порядок reasoning results не змінився;
-- ✅ одна canonical data-only outcome algebra у `lib/result-status.my`:
+- ✅ `prove-goal` rule scan — tail-recursive accumulator + один `reverse`;
+- ✅ 256-rule full scan проходить на ordinary test stack;
+- ✅ result order не змінився;
+- ✅ refreshed scale harness виконує N=100/500/1000 на ordinary stack;
+- ✅ 5000/10000 лишені як explicit ignored/manual falsification profile;
+- ✅ canonical data-only outcome algebra:
 
 ```lisp
 (proved statement results)
@@ -90,45 +84,59 @@ conformance або конкретний self-hosting proof.
 (invalid reason payload)
 ```
 
-- ✅ `proved` зберігає всі успішні alternatives, а не лише першу;
-- ✅ explicit opposite proof відрізняється від absence of proof;
-- ✅ двосторонні докази дають `disputed`, не `unknown`;
-- ✅ malformed goal/module дають `invalid`, а не маскуються під `unknown`;
-- ✅ старі `reason` / `reason-in` лишилися backward-compatible;
-  opt-in adapters — `reason-observe` / `reason-in-observe`.
+- ✅ `proved` зберігає всі alternatives;
+- ✅ opposite proof ≠ absence of proof;
+- ✅ both sides → `disputed`;
+- ✅ malformed goal/module → `invalid`;
+- ✅ legacy `reason` / `reason-in` backward-compatible;
+- ✅ opt-in `reason-observe` / `reason-in-observe`.
 
-Докази: `reason_stack.rs`, `result_status.rs`, `reason_outcome_invalid.rs`,
-`reason_in_outcome_invalid.rs`, ADR `unknown-result-semantics.md`.
+Evidence: `reason_stack.rs`, `reason_scale.rs`, `result_status.rs`,
+`reason_outcome_invalid.rs`, `reason_in_outcome_invalid.rs`, CI #1034.
 
 ## A4. Explanation + adversarial Advice Taker loop — B2/B3
 
-Підтверджено:
+- ✅ `narrate-outcome` зберігає distinction між `unknown`, `partial`, `blocked`,
+  `disputed`, `invalid`;
+- ✅ malformed/truncated tagged outcomes відхиляються як invalid presentation;
+- ✅ `proved` presentation зберігає proof/provenance;
+- ✅ 7-case end-to-end corpus: direct, multi-step, recursion, unknown, conflict,
+  malformed advice, knowledge-package round-trip.
 
-- ✅ `narrate-outcome` не зливає `unknown`, `partial`, `blocked`, `disputed` і
-  `invalid` в одну human-readable невдачу;
-- ✅ `proved` presentation зберігає існуючий proof/provenance шлях;
-- ✅ end-to-end corpus проходить один pipeline через admission → reasoning →
-  structured outcome → narration для семи різних режимів:
-  1. прямий факт;
-  2. багатокрокове правило;
-  3. recursive rule;
-  4. unknown;
-  5. explicit conflict/rejection;
-  6. malformed advice;
-  7. knowledge-package round-trip перед reasoning.
+Evidence: `narrate_outcomes.rs`, `advice_corpus.rs`, CI #1020/#1030.
 
-Докази: `narrate_outcomes.rs`, `advice_corpus.rs`; workspace CI #1019/#1020.
+## A5. Portability / Guard / documentation hardening
 
-## A5. Portability / boundary hardening
+- ✅ committed `core.my.fasl` перевіряється exact source hash;
+- ✅ semantic changes trigger WASM browser workflow;
+- ✅ Chrome + Firefox пройшли після trigger expansion;
+- ✅ Guard Rust boundary перевіряє exact `guard/1` structure, не rendered substring;
+- ✅ nested `(decision allow)` spoof відхиляється;
+- ✅ reasoning/narration sections у `FUNCTIONS.md` оновлені;
+- ✅ documentation regression рахує live `(def ...)` імена для цих двох модулів.
 
-- ✅ committed `core.my.fasl` має regression test на exact source hash;
-- ✅ WASM browser workflow тепер запускається також при змінах semantic
-  dependencies (`my-lisp`, `literate`, `lsp`, `core.my`, FASL, Cargo graph);
-- ✅ Chrome і Firefox browser suites пройшли після зміни trigger;
-- ✅ `wsm-guard-core` більше не приймає policy result через substring типу
-  `"(decision allow)"`; перевіряється точна структурована `guard/1` форма,
-  exact field layout, decision enum і evidence-status enum;
-- ✅ adversarial spoof `(not-a-guard-finding (decision allow))` відхиляється.
+## A6. Scoped host capabilities — embedding mechanism
+
+Підтверджено CI #1038:
+
+```text
+process allowlist
+filesystem read roots
+filesystem write roots
+tcp connect host/port ranges
+tcp listen address/port ranges
+```
+
+- ✅ policy per-session і shared across lexical children;
+- ✅ `None` = trusted unrestricted default, backward compatibility preserved;
+- ✅ filesystem canonicalization/enforcement належить `my-lisp-host`, не core;
+- ✅ `read-file`, byte read, `read-dir`, `load` obey read roots;
+- ✅ writes obey separate write roots;
+- ✅ symlink escape regression denied;
+- ✅ connect/listen independently gated before OS operation.
+
+Не заявляється повний sandbox. Public CLI flags ще не є ратифікованим contract;
+див. `docs/host-capability-scoping-adr-2026-08-27.md`.
 
 ---
 
@@ -136,10 +144,8 @@ conformance або конкретний self-hosting proof.
 
 ## B4. Natural-language / external translator bridge — **NEXT**
 
-Стабільні structured outcomes тепер існують, тому можна під'єднувати зовнішній
-translator без передачі йому semantic authority.
-
-Межа незмінна:
+Стабільні structured outcomes існують, тому зовнішній translator можна
+під'єднувати без передачі йому semantic authority:
 
 ```text
 external translator
@@ -155,30 +161,28 @@ canonical semantic outcome
 narrate-outcome
 ```
 
-### Перший milestone
-
-Не «вільна розмова з LLM», а невеликий versioned corpus:
+Перший milestone — невеликий versioned corpus:
 
 - input text;
 - expected candidate clause/query data;
 - accepted / rejected / ambiguous translation status;
 - downstream Advice Taker outcome;
-- збереження rejected/ambiguous cases як evidence, а не тихе перетворення на знання.
+- rejected/ambiguous cases зберігаються як evidence, не як знання.
 
 LLM або інший translator **не** отримує права напряму змінювати knowledge state.
 
-## B5. Reasoning scale — вимірювати перед новою оптимізацією
+## B5. Reasoning performance — вимірювати перед indexing
 
-Підтверджений stack crash уже виправлено. Predicate/head indexing лишається
-потенційно цінним performance improvement, але не автоматичним наступним кроком.
+Stack-safety і N=100/500/1000 ordinary-stack completion вже підтверджені.
+Наступне питання — performance, не correctness.
 
-Перед indexing:
+Перед predicate/head indexing:
 
-1. повторити scale profile на актуальному `reason`;
-2. окремо виміряти realistic Advice Taker corpus, не лише worst-case chain;
-3. зафіксувати target metric;
+1. виміряти realistic Advice Taker corpus, не лише worst-case full scan;
+2. зафіксувати target metric;
+3. за потреби виконати manual 5k/10k profile;
 4. лише тоді міняти indexing representation;
-5. довести, що proof/result order і semantics не змінилися.
+5. довести незмінність proof/result order і semantics.
 
 ---
 
@@ -186,52 +190,43 @@ LLM або інший translator **не** отримує права напрям
 
 ## C1. Не продовжувати механічний каталог evaluator errors
 
-Після `UnknownSymbol` / `Type` / `Arity` / `InvalidForm` наступний error class
-додається лише якщо він:
-
-- потрібен поточному Advice Taker milestone;
-- знаходить реальну divergence native/meta;
-- або є conformance requirement.
-
-Інакше це низький пріоритет.
+Після `UnknownSymbol` / `Type` / `Arity` / `InvalidForm` наступний class беремо
+лише якщо він потрібен Advice Taker, знаходить реальну native/meta divergence
+або є conformance requirement.
 
 ## C2. Arbitrary later-binding visibility
 
-Лишається важливим self-hosting question, але йде після активного Advice Taker
-front, якщо не з'ясується, що він прямо його потребує.
+Explicit self-hosting proof gap. Не автоматичний bugfix backlog.
 
-Proof має бути finite-data і не повертати cyclic host environment як приховану
-семантику.
+Потрібний proof має одночасно:
+
+- бачити потрібні later top-level bindings;
+- зберігати lexical scope;
+- лишатися finite-data;
+- не повертати cyclic mutable host environment.
 
 ## C3. Shrink Rust, grow Lisp
 
-Не естетична мета. Переносимо семантику з Rust лише коли:
+Переносимо semantic policy з Rust лише коли це зменшує duplicate authority,
+має parity/conformance evidence і реально допомагає reasoning/portability.
+Це не line-count contest.
 
-- вона виразна чинним Lisp без нового primitive;
-- зменшується дублювання semantic authority;
-- є parity/conformance proof;
-- це робить reasoning stack простішим, переноснішим або перевірюванішим.
+## C4. Host capability scoping — user-facing migration remainder
 
-## C4. Scoped host capabilities — migration gate перед partially-trusted agents
+Programmatic embedding enforcement уже confirmed. Залишилися окремі operational
+рішення, які не маскуємо під невиправлений primitive:
 
-Поточний trusted native Lisp-machine profile навмисно має широкий OS-доступ.
-Не ламати його випадково. Але перед виконанням неповністю довірених agent scripts
-потрібно окремо ратифікувати й реалізувати fine-grained embedding policy для:
+- чи потрібні native CLI flags `--allow-fs-read`, `--allow-fs-write`,
+  `--allow-tcp-connect`, `--allow-tcp-listen`;
+- чи вони обмежують local session, TCP/oracle sessions або обидва;
+- exact CLI syntax для IPv6/port ranges;
+- чи unauthenticated TCP/oracle має перейти до stricter default policy.
 
-```text
-filesystem read roots
-filesystem write roots
-tcp connect destinations
-tcp listen destinations
-process policy
-```
-
-`docs/host-capability-scoping-adr-2026-08-27.md` лишається PROPOSED для FS/TCP;
-це compatibility/security decision, а не прихований clean-code refactor.
+До рішення trusted local CLI залишається backward-compatible unrestricted.
 
 ## C5. Swarm two-plane migration
 
-Нормативний напрям уже визначений:
+Нормативний напрям:
 
 ```text
 :9999 my-lisp semantic oracle
@@ -239,12 +234,15 @@ process policy
 :910x swarm-node coordination plane
 ```
 
-Legacy coordination code в CLI не видаляємо «для чистоти», доки є живі
-callers. Removal gate:
+`docs/swarm-mesh-v2.md` уже фіксує operational migration: шість агентів пройшли
+onboarding, `swarm-node` має replacement operations, а `:9999` coordination ops
+названі неактуальним шляхом going forward. Отже migration gate 1 — **evidence-backed**.
 
-1. підтвердити, що агенти використовують `swarm-node` для coordination;
-2. позначити legacy ops deprecated у tooling/docs;
-3. мати migration test / replacement path;
+Залишок перед фізичним видаленням legacy coordination code:
+
+1. зробити deprecation machine/tool-visible, не лише prose;
+2. мати migration/replacement regression;
+3. перевірити відсутність живих callers legacy ops;
 4. лише тоді видалити broker/claims/presence/task coordination з `:9999`,
    не зачіпаючи semantic oracle.
 
@@ -252,27 +250,22 @@ callers. Removal gate:
 
 # D. Екосистема й FPGA
 
-`my-lisp`, `cml` і `fpga-lisp` — одна вертикаль, але не три рівноправні backlog-и.
-Для цього репозиторію пріоритет такий:
+Пріоритет вертикалі:
 
-1. source semantics і Advice Taker correctness;
+1. source semantics + Advice Taker correctness;
 2. portable conformance observations;
-3. CML/FPGA execution того subset, який дає реальну цінність;
-4. розширення hardware surface тільки після доказу потреби.
+3. CML/FPGA execution реально корисного subset;
+4. hardware surface тільки після доказу потреби.
 
-Деталі живуть у [`docs/ecosystem-roadmap.md`](docs/ecosystem-roadmap.md).
-
-Найцінніший hardware напрям після стабілізації reasoning outcomes — поступове
-виконання `core.my → unify.my → reason.my` на незалежному backend як сильний
-тест універсальності source semantics.
+Найцінніший hardware proof — поступове виконання
+`core.my → unify.my → reason.my` на незалежному backend.
 
 ---
 
 # E. Clean Code
 
-[`CLEAN_CODE_PLAN.md`](CLEAN_CODE_PLAN.md) виконуємо між semantic milestones або
-коли конкретний quality debt блокує B4/B5. Clean Code не має створювати нову
-semantic authority чи великий API surface «про запас».
+`CLEAN_CODE_PLAN.md` виконуємо між semantic milestones або коли quality debt
+блокує B4/B5. Clean Code не створює нову semantic authority «про запас».
 
 ---
 
@@ -281,11 +274,11 @@ semantic authority чи великий API surface «про запас».
 ```text
 1. B4 — versioned external/NL translator corpus
 2. B4 — candidate-data validation + rejected/ambiguous evidence path
-3. повторний reasoning scale profile на актуальному engine
+3. B5 — realistic Advice Taker performance profile
 4. indexing лише якщо вимірювання це виправдовує
-5. host capability scoping перед partially-trusted autonomous execution
-6. staged legacy coordination removal після swarm-node migration proof
-7. later-binding / deeper self-hosting proof, якщо ще актуально
+5. swarm legacy deprecation + migration regression
+6. CLI host-scope surface лише після explicit operational decision
+7. later-binding / deeper self-hosting proof, якщо Advice Taker його потребує
 8. CML/FPGA subset за реальною цінністю для reasoning
 ```
 
@@ -295,10 +288,11 @@ semantic authority чи великий API surface «про запас».
 
 - CI червоний;
 - новий claim не має executable evidence;
-- failure mode відомий, але прихований human-readable string замість stable data;
+- failure mode прихований human-readable string замість stable data;
 - `unknown` використовується як synonym для false / invalid / blocked / disputed;
 - новий primitive пропонується до перевірки, чи це можна виразити бібліотекою;
 - зовнішній translator може обійти `advise`/validation і прямо писати knowledge;
+- security mechanism декларується без adversarial bypass test;
 - робота розширює систему до спроби зруйнувати поточну.
 
 ---
@@ -306,7 +300,7 @@ semantic authority чи великий API surface «про запас».
 # Епістемічний статус
 
 - **confirmed** — claim має актуальний executable proof;
-- **partial** — механізм працює, але межа/coverage явно неповна;
+- **partial** — механізм працює, але coverage/operational contract неповний;
 - **broken** — експеримент спростував claim;
 - **unknown** — ще немає достатнього експерименту.
 
