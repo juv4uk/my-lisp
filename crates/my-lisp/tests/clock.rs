@@ -1,9 +1,15 @@
-use my_lisp::{eval_program, load_core_library, Session, Value};
+use my_lisp::{eval_program, load_core_library, load_time_library, Session, Value};
+
+fn time_session() -> Session {
+    let mut session = Session::default();
+    load_core_library(&mut session).unwrap();
+    load_time_library(&mut session).unwrap();
+    session
+}
 
 #[test]
 fn utc_now_returns_utc_calendar_with_nanosecond_field() {
-    let mut session = Session::default();
-    load_core_library(&mut session).unwrap();
+    let mut session = time_session();
     let value = eval_program("(utc-now)", &mut session)
         .unwrap()
         .value
@@ -27,9 +33,7 @@ fn utc_now_returns_utc_calendar_with_nanosecond_field() {
 
 #[test]
 fn utc_calendar_conversion_is_language_owned() {
-    let mut session = Session::default();
-    load_core_library(&mut session).unwrap();
-    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+    let mut session = time_session();
 
     assert_eq!(
         eval_program("(utc-from-unix 0 0)", &mut session)
@@ -56,9 +60,7 @@ fn utc_calendar_conversion_is_language_owned() {
 
 #[test]
 fn raw_unix_clock_observation_is_interpreted_by_lisp() {
-    let mut session = Session::default();
-    load_core_library(&mut session).unwrap();
-    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+    let mut session = time_session();
 
     assert_eq!(
         eval_program(
@@ -96,7 +98,7 @@ fn utc_now_binding_is_owned_by_lisp_after_time_library_loads() {
         Some(Value::Builtin(_))
     ));
 
-    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+    load_time_library(&mut session).unwrap();
 
     assert!(matches!(
         session.environment.get("utc-now"),
@@ -118,9 +120,7 @@ fn utc_now_binding_is_owned_by_lisp_after_time_library_loads() {
 
 #[test]
 fn internet_time_timestamp_interpretation_is_language_owned() {
-    let mut session = Session::default();
-    load_core_library(&mut session).unwrap();
-    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+    let mut session = time_session();
 
     assert_eq!(
         eval_program(
@@ -146,9 +146,7 @@ fn internet_time_timestamp_interpretation_is_language_owned() {
 
 #[test]
 fn mono_ms_is_derived_from_nanoseconds_in_lisp() {
-    let mut session = Session::default();
-    load_core_library(&mut session).unwrap();
-    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+    let mut session = time_session();
 
     assert_eq!(
         eval_program("(milliseconds-from-nanoseconds 0)", &mut session)
@@ -182,9 +180,7 @@ fn mono_ms_is_derived_from_nanoseconds_in_lisp() {
 
 #[test]
 fn mono_ms_binding_is_owned_by_lisp_after_time_library_loads() {
-    let mut session = Session::default();
-    load_core_library(&mut session).unwrap();
-    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+    let session = time_session();
 
     assert!(matches!(
         session.environment.get("mono-ms"),
@@ -198,9 +194,7 @@ fn mono_ms_binding_is_owned_by_lisp_after_time_library_loads() {
 
 #[test]
 fn timezone_detection_is_explicit_and_ntp_requires_host_string() {
-    let mut session = Session::default();
-    load_core_library(&mut session).unwrap();
-    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+    let mut session = time_session();
     let timezone = eval_program("(timezone-detect)", &mut session)
         .unwrap()
         .value
