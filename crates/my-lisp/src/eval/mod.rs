@@ -6,24 +6,15 @@
 //! dispatch table, `arithmetic` owns exact/inexact number handling, `special_forms`
 //! owns the McCarthy primitives plus `def`/`defmacro`/`cond`, and `closures` owns
 //! `lambda` construction and function/macro application.
-//! Evaluator rozdileno za vidpovidalnistiu: tsei modul volodiie tsyklom trampoline
-//! ta tablytseiu dyspetcheryzatsii, `arithmetic` — tochnymy/netochnymy chyslamy,
-//! `special_forms` — prymityvamy Makkarti ta `def`/`defmacro`/`cond`, a `closures` —
-//! pobudovoiu `lambda` i zastosuvanniam funktsii/makrosiv.
-//! Der Evaluator ist nach Zuständigkeit aufgeteilt: dieses Modul besitzt die
-//! Trampolin-Schleife und die Dispatch-Tabelle, `arithmetic` die exakte/inexakte
-//! Zahlenverarbeitung, `special_forms` die McCarthy-Primitive sowie `def`/`defmacro`/
-//! `cond`, und `closures` den Bau von `lambda` und die Anwendung von Funktionen/Makros.
 pub(crate) use special_forms::digest::sha256 as digest_sha256;
 
 mod arithmetic;
 pub(crate) mod builtins;
+mod canon;
 mod capabilities;
 mod closures;
 mod special_forms;
 
-// Facade re-export: host adapters (LSP, CLI tooling) consume the canonical
-// JSON decoder as a plain function without going through eval.
 pub use capabilities::{
     capability_installed, installed_capabilities, register_capability, unregister_capability,
 };
@@ -51,8 +42,6 @@ pub fn eval_parsed_expressions(
     })
 }
 
-/// Parsed-source twin of `eval_program_incremental`: output carries only
-/// the lines printed during THIS call.
 pub fn eval_parsed_expressions_incremental(
     expressions: &[Expr],
     session: &mut Session,
@@ -68,24 +57,16 @@ pub fn eval_parsed_expressions_incremental(
     })
 }
 
-/// Evaluates source string by parsing it and running the resulting expressions.
-/// Obchysliuie syrtsevyi riadok cherez parsynh ta vykonannia otrymanykh vyraziv.
-/// Wertet den Quelltext durch Parsing und Ausführung der Ausdrücke aus.
 pub fn eval_program(source: &str, session: &mut Session) -> Result<EvalResult, LanguageError> {
     let expressions = parse(source)?;
     eval_parsed_expressions(&expressions, session)
 }
 
-/// Same as `eval_program`, but `EvalResult::output` carries only the
-/// lines printed during THIS call — O(new output) instead of re-cloning
-/// the whole session transcript. For hot hosts (REPL loop, LSP, swarm
-/// TCP oracle) this removes the quadratic cost of long sessions; full
-/// history remains available via `Environment::output_snapshot`.
 pub fn eval_program_incremental(
     source: &str,
     session: &mut Session,
 ) -> Result<EvalResult, LanguageError> {
-    session.environment.output_take_new(); // drop anything printed before this call
+    session.environment.output_take_new();
     let expressions = parse(source)?;
     let mut value = Value::Nil;
     for expression in &expressions {
@@ -146,28 +127,6 @@ pub fn evaluate(expression: &Expr, environment: &Environment) -> Result<Value, L
     }
 }
 
-/// Canonical surface spellings resolve to the already-ratified primitive
-/// implementations. Historical McCarthy names stay available for compatibility.
-/// Direct user bindings win first, so canonical builtin spellings preserve the
-/// ordinary lexical-shadowing contract of first-class builtins.
-fn canonical_builtin_target(name: &str) -> Option<&'static str> {
-    match name {
-        // Ukrainian surface.
-        "атом?" => Some("atom"),
-        "тотожне?" => Some("eq"),
-        "сполучити" => Some("cons"),
-        "перше" => Some("car"),
-        "решта" => Some("cdr"),
-        // Sanskrit / IAST surface.
-        "aṇu" => Some("atom"),
-        "abheda" => Some("eq"),
-        "saṃyuj" => Some("cons"),
-        "ādi" => Some("car"),
-        "śeṣa" => Some("cdr"),
-        _ => None,
-    }
-}
-
 pub(crate) fn evaluate_step(
     expression: &Expr,
     environment: &Environment,
@@ -179,10 +138,10 @@ pub(crate) fn evaluate_step(
         ExprKind::String(value) => Ok(EvalStep::Value(Value::String(value.clone()))),
         ExprKind::Symbol(symbol) => environment
             .get(symbol)
-            .or_else(|| {
-                canonical_builtin_target(symbol)
-                    .and_then(|historical_name| environment.get(historical_name))
-            })
+            // Canonical fallback is semantic, not lexical: resolve the
+            // spelling directly to CANON.  Rebinding `car` can no longer
+            // mutate what `перше` or `ādi` mean.
+            .or_else(|| canon::value_for_surface(symbol))
             .map(EvalStep::Value)
             .ok_or_else(|| {
                 LanguageError::new(
@@ -191,9 +150,12 @@ pub(crate) fn evaluate_step(
                     expression.span,
                 )
             }),
-        // Canon 0: the empty source list evaluates directly to the canonical
-        // empty-list value. `Value::Nil` remains only the Rust implementation name.
-        ExprKind::List(items) if items.is_empty() => Ok(EvalStep::Value(Value::Nil)),
+        // Canon 0 is a value in its own right.  `Value::Nil` is only its
+        // current Rust representation, not its public canonical name.
+        ExprKind::List(items) if items.is_empty() => Ok(EvalStep::Value(
+            canon::ground_value(canon::CanonicalIdentity::EmptyList)
+                .expect("Canon 0 must always materialize"),
+        )),
         ExprKind::List(items) => evaluate_list(items, environment, expression.span),
         ExprKind::Pair(_, _) => Err(LanguageError::new(
             ErrorKind::InvalidForm,
@@ -209,9 +171,6 @@ fn evaluate_list(
     span: Span,
 ) -> Result<EvalStep, LanguageError> {
     let arguments = &items[1..];
-    // Special forms stay explicit because they control which arguments are evaluated.
-    // Ukrainian and Sanskrit canonical spellings are syntax-equivalent surfaces,
-    // not distinct primitive implementations.
     match items[0].kind.as_symbol() {
         Some(name @ ("quote" | "як-є" | "svarūpa")) => {
             special_forms::exact_arity(name, arguments, 1, span)?;
@@ -277,25 +236,7 @@ fn evaluate_list(
             special_forms::json::evaluate_json_parse(arguments, environment, span)
                 .map(EvalStep::Value)
         }
-        // NOTE: abs/min/max/min-list/max-list are first-class builtins
-        // (eval/builtins.rs), NOT special forms — resolving them through the
-        // environment keeps the ratified lexical-shadowing contract intact:
-        // user `(def min ...)` must win over the builtin.
-        // The same applies to the vector family (make-vector, vector,
-        // vector-length, vector-ref, vector-set!) — registered in
-        // eval/builtins.rs below.
-
-        // Binding the operator symbol in the pattern avoids re-deriving it with
-        // an `.expect()`, so a future refactor of `as_symbol` cannot turn this into a panic.
-        // Zakhoplennia symvola operatora priamo v paterni unykaie povtornoho `.expect()`,
-        // tozh maibutnia zmina `as_symbol` ne zmozhe peretvoryty tse na paniku.
-        // Das Binden des Operator-Symbols im Pattern vermeidet ein erneutes `.expect()`,
-        // sodass eine spätere Änderung an `as_symbol` dies nicht zu einem Panic machen kann.
         _ => {
-            // Host-capability fallback (see eval/capabilities.rs): the
-            // canonical core registers nothing here, so an unregistered
-            // name still falls through to ordinary application and fails
-            // `UnknownSymbol` as always.
             if let Some(name) = items[0].kind.as_symbol() {
                 if let Some(result) =
                     capabilities::dispatch_capability(name, arguments, environment, span)
@@ -305,8 +246,6 @@ fn evaluate_list(
             }
             let function = evaluate(&items[0], environment)?;
             match &function {
-                // contract 2.1: builtins are ordinary callable values --
-                // arguments arrive pre-evaluated.
                 Value::Builtin(builtin) => {
                     let mut values = Vec::with_capacity(arguments.len());
                     for argument in arguments {
@@ -352,10 +291,6 @@ mod single_pass_eval_tests {
 
     #[test]
     fn macros_expand_and_evaluate_correctly() {
-        // `list` moved to lib/core.my (2026-08-09) — this test deliberately
-        // doesn't load it, to keep exercising defmacro/macro-expansion in
-        // isolation from the bootstrap library, so `cons`/quote build the
-        // expansion by hand instead.
         let source = r#"
             (defmacro unless (condition body)
                 (cons (quote cond)
@@ -447,5 +382,17 @@ mod single_pass_eval_tests {
         let result = eval_program(source, &mut session)
             .expect("canonical builtin surface should preserve lexical shadowing");
         assert_eq!(result.value.to_string(), "затінено");
+    }
+
+    #[test]
+    fn rebinding_historical_name_does_not_mutate_other_surfaces() {
+        let source = r#"
+            (def car (lambda (x) (як-є зламано)))
+            (перше (сполучити 1 2))
+        "#;
+        let mut session = Session::default();
+        let result = eval_program(source, &mut session)
+            .expect("canonical identity must outlive historical shadowing");
+        assert_eq!(result.value.to_string(), "1");
     }
 }
