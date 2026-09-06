@@ -1,39 +1,92 @@
 //! my-lisp-host - the OS capability layer for my-lisp.
 //!
-//! This crate owns every piece of code that touches the outside machine:
-//! filesystem (`read-file`, `write-file`, `read-file-bytes`,
-//! `write-file-bytes`, `read-dir`), raw subprocess execution
-//! (`process-run-raw` with its strict allowlist), and TCP sockets. It installs
-//! them into the canonical core's capability registry at startup via [`install`].
-//!
-//! The core crate itself contains none of this: a build that never calls
-//! [`install`] has no OS capabilities at all, and evaluating e.g.
-//! `(read-file "x")` then fails `UnknownSymbol` like any unbound name.
+//! The core installs no OS capabilities. This crate owns filesystem, process,
+//! and TCP mechanisms and registers them explicitly through [`install`].
+//! Trusted native sessions remain unrestricted by default; embeddings may opt
+//! into per-session filesystem/TCP scopes carried by `Environment`.
 
 use my_lisp::{
     eval_expr, exact_arity, register_capability, Environment, ErrorKind, Exactness, Expr,
     LanguageError, Span, Value,
 };
-use std::rc::Rc;
+use std::{path::{Path, PathBuf}, rc::Rc};
 
 mod process_raw;
 
-// File-system primitives: `read-file`/`write-file` and their byte-level
-// counterparts (`read-file-bytes`/`write-file-bytes`), plus the raw
-// `read_file`/`write_file`/`read_file_bytes`/`write_file_bytes` host calls
-// `evaluate_load` (in `io`) also needs — kept `pub(super)` so both
-// submodules can share the one path to the filesystem rather than each
-// having its own.
+fn denied(operation: &str, detail: impl std::fmt::Display, span: Span) -> LanguageError {
+    LanguageError::new(
+        ErrorKind::InvalidForm,
+        format!(
+            "{operation}: {detail} is outside this session's capability scope · {operation}: {detail} poza mezhamy capability tsiiei sesii · {operation}: {detail} liegt außerhalb des Capability-Bereichs dieser Sitzung"
+        ),
+        span,
+    )
+}
 
-/// The write-side counterpart to `read-file` (PLAN.md item 13) — one
-/// primitive that opens and writes in a single step, the same shape
-/// `read-file` already uses for opening and reading, rather than a
-/// separate stateful file-handle value: the language has no mutable
-/// cells or handles to represent one, and none of `read-file`/`load`
-/// needed one either. Always creates or truncates-and-overwrites the
-/// target file (`std::fs::write`'s own semantics), never appends —
-/// append is a separate, not-yet-decided capability, not silently
-/// folded into this one.
+#[cfg(not(target_arch = "wasm32"))]
+fn canonical_write_target(path: &Path) -> Option<PathBuf> {
+    if path.exists() {
+        return std::fs::canonicalize(path).ok();
+    }
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let file_name = path.file_name()?;
+    std::fs::canonicalize(parent).ok().map(|p| p.join(file_name))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn path_under_any_root(path: &str, roots: &[PathBuf], write: bool) -> bool {
+    let path = Path::new(path);
+    let target = if write {
+        canonical_write_target(path)
+    } else {
+        std::fs::canonicalize(path).ok()
+    };
+    let Some(target) = target else {
+        return false;
+    };
+    roots.iter().any(|root| {
+        std::fs::canonicalize(root)
+            .map(|canonical_root| target.starts_with(canonical_root))
+            .unwrap_or(false)
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn path_under_any_root(_path: &str, _roots: &[PathBuf], _write: bool) -> bool {
+    false
+}
+
+fn ensure_fs_read_allowed(
+    environment: &Environment,
+    operation: &str,
+    path: &str,
+    span: Span,
+) -> Result<(), LanguageError> {
+    if let Some(roots) = environment.fs_read_roots() {
+        if !path_under_any_root(path, &roots, false) {
+            return Err(denied(operation, path, span));
+        }
+    }
+    Ok(())
+}
+
+fn ensure_fs_write_allowed(
+    environment: &Environment,
+    operation: &str,
+    path: &str,
+    span: Span,
+) -> Result<(), LanguageError> {
+    if let Some(roots) = environment.fs_write_roots() {
+        if !path_under_any_root(path, &roots, true) {
+            return Err(denied(operation, path, span));
+        }
+    }
+    Ok(())
+}
+
 fn evaluate_read_file(
     arguments: &[Expr],
     environment: &Environment,
@@ -48,17 +101,11 @@ fn evaluate_read_file(
             span,
         ));
     };
+    ensure_fs_read_allowed(environment, "read-file", path, span)?;
     let contents = read_file(path, span)?;
     Ok(Value::String(Rc::from(contents.as_str())))
 }
 
-/// `(read-dir path)` — the directory-listing counterpart to `read-file`,
-/// needed to load a whole registry directory (e.g. the dhātu YAML files
-/// under `panini/registry/dhatu/`) from inside My Lisp itself rather than
-/// hard-coding a file list. Returns the directory's entry names as a list
-/// of strings, in filesystem order, without filtering; the caller decides
-/// which names to keep (e.g. the `*.yaml` suffix). Reads the directory
-/// only; it does not recurse and does not stat entries.
 fn evaluate_read_dir(
     arguments: &[Expr],
     environment: &Environment,
@@ -73,6 +120,7 @@ fn evaluate_read_dir(
             span,
         ));
     };
+    ensure_fs_read_allowed(environment, "read-dir", path, span)?;
     let entries = read_dir(path, span)?;
     Ok(Value::list(
         entries
@@ -103,18 +151,11 @@ fn evaluate_write_file(
             span,
         ));
     };
+    ensure_fs_write_allowed(environment, "write-file", path, span)?;
     write_file(path, content, span)?;
     Ok(content_value)
 }
 
-/// `(write-file-bytes path byte-list)` (PLAN.md item 22) — the byte-level
-/// counterpart to `write-file`: `byte-list` is a list of fixnums 0-255,
-/// written as raw bytes (`std::fs::write(path, &bytes)` over a `Vec<u8>`),
-/// never through `&str`. `write-file` can only ever produce valid UTF-8 —
-/// no primitive in the language can build a string containing an
-/// arbitrary byte (no char-code/integer->char, no bytevector type), so
-/// writing a real binary (compiled machine code, any non-UTF-8 format)
-/// was impossible before this.
 fn evaluate_write_file_bytes(
     arguments: &[Expr],
     environment: &Environment,
@@ -131,14 +172,11 @@ fn evaluate_write_file_bytes(
     };
     let bytes_value = eval_expr(&arguments[1], environment)?;
     let bytes = expect_byte_list(&bytes_value, arguments[1].span)?;
+    ensure_fs_write_allowed(environment, "write-file-bytes", path, span)?;
     write_file_bytes(path, &bytes, span)?;
     Ok(bytes_value)
 }
 
-/// `(read-file-bytes path)` (PLAN.md item 22) — the byte-level counterpart
-/// to `read-file`: returns the file's raw bytes as a list of fixnums
-/// 0-255, not a UTF-8-decoded string, which would fail outright — or
-/// worse, silently corrupt — on a non-UTF-8 file.
 fn evaluate_read_file_bytes(
     arguments: &[Expr],
     environment: &Environment,
@@ -153,6 +191,7 @@ fn evaluate_read_file_bytes(
             span,
         ));
     };
+    ensure_fs_read_allowed(environment, "read-file-bytes", path, span)?;
     let bytes = read_file_bytes(path, span)?;
     Ok(Value::list(
         bytes
@@ -231,14 +270,12 @@ fn expect_tcp_byte_list(value: &Value, span: Span) -> Result<Vec<u8>, LanguageEr
     }
 }
 
-/// Shared with `io::evaluate_load` — `pub(super)` so both submodules of
-/// `special_forms` use the one path to the filesystem.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn read_file(path: &str, span: Span) -> Result<String, LanguageError> {
     std::fs::read_to_string(path).map_err(|error| {
         LanguageError::new(
             ErrorKind::InvalidForm,
-            format!("load: failed to read file {path}: {error}"),
+            format!("read-file: failed to read file {path}: {error}"),
             span,
         )
     })
@@ -248,7 +285,7 @@ pub(crate) fn read_file(path: &str, span: Span) -> Result<String, LanguageError>
 pub(crate) fn read_file(_path: &str, span: Span) -> Result<String, LanguageError> {
     Err(LanguageError::new(
         ErrorKind::InvalidForm,
-        "load: file system access is not available in this build",
+        "read-file: file system access is not available in this build",
         span,
     ))
 }
@@ -347,8 +384,6 @@ fn write_file_bytes(_path: &str, _bytes: &[u8], span: Span) -> Result<(), Langua
     ))
 }
 
-// TCP handles and byte transport only. Text encoding/decoding is language-owned.
-
 fn evaluate_tcp_connect(
     arguments: &[Expr],
     environment: &Environment,
@@ -364,6 +399,9 @@ fn evaluate_tcp_connect(
         ));
     };
     let port = expect_port(&arguments[1], environment)?;
+    if !environment.is_tcp_connect_allowed(host, port) {
+        return Err(denied("tcp-connect", format!("{host}:{port}"), span));
+    }
     let stream = tcp_connect(host, port, span)?;
     Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
 }
@@ -383,6 +421,9 @@ fn evaluate_tcp_listen_raw(
         ));
     };
     let port = expect_port(&arguments[1], environment)?;
+    if !environment.is_tcp_listen_allowed(address, port) {
+        return Err(denied("tcp-listen-raw", format!("{address}:{port}"), span));
+    }
     let listener = tcp_listen_raw(address, port, span)?;
     Ok(Value::TcpListener(Rc::new(listener)))
 }
@@ -405,9 +446,6 @@ fn evaluate_tcp_accept(
     Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
 }
 
-/// `(tcp-read-raw connection)` performs one read of up to 64 KiB and returns
-/// the exact bytes as a proper list of exact integers 0..255. Empty list is
-/// EOF. No UTF-8 interpretation occurs in the host.
 fn evaluate_tcp_read_raw(
     arguments: &[Expr],
     environment: &Environment,
@@ -430,8 +468,6 @@ fn evaluate_tcp_read_raw(
     ))
 }
 
-/// `(tcp-write-raw connection byte-list)` writes exactly the supplied bytes.
-/// The host performs no text encoding and returns the original byte list.
 fn evaluate_tcp_write_raw(
     arguments: &[Expr],
     environment: &Environment,
@@ -611,7 +647,7 @@ fn evaluate_load(
             span,
         ));
     };
-
+    ensure_fs_read_allowed(environment, "load", path, span)?;
     let source = std::fs::read_to_string(path.as_ref()).map_err(|error| {
         LanguageError::new(
             ErrorKind::InvalidForm,
@@ -628,7 +664,6 @@ fn evaluate_load(
     for expr in expressions {
         last_value = my_lisp::eval_expr(&expr, environment)?;
     }
-
     Ok(last_value)
 }
 
@@ -661,6 +696,7 @@ mod install_tests {
             "write-file",
             "write-file-bytes",
             "process-run-raw",
+            "load",
             "tcp-connect",
             "tcp-listen-raw",
             "tcp-accept",
