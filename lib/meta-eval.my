@@ -12,7 +12,8 @@
 ; macro expansion, closure environments, chained comparison policy,
 ; self-recursive and finite mutually recursive top-level function binding,
 ; variadic/dotted lambda parameter binding, and named failure observations for
-; unresolved names, non-callable values, and lambda/macro arity mismatch.
+; unresolved names, non-callable values, lambda/macro arity mismatch, and
+; invalid lambda-list structure.
 ;
 ; This remains an explicit self-hosting witness, not the always-loaded runtime.
 ; Full named-error parity and arbitrary later-binding visibility are still known
@@ -231,6 +232,77 @@
   (lambda (params args)
     (my-error (quote arity) (my-arity-detail params args))))
 
+; Lambda-list validation is syntax semantics, not application semantics.
+; The native evaluator rejects malformed parameter structure while building a
+; closure, so the meta-evaluator does the same before a closure value exists.
+; A valid lambda-list returns (), otherwise the first structural defect is
+; returned as finite Lisp data.
+(def my-symbol-member?
+  (lambda (name names)
+    (cond
+      ((atom names) (quote ()))
+      ((eq name (car names)) t)
+      (t (my-symbol-member? name (cdr names))))))
+
+(def my-lambda-list-error-pairs
+  (lambda (params seen)
+    (cond
+      ((atom params)
+       (cond
+         ((eq params (quote ())) (quote ()))
+         ((symbol? params)
+          (cond
+            ((my-symbol-member? params seen)
+             (list (quote duplicate-parameter) params))
+            (t (quote ()))))
+         (t (list (quote invalid-rest) params))))
+      ((symbol? (car params))
+       (cond
+         ((my-symbol-member? (car params) seen)
+          (list (quote duplicate-parameter) (car params)))
+         (t
+          (my-lambda-list-error-pairs
+            (cdr params)
+            (cons (car params) seen)))))
+      (t (list (quote non-symbol-parameter) (car params))))))
+
+(def my-lambda-list-error
+  (lambda (params)
+    (cond
+      ((atom params)
+       (cond
+         ((eq params (quote ())) (quote ()))
+         ((symbol? params) (quote ()))
+         (t (list (quote invalid-parameters) params))))
+      (t (my-lambda-list-error-pairs params (quote ()))))))
+
+(def my-lambda-invalid-form
+  (lambda (problem)
+    (my-error
+      (quote invalid-form)
+      (cons (quote lambda-parameters) problem))))
+
+(def my-make-closure
+  (lambda (params body env)
+    (let ((problem (my-lambda-list-error params)))
+      (cond
+        ((atom problem) (list (quote closure) params body env))
+        (t (my-lambda-invalid-form problem))))))
+
+; Return the first malformed lambda-list in a top-level recursive group.
+; Group construction must not bypass the same validation that ordinary lambda
+; construction owns.
+(def my-lambda-def-group-error
+  (lambda (forms)
+    (cond
+      ((atom forms) (quote ()))
+      (t
+       (let ((problem
+               (my-lambda-list-error (second (third (car forms))))))
+         (cond
+           ((atom problem) (my-lambda-def-group-error (cdr forms)))
+           (t problem)))))))
+
 ; Parameter binding owns only the successful path. Arity is checked by
 ; application before this function is entered.
 (def bind-params
@@ -380,7 +452,7 @@
          ((eq (car expr) (quote quote)) (second expr))
          ((eq (car expr) (quote cond)) (my-eval-cond (cdr expr) env))
          ((eq (car expr) (quote lambda))
-          (list (quote closure) (second expr) (cdr (cdr expr)) env))
+          (my-make-closure (second expr) (cdr (cdr expr)) env))
          ; UnknownSymbol is a lookup observation, not a property of the value
          ; that eventually reaches apply. This preserves the distinction between
          ; `(missing)` and `((quote missing))`.
@@ -395,8 +467,18 @@
                (my-eval (my-apply fn (cdr expr)) env))
               (t
                (my-apply fn (my-eval-list (cdr expr) env))))))))
-      ; Computed operator position uses the same value-level apply path; a symbol
-      ; produced here is already a value and therefore fails as not-callable.
+      ; A syntactic lambda in computed operator position must be validated
+      ; before ordinary application so InvalidForm cannot degrade into
+      ; not-callable merely because errors are represented as Lisp data.
+      ((my-lambda-form? (car expr))
+       (let ((problem (my-lambda-list-error (second (car expr)))))
+         (cond
+           ((atom problem)
+            (my-apply
+              (my-eval (car expr) env)
+              (my-eval-list (cdr expr) env)))
+           (t (my-lambda-invalid-form problem)))))
+      ; Other computed operator positions use the ordinary value-level path.
       (t
        (my-apply
          (my-eval (car expr) env)
@@ -417,13 +499,17 @@
        (let ((value-form (third form)))
          (cond
            ((my-lambda-form? value-form)
-            (let ((value
-                    (list (quote recursive-closure)
-                          (second form)
-                          (second value-form)
-                          (cdr (cdr value-form))
-                          env)))
-              (cons (cons (cons (second form) value) env) value)))
+            (let ((problem (my-lambda-list-error (second value-form))))
+              (cond
+                ((atom problem)
+                 (let ((value
+                         (list (quote recursive-closure)
+                               (second form)
+                               (second value-form)
+                               (cdr (cdr value-form))
+                               env)))
+                   (cons (cons (cons (second form) value) env) value)))
+                (t (cons env (my-lambda-invalid-form problem))))))
            (t
             (let ((value (my-eval value-form env)))
               (cons (cons (cons (second form) value) env) value))))))
@@ -441,12 +527,16 @@
     (cond
       ((my-lambda-def-form? (car forms))
        (let ((group (my-take-lambda-def-group forms)))
-         (let ((rest (my-drop-lambda-def-group forms)))
-           (let ((group-env (my-build-group-env group env)))
-             (cond
-               ((atom rest)
-                (cons group-env (cdr (car group-env))))
-               (t (my-eval-program rest group-env)))))))
+         (let ((problem (my-lambda-def-group-error group)))
+           (cond
+             ((atom problem)
+              (let ((rest (my-drop-lambda-def-group forms)))
+                (let ((group-env (my-build-group-env group env)))
+                  (cond
+                    ((atom rest)
+                     (cons group-env (cdr (car group-env))))
+                    (t (my-eval-program rest group-env))))))
+             (t (cons env (my-lambda-invalid-form problem)))))))
       (t
        (let ((result (my-eval-top-form (car forms) env)))
          (cond
