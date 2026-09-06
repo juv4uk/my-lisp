@@ -1,9 +1,12 @@
 # План Clean Code для my-lisp
 
+> **Domain-roadmap.** Порядок між напрямками визначає [`PLAN.md`](PLAN.md).
+> Цей файл не є другим загальним backlog-ом і не може випереджати активні
+> Advice Taker milestones без конкретного blocking quality debt.
+
 Цей roadmap перетворює [`docs/clean-code.md`](docs/clean-code.md) на перевірювані
-кроки. Він доповнює історичний [`PLAN.md`](PLAN.md), але не переписує його.
-Пріоритет визначається залежностями й користю для Advice Taker, а не кількістю
-нових features.
+кроки якості, API та tooling. Пріоритет усередині цього домену визначається
+залежностями й користю для Advice Taker, а не кількістю нових features.
 
 ## Правила виконання
 
@@ -14,7 +17,8 @@
 3. мати EN/UK/DE документацію для публічного контракту;
 4. мати regression або law tests;
 5. пройти `guix shell rust -- cargo test --workspace`;
-6. не змінювати language contract без окремого обґрунтування й conformance law.
+6. не змінювати language contract без окремого обґрунтування й conformance law;
+7. або прямо підтримувати активний milestone у `PLAN.md`, або чекати своєї черги.
 
 ## Етап 0 — уже виконаний фундамент
 
@@ -187,12 +191,17 @@ identity тепер явно посилається на цей контракт
 - нові Rust primitives для можливостей, уже виразних my-lisp;
 - AI як передумова читабельності.
 
-## Найближча черга комітів
+## Черга в межах цього domain-roadmap
+
+Поки `PLAN.md` має активний milestone B1/B2, цей список **не є глобальною
+чергою комітів**. Його беремо, коли пункт прямо розблоковує Advice Taker або
+між semantic milestones:
 
 1. Legacy readers delegated to explicit World readers.
 2. Legacy history policy decision and tests.
 3. Effect naming audit and compatibility proposal.
 4. Docstring representation design spike in my-lisp data.
 
-Після кожного коміту цей список переглядається за фактичними знахідками, але
-порядок залежностей не змінюється без записаного обґрунтування.
+Після кожного коміту список переглядається за фактичними знахідками. Якщо він
+конфліктує з `PLAN.md`, перемагає `PLAN.md`; нормативні ADR/contracts при цьому
+мають вищу semantic authority за обидва roadmap-и.
