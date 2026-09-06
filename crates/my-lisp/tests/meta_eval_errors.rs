@@ -92,3 +92,43 @@ fn dotted_lambda_reports_minimum_arity_not_exact_arity() {
 
     assert_eq!(via_meta, via_native, "dotted arity parity failed for {source}");
 }
+
+#[test]
+fn invalid_lambda_list_structure_has_named_error_parity() {
+    for (source, expected) in [
+        (
+            "(lambda (1) 1)",
+            "(error invalid-form (lambda-parameters non-symbol-parameter 1))",
+        ),
+        (
+            "(lambda (x x) x)",
+            "(error invalid-form (lambda-parameters duplicate-parameter x))",
+        ),
+        (
+            "(lambda (x . 1) x)",
+            "(error invalid-form (lambda-parameters invalid-rest 1))",
+        ),
+    ] {
+        let via_meta = eval_meta(source);
+        let via_native = eval_native_error(source, ErrorKind::InvalidForm, expected);
+
+        assert_eq!(
+            via_meta, via_native,
+            "invalid lambda-list parity failed for {source}"
+        );
+    }
+}
+
+#[test]
+fn malformed_inline_lambda_does_not_degrade_to_not_callable() {
+    let source = "((lambda (x x) x) 1 2)";
+    let expected = "(error invalid-form (lambda-parameters duplicate-parameter x))";
+
+    let via_meta = eval_meta(source);
+    let via_native = eval_native_error(source, ErrorKind::InvalidForm, expected);
+
+    assert_eq!(
+        via_meta, via_native,
+        "inline malformed lambda must fail during closure construction"
+    );
+}
