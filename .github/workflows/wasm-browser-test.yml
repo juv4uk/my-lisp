@@ -6,10 +6,25 @@ on:
     branches: [main]
     paths:
       - 'crates/my-lisp-wasm/**'
+      - 'crates/my-lisp/**'
+      - 'crates/my-lisp-literate/**'
+      - 'crates/my-lisp-lsp/**'
+      - 'lib/core.my'
+      - 'lib/core.my.fasl'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
       - '.github/workflows/wasm-browser-test.yml'
   pull_request:
     paths:
       - 'crates/my-lisp-wasm/**'
+      - 'crates/my-lisp/**'
+      - 'crates/my-lisp-literate/**'
+      - 'crates/my-lisp-lsp/**'
+      - 'lib/core.my'
+      - 'lib/core.my.fasl'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/wasm-browser-test.yml'
 
 jobs:
   browser-test:
