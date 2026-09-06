@@ -88,6 +88,21 @@ The following is a **candidate**, not a frozen ABI. Every entry must continue to
 
 Current convenience/text capabilities such as `read-file`, `write-file`, and `load` are **not automatically part of the final minimal portability ABI** merely because they exist today. They remain audit targets.
 
+## Portable failure identity
+
+A portable capability needs not only the same success behavior but also a stable failure identity. Host-specific prose such as Windows/Linux socket diagnostics may be retained for humans, but agents and Lisp policy should not have to parse it.
+
+The target separation is:
+
+```text
+language error category
++ host operation identity
++ mechanism failure identity
++ optional platform diagnostic text
+```
+
+This does **not** imply adding one `ErrorKind` per OS operation. `ErrorKind` is language-level; host mechanism identity should remain orthogonal. The focused audit is recorded in `docs/host-error-portability-audit.md`.
+
 ## Runtime representation bridges are separate
 
 Some mechanisms are not OS host capabilities but still cannot be derived from Lisp data alone because they materialize runtime representation. Examples are the Unicode scalar/string bridges used by language-owned UTF-8:
@@ -106,8 +121,9 @@ A new host should be judged in this order:
 1. Implement the smallest required observation/effect mechanisms.
 2. Run the same language-owned semantic libraries unchanged.
 3. Run the same deterministic conformance and ownership tests.
-4. Add platform-specific code only when an external mechanism truly differs.
-5. If a platform port requires reimplementing UTF-8, calendar rules, NTP meaning, bind defaults, protocol policy, or similar deterministic semantics in the host, treat that as evidence that the boundary leaked upward again.
+4. Preserve stable mechanism-level failure identities without requiring identical OS diagnostic strings.
+5. Add platform-specific code only when an external mechanism truly differs.
+6. If a platform port requires reimplementing UTF-8, calendar rules, NTP meaning, bind defaults, protocol policy, or similar deterministic semantics in the host, treat that as evidence that the boundary leaked upward again.
 
 ## Non-goal
 
