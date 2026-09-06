@@ -141,6 +141,45 @@ The canonical identity table is an autonomous normative entity separate from any
 #### Scope & Semantics Disclaimer / Застереження щодо області визначення
 > **Normative Scope:** Semantic equations in this ADR define the canonical `my-lisp` interpretation of McCarthy7 identities and do not claim implementation equivalence with every historical Lisp dialect.
 
+### 4.0 Canon 0: The Empty List / Канон 0: Порожній список
+
+Before any operation can construct, deconstruct, or evaluate, there exists the **canonical ground**: the empty list `()`.
+
+До того як будь-яка операція може сполучити, розібрати чи обчислити, існує **первинний канонічний ґрунт**: порожній список `()`.
+
+```text
+CANON 0: CANON_EMPTY_LIST
+Surface representation: ()
+Semantic class: Canonical Value (Ground Object)
+Meaning: The list containing zero elements. The recursive origin of all proper lists.
+```
+
+#### Structural Laws of Canon 0 / Структурні закони Канону 0:
+1. `(атом? ())` $\to$ `#t` (дискретний булевий факт: `()` не є cons-коміркою, його не можна розібрати на координати).
+2. `(pair? ())` $\to$ `#f` (`()` не має лівої чи правої частини).
+3. `(proper-list? ())` $\to$ `#t` (базовий випадок індуктивного визначення списку).
+
+#### Constructive vs Residual Axioms / Конструктивна та залишкова аксіоми:
+Списки не з'являються з повітря — вони виростають із `()`, а деструктуризація повертає структуру назад до `()`:
+
+```text
+Зростання структури (через сполучити):
+()
+  ↓ (сполучити c ())
+(c)
+  ↓ (сполучити b (c))
+(b c)
+  ↓ (сполучити a (b c))
+(a b c)
+
+Повернення до ґрунту (через решта):
+(решта (a b c)) → (b c)
+(решта (b c))   → (c)
+(решта (c))     → ()  <-- Досягнуто Канон 0!
+```
+
+> **Epistemic Principle on NIL:** `()` is the sole canonical empty list. In `my-lisp`, `NIL` is **not** a canonical identity, not a truth-value, and not an autonomous primitive. Any historical spelling `nil` is at most a foreign compatibility alias, never the foundation of the language.
+
 #### Surface Correspondence Principle / Принцип відповідності поверхні
 
 > **A surface name is not a definition of the canonical identity it represents.**
