@@ -1,0 +1,128 @@
+; CANON 0+7 — executable semantic contract written in my-lisp.
+; CANON 0+7 — виконуваний семантичний контракт, написаний самою my-lisp.
+;
+; Authority rule:
+;   the language states the laws; host runtimes implement mechanisms and
+;   must conform to these laws.  This file is therefore semantic evidence,
+;   not a Rust lookup table translated into comments.
+;
+; Bootstrap boundary (explicit, temporary): historical car/cdr/cons/atom/eq,
+; quote and cond are the current host doors used to state the laws.  Moving a
+; door below the language is allowed; changing a law is not.
+
+; Canon 0 has no lexical alias.  Its syntax is its identity: ().
+(def canon-empty-list (quote ()))
+
+; Surface bindings are language-level bindings to the same primitive values.
+; Rebinding one surface later does not mutate the values captured by the others.
+(def атом? atom)
+(def тотожне? eq)
+(def сполучити cons)
+(def перше car)
+(def решта cdr)
+
+(def aṇu atom)
+(def abheda eq)
+(def saṃyuj cons)
+(def ādi car)
+(def śeṣa cdr)
+
+; QUOTE and COND are evaluation-control forms, not ordinary first-class values.
+; Their Ukrainian/Sanskrit spellings are still bootstrap syntax at this stage;
+; the laws below state their required behavior without pretending otherwise.
+
+; --- Constitutive laws ----------------------------------------------------
+; Each function returns t exactly when the runtime satisfies the stated law
+; for the supplied witnesses.  These are executable semantics, not examples.
+
+(def canon-law-empty-list
+  (lambda ()
+    (тотожне? canon-empty-list (quote ()))))
+
+(def canon-law-atom-cons
+  (lambda (x y)
+    (тотожне? (атом? (сполучити x y)) (quote ()))))
+
+(def canon-law-car-cons
+  (lambda (x y)
+    (тотожне? (перше (сполучити x y)) x)))
+
+(def canon-law-cdr-cons
+  (lambda (x y)
+    (тотожне? (решта (сполучити x y)) y)))
+
+(def canon-law-eq-reflexive-atom
+  (lambda (x)
+    (за-умовою
+      ((атом? x) (тотожне? x x))
+      (t (quote ())))))
+
+; `решта` must be a pair projection, not a human-language "second element".
+(def canon-law-cdr-dotted
+  (lambda ()
+    (тотожне?
+      (решта (сполучити (quote кіт) 42))
+      42)))
+
+(def canon-law-cdr-proper
+  (lambda ()
+    (тотожне?
+      (решта (як-є (1 2 3)))
+      (як-є (2 3)))))
+
+; EQ is atom-only, so structural equality is not used for the improper result;
+; project it back into atom witnesses instead.
+(def canon-law-cdr-improper
+  (lambda ()
+    (за-умовою
+      ((тотожне? (перше (решта (як-є (1 2 . 3)))) 2)
+       (тотожне? (решта (решта (як-є (1 2 . 3)))) 3))
+      (t (quote ())))))
+
+; Evaluation-control laws: unselected/quoted unknown symbols must never be
+; evaluated.  If a host eagerly evaluates them, these functions fail before
+; returning t.
+(def canon-law-quote-suppresses-evaluation
+  (lambda ()
+    (тотожне? (як-є never-defined-canon-symbol)
+              (quote never-defined-canon-symbol))))
+
+(def canon-law-cond-first-true-short-circuit
+  (lambda ()
+    (тотожне?
+      (за-умовою
+        (t (як-є selected))
+        ((never-defined-canon-predicate) (як-є forbidden)))
+      (quote selected))))
+
+; One language-level verdict used by every runtime conformance test.
+(def canon-conforms?
+  (lambda ()
+    (за-умовою
+      ((canon-law-empty-list)
+       (за-умовою
+         ((canon-law-atom-cons (quote x) (quote y))
+          (за-умовою
+            ((canon-law-car-cons (quote x) (quote y))
+             (за-умовою
+               ((canon-law-cdr-cons (quote x) (quote y))
+                (за-умовою
+                  ((canon-law-eq-reflexive-atom (quote x))
+                   (за-умовою
+                     ((canon-law-cdr-dotted)
+                      (за-умовою
+                        ((canon-law-cdr-proper)
+                         (за-умовою
+                           ((canon-law-cdr-improper)
+                            (за-умовою
+                              ((canon-law-quote-suppresses-evaluation)
+                               (canon-law-cond-first-true-short-circuit))
+                              (t (quote ()))))
+                           (t (quote ()))))
+                        (t (quote ()))))
+                     (t (quote ()))))
+                  (t (quote ()))))
+               (t (quote ()))))
+            (t (quote ()))))
+         (t (quote ()))))
+      (t (quote ())))))
