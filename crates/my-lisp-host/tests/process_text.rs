@@ -68,5 +68,5 @@ fn public_process_run_binding_is_already_a_lisp_closure() {
           (quote ("-c" "print('language-owned')")))
     "#;
     let result = eval_program(source, &mut session).expect("language-owned process closure should run");
-    assert_eq!(result.value.to_string(), "(0 \"language-owned\n\" \"\")");
+    assert_eq!(result.value.to_string(), "(0 \"language-owned\\n\" \"\")");
 }
