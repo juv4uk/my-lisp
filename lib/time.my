@@ -1,6 +1,45 @@
 ; Explicit timezone data for WSM. This is configuration, not an OS mutation.
 ; Явні дані часового поясу для WSM. Це конфігурація, а не мутація ОС.
 
+; Convert whole UTC days since 1970-01-01 to a proleptic Gregorian date.
+; This deliberately mirrors the current host-side utc-now calendar transform,
+; but lives in Lisp so we can prove that calendar semantics do not belong to
+; the host. Scope is non-negative Unix days; utc-now already rejects times
+; before the Unix epoch.
+(def civil-from-days
+  (lambda (days)
+    (let* ((z (+ days 719468))
+           (era (quotient z 146097))
+           (doe (- z (* era 146097)))
+           (yoe (quotient (- (+ doe (quotient doe 36524))
+                              (+ (quotient doe 1460) (quotient doe 146096)))
+                           365))
+           (y (+ yoe (* era 400)))
+           (doy (- doe (+ (* 365 yoe)
+                           (- (quotient yoe 4) (quotient yoe 100)))))
+           (mp (quotient (+ (* 5 doy) 2) 153))
+           (day (+ (- doy (quotient (+ (* 153 mp) 2) 5)) 1))
+           (month (+ mp (cond ((< mp 10) 3) (t -9))))
+           (year (+ y (cond ((<= month 2) 1) (t 0)))))
+      (list year month day))))
+
+; Pure language-level conversion from an exact Unix timestamp into the same
+; data shape that utc-now exposes today. The host still owns clock observation;
+; this function owns only deterministic calendar semantics.
+(def utc-from-unix
+  (lambda (seconds nanosecond)
+    (let* ((days (quotient seconds 86400))
+           (day-seconds (mod seconds 86400))
+           (civil (civil-from-days days))
+           (hour (quotient day-seconds 3600))
+           (minute (quotient (mod day-seconds 3600) 60))
+           (second (mod day-seconds 60)))
+      (list (quote utc)
+            (car civil)
+            (second civil)
+            (third civil)
+            hour minute second nanosecond))))
+
 (def timezone-config
   (lambda (name offset-seconds)
     (cond
