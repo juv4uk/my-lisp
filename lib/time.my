@@ -150,6 +150,21 @@
   (lambda (started-ns)
     (- (mono-ns) started-ns)))
 
+; Interpret raw host timezone declarations without performing host I/O here.
+; The migration target for the host is:
+;   (timezone-declarations tz-value etc-timezone-value)
+; where each value is either a non-empty string or (). Lisp owns source
+; precedence and the public detected/unknown result shape.
+(def timezone-declarations->observation
+  (lambda (tz-value etc-timezone-value)
+    (cond
+      ((and (string? tz-value) (not (string-empty? tz-value)))
+       (list (quote detected) tz-value (quote TZ)))
+      ((and (string? etc-timezone-value) (not (string-empty? etc-timezone-value)))
+       (list (quote detected) etc-timezone-value (quote etc-timezone)))
+      (t
+       (list (quote unknown) (quote host-declaration-unavailable))))))
+
 (def timezone-config
   (lambda (name offset-seconds)
     (cond
