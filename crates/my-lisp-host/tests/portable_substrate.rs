@@ -2,7 +2,7 @@ use my_lisp::installed_capabilities;
 use my_lisp_host::install;
 
 #[test]
-fn portable_transport_substrate_exposes_raw_mechanisms_not_public_text_semantics() {
+fn portable_transport_substrate_exposes_raw_mechanisms_not_public_semantics() {
     install();
     let installed = installed_capabilities();
 
@@ -11,7 +11,7 @@ fn portable_transport_substrate_exposes_raw_mechanisms_not_public_text_semantics
         "read-file-bytes",
         "write-file-bytes",
         "tcp-connect",
-        "tcp-listen",
+        "tcp-listen-raw",
         "tcp-accept",
         "tcp-read-raw",
         "tcp-write-raw",
@@ -23,7 +23,7 @@ fn portable_transport_substrate_exposes_raw_mechanisms_not_public_text_semantics
         );
     }
 
-    for language_owned in ["process-run", "tcp-read", "tcp-write"] {
+    for language_owned in ["process-run", "tcp-listen", "tcp-read", "tcp-write"] {
         assert!(
             !installed.iter().any(|name| name == language_owned),
             "derived public semantics leaked back into host substrate: {language_owned}"
