@@ -196,8 +196,16 @@ fn evaluate_list(
         Some("def") => {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
         }
+        // Once lib/macro.my has installed the language-owned `defmacro`
+        // binding, that macro is authoritative. The evaluator-level path is
+        // only a compatibility fallback for legacy/bootstrap sessions that
+        // have not loaded the derived macro layer yet.
         Some("defmacro") => {
-            special_forms::evaluate_defmacro(arguments, environment, span).map(EvalStep::Value)
+            if let Some(Value::Macro(closure)) = environment.get("defmacro") {
+                closures::apply_macro(closure, arguments, environment, span)
+            } else {
+                special_forms::evaluate_defmacro(arguments, environment, span).map(EvalStep::Value)
+            }
         }
         // Minimal macro substrate: evaluate one expression to a closure and
         // re-tag that same closure as a macro. `defmacro` can therefore be
