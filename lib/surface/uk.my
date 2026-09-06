@@ -1,0 +1,15 @@
+; Ukrainian surface for necessary evaluator forms.
+; Українська поверхня для необхідних форм evaluator-а.
+;
+; The Rust kernel does not know these Ukrainian words.  They are ordinary
+; my-lisp macros that expand to the canonical necessary-form surfaces.
+; This keeps semantics in the canonical identities while allowing the
+; language itself to define its human-facing vocabulary.
+
+(defmacro функція args
+  (cons (quote lambda) args))
+
+(defmacro визначити (name value)
+  (cons (quote define)
+        (cons name
+              (cons value (quote ())))))
