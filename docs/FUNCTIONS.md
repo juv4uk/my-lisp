@@ -1,17 +1,17 @@
 # FUNCTION REFERENCE — my-lisp
 
-**Live builtin section refreshed:** 2026-09-06 · base `fdec3dec`
+**Live builtin section refreshed:** 2026-09-06 · base `6fe9626`
 **Library inventory base:** 2026-09-02 · `8b4529f`
 **Source:** root `(env)` / `language_items.rs` for builtins; static `lib/*.my` scan for the library sections below.
-**Builtin count:** 32 root builtins. `mono-ms` is no longer a host builtin; it is derived in `lib/time.my`. `unix-time-now` is the raw wall-clock host observation added in its place in the time architecture.
+**Builtin count:** 35 root builtins. `mono-ms` and `utc-now` are no longer host builtins; both are derived in `lib/time.my`. `mono-ns` and `unix-time-now` are the raw host clock observations retained by the time architecture.
 
 > Regeneration rule: use `scripts/gen-functions.my` for a full refresh. The library sections are a generated snapshot and do not define semantic authority; see [`semantic-authority-map.md`](semantic-authority-map.md).
 
 ## 1. Builtin'и ядра (live env)
 
-`*`, `+`, `-`, `/`, `<`, `=`, `>`, `abs`, `atom`, `car`, `cdr`, `cons`, `env`, `eq`, `f32-buffer`, `i32-buffer`, `internet-time-sync`, `make-vector`, `max`, `max-list`, `min`, `min-list`, `mono-ns`, `numeric-buffer-length`, `numeric-buffer-map`, `numeric-buffer-ref`, `numeric-buffer-type`, `numeric-buffer?`, `string-slice`, `timezone-detect`, `unix-time-now`, `utc-now`, `vector`, `vector-length`, `vector-ref`, `vector-set!`
+`*`, `+`, `-`, `/`, `<`, `=`, `>`, `abs`, `atom`, `car`, `cdr`, `cons`, `env`, `eq`, `f32-buffer`, `i32-buffer`, `internet-time-sync`, `make-vector`, `max`, `max-list`, `min`, `min-list`, `mono-ns`, `numeric-buffer-length`, `numeric-buffer-map`, `numeric-buffer-ref`, `numeric-buffer-type`, `numeric-buffer?`, `string-slice`, `timezone-detect`, `unix-time-now`, `vector`, `vector-length`, `vector-ref`, `vector-set!`
 
-> `utc-now` is still present as a legacy root builtin while `lib/time.my` now replaces its binding with a language-owned closure built from `unix-time-now`. Removal of the Rust duplicate waits for the consumer/bootstrap audit. See [`host-semantic-surface.md`](host-semantic-surface.md).
+> `utc-now` is language-owned. It appears after `lib/time.my` is loaded and is implemented as a Lisp closure over the raw `unix-time-now` observation. The old Rust calendar-shaped builtin and Gregorian helper were removed after ownership and consumer-bootstrap tests passed. See [`host-semantic-surface.md`](host-semantic-surface.md).
 
 ### clips-import.my (40)
 
