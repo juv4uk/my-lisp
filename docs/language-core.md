@@ -2,243 +2,277 @@
 
 > **A small language that grows itself. · Маленька мова, що вирощує себе. · Eine kleine Sprache, die sich selbst wachsen lässt.**
 
-The language is named **my-lisp** and is independent from the IDE. Its canonical implementation lives in `crates/my-lisp` (Rust), which powers both the desktop shell and the Web build via WebAssembly. The initial ClojureScript prototype has been fully replaced.
+This document is the compact human explanation of the current core architecture. It is **not** the highest semantic authority. For conflicts, follow [`semantic-authority-map.md`](semantic-authority-map.md): `language-contract.my` and ratified ADRs outrank explanatory prose.
 
-Мова має назву **my-lisp** і є незалежною від IDE. Її канонічна реалізація міститься у `crates/my-lisp` (Rust), яка забезпечує роботу як десктопної оболонки, так і веб-збірки через WebAssembly. Початковий прототип на ClojureScript повністю замінено.
+## Identity
 
-Die Sprache heißt **my-lisp** und ist von der IDE unabhängig. Ihre kanonische Implementierung liegt in `crates/my-lisp` (Rust), welche sowohl die Desktop-Hülle als auch den Web-Build über WebAssembly antreibt. Der anfängliche ClojureScript-Prototyp wurde vollständig ersetzt.
+The language/project name is **`my-lisp`**.
 
-The canonical source-file extension is **`.my`** (for example, `welcome.my`). The generic `.lisp` extension remains a compatible alias.
+The current canonical source extension is **`.wsm`**. **`.my`** and **`.lisp`** remain fully supported aliases. The separate repository named `wsm` is not this language project.
 
-Канонічне розширення файлів початкового коду — **`.my`** (наприклад, `welcome.my`). Загальне розширення `.lisp` залишається сумісним псевдонімом.
-
-Die kanonische Dateiendung für Quellcode ist **`.my`** (zum Beispiel `welcome.my`). Die allgemeine Endung `.lisp` bleibt ein kompatibler Alias.
-
-The current product direction is a DrRacket-like language environment: a definitions editor, program execution, an interactions/REPL area, readable diagnostics, and tools for exploring parsed forms. It serves our own language rather than implementing Racket itself. The UI and the language engine remain separate components.
-
-Поточний напрям продукту — середовище мови на кшталт DrRacket: редактор визначень, запуск програми, область взаємодії/REPL, зрозумілі помилки та інструменти для дослідження розібраних форм. Воно обслуговує нашу власну мову, а не реалізує Racket. Інтерфейс і рушій мови залишаються окремими компонентами.
-
-Die aktuelle Produktrichtung ist eine DrRacket-ähnliche Sprachumgebung: Definitionseditor, Programmausführung, Interaktions-/REPL-Bereich, verständliche Diagnosen und Werkzeuge zur Untersuchung geparster Formen. Sie dient unserer eigenen Sprache und implementiert nicht Racket selbst. Oberfläche und Sprachengine bleiben getrennte Komponenten.
-
-## Reader Invariant
-
-`'` has no syntactic meaning.
-
-`quote` is represented explicitly as:
-
-    (quote expression)
-
-Natural-language apostrophes must pass through the reader without being interpreted as quotation syntax. (e.g. `об'єкт` parses as a single symbol).
-
-## McCarthy foundation · Основа Маккарті · McCarthy-Grundlage
-
-The primitive semantic set of `my-lisp` is permanently closed (ratified in `docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`):
+`crates/my-lisp` is the **reference Rust implementation**. It is the mature software oracle used to check behavior, but it does not gain semantic authority merely by being the reference implementation.
 
 ```text
-{ quote, atom, eq, car, cdr, cons, cond }
+semantic authority        = contract + ratified decisions + executable evidence
+reference implementation  = crates/my-lisp (Rust)
+independent implementations = fpga-lisp, c-runtime, other declared substrates
 ```
 
-A conforming implementation may expose many language capabilities, but it shall classify exactly seven operations as semantic primitives: `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, and `cond`. No other capability may acquire primitive status.
+## Reader invariant
 
-- `quote` returns data without evaluating it;
-- `atom` recognizes atoms, including the empty list;
-- `eq` compares two atoms;
-- `car` returns the first element of a non-empty list;
-- `cdr` returns the rest of a non-empty list;
-- `cons` prepends an element to a list;
-- `cond` evaluates clauses in order and selects the first true one.
+The apostrophe `'` has no quotation syntax role. Natural-language apostrophes must survive as ordinary symbol characters.
 
-`t` is the canonical true value. Invalid list operations produce explicit errors. Automated semantic tests are the compatibility contract for all conforming engines.
+Quotation is explicit:
 
-Семантичний набір примітивів `my-lisp` є замкненим назавжди (ратифіковано в `docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`). Конформна реалізація може надавати багато мовних можливостей, але статус семантичного примітива мають рівно сім операцій: `quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond`. Жодна інша можливість не може набути статусу примітива.
+```lisp
+(quote expression)
+```
 
-Перший контракт містить сім елементарних операцій Lisp: `quote`, `atom`, `eq`, `car`, `cdr`, `cons` і `cond`. Значення `t` є канонічною істиною. Некоректні операції зі списками повертають явні структуровані помилки, а автоматичні семантичні тести є контрактом сумісності.
+So, for example, `об'єкт` is one symbol rather than reader sugar around another form.
 
-Der erste Vertrag umfasst die sieben elementaren Lisp-Operationen `quote`, `atom`, `eq`, `car`, `cdr`, `cons` und `cond`. `t` ist der kanonische Wahrheitswert. Ungültige Listenoperationen liefern explizite strukturierte Fehler; automatisierte Semantiktests bilden den Kompatibilitätsvertrag.
+## Closed McCarthy semantic set
 
-The crate contains its own UTF-8 parser, value model, lexical environment frames, source spans, and structured errors. It has no Tauri dependency and no direct access to files, the network, or UI capabilities.
+The primitive semantic operation set is permanently closed by [`adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`](adr/ADR-004-CLOSED-MCCARTHY7-CORE.md):
 
-Exact rational arithmetic is a kernel mechanism: `/` accepts exact integers and rational values, reduces every fraction, and prints results such as `5/336` without floating-point rounding.
+```text
+quote · atom · eq · cons · car · cdr · cond
+```
 
-`Rational`'s numerator and denominator are backed by a hand-rolled, arbitrary-precision `BigInt` (`crates/my-lisp/src/bignum.rs`), not `i64` — "exact" has no numeric ceiling short of available memory. Deliberately not a crate dependency: this stays Rust doing the low-level numeric algorithm it's exceptionally good at, the same way arithmetic already lived in Rust rather than `lib/core.my`, without growing the crate's dependency graph (still zero, as of this writing) to get there — schoolbook algorithms, kept simple and correct rather than optimized for cryptographic-scale numbers this language has no use for. `(fact 30 (/ 1 1))` (see `crates/my-lisp/tests/mccarthy.rs`) computes the exact 33-digit result, well past the old `i64` ceiling. This isn't free: every exact operation now heap-allocates and reduces via GCD, where small integers previously stayed on the Rust stack — `crates/my-lisp/tests/stack_safety.rs`'s 100,000-element-list test went from roughly 6s to roughly 16s once this landed. Correctness came first; if that cost matters somewhere later, it's now measurable and known, not a surprise. A planned C core once carried the same bignum-capable exact-rational requirement; that line was dropped 2026-08-09 (see `private/CLAUDE.md`) — `my-lisp` now commits to exactly two implementations, Rust and `fpga-lisp`, not three.
+No later capability may acquire primitive status merely because it is useful or implemented in Rust.
 
-Bare integer literals (`123456789012345678901234567890`, no `/`) also use arbitrary precision beyond the compact representation's exact 2^53 range. Integer syntax therefore remains exact from reader input through arithmetic output.
+### Canon 0
 
-Крейт має власний UTF-8-парсер, модель значень, фрейми лексичного середовища, діапазони початкового коду та структуровані помилки. Він не залежить від Tauri й не має прямого доступу до файлів, мережі чи можливостей інтерфейсу.
+The concrete empty proper list is:
 
-Точна раціональна арифметика є механізмом ядра: `/` приймає точні цілі та раціональні значення, скорочує кожен дріб і виводить результати на кшталт `5/336` без floating-point округлення.
+```lisp
+()
+```
 
-Чисельник і знаменник `Rational` спираються на власноруч написаний `BigInt` довільної точності (`crates/my-lisp/src/bignum.rs`), не `i64` — "точний" не має числової стелі, окрім доступної пам'яті. Навмисно не crate-залежність: це лишається Rust, що робить низькорівневий числовий алгоритм, у якому він особливо сильний, так само як арифметика вже жила в Rust, не в `lib/core.my`, без розростання dependency graph крейта (досі нульового, станом на написання цього) заради цього — шкільні алгоритми, прості й коректні, не оптимізовані під числа криптографічного масштабу, яким ця мова не знаходить застосування. `(fact 30 (/ 1 1))` (див. `crates/my-lisp/tests/mccarthy.rs`) обчислює точний 33-цифровий результат, далеко за старою стелею `i64`. Це не безкоштовно: кожна точна операція тепер виділяє в купі й скорочує через gcd, тоді як маленькі цілі раніше лишались на Rust-стеку — тест зі списком у 100 000 елементів у `crates/my-lisp/tests/stack_safety.rs` подовжився приблизно з 6с до приблизно 16с, щойно це приземлилось. Коректність — спершу; якщо ця вартість колись матиме значення, вона тепер вимірювана й відома, не сюрприз. Заплановане C-ядро колись несло ту саму bignum-спроможну вимогу точної раціональної арифметики; цей пункт прибрано 2026-08-09 (див. `private/CLAUDE.md`) — `my-lisp` тепер зобов'язується перед точно двома реалізаціями, Rust і `fpga-lisp`, не трьома.
+It is Canon 0: a concrete value/syntax identity and the inductive base of proper lists. It is **not an eighth operation** and has no canonical lexical alias.
 
-Голі цілі літерали (`123456789012345678901234567890`, без `/`) також переходять на довільну точність за межами точного 2^53-діапазону компактного представлення. Цілочисельний синтаксис лишається точним від reader-а до результату арифметики.
+The intended structural laws include:
 
-Das Crate besitzt einen eigenen UTF-8-Parser, ein Wertmodell, lexikalische Umgebungsframes, Quellbereiche und strukturierte Fehler. Es hängt nicht von Tauri ab und hat keinen direkten Zugriff auf Dateien, Netzwerk oder UI-Funktionen.
+```text
+ATOM(CONS(x,y)) = false
+CAR(CONS(x,y))  = x
+CDR(CONS(x,y))  = y
 
-Exakte rationale Arithmetik ist ein Kernmechanismus: `/` akzeptiert exakte Ganzzahlen und rationale Werte, kürzt jeden Bruch und gibt Ergebnisse wie `5/336` ohne Gleitkommarundung aus.
+(a b c) = (a . (b . (c . ())))
+```
 
-Zähler und Nenner von `Rational` basieren auf einem von Hand geschriebenen, beliebig genauen `BigInt` (`crates/my-lisp/src/bignum.rs`), nicht auf `i64` — "exakt" hat keine numerische Obergrenze außer dem verfügbaren Speicher. Bewusst keine Crate-Abhängigkeit: dies bleibt Rust, das den Low-Level-Zahlenalgorithmus macht, in dem es besonders stark ist, genauso wie Arithmetik schon in Rust lebte, nicht in `lib/core.my`, ohne den Abhängigkeitsgraphen des Crates dafür wachsen zu lassen (weiterhin null, Stand dieses Schreibens) — Schulbuch-Algorithmen, einfach und korrekt gehalten statt für kryptografisch große Zahlen optimiert, für die diese Sprache keine Verwendung hat. `(fact 30 (/ 1 1))` (siehe `crates/my-lisp/tests/mccarthy.rs`) berechnet das exakte 33-stellige Ergebnis, weit jenseits der alten `i64`-Grenze. Das ist nicht kostenlos: jede exakte Operation alloziert jetzt auf dem Heap und kürzt per ggT, wo kleine Ganzzahlen zuvor auf dem Rust-Stack blieben — der 100.000-Elemente-Listentest in `crates/my-lisp/tests/stack_safety.rs` stieg von etwa 6s auf etwa 16s, sobald dies landete. Korrektheit zuerst; falls diese Kosten später irgendwo relevant werden, sind sie jetzt messbar und bekannt, keine Überraschung. Ein geplanter C-Kern trug einst dieselbe Bignum-Anforderung; diese Linie wurde am 2026-08-09 gestrichen (siehe `private/CLAUDE.md`) — `my-lisp` verpflichtet sich jetzt auf genau zwei Implementierungen, Rust und `fpga-lisp`, nicht drei.
+Pair projections are pair operations, not dotted-pair-only special cases.
 
-Bloße Ganzzahlliterale (`123456789012345678901234567890`, ohne `/`) verwenden jenseits des exakten 2^53-Bereichs der kompakten Darstellung ebenfalls beliebige Genauigkeit. Ganzzahlsyntax bleibt damit vom Reader bis zum Arithmetikergebnis exakt.
+## Surface names are not semantic identity
 
-## Bootstrap boundary · Межа саморозгортання · Bootstrap-Grenze
+A symbol spelling does not become the primitive itself.
 
-Rust provides only the mechanisms it implements particularly well: memory-safe runtime values, UTF-8 reading, lexical closures, deterministic evaluation, stack control, structured diagnostics, and an explicit capability boundary. Higher-level language features and the standard library should be written in the small Lisp itself whenever the existing core can express them.
+```text
+"car"    != primitive identity CAR
+"перше"  != primitive identity CAR
+"ādi"    != primitive identity CAR
+```
 
-Rust надає лише ті механізми, які він виконує особливо добре: безпечні щодо пам’яті значення, читання UTF-8, лексичні замикання, детерміноване обчислення, контроль стека, структуровану діагностику та явну межу системних можливостей. Високорівневі можливості й стандартну бібліотеку слід писати самою маленькою Lisp-мовою щоразу, коли наявне ядро вже може їх виразити.
+Different surfaces may denote the same semantic identity. Ordinary lexical bindings may still shadow names according to the current contract; that does not mutate the underlying identity.
 
-Rust stellt nur die Mechanismen bereit, die es besonders gut umsetzt: speichersichere Laufzeitwerte, UTF-8-Lesen, lexikalische Closures, deterministische Auswertung, Stack-Kontrolle, strukturierte Diagnosen und eine explizite Capability-Grenze. Höhere Sprachfunktionen und die Standardbibliothek sollen in der kleinen Lisp-Sprache selbst geschrieben werden, sobald der vorhandene Kern sie ausdrücken kann.
+The current canonical teaching/research surfaces are documented separately from the core identity. This document therefore avoids treating any natural-language spelling as the essence of a primitive.
 
-`lambda` belongs to the Rust semantic kernel because it makes user-defined functions and self-hosted libraries possible. Derived forms such as `defn`, list helpers, logical combinators, and teaching examples belong in a bootstrapped Lisp library rather than as Rust built-ins.
+## Bootstrap boundary
 
-The first bootstrapped library is `lib/core.my`. Its definitions (`identity`, `not`, `pair`, `second`, `third`, `caar`, and `cadr`) are ordinary my-lisp code. Rust supplies only `def` and lexical binding as the mechanism needed to load persistent named definitions.
+The closed seven-operation set and the implementation bootstrap are different things.
 
-`lambda` належить до семантичного Rust-ядра, бо робить можливими користувацькі функції та саморозгорнуті бібліотеки. Похідні форми на кшталт `defn`, допоміжні функції списків, логічні комбінатори й навчальні приклади мають жити у bootstrap-бібліотеці Lisp, а не бути вбудованими у Rust.
+The evaluator still needs mechanisms for such things as:
 
-Перша bootstrap-бібліотека — `lib/core.my`. Її визначення (`identity`, `not`, `pair`, `second`, `third`, `caar` і `cadr`) є звичайним кодом my-lisp. Rust надає лише `def` і лексичне зв’язування як механізм завантаження постійних іменованих визначень.
+- lexical environments and symbol lookup;
+- closures and application;
+- definition/binding;
+- controlled evaluation for forms such as quotation/conditionals;
+- exact numeric representation;
+- structured errors;
+- a capability boundary to the external world.
 
-`lambda` gehört zum semantischen Rust-Kern, weil es benutzerdefinierte Funktionen und selbst gehostete Bibliotheken ermöglicht. Abgeleitete Formen wie `defn`, Listenhilfen, logische Kombinatoren und Lernbeispiele gehören in eine gebootstrappte Lisp-Bibliothek statt in Rust-Built-ins.
+Those mechanisms do not become new members of the seven-operation semantic primitive set.
 
-Die erste Bootstrap-Bibliothek ist `lib/core.my`. Ihre Definitionen (`identity`, `not`, `pair`, `second`, `third`, `caar` und `cadr`) sind gewöhnlicher my-lisp-Code. Rust stellt nur `def` und lexikalische Bindung als Mechanismus zum Laden dauerhafter benannter Definitionen bereit.
+### Necessary forms and derived forms
 
-## Available Operations and Forms · Доступні операції та форми · Verfügbare Operationen und Formen
+Current implementation work distinguishes evaluator-controlled necessary-form identities from forms the language can derive after bootstrapping.
 
-### Built-in Forms (Rust core) · Вбудовані форми · Eingebaute Formen
-- `quote` — Returns the expression unevaluated · Повертає вираз без обчислення · Gibt den Ausdruck unberechnet zurück
-- `lambda` — Creates an anonymous function (closure) · Створює анонімну функцію (замикання) · Erstellt eine anonyme Funktion (Closure)
-- `def` — Defines a variable or function in the current environment · Визначає змінну або функцію в поточному середовищі · Definiert eine Variable oder Funktion in der aktuellen Umgebung
-- `defmacro` — Defines a macro (compile-time expansion) · Створює макрос (розкривається на етапі оцінки) · Definiert ein Makro (Erweiterung zur Kompilierzeit)
-- `list` — Creates a list from evaluated arguments · Створює список з обчислених аргументів · Erstellt eine Liste aus ausgewerteten Argumenten
-- `cond` — Conditional logic · Умовна логіка · Bedingte Logik
-- `atom` — Checks if a value is an atom (not a list/pair) · Перевіряє, чи є значення атомом (не списком/парою) · Prüft, ob ein Wert ein Atom ist (keine Liste/Paar)
-- `eq` — Checks equality between two atoms · Перевіряє рівність двох атомів · Prüft die Gleichheit zwischen zwei Atomen
-- `car` — Returns the first element of a list/pair · Повертає перший елемент списку/пари · Gibt das erste Element einer Liste/eines Paares zurück
-- `cdr` — Returns the tail of a list/pair · Повертає хвіст списку/пари · Gibt den Rest einer Liste/eines Paares zurück
-- `cons` — Constructs a pair or adds an element to a list · Створює пару або додає елемент до списку · Erstellt ein Paar oder fügt ein Element zu einer Liste hinzu
-- `+`, `-`, `*`, `/` — Arithmetic operations. `/` produces exact rational fractions (e.g. `1/3`) for integers. · Арифметичні операції. `/` для цілих чисел створює точні раціональні дроби (напр. `1/3`). · Arithmetische Operationen. `/` erzeugt für Ganzzahlen exakte rationale Brüche (z. B. `1/3`).
-- `<`, `>`, `=`, `<=`, `>=` — Chained comparisons; `<`/`>`/`=` are numeric kernel operations, while `<=`/`>=` are recursive `lib/core.my` functions built from them with identical exact/inexact behavior. · Ланцюгові порівняння; `<`/`>`/`=` належать числовому ядру, а `<=`/`>=` — рекурсивні функції `lib/core.my` з тією самою exact/inexact поведінкою. · Verkettete Vergleiche; `<`/`>`/`=` gehören zum numerischen Kern, `<=`/`>=` sind rekursive `lib/core.my`-Funktionen mit identischem Exaktheitsverhalten.
-- `print` — Evaluates its one argument, appends its printed form to the session's output transcript (`EvalResult.output`), and returns the value unchanged, so `(print x)` composes inside a larger expression instead of being a dead end. It never writes to stdout/stderr itself — the host (`my-lisp-cli`, `my-lisp-wasm`) decides what to do with `output`. · Обчислює свій єдиний аргумент, додає його друковану форму до транскрипту виводу сесії (`EvalResult.output`) і повертає значення без змін, тож `(print x)` компонується всередині більшого виразу. Сам ніколи не пише в stdout/stderr — host (`my-lisp-cli`, `my-lisp-wasm`) вирішує, що робити з `output`. · Wertet sein einziges Argument aus, hängt dessen gedruckte Form an das Ausgabetranskript der Sitzung (`EvalResult.output`) an und gibt den Wert unverändert zurück, sodass sich `(print x)` in einen größeren Ausdruck einfügt. Schreibt selbst nie nach stdout/stderr — der Host entscheidet, was mit `output` geschieht.
-- `read` / `(read "...")` — McCarthy's original reader primitive: parses its one string argument into exactly one s-expression of *data*, the same way `(quote expr)` does, without evaluating it. Errors (`ErrorKind::Type`) if the argument isn't a string, or (`ErrorKind::InvalidForm`) if the string holds zero or more than one top-level expression. `(read)` with **no** argument blocks on one line of real stdin instead (native builds only — see below). · Оригінальний reader-примітив Маккарті: парсить свій єдиний рядковий аргумент у рівно одну s-expression *даних*, так само як `(quote expr)`, без обчислення. Помилка (`ErrorKind::Type`), якщо аргумент не рядок, або (`ErrorKind::InvalidForm`), якщо рядок містить нуль чи більше одного верхньорівневого виразу. `(read)` **без** аргументу натомість блокується на одному рядку справжнього stdin (лише нативні збірки — див. нижче). · McCarthys ursprüngliches Reader-Primitiv: parst sein einziges String-Argument in genau eine s-Expression aus *Daten*, genau wie `(quote expr)`, ohne sie auszuwerten. Fehler (`ErrorKind::Type`), wenn das Argument keine Zeichenkette ist, oder (`ErrorKind::InvalidForm`), wenn die Zeichenkette null oder mehr als einen Top-Level-Ausdruck enthält. `(read)` **ohne** Argument blockiert stattdessen auf einer Zeile echtem stdin (nur native Builds — siehe unten).
-- `eval` — Evaluates its one argument to get a datum, then evaluates that datum as code — closes the read/eval loop by hand: `(eval (read "(+ 1 2)"))` → `3`. Reuses the same data→code conversion macro expansion already relies on. `Closure`/`Macro` values are self-evaluating (returned unchanged), since there's no source syntax to convert them back into. · Обчислює свій єдиний аргумент, щоб отримати дані, тоді обчислює ці дані як код — вручну замикає read/eval цикл: `(eval (read "(+ 1 2)"))` → `3`. Перевикористовує те саме перетворення дані→код, на яке вже спирається розгортання макросів. Значення `Closure`/`Macro` самообчислювані (повертаються без змін), бо для них немає синтаксису початкового коду. · Wertet sein einziges Argument aus, um ein Datum zu erhalten, und wertet dieses Datum dann als Code aus — schließt die Read/Eval-Schleife von Hand: `(eval (read "(+ 1 2)"))` → `3`. Nutzt dieselbe Daten→Code-Umwandlung wieder, auf die sich die Makro-Expansion bereits stützt. `Closure`/`Macro`-Werte sind selbstauswertend (unverändert zurückgegeben), da es keine Quellsyntax gibt, in die sie zurückverwandelt werden könnten.
-- `princ` — The `display`/`princ` half of the classic Lisp print pair: appends the argument's human-facing form (no quotes/escapes around strings) to the output transcript and returns it unchanged, as opposed to `print`'s `write`/`prin1` form (re-readable by `read`). · «princ»/«display»-половина класичної пари друку Lisp: додає людино-орієнтовану форму аргументу (без лапок/екранування рядків) до транскрипту виводу й повертає без змін, на відміну від форми `write`/`prin1` в `print` (читається назад через `read`). · Die `display`/`princ`-Hälfte des klassischen Lisp-Druckpaars: hängt die menschenlesbare Form des Arguments (ohne Anführungszeichen/Escapes bei Strings) an das Ausgabetranskript an und gibt sie unverändert zurück, im Gegensatz zu `print`s `write`/`prin1`-Form (über `read` rücklesbar).
-- `write-to-string` — returns `print`'s canonical read-back-safe representation as a string without output; the composable serialization bridge for files and TCP. · Повертає канонічне представлення `print`, придатне для `read`, як рядок без виводу; міст серіалізації для файлів і TCP. · Gibt `print`s kanonische, wieder einlesbare Darstellung als String ohne Ausgabe zurück; die Serialisierungsbrücke für Dateien und TCP.
-- `load` — Reads a file, parses every top-level form, evaluates each in turn, returns the last value — how `lib/*.my` and `knowledge/*.my` files get loaded into a session (`(load "lib/core.my")`). · Читає файл, парсить кожну верхньорівневу форму, обчислює кожну по черзі, повертає останнє значення — так `lib/*.my` і `knowledge/*.my`-файли завантажуються в сесію. · Liest eine Datei, parst jede Top-Level-Form, wertet jede der Reihe nach aus, gibt den letzten Wert zurück — so werden `lib/*.my`- und `knowledge/*.my`-Dateien in eine Sitzung geladen.
-- `read-file` — Reads a file's contents as a single string, without parsing it — the raw-text counterpart to `load`. · Читає вміст файлу як єдиний рядок, без парсингу — сирий-текстовий аналог `load`. · Liest den Inhalt einer Datei als einzelnen String, ohne ihn zu parsen — das Rohtext-Gegenstück zu `load`.
-- `write-file` — `(write-file path content)` writes `content` to `path`, always creating or truncating-and-overwriting (never appending), and returns `content` unchanged, so it composes like `print`. The write-side counterpart to `read-file` (PLAN.md item 13) — one primitive that opens and writes in a single step, not a separate mutable file-handle value. Not available under WASM (no filesystem there), same as `read-file`/`load`. · `(write-file шлях вміст)` записує `вміст` у `шлях`, завжди створюючи чи перезаписуючи (обрізаючи), ніколи не дописуючи, і повертає `вміст` без змін, тож компонується як `print`. Симетричний до `read-file` бік запису (PLAN.md, пункт 13) — один примітив, що відкриває й записує за один крок, не окреме мутабельне значення файлового дескриптора. Недоступний під WASM (там нема файлової системи), так само як `read-file`/`load`. · `(write-file pfad inhalt)` schreibt `inhalt` nach `pfad`, immer erstellend oder abschneidend-überschreibend (nie anhängend), und gibt `inhalt` unverändert zurück, sodass es sich wie `print` einfügt. Das Schreib-Gegenstück zu `read-file` (PLAN.md, Punkt 13) — ein Primitiv, das in einem Schritt öffnet und schreibt, kein separater mutierbarer Datei-Handle-Wert. Unter WASM nicht verfügbar (kein Dateisystem dort), genau wie `read-file`/`load`.
-- `write-file-bytes`/`read-file-bytes` — the byte-level counterparts to `write-file`/`read-file` (PLAN.md item 22), added 2026-08-10: `write-file`/`read-file` go through `Value::String` (`&str`), which can only ever hold valid UTF-8 — no primitive in the language builds a string from an arbitrary byte (no `char-code`/`integer->char`, no bytevector type), so a real binary (compiled machine code, any non-UTF-8 format) could never be written or read intact. `(write-file-bytes path byte-list)` takes `byte-list` as a list of fixnums 0-255 and writes them as raw bytes (`std::fs::write` over `Vec<u8>`, never through `&str`); returns `byte-list` unchanged, like `write-file` does with `content`. `(read-file-bytes path)` returns the file's raw bytes as a list of fixnums 0-255. Surfaced from the `fpga-lisp` session while porting its Python `assembler.py` to my-lisp: without this, `assembler.my` couldn't emit a real `.bin` for the UART bootloader — the same G5 gap that already justified `string-append`/`string<?` (items 14-15), not an `fpga-lisp`-only need (any binary-format-handling program hits the same wall). Not available under WASM, same capability-boundary shape as `read-file`/`write-file`/`tcp-*`. · `write-file-bytes`/`read-file-bytes` — байтові відповідники `write-file`/`read-file` (PLAN.md, пункт 22), додано 2026-08-10: `write-file`/`read-file` йдуть через `Value::String` (`&str`), який може містити лише коректний UTF-8 — жоден примітив мови не будує рядок із довільного байта, тож справжній бінарник записати чи прочитати цілим було неможливо. `(write-file-bytes шлях byte-list)` бере `byte-list` як список fixnum 0-255 і пише сирі байти; повертає `byte-list` без змін. `(read-file-bytes шлях)` повертає сирі байти файлу як список fixnum 0-255. Недоступний під WASM, та сама форма межі можливостей, що й `read-file`/`write-file`/`tcp-*`. · `write-file-bytes`/`read-file-bytes` — die Byte-Gegenstücke zu `write-file`/`read-file` (PLAN.md, Punkt 22), hinzugefügt am 2026-08-10: `write-file`/`read-file` laufen über `Value::String` (`&str`), das nur gültiges UTF-8 halten kann. `(write-file-bytes pfad byte-liste)` schreibt rohe Bytes; `(read-file-bytes pfad)` liest sie zurück als Liste von Fixnums 0-255. Unter WASM nicht verfügbar.
-- `read-all` — Like `read`, but parses its string argument into *every* top-level expression it contains, returned as a list — the multi-form counterpart to `read`'s exactly-one-expression rule; how `tests/fixtures/conformance.my`'s fixtures are read without a foreign parser. · Як `read`, але парсить рядковий аргумент у *кожен* верхньорівневий вираз, що він містить, повертає як список — багатоформний аналог правила `read` "рівно один вираз"; так читаються фікстури `tests/fixtures/conformance.my` без стороннього парсера. · Wie `read`, aber parst sein String-Argument in *jeden* darin enthaltenen Top-Level-Ausdruck, als Liste zurückgegeben — das Multi-Form-Gegenstück zu `read`s Genau-ein-Ausdruck-Regel.
-- `symbol?` / `string?` — Type predicates for atoms: `t`/`()` for whether a value is a symbol or a string, respectively. `symbol?` is derived in `lib/core.my`; `string?` remains a kernel operation. · Предикати типу для атомів: `t`/`()` — чи є значення символом чи рядком відповідно. `symbol?` виведений у `lib/core.my`; `string?` лишається операцією ядра. · Typ-Prädikate für Atome: `t`/`()`, ob ein Wert ein Symbol bzw. ein String ist. `symbol?` ist in `lib/core.my` abgeleitet; `string?` bleibt eine Kernoperation.
-- `symbol->string` / `string->symbol` — Convert between the two atom kinds that otherwise never compare `eq` to each other. · Конвертують між двома видами атомів, що інакше ніколи не порівнюються через `eq`. · Konvertieren zwischen den beiden Atomarten, die sich sonst nie über `eq` vergleichen.
-- `string-first` / `string-rest` — The `car`/`cdr` of a string: its first character (as a one-character string) and everything after it. Errors on an empty string. · `car`/`cdr` для рядка: перший символ (як односимвольний рядок) і все після нього. Помилка на порожньому рядку. · Das `car`/`cdr` eines Strings: sein erstes Zeichen (als einzeichiger String) und alles danach. Fehler bei einem leeren String.
-- `string-slice` — `(string-slice s start end)` returns the half-open character-indexed slice. Indices count Unicode scalar values, not UTF-8 bytes; bounds clamp to the string length and `start >= end` returns `""`. · `(string-slice s start end)` повертає зріз за індексами символів, не байтів UTF-8; межі обрізаються до довжини рядка, а `start >= end` повертає `""`.
-- `string-append` — `(string-append a b)` concatenates two strings into a new one. Added 2026-08-09 (PLAN.md item 14) as a genuine Rust primitive — unlike `string-length`/`string-prefix?`/`string-contains?` (`lib/core.my`, below), nothing built from `string-first`/`string-rest`/`eq` alone can combine two strings into a new one. · `(string-append a b)` з'єднує два рядки в новий. Додано 2026-08-09 (PLAN.md, пункт 14) як справжній Rust-примітив — на відміну від `string-length`/`string-prefix?`/`string-contains?` (`lib/core.my`, нижче), нічого, побудоване лише зі `string-first`/`string-rest`/`eq`, не може об'єднати два рядки в новий. · `(string-append a b)` verkettet zwei Strings zu einem neuen. Hinzugefügt am 2026-08-09 (PLAN.md, Punkt 14) als echtes Rust-Primitiv — anders als `string-length`/`string-prefix?`/`string-contains?` (`lib/core.my`, unten) kann nichts, das nur aus `string-first`/`string-rest`/`eq` aufgebaut ist, zwei Strings zu einem neuen verbinden.
-- `string<?` — `(string<? a b)` — lexicographic string ordering. Added 2026-08-09 (PLAN.md item 15) as the one genuinely new primitive `lib/persistent-map.my`'s balanced tree needed: `string-first`/`string-rest`/`eq` can test character-by-character *equality*, never *ordering*. · `(string<? a b)` — лексикографічне впорядкування рядків. Додано 2026-08-09 (PLAN.md, пункт 15) як єдиний справді новий примітив, якого потребувало збалансоване дерево `lib/persistent-map.my`: `string-first`/`string-rest`/`eq` можуть перевірити посимвольну *рівність*, ніколи *порядок*. · `(string<? a b)` — lexikographische String-Ordnung. Hinzugefügt am 2026-08-09 (PLAN.md, Punkt 15) als das einzige wirklich neue Primitiv, das der balancierte Baum von `lib/persistent-map.my` brauchte: `string-first`/`string-rest`/`eq` können zeichenweise *Gleichheit* prüfen, niemals *Ordnung*.
-- `sha256-hex` — `(sha256-hex string)` returns the lowercase-hex SHA-256 digest of the string's UTF-8 bytes (FIPS 180-4). Added 2026-08-13 as a genuine Rust primitive in the same category the bitwise-ops note reserves: "no primitive exposes a number's binary representation at all", and no combination of `string-first`/`string-rest`/`eq`/`+` can compute a cryptographic hash from inside the language. Surfaced from the `panini` session's `PANINI-MACHINE-TRACE-FORMAT` contract: content-addressed trace states require digest test vectors verifiable in-language (`panini/machine/tests.my`'s `test-trace-canonical-serialization` recomputes the two published vectors with `(sha256-hex ...)`). Pure-std implementation, no external crate — deliberately, to keep the crate dependency-free per this file's policy. · `(sha256-hex рядок)` повертає SHA-256-диджест UTF-8 байтів рядка у нижньому регістрі hex (FIPS 180-4). Додано 2026-08-13 як справжній Rust-примітив у тій самій категорії, яку резервує нотатка про бітові операції: "жоден примітив не відкриває бінарне представлення числа взагалі", і жодна комбінація `string-first`/`string-rest`/`eq`/`+` не може обчислити криптографічний хеш із мови. Знахідка сесії `panini` для контракту `PANINI-MACHINE-TRACE-FORMAT`: content-addressed стани trace потребують тестових векторів диджесту, перевірюваних у самій мові (`test-trace-canonical-serialization` у `panini/machine/tests.my` перераховує два опубліковані вектори через `(sha256-hex ...)`). Реалізація чистим std, без зовнішніх крейтів — свідомо, щоб тримати крейт вільним від залежностей за політикою цього файлу. · `(sha256-hex zeichenkette)` liefert den SHA-256-Digest der UTF-8-Bytes als Hex in Kleinbuchstaben (FIPS 180-4). Hinzugefügt am 2026-08-13 als echtes Rust-Primitiv in derselben Kategorie, die die Bitwise-Notiz reserviert: "kein Primitiv legt die binäre Darstellung einer Zahl offen", und keine Kombination aus `string-first`/`string-rest`/`eq`/`+` kann einen kryptografischen Hash aus der Sprache heraus berechnen. Aufgekommen in der `panini`-Session für den `PANINI-MACHINE-TRACE-FORMAT`-Vertrag: content-addressed Trace-Zustände brauchen in der Sprache prüfbare Digest-Testvektoren (`test-trace-canonical-serialization` in `panini/machine/tests.my` berechnet die beiden publizierten Vektoren mit `(sha256-hex ...)` neu). Pure-std-Implementierung, keine externe Crate — bewusst, um die Crate gemäß der Richtlinie dieser Datei abhängigkeitsfrei zu halten.
-- `tcp-connect`/`tcp-listen`/`tcp-accept`/`tcp-read`/`tcp-write`/`tcp-close` — raw TCP sockets (PLAN.md item 21), added 2026-08-09: the outbound-client half (`tcp-connect host port`) lets the language call out to other AI systems (LLM APIs, other agents — principle 3 extended beyond a single process); the inbound-server half (`tcp-listen port` / `tcp-accept listener`) lets it receive connections from them. `tcp-read` returns one `read()` chunk (up to 64 KiB) as a string, `""` on a closed connection (EOF, not an error) — draining a larger response is ordinary recursion plus `string-append` (item 14), not a new idiom. `tcp-write` returns its content unchanged, like `write-file`. No HTTP/TLS logic lives in Rust — only the raw byte pipe; protocol parsing is my-lisp's job once bytes are available (G5). Not available under WASM (no sockets in a browser sandbox), same capability-boundary shape as `read-file`/`write-file`. · `tcp-connect`/`tcp-listen`/`tcp-accept`/`tcp-read`/`tcp-write`/`tcp-close` — сирі TCP-сокети (PLAN.md, пункт 21), додано 2026-08-09: вихідна/клієнтська половина (`tcp-connect хост порт`) дозволяє мові звертатись до інших AI-систем (LLM API, інші агенти — принцип 3, поширений за межі одного процесу); вхідна/серверна половина (`tcp-listen порт` / `tcp-accept listener`) дозволяє приймати з'єднання від них. `tcp-read` повертає один шматок `read()` (до 64 КіБ) як рядок, `""` на закритому з'єднанні (EOF, не помилка) — витягування більшої відповіді — звичайна рекурсія плюс `string-append` (пункт 14), не новий ідіом. `tcp-write` повертає свій вміст без змін, як `write-file`. Жодної HTTP/TLS-логіки в Rust — лише сирий байтовий канал; парсинг протоколу — робота my-lisp, щойно байти доступні (G5). Недоступний під WASM (немає сокетів у браузерній пісочниці), та сама форма межі можливостей, що й `read-file`/`write-file`. · `tcp-connect`/`tcp-listen`/`tcp-accept`/`tcp-read`/`tcp-write`/`tcp-close` — rohe TCP-Sockets (PLAN.md, Punkt 21), hinzugefügt am 2026-08-09: die ausgehende Client-Hälfte (`tcp-connect host port`) lässt die Sprache andere KI-Systeme anrufen (LLM-APIs, andere Agenten — Prinzip 3 über einen einzelnen Prozess hinaus erweitert); die eingehende Server-Hälfte (`tcp-listen port` / `tcp-accept listener`) lässt sie Verbindungen von ihnen empfangen. `tcp-read` gibt einen `read()`-Chunk (bis zu 64 KiB) als String zurück, `""` bei geschlossener Verbindung (EOF, kein Fehler). `tcp-write` gibt seinen Inhalt unverändert zurück, wie `write-file`. Keine HTTP/TLS-Logik in Rust — nur die rohe Byte-Pipe. Unter WASM nicht verfügbar, dieselbe Form der Capability-Grenze wie `read-file`/`write-file`.
-- `process-run` — `(process-run program args)` executes a named program with string arguments through `Command::new(program).args(args)`, never through a shell, and returns `(exit-code stdout stderr)`. A trusted native root session is unrestricted so it can act as a Lisp machine. Host embeddings may still impose an exact allowlist; the CLI uses that fail-closed policy for unauthenticated TCP/oracle sessions. The semantic core itself does not install OS capabilities, and WASM does not provide this operation. · Довірена native root-сесія запускає названі програми без per-program дозволів; TCP/oracle лишається обмеженим політикою хоста. · Eine vertrauenswürdige native Root-Sitzung darf benannte Programme ohne Einzelgenehmigung starten; TCP/Oracle bleibt hostseitig beschränkt.
-- `*argv*` — `my-lisp-cli`-only, defined before a script file runs: everything on the command line after the filename, as a my-lisp list of strings (not parsed as code — just passed through). Added 2026-08-09 alongside `process-run`, specifically so `scripts/release.my` could take a version on the command line instead of a hand-edited constant. Empty (`()`), not an error, when nothing follows the filename. · `*argv*` — лише в `my-lisp-cli`, визначений до запуску файлу-скрипта: усе в командному рядку після імені файлу, як my-lisp-список рядків (не парситься як код — лише передається як є). Додано 2026-08-09 поруч із `process-run`, саме щоб `scripts/release.my` міг брати версію з командного рядка замість ручної константи. Порожній (`()`), не помилка, якщо нічого не йде після імені файлу. · `*argv*` — nur in `my-lisp-cli`, definiert bevor eine Skriptdatei läuft: alles auf der Kommandozeile nach dem Dateinamen, als my-lisp-Liste von Strings. Hinzugefügt am 2026-08-09 neben `process-run`, damit `scripts/release.my` eine Version auf der Kommandozeile statt einer manuell bearbeiteten Konstante nehmen konnte. Leer (`()`), kein Fehler, wenn nichts dem Dateinamen folgt.
+`define` and `lambda` have explicit necessary-form identities in the evaluator. Historical `def` compatibility remains. `lib/macro.my` now owns the normal `defmacro` binding after the macro layer loads; a Rust fallback still exists during migration.
 
-### Standard Library (`lib/core.my`) · Стандартна бібліотека · Standardbibliothek
-- `identity` — Returns its argument · Повертає переданий аргумент · Gibt sein Argument zurück
-- `not` — Logical NOT · Логічне заперечення · Logisches NICHT
-- `pair` — Creates a list of two elements · Створює список із двох елементів · Erstellt eine Liste aus zwei Elementen
-- `second` — Returns the second element of a list · Повертає другий елемент списку · Gibt das zweite Element einer Liste zurück
-- `third` — Returns the third element of a list · Повертає третій елемент списку · Gibt das dritte Element einer Liste zurück
-- `caar` — `(car (car x))`
-- `cadr` — `(car (cdr x))`
-- `equal?` — Deep/structural equality, unlike `eq`'s atom-only comparison — two atoms compare via `eq`, two pairs recurse into `car`/`cdr`, an atom against a pair is unconditionally false. · Глибока/структурна рівність, на відміну від `eq`, що порівнює лише атоми — два атоми порівнюються через `eq`, дві пари рекурсують у `car`/`cdr`, атом проти пари — безумовно хиба. · Tiefe/strukturelle Gleichheit, im Unterschied zu `eq`s reinem Atomvergleich — zwei Atome vergleichen über `eq`, zwei Paare rekursieren in `car`/`cdr`, ein Atom gegen ein Paar ist unbedingt falsch.
-- `length` — Counts the elements of a list · Рахує елементи списку · Zählt die Elemente einer Liste
-- `reverse` — Reverses a list (tail-recursive via a `reverse-onto` accumulator) · Розвертає список (хвостово-рекурсивно, через акумулятор `reverse-onto`) · Kehrt eine Liste um (endrekursiv über einen `reverse-onto`-Akkumulator)
-- `append` — Concatenates two lists · З'єднує два списки · Verkettet zwei Listen
-- `map` — Applies a function to every element, returning a new list · Застосовує функцію до кожного елемента, повертає новий список · Wendet eine Funktion auf jedes Element an, gibt eine neue Liste zurück
-- `filter` — Keeps elements for which a predicate is truthy · Лишає елементи, для яких предикат істинний · Behält Elemente, für die ein Prädikat wahr ist
-- `reduce` — Left-folds a list with a function and a starting accumulator · Ліво-згортає список функцією та початковим акумулятором · Faltet eine Liste linksseitig mit einer Funktion und einem Start-Akkumulator
-- `let` — `(let ((x 1) (y 2)) body)` desugars to `((lambda (x y) body) 1 2)`; bindings are parallel (evaluated in the outer environment, can't see each other), exactly two arguments — `body` is a single expression, since `defmacro` shares `lambda`'s fixed-arity parameter binding. · `(let ((x 1) (y 2)) тіло)` розгортається в `((lambda (x y) тіло) 1 2)`; bindings паралельні (обчислюються в зовнішньому середовищі, не бачать одне одного), рівно два аргументи — `body` це один вираз, бо `defmacro` ділить з `lambda` зв'язування параметрів фіксованої арності. · `(let ((x 1) (y 2)) rumpf)` entzuckert sich zu `((lambda (x y) rumpf) 1 2)`; Bindings sind parallel (in der äußeren Umgebung ausgewertet, sehen sich nicht), genau zwei Argumente — `body` ist ein einzelner Ausdruck, da `defmacro` sich die feste Parameterarität von `lambda` teilt.
-- `let*` — Sequential `let`: each binding's value expression can see every binding before it. Expands recursively into nested `let`s — `let*` calling `let*` is ordinary macro-expansion recursion, not a special case. · Послідовний `let`: вираз значення кожного binding бачить усі попередні. Розгортається рекурсивно у вкладені `let` — виклик `let*` із `let*` — звичайна рекурсія розгортання макросів, не особливий випадок. · Sequenzielles `let`: der Wertausdruck jedes Bindings sieht alle vorherigen. Entfaltet sich rekursiv in verschachtelte `let`s — `let*`, das `let*` aufruft, ist gewöhnliche Makro-Expansionsrekursion, kein Sonderfall.
-- `string-empty?`/`string-length`/`string-prefix?`/`string-contains?` — Added 2026-08-09 (PLAN.md items 14/20) as ordinary my-lisp, not Rust builtins: each walks a string one character at a time via `string-first`/`string-rest`, using `eq s ""` as the base case (`eq` already compares `Value::String` by value) — the same recursive-list-walk shape as `length`/`reverse` above, applied to a string instead of a pair chain. Proof that item 20's G5 test ("already expressible acceptably?") comes back yes for some string operations and no for others (`string-append`, which stays in Rust — see above). · Додано 2026-08-09 (PLAN.md, пункти 14/20) як звичайна my-lisp, не Rust-примітиви: кожна обходить рядок по символу через `string-first`/`string-rest`, з `eq s ""` як базовим випадком (`eq` уже порівнює `Value::String` за значенням) — та сама форма рекурсивного обходу списку, що й `length`/`reverse` вище, застосована до рядка замість ланцюжка пар. Доказ, що тест G5 з пункту 20 ("уже виразне прийнятним способом?") дає "так" для одних рядкових операцій і "ні" для інших (`string-append`, що лишається в Rust — див. вище). · Hinzugefügt am 2026-08-09 (PLAN.md, Punkte 14/20) als gewöhnliches my-lisp, keine Rust-Built-ins: jede läuft einen String zeichenweise über `string-first`/`string-rest` ab, mit `eq s ""` als Basisfall (`eq` vergleicht `Value::String` bereits nach Wert) — dieselbe rekursive Listendurchlauf-Form wie `length`/`reverse` oben, angewandt auf einen String statt eine Paarkette. Beweis, dass Punkt 20s G5-Test ("bereits akzeptabel ausdrückbar?") für manche String-Operationen ja liefert und für andere (`string-append`, das in Rust bleibt — siehe oben) nein.
+This is an **implementation ownership migration**, not an automatic semantic-contract rewrite. `language-contract.my` remains authoritative for observable Level 1/2 guarantees until deliberately revised.
 
-- `number->string` — Added 2026-08-10, surfaced from the `fpga-lisp` session's `assembler.my`, which had its own version limited to ~10 digits by a fixed `DECIMAL-POWERS` lookup table. This one recurses via `quotient`/`mod` (same `-onto` accumulator shape as `length-onto`/`reverse-onto`), so it has no digit-count ceiling of its own. G5-yes, ordinary my-lisp. Scope: non-negative integers only, same as `quotient`/`mod`. · `number->string` — додано 2026-08-10, знахідка з сесії `fpga-lisp`. · `number->string` — hinzugefügt am 2026-08-10.
-- `fifth` — Added 2026-08-10, a third G5 wave, found duplicated in two places at once: `lib/narrate.my`'s own local `fifth` (character-for-character identical) and `lib/persistent-map.my`'s `node-right` (same operation, computed by hand rather than named). `persistent-map.my`'s `node-left`/`node-right` are now aliases for `fourth`/`fifth` (same closure objects, kept as semantic names for readability inside the AVL logic, not deleted). · `fifth` — додано 2026-08-10, третя G5-хвиля, знайдено дубльованим одразу у двох місцях. · `fifth` — hinzugefügt am 2026-08-10.
-- `cddr`/`cadddr` — Added 2026-08-10, a second G5 wave over `my-lisp`'s own `lib/*.my` files (not `fpga-lisp` this time): `cddr` was hand-rolled locally in `lib/understand.my`, `cadddr` in `lib/reason.my`, character-for-character identical to what's here now — real, evidenced duplication, deduplicated by moving both into `core.my` and deleting the local copies. `cadddr` is a literal alias for `fourth` (`(eq cadddr fourth)` ⇒ `t`, same closure object), not a second definition — both spellings exist in real Lisps and real callers already used the `cadddr` name. · `cddr`/`cadddr` — додано 2026-08-10, друга хвиля G5 над власними `lib/*.my`-файлами `my-lisp` (цього разу не `fpga-lisp`): `cddr` вручну написано локально в `lib/understand.my`, `cadddr` — у `lib/reason.my`, посимвольно ідентично тому, що тепер тут. `cadddr` — буквальний псевдонім `fourth`, той самий об'єкт-closure, не друге визначення. · `cddr`/`cadddr` — hinzugefügt am 2026-08-10.
-- `fourth`/`nth`/`member?`/`assoc` — Added 2026-08-10, surfaced from the `fpga-lisp` session's `assembler.my`, which had independently reimplemented all three locally (as `nth`, `contains?`/`any-eq?`, and `assoc-str`) because `lib/core.my` didn't have them — real, evidenced duplication, not a speculative gap. All G5-yes, same recursive-list-walk shape as `length`/`reverse`. `assoc` also generalizes the `(symbol . value)` alist-lookup shape `lib/meta-eval.my`'s own `env-lookup` already hand-rolls for its specific case. · `fourth`/`nth`/`member?`/`assoc` — додано 2026-08-10, знахідка з сесії `fpga-lisp`, `assembler.my`, яка незалежно перевинайшла всі три локально, бо `lib/core.my` їх не мав — реальне, доказове дублювання. Усі G5-так, та сама форма рекурсивного обходу списку. `assoc` також узагальнює форму пошуку в alist, яку `lib/meta-eval.my`'s власний `env-lookup` уже вручну пише для свого випадку. · `fourth`/`nth`/`member?`/`assoc` — hinzugefügt am 2026-08-10, gefunden in der `fpga-lisp`-Sitzung.
-- `quotient`/`mod` — Added 2026-08-10, surfaced from the `fpga-lisp` session's `assembler.my` (which flagged missing bitwise/mod as a non-load-bearing gap for its own current needs). Ordinary my-lisp, not Rust builtins (same G5-yes category as the `string-*` functions above) — unlike bitwise operations (`AND`/`OR`/`XOR`/shift), which would need a real Rust primitive since no primitive exposes a number's binary representation at all. Scope: non-negative `a`, positive `b` only. **Algorithm fixed same-day**: the first version recursed via repeated subtraction — recursion depth equal to the quotient's *value*, not its digit count — and overflowed the Rust host's stack computing `(quotient 9999999999999 10)` while implementing `number->string` below. Now uses doubling (`largest-chunk`: find the largest `b * 2^k` that still fits `a`) — O(log(a/b)) recursion depth, correct at arbitrary size the way `my-lisp`'s own arbitrary-precision exact integers demand. · `quotient`/`mod` — додано 2026-08-10, знахідка з сесії `fpga-lisp`. **Алгоритм виправлено того самого дня**: перша версія мала глибину рекурсії, що дорівнювала САМІЙ ЧАСТЦІ, і переповнила стек на `(quotient 9999999999999 10)`. Тепер — подвоєння, O(log(a/b)) глибина. · `quotient`/`mod` — hinzugefügt am 2026-08-10. **Algorithmus am selben Tag korrigiert**: nutzt jetzt Verdopplung, O(log(a/b)) Rekursionstiefe.
+Bootstrap order matters:
 
-`length`, `map`, and `filter` build their result via a tail-recursive `-onto` accumulator (same shape as `reverse`/`reverse-onto`), reversing at the end where a list is being built; `append` is `(reverse-onto (reverse left) right)`, two tail-recursive passes instead of one non-tail one; `reduce` was always tail-recursive (its recursive call is the last expression evaluated). `crates/my-lisp/tests/stack_safety.rs`'s `core_lib_list_utilities_stay_stack_safe_on_a_long_list` runs a 100,000-element list through `append`/`filter`/`map`/`length` together to guard against a future non-tail-recursive rewrite of any of them.
+```text
+minimal Rust mechanisms
+        ↓
+macro layer
+        ↓
+core library
+        ↓
+semantic libraries
+        ↓
+natural-language / application surfaces
+```
 
-`length`, `map` та `filter` будують результат через хвостово-рекурсивний `-onto`-акумулятор (тієї самої форми, що й `reverse`/`reverse-onto`), розвертаючи наприкінці там, де будується список; `append` — це `(reverse-onto (reverse left) right)`, два хвостово-рекурсивні проходи замість одного не-хвостового; `reduce` завжди була хвостово-рекурсивною (її рекурсивний виклик — останній обчислюваний вираз). `core_lib_list_utilities_stay_stack_safe_on_a_long_list` у `crates/my-lisp/tests/stack_safety.rs` проганяє список зі 100 000 елементів через `append`/`filter`/`map`/`length` разом, щоб застерегти від майбутнього не-хвостового переписування будь-якої з них.
+The architectural rule is:
 
-`length`, `map` und `filter` bauen ihr Ergebnis über einen endrekursiven `-onto`-Akkumulator auf (dieselbe Form wie `reverse`/`reverse-onto`), am Ende umgekehrt, wo eine Liste aufgebaut wird; `append` ist `(reverse-onto (reverse left) right)`, zwei endrekursive Durchläufe statt eines Nicht-Tail-Durchlaufs; `reduce` war schon immer endrekursiv (sein rekursiver Aufruf ist der zuletzt ausgewertete Ausdruck). `core_lib_list_utilities_stay_stack_safe_on_a_long_list` in `crates/my-lisp/tests/stack_safety.rs` lässt eine 100.000-Elemente-Liste durch `append`/`filter`/`map`/`length` zusammen laufen, um vor einer künftigen nicht-endrekursiven Neufassung einer von ihnen zu schützen.
+> If a construct can be expressed by the language itself, do not embed it in the host without a concrete reason.
 
-### Literal syntax · Синтаксис літералів · Literalsyntax
+## Exact arithmetic
 
-- Symbols: any run of non-whitespace, non-`()`/`;` characters that isn't a number or a `n/d` rational — UTF-8 throughout, so Cyrillic identifiers (`радіо`, `довжина`) are first-class. · Символи: будь-яка послідовність непробільних символів поза `()`/`;`, що не є числом чи `n/d`-раціональним — UTF-8 наскрізь, тож кириличні ідентифікатори (`радіо`, `довжина`) рівноправні. · Symbole: jede Folge von Nicht-Leerraum-Zeichen außerhalb von `()`/`;`, die keine Zahl oder ein `n/d`-Rational ist — durchgehend UTF-8, kyrillische Bezeichner sind gleichberechtigt.
-- Numbers: exactness follows literal *kind*: integers are exact at arbitrary precision (compact `Value::Number` where safe, BigInt-backed `Rational(n/1)` beyond 2^53), while decimal/exponential literals are explicitly inexact. Bare `n/d` is exact `Rational`. · Числа: exactness визначає *вид* літералу: цілі точні з довільною точністю (компактний `Value::Number`, де безпечно, BigInt-backed `Rational(n/1)` за 2^53), десяткові/експоненційні — явно неточні; `n/d` — точний `Rational`. · Zahlen: Exaktheit folgt der Literal-*Art*: Ganzzahlen sind beliebig genau (kompaktes `Value::Number`, wo sicher, BigInt-basiertes `Rational(n/1)` jenseits 2^53), Dezimal-/Exponentialliterale explizit inexakt; `n/d` ist exakt rational.
+Exact arithmetic is a kernel-level semantic commitment. Integer/rational operations must not silently become floating point.
 
-  ```
-  3      → exact integer
-  3.0    → inexact real
-  3.00   → inexact real
-  3.000  → inexact real
-  5/6    → exact rational
-  ```
-  This is an executable fact in `conformance.my`, not just prose here — see `docs/language-core-axioms.md`'s S1 for the semantic principle (exactness belongs to the value, never inferred from a result's numeric shape).
-- Strings: `"..."` with `\n`, `\t`, `\r`, `\"`, `\\` escapes; any other escaped character passes through literally — deliberately, not an oversight (e.g. a raw Windows path like `"C:\Users\..."` in a string literal keeps its backslashes as plain characters instead of erroring). `\r` joined the recognized set 2026-08-10, found missing via a real bug in the `fpga-lisp` session: code assuming `"\r"` meant carriage-return (0x0D) actually got the one-character string `"r"` (backslash silently dropped, `r` kept, the same fallback every other unrecognized escape gets) — `(eq (string-first s) "\r")` was really testing "is this the letter r," silently eating real `'r'` characters in unrelated text. · Рядки: `"..."` з escape-послідовностями `\n`, `\t`, `\r`, `\"`, `\\`; будь-який інший escape-символ проходить буквально — свідомо, не недогляд (напр. сирий Windows-шлях `"C:\Users\..."` у рядковому літералі зберігає бекслеші як звичайні символи, не провалюється помилкою). `\r` приєднався до розпізнаних 2026-08-10, знайдено відсутнім через реальний баг у сесії `fpga-lisp`: код, що припускав, ніби `"\r"` означає carriage-return (0x0D), насправді отримував однолітерний рядок `"r"`. · Zeichenketten: `"..."` mit den Escapes `\n`, `\t`, `\r`, `\"`, `\\`; jedes andere escapete Zeichen wird unverändert übernommen — absichtlich, kein Versehen. `\r` kam am 2026-08-10 zur erkannten Menge hinzu, gefunden durch einen echten Bug in der `fpga-lisp`-Sitzung.
-- Lists: `(a b c)`, built from `cons` cells ending in `()`/`Nil`. An improper (dotted) tail prints as `(a . b)`. · Списки: `(a b c)`, побудовані з `cons`-комірок, що закінчуються `()`/`Nil`. Неправильний (крапковий) хвіст друкується як `(a . b)`. · Listen: `(a b c)`, aus `cons`-Zellen aufgebaut, die mit `()`/`Nil` enden. Ein unechter (gepunkteter) Tail wird als `(a . b)` ausgegeben.
-- There is no reader sugar for `quote` (no `'expr`). You must write `(quote expr)` explicitly. There is also no quasiquote/unquote (no `` ` ``/`,`) — macro templates are built by hand from `list`/`cons`, as `lib/core.my`'s bootstrap style and the `unless` macro example in `docs/quote-tutorial.md` show. · Немає синтаксичного цукру для `quote` (немає `'вираз`). Треба писати `(quote вираз)` явно. Також немає quasiquote/unquote (немає `` ` ``/`,`) — шаблони макросів будуються вручну з `list`/`cons`. · Es gibt keinen Reader-Zucker für `quote` (kein `'ausdruck`). Man muss `(quote ausdruck)` explizit schreiben. Es gibt auch kein Quasiquote/Unquote — Makro-Vorlagen werden manuell aus `list`/`cons` gebaut.
-- `; comment` runs to end of line. · `; коментар` триває до кінця рядка. · `; Kommentar` läuft bis zum Zeilenende.
+The Rust reference runtime currently supplies low-level arbitrary-precision integer/rational machinery. That is an implementation mechanism supporting the exactness contract; it does not mean high-level arithmetic policy belongs in Rust by default.
 
-### Truthiness, `t`, and `cond` · Істинність, `t` і `cond` · Wahrheitswert, `t` und `cond`
+Performance costs caused by stronger exactness are measured rather than hidden. Correctness and observable semantics take precedence over pretending exact arithmetic is free.
 
-Every value is truthy except the empty list `'()`/`Nil` and the boolean `false` produced by primitives like `atom`/`eq`; both print as `()`. `t` is the canonical true symbol, printing as `t`. Each `cond` clause is exactly `(test expression)` — one result expression, not an implicit sequence — and `cond` with no matching clause (or an empty clause list) evaluates to `()` rather than raising an error.
+## Host capability boundary
 
-Кожне значення істинне, крім порожнього списку `'()`/`Nil` і булевого `false`, який повертають примітиви на кшталт `atom`/`eq`; обидва друкуються як `()`. `t` — канонічний символ істини, друкується як `t`. Кожна гілка `cond` — рівно `(тест вираз)`, один результатний вираз, не неявна послідовність — і `cond` без відповідної гілки (чи з порожнім списком гілок) обчислюється в `()`, а не кидає помилку.
+The core distinction is not “Rust versus Lisp”. It is **mechanism versus meaning**.
 
-Jeder Wert ist wahr außer der leeren Liste `'()`/`Nil` und dem booleschen `false`, das Primitive wie `atom`/`eq` liefern; beide werden als `()` ausgegeben. `t` ist das kanonische Wahr-Symbol. Jede `cond`-Klausel ist genau `(Test Ausdruck)` — ein Ergebnisausdruck, keine implizite Sequenz — und ein `cond` ohne passende Klausel wertet zu `()` aus statt einen Fehler auszulösen.
+```text
+external world
+    ↓
+host observation / capability
+    ↓
+my-lisp data
+    ↓
+Lisp interpretation / policy
+```
 
-### Functions and macros · Функції та макроси · Funktionen und Makros
+A host operation should remain host-owned when it provides an external fact/effect the language cannot derive from values it already has.
 
-`lambda` takes a parameter list — fixed, or variadic via a dotted rest parameter (`(a b . rest)`) or a bare symbol (`args`) collecting every argument — no optional parameters, duplicate parameter names rejected at creation — and one or more body expressions evaluated in sequence, returning the last. Calling with the wrong argument count is an `ErrorKind::Arity` error, not silent truncation or padding. `def` binds a name in the current lexical frame *before* evaluating dependent closures are created, so a `lambda` can call itself by name recursively. `defmacro` works the same as `lambda` but the bound value is a `Value::Macro`: called at evaluation time, its body runs first to produce a new expression (typically built with `list`/`cons`/`quote`), which is then evaluated in place of the macro call — a runtime expansion step, not a separate compile pass.
+A deterministic transformation of an existing fact is a candidate for Lisp ownership.
 
-`lambda` приймає список параметрів — фіксований, або варіативний через dotted rest-параметр (`(a b . rest)`) чи голий символ (`args`), що збирає всі аргументи — без опціональних параметрів, повторювані імена параметрів відхиляються при створенні — та одне чи більше тіл-виразів, що обчислюються послідовно, повертаючи останній. Виклик з неправильною кількістю аргументів — помилка `ErrorKind::Arity`, не тиха обрізка чи доповнення. `def` зв'язує ім'я в поточному лексичному фреймі *до* того, як залежні замикання створюються, тож `lambda` може викликати сама себе рекурсивно за іменем. `defmacro` працює як `lambda`, але зв'язане значення — `Value::Macro`: викликається під час обчислення, тіло спершу виконується, щоб побудувати новий вираз (зазвичай через `list`/`cons`/`quote`), який тоді обчислюється замість виклику макроса — крок розгортання під час виконання, не окремий compile-прохід.
+### Time as the current example
 
-`lambda` nimmt eine Parameterliste — fest, oder variadisch über einen Dotted-Rest-Parameter (`(a b . rest)`) oder ein nacktes Symbol (`args`), das alle Argumente sammelt — keine optionalen Parameter, doppelte Parameternamen werden bei der Erstellung abgelehnt — und einen oder mehrere Rumpfausdrücke, sequenziell ausgewertet, der letzte wird zurückgegeben. Ein Aufruf mit falscher Argumentanzahl ist ein `ErrorKind::Arity`-Fehler, kein stilles Abschneiden oder Auffüllen. `def` bindet einen Namen im aktuellen lexikalischen Frame *bevor* abhängige Closures erstellt werden, sodass ein `lambda` sich selbst rekursiv beim Namen aufrufen kann. `defmacro` funktioniert wie `lambda`, aber der gebundene Wert ist ein `Value::Macro`: zur Auswertungszeit aufgerufen, läuft sein Rumpf zuerst, um einen neuen Ausdruck zu erzeugen (üblicherweise mit `list`/`cons`/`quote`), der dann anstelle des Makroaufrufs ausgewertet wird — ein Laufzeit-Expansionsschritt, kein separater Compile-Durchgang.
+Current direction:
 
-### Comparisons and the read/eval/print loop · Порівняння та цикл read/eval/print · Vergleiche und die Read/Eval/Print-Schleife
+```text
+Rust: mono-ns
+Lisp: mono-ms, elapsed/deadline semantics
 
-`<`, `>`, `=`, `<=`, `>=` cover ordering and equality comparison. `print`, `read`, and `eval` close the classic McCarthy read/eval/print loop by hand, from inside the language itself.
+Rust: unix-time-now
+Lisp: civil-from-days, utc-from-unix, utc-now
 
-`(read "...")` stays capability-free like the rest of the crate. `(read)` with no argument is the one deliberate, explicit exception: it blocks on real stdin (`std::io::stdin`), which is genuinely one host capability the language cannot provide itself. It's `#[cfg]`-gated: on `wasm32` (`crates/my-lisp-wasm`, the browser REPL) it returns a clear `ErrorKind::InvalidForm` instead of panicking, since there's no console to block on there. It's reliable when `my-lisp-cli` runs a *file* — `(eval (read))` reading a piped line end to end is covered by `crates/my-lisp-cli/tests/cli.rs`. Inside the interactive REPL it competes with `rustyline` for the same stdin: typed-at-a-terminal use is expected to behave (a real TTY reads line-by-line in raw mode without over-buffering), but piped/redirected REPL input can see `rustyline` buffer ahead of what `(read)` gets back — a documented edge case, not a silent gap.
+Rust: raw NTP/network observation
+Lisp: accepted timestamp interpretation and calendar meaning
+```
 
-`<`, `>`, `=`, `<=`, `>=` покривають впорядкування й рівність. `print`, `read` і `eval` вручну замикають класичний McCarthy read/eval/print цикл зсередини самої мови.
+This is tracked in [`host-semantic-surface.md`](host-semantic-surface.md).
 
-`(read "...")` лишається без host-можливостей, як і решта крейта. `(read)` без аргументу — єдиний навмисний, явний виняток: блокується на справжньому stdin (`std::io::stdin`), а це справді одна host-можливість, яку мова сама надати не може. Він `#[cfg]`-гейтований: на `wasm32` (`crates/my-lisp-wasm`, браузерний REPL) повертає чітку помилку `ErrorKind::InvalidForm` замість паніки, бо там немає консолі, на якій можна блокуватись. Надійно працює, коли `my-lisp-cli` виконує *файл* — `(eval (read))`, що читає переданий через pipe рядок наскрізно, покрито `crates/my-lisp-cli/tests/cli.rs`. Усередині інтерактивного REPL конкурує з `rustyline` за той самий stdin: використання з набором тексту в терміналі має працювати (справжній TTY читає рядок за рядком у raw-режимі без зайвого буферування), але REPL з переданим через pipe вводом може побачити, що `rustyline` буферизує наперед більше, ніж отримує назад `(read)` — задокументований крайовий випадок, не тихо прихована прогалина.
+The rule is intentionally conservative: first implement the language-owned equivalent, then add deterministic tests, then prove ownership, then migrate consumers, and only then remove the host duplicate.
 
-`<`, `>`, `=`, `<=`, `>=` decken Ordnung und Gleichheit ab. `print`, `read` und `eval` schließen die klassische McCarthy-Read/Eval/Print-Schleife von Hand, aus der Sprache selbst heraus.
+## Runtime and capability crates
 
-`(read "...")` bleibt ohne Host-Fähigkeiten wie der Rest des Crates. `(read)` ohne Argument ist die eine bewusste, explizite Ausnahme: es blockiert auf echtem stdin (`std::io::stdin`), was tatsächlich eine Host-Fähigkeit ist, die die Sprache selbst nicht bieten kann. Es ist per `#[cfg]` abgegrenzt: auf `wasm32` (`crates/my-lisp-wasm`, der Browser-REPL) liefert es einen klaren `ErrorKind::InvalidForm`-Fehler statt zu paniken, da es dort keine Konsole zum Blockieren gibt. Zuverlässig, wenn `my-lisp-cli` eine *Datei* ausführt — `(eval (read))`, das eine per Pipe übergebene Zeile durchgängig liest, ist durch `crates/my-lisp-cli/tests/cli.rs` abgedeckt. Innerhalb der interaktiven REPL konkurriert es mit `rustyline` um dasselbe stdin: bei Eingabe an einem Terminal wird ein korrektes Verhalten erwartet (ein echtes TTY liest zeilenweise im Raw-Modus ohne Über-Pufferung), aber per Pipe/umgeleitete REPL-Eingabe kann sehen, dass `rustyline` weiter puffert, als `(read)` zurückbekommt — ein dokumentierter Grenzfall, keine stille Lücke.
+`crates/my-lisp` owns language-runtime mechanisms such as values, parsing, evaluation, lexical environments, exact arithmetic, and structured diagnostics.
 
-### Tooling around the language · Інструментарій навколо мови · Werkzeuge rund um die Sprache
+OS-facing filesystem/process/TCP capabilities belong behind explicit host boundaries rather than leaking into language semantics. `crates/my-lisp-host` exists for this purpose.
 
-- **Errors**: every `LanguageError` carries one of the contract's eight named `ErrorKind` categories (`Parse`, `UnknownSymbol`, `Arity`, `Type`, `InvalidForm`, `NumericOverflow`, `OutOfMemory`, `DivisionByZero`) and a byte-offset `Span`. Contract 3.0 makes their classification observable semantics. `LanguageError::render` adds source location and caret diagnostics. · **Помилки**: кожна `LanguageError` несе одну з восьми контрактних категорій `ErrorKind` і byte-offset `Span`; від контракту 3.0 класифікація є спостережуваною семантикою. · **Fehler**: jeder `LanguageError` trägt eine von acht vertraglichen `ErrorKind`-Kategorien und einen `Span`; seit Vertrag 3.0 ist die Klassifikation beobachtbare Semantik.
-- **Literate Markdown** (`crates/my-lisp-literate`): a `.md` source can mix prose with ` ```my-lisp ` fenced code blocks; only the fenced blocks execute, concatenated, with error spans remapped back to their original position in the Markdown file — see `docs/quote-tutorial.md` for the format in practice. · **Literate Markdown**: `.md`-джерело може змішувати прозу з блоками ` ```my-lisp `; виконуються лише огороджені блоки, зі зміщеннями помилок, ремапленими назад у Markdown-файл. · **Literate Markdown**: eine `.md`-Quelle kann Prosa mit ` ```my-lisp `-Codeblöcken mischen; nur diese Blöcke werden ausgeführt.
-- **REPL** (`my-lisp-cli`, no file argument): history persists across sessions to `~/.my-lisp-history` (falls back to no persistence, not a crash, if neither `HOME` nor `USERPROFILE` resolves). · **REPL**: історія зберігається між сесіями в `~/.my-lisp-history` (без HOME/USERPROFILE — без персистенції, не крах). · **REPL**: der Verlauf bleibt sitzungsübergreifend in `~/.my-lisp-history` erhalten.
-- **`tests/fixtures/conformance.my`** is the implementation-independent contract: one flat alist per fixture (`expr`/`expected`/`error`, plus this project's own tier/axiom tags in the same record), run against `lib/core.my` preloaded, meant to be reproducible by any future my-lisp implementation. Written as my-lisp data (moved off JSON 2026-08-09), read via `read-file`/`read-all` — no foreign parser needed. · **`tests/fixtures/conformance.my`** — незалежний від реалізації контракт, відтворюваний будь-якою майбутньою реалізацією my-lisp. Записаний як my-lisp-дані (перенесено з JSON 2026-08-09). · **`tests/fixtures/conformance.my`** ist der implementierungsunabhängige Vertrag, reproduzierbar von jeder künftigen my-lisp-Implementierung. Als my-lisp-Daten geschrieben (2026-08-09 von JSON verschoben).
+Some compatibility mechanisms may still live in the core implementation during migration. Their presence is not proof that their policy belongs there permanently; each one is auditable against the Host Semantic Surface test.
 
-## Unified execution · Уніфіковане виконання · Einheitliche Ausführung
+## Conformance
 
-The migration from the ClojureScript prototype to the Rust core is complete. The Rust implementation conforms to the primitive behavior specified by implementation-independent examples and tests.
+A claim of language compatibility is about observable behavior, not internal architecture.
 
-Міграція з прототипу на ClojureScript до Rust-ядра завершена. Rust-реалізація відповідає примітивній поведінці, визначеній незалежними від реалізації прикладами та тестами.
+The main evidence chain is:
 
-Die Migration vom ClojureScript-Prototyp zum Rust-Kern ist abgeschlossen. Die Rust-Implementierung entspricht dem primitiven Verhalten, das durch implementierungsunabhängige Beispiele und Tests spezifiziert ist.
+```text
+language-contract.my
+        +
+ratified ADRs
+        +
+tests/fixtures/conformance.my
+        +
+executable language-owned laws such as lib/canon.my
+        ↓
+implementation conformance claim
+```
 
-`crates/my-lisp-wasm` runs the canonical Rust engine directly in the browser via WebAssembly, powering the standalone web REPL (`public/my-lisp-cli-web.html`). Both it and `my-lisp-cli` use single-pass parsing (`eval_parsed_expressions`) — source is parsed once to produce both an AST view and the evaluation result, rather than parsing twice for each concern.
+Independent substrates matter because a second implementation can expose assumptions that a single implementation cannot falsify.
 
-`crates/my-lisp-wasm` запускає канонічний Rust-рушій напряму в браузері через WebAssembly, живлячи автономний web-REPL (`public/my-lisp-cli-web.html`). І він, і `my-lisp-cli` використовують однопрохідний парсинг (`eval_parsed_expressions`) — код парситься один раз для AST-подання та результату обчислення, а не двічі під кожну потребу окремо.
+Rust, C/assembly, and FPGA do **not** need the same internal representation. They need the same contract-level behavior within documented resource limits.
 
-`crates/my-lisp-wasm` führt die kanonische Rust-Engine direkt im Browser über WebAssembly aus und betreibt den eigenständigen Web-REPL (`public/my-lisp-cli-web.html`). Sowohl er als auch `my-lisp-cli` nutzen Single-Pass-Parsing (`eval_parsed_expressions`) — der Quellcode wird einmal geparst, um sowohl eine AST-Ansicht als auch das Auswertungsergebnis zu liefern, statt zweimal getrennt zu parsen.
+## Error semantics
 
-The Rust evaluator executes the final expression of a closure and the selected `cond` branch through an explicit trampoline. Tail-recursive programs therefore use constant Rust call-stack space. Closure bodies share immutable AST nodes through `Rc`, and `Value::Pair` cons cells already share tail structure the same way — `cons` is O(1) regardless of list length (see `docs/benchmarks.md`); deep-list `Drop` is iterative and stack-safe (`crates/my-lisp/tests/stack_safety.rs`).
+Error categories covered by `language-contract.my` are observable semantics. Implementation refactors must therefore preserve contract-level error classification rather than collapsing distinct failures into a convenient generic error.
 
-Rust evaluator виконує останній вираз closure та вибрану гілку `cond` через явний trampoline. Тому хвостово-рекурсивні програми використовують сталий обсяг Rust call stack. Тіла closure спільно використовують незмінні AST-вузли через `Rc`, і cons-комірки `Value::Pair` так само вже ділять хвостову структуру — `cons` є O(1) незалежно від довжини списку (див. `docs/benchmarks.md`); drop глибоких списків ітеративний і stack-safe (`crates/my-lisp/tests/stack_safety.rs`).
+For the current exact version and ratified invariants, read `language-contract.my` directly rather than copying a version number from prose.
 
-Der Rust-Evaluator führt den letzten Closure-Ausdruck und den gewählten `cond`-Zweig über ein explizites Trampolin aus. Tail-rekursive Programme benötigen dadurch konstanten Rust-Call-Stack. Closure-Rümpfe teilen unveränderliche AST-Knoten über `Rc`, und `Value::Pair`-Cons-Zellen teilen ebenso bereits Tail-Struktur — `cons` ist O(1) unabhängig von der Listenlänge (siehe `docs/benchmarks.md`); das Droppen tiefer Listen ist iterativ und stack-sicher (`crates/my-lisp/tests/stack_safety.rs`).
+## Derived language systems
+
+Large parts of the repository deliberately live above the language core:
+
+```text
+lib/core.my          standard language
+lib/macro.my         macro bootstrap layer
+lib/time.my          time/calendar semantics
+lib/meta-eval.my     metacircular experiments
+lib/unify.my         unification
+lib/reason.my        backward chaining
+lib/forward.my       forward chaining
+lib/knowledge.my     knowledge modules
+lib/world.my         immutable history/world semantics
+lib/epistemic.my     epistemic layer
+lib/understand.my    controlled-language ingestion
+lib/narrate.my       controlled-language rendering
+```
+
+Their existence demonstrates the language growing itself, but they do not silently become primitive semantics.
+
+## Architecture levels
+
+A useful current map is:
+
+```text
+L0  runtime/substrate mechanisms
+L1  closed semantic core (Canon 0 + seven operations)
+L2  bootstrap / standard language
+L3  semantic libraries
+L4  reasoning
+L5  knowledge/history/epistemic systems
+L6  explicit host capabilities
+L7  applications and ecosystem experiments
+```
+
+Dependencies and authority should generally point downward. A high-level subsystem must not redefine a lower-level semantic fact by convenience.
+
+## Documentation discipline
+
+Detailed builtin/function inventory belongs in generated or specialized documentation such as [`FUNCTIONS.md`](FUNCTIONS.md), not duplicated manually here.
+
+Historical decisions belong in dated ADRs/audits/versioning notes. They should not remain mixed into the current contract explanation after being superseded.
+
+When current prose and executable evidence disagree, fix the prose or explicitly open a contract change. Do not let ambiguity become a third semantic state.
+
+## Further reading
+
+- [`../language-contract.my`](../language-contract.my) — machine-readable current Level 1/2 contract version;
+- [`semantic-authority-map.md`](semantic-authority-map.md) — authority hierarchy;
+- [`host-semantic-surface.md`](host-semantic-surface.md) — host/Lisp ownership audit;
+- [`adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`](adr/ADR-004-CLOSED-MCCARTHY7-CORE.md) — closed primitive-set decision;
+- [`language-core-axioms.md`](language-core-axioms.md) — broader draft axioms and project principles;
+- [`../tests/fixtures/conformance.my`](../tests/fixtures/conformance.my) — executable fixtures;
+- [`../lib/canon.my`](../lib/canon.my) — language-owned Canon laws;
+- [`FUNCTIONS.md`](FUNCTIONS.md) — current generated reference.
+
+---
+
+## Українське резюме
+
+Семантична істина належить не Rust-файлу, а контракту та виконуваним доказам. Rust — референсна реалізація й host-механізм. Lisp має забирати собі все значення й політику, які може вивести з уже наданих фактів.
+
+```text
+Rust дає світові двері.
+Lisp вирішує, що означає те, що через них приходить.
+```
+
+Сім примітивних операцій замкнені назавжди. `()` — Canon 0, а не восьмий примітив. Поверхневі назви не є семантичними identity. Нові можливості мають виростати над ядром, не розширювати його без доказу.
+
+---
+
+## Deutsche Zusammenfassung
+
+Semantische Autorität liegt beim Vertrag und ausführbarer Evidenz, nicht bei einer einzelnen Rust-Datei. Rust ist die Referenzimplementierung und stellt Mechanismen bereit; ableitbare Bedeutung und Policy sollen in der Sprache leben.
+
+Die sieben primitiven Operationen bleiben dauerhaft geschlossen. `()` ist Canon 0, kein achtes Primitiv. Oberflächennamen sind nicht mit semantischer Identität gleichzusetzen.
