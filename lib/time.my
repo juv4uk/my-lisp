@@ -80,11 +80,28 @@
              (- ntp-seconds 2208988800)
              (quotient (* fraction 1000000000) 4294967296))))))
 
+; Adapter for the next host boundary. The host should return either:
+;   (ntp-fields host mode stratum ntp-seconds fraction)
+; or a transport-level rejection such as (rejected receive-failed).
+; Lisp owns every protocol interpretation after that raw observation boundary.
+(def internet-time-raw->observation
+  (lambda (raw)
+    (cond
+      ((eq (car raw) (quote ntp-fields))
+       (internet-time-fields->observation
+         (second raw)
+         (third raw)
+         (car (cdr (cdr (cdr raw))))
+         (car (cdr (cdr (cdr (cdr raw)))))
+         (car (cdr (cdr (cdr (cdr (cdr raw))))))))
+      (t raw))))
+
 ; The host NTP capability currently returns the public observation shape:
 ;   (accepted host unix-seconds nanosecond)
 ; or a rejected result. Turning the accepted timestamp into calendar meaning is
-; language policy. `internet-time-fields->observation` above is the migration
-; target for the validation/epoch/fraction semantics that still live in Rust.
+; language policy. `internet-time-raw->observation` above defines the exact
+; target boundary for the next migration: raw transport fields in, interpreted
+; observation out, without protocol semantics in Rust.
 (def internet-time-observation->utc
   (lambda (observation)
     (cond
