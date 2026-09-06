@@ -85,14 +85,11 @@ fn raw_unix_clock_observation_is_interpreted_by_lisp() {
 }
 
 #[test]
-fn utc_now_binding_is_owned_by_lisp_after_time_library_loads() {
+fn utc_now_exists_only_after_language_time_layer_loads() {
     let mut session = Session::default();
     load_core_library(&mut session).unwrap();
 
-    assert!(matches!(
-        session.environment.get("utc-now"),
-        Some(Value::Builtin(_))
-    ));
+    assert!(session.environment.get("utc-now").is_none());
     assert!(matches!(
         session.environment.get("unix-time-now"),
         Some(Value::Builtin(_))
