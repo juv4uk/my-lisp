@@ -10,7 +10,7 @@ fn eval_meta(source: &str) -> String {
     eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
 
     let wrapper = format!(
-        r#"(my-eval (read \"{}\") (quote ()))"#,
+        r#"(my-eval (read "{}") (quote ()))"#,
         escape_lisp_string(source),
     );
 
