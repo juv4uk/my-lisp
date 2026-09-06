@@ -104,3 +104,20 @@ fn reasoning_function_reference_tracks_live_library_definitions() {
         }
     }
 }
+
+#[test]
+fn agent_onboarding_keeps_semantic_and_coordination_planes_separate() {
+    let agents = include_str!("../../../AGENTS.md");
+    let deprecation = include_str!("../../../knowledge/swarm-legacy-deprecation.wsm");
+
+    assert!(agents.contains("my-lisp :9999"));
+    assert!(agents.contains("swarm-node :910x"));
+    assert!(agents.contains("deprecated compatibility surface"));
+    assert!(agents.contains("knowledge/swarm-legacy-deprecation.wsm"));
+    assert!(
+        !agents.contains("This is a\n  first-class pattern, not a fallback"),
+        "legacy :9999 mailbox instructions must not return as current onboarding"
+    );
+    assert!(deprecation.contains("(status . deprecated)"));
+    assert!(deprecation.contains("(coordination-authority . swarm-node)"));
+}
