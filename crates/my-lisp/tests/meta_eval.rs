@@ -187,10 +187,15 @@ fn loads_a_real_verbatim_slice_of_lib_core_my_and_runs_it_through_my_eval() {
 /// top-level `def` whose value refers to its own name doesn't see itself,
 /// because environments here are an immutable alist, not the host's real
 /// mutable frame (`environment.rs:70`) — the closure captures `env` from
-/// *before* its own binding exists. This regression-tests the limit
-/// instead of leaving it as an unverified claim in a comment.
+/// *before* its own binding exists.
+///
+/// The metacircular evaluator does not yet own native `LanguageError` parity.
+/// Therefore the semantic witness is the explicit Lisp failure value below,
+/// not the accidental Rust `Type` error that the older implementation leaked
+/// when it tried to take `car` of an unbound atom. This test pins the actual
+/// limitation without turning substrate behavior into language semantics.
 #[test]
-fn self_recursive_top_level_def_does_not_see_its_own_binding() {
+fn self_recursive_top_level_def_reports_unbound_self_as_not_callable() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
@@ -200,7 +205,7 @@ fn self_recursive_top_level_def_does_not_see_its_own_binding() {
                         (quote ()))))
           (my-eval (read "(count-down 3)") (car loaded)))
     "#;
-    let error = eval_program(source, &mut session)
-        .expect_err("a self-recursive top-level def should fail to find itself, not succeed");
-    assert_eq!(error.kind, my_lisp::ErrorKind::Type);
+    let result = eval_program(source, &mut session)
+        .expect("the meta-evaluator should represent this known semantic limitation explicitly");
+    assert_eq!(result.value.to_string(), "(not-callable count-down)");
 }
