@@ -35,6 +35,23 @@ fn utf8_decodes_valid_bytes_to_a_runtime_string_without_lossy_host_policy() {
 }
 
 #[test]
+fn utf8_encodes_runtime_strings_to_exact_wire_bytes() {
+    assert_eq!(eval("(utf8-encode-string \"ABC\")"), "(65 66 67)");
+    assert_eq!(
+        eval("(utf8-encode-string \"A¢€😀\")"),
+        "(65 194 162 226 130 172 240 159 152 128)"
+    );
+}
+
+#[test]
+fn utf8_encode_decode_round_trip_is_language_owned() {
+    assert_eq!(
+        eval("(utf8-decode-string (utf8-encode-string \"Привіт 😀\"))"),
+        "(decoded \"Привіт 😀\")"
+    );
+}
+
+#[test]
 fn utf8_rejects_overlong_surrogate_and_out_of_range_sequences() {
     for bytes in [
         "(192 128)",       // overlong 2-byte form
