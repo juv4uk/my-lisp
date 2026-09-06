@@ -368,14 +368,22 @@ fn evaluate_tcp_connect(
     Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
 }
 
-fn evaluate_tcp_listen(
+fn evaluate_tcp_listen_raw(
     arguments: &[Expr],
     environment: &Environment,
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("tcp-listen", arguments, 1, span)?;
-    let port = expect_port(&arguments[0], environment)?;
-    let listener = tcp_listen(port, span)?;
+    exact_arity("tcp-listen-raw", arguments, 2, span)?;
+    let address_value = eval_expr(&arguments[0], environment)?;
+    let Value::String(ref address) = address_value else {
+        return Err(LanguageError::new(
+            ErrorKind::Type,
+            "tcp-listen-raw expects a string bind address · tcp-listen-raw ochikuie riadok-adresu pryviazky · tcp-listen-raw erwartet eine String-Bind-Adresse",
+            arguments[0].span,
+        ));
+    };
+    let port = expect_port(&arguments[1], environment)?;
+    let listener = tcp_listen_raw(address, port, span)?;
     Ok(Value::TcpListener(Rc::new(listener)))
 }
 
@@ -502,21 +510,29 @@ fn tcp_connect(_host: &str, _port: u16, span: Span) -> Result<std::net::TcpStrea
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn tcp_listen(port: u16, span: Span) -> Result<std::net::TcpListener, LanguageError> {
-    std::net::TcpListener::bind(("0.0.0.0", port)).map_err(|error| {
+fn tcp_listen_raw(
+    address: &str,
+    port: u16,
+    span: Span,
+) -> Result<std::net::TcpListener, LanguageError> {
+    std::net::TcpListener::bind((address, port)).map_err(|error| {
         LanguageError::new(
             ErrorKind::InvalidForm,
-            format!("tcp-listen: failed to bind port {port}: {error}"),
+            format!("tcp-listen-raw: failed to bind {address}:{port}: {error}"),
             span,
         )
     })
 }
 
 #[cfg(target_arch = "wasm32")]
-fn tcp_listen(_port: u16, span: Span) -> Result<std::net::TcpListener, LanguageError> {
+fn tcp_listen_raw(
+    _address: &str,
+    _port: u16,
+    span: Span,
+) -> Result<std::net::TcpListener, LanguageError> {
     Err(LanguageError::new(
         ErrorKind::InvalidForm,
-        "tcp-listen: networking is not available in this build",
+        "tcp-listen-raw: networking is not available in this build",
         span,
     ))
 }
@@ -625,7 +641,7 @@ pub fn install() {
     register_capability("process-run-raw", process_raw::evaluate_process_run_raw);
     register_capability("load", evaluate_load);
     register_capability("tcp-connect", evaluate_tcp_connect);
-    register_capability("tcp-listen", evaluate_tcp_listen);
+    register_capability("tcp-listen-raw", evaluate_tcp_listen_raw);
     register_capability("tcp-accept", evaluate_tcp_accept);
     register_capability("tcp-read-raw", evaluate_tcp_read_raw);
     register_capability("tcp-write-raw", evaluate_tcp_write_raw);
@@ -646,7 +662,7 @@ mod install_tests {
             "write-file-bytes",
             "process-run-raw",
             "tcp-connect",
-            "tcp-listen",
+            "tcp-listen-raw",
             "tcp-accept",
             "tcp-read-raw",
             "tcp-write-raw",
