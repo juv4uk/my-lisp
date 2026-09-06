@@ -58,6 +58,11 @@ pub const UTF8_LIBRARY_SOURCE: &str = include_str!("../../../lib/utf8.my");
 /// text and how decoding failures are represented.
 pub const PROCESS_LIBRARY_SOURCE: &str = include_str!("../../../lib/process.my");
 
+/// TCP text interpretation owned by Lisp. The host contributes only the raw
+/// socket-read bytes through `tcp-read-raw`; this layer defines public
+/// `tcp-read` by applying the shared UTF-8 semantics.
+pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
+
 /// Load the language-owned macro layer and then the ordinary core library.
 ///
 /// This is the canonical bootstrap order for embedders that want `core.my`.
@@ -82,6 +87,15 @@ pub fn load_time_library(session: &mut Session) -> Result<EvalResult, LanguageEr
 pub fn load_process_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     eval_program(UTF8_LIBRARY_SOURCE, session)?;
     eval_program(PROCESS_LIBRARY_SOURCE, session)
+}
+
+/// Load language-owned TCP text semantics over the raw socket read boundary.
+/// The session should already have core.my available; an embedder that wants
+/// real network I/O must additionally install the host `tcp-read-raw`
+/// capability (alongside connect/listen/accept/write/close as needed).
+pub fn load_tcp_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
+    eval_program(UTF8_LIBRARY_SOURCE, session)?;
+    eval_program(TCP_LIBRARY_SOURCE, session)
 }
 
 /// Convenience: FASL-encode already-parsed expressions bound to a source hash.
