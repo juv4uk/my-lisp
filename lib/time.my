@@ -33,12 +33,12 @@
            (civil (civil-from-days days))
            (hour (quotient day-seconds 3600))
            (minute (quotient (mod day-seconds 3600) 60))
-           (second (mod day-seconds 60)))
+           (second-of-minute (mod day-seconds 60)))
       (list (quote utc)
             (car civil)
             (second civil)
             (third civil)
-            hour minute second nanosecond))))
+            hour minute second-of-minute nanosecond))))
 
 (def timezone-config
   (lambda (name offset-seconds)
