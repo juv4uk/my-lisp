@@ -11,10 +11,10 @@ fn eval_with_derived_macros(source: &str) -> String {
 }
 
 #[test]
-fn defmacro_derived_introduces_a_working_macro() {
+fn language_owned_defmacro_introduces_a_working_macro() {
     let value = eval_with_derived_macros(
         r#"
-        (defmacro-derived identity (x) x)
+        (defmacro identity (x) x)
         (identity 42)
         "#,
     );
@@ -22,10 +22,10 @@ fn defmacro_derived_introduces_a_working_macro() {
 }
 
 #[test]
-fn defmacro_derived_preserves_unevaluated_arguments() {
+fn language_owned_defmacro_preserves_unevaluated_arguments() {
     let value = eval_with_derived_macros(
         r#"
-        (defmacro-derived first-form (a b) a)
+        (defmacro first-form (a b) a)
         (first-form (quote ok) never-defined)
         "#,
     );
@@ -33,10 +33,10 @@ fn defmacro_derived_preserves_unevaluated_arguments() {
 }
 
 #[test]
-fn defmacro_derived_can_build_control_flow() {
+fn language_owned_defmacro_can_build_control_flow() {
     let value = eval_with_derived_macros(
         r#"
-        (defmacro-derived unless (condition body)
+        (defmacro unless (condition body)
           (cons (quote cond)
             (cons
               (cons condition
@@ -49,4 +49,15 @@ fn defmacro_derived_can_build_control_flow() {
         "#,
     );
     assert_eq!(value, "success");
+}
+
+#[test]
+fn transitional_defmacro_derived_name_still_works() {
+    let value = eval_with_derived_macros(
+        r#"
+        (defmacro-derived identity-old (x) x)
+        (identity-old 7)
+        "#,
+    );
+    assert_eq!(value, "7");
 }
