@@ -273,9 +273,9 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "Observe the host wall clock as raw Unix seconds and nanoseconds",
             Arity::Exact(0),
         ),
-        "internet-time-sync" => (
-            "(internet-time-sync host timeout-ms)",
-            "Query an NTP server with a bounded timeout",
+        "ntp-query-raw" => (
+            "(ntp-query-raw host timeout-ms)",
+            "Perform one bounded NTP query and return raw protocol fields",
             Arity::Exact(2),
         ),
         "timezone-detect" => (
