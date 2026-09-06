@@ -159,8 +159,8 @@ The canonical identity table is an autonomous normative entity separate from any
 
 | Canonical Identity | Formal Semantics | Canonical Ukrainian Surface | Status | Rejected Canonical Candidates | Historical / Conceptual Witness |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `PRIM_QUOTE` | $e \mapsto e$ (eval suppression) | **`як-є`** | **stable** | `цитата` (English loan/calque), `власна-форма` (academic noise), `дослівно` (text bias) | AS 1.1.68 *svaṃ rūpam* (**STRONG ANALOGUE**) |
-| `PRIM_ATOM` | $x \mapsto \text{Bool}$ (non-pair predicate) | **`атом?`** / **`просте?`** | **contested** (open) | `непара?` (negative definition), `неподільне?` (verbose), `одиничне?` (number 1 bias) | VS 7.1.10–11 *aṇu* (**PARTIAL ANALOGUE**: physical ontology) |
+| `PRIM_QUOTE` | $e \mapsto e$ (treat as datum / suppress eval) | **`дані`** | **stable** | `як-є` (good action name, but less expressive of code/data duality), `цитата` (calque), `дослівно` (text bias) | AS 1.1.68 *svaṃ rūpam* (**STRONG ANALOGUE**) |
+| `PRIM_ATOM` | $x \mapsto \text{Bool}$ (non-pair predicate) | **`атом?`** | **stable** | `просте?` (collision with prime numbers: (просте? 7)), `непара?` (negative definition), `неподільне?` (verbose) | VS 7.1.10–11 *aṇu* (**PARTIAL ANALOGUE**: physical ontology) |
 | `PRIM_EQ` | $(x, y) \mapsto \text{Bool}$ (atom identity) | **`тотожне?`** | **stable** | `рівне?` (conflates with numeric/structural equal), `одне?` (ambiguous) | TS §80 *abheda* / *tādātmya* (**PARTIAL ANALOGUE**) |
 | `PRIM_CAR` | $\pi_1 : (x . y) \mapsto x$ (first coordinate) | **`перше`** | **stable** | `голова` (list-only bias), `лівий` (spatial metaphor), `початок` (temporal bias) | VS 4.2.9 *āditva* (**WEAK ANALOGUE**: linear/temporal metaphor) |
 | `PRIM_CDR` | $\pi_2 : (x . y) \mapsto y$ (residual coordinate) | **`решта`** | **stable** | `хвіст` (pure list bias), `друге` (false expectation on lists: returns (2 3), not 2) | NS 1.1.5 *śeṣa* / *śeṣavat* (**PARTIAL ANALOGUE**: inference by residual) |
@@ -168,9 +168,15 @@ The canonical identity table is an autonomous normative entity separate from any
 | `PRIM_COND` | Ordered guarded first-match selection | **`за-умовою`** | **provisional-stable** | `якщо` (single-branch bias), `вибір` (unordered selection bias) | Mīmāṃsā *krama* (**PARTIAL ANALOGUE**: first-match unproven) |
 
 #### Canonical Status Breakdown:
-- **5 Stable:** `PRIM_QUOTE` (`як-є`), `PRIM_EQ` (`тотожне?`), `PRIM_CAR` (`перше`), `PRIM_CDR` (`решта`), `PRIM_CONS` (`сполучити`).
-- **1 Provisional-Stable:** `PRIM_COND` (`за-умовою`). Note: the ordered first-match execution semantics is guaranteed by the specification, not by the surface sign alone.
-- **1 Contested (Deliberately Open):** `PRIM_ATOM` (`атом?` vs `просте?`). `атом?` preserves conservative CS tradition; `просте?` gives immediate vernacular clarity but carries mathematical baggage (prime numbers, simple types). Kept openly contested to avoid false closure.
+- **6 Stable:**
+  - `PRIM_QUOTE` (**`дані`**): Treats argument directly as a datum/form; suppresses ordinary evaluation. Exposes homoiconicity and the code-as-data boundary. (Preserved `як-є` in research audit as an honorable action-oriented contender).
+  - `PRIM_ATOM` (**`атом?`**): Discrete non-pair predicate. Closed as stable after `(просте? 7)` exposed fatal collision with prime numbers.
+  - `PRIM_EQ` (**`тотожне?`**): Ontological atom identity.
+  - `PRIM_CAR` (**`перше`**): First coordinate projection $\pi_1$ over cons-cells.
+  - `PRIM_CDR` (**`решта`**): Residual coordinate projection $\pi_2$ over cons-cells. Flawlessly passes the Triple Cons Test on proper lists, dotted pairs, and improper lists.
+  - `PRIM_CONS` (**`сполучити`**): Dynamic pair constructor.
+- **1 Provisional-Stable:**
+  - `PRIM_COND` (**`за-умовою`**): Sequential short-circuiting decision branch. Note: the ordered first-match execution semantics is guaranteed by the evaluator specification, not by the surface sign alone.
 
 #### Separation of Core Pair Mechanics from High-Level List Vocabulary:
 `PRIM_CAR` and `PRIM_CDR` are primitive pair coordinate projections ($\pi_1, \pi_2$). Their semantics are formally defined on **cons-cells**. Proper list behavior is a derived property of recursive cons structures, NOT part of the primitive operation definition:
