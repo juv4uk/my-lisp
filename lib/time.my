@@ -23,9 +23,9 @@
            (year (+ y (cond ((<= month 2) 1) (t 0)))))
       (list year month day))))
 
-; Pure language-level conversion from an exact Unix timestamp into the same
-; data shape that utc-now exposes today. The host still owns clock observation;
-; this function owns only deterministic calendar semantics.
+; Pure language-level conversion from an exact Unix timestamp into UTC calendar
+; data. The host owns clock observation; this function owns deterministic
+; calendar semantics.
 (def utc-from-unix
   (lambda (seconds nanosecond)
     (let* ((days (quotient seconds 86400))
@@ -40,8 +40,8 @@
             (third civil)
             hour minute second-of-minute nanosecond))))
 
-; Contract for the future minimal wall-clock host capability:
-;   (unix-time seconds nanosecond)
+; Minimal wall-clock host capability contract:
+;   (unix-time-now) -> (unix-time seconds nanosecond)
 ; The host observes only the Unix clock. Calendar meaning stays here in Lisp.
 (def unix-time-observation->utc
   (lambda (observation)
@@ -49,6 +49,12 @@
       ((eq (car observation) (quote unix-time))
        (utc-from-unix (second observation) (third observation)))
       (t (list (quote rejected) (quote invalid-unix-time-observation))))))
+
+; Public UTC clock meaning is language-owned. The only host fact needed here is
+; the raw Unix observation above.
+(def utc-now
+  (lambda ()
+    (unix-time-observation->utc (unix-time-now))))
 
 ; The host NTP capability intentionally returns a raw observation:
 ;   (accepted host unix-seconds nanosecond)
