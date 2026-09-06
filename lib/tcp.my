@@ -1,9 +1,9 @@
 ; TCP text interpretation owned by Lisp.
 ; Інтерпретація TCP-тексту, якою володіє Lisp.
 ;
-; Host capability `tcp-read-raw` performs one socket read and returns the
-; exact bytes as a proper list of integers 0..255. This layer decides whether
-; those bytes are valid UTF-8 and what public `tcp-read` means.
+; Host capabilities `tcp-read-raw` and `tcp-write-raw` move exact bytes only.
+; This layer owns UTF-8 decoding/encoding and the public text meanings of
+; `tcp-read` and `tcp-write`.
 ; Load `lib/utf8.my` before this file.
 
 (def tcp-read-bytes->text
@@ -17,3 +17,19 @@
 (def tcp-read
   (lambda (connection)
     (tcp-read-bytes->text (tcp-read-raw connection))))
+
+(def tcp-write-text->bytes
+  (lambda (text)
+    (utf8-encode-string text)))
+
+; Return the original text after a successful raw write so the public result
+; remains compatible with the historical tcp-write surface while encoding
+; policy belongs to Lisp.
+(def tcp-write-via-raw
+  (lambda (connection text)
+    (let ((written (tcp-write-raw connection (tcp-write-text->bytes text))))
+      text)))
+
+(def tcp-write
+  (lambda (connection text)
+    (tcp-write-via-raw connection text)))
