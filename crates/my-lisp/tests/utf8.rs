@@ -27,6 +27,14 @@ fn utf8_decodes_multibyte_scalars_exactly() {
 }
 
 #[test]
+fn utf8_decodes_valid_bytes_to_a_runtime_string_without_lossy_host_policy() {
+    assert_eq!(
+        eval("(utf8-decode-string (quote (65 194 162 226 130 172 240 159 152 128)))"),
+        "(decoded \"A¢€😀\")"
+    );
+}
+
+#[test]
 fn utf8_rejects_overlong_surrogate_and_out_of_range_sequences() {
     for bytes in [
         "(192 128)",       // overlong 2-byte form
