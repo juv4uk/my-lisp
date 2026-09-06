@@ -206,7 +206,9 @@ fn evaluate_list(
         Some("make-macro") => {
             special_forms::exact_arity("make-macro", arguments, 1, span)?;
             match evaluate(&arguments[0], environment)? {
-                Value::Closure(closure) => Ok(EvalStep::Value(Value::Macro(closure))),
+                Value::Closure(ref closure) => {
+                    Ok(EvalStep::Value(Value::Macro(closure.clone())))
+                }
                 _ => Err(LanguageError::new(
                     ErrorKind::Type,
                     "make-macro expects a closure · make-macro ochikuie zamykannia · make-macro erwartet eine Closure",
