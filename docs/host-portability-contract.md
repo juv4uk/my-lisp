@@ -48,12 +48,21 @@ The host starts the process and observes raw output bytes. Lisp owns text interp
 ### TCP
 
 ```text
+public listen policy:
+Lisp tcp-listen(port)
+  ↓ chooses "0.0.0.0" compatibility default
+Lisp tcp-listen-on(address, port)
+  ↓
+host tcp-listen-raw(address, port)
+
+read:
 socket → tcp-read-raw → bytes → Lisp decode → tcp-read
 
+write:
 Lisp tcp-write → Lisp encode → bytes → tcp-write-raw → socket
 ```
 
-The host owns socket I/O. UTF-8 encoding and decoding are language-owned.
+The host owns socket mechanisms. UTF-8 encoding/decoding and the historical default listen address are language-owned.
 
 ### Time
 
@@ -70,7 +79,7 @@ The following is a **candidate**, not a frozen ABI. Every entry must continue to
 | Area | Mechanism-level surface | Semantic layer above it |
 |---|---|---|
 | Process | `process-run-raw` | text decoding, exit/result policy, orchestration |
-| TCP transport | `tcp-connect`, `tcp-listen`, `tcp-accept`, `tcp-read-raw`, `tcp-write-raw`, `tcp-close` | UTF-8, framing, protocol, retry/backoff, routing |
+| TCP transport | `tcp-connect`, `tcp-listen-raw`, `tcp-accept`, `tcp-read-raw`, `tcp-write-raw`, `tcp-close` | default bind policy, UTF-8, framing, protocol, retry/backoff, routing |
 | Files | `read-file-bytes`, `write-file-bytes`, directory observation | text decoding, package formats, naming/policy |
 | Monotonic clock | raw monotonic observation | units, deadlines, scheduling policy |
 | Wall clock | raw Unix-time observation | UTC/calendar semantics |
@@ -98,7 +107,7 @@ A new host should be judged in this order:
 2. Run the same language-owned semantic libraries unchanged.
 3. Run the same deterministic conformance and ownership tests.
 4. Add platform-specific code only when an external mechanism truly differs.
-5. If a platform port requires reimplementing UTF-8, calendar rules, NTP meaning, protocol policy, or similar deterministic semantics in the host, treat that as evidence that the boundary leaked upward again.
+5. If a platform port requires reimplementing UTF-8, calendar rules, NTP meaning, bind defaults, protocol policy, or similar deterministic semantics in the host, treat that as evidence that the boundary leaked upward again.
 
 ## Non-goal
 
