@@ -1,17 +1,17 @@
 # FUNCTION REFERENCE — my-lisp
 
-**Live builtin section refreshed:** 2026-09-06 · base `6fe9626`
+**Live builtin section refreshed:** 2026-09-06 · base `e58209f`
 **Library inventory base:** 2026-09-02 · `8b4529f`
 **Source:** root `(env)` / `language_items.rs` for builtins; static `lib/*.my` scan for the library sections below.
-**Builtin count:** 35 root builtins. `mono-ms` and `utc-now` are no longer host builtins; both are derived in `lib/time.my`. `mono-ns` and `unix-time-now` are the raw host clock observations retained by the time architecture.
+**Builtin count:** 35 root builtins. `mono-ms`, `utc-now`, `internet-time-sync`, and `timezone-detect` are language-owned in `lib/time.my`. `mono-ns`, `unix-time-now`, `ntp-query-raw`, and `timezone-declarations-raw` are the retained raw host observations/mechanisms.
 
 > Regeneration rule: use `scripts/gen-functions.my` for a full refresh. The library sections are a generated snapshot and do not define semantic authority; see [`semantic-authority-map.md`](semantic-authority-map.md).
 
 ## 1. Builtin'и ядра (live env)
 
-`*`, `+`, `-`, `/`, `<`, `=`, `>`, `abs`, `atom`, `car`, `cdr`, `cons`, `env`, `eq`, `f32-buffer`, `i32-buffer`, `internet-time-sync`, `make-vector`, `max`, `max-list`, `min`, `min-list`, `mono-ns`, `numeric-buffer-length`, `numeric-buffer-map`, `numeric-buffer-ref`, `numeric-buffer-type`, `numeric-buffer?`, `string-slice`, `timezone-detect`, `unix-time-now`, `vector`, `vector-length`, `vector-ref`, `vector-set!`
+`*`, `+`, `-`, `/`, `<`, `=`, `>`, `abs`, `atom`, `car`, `cdr`, `cons`, `env`, `eq`, `f32-buffer`, `i32-buffer`, `make-vector`, `max`, `max-list`, `min`, `min-list`, `mono-ns`, `ntp-query-raw`, `numeric-buffer-length`, `numeric-buffer-map`, `numeric-buffer-ref`, `numeric-buffer-type`, `numeric-buffer?`, `string-slice`, `timezone-declarations-raw`, `unix-time-now`, `vector`, `vector-length`, `vector-ref`, `vector-set!`
 
-> `utc-now` is language-owned. It appears after `lib/time.my` is loaded and is implemented as a Lisp closure over the raw `unix-time-now` observation. The old Rust calendar-shaped builtin and Gregorian helper were removed after ownership and consumer-bootstrap tests passed. See [`host-semantic-surface.md`](host-semantic-surface.md).
+> The public time meanings are language-owned. `utc-now` is a Lisp closure over `unix-time-now`; `internet-time-sync` interprets `ntp-query-raw`; and `timezone-detect` interprets `timezone-declarations-raw`. See [`host-semantic-surface.md`](host-semantic-surface.md).
 
 ### clips-import.my (40)
 
