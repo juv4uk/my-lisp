@@ -1,0 +1,44 @@
+; Machine-readable migration marker for the old coordination operations that
+; still physically exist in the my-lisp :9999 semantic-oracle binary.
+; This is DATA describing authority/migration state. It does not remove or
+; intercept legacy calls; removal still requires a no-live-callers proof.
+
+(def *swarm-legacy-coordination*
+  (quote
+    ((schema . swarm-legacy-deprecation/1)
+     (status . deprecated)
+     (semantic-plane . my-lisp-9999)
+     (coordination-authority . swarm-node)
+     (coordination-protocol . swarm/1)
+     (legacy-operations .
+       (hello
+        claim
+        release
+        complete-task
+        next-best-action
+        list-task-state
+        presence
+        list-claims
+        sync-tasks
+        subscribe
+        publish
+        notify
+        poll))
+     (replacement-map .
+       ((hello . join)
+        (claim . claim-task)
+        (release . release-task)
+        (complete-task . complete-task)
+        (next-best-action . next-best-action)
+        (list-task-state . list-task-state)
+        (presence . list-members)
+        (list-claims . list-members)
+        (sync-tasks . sync-tasks)
+        (subscribe . event-journal-gossip)
+        (publish . event-journal-gossip)
+        (notify . event-journal-gossip)
+        (poll . event-journal-gossip)))
+     (removal-gate .
+       (migration-regression
+        no-live-callers
+        preserve-eval-parse-diagnose))))))
