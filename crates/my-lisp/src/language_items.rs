@@ -273,6 +273,11 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "Return a monotonic nanosecond counter as an exact integer",
             Arity::Exact(0),
         ),
+        "unix-time-now" => (
+            "(unix-time-now)",
+            "Observe the host wall clock as raw Unix seconds and nanoseconds",
+            Arity::Exact(0),
+        ),
         "utc-now" => (
             "(utc-now)",
             "Return UTC date-time with exact nanoseconds",
