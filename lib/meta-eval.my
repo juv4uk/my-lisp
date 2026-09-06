@@ -11,8 +11,8 @@
 ; this evaluator owns name resolution, lexical shadowing, application shape,
 ; macro expansion, closure environments, chained comparison policy,
 ; self-recursive and finite mutually recursive top-level function binding,
-; variadic/dotted lambda parameter binding, and the first named failure
-; distinction between an unresolved callable name and a non-callable value.
+; variadic/dotted lambda parameter binding, and named failure observations for
+; unresolved names, non-callable values, and lambda/macro arity mismatch.
 ;
 ; This remains an explicit self-hosting witness, not the always-loaded runtime.
 ; Full named-error parity and arbitrary later-binding visibility are still known
@@ -184,16 +184,55 @@
       ((eq name (quote >))    (my-compare-chain (quote >) args))
       (t (list (quote unknown-primitive) name)))))
 
-; Parameter binding follows Lisp list structure directly.
-;
-;   ()             -> no more bindings
-;   args           -> bare-symbol/all-rest parameter receives all remaining args
-;   (x y . rest)   -> fixed params consume one arg each, then rest receives tail
-;   (x y)          -> ordinary fixed-arity binding
-;
-; Arity-error parity remains a separate named-error task; this function owns
-; only the successful binding semantics. `eq` is atom-only in my-lisp, so the
-; empty-list check is deliberately nested under the `(atom params)` branch.
+; Lambda-list arity is derivable from Lisp list structure itself:
+;   (x y)        -> exact 2
+;   (x y . rest) -> at least 2
+;   args         -> at least 0
+; No host metadata is required.
+(def my-fixed-param-count
+  (lambda (params)
+    (cond
+      ((atom params) 0)
+      (t (+ 1 (my-fixed-param-count (cdr params)))))))
+
+(def my-rest-param?
+  (lambda (params)
+    (cond
+      ((atom params)
+       (cond
+         ((eq params (quote ())) (quote ()))
+         (t t)))
+      (t (my-rest-param? (cdr params)))))))
+
+(def my-arity-ok?
+  (lambda (params args)
+    (let ((fixed (my-fixed-param-count params))
+          (received (length args)))
+      (cond
+        ((my-rest-param? params)
+         (cond
+           ((< received fixed) (quote ()))
+           (t t)))
+        (t (= received fixed))))))
+
+(def my-arity-detail
+  (lambda (params args)
+    (let ((fixed (my-fixed-param-count params))
+          (received (length args)))
+      (list
+        (quote expected)
+        (cond
+          ((my-rest-param? params) (list (quote at-least) fixed))
+          (t (list (quote exact) fixed)))
+        (quote received)
+        received))))
+
+(def my-arity-error
+  (lambda (params args)
+    (my-error (quote arity) (my-arity-detail params args))))
+
+; Parameter binding owns only the successful path. Arity is checked by
+; application before this function is entered.
 (def bind-params
   (lambda (params args env)
     (cond
@@ -285,38 +324,50 @@
       ((my-primitive? fn)
        (my-apply-primitive (second fn) args))
       ((my-closure? fn)
-       (my-eval-body
-         (third fn)
-         (bind-params
-           (second fn)
-           args
-           (my-fourth fn))))
+       (cond
+         ((my-arity-ok? (second fn) args)
+          (my-eval-body
+            (third fn)
+            (bind-params
+              (second fn)
+              args
+              (my-fourth fn))))
+         (t (my-arity-error (second fn) args))))
       ((my-recursive-closure? fn)
-       (let ((self-env
-               (cons (cons (second fn) fn)
-                     (my-fifth fn))))
-         (my-eval-body
-           (my-fourth fn)
-           (bind-params
-             (third fn)
-             args
-             self-env))))
+       (cond
+         ((my-arity-ok? (third fn) args)
+          (let ((self-env
+                  (cons (cons (second fn) fn)
+                        (my-fifth fn))))
+            (my-eval-body
+              (my-fourth fn)
+              (bind-params
+                (third fn)
+                args
+                self-env))))
+         (t (my-arity-error (third fn) args))))
       ((my-group-closure? fn)
-       (let ((group-env
-               (my-build-group-env (my-fifth fn) (my-sixth fn))))
-         (my-eval-body
-           (my-fourth fn)
-           (bind-params
-             (third fn)
-             args
-             group-env))))
+       (cond
+         ((my-arity-ok? (third fn) args)
+          (let ((group-env
+                  (my-build-group-env (my-fifth fn) (my-sixth fn))))
+            (my-eval-body
+              (my-fourth fn)
+              (bind-params
+                (third fn)
+                args
+                group-env))))
+         (t (my-arity-error (third fn) args))))
       ((my-macro? fn)
-       (my-eval-body
-         (third fn)
-         (bind-params
-           (second fn)
-           args
-           (my-fourth fn))))
+       (cond
+         ((my-arity-ok? (second fn) args)
+          (my-eval-body
+            (third fn)
+            (bind-params
+              (second fn)
+              args
+              (my-fourth fn))))
+         (t (my-arity-error (second fn) args))))
       (t (my-error (quote not-callable) fn)))))
 
 (def my-eval
