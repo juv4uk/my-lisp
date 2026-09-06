@@ -1,9 +1,9 @@
-use my_lisp::{eval_program, Session};
+use my_lisp::{eval_program, load_core_library, Session};
 
 #[test]
 fn utc_now_returns_utc_calendar_with_nanosecond_field() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    load_core_library(&mut session).unwrap();
     let value = eval_program("(utc-now)", &mut session)
         .unwrap()
         .value
@@ -28,7 +28,7 @@ fn utc_now_returns_utc_calendar_with_nanosecond_field() {
 #[test]
 fn timezone_detection_is_explicit_and_ntp_requires_host_string() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    load_core_library(&mut session).unwrap();
     eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
     let timezone = eval_program("(timezone-detect)", &mut session)
         .unwrap()
