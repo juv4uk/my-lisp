@@ -23,7 +23,7 @@ For every host-facing operation ask, in order:
 3. If yes, move that meaning/policy to Lisp, add deterministic tests, prove language ownership, then remove the host duplicate.
 4. Do not delete the old host path before the replacement is exercised by CI.
 
-This is the same surgical sequence used for `mono-ms` and `utc-now`.
+This is the same surgical sequence used for `mono-ms`, `utc-now`, and the NTP interpretation split.
 
 ## Current time boundary
 
@@ -35,8 +35,10 @@ This is the same surgical sequence used for `mono-ms` and `utc-now`.
 | `civil-from-days` | `lib/time.my` | deterministic Gregorian semantics | LANGUAGE-OWNED |
 | `utc-from-unix` | `lib/time.my` | deterministic UTC interpretation | LANGUAGE-OWNED |
 | `utc-now` | `lib/time.my` | derived public clock meaning | HOST REMOVED |
-| `internet-time-sync` | Rust host | UDP/NTP observation | KEEP mechanism; interpretation stays in Lisp |
-| `internet-time-observation->utc` | `lib/time.my` | interpretation/policy | LANGUAGE-OWNED |
+| raw NTP query | Rust host | bounded UDP query + extraction of fixed-width response fields | KEEP mechanism |
+| `internet-time-sync` | `lib/time.my` after time-layer load | public NTP interpretation | LANGUAGE-OWNED |
+| `internet-time-fields->observation` | `lib/time.my` | mode/stratum validation, NTP epoch conversion, fraction-to-nanoseconds | LANGUAGE-OWNED |
+| `internet-time-observation->utc` | `lib/time.my` | calendar interpretation/policy | LANGUAGE-OWNED |
 | `timezone-detect` | Rust host | host environment observation | KEEP observation |
 | `timezone-config` and selectors | `lib/time.my` | configuration semantics | LANGUAGE-OWNED |
 | deadline arithmetic | `lib/time.my` | deterministic policy | LANGUAGE-OWNED |
@@ -57,6 +59,28 @@ Lisp: utc-now / utc-from-unix
 
 Rust no longer contains Gregorian month/day conversion merely to expose the current time. The former `civil_from_days`, `utc_now_value`, and root `utc-now` builtin were removed after the language-owned loader path, ownership tests, consumer bootstrap audit, and CI were green.
 
+The NTP chain is now:
+
+```text
+UDP socket / NTP packet
+  ↓
+Rust: bounded query + fixed-width field extraction
+  ↓
+(ntp-fields host mode stratum ntp-seconds fraction)
+  ↓
+Lisp: internet-time-raw->observation
+  ↓
+Lisp: internet-time-fields->observation
+  ↓
+(accepted host unix-seconds nanosecond)
+  ↓
+Lisp: internet-time-observation->utc
+```
+
+Rust no longer decides whether mode/stratum are semantically acceptable, no longer translates the NTP epoch to Unix time, and no longer computes the fractional second in nanoseconds. Those transformations are deterministic language-owned semantics. Transport failures and short packets remain host-level observations because they arise before a complete protocol field set exists.
+
+The root host builtin still temporarily carries the historical public name `internet-time-sync`; `lib/time.my` captures it as the raw capability and replaces the public binding with a Lisp closure. Renaming the host-only capability to a neutral mechanism name is cleanup, not a semantic migration, and should happen only with the same ownership tests and green CI discipline.
+
 ## Core capability boundary
 
 The core crate should remain capability-minimal. Host/environment access belongs either in an explicit capability crate or in a narrowly justified observation primitive.
@@ -67,7 +91,7 @@ Current broad classes:
 |---|---|---|
 | monotonic time | read monotonic counter | units, elapsed time, deadlines, scheduling policy |
 | wall clock | read Unix timestamp | calendar interpretation, formatting, comparison policy |
-| network time | bounded packet I/O / raw timestamp observation | acceptance policy, calendar meaning, sync strategy |
+| network time | bounded packet I/O + extraction of raw response fields | protocol acceptance, epoch conversion, units, calendar meaning, sync strategy |
 | timezone | observe host declaration | explicit configuration and conversion policy |
 | filesystem | bytes/text read-write mechanisms | naming policy, package formats, transactional/world semantics |
 | subprocess | process creation/I/O mechanism | command policy, orchestration, interpretation |
@@ -157,6 +181,35 @@ Lisp: civil-from-days + utc-from-unix + utc-now
 ```
 
 The normal CLI, plain TCP REPL, and sexpr/oracle bootstrap paths load the language-owned time layer. The ownership test requires `utc-now` to be absent from the root host environment and to appear only as a Lisp closure after `load_time_library`. CI passed before the Rust duplicate and Gregorian helper were removed.
+
+### NTP response semantics
+
+Before:
+
+```text
+Rust:
+  UDP query
+  + mode/stratum acceptance
+  + NTP epoch conversion
+  + fraction -> nanoseconds
+  + public accepted/rejected timestamp shape
+```
+
+After:
+
+```text
+Rust:
+  UDP query
+  + fixed-width field extraction
+
+Lisp:
+  mode/stratum acceptance
+  + NTP epoch conversion
+  + fraction -> nanoseconds
+  + public internet-time-sync meaning
+```
+
+Deterministic fixtures prove mode 4/5 acceptance, invalid mode/stratum rejection, epoch rejection, and exact `2147483648 -> 500000000 ns` conversion. The public `internet-time-sync` binding is required to be a Lisp closure after the time layer loads while the captured raw capability remains a Rust builtin. CI #884 passed before this HSS status was updated.
 
 ## Principle
 
