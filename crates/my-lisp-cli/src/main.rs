@@ -64,12 +64,24 @@ fn main() {
         environment: Environment::root(),
     };
 
+    // The language-owned macro layer must exist before core.my is evaluated.
+    // This keeps the optimized FASL path while ensuring core definitions such
+    // as `and`, `or`, and `let` resolve `defmacro` to lib/macro.my rather than
+    // silently using the evaluator compatibility fallback.
+    if let Err(e) = my_lisp::eval_program(my_lisp::MACRO_LIBRARY_SOURCE, &mut session) {
+        eprintln!(
+            "Error loading bootstrap macro.my: {}",
+            e.render(my_lisp::MACRO_LIBRARY_SOURCE)
+        );
+        process::exit(1);
+    }
+
     // Load standard library — FASL snapshot first (parse-output cache,
     // OPT-CORE-MY-AST-SNAPSHOT), text parse as the always-available fallback.
     // Invalidation: the snapshot embeds sha256(lib/core.my); any drift
     // between the compiled-in bytes and the compiled-in source flips us to
     // the parse path, never to a wrong program.
-    const CORE_SRC: &str = include_str!("../../../lib/core.my");
+    const CORE_SRC: &str = my_lisp::CORE_LIBRARY_SOURCE;
     const CORE_FASL: &[u8] = include_bytes!("../../../lib/core.my.fasl");
     let fasl_hash_ok = my_lisp::fasl_decode_program(CORE_FASL)
         .map(|(_, hash)| hash == my_lisp::sha256_source(CORE_SRC.as_bytes()))
