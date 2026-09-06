@@ -3,8 +3,8 @@
 //! swarm.rs. Moved verbatim from main.rs (2026-08-22 mechanical split).
 
 use my_lisp::{
-    eval_parsed_expressions, eval_parsed_expressions_incremental, eval_program, parse, Environment,
-    Session, MACRO_LIBRARY_SOURCE, TIME_LIBRARY_SOURCE,
+    eval_parsed_expressions, eval_parsed_expressions_incremental, eval_program,
+    load_process_library, parse, Environment, Session, MACRO_LIBRARY_SOURCE, TIME_LIBRARY_SOURCE,
 };
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener};
@@ -63,13 +63,15 @@ pub(crate) fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
 
         // Keep the same language bootstrap invariant as the local CLI:
         // establish the language-owned `defmacro` before core.my defines
-        // its macros, then install the language-owned time semantics. The
-        // host contributes only raw clock observations such as mono-ns and
-        // unix-time-now.
+        // its macros, then install language-owned time and process semantics.
+        // The host contributes only raw observations/capabilities such as
+        // mono-ns, unix-time-now, and process-run-raw.
         if eval_program(MACRO_LIBRARY_SOURCE, &mut session).is_ok() {
             if let Ok(core_ast) = parse(core_lib) {
-                if eval_parsed_expressions(&core_ast, &mut session).is_ok() {
-                    let _ = eval_program(TIME_LIBRARY_SOURCE, &mut session);
+                if eval_parsed_expressions(&core_ast, &mut session).is_ok()
+                    && eval_program(TIME_LIBRARY_SOURCE, &mut session).is_ok()
+                {
+                    let _ = load_process_library(&mut session);
                 }
             }
         }
