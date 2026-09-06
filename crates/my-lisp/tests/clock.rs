@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, load_core_library, Session};
+use my_lisp::{eval_program, load_core_library, Session, Value};
 
 #[test]
 fn utc_now_returns_utc_calendar_with_nanosecond_field() {
@@ -116,6 +116,22 @@ fn mono_ms_is_derived_from_nanoseconds_in_lisp() {
             .to_string(),
         "1"
     );
+}
+
+#[test]
+fn mono_ms_binding_is_owned_by_lisp_after_time_library_loads() {
+    let mut session = Session::default();
+    load_core_library(&mut session).unwrap();
+    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+
+    assert!(matches!(
+        session.environment.get("mono-ms"),
+        Some(Value::Closure(_))
+    ));
+    assert!(matches!(
+        session.environment.get("mono-ns"),
+        Some(Value::Builtin(_))
+    ));
 }
 
 #[test]
