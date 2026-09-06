@@ -28,11 +28,6 @@ fn eval_meta(expr_source: &str, env_source: &str) -> String {
         .to_string()
 }
 
-/// Runs a sequence of top-level forms (as source text) through
-/// `my-eval-program`, the `def`/`defmacro`-aware layer above `my-eval`
-/// (PLAN.md item 8), then evaluates a final probe expression against the
-/// resulting environment — the same "load a program, then use what it
-/// defined" shape a real my-lisp session goes through.
 fn eval_meta_program(program_source: &str, probe_source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
@@ -118,6 +113,36 @@ fn higher_order_functions_pass_a_closure_as_an_argument() {
 }
 
 #[test]
+fn bare_symbol_lambda_list_binds_all_arguments() {
+    let expr = "((lambda args args) 1 2 3 4)";
+    let via_meta = eval_meta(expr, "(quote ())");
+
+    let mut native = Session::default();
+    let via_native = eval_program(expr, &mut native)
+        .expect("native evaluator should support an all-rest lambda parameter")
+        .value
+        .to_string();
+
+    assert_eq!(via_meta, "(1 2 3 4)");
+    assert_eq!(via_meta, via_native);
+}
+
+#[test]
+fn dotted_lambda_list_binds_remaining_arguments_as_rest_list() {
+    let expr = "((lambda (x y . rest) rest) 10 20 30 40)";
+    let via_meta = eval_meta(expr, "(quote ())");
+
+    let mut native = Session::default();
+    let via_native = eval_program(expr, &mut native)
+        .expect("native evaluator should support a dotted rest parameter")
+        .value
+        .to_string();
+
+    assert_eq!(via_meta, "(30 40)");
+    assert_eq!(via_meta, via_native);
+}
+
+#[test]
 fn def_extends_the_environment_visible_to_later_top_level_forms() {
     assert_eq!(eval_meta_program("(def x 10) (def y (+ x 5))", "y"), "15");
 }
@@ -167,10 +192,6 @@ fn loads_a_real_verbatim_slice_of_lib_core_my_and_runs_it_through_my_eval() {
     );
 }
 
-/// Self-recursive top-level binding is now owned by the evaluator written in
-/// Lisp. `my-eval-top-form` stores a finite recursive-closure value rather
-/// than relying on a cyclic/mutable Rust Environment; `my-apply` reconstructs
-/// the self-binding at call time.
 #[test]
 fn self_recursive_top_level_def_sees_its_own_binding() {
     assert_eq!(
