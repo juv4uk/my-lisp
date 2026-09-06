@@ -4,7 +4,7 @@
 ; which language layers it needs in order to execute at all: the bare
 ; kernel (core special forms + Rust builtins), closure creation/application,
 ; exact-number machinery, strings/reader operations, lib/core.my (the one
-; library the CLI auto-loads for every session), or any OTHER lib/*.my
+; core library loaded in the standard bootstrap), or any OTHER lib/*.my
 ; library / host capability (tcp-*, file I/O, load, process-run) — the
 ; combined "reasoning/World or host capability" bucket named in
 ; WSM-CONSTITUTION-DEPENDENCY-CLASSIFICATION's own description.
@@ -57,13 +57,16 @@
           eval string-append string<? read-all string? symbol->string
           string->symbol string-first string-rest sha256-hex json-parse)))
 
-; crates/my-lisp/src/eval/builtins.rs environment.define registrations
+; crates/my-lisp/src/eval/builtins.rs environment.define registrations.
+; Derived time operations such as mono-ms and utc-now intentionally do not
+; appear here: they are defined by lib/time.my. unix-time-now is the raw host
+; wall-clock observation that remains a Rust builtin.
 (def core-builtins
   (quote (* + - / < = > abs atom car cdr cons env eq f32 f32-buffer i32
           i32-buffer internet-time-sync make-vector max max-list min
-          min-list mono-ms mono-ns numeric-buffer-length numeric-buffer-map
+          min-list mono-ns numeric-buffer-length numeric-buffer-map
           numeric-buffer-ref numeric-buffer-type numeric-buffer? string-slice
-          timezone-detect utc-now vector vector-length vector-ref
+          timezone-detect unix-time-now vector vector-length vector-ref
           vector-set!)))
 
 ; crates/my-lisp-host/src/lib.rs register_capability calls
