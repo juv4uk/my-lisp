@@ -291,6 +291,10 @@ fn evaluate_list(
 }
 
 trait ExprKindExt {
+    fn as_symbol(&self) -> Option<&str>;
+}
+
+impl ExprKindExt for ExprKind {
     fn as_symbol(&self) -> Option<&str> {
         match self {
             ExprKind::Symbol(symbol) => Some(symbol),
