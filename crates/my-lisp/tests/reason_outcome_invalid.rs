@@ -1,0 +1,42 @@
+//! Adversarial B1 validation: malformed explicit-negation syntax is an
+//! `invalid` observation, never logical `unknown`.
+
+use my_lisp::{eval_program, Session};
+
+fn observe(source: &str) -> String {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/result-status.my"), &mut session).unwrap();
+    eval_program(source, &mut session)
+        .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
+        .value
+        .to_string()
+}
+
+#[test]
+fn not_without_nested_goal_is_invalid() {
+    assert_eq!(
+        observe(r#"(reason-observe (quote (not)) (quote ()))"#),
+        "(invalid invalid-goal (not))"
+    );
+}
+
+#[test]
+fn not_with_multiple_nested_forms_is_invalid() {
+    assert_eq!(
+        observe(r#"(reason-observe (quote (not (planet earth) extra)) (quote ()))"#),
+        "(invalid invalid-goal (not (planet earth) extra))"
+    );
+}
+
+#[test]
+fn well_formed_explicit_negative_remains_a_valid_query() {
+    assert_eq!(
+        observe(
+            r#"(result-status (reason-observe (quote (not (planet earth))) (quote ())))"#
+        ),
+        "unknown"
+    );
+}
