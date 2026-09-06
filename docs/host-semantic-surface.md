@@ -23,7 +23,7 @@ For every host-facing operation ask, in order:
 3. If yes, move that meaning/policy to Lisp, add deterministic tests, prove language ownership, then remove the host duplicate.
 4. Do not delete the old host path before the replacement is exercised by CI.
 
-This is the same surgical sequence used for `mono-ms` and now for `utc-now`.
+This is the same surgical sequence used for `mono-ms` and `utc-now`.
 
 ## Current time boundary
 
@@ -34,14 +34,14 @@ This is the same surgical sequence used for `mono-ms` and now for `utc-now`.
 | `unix-time-now` | Rust host | wall-clock observation | KEEP |
 | `civil-from-days` | `lib/time.my` | deterministic Gregorian semantics | LANGUAGE-OWNED |
 | `utc-from-unix` | `lib/time.my` | deterministic UTC interpretation | LANGUAGE-OWNED |
-| `utc-now` | `lib/time.my` after time library load | derived public clock meaning | MIGRATING: remove old Rust duplicate after ownership/consumer audit |
+| `utc-now` | `lib/time.my` | derived public clock meaning | HOST REMOVED |
 | `internet-time-sync` | Rust host | UDP/NTP observation | KEEP mechanism; interpretation stays in Lisp |
 | `internet-time-observation->utc` | `lib/time.my` | interpretation/policy | LANGUAGE-OWNED |
 | `timezone-detect` | Rust host | host environment observation | KEEP observation |
 | `timezone-config` and selectors | `lib/time.my` | configuration semantics | LANGUAGE-OWNED |
 | deadline arithmetic | `lib/time.my` | deterministic policy | LANGUAGE-OWNED |
 
-The intended wall-clock chain is:
+The wall-clock chain is now:
 
 ```text
 OS clock
@@ -55,7 +55,7 @@ Lisp: utc-now / utc-from-unix
 (utc year month day hour minute second nanosecond)
 ```
 
-Rust should eventually have no reason to know Gregorian month/day conversion merely to expose the current time.
+Rust no longer contains Gregorian month/day conversion merely to expose the current time. The former `civil_from_days`, `utc_now_value`, and root `utc-now` builtin were removed after the language-owned loader path, ownership tests, consumer bootstrap audit, and CI were green.
 
 ## Core capability boundary
 
@@ -140,16 +140,23 @@ Lisp: milliseconds-from-nanoseconds + mono-ms
 
 The language-owned binding is tested, and the Rust `mono-ms` builtin was removed.
 
-### UTC calendar semantics
+### UTC calendar semantics and `utc-now`
 
-Current transition:
+Before:
 
 ```text
-Rust: unix-time-now + legacy utc-now duplicate
+Rust: unix-time-now + utc-now + Gregorian calendar conversion
+Lisp: civil-from-days + utc-from-unix + utc-now replacement
+```
+
+After:
+
+```text
+Rust: unix-time-now
 Lisp: civil-from-days + utc-from-unix + utc-now
 ```
 
-Next removal gate: prove all intended time-library consumers load the Lisp definition, then delete the legacy Rust `utc-now` calendar implementation and its helper without breaking conformance/CI.
+The normal CLI, plain TCP REPL, and sexpr/oracle bootstrap paths load the language-owned time layer. The ownership test requires `utc-now` to be absent from the root host environment and to appear only as a Lisp closure after `load_time_library`. CI passed before the Rust duplicate and Gregorian helper were removed.
 
 ## Principle
 
