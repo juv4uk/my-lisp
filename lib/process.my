@@ -43,11 +43,9 @@
   (lambda (program args)
     (process-result->text (process-run-raw program args))))
 
-; Public compatibility surface. While the transitional Rust `process-run`
-; capability remains registered, evaluator capability dispatch still wins for
-; the literal `(process-run ...)` spelling. The closure is already present in
-; the environment, though, so the final host cut only has to remove that old
-; capability; no new process semantics need to be invented at cut time.
+; Public compatibility surface. Rust no longer registers a semantic
+; `process-run`; literal `(process-run ...)` therefore resolves to this Lisp
+; closure and reaches the host only through byte-preserving `process-run-raw`.
 ;
 ; Valid UTF-8 preserves the historical 3-element result shape. A process that
 ; terminates without a numeric exit code keeps the historical public `-1`
