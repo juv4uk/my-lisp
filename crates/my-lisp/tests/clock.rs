@@ -172,6 +172,42 @@ fn ntp_field_interpretation_is_language_owned() {
 }
 
 #[test]
+fn raw_ntp_observation_boundary_is_interpreted_by_lisp() {
+    let mut session = time_session();
+
+    assert_eq!(
+        eval_program(
+            "(internet-time-raw->observation (quote (ntp-fields \"clock.example\" 4 1 2208988801 2147483648)))",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(accepted \"clock.example\" 1 500000000)"
+    );
+    assert_eq!(
+        eval_program(
+            "(internet-time-raw->observation (quote (ntp-fields \"clock.example\" 3 1 2208988800 0)))",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(rejected invalid-response)"
+    );
+    assert_eq!(
+        eval_program(
+            "(internet-time-raw->observation (quote (rejected receive-failed)))",
+            &mut session,
+        )
+        .unwrap()
+        .value
+        .to_string(),
+        "(rejected receive-failed)"
+    );
+}
+
+#[test]
 fn internet_time_timestamp_interpretation_is_language_owned() {
     let mut session = time_session();
 
