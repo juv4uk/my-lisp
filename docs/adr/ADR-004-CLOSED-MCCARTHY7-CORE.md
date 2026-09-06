@@ -157,15 +157,19 @@ The canonical identity table is an autonomous normative entity separate from any
 
 > **Принцип:** Поверхнева назва — не визначення канонічної тотожності, яку вона позначає. `atom`, `атом` і `aṇu` — три незалежні людські проєкції однієї й тієї самої canonical identity. Жодна з них не є формальним визначенням операції.
 
-| Canonical Identity | Formal Semantics | Canonical Ukrainian Surface | Status | Rejected Canonical Candidates | Historical / Conceptual Witness |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `PRIM_QUOTE` | $e \mapsto e$ (eval suppression: take as-is) | **`як-є`** (uk) / **`svarūpa`** / **स्वरूप** (sa) | **stable** | `дані` (conflates with general concept of data/types), `цитата` (calque), `власна-форма` (academic noise), `дослівно` (text bias) | AS 1.1.68 *svaṃ rūpam* (**STRONG ANALOGUE**) |
-| `PRIM_ATOM` | $x \mapsto \text{Bool}$ (non-pair predicate) | **`атом?`** | **stable** | `просте?` (collision with prime numbers: (просте? 7)), `непара?` (negative definition), `неподільне?` (verbose) | VS 7.1.10–11 *aṇu* (**PARTIAL ANALOGUE**: physical ontology) |
-| `PRIM_EQ` | $(x, y) \mapsto \text{Bool}$ (atom identity) | **`тотожне?`** | **stable** | `рівне?` (conflates with numeric/structural equal), `одне?` (ambiguous) | TS §80 *abheda* / *tādātmya* (**PARTIAL ANALOGUE**) |
-| `PRIM_CAR` | $\pi_1 : (x . y) \mapsto x$ (first coordinate) | **`перше`** | **stable** | `голова` (list-only bias), `лівий` (spatial metaphor), `початок` (temporal bias) | VS 4.2.9 *āditva* (**WEAK ANALOGUE**: linear/temporal metaphor) |
-| `PRIM_CDR` | $\pi_2 : (x . y) \mapsto y$ (residual coordinate) | **`решта`** | **stable** | `хвіст` (pure list bias), `друге` (false expectation on lists: returns (2 3), not 2) | NS 1.1.5 *śeṣa* / *śeṣavat* (**PARTIAL ANALOGUE**: inference by residual) |
-| `PRIM_CONS` | $(x, y) \mapsto (x . y)$ (pair allocator) | **`сполучити`** | **stable** | `пара` (noun of result), `зліпити` (slang), `скласти` (addition bias) | TS §27 $\sqrt{yuj}$ / *saṃyuj* (**PARTIAL ANALOGUE**) |
-| `PRIM_COND` | Ordered guarded first-match selection | **`за-умовою`** (uk) / **`anukrama`** / **अनुक्रम** (sa) | **stable** | `якщо` (single-branch bias), `вибір` (unordered selection bias) | Mīmāṃsā *pāṭha-krama* (**PARTIAL ANALOGUE**: sequential rule scan) |
+| Canonical Identity | McCarthy 1960 | Українська (`uk`) | Sanskrit (`sa`) | Devanāgarī | Surface Status | Historical Correspondence | Conceptual Witness |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| `PRIM_QUOTE` | `quote` | **`як-є`** | **`svarūpa`** | **स्वरूप** | **STABLE** | **STRONG ANALOGUE** | AS 1.1.68 *svaṃ rūpam* |
+| `PRIM_ATOM` | `atom` | **`атом?`** | **`aṇu`** | **अणु** | **STABLE** | **PARTIAL ANALOGUE** | VS 7.1.10–11 *aṇu* |
+| `PRIM_EQ` | `eq` | **`тотожне?`** | **`abheda`** | **अभेद** | **STABLE** | **PARTIAL ANALOGUE** | TS §80 *abheda* / *tādātmya* |
+| `PRIM_CONS` | `cons` | **`сполучити`** | **`saṃyuj`** | **संयुज्** | **STABLE** | **PARTIAL ANALOGUE** | TS §27 $\sqrt{yuj}$ / *saṃyuj* |
+| `PRIM_CAR` | `car` | **`перше`** | **`ādi`** | **आदि** | **STABLE** | **WEAK ANALOGUE** | VS 4.2.9 *āditva* |
+| `PRIM_CDR` | `cdr` | **`решта`** | **`śeṣa`** | **शेष** | **STABLE** | **PARTIAL ANALOGUE** | NS 1.1.5 *śeṣa* / *śeṣavat* |
+| `PRIM_COND` | `cond` | **`за-умовою`** | **`anukrama`** | **अनुक्रम** | **STABLE** | **PARTIAL ANALOGUE** | Mīmāṃsā *pāṭha-krama* |
+
+> **Critical Epistemic Guardrail:**
+> **Canonical surface stability ≠ historical semantic identity.**
+> *Surface status: STABLE* certifies that these symbols are normative in the `my-lisp` surface grammar. It does **not** claim that ancient Indian philosophy anticipated McCarthy's computational machine. 0/7 are ISOMORPHIC; the Sanskrit terms serve as independent conceptual and comparative witnesses, not normative sources of computation.
 
 #### Canonical Status Breakdown:
 - **7 Stable (Complete Canon Ratification):**
