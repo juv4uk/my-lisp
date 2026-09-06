@@ -2,7 +2,7 @@
 
 **Live builtin section refreshed:** 2026-09-06 · base `e58209f`
 **Library inventory base:** 2026-09-02 · `8b4529f`
-**Incremental library refresh:** 2026-09-07 · `narrate.my` + `result-status.my`
+**Incremental library refresh:** 2026-09-07 · `narrate.my` + `result-status.my` + `translation.my`
 **Source:** root `(env)` / `language_items.rs` for builtins; static `lib/*.my` scan for the library sections below.
 **Builtin count:** 35 root builtins. `mono-ms`, `utc-now`, `internet-time-sync`, and `timezone-detect` are language-owned in `lib/time.my`. `mono-ns`, `unix-time-now`, `ntp-query-raw`, and `timezone-declarations-raw` are the retained raw host observations/mechanisms.
 
@@ -67,6 +67,10 @@
 ### result-status.my (15)
 
 `make-blocked`, `make-disputed`, `make-invalid`, `make-partial`, `make-proved`, `make-unknown`, `reason-in-observe`, `reason-observe`, `result-goal?`, `result-negated-goal?`, `result-opposite-goal`, `result-payload`, `result-proper-list?`, `result-status`, `result-tagged?`
+
+### translation.my (31)
+
+`*translation-schema*`, `*translation-review-schema*`, `*translation-evidence-schema*`, `*translation-evidence*`, `translation-status`, `translation-kind`, `translation-source`, `translation-payload`, `translation-status-valid?`, `translation-kind-valid?`, `translation-envelope-valid?`, `translation-batch-valid?`, `translation-candidate-payload-valid?`, `translation-alternatives-valid?`, `translation-ambiguity-valid?`, `make-translation-review`, `translation-review-status`, `translation-review-code`, `translation-review-proposal`, `translation-review-detail`, `translation-review-status-valid?`, `translation-review-valid?`, `translation-review-advice-decision`, `translation-review-candidate`, `translation-review`, `translation-admittable?`, `translation-admission-payload`, `translation-evidence-worthy?`, `translation-evidence-entry`, `translation-evidence-next`, `translation-review-with-evidence`
 
 ### understand.my (8)
 
