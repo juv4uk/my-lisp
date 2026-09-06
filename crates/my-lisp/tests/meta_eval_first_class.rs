@@ -24,7 +24,7 @@ fn eval_via_first_class_meta(expr: &str) -> String {
         .expect("first-class metacircular layer should load");
 
     let source = format!(
-        r#"(my-eval-first-class (read \"{}\"))"#,
+        r#"(my-eval-first-class (read "{}"))"#,
         expr.replace('\\', "\\\\").replace('"', "\\\"")
     );
     eval_program(&source, &mut session)
