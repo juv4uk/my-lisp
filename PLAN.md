@@ -4,9 +4,10 @@
 > **Оновлено:** 2026-09-07.  
 > **Головна мета:** Advice Taker. `my-lisp` — мова й execution substrate, що служить цій меті.
 
-Цей файл містить **лише актуальні пріоритети**. Завершені та застарілі стани не
-тримаються тут як псевдо-задачі: їх зберігає git history, ADR, conformance-тести
-та спеціалізовані документи.
+Цей файл містить актуальний порядок пріоритетів і коротку карту вже
+підтвердженого фундаменту. Завершені деталі живуть у git history, ADR,
+conformance-тестах та спеціалізованих evidence-документах, а не повертаються в
+backlog як псевдо-задачі.
 
 ## Ієрархія планів
 
@@ -61,10 +62,6 @@
 - ✅ malformed lambda-list structure (`InvalidForm`): non-symbol parameter,
   duplicate parameter, invalid dotted rest.
 
-Останні structural/failure parity зміни підтверджені workspace tests/build і
-zero-warning clippy. Тому старе твердження, що top-level recursion у `my-eval`
-«не виправлена», більше не є поточним станом.
-
 ### Відомі межі meta-evaluator
 
 - arbitrary later-binding visibility ще не доведена як загальна властивість;
@@ -74,90 +71,125 @@ zero-warning clippy. Тому старе твердження, що top-level re
 Ці межі не є автоматичним backlog. Їх беремо лише коли вони блокують Advice Taker,
 conformance або конкретний self-hosting proof.
 
+## A3. Advice Taker reasoning stability — B0/B1
+
+Підтверджено 2026-09-07:
+
+- ✅ `prove-goal` rule scan переписаний на tail-recursive accumulator + один
+  `reverse`, без старого `append(... recursive-scan ...)`;
+- ✅ full scan на 256 правил проходить на звичайному test-thread stack;
+- ✅ порядок reasoning results не змінився;
+- ✅ одна canonical data-only outcome algebra у `lib/result-status.my`:
+
+```lisp
+(proved statement results)
+(unknown subject)
+(partial value bound)
+(blocked reason)
+(disputed evidence)
+(invalid reason payload)
+```
+
+- ✅ `proved` зберігає всі успішні alternatives, а не лише першу;
+- ✅ explicit opposite proof відрізняється від absence of proof;
+- ✅ двосторонні докази дають `disputed`, не `unknown`;
+- ✅ malformed goal/module дають `invalid`, а не маскуються під `unknown`;
+- ✅ старі `reason` / `reason-in` лишилися backward-compatible;
+  opt-in adapters — `reason-observe` / `reason-in-observe`.
+
+Докази: `reason_stack.rs`, `result_status.rs`, `reason_outcome_invalid.rs`,
+`reason_in_outcome_invalid.rs`, ADR `unknown-result-semantics.md`.
+
+## A4. Explanation + adversarial Advice Taker loop — B2/B3
+
+Підтверджено:
+
+- ✅ `narrate-outcome` не зливає `unknown`, `partial`, `blocked`, `disputed` і
+  `invalid` в одну human-readable невдачу;
+- ✅ `proved` presentation зберігає існуючий proof/provenance шлях;
+- ✅ end-to-end corpus проходить один pipeline через admission → reasoning →
+  structured outcome → narration для семи різних режимів:
+  1. прямий факт;
+  2. багатокрокове правило;
+  3. recursive rule;
+  4. unknown;
+  5. explicit conflict/rejection;
+  6. malformed advice;
+  7. knowledge-package round-trip перед reasoning.
+
+Докази: `narrate_outcomes.rs`, `advice_corpus.rs`; workspace CI #1019/#1020.
+
+## A5. Portability / boundary hardening
+
+- ✅ committed `core.my.fasl` має regression test на exact source hash;
+- ✅ WASM browser workflow тепер запускається також при змінах semantic
+  dependencies (`my-lisp`, `literate`, `lsp`, `core.my`, FASL, Cargo graph);
+- ✅ Chrome і Firefox browser suites пройшли після зміни trigger;
+- ✅ `wsm-guard-core` більше не приймає policy result через substring типу
+  `"(decision allow)"`; перевіряється точна структурована `guard/1` форма,
+  exact field layout, decision enum і evidence-status enum;
+- ✅ adversarial spoof `(not-a-guard-finding (decision allow))` відхиляється.
+
 ---
 
 # B. Головний активний фронт — Advice Taker
 
-## B1. Semantic outcomes для reasoning — **NEXT**
+## B4. Natural-language / external translator bridge — **NEXT**
 
-Сьогодні `reason-in` повертає `(substitution proof)` при успіху й `()` при
-невдачі. Для Advice Taker цього вже недостатньо: `()` змішує різні причини
-відсутності відповіді.
+Стабільні structured outcomes тепер існують, тому можна під'єднувати зовнішній
+translator без передачі йому semantic authority.
 
-Потрібно визначити мінімальні **структуровані Lisp-дані спостереження**, не
-exception framework. Орієнтир, не остаточний контракт:
-
-```lisp
-(proved substitution proof)
-(unknown goal)
-(conflict evidence)
-(invalid reason payload)
-```
-
-### Критерій готовності B1
-
-- одна канонічна data-only форма reasoning observation;
-- `proved` не змінює зміст уже наявного proof tree;
-- `unknown` не прирівнюється до false;
-- explicit contradiction не прирівнюється до absence of proof;
-- malformed knowledge/input відділений від логічного `unknown`;
-- backward compatibility для чинного `reason-in` або явний migration path;
-- adversarial tests на всі межі вище.
-
-## B2. Пояснення не лише доказу, а й невдачі
-
-Після B1 `narrate-answer` / provenance layer мають уміти пояснювати принаймні:
-
-- що доведено і яким proof tree;
-- що не знайдено доказу;
-- де виявлено конфлікт;
-- чому input/knowledge structure відхилено.
-
-Людський текст — presentation layer. Семантичним контрактом залишаються
-структуровані Lisp-дані.
-
-## B3. Посилити end-to-end Advice Taker loop
-
-Еталонний шлях:
+Межа незмінна:
 
 ```text
-understand → advise/advise-all → reason-in → semantic outcome → narrate
+external translator
+        ↓
+candidate Lisp data
+        ↓
+validate / advise / advise-all
+        ↓
+reason-in-observe
+        ↓
+canonical semantic outcome
+        ↓
+narrate-outcome
 ```
 
-Додати невеликий blind/adversarial corpus, де один і той самий pipeline проходить:
+### Перший milestone
 
-1. прямий факт;
-2. багатокрокове правило;
-3. recursive rule;
-4. unknown;
-5. explicit negative/conflict case;
-6. malformed advice;
-7. knowledge package round-trip перед reasoning.
+Не «вільна розмова з LLM», а невеликий versioned corpus:
 
-Мета — не кількість fixtures, а різні failure modes одного наскрізного шляху.
+- input text;
+- expected candidate clause/query data;
+- accepted / rejected / ambiguous translation status;
+- downstream Advice Taker outcome;
+- збереження rejected/ambiguous cases як evidence, а не тихе перетворення на знання.
 
-## B4. Natural-language bridge — тільки після стабільних semantic outcomes
+LLM або інший translator **не** отримує права напряму змінювати knowledge state.
 
-LLM або інший зовнішній translator може пропонувати data-only clauses, але не
-отримує право напряму змінювати knowledge state. Межа лишається:
+## B5. Reasoning scale — вимірювати перед новою оптимізацією
 
-```text
-external translator → candidate Lisp data → validate/advise → reasoning
-```
+Підтверджений stack crash уже виправлено. Predicate/head indexing лишається
+потенційно цінним performance improvement, але не автоматичним наступним кроком.
 
-Перший NL milestone має перевіряти точність перекладу на невеликому corpus та
-зберігати rejected/ambiguous cases, а не маскувати їх як знання.
+Перед indexing:
+
+1. повторити scale profile на актуальному `reason`;
+2. окремо виміряти realistic Advice Taker corpus, не лише worst-case chain;
+3. зафіксувати target metric;
+4. лише тоді міняти indexing representation;
+5. довести, що proof/result order і semantics не змінилися.
 
 ---
 
-# C. Підтримувальний фронт — ядро й self-hosting
+# C. Підтримувальний фронт — ядро, embedding, self-hosting
 
 ## C1. Не продовжувати механічний каталог evaluator errors
 
 Після `UnknownSymbol` / `Type` / `Arity` / `InvalidForm` наступний error class
 додається лише якщо він:
 
-- потрібен B1/B2;
+- потрібен поточному Advice Taker milestone;
 - знаходить реальну divergence native/meta;
 - або є conformance requirement.
 
@@ -165,8 +197,8 @@ external translator → candidate Lisp data → validate/advise → reasoning
 
 ## C2. Arbitrary later-binding visibility
 
-Залишається важливим self-hosting question, але переходить після B1/B2, якщо не
-з’ясується, що Advice Taker прямо його потребує.
+Лишається важливим self-hosting question, але йде після активного Advice Taker
+front, якщо не з'ясується, що він прямо його потребує.
 
 Proof має бути finite-data і не повертати cyclic host environment як приховану
 семантику.
@@ -179,6 +211,42 @@ Proof має бути finite-data і не повертати cyclic host environ
 - зменшується дублювання semantic authority;
 - є parity/conformance proof;
 - це робить reasoning stack простішим, переноснішим або перевірюванішим.
+
+## C4. Scoped host capabilities — migration gate перед partially-trusted agents
+
+Поточний trusted native Lisp-machine profile навмисно має широкий OS-доступ.
+Не ламати його випадково. Але перед виконанням неповністю довірених agent scripts
+потрібно окремо ратифікувати й реалізувати fine-grained embedding policy для:
+
+```text
+filesystem read roots
+filesystem write roots
+tcp connect destinations
+tcp listen destinations
+process policy
+```
+
+`docs/host-capability-scoping-adr-2026-08-27.md` лишається PROPOSED для FS/TCP;
+це compatibility/security decision, а не прихований clean-code refactor.
+
+## C5. Swarm two-plane migration
+
+Нормативний напрям уже визначений:
+
+```text
+:9999 my-lisp semantic oracle
+          ≠
+:910x swarm-node coordination plane
+```
+
+Legacy coordination code в CLI не видаляємо «для чистоти», доки є живі
+callers. Removal gate:
+
+1. підтвердити, що агенти використовують `swarm-node` для coordination;
+2. позначити legacy ops deprecated у tooling/docs;
+3. мати migration test / replacement path;
+4. лише тоді видалити broker/claims/presence/task coordination з `:9999`,
+   не зачіпаючи semantic oracle.
 
 ---
 
@@ -194,16 +262,16 @@ Proof має бути finite-data і не повертати cyclic host environ
 
 Деталі живуть у [`docs/ecosystem-roadmap.md`](docs/ecosystem-roadmap.md).
 
-Найцінніший hardware напрям після стабілізації reasoning outcomes — не ще одна
-інструкція ISA сама по собі, а поступове виконання `core.my → unify.my → reason.my`
-на незалежному backend як сильний тест універсальності source semantics.
+Найцінніший hardware напрям після стабілізації reasoning outcomes — поступове
+виконання `core.my → unify.my → reason.my` на незалежному backend як сильний
+тест універсальності source semantics.
 
 ---
 
 # E. Clean Code
 
 [`CLEAN_CODE_PLAN.md`](CLEAN_CODE_PLAN.md) виконуємо між semantic milestones або
-коли конкретний quality debt блокує B1–B4. Clean Code не має створювати нову
+коли конкретний quality debt блокує B4/B5. Clean Code не має створювати нову
 semantic authority чи великий API surface «про запас».
 
 ---
@@ -211,23 +279,26 @@ semantic authority чи великий API surface «про запас».
 # Поточний порядок робіт
 
 ```text
-1. Advice Taker semantic outcomes (B1)
-2. Failure/conflict explanation (B2)
-3. Adversarial end-to-end Advice Taker corpus (B3)
-4. Виправлення ядра лише за результатами 1–3
-5. Natural-language bridge (B4)
-6. Later-binding / deeper self-hosting proof, якщо ще актуально
-7. Розширення CML/FPGA subset за реальною цінністю для reasoning
+1. B4 — versioned external/NL translator corpus
+2. B4 — candidate-data validation + rejected/ambiguous evidence path
+3. повторний reasoning scale profile на актуальному engine
+4. indexing лише якщо вимірювання це виправдовує
+5. host capability scoping перед partially-trusted autonomous execution
+6. staged legacy coordination removal після swarm-node migration proof
+7. later-binding / deeper self-hosting proof, якщо ще актуально
+8. CML/FPGA subset за реальною цінністю для reasoning
 ```
 
 ## Стоп-умови
 
-Не рухаємося до наступного пункту, якщо:
+Не рухаємося до наступного semantic milestone, якщо:
 
 - CI червоний;
 - новий claim не має executable evidence;
 - failure mode відомий, але прихований human-readable string замість stable data;
+- `unknown` використовується як synonym для false / invalid / blocked / disputed;
 - новий primitive пропонується до перевірки, чи це можна виразити бібліотекою;
+- зовнішній translator може обійти `advise`/validation і прямо писати knowledge;
 - робота розширює систему до спроби зруйнувати поточну.
 
 ---
