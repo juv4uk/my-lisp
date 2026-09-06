@@ -199,6 +199,21 @@ fn evaluate_list(
         Some("defmacro") => {
             special_forms::evaluate_defmacro(arguments, environment, span).map(EvalStep::Value)
         }
+        // Minimal macro substrate: evaluate one expression to a closure and
+        // re-tag that same closure as a macro. `defmacro` can therefore be
+        // derived in my-lisp from DEFINE + LAMBDA + MAKE_MACRO rather than
+        // promoted to a necessary form of its own.
+        Some("make-macro") => {
+            special_forms::exact_arity("make-macro", arguments, 1, span)?;
+            match evaluate(&arguments[0], environment)? {
+                Value::Closure(closure) => Ok(EvalStep::Value(Value::Macro(closure))),
+                _ => Err(LanguageError::new(
+                    ErrorKind::Type,
+                    "make-macro expects a closure · make-macro ochikuie zamykannia · make-macro erwartet eine Closure",
+                    span,
+                )),
+            }
+        }
         Some("cond" | "за-умовою" | "anukrama") => {
             special_forms::evaluate_cond(arguments, environment, span)
         }
@@ -276,10 +291,6 @@ fn evaluate_list(
 }
 
 trait ExprKindExt {
-    fn as_symbol(&self) -> Option<&str>;
-}
-
-impl ExprKindExt for ExprKind {
     fn as_symbol(&self) -> Option<&str> {
         match self {
             ExprKind::Symbol(symbol) => Some(symbol),
@@ -324,6 +335,15 @@ mod single_pass_eval_tests {
         let result = eval_program(source, &mut session)
             .expect("DEFINE + LAMBDA should preserve recursive binding semantics");
         assert_eq!(result.value.to_string(), "done");
+    }
+
+    #[test]
+    fn make_macro_is_the_minimal_closure_to_macro_substrate() {
+        let source = "(define identity-macro (make-macro (lambda (x) x))) (identity-macro 42)";
+        let mut session = Session::default();
+        let result = eval_program(source, &mut session)
+            .expect("MAKE_MACRO should turn a closure into a macro value");
+        assert_eq!(result.value.to_string(), "42");
     }
 
     #[test]
