@@ -50,6 +50,14 @@ pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.my");
 /// calendar interpretation, UTC structure, and deadline arithmetic.
 pub const TIME_LIBRARY_SOURCE: &str = include_str!("../../../lib/time.my");
 
+/// Exact UTF-8 validation and byte-to-Unicode interpretation owned by Lisp.
+pub const UTF8_LIBRARY_SOURCE: &str = include_str!("../../../lib/utf8.my");
+
+/// Process-result interpretation owned by Lisp. The host contributes only the
+/// `process-run-raw` capability; this layer decides how captured bytes become
+/// text and how decoding failures are represented.
+pub const PROCESS_LIBRARY_SOURCE: &str = include_str!("../../../lib/process.my");
+
 /// Load the language-owned macro layer and then the ordinary core library.
 ///
 /// This is the canonical bootstrap order for embedders that want `core.my`.
@@ -66,6 +74,14 @@ pub fn load_core_library(session: &mut Session) -> Result<EvalResult, LanguageEr
 /// time-layer loader instead of ad-hoc `include_str!` calls.
 pub fn load_time_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     eval_program(TIME_LIBRARY_SOURCE, session)
+}
+
+/// Load the language-owned byte/text and process-result semantic layers.
+/// The definitions can be installed in a capability-free session, but calling
+/// `process-run-text` requires an embedder to provide `process-run-raw`.
+pub fn load_process_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
+    eval_program(UTF8_LIBRARY_SOURCE, session)?;
+    eval_program(PROCESS_LIBRARY_SOURCE, session)
 }
 
 /// Convenience: FASL-encode already-parsed expressions bound to a source hash.
