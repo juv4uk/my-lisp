@@ -1,69 +1,79 @@
 # TCP host surface audit / Аудит host-межі TCP
 
-Status: read-side semantic cut completed; write-side remains a separate audit target. / Статус: семантичний розріз читання завершено; сторона запису лишається окремою ціллю аудиту.
+Status: TCP text read/write semantics moved to Lisp; socket lifecycle remains a separate audit target. / Статус: текстову семантику читання/запису TCP перенесено в Lisp; життєвий цикл сокета лишається окремою ціллю аудиту.
 
 ## English
 
-The old `tcp-read` host capability combined two responsibilities:
+The old TCP host surface mixed socket transport with text interpretation. `tcp-read` decoded received bytes as UTF-8 in Rust, while `tcp-write` encoded a Lisp string through Rust `as_bytes()` before writing it.
 
-1. **Host mechanism:** perform one socket read and observe the received bytes.
-2. **Text semantics:** require those bytes to be valid UTF-8 and turn them into a Lisp string inside Rust.
-
-That boundary has been split.
+Both text decisions are now outside the host.
 
 ```text
+read:
 TCP socket
   ↓
 Rust: tcp-read-raw
-  ↓
-(byte ...)
-  ↓
+  ↓ exact bytes 0..255
 Lisp: utf8-decode-string
   ↓
-Lisp: tcp-read-bytes->text
-  ↓
 Lisp: tcp-read
+
+write:
+Lisp string
+  ↓
+Lisp: utf8-encode-string
+  ↓ exact bytes 0..255
+Rust: tcp-write-raw
+  ↓
+TCP socket
 ```
 
-`tcp-read-raw` now performs one read of at most 64 KiB and returns the exact bytes as a proper list of exact integers `0..255`. EOF is the empty list. The host no longer runs `String::from_utf8` on received data.
+`tcp-read-raw` performs one socket read of at most 64 KiB and returns a proper list of exact byte integers. EOF is the empty list. `lib/tcp.my` owns the public text interpretation: valid UTF-8 becomes a string, EOF becomes the empty string, and invalid UTF-8 becomes explicit language data such as `(rejected invalid-utf8)`.
 
-`lib/tcp.my` owns the public text interpretation. Valid UTF-8 becomes the same string callers previously received; EOF remains the empty string. Invalid UTF-8 is preserved up to the language boundary and becomes explicit language data, currently `(rejected invalid-utf8)`, instead of a Rust-owned text-decoding error.
+`tcp-write-raw` accepts a proper list of exact byte integers `0..255` and writes exactly those bytes. It does not accept a string and contains no UTF-8 encoding rule. `lib/utf8.my` owns exact string-to-UTF-8 encoding, and `lib/tcp.my` composes that encoder with `tcp-write-raw` to provide the public `tcp-write` closure while preserving the historical result shape: a successful write returns the original text.
 
-The strongest adversarial witness sends the single byte `255`: raw TCP must expose `(255)`, while public `tcp-read` must reject it in Lisp. An ownership test separately requires the host registry to contain `tcp-read-raw` but not `tcp-read`, and requires `tcp-read` to appear as a Lisp closure only after the TCP semantic layer loads.
+The minimal runtime bridges are deliberately below UTF-8 semantics: `codepoint->string` materializes one already-interpreted Unicode scalar, and `string->codepoint` observes the scalar value of exactly one runtime character. Neither bridge knows UTF-8. The byte encoding/decoding algorithms are Lisp code.
 
-During the integration migration, real socket/knowledge-exchange tests exposed a stack overflow in `unicode-scalars->string`. That was not hidden by enlarging worker stacks. The language implementation was corrected: Unicode scalar materialization is now tail-recursive, and a dedicated 2 MiB worker-thread test pins stack-safe materialization of a 1 KiB ASCII payload.
+Evidence includes three adversarial/live witnesses: byte `255` is preserved by raw reads and rejected only by Lisp text decoding; raw writes transmit `(255 0 65 128)` byte-for-byte; and the public Lisp write path sends `"Привіт €😀"` as the exact UTF-8 wire bytes. Ownership tests require the host registry to contain `tcp-read-raw` and `tcp-write-raw`, but not `tcp-read` or `tcp-write`; after `load_tcp_library`, both public names must be Lisp closures. CI #959 passed workspace tests, build, and zero-warning clippy after the old Rust text `tcp-write` and its `as_bytes()` path were physically removed.
 
-This is a **read-side HSS reduction**, not a claim that the entire TCP boundary is minimal. `tcp-write` still accepts a Lisp string and converts it to bytes in Rust with `as_bytes()`. Whether the write side should become `tcp-write-raw` plus language-owned UTF-8 encoding is the next independent question.
+A separate migration bug also produced useful evidence: integration tests exposed stack growth while decoded Unicode scalars were materialized into text. The implementation was changed to tail-recursive accumulation rather than hiding the failure by increasing worker stack size, and a dedicated worker-thread test pins the behavior.
+
+This is an evidenced **TCP text-semantics HSS reduction**, not a claim that the entire TCP boundary is minimal. `tcp-connect`, `tcp-listen`, `tcp-accept`, and `tcp-close` still represent host/socket operations. Their argument validation, error shaping, address policy, timeout behavior, retry policy, and lifecycle semantics remain independent audit targets.
 
 ## Українська
 
-Старий host capability `tcp-read` поєднував дві різні відповідальності:
+Стара TCP host-межа змішувала транспортування через сокет із текстовою інтерпретацією. `tcp-read` декодував отримані байти як UTF-8 у Rust, а `tcp-write` перед записом перетворював Lisp-рядок на байти через Rust `as_bytes()`.
 
-1. **Host-механізм:** виконати одне читання із сокета й спостерігати отримані байти.
-2. **Текстову семантику:** вимагати, щоб ці байти були валідним UTF-8, і перетворювати їх на Lisp-рядок усередині Rust.
-
-Тепер цю межу розділено.
+Тепер обидва текстові рішення винесені з host-а.
 
 ```text
+читання:
 TCP socket
   ↓
 Rust: tcp-read-raw
-  ↓
-(byte ...)
-  ↓
+  ↓ точні байти 0..255
 Lisp: utf8-decode-string
   ↓
-Lisp: tcp-read-bytes->text
-  ↓
 Lisp: tcp-read
+
+запис:
+Lisp-рядок
+  ↓
+Lisp: utf8-encode-string
+  ↓ точні байти 0..255
+Rust: tcp-write-raw
+  ↓
+TCP socket
 ```
 
-`tcp-read-raw` виконує одне читання максимум до 64 KiB і повертає точні байти як правильний список точних цілих `0..255`. EOF — порожній список. Host більше не запускає `String::from_utf8` над отриманими даними.
+`tcp-read-raw` виконує одне читання із сокета максимум до 64 KiB і повертає правильний список точних цілих байтів. EOF — порожній список. `lib/tcp.my` володіє публічною текстовою інтерпретацією: валідний UTF-8 стає рядком, EOF — порожнім рядком, а невалідний UTF-8 — явними мовними даними на кшталт `(rejected invalid-utf8)`.
 
-`lib/tcp.my` володіє публічною текстовою інтерпретацією. Валідний UTF-8 дає той самий рядок, який раніше отримували виклики; EOF лишається порожнім рядком. Невалідний UTF-8 доходить до мовної межі без втрати байтів і стає явними мовними даними — зараз `(rejected invalid-utf8)` — замість Rust-owned помилки декодування тексту.
+`tcp-write-raw` приймає правильний список точних цілих байтів `0..255` і записує саме ці байти. Він не приймає рядок і не містить правила UTF-8-кодування. `lib/utf8.my` володіє точним перетворенням рядка на UTF-8, а `lib/tcp.my` композиційно будує публічний Lisp closure `tcp-write` поверх `tcp-write-raw`, зберігаючи стару форму результату: успішний запис повертає початковий текст.
 
-Найсильніший adversarial witness передає один байт `255`: raw TCP мусить показати `(255)`, а публічний `tcp-read` мусить відхилити його вже в Lisp. Окремий ownership-тест вимагає, щоб host registry містив `tcp-read-raw`, але не `tcp-read`, а `tcp-read` з'являвся як Lisp closure лише після завантаження TCP semantic layer.
+Мінімальні runtime-мости навмисно лежать нижче UTF-8-семантики: `codepoint->string` матеріалізує один уже інтерпретований Unicode scalar, а `string->codepoint` спостерігає scalar-значення рівно одного runtime-символу. Жоден із цих мостів не знає UTF-8. Самі алгоритми кодування й декодування байтів написані Lisp-ом.
 
-Під час міграції інтеграційні тести на реальних сокетах і knowledge exchange виявили stack overflow у `unicode-scalars->string`. Його не замасковано збільшенням стека worker thread. Виправлено саму мовну реалізацію: матеріалізація Unicode scalars тепер tail-recursive, а окремий тест із 2 MiB worker stack фіксує stack-safe матеріалізацію 1 KiB ASCII payload.
+Докази включають три adversarial/live witness-и: байт `255` зберігається raw-читанням і відхиляється лише Lisp-декодером; raw-запис передає `(255 0 65 128)` байт-у-байт; публічний Lisp-шлях запису передає `"Привіт €😀"` як точні UTF-8 байти на дроті. Ownership-тести вимагають, щоб host registry містив `tcp-read-raw` і `tcp-write-raw`, але не `tcp-read` чи `tcp-write`; після `load_tcp_library` обидві публічні назви мусять бути Lisp closure. CI #959 пройшов workspace tests, build і zero-warning clippy після фізичного видалення старого Rust `tcp-write` та його `as_bytes()`-шляху.
 
-Це **зменшення HSS зі сторони читання**, а не твердження, що вся TCP-межа вже мінімальна. `tcp-write` досі приймає Lisp-рядок і перетворює його на байти в Rust через `as_bytes()`. Чи треба зробити сторону запису як `tcp-write-raw` + language-owned UTF-8 encoding — це наступне окреме питання.
+Під час цієї міграції інтеграційні тести також виявили ріст стека при матеріалізації декодованих Unicode scalar-ів у текст. Причину виправлено tail-recursive накопиченням, а не збільшенням стека worker thread; окремий тест тепер фіксує цю властивість.
+
+Це доказане **зменшення TCP HSS для текстової семантики**, а не твердження, що вся TCP-межа вже мінімальна. `tcp-connect`, `tcp-listen`, `tcp-accept` і `tcp-close` лишаються host/socket операціями. Їхня валідація аргументів, форма помилок, адресна політика, timeout-и, retry-політика та lifecycle semantics — наступні незалежні цілі аудиту.
