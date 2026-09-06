@@ -12,7 +12,7 @@
 ; macro expansion, closure environments, chained comparison policy,
 ; self-recursive and finite mutually recursive top-level function binding,
 ; variadic/dotted lambda parameter binding, and the first named failure
-; observation for an unresolved callable name.
+; distinction between an unresolved callable name and a non-callable value.
 ;
 ; This remains an explicit self-hosting witness, not the always-loaded runtime.
 ; Full named-error parity and arbitrary later-binding visibility are still known
@@ -29,9 +29,10 @@
 ; Root primitive meanings are represented as values, not as special cases in
 ; expression-head dispatch. An unbound non-primitive atom remains itself;
 ; this preserves the existing metacircular self-evaluation convention for
-; numbers, strings, t and currently-unclassified symbols. The operator path
-; below turns an unresolved callable atom into named Lisp error data; a future
-; not-callable parity step will distinguish literal atoms from unresolved names.
+; numbers, strings, t and currently-unclassified symbols. In operator position
+; `my-apply` uses the language-owned `symbol?` from core.my to distinguish an
+; unresolved name from a literal non-callable atom without adding a new Rust or
+; Canon primitive for the meta-evaluator.
 (def my-default-binding
   (lambda (name)
     (cond
@@ -257,12 +258,12 @@
 (def my-apply
   (lambda (fn args)
     (cond
-      ; First named failure owned as Lisp data. In ordinary call position an
-      ; unresolved name reaches apply as an atom because env-lookup preserves
-      ; self-evaluating atoms. Literal/not-callable distinction is deliberately
-      ; left to the next error-parity milestone rather than adding `symbol?`
-      ; to the closed primitive core just for this proof.
-      ((atom fn) (my-error (quote unbound-symbol) fn))
+      ; `symbol?` is derived in core.my rather than a Rust builtin. Reusing it
+      ; here keeps failure classification language-owned: an unresolved symbol
+      ; is a name-resolution failure, while every other atomic value is a Type
+      ; failure because it simply is not callable.
+      ((symbol? fn) (my-error (quote unbound-symbol) fn))
+      ((atom fn) (my-error (quote not-callable) fn))
       ((my-primitive? fn)
        (my-apply-primitive (second fn) args))
       ((my-closure? fn)
@@ -298,7 +299,7 @@
            (second fn)
            args
            (my-fourth fn))))
-      (t (list (quote not-callable) fn)))))
+      (t (my-error (quote not-callable) fn)))))
 
 (def my-eval
   (lambda (expr env)
