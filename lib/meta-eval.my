@@ -9,13 +9,13 @@
 ; Only syntax-only forms remain syntax dispatch here: quote, cond, lambda.
 ; The actual primitive operation is still supplied by the native substrate;
 ; this evaluator owns name resolution, lexical shadowing, application shape,
-; macro expansion, closure environments, chained comparison policy, and
-; self-recursive top-level function binding.
+; macro expansion, closure environments, chained comparison policy,
+; self-recursive top-level function binding, and variadic/dotted lambda
+; parameter binding.
 ;
 ; This remains an explicit self-hosting witness, not the always-loaded runtime.
-; Named-error parity, variadic/dotted lambda lists and mutually recursive
-; top-level definitions are still known gaps and must not be claimed as
-; complete self-hosting.
+; Named-error parity and mutually recursive top-level definitions are still
+; known gaps and must not be claimed as complete self-hosting.
 
 (def my-primitive
   (lambda (name)
@@ -131,10 +131,20 @@
       ((eq name (quote >))    (my-compare-chain (quote >) args))
       (t (list (quote unknown-primitive) name)))))
 
+; Parameter binding follows Lisp list structure directly.
+;
+;   ()             -> no more bindings
+;   args           -> bare-symbol/all-rest parameter receives all remaining args
+;   (x y . rest)   -> fixed params consume one arg each, then rest receives tail
+;   (x y)          -> ordinary fixed-arity binding
+;
+; Arity-error parity remains a separate named-error task; this function owns
+; only the successful binding semantics.
 (def bind-params
   (lambda (params args env)
     (cond
-      ((atom params) env)
+      ((eq params (quote ())) env)
+      ((atom params) (cons (cons params args) env))
       (t (cons (cons (car params) (car args))
                (bind-params (cdr params) (cdr args) env))))))
 
