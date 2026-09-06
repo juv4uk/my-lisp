@@ -18,6 +18,7 @@
 //! `special_forms::evaluate_x` auf; nur die interne Anordnung hat sich
 //! geändert.
 
+mod codepoint;
 mod core;
 pub(crate) mod digest;
 mod io;
@@ -25,6 +26,7 @@ pub mod json;
 mod strings;
 
 pub use core::exact_arity;
+pub(super) use codepoint::evaluate_codepoint_to_string;
 pub(super) use core::{
     car_value, cdr_value, cons_values, eq_values, evaluate_cond, evaluate_definition,
     evaluate_defmacro, quoted,
