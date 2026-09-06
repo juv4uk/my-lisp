@@ -1,112 +1,69 @@
-; A metacircular evaluator: my-eval interprets my-lisp source (read as data,
-; e.g. via `read`) using only my-lisp's own primitives. Primitives —
-; car/cdr/cons/atom/eq/arithmetic/comparison — are dispatched to directly,
-; not reimplemented wholesale, exactly like McCarthy's own 1960 eval/apply:
-; his eval called car/cdr/cons/atom/eq as given, it didn't redefine them.
+; Metacircular evaluator: my-eval interprets my-lisp source as Lisp data.
 ;
-; Environments here are plain association lists of (symbol . value) pairs,
-; not the host's real Environment — my-lisp has no way to reach that from
-; inside the language. `env-lookup`'s "not found" case returns the atom
-; itself rather than erroring: this is what makes numbers/strings/`t`
-; self-evaluate without a symbol?/numberp? primitive. It works because `eq`
-; only requires both operands be atoms, not the same type — comparing a
-; number against an alist's symbol keys always safely returns false, never
-; a crash, so lookup falls through to "not found -> return as-is" for any
-; non-symbol atom, and for any symbol that genuinely isn't bound.
+; The important ownership boundary in this version is contract 2.1:
+; ordinary primitive names are no longer recognized by a head-symbol dispatch
+; inside my-eval.  They resolve through the metacircular environment as
+; first-class `(primitive name)` values.  Therefore lexical bindings can
+; shadow `+`, `car`, `eq`, etc. using the same lookup rule as any other name.
 ;
-; This is a demonstration, not part of the always-loaded bootstrap library:
-; lib/core.my never depends on it, and nothing here changes what any other
-; my-lisp program can do. Load it deliberately (see docs/quote-tutorial.md).
+; Only syntax-only forms remain syntax dispatch here: quote, cond, lambda.
+; The actual primitive operation is still supplied by the native substrate;
+; this evaluator owns name resolution, lexical shadowing, application shape,
+; macro expansion, closure environments and chained comparison policy.
 ;
-; Not McCarthy-complete: single-arity `atom`/`eq`/`car`/`cdr`/`cons`,
-; two-argument `+`/`-`/`*`, and variadic chained `<`/`=`/`>` whose chaining
-; semantics are implemented here in Lisp over the native binary comparison
-; substrate. The real arithmetic primitives remain richer (for example `+`
-; is variadic); there is still no general builtin dispatch or error-kind
-; parity inside interpreted programs. Deliberately small and auditable.
-;
-; Метациркулярний evaluator: my-eval інтерпретує my-lisp-код (прочитаний як
-; дані, напр. через `read`), використовуючи лише власні примітиви my-lisp.
-; Примітиви — car/cdr/cons/atom/eq/арифметика/порівняння —
-; диспетчеризуються напряму, не переписуються заново, точно як власний
-; eval/apply Маккарті 1960 року: його eval викликав car/cdr/cons/atom/eq як
-; дані, не перевизначав їх.
-;
-; Середовища тут — звичайні асоціативні списки пар (символ . значення), не
-; справжній Environment хоста — my-lisp не має способу дістатись до нього
-; зсередини мови. Випадок "не знайдено" в `env-lookup` повертає сам атом,
-; а не помилку: саме це змушує числа/рядки/`t` самообчислюватись без
-; примітиву symbol?/numberp?. Працює це тому, що `eq` вимагає лише, щоб обидва
-; операнди були атомами, не одного типу — порівняння числа з символьними
-; ключами asoc-списку завжди безпечно повертає false, ніколи не падає, тож
-; lookup провалюється до "не знайдено -> повернути як є" для будь-якого
-; несимвольного атома, і для будь-якого символу, що справді не зв'язаний.
-;
-; Це демонстрація, не частина завжди завантажуваної bootstrap-бібліотеки:
-; lib/core.my ніколи від нього не залежить, і ніщо тут не змінює те, що може
-; будь-яка інша my-lisp-програма. Завантажувати навмисно (див.
-; docs/quote-tutorial.md).
-;
-; Не McCarthy-повний: одноарні `atom`/`eq`/`car`/`cdr`/`cons`, двоаргументні
-; `+`/`-`/`*`, а також ланцюгові `<`/`=`/`>`. Саме правило ланцюга вже живе
-; тут у Lisp: кожна сусідня пара порівнюється через мінімальний нативний
-; двоаргументний механізм, зліва направо й з коротким замиканням.
-;
-; `def`/`defmacro` (2026-08-09): `my-eval` сам (вирази) лишається чистою
-; функцією `(expr, env) -> value` — `def` не вписується в цю форму, бо йому
-; треба *повернути новий env*, не лише значення. Тому `def`/`defmacro`
-; обробляються окремим рівнем — `my-eval-top-form`/`my-eval-program` — який
-; існує лише для послідовності верхньорівневих форм (як `lib/core.my`), не
-; всередині виразу. Середовище тут — незмінний asoc-список (`cons`), тож
-; `def` не *мутує* фрейм (на відміну від справжнього `def` у хост-мові,
-; `environment.rs:70`) — він створює новий, розширений env і повертає його,
-; `my-eval-program` явно протягує цей env до наступної форми. Чесна межа:
-; рекурсивний **верхньорівневий** `def` (функція, що викликає саму себе за
-; іменем) НЕ підтримується — замикання захоплює env *до* власного
-; зв'язування, тож рекурсивний виклик усередині тіла не знайде себе. Це
-; окрема, більша задача (потрібна якась форма відкладеного/само-посилального
-; зв'язування), навмисно не вирішена тут, а не прихована.
-;
-; Metazirkulärer Evaluator: my-eval interpretiert my-lisp-Quellcode
-; (gelesen als Daten, z. B. via `read`) nur mit my-lisps eigenen Primitiven.
-; Primitive — car/cdr/cons/atom/eq/Arithmetik/Vergleich — werden direkt
-; dispatcht, nicht als zweite Runtime neu implementiert. Verkettete
-; `<`/`=`/`>`-Semantik lebt hier in Lisp über binären Vergleichsmechanismen.
+; This remains an explicit self-hosting witness, not the always-loaded runtime.
+; Named-error parity, variadic/dotted lambda lists and recursive top-level def
+; are still known gaps and must not be claimed as complete self-hosting.
 
-; `(atom (car expr))` guards the keyword dispatch below: `eq` requires both
-; operands be atoms, and a call whose head is itself a list — like
-; `((lambda (x) x) 5)` — has a non-atom `(car expr)`, which would make
-; `(eq (car expr) 'quote)` a Type error instead of just falling through to
-; application. Checking `atom` first, before any `eq` against a keyword
-; symbol, keeps that case a plain (if redundant-looking) application.
-(def my-eval
-  (lambda (expr env)
+(def my-primitive
+  (lambda (name)
+    (list (quote primitive) name)))
+
+; Root primitive meanings are represented as values, not as special cases in
+; expression-head dispatch.  An unbound non-primitive atom remains itself;
+; this preserves the existing metacircular self-evaluation convention for
+; numbers, strings, t and currently-unclassified symbols.
+(def my-default-binding
+  (lambda (name)
     (cond
-      ((atom expr) (env-lookup expr env))
-      ((atom (car expr))
-       (cond
-         ((eq (car expr) (quote quote)) (second expr))
-         ((eq (car expr) (quote cond)) (my-eval-cond (cdr expr) env))
-         ((eq (car expr) (quote lambda)) (list (quote closure) (second expr) (cdr (cdr expr)) env))
-         ((eq (car expr) (quote atom)) (atom (my-eval (second expr) env)))
-         ((eq (car expr) (quote eq)) (eq (my-eval (second expr) env) (my-eval (third expr) env)))
-         ((eq (car expr) (quote car)) (car (my-eval (second expr) env)))
-         ((eq (car expr) (quote cdr)) (cdr (my-eval (second expr) env)))
-         ((eq (car expr) (quote cons)) (cons (my-eval (second expr) env) (my-eval (third expr) env)))
-         ((eq (car expr) (quote +)) (+ (my-eval (second expr) env) (my-eval (third expr) env)))
-         ((eq (car expr) (quote -)) (- (my-eval (second expr) env) (my-eval (third expr) env)))
-         ((eq (car expr) (quote *)) (* (my-eval (second expr) env) (my-eval (third expr) env)))
-         ((eq (car expr) (quote <)) (my-eval-comparison (quote <) (cdr expr) env))
-         ((eq (car expr) (quote =)) (my-eval-comparison (quote =) (cdr expr) env))
-         ((eq (car expr) (quote >)) (my-eval-comparison (quote >) (cdr expr) env))
-         ((my-macro? (env-lookup (car expr) env))
-          (my-eval (my-apply (env-lookup (car expr) env) (cdr expr)) env))
-         (t (my-apply (my-eval (car expr) env) (my-eval-list (cdr expr) env)))))
-      (t (my-apply (my-eval (car expr) env) (my-eval-list (cdr expr) env))))))
+      ((eq name (quote atom)) (my-primitive (quote atom)))
+      ((eq name (quote eq))   (my-primitive (quote eq)))
+      ((eq name (quote car))  (my-primitive (quote car)))
+      ((eq name (quote cdr))  (my-primitive (quote cdr)))
+      ((eq name (quote cons)) (my-primitive (quote cons)))
+      ((eq name (quote +))    (my-primitive (quote +)))
+      ((eq name (quote -))    (my-primitive (quote -)))
+      ((eq name (quote *))    (my-primitive (quote *)))
+      ((eq name (quote <))    (my-primitive (quote <)))
+      ((eq name (quote =))    (my-primitive (quote =)))
+      ((eq name (quote >))    (my-primitive (quote >)))
+      (t name))))
 
-; The native runtime supplies only the binary comparison mechanism here.
-; The observable variadic/chained rule belongs to the evaluator written in
-; Lisp: evaluate left-to-right, compare adjacent values, stop on first false.
+(def env-lookup
+  (lambda (name env)
+    (cond
+      ((atom env) (my-default-binding name))
+      ((eq (car (car env)) name) (cdr (car env)))
+      (t (env-lookup name (cdr env))))))
+
+(def my-primitive?
+  (lambda (value)
+    (cond
+      ((atom value) (quote ()))
+      (t (eq (car value) (quote primitive))))))
+
+(def my-macro?
+  (lambda (value)
+    (cond
+      ((atom value) (quote ()))
+      (t (eq (car value) (quote macro))))))
+
+(def my-closure?
+  (lambda (value)
+    (cond
+      ((atom value) (quote ()))
+      (t (eq (car value) (quote closure))))))
+
 (def my-compare-two
   (lambda (operator left right)
     (cond
@@ -115,46 +72,34 @@
       ((eq operator (quote >)) (> left right))
       (t (quote ())))))
 
-(def my-eval-comparison-from
-  (lambda (operator left remaining env)
+; Chained comparison semantics are Lisp-owned: values arrive already
+; evaluated, adjacent pairs are compared left-to-right, and evaluation stops
+; at the first false pair.
+(def my-compare-chain
+  (lambda (operator values)
     (cond
-      ((atom remaining) t)
-      (t
-       (let ((right (my-eval (car remaining) env)))
-         (cond
-           ((my-compare-two operator left right)
-            (my-eval-comparison-from operator right (cdr remaining) env))
-           (t (quote ()))))))))
+      ((atom (cdr values)) t)
+      ((my-compare-two operator (car values) (second values))
+       (my-compare-chain operator (cdr values)))
+      (t (quote ())))))
 
-(def my-eval-comparison
-  (lambda (operator exprs env)
+; Primitive *identity* is a Lisp value.  This function is the narrow bridge
+; from that identity to the admitted native operation mechanism.
+(def my-apply-primitive
+  (lambda (name args)
     (cond
-      ((atom exprs) t)
-      (t (my-eval-comparison-from operator (my-eval (car exprs) env) (cdr exprs) env)))))
-
-; A macro call's args are passed to `my-apply` unevaluated (`(cdr expr)`
-; directly, not `my-eval-list`'d) — the macro body builds an expansion from
-; the raw argument forms, then `my-eval` runs *that* expansion once more,
-; the same two-step shape (expand, then evaluate the result) real
-; `defmacro` uses in the host language.
-(def my-macro?
-  (lambda (value)
-    (cond
-      ((atom value) (quote ()))
-      (t (eq (car value) (quote macro))))))
-
-(def my-eval-cond
-  (lambda (clauses env)
-    (cond
-      ((atom clauses) (quote ()))
-      ((my-eval (car (car clauses)) env) (my-eval (second (car clauses)) env))
-      (t (my-eval-cond (cdr clauses) env)))))
-
-(def my-eval-list
-  (lambda (exprs env)
-    (cond
-      ((atom exprs) (quote ()))
-      (t (cons (my-eval (car exprs) env) (my-eval-list (cdr exprs) env))))))
+      ((eq name (quote atom)) (atom (car args)))
+      ((eq name (quote eq))   (eq (car args) (second args)))
+      ((eq name (quote car))  (car (car args)))
+      ((eq name (quote cdr))  (cdr (car args)))
+      ((eq name (quote cons)) (cons (car args) (second args)))
+      ((eq name (quote +))    (+ (car args) (second args)))
+      ((eq name (quote -))    (- (car args) (second args)))
+      ((eq name (quote *))    (* (car args) (second args)))
+      ((eq name (quote <))    (my-compare-chain (quote <) args))
+      ((eq name (quote =))    (my-compare-chain (quote =) args))
+      ((eq name (quote >))    (my-compare-chain (quote >) args))
+      (t (list (quote unknown-primitive) name)))))
 
 (def bind-params
   (lambda (params args env)
@@ -163,34 +108,79 @@
       (t (cons (cons (car params) (car args))
                (bind-params (cdr params) (cdr args) env))))))
 
+(def my-eval-list
+  (lambda (exprs env)
+    (cond
+      ((atom exprs) (quote ()))
+      (t (cons (my-eval (car exprs) env)
+               (my-eval-list (cdr exprs) env))))))
+
 (def my-eval-body
   (lambda (body env)
     (cond
       ((atom (cdr body)) (my-eval (car body) env))
-      (t ((lambda () (my-eval (car body) env) (my-eval-body (cdr body) env)))))))
+      (t ((lambda ()
+            (my-eval (car body) env)
+            (my-eval-body (cdr body) env)))))))
+
+(def my-eval-cond
+  (lambda (clauses env)
+    (cond
+      ((atom clauses) (quote ()))
+      ((my-eval (car (car clauses)) env)
+       (my-eval (second (car clauses)) env))
+      (t (my-eval-cond (cdr clauses) env)))))
 
 (def my-apply
   (lambda (fn args)
     (cond
-      ((eq (car fn) (quote closure))
-       (my-eval-body (third fn) (bind-params (second fn) args (car (cdr (cdr (cdr fn)))))))
-      ((eq (car fn) (quote macro))
-       (my-eval-body (third fn) (bind-params (second fn) args (car (cdr (cdr (cdr fn)))))))
+      ((atom fn) (list (quote not-callable) fn))
+      ((my-primitive? fn)
+       (my-apply-primitive (second fn) args))
+      ((my-closure? fn)
+       (my-eval-body
+         (third fn)
+         (bind-params
+           (second fn)
+           args
+           (car (cdr (cdr (cdr fn)))))))
+      ((my-macro? fn)
+       (my-eval-body
+         (third fn)
+         (bind-params
+           (second fn)
+           args
+           (car (cdr (cdr (cdr fn)))))))
       (t (list (quote not-callable) fn)))))
 
-(def env-lookup
-  (lambda (name env)
+(def my-eval
+  (lambda (expr env)
     (cond
-      ((atom env) name)
-      ((eq (car (car env)) name) (cdr (car env)))
-      (t (env-lookup name (cdr env))))))
+      ((atom expr) (env-lookup expr env))
+      ((atom (car expr))
+       (cond
+         ; Syntax-only forms remain outside the ordinary value namespace.
+         ((eq (car expr) (quote quote)) (second expr))
+         ((eq (car expr) (quote cond)) (my-eval-cond (cdr expr) env))
+         ((eq (car expr) (quote lambda))
+          (list (quote closure) (second expr) (cdr (cdr expr)) env))
+         ; Every ordinary name is resolved through the environment first.
+         (t
+          (let ((fn (my-eval (car expr) env)))
+            (cond
+              ; Macro receives raw forms, then its expansion is evaluated.
+              ((my-macro? fn)
+               (my-eval (my-apply fn (cdr expr)) env))
+              (t
+               (my-apply fn (my-eval-list (cdr expr) env))))))))
+      ; Computed operator position uses the same value-level apply path.
+      (t
+       (my-apply
+         (my-eval (car expr) env)
+         (my-eval-list (cdr expr) env)))))))
 
-; Top-level form sequencing — `def`/`defmacro` live here, not in `my-eval`
-; itself (see the file-header note). `my-eval-top-form` returns
-; `(new-env . value)`; `def`/`defmacro` extend `env` by consing a new
-; binding onto the front (same shadowing rule as a real alist environment —
-; the newest binding for a name wins), everything else evaluates normally
-; and passes `env` through unchanged.
+; Top-level sequencing.  `def` and `defmacro` return `(new-env . value)` so
+; the immutable alist environment can be threaded explicitly to the next form.
 (def my-eval-top-form
   (lambda (form env)
     (cond
@@ -199,7 +189,11 @@
        (let ((value (my-eval (third form) env)))
          (cons (cons (cons (second form) value) env) value)))
       ((eq (car form) (quote defmacro))
-       (let ((macro-val (list (quote macro) (third form) (cdr (cdr (cdr form))) env)))
+       (let ((macro-val
+               (list (quote macro)
+                     (third form)
+                     (cdr (cdr (cdr form)))
+                     env)))
          (cons (cons (cons (second form) macro-val) env) macro-val)))
       (t (cons env (my-eval form env))))))
 
