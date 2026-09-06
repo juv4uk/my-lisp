@@ -3,7 +3,8 @@
 //! swarm.rs. Moved verbatim from main.rs (2026-08-22 mechanical split).
 
 use my_lisp::{
-    eval_parsed_expressions, eval_parsed_expressions_incremental, parse, Environment, Session,
+    eval_parsed_expressions, eval_parsed_expressions_incremental, eval_program, parse, Environment,
+    Session, MACRO_LIBRARY_SOURCE,
 };
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener};
@@ -59,8 +60,15 @@ pub(crate) fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
         // Lisp-machine profile. Empty means deny all; a supplied list is exact.
         let environment = Environment::root().with_process_allowlist(allowed.to_vec());
         let mut session = Session { environment };
-        if let Ok(core_ast) = parse(core_lib) {
-            let _ = eval_parsed_expressions(&core_ast, &mut session);
+
+        // Keep the same language bootstrap invariant as the local CLI:
+        // establish the language-owned `defmacro` before core.my defines
+        // its macros. `core_lib` remains caller-provided here so this path
+        // can keep its existing per-connection isolation contract.
+        if eval_program(MACRO_LIBRARY_SOURCE, &mut session).is_ok() {
+            if let Ok(core_ast) = parse(core_lib) {
+                let _ = eval_parsed_expressions(&core_ast, &mut session);
+            }
         }
 
         let mut reader = BufReader::new(stream.try_clone().expect("clone TCP stream"));
