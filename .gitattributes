@@ -10,9 +10,9 @@
 # all text/eol handling for vendor/ so checkouts are always byte-identical.
 vendor/** -text -diff
 
-# GitHub Linguist does not know WSM yet. Lisp is the temporary display
-# profile for all supported WSM source extensions; this is classification,
-# not a claim of semantic identity.
-*.wsm linguist-language=Lisp
-*.my linguist-language=Lisp
-*.lisp linguist-language=Lisp
+# GitHub Linguist does not know my-lisp or WSM yet. Common Lisp is the
+# temporary syntax/statistics profile for my-lisp source files; this is
+# classification, not a claim of language identity.
+*.wsm linguist-language=Common-Lisp
+*.my linguist-language=Common-Lisp
+*.lisp linguist-language=Common-Lisp
