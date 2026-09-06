@@ -140,9 +140,6 @@ pub(crate) fn evaluate_step(
         ExprKind::String(value) => Ok(EvalStep::Value(Value::String(value.clone()))),
         ExprKind::Symbol(symbol) => environment
             .get(symbol)
-            // Canonical fallback is semantic, not lexical: resolve the
-            // spelling directly to CANON. Rebinding `car` can no longer
-            // mutate what `перше` or `ādi` mean.
             .or_else(|| canon::value_for_surface(symbol))
             .map(EvalStep::Value)
             .ok_or_else(|| {
@@ -152,8 +149,6 @@ pub(crate) fn evaluate_step(
                     expression.span,
                 )
             }),
-        // Canon 0 is a value in its own right. `Value::Nil` is only its
-        // current Rust representation, not its public canonical name.
         ExprKind::List(items) if items.is_empty() => Ok(EvalStep::Value(
             canon::ground_value(canon::CanonicalIdentity::EmptyList)
                 .expect("Canon 0 must always materialize"),
@@ -191,15 +186,9 @@ fn evaluate_list(
         {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
         }
-        // `def` is retained as a compatibility surface while code migrates to
-        // canonical `define`. It is deliberately absent from NECESSARY_FORMS.
         Some("def") => {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
         }
-        // Once lib/macro.my has installed the language-owned `defmacro`
-        // binding, that macro is authoritative. The evaluator-level path is
-        // only a compatibility fallback for legacy/bootstrap sessions that
-        // have not loaded the derived macro layer yet.
         Some("defmacro") => {
             if let Some(Value::Macro(ref closure)) = environment.get("defmacro") {
                 closures::apply_macro(closure.clone(), arguments, environment, span)
@@ -207,10 +196,6 @@ fn evaluate_list(
                 special_forms::evaluate_defmacro(arguments, environment, span).map(EvalStep::Value)
             }
         }
-        // Minimal macro substrate: evaluate one expression to a closure and
-        // re-tag that same closure as a macro. `defmacro` can therefore be
-        // derived in my-lisp from DEFINE + LAMBDA + MAKE_MACRO rather than
-        // promoted to a necessary form of its own.
         Some("make-macro") => {
             special_forms::exact_arity("make-macro", arguments, 1, span)?;
             match evaluate(&arguments[0], environment)? {
@@ -266,6 +251,10 @@ fn evaluate_list(
         }
         Some("string-rest") => {
             special_forms::evaluate_string_rest(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("codepoint->string") => {
+            special_forms::evaluate_codepoint_to_string(arguments, environment, span)
+                .map(EvalStep::Value)
         }
         Some("sha256-hex") => {
             special_forms::evaluate_sha256_hex(arguments, environment, span).map(EvalStep::Value)
