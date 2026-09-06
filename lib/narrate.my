@@ -54,7 +54,7 @@
 ; in lib/reason.my bereits hat — keine hier neu eingeführte Einschränkung),
 ; während `rule` für jedes Blatt der konkrete abgeglichene Fakt ist.
 ; Tiefere Regelanwendungen können immer noch eine ungelöste Variable
-; zeigen, wenn der Kopf genau dieser Regel zum Zeitpunkt der Ableitung
+; zeigen, wenn der Kopf genau dieses Regel zum Zeitpunkt der Ableitung
 ; nicht vollständig konkretisiert war; dies ist dokumentiert, nicht
 ; verborgen.
 (def narrate-fact
@@ -130,43 +130,75 @@
            (list (quote proved))
            (narrate-answer statement (second (car results)))))))))
 
+(def narrate-invalid-outcome-shape
+  (lambda (outcome)
+    (list (quote invalid) (quote outcome-shape) outcome)))
+
+(def narrate-outcome-arity?
+  (lambda (outcome expected)
+    (cond
+      ((not (result-proper-list? outcome)) (quote ()))
+      ((= (length outcome) expected) t)
+      (t (quote ())))))
+
 (def narrate-outcome
   (lambda (outcome)
     (cond
       ((atom outcome)
-       (list (quote invalid) (quote outcome-shape) outcome))
+       (narrate-invalid-outcome-shape outcome))
+      ((not (result-proper-list? outcome))
+       (narrate-invalid-outcome-shape outcome))
+      ((not (symbol? (car outcome)))
+       (list (quote invalid) (quote outcome-tag) (car outcome)))
       ((eq (car outcome) (quote proved))
-       (narrate-proved-outcome outcome))
+       (cond
+         ((narrate-outcome-arity? outcome 3) (narrate-proved-outcome outcome))
+         (t (narrate-invalid-outcome-shape outcome))))
       ((eq (car outcome) (quote unknown))
-       (list
-         (quote unknown)
-         (quote because)
-         (quote no-proof-found-for)
-         (second outcome)))
+       (cond
+         ((narrate-outcome-arity? outcome 2)
+          (list
+            (quote unknown)
+            (quote because)
+            (quote no-proof-found-for)
+            (second outcome)))
+         (t (narrate-invalid-outcome-shape outcome))))
       ((eq (car outcome) (quote partial))
-       (list
-         (quote partial)
-         (quote value)
-         (second outcome)
-         (quote bound)
-         (third outcome)))
+       (cond
+         ((narrate-outcome-arity? outcome 3)
+          (list
+            (quote partial)
+            (quote value)
+            (second outcome)
+            (quote bound)
+            (third outcome)))
+         (t (narrate-invalid-outcome-shape outcome))))
       ((eq (car outcome) (quote blocked))
-       (list
-         (quote blocked)
-         (quote because)
-         (second outcome)))
+       (cond
+         ((narrate-outcome-arity? outcome 2)
+          (list
+            (quote blocked)
+            (quote because)
+            (second outcome)))
+         (t (narrate-invalid-outcome-shape outcome))))
       ((eq (car outcome) (quote disputed))
-       (list
-         (quote disputed)
-         (quote because)
-         (quote both-sides-have-evidence)
-         (second outcome)))
+       (cond
+         ((narrate-outcome-arity? outcome 2)
+          (list
+            (quote disputed)
+            (quote because)
+            (quote both-sides-have-evidence)
+            (second outcome)))
+         (t (narrate-invalid-outcome-shape outcome))))
       ((eq (car outcome) (quote invalid))
-       (list
-         (quote invalid)
-         (quote because)
-         (second outcome)
-         (quote payload)
-         (third outcome)))
+       (cond
+         ((narrate-outcome-arity? outcome 3)
+          (list
+            (quote invalid)
+            (quote because)
+            (second outcome)
+            (quote payload)
+            (third outcome)))
+         (t (narrate-invalid-outcome-shape outcome))))
       (t
        (list (quote invalid) (quote outcome-tag) (car outcome))))))
