@@ -159,7 +159,7 @@ The canonical identity table is an autonomous normative entity separate from any
 
 | Canonical Identity | Formal Semantics | Canonical Ukrainian Surface | Status | Rejected Canonical Candidates | Historical / Conceptual Witness |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `PRIM_QUOTE` | $e \mapsto e$ (treat as datum / suppress eval) | **`дані`** | **stable** | `як-є` (good action name, but less expressive of code/data duality), `цитата` (calque), `дослівно` (text bias) | AS 1.1.68 *svaṃ rūpam* (**STRONG ANALOGUE**) |
+| `PRIM_QUOTE` | $e \mapsto e$ (eval suppression: take as-is) | **`як-є`** | **stable** | `дані` (conflates with general concept of data/types), `цитата` (calque), `власна-форма` (academic noise), `дослівно` (text bias) | AS 1.1.68 *svaṃ rūpam* (**STRONG ANALOGUE**) |
 | `PRIM_ATOM` | $x \mapsto \text{Bool}$ (non-pair predicate) | **`атом?`** | **stable** | `просте?` (collision with prime numbers: (просте? 7)), `непара?` (negative definition), `неподільне?` (verbose) | VS 7.1.10–11 *aṇu* (**PARTIAL ANALOGUE**: physical ontology) |
 | `PRIM_EQ` | $(x, y) \mapsto \text{Bool}$ (atom identity) | **`тотожне?`** | **stable** | `рівне?` (conflates with numeric/structural equal), `одне?` (ambiguous) | TS §80 *abheda* / *tādātmya* (**PARTIAL ANALOGUE**) |
 | `PRIM_CAR` | $\pi_1 : (x . y) \mapsto x$ (first coordinate) | **`перше`** | **stable** | `голова` (list-only bias), `лівий` (spatial metaphor), `початок` (temporal bias) | VS 4.2.9 *āditva* (**WEAK ANALOGUE**: linear/temporal metaphor) |
@@ -169,7 +169,7 @@ The canonical identity table is an autonomous normative entity separate from any
 
 #### Canonical Status Breakdown:
 - **6 Stable:**
-  - `PRIM_QUOTE` (**`дані`**): Treats argument directly as a datum/form; suppresses ordinary evaluation. Exposes homoiconicity and the code-as-data boundary. (Preserved `як-є` in research audit as an honorable action-oriented contender).
+  - `PRIM_QUOTE` (**`як-є`**): Suppresses ordinary evaluation mode; instructs the interpreter to take the expression literally *as it is*. Natural operational verb-like phrase in code, completely free from noun collisions with general "data/types" concepts.
   - `PRIM_ATOM` (**`атом?`**): Discrete non-pair predicate. Closed as stable after `(просте? 7)` exposed fatal collision with prime numbers.
   - `PRIM_EQ` (**`тотожне?`**): Ontological atom identity.
   - `PRIM_CAR` (**`перше`**): First coordinate projection $\pi_1$ over cons-cells.
