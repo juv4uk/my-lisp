@@ -273,11 +273,6 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "Observe the host wall clock as raw Unix seconds and nanoseconds",
             Arity::Exact(0),
         ),
-        "utc-now" => (
-            "(utc-now)",
-            "Return UTC date-time with exact nanoseconds",
-            Arity::Exact(0),
-        ),
         "internet-time-sync" => (
             "(internet-time-sync host timeout-ms)",
             "Query an NTP server with a bounded timeout",
