@@ -5,12 +5,15 @@
 ;
 ;   DEFMACRO = DEFINE + LAMBDA + MAKE_MACRO + list construction
 ;
-; `make-macro` is the narrow host substrate Closure -> Macro.  Everything
+; `make-macro` is the narrow host substrate Closure -> Macro. Everything
 ; that introduces a named macro is expressed here in the language itself.
-; The historical evaluator-level `defmacro` remains temporarily for
-; compatibility, but is not a necessary form.
+;
+; The canonical library binding now owns the real surface name `defmacro`.
+; The evaluator still keeps a temporary compatibility fallback for sessions
+; that have not loaded this library yet; once this file is loaded, the
+; language-owned macro binding takes precedence over that fallback.
 
-(define defmacro-derived
+(define defmacro
   (make-macro
     (lambda (name params . body)
       (cons (quote define)
@@ -22,3 +25,7 @@
                   (cons params body))
                 (quote ())))
             (quote ())))))))
+
+; Transitional proof name retained so older experiments keep working while
+; callers migrate to the real language-owned surface above.
+(define defmacro-derived defmacro)
