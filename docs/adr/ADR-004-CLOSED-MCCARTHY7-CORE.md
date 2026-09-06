@@ -159,24 +159,23 @@ The canonical identity table is an autonomous normative entity separate from any
 
 | Canonical Identity | Formal Semantics | Canonical Ukrainian Surface | Status | Rejected Canonical Candidates | Historical / Conceptual Witness |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `PRIM_QUOTE` | $e \mapsto e$ (eval suppression: take as-is) | **`як-є`** | **stable** | `дані` (conflates with general concept of data/types), `цитата` (calque), `власна-форма` (academic noise), `дослівно` (text bias) | AS 1.1.68 *svaṃ rūpam* (**STRONG ANALOGUE**) |
+| `PRIM_QUOTE` | $e \mapsto e$ (eval suppression: take as-is) | **`як-є`** (uk) / **`svarūpa`** / **स्वरूप** (sa) | **stable** | `дані` (conflates with general concept of data/types), `цитата` (calque), `власна-форма` (academic noise), `дослівно` (text bias) | AS 1.1.68 *svaṃ rūpam* (**STRONG ANALOGUE**) |
 | `PRIM_ATOM` | $x \mapsto \text{Bool}$ (non-pair predicate) | **`атом?`** | **stable** | `просте?` (collision with prime numbers: (просте? 7)), `непара?` (negative definition), `неподільне?` (verbose) | VS 7.1.10–11 *aṇu* (**PARTIAL ANALOGUE**: physical ontology) |
 | `PRIM_EQ` | $(x, y) \mapsto \text{Bool}$ (atom identity) | **`тотожне?`** | **stable** | `рівне?` (conflates with numeric/structural equal), `одне?` (ambiguous) | TS §80 *abheda* / *tādātmya* (**PARTIAL ANALOGUE**) |
 | `PRIM_CAR` | $\pi_1 : (x . y) \mapsto x$ (first coordinate) | **`перше`** | **stable** | `голова` (list-only bias), `лівий` (spatial metaphor), `початок` (temporal bias) | VS 4.2.9 *āditva* (**WEAK ANALOGUE**: linear/temporal metaphor) |
 | `PRIM_CDR` | $\pi_2 : (x . y) \mapsto y$ (residual coordinate) | **`решта`** | **stable** | `хвіст` (pure list bias), `друге` (false expectation on lists: returns (2 3), not 2) | NS 1.1.5 *śeṣa* / *śeṣavat* (**PARTIAL ANALOGUE**: inference by residual) |
 | `PRIM_CONS` | $(x, y) \mapsto (x . y)$ (pair allocator) | **`сполучити`** | **stable** | `пара` (noun of result), `зліпити` (slang), `скласти` (addition bias) | TS §27 $\sqrt{yuj}$ / *saṃyuj* (**PARTIAL ANALOGUE**) |
-| `PRIM_COND` | Ordered guarded first-match selection | **`за-умовою`** | **provisional-stable** | `якщо` (single-branch bias), `вибір` (unordered selection bias) | Mīmāṃsā *krama* (**PARTIAL ANALOGUE**: first-match unproven) |
+| `PRIM_COND` | Ordered guarded first-match selection | **`за-умовою`** (uk) / **`anukrama`** / **अनुक्रम** (sa) | **stable** | `якщо` (single-branch bias), `вибір` (unordered selection bias) | Mīmāṃsā *pāṭha-krama* (**PARTIAL ANALOGUE**: sequential rule scan) |
 
 #### Canonical Status Breakdown:
-- **6 Stable:**
+- **7 Stable (Complete Canon Ratification):**
   - `PRIM_QUOTE` (**`як-є`**): Suppresses ordinary evaluation mode; instructs the interpreter to take the expression literally *as it is*. Natural operational verb-like phrase in code, completely free from noun collisions with general "data/types" concepts.
   - `PRIM_ATOM` (**`атом?`**): Discrete non-pair predicate. Closed as stable after `(просте? 7)` exposed fatal collision with prime numbers.
   - `PRIM_EQ` (**`тотожне?`**): Ontological atom identity.
   - `PRIM_CAR` (**`перше`**): First coordinate projection $\pi_1$ over cons-cells.
   - `PRIM_CDR` (**`решта`**): Residual coordinate projection $\pi_2$ over cons-cells. Flawlessly passes the Triple Cons Test on proper lists, dotted pairs, and improper lists.
   - `PRIM_CONS` (**`сполучити`**): Dynamic pair constructor.
-- **1 Provisional-Stable:**
-  - `PRIM_COND` (**`за-умовою`**): Sequential short-circuiting decision branch. Note: the ordered first-match execution semantics is guaranteed by the evaluator specification, not by the surface sign alone.
+- `PRIM_COND` (**`за-умовою`** [uk] / **`anukrama`** / **अनुक्रम** [sa]): Sequential short-circuiting decision branch. Ratified as stable: anukrama reflects ordered sequential rule scan (pāṭha-krama).
 
 #### Separation of Core Pair Mechanics from High-Level List Vocabulary:
 `PRIM_CAR` and `PRIM_CDR` are primitive pair coordinate projections ($\pi_1, \pi_2$). Their semantics are formally defined on **cons-cells**. Proper list behavior is a derived property of recursive cons structures, NOT part of the primitive operation definition:

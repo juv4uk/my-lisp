@@ -377,8 +377,8 @@ owner admission
 | `PRIM_CAR` | `перше` | ✅ | `ādi` | ✅ | nominal primary | standalone only |
 | `PRIM_CDR` | `решта` | ✅ | `śeṣa` | ✅ | kṛt-a from √śiṣ | strongest of five |
 | `PRIM_CONS` | `сполучити` | ✅ | `saṃyuj` | ✅ | √yuj+sam root form | form policy §above |
-| `PRIM_QUOTE` | `дослівно` | 🟡 | `ukta`/`svarūpa`? | 🟡 open | — | avikṛta REJECTED |
-| `PRIM_COND` | ? | 🟡 | ? | 🟡 open | — | vikalpa REJECTED |
+| `PRIM_QUOTE` | `як-є` | ✅ | `svarūpa` / स्वरूप | ✅ | bahuvrīhi (sva+rūpa) | AS 1.1.68 svaṃ rūpam |
+| `PRIM_COND` | `за-умовою` | ✅ | `anukrama` / अनुक्रम | ✅ | upasarga anu + √kram | Mīmāṃsā pāṭha-krama |
 
 **Sources used:**
 - `my-lisp-panini/panini/registry/dhatu/yuj.yaml` — √yuj gaṇa 7, ubhayapada
