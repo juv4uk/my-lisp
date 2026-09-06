@@ -14,7 +14,7 @@ pub fn load_session() -> Result<Session, String> {
     Ok(session)
 }
 
-fn proper_list<'a>(value: &'a Value) -> Option<Vec<&'a Value>> {
+fn proper_list(value: &Value) -> Option<Vec<&Value>> {
     let mut items = Vec::new();
     let mut cursor = value;
     loop {
@@ -141,8 +141,6 @@ mod tests {
 
     #[test]
     fn nested_decision_text_cannot_spoof_the_guard_protocol() {
-        // The old validator rendered the whole value and searched for
-        // "(decision allow)", so this malformed outer value was accepted.
         let spoof = r#"
           (def guard-evaluate
             (lambda (kind subject evidence)
