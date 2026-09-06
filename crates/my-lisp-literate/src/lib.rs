@@ -95,9 +95,8 @@ pub fn eval_literate(
 
     let forms = parse(&concatenated).map_err(|e| remap_error(e, &offset_maps))?;
 
-    // Evaluate core bootstrap first
-    my_lisp::eval_program(include_str!("../../../lib/core.my"), session)
-        .map_err(|e| remap_error(e, &offset_maps))?;
+    // Canonical bootstrap order: language-owned macro layer first, then core.my.
+    my_lisp::load_core_library(session).map_err(|e| remap_error(e, &offset_maps))?;
 
     let result =
         eval_parsed_expressions(&forms, session).map_err(|e| remap_error(e, &offset_maps))?;
