@@ -23,7 +23,7 @@ For every host-facing operation ask, in order:
 3. If yes, move that meaning/policy to Lisp, add deterministic tests, prove language ownership, then remove the host duplicate.
 4. Do not delete the old host path before the replacement is exercised by CI.
 
-This is the same surgical sequence used for `mono-ms`, `utc-now`, and the NTP interpretation split.
+This is the same surgical sequence used for `mono-ms`, `utc-now`, NTP interpretation, and timezone declaration interpretation.
 
 ## Current time boundary
 
@@ -39,9 +39,10 @@ This is the same surgical sequence used for `mono-ms`, `utc-now`, and the NTP in
 | `internet-time-sync` | `lib/time.my` | public NTP interpretation | LANGUAGE-OWNED |
 | `internet-time-fields->observation` | `lib/time.my` | mode/stratum validation, NTP epoch conversion, fraction-to-nanoseconds | LANGUAGE-OWNED |
 | `internet-time-observation->utc` | `lib/time.my` | calendar interpretation/policy | LANGUAGE-OWNED |
-| `timezone-detect-raw` | Rust host, captured by `lib/time.my` | current host declaration read + source selection | REDUCE to raw declarations |
+| `timezone-declarations-raw` | Rust host | observe raw `TZ` and `/etc/timezone` declaration candidates | KEEP observation; boundary normalization remains auditable |
 | `timezone-declarations->observation` | `lib/time.my` | `TZ` precedence + detected/unknown result shaping | LANGUAGE-OWNED |
-| `timezone-detect` | `lib/time.my` after time-layer load | public timezone detection binding | LANGUAGE-OWNED binding; raw host still too semantic |
+| `timezone-raw->observation` | `lib/time.my` | validate raw observation tag and delegate interpretation | LANGUAGE-OWNED |
+| `timezone-detect` | `lib/time.my` | public timezone detection meaning | LANGUAGE-OWNED |
 | `timezone-config` and selectors | `lib/time.my` | configuration semantics | LANGUAGE-OWNED |
 | deadline arithmetic | `lib/time.my` | deterministic policy | LANGUAGE-OWNED |
 
@@ -81,25 +82,27 @@ Lisp: internet-time-observation->utc
 
 Rust no longer decides whether mode/stratum are semantically acceptable, no longer translates the NTP epoch to Unix time, and no longer computes the fractional second in nanoseconds. Those transformations are deterministic language-owned semantics. Transport failures and short packets remain host-level observations because they arise before a complete protocol field set exists.
 
-The host capability now also has a mechanism-only name: `ntp-query-raw`. The public name `internet-time-sync` exists only in `lib/time.my`; before the time layer loads it is absent, and after the time layer loads it is a Lisp closure over the raw host capability. Naming now exposes the same ownership boundary that the implementation already enforces.
+The host capability also has a mechanism-only name: `ntp-query-raw`. The public name `internet-time-sync` exists only in `lib/time.my`; before the time layer loads it is absent, and after the time layer loads it is a Lisp closure over the raw host capability. Naming exposes the same ownership boundary that the implementation enforces.
 
-The timezone migration is deliberately one step behind NTP. `lib/time.my` now owns the public `timezone-detect` binding and already contains the pure `timezone-declarations->observation` policy function, including `TZ` precedence and the public `detected`/`unknown` shape. The existing Rust builtin is captured as `timezone-detect-raw` during bootstrap, but it still performs declaration source selection internally. That is a transitional state, not the final HSS target.
-
-The intended next boundary is:
+The timezone chain is now:
 
 ```text
-Rust
-  read TZ
-  read /etc/timezone
+host environment / filesystem
+  ↓
+Rust: timezone-declarations-raw
   ↓
 (timezone-declarations tz-value etc-timezone-value)
+  ↓
+Lisp: timezone-raw->observation
   ↓
 Lisp: timezone-declarations->observation
   ↓
 Lisp: timezone-detect
 ```
 
-Only the host reads external declarations; source precedence and interpretation remain language-owned.
+Rust no longer chooses `TZ` over `/etc/timezone` and no longer shapes the public `detected`/`unknown` result. It only observes the two candidate declarations. `lib/time.my` owns source precedence, observation validation, and public timezone meaning.
+
+One small implementation-boundary detail remains explicit rather than hidden: Rust currently trims surrounding whitespace from the `/etc/timezone` file before exposing that candidate. This is normalization at the external text boundary, not timezone source-selection policy. It remains an audit candidate if the language later owns an appropriate raw-text normalization layer; it is not counted as already removed.
 
 ## Core capability boundary
 
@@ -112,7 +115,7 @@ Current broad classes:
 | monotonic time | read monotonic counter | units, elapsed time, deadlines, scheduling policy |
 | wall clock | read Unix timestamp | calendar interpretation, formatting, comparison policy |
 | network time | bounded packet I/O + extraction of raw response fields | protocol acceptance, epoch conversion, units, calendar meaning, sync strategy |
-| timezone | read host declarations | source precedence, detected/unknown shaping, explicit configuration and conversion policy |
+| timezone | read declaration candidates | source precedence, detected/unknown shaping, explicit configuration and conversion policy |
 | filesystem | bytes/text read-write mechanisms | naming policy, package formats, transactional/world semantics |
 | subprocess | process creation/I/O mechanism | command policy, orchestration, interpretation |
 | TCP | socket mechanism | protocol, routing, retries, claims, application semantics |
@@ -231,9 +234,32 @@ Lisp internet-time-sync:
 
 Deterministic fixtures prove mode 4/5 acceptance, invalid mode/stratum rejection, epoch rejection, and exact `2147483648 -> 500000000 ns` conversion. Ownership tests require `internet-time-sync` to be absent before `lib/time.my`, then appear as a Lisp closure, while `ntp-query-raw` remains the Rust builtin. CI #884 proved the semantic split before the final mechanism-only host rename.
 
-### Timezone declaration policy — migration in progress
+### Timezone declaration semantics and public detection
 
-The pure Lisp function `timezone-declarations->observation` now proves source precedence and public result shaping independently of host I/O. The public `timezone-detect` name is also replaced by a Lisp closure after the time layer loads, while the previous Rust builtin is retained under `timezone-detect-raw` during the migration. This is evidence of binding ownership, not yet a completed HSS reduction: Rust still chooses between `TZ` and `/etc/timezone`. The HSS decrease counts only after the raw host contract is reduced to declaration values and that remaining policy is removed from Rust.
+Before:
+
+```text
+Rust timezone-detect:
+  read TZ
+  + read /etc/timezone
+  + choose TZ precedence
+  + shape detected/unknown
+```
+
+After:
+
+```text
+Rust timezone-declarations-raw:
+  read TZ
+  + read /etc/timezone candidates
+
+Lisp:
+  timezone-raw->observation
+  + timezone-declarations->observation
+  + timezone-detect
+```
+
+Deterministic tests prove `TZ` precedence, `/etc/timezone` fallback, the unknown case, and rejection of a malformed raw observation. The ownership test requires `timezone-detect` and the old `timezone-detect-raw` name to be absent from the root environment while `timezone-declarations-raw` remains a Rust builtin; after `lib/time.my` loads, `timezone-detect` appears as a Lisp closure. CI #902 passed with workspace tests, build, and zero-warning clippy after the semantic cut.
 
 ## Principle
 
