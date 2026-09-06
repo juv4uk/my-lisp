@@ -366,6 +366,38 @@ pub(crate) fn install(environment: &Environment) {
         }
     );
 
+    // (unix-time-now) is the raw wall-clock observation boundary. It exposes
+    // only Unix-epoch seconds plus the subsecond nanosecond field; calendar
+    // interpretation belongs to lib/time.my.
+    define!(
+        environment,
+        "unix-time-now",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("unix-time-now", args, 0, span)?;
+            let duration = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|_| {
+                    crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "unix-time-now is unavailable before the Unix epoch",
+                        span,
+                    )
+                })?;
+            let seconds = i64::try_from(duration.as_secs()).map_err(|_| {
+                crate::LanguageError::new(
+                    crate::ErrorKind::NumericOverflow,
+                    "unix-time-now seconds exceed the signed 64-bit range",
+                    span,
+                )
+            })?;
+            Ok(Value::list([
+                Value::Symbol(std::rc::Rc::from("unix-time")),
+                exact_value(Rational::integer(seconds)),
+                exact_value(Rational::integer(duration.subsec_nanos() as i64)),
+            ]))
+        }
+    );
+
     // (utc-now) -> (utc year month day hour minute second nanosecond).
     // The calendar is UTC and the final field preserves the clock reading
     // to nanosecond resolution; this is wall-clock observation, not a
