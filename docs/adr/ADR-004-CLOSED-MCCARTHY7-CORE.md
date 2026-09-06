@@ -138,6 +138,9 @@ The canonical identity table is an autonomous normative entity separate from any
 
 Канонічна таблиця тотожностей є автономною нормативною сутністю, відокремленою від будь-якого середовища обчислення чи коду диспетчеризації. Вона формалізує відношення між семантичною сутністю та людськими знаковими системами:
 
+#### Scope & Semantics Disclaimer / Застереження щодо області визначення
+> **Normative Scope:** Semantic equations in this ADR define the canonical `my-lisp` interpretation of McCarthy7 identities and do not claim implementation equivalence with every historical Lisp dialect.
+
 #### Surface Correspondence Principle / Принцип відповідності поверхні
 
 > **A surface name is not a definition of the canonical identity it represents.**
@@ -154,34 +157,42 @@ The canonical identity table is an autonomous normative entity separate from any
 
 > **Принцип:** Поверхнева назва — не визначення канонічної тотожності, яку вона позначає. `atom`, `атом` і `aṇu` — три незалежні людські проєкції однієї й тієї самої canonical identity. Жодна з них не є формальним визначенням операції.
 
-| Canonical Identity | Lineage (McCarthy 1960) | Ukrainian (`uk`) | Sanskrit (`sa`) | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| `PRIM_QUOTE` | `quote` | ? *(досліджується — див. примітку)* | ? *(досліджується)* | **L0 Primitive Identity** |
-| `PRIM_ATOM` | `atom` | **`атом`** ✅ | **`aṇu` / अणु** ✅ | **L0 Primitive Identity** |
-| `PRIM_EQ` | `eq` | **`тотожне`** ✅ | **`abheda` / अभेद** ✅ | **L0 Primitive Identity** |
-| `PRIM_CAR` | `car` | **`перше`** ✅ | **`ādi` / आदि** ✅ | **L0 Primitive Identity** |
-| `PRIM_CDR` | `cdr` | **`решта`** ✅ | **`śeṣa` / शेष** ✅ | **L0 Primitive Identity** |
-| `PRIM_CONS` | `cons` | **`сполучити`** ✅ | **`saṃyuj` / संयुज्** ✅ | **L0 Primitive Identity** |
-| `PRIM_COND` | `cond` | ? *(досліджується — див. примітку)* | ? *(досліджується)* | **L0 Primitive Identity** |
+| Canonical Identity | Formal Semantics | Canonical Ukrainian Surface | Status | Rejected Canonical Candidates | Historical / Conceptual Witness |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `PRIM_QUOTE` | $e \mapsto e$ (eval suppression) | **`як-є`** | **stable** | `цитата` (English loan/calque), `власна-форма` (academic noise), `дослівно` (text bias) | AS 1.1.68 *svaṃ rūpam* (**STRONG ANALOGUE**) |
+| `PRIM_ATOM` | $x \mapsto \text{Bool}$ (non-pair predicate) | **`атом?`** / **`просте?`** | **contested** (open) | `непара?` (negative definition), `неподільне?` (verbose), `одиничне?` (number 1 bias) | VS 7.1.10–11 *aṇu* (**PARTIAL ANALOGUE**: physical ontology) |
+| `PRIM_EQ` | $(x, y) \mapsto \text{Bool}$ (atom identity) | **`тотожне?`** | **stable** | `рівне?` (conflates with numeric/structural equal), `одне?` (ambiguous) | TS §80 *abheda* / *tādātmya* (**PARTIAL ANALOGUE**) |
+| `PRIM_CAR` | $\pi_1 : (x . y) \mapsto x$ (first coordinate) | **`перше`** | **stable** | `голова` (list-only bias), `лівий` (spatial metaphor), `початок` (temporal bias) | VS 4.2.9 *āditva* (**WEAK ANALOGUE**: linear/temporal metaphor) |
+| `PRIM_CDR` | $\pi_2 : (x . y) \mapsto y$ (second coordinate) | **`друге`** | **stable** | `хвіст` (catastrophic on dotted pairs), `решта` (list-only bias on pairs) | NS 1.1.5 *śeṣa* / *śeṣavat* (**PARTIAL ANALOGUE**) |
+| `PRIM_CONS` | $(x, y) \mapsto (x . y)$ (pair allocator) | **`сполучити`** | **stable** | `пара` (noun of result), `зліпити` (slang), `скласти` (addition bias) | TS §27 $\sqrt{yuj}$ / *saṃyuj* (**PARTIAL ANALOGUE**) |
+| `PRIM_COND` | Ordered guarded first-match selection | **`за-умовою`** | **provisional-stable** | `якщо` (single-branch bias), `вибір` (unordered selection bias) | Mīmāṃsā *krama* (**PARTIAL ANALOGUE**: first-match unproven) |
 
-**Evidence for accepted entries (2026-09-06):**
+#### Canonical Status Breakdown:
+- **5 Stable:** `PRIM_QUOTE` (`як-є`), `PRIM_EQ` (`тотожне?`), `PRIM_CAR` (`перше`), `PRIM_CDR` (`друге`), `PRIM_CONS` (`сполучити`).
+- **1 Provisional-Stable:** `PRIM_COND` (`за-умовою`). Note: the ordered first-match execution semantics is guaranteed by the specification, not by the surface sign alone.
+- **1 Contested (Deliberately Open):** `PRIM_ATOM` (`атом?` vs `просте?`). `атом?` preserves conservative CS tradition; `просте?` gives immediate vernacular clarity but carries mathematical baggage (prime numbers, simple types). Kept openly contested to avoid false closure.
 
-- `PRIM_ATOM → атом / aṇu`: `атом` — established Ukrainian technical term, correct structural intuition (non-decomposable). `aṇu` — Vaiśeṣika-sūtra 7.1.10–11 and Nyāyasūtra 2.2.24: structural size-category, not merely physical. Rejected: `niravayava` (too definitional), `paramāṇu` (too tied to Vaiśeṣika ontology).
-- `PRIM_EQ → тотожне / abheda`: `тотожне` — Ukrainian technical term for identity (not numeric equality, not similarity). `abheda` (अभेद, lit. non-difference) — Nyāya term for identity relation at the ontological level. Preferred over `sama` (too broad: equal in measure/kind) and `tulya` (equal in quantity). McCarthy `eq` tests atom identity, not structural equality — `abheda` points precisely there. `тотожне` avoids confusion with numeric `=`. Source: Tarkasaṅgraha §80 `anyonyābhāva`/`tādātmya` semantic field.
-- `PRIM_CAR → перше / ādi`: `перше` — operationally transparent Ukrainian. `ādi` — Vaiśeṣika-sūtra 4.2.9 (`āditva` = structural primacy), Nyāyasūtra 2.2.13 (`ādimatva`). As standalone word: no et-cetera ambiguity.
-- `PRIM_CDR → решта / śeṣa`: `решта` — «what remains after the first». `śeṣa` — Nyāyasūtra 1.1.5 `śeṣavat`: canonical inference type; `śeṣa` = «that which structurally remains after exclusion».
-- `PRIM_CONS → сполучити / saṃyuj`: names the *action*, not the result. `сполучити` — Ukrainian «to join/couple». `saṃyuj` (संयुज्, √yuj + sam-) — verb form, action of construction. Preferred over `saṃyoga` (state, a guṇa in Vaiśeṣika) and `yugma` (result: a pair). Source: Tarkasaṅgraha §27. Structural algebra:
-  ```
-  сполучити A B → (A . B)     saṃyuj A B → (A . B)
-  перше (A . B) → A           ādi    (A . B) → A
-  решта (A . B) → B           śeṣa   (A . B) → B
-  ```
+#### Separation of Core Pair Mechanics from High-Level List Vocabulary:
+`PRIM_CAR` and `PRIM_CDR` are primitive pair coordinate projections ($\pi_1, \pi_2$). Their semantics are formally defined on **cons-cells**. Proper list behavior is a derived property of recursive cons structures, NOT part of the primitive operation definition:
 
-> **Open: `PRIM_COND`** — `якщо` is a tempting Ukrainian candidate but `cond` is not a single `if`. It selects the first true clause from a sequence. A sign closer to «when / upon condition / select» may be more precise. Research deliberately deferred.
+```text
+PRIM_CAR / PRIM_CDR are pair projections.
+Their semantics are defined on cons-cells.
+List behavior is derived from recursive cons structure,
+not part of the primitive meaning.
+```
 
-> **Open: `PRIM_QUOTE`** — semantically the most treacherous. `quote` means «do not evaluate; return the expression as-is». Ukrainian `дослівно` (literally / word-for-word) is a strong candidate. For Sanskrit: seek not «quotation» but «in this very form / without transformation». Research deliberately deferred.
+Canonical Cons-Cell Projections Test:
+```lisp
+;; Canonical Dotted Pair Test:
+(призначити p (сполучити 'кіт 42))
 
-> **Rule on Surface Spellings:** Unverified slots remain explicitly marked with `?`. Do not rush to invent or prematurely freeze surface names. `car` and `cdr` lineage names are IBM 704 register acronyms — understanding the *operation* first, then finding the human sign.
+(перше p) ;; → кіт
+(друге p) ;; → 42 (НЕ "решта" і НЕ "хвіст"!)
+```
+
+- **Core Primitives (Pair Foundation):** `сполучити`, `перше`, `друге`.
+- **List Library Vocabulary (Derived APIs):** `решта`, `голова`, `хвіст` MAY exist as high-level convenience functions over proper lists (`(A B C)`), but MUST NOT be conflated with the primitive pair coordinate projections $\pi_1$ and $\pi_2$.
 
 ---
 
