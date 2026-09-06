@@ -139,12 +139,15 @@
 ;   (x y)          -> ordinary fixed-arity binding
 ;
 ; Arity-error parity remains a separate named-error task; this function owns
-; only the successful binding semantics.
+; only the successful binding semantics. `eq` is atom-only in my-lisp, so the
+; empty-list check is deliberately nested under the `(atom params)` branch.
 (def bind-params
   (lambda (params args env)
     (cond
-      ((eq params (quote ())) env)
-      ((atom params) (cons (cons params args) env))
+      ((atom params)
+       (cond
+         ((eq params (quote ())) env)
+         (t (cons (cons params args) env))))
       (t (cons (cons (car params) (car args))
                (bind-params (cdr params) (cdr args) env))))))
 
