@@ -1,0 +1,24 @@
+; lib/macro.my — macro definition derived inside my-lisp.
+; lib/macro.my — визначення макросів, виведене всередині my-lisp.
+;
+; This file is the executable reduction proof for DEFMACRO:
+;
+;   DEFMACRO = DEFINE + LAMBDA + MAKE_MACRO + list construction
+;
+; `make-macro` is the narrow host substrate Closure -> Macro.  Everything
+; that introduces a named macro is expressed here in the language itself.
+; The historical evaluator-level `defmacro` remains temporarily for
+; compatibility, but is not a necessary form.
+
+(define defmacro-derived
+  (make-macro
+    (lambda (name params . body)
+      (cons (quote define)
+        (cons name
+          (cons
+            (cons (quote make-macro)
+              (cons
+                (cons (quote lambda)
+                  (cons params body))
+                (quote ())))
+            (quote ())))))))
