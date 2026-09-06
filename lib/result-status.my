@@ -1,53 +1,51 @@
-; result-status.my — opt-in tagged-result convention for "unknown" vs.
-; "partial" vs. "blocked" vs. "disputed" results, distinct from an
-; ordinary value and distinct from each other. See
-; docs/adr/unknown-result-semantics.md for the full design rationale.
+; result-status.my — canonical data-only reasoning outcome algebra.
+; This module adds no exception mechanism and no new runtime Value variant.
+; Ordinary `reason` / `reason-in` keep their historical return values for
+; compatibility; `reason-observe` / `reason-in-observe` opt into explicit
+; epistemic outcomes without discarding proof alternatives.
 ;
-; Not loaded by lib/core.my and not wired into reason.my/knowledge.my —
-; this is a reusable shape for any future call site that wants it,
-; opt-in only (MYLISP-UNKNOWN-RESULT-SEMANTICS-DESIGN's scope is design,
-; not adopting it everywhere).
-;
-; result-status.my — конструктори для маркованих результатів "unknown"/
-; "partial"/"blocked"/"disputed", відмінних і від звичайного значення, і
-; один від одного. Повний дизайн — docs/adr/unknown-result-semantics.md.
-; Не завантажується lib/core.my і не вбудовується в reason.my/knowledge.my
-; — це форма для майбутніх точок виклику, суто опційна.
+; Canonical shapes:
+;   (proved statement results)
+;   (unknown subject)
+;   (partial value bound)
+;   (blocked reason)
+;   (disputed evidence)
+;   (invalid reason payload)
 
-; unknown: the question was never answerable — no rules exist, no module,
-; nothing to even attempt.
+(def make-proved
+  (lambda (statement results)
+    (list (quote proved) statement results)))
+
 (def make-unknown
-  (lambda (reason) (list (quote unknown) reason)))
+  (lambda (subject)
+    (list (quote unknown) subject)))
 
-; partial: a bounded search found nothing within its bound — not a proof
-; that nothing exists, only that this attempt didn't find it.
 (def make-partial
-  (lambda (value bound) (list (quote partial) value bound)))
+  (lambda (value bound)
+    (list (quote partial) value bound)))
 
-; blocked: evaluation deliberately did not proceed — an operational
-; precondition (a dependency, a resource limit) was unmet.
 (def make-blocked
-  (lambda (reason) (list (quote blocked) reason)))
+  (lambda (reason)
+    (list (quote blocked) reason)))
 
-; disputed: two or more live, mutually exclusive proofs were found —
-; the query-result counterpart to lib/knowledge.my's check-conflict,
-; which catches this on the write path (tell-knowledge) rather than
-; the read path.
 (def make-disputed
-  (lambda (proofs) (list (quote disputed) proofs)))
+  (lambda (evidence)
+    (list (quote disputed) evidence)))
 
-; result-status extracts the tag symbol from a tagged result, or ()
-; if `result` isn't one of the four tagged shapes (an ordinary value,
-; including a plain list, is not a tagged result just because it has
-; a car — result-status? below is the actual gate).
+(def make-invalid
+  (lambda (reason payload)
+    (list (quote invalid) reason payload)))
+
 (def result-tagged?
   (lambda (result)
     (cond
       ((atom result) (quote ()))
+      ((eq (car result) (quote proved)) t)
       ((eq (car result) (quote unknown)) t)
       ((eq (car result) (quote partial)) t)
       ((eq (car result) (quote blocked)) t)
       ((eq (car result) (quote disputed)) t)
+      ((eq (car result) (quote invalid)) t)
       (t (quote ())))))
 
 (def result-status
@@ -61,3 +59,82 @@
     (cond
       ((result-tagged? result) (cdr result))
       (t (quote ())))))
+
+; Proper-list validation is deliberately local: B1 needs to reject a malformed
+; query as `invalid` before it reaches `reason`, but it does not revalidate the
+; entire trusted rule store on every query. External knowledge is validated at
+; the existing advise/advise-all ingestion boundary.
+(def result-proper-list?
+  (lambda (value)
+    (cond
+      ((eq value (quote ())) t)
+      ((atom value) (quote ()))
+      (t (result-proper-list? (cdr value))))))
+
+(def result-goal?
+  (lambda (goal)
+    (cond
+      ((atom goal) (quote ()))
+      ((not (result-proper-list? goal)) (quote ()))
+      ((atom (car goal)) t)
+      (t (quote ())))))
+
+; `(not goal)` is the explicit logical opposite used by the knowledge layer.
+; A well-shaped top-level negative query asks about its positive counterpart;
+; every other goal gets wrapped in `not`.
+(def result-negated-goal?
+  (lambda (goal)
+    (cond
+      ((not (result-goal? goal)) (quote ()))
+      ((not (eq (car goal) (quote not))) (quote ()))
+      ((atom (cdr goal)) (quote ()))
+      ((not (atom (cddr goal))) (quote ()))
+      (t t))))
+
+(def result-opposite-goal
+  (lambda (goal)
+    (cond
+      ((result-negated-goal? goal) (second goal))
+      (t (list (quote not) goal)))))
+
+; Observe one reasoning question without information collapse.
+; - positive proof(s) => proved(goal, all-results)
+; - only explicit opposite proof(s) => proved(opposite, all-results)
+; - both => disputed(two proved observations)
+; - neither => unknown(goal)
+; This intentionally calls top-level `reason` for the opposite. `reason` only
+; treats `(not ...)` specially inside rule bodies, so this observes explicit
+; negative knowledge rather than negation-as-failure.
+(def reason-observe
+  (lambda (goal rules)
+    (cond
+      ((not (result-goal? goal))
+       (make-invalid (quote invalid-goal) goal))
+      (t
+       (let* ((opposite (result-opposite-goal goal))
+              (positive-results (reason goal rules))
+              (opposite-results (reason opposite rules)))
+         (cond
+           ((and (not (atom positive-results))
+                 (not (atom opposite-results)))
+            (make-disputed
+              (list
+                (make-proved goal positive-results)
+                (make-proved opposite opposite-results))))
+           ((not (atom positive-results))
+            (make-proved goal positive-results))
+           ((not (atom opposite-results))
+            (make-proved opposite opposite-results))
+           (t (make-unknown goal))))))))
+
+; Knowledge-module adapter. Missing module is a narrower `unknown`, exactly as
+; the original ADR already described; known modules reuse the same observation
+; algebra over their current journal projection.
+(def reason-in-observe
+  (lambda (module-name goal)
+    (cond
+      ((module-known? module-name)
+       (reason-observe goal (module-clauses-now module-name)))
+      (t
+       (make-unknown
+         (list (quote module-not-found) module-name))))))
