@@ -7,10 +7,9 @@
 ;   (rejected invalid-byte)
 ;   (rejected invalid-utf8)
 ;
-; This layer deliberately produces Unicode scalar values as exact integers.
-; Turning scalar values into the runtime String representation is a separate
-; mechanism boundary. Keeping that boundary separate lets host process I/O
-; preserve bytes without silently applying String::from_utf8_lossy.
+; Unicode sequence validation and byte-to-scalar interpretation stay here in
+; Lisp. The runtime exposes only the irreducible codepoint->string mechanism
+; needed to materialize one already-validated Unicode scalar as a String.
 
 (def utf8-continuation-byte?
   (lambda (b)
@@ -125,3 +124,20 @@
 (def utf8-valid?
   (lambda (bytes)
     (eq (car (utf8-decode bytes)) (quote decoded))))
+
+(def unicode-scalars->string
+  (lambda (scalars)
+    (cond
+      ((atom scalars) "")
+      (t (string-append
+           (codepoint->string (car scalars))
+           (unicode-scalars->string (cdr scalars)))))))
+
+(def utf8-decode-string
+  (lambda (bytes)
+    (let ((decoded (utf8-decode bytes)))
+      (cond
+        ((eq (car decoded) (quote decoded))
+         (list (quote decoded)
+               (unicode-scalars->string (car (cdr decoded)))))
+        (t decoded)))))
