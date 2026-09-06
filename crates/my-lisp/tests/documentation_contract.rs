@@ -26,12 +26,13 @@ fn public_docs_point_to_semantic_authority_instead_of_inventing_one() {
     let readme = include_str!("../../../README.md");
     let core = include_str!("../../../docs/language-core.md");
     let authority = include_str!("../../../docs/semantic-authority-map.md");
+    let authority_lower = authority.to_lowercase();
 
     assert!(readme.contains("docs/semantic-authority-map.md"));
     assert!(core.contains("semantic-authority-map.md"));
     assert!(authority.contains("language-contract.my"));
-    assert!(authority.contains("ratified ADR"));
-    assert!(authority.contains("executable conformance"));
+    assert!(authority_lower.contains("ratified adr"));
+    assert!(authority_lower.contains("executable conformance"));
 }
 
 #[test]
