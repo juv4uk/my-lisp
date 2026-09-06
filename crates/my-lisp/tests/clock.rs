@@ -26,6 +26,35 @@ fn utc_now_returns_utc_calendar_with_nanosecond_field() {
 }
 
 #[test]
+fn utc_calendar_conversion_is_language_owned() {
+    let mut session = Session::default();
+    load_core_library(&mut session).unwrap();
+    eval_program(include_str!("../../../lib/time.my"), &mut session).unwrap();
+
+    assert_eq!(
+        eval_program("(utc-from-unix 0 0)", &mut session)
+            .unwrap()
+            .value
+            .to_string(),
+        "(utc 1970 1 1 0 0 0 0)"
+    );
+    assert_eq!(
+        eval_program("(utc-from-unix 946684800 123456789)", &mut session)
+            .unwrap()
+            .value
+            .to_string(),
+        "(utc 2000 1 1 0 0 0 123456789)"
+    );
+    assert_eq!(
+        eval_program("(utc-from-unix 1709164800 0)", &mut session)
+            .unwrap()
+            .value
+            .to_string(),
+        "(utc 2024 2 29 0 0 0 0)"
+    );
+}
+
+#[test]
 fn timezone_detection_is_explicit_and_ntp_requires_host_string() {
     let mut session = Session::default();
     load_core_library(&mut session).unwrap();
