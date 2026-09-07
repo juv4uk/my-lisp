@@ -36,10 +36,9 @@ pub use syntax::fasl::{
     decode_program as fasl_decode_program, encode_program as fasl_encode_program,
 };
 
-/// Language-owned macro substrate layer. This must be evaluated before
-/// `CORE_LIBRARY_SOURCE`: core.my defines macros such as `and`, `or`, and
-/// `let`, and after this layer is present their `defmacro` surface resolves
-/// to the macro implemented in my-lisp rather than the evaluator fallback.
+/// Language-owned macro layer. Its only host-side bootstrap dependency is the
+/// narrow first-class `make-macro` binding that materializes Closure -> Macro.
+/// The normal `defmacro` surface itself is defined by this Lisp source.
 pub const MACRO_LIBRARY_SOURCE: &str = include_str!("../../../lib/macro.my");
 
 /// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
@@ -63,12 +62,14 @@ pub const PROCESS_LIBRARY_SOURCE: &str = include_str!("../../../lib/process.my")
 /// `tcp-read` by applying the shared UTF-8 semantics.
 pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
 
-/// Load the language-owned macro layer and then the ordinary core library.
+/// Install the narrow macro substrate, then load the language-owned macro
+/// layer and finally the ordinary core library.
 ///
-/// This is the canonical bootstrap order for embedders that want `core.my`.
-/// Keeping the order in one API prevents each caller from silently falling
-/// back to Rust's compatibility `defmacro` while the migration is in flight.
+/// This is the canonical bootstrap order for embedders that start from a bare
+/// `Environment::root()`: the root itself stays smaller, while the bootstrap
+/// explicitly gains `make-macro` before evaluating `lib/macro.my`.
 pub fn load_core_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
+    eval::install_macro_substrate(&session.environment);
     eval_program(MACRO_LIBRARY_SOURCE, session)?;
     eval_program(CORE_LIBRARY_SOURCE, session)
 }
