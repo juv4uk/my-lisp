@@ -49,6 +49,18 @@ fn bare_number_quantity_and_scientific_constant_are_distinct_data_levels() {
 }
 
 #[test]
+fn units_require_named_dimension_terms_not_anonymous_pairs() {
+    let source = r#"
+        (list
+          (unit? (quote (unit/1 (dimension/1 metre 1) (dimension/1 second -1))))
+          (unit? (quote (unit/1 (metre 1) (second -1))))
+          (dimension? (quote (dimension/1 metre 1)))
+          (dimension? (quote (metre 1))))
+    "#;
+    assert_eq!(eval_science(source), "(t () t ())");
+}
+
+#[test]
 fn speed_of_light_record_keeps_value_unit_status_kind_system_and_source() {
     let source = r#"
         (list
@@ -63,7 +75,7 @@ fn speed_of_light_record_keeps_value_unit_status_kind_system_and_source() {
     "#;
     assert_eq!(
         eval_science(source),
-        "(si:speed-of-light 299792458 ((metre 1) (second -1)) exact-by-definition physical-defining si (science-source/1 bipm-si-brochure-9 2019))"
+        "(si:speed-of-light 299792458 ((dimension/1 metre 1) (dimension/1 second -1)) exact-by-definition physical-defining si (science-source/1 bipm-si-brochure-9 2019))"
     );
 }
 
@@ -167,8 +179,11 @@ fn advice_taker_can_reason_about_an_admitted_scientific_constant() {
           (result-status
             (reason-in-observe
               (quote science)
-              (quote (constant-unit si:speed-of-light
-                       (unit/1 ((metre 1) (second -1))))))))
+              (quote
+                (constant-unit si:speed-of-light
+                  (unit/1
+                    (dimension/1 metre 1)
+                    (dimension/1 second -1))))))))
     "#;
     assert_eq!(eval_science_knowledge(source), "(accepted proved proved proved)");
 }
