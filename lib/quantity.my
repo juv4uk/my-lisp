@@ -23,8 +23,10 @@
 (def science-proper-list?
   (lambda (x)
     (cond
-      ((eq x (quote ())) t)
-      ((atom x) (quote ()))
+      ((atom x)
+       (cond
+         ((eq x (quote ())) t)
+         (t (quote ()))))
       (t (science-proper-list? (cdr x))))))
 
 (def science-sixth
