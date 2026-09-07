@@ -2,16 +2,25 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const LEGACY_COORDINATION_OPS: &[&str] = &[
+// Complete retired coordination vocabulary that used to be multiplexed onto
+// the my-lisp :9999 semantic oracle. These names may still exist inside the
+// independent swarm-node protocol; that crate is deliberately excluded below.
+const RETIRED_COORDINATION_OPS: &[&str] = &[
     "hello",
+    "heartbeat",
     "claim",
     "release",
     "complete-task",
+    "define-task",
+    "validate-tasks",
+    "sync-tasks",
+    "sync-milestone",
     "next-best-action",
     "list-task-state",
+    "list-tasks",
     "presence",
     "list-claims",
-    "sync-tasks",
+    "capability-request",
     "subscribe",
     "publish",
     "notify",
@@ -35,6 +44,8 @@ fn scan_tree(root: &Path, dir: &Path, hits: &mut BTreeMap<String, Vec<String>>) 
                 .unwrap_or(&path)
                 .to_string_lossy()
                 .replace('\\', "/");
+            // These operation names are legitimate on the new coordination
+            // authority itself. C5 only forbids them on my-lisp :9999.
             if rel == "crates/swarm-node" || rel.starts_with("crates/swarm-node/") {
                 continue;
             }
@@ -48,13 +59,6 @@ fn scan_tree(root: &Path, dir: &Path, hits: &mut BTreeMap<String, Vec<String>>) 
             .to_string_lossy()
             .replace('\\', "/");
 
-        // This file is the compatibility implementation being retired, not a
-        // caller of itself. The removal gate tracks it separately as physical
-        // legacy surface.
-        if rel == "crates/my-lisp-cli/src/swarm.rs" {
-            continue;
-        }
-
         let executable_surface = matches!(
             path.extension().and_then(|ext| ext.to_str()),
             Some("rs" | "py" | "sh" | "wsm" | "my")
@@ -67,7 +71,7 @@ fn scan_tree(root: &Path, dir: &Path, hits: &mut BTreeMap<String, Vec<String>>) 
             continue;
         };
 
-        for op in LEGACY_COORDINATION_OPS {
+        for op in RETIRED_COORDINATION_OPS {
             let needle = format!("(op {op})");
             if source.contains(&needle) {
                 hits.entry(rel.clone()).or_default().push((*op).to_string());
@@ -95,7 +99,7 @@ fn is_compatibility_test(path: &str) -> bool {
 }
 
 #[test]
-fn no_production_or_operational_legacy_coordination_callers_remain() {
+fn no_production_or_operational_retired_coordination_callers_remain() {
     let live: BTreeMap<_, _> = inventory()
         .into_iter()
         .filter(|(path, _)| !is_compatibility_test(path))
@@ -103,12 +107,12 @@ fn no_production_or_operational_legacy_coordination_callers_remain() {
 
     assert!(
         live.is_empty(),
-        "C5 no-live-callers gate failed; production/operational legacy callers remain: {live:?}"
+        "C5 post-removal gate failed; retired :9999 production/operational surface remains: {live:?}"
     );
 }
 
 #[test]
-fn no_legacy_compatibility_callers_remain() {
+fn no_retired_coordination_compatibility_callers_remain() {
     let compatibility: BTreeMap<_, _> = inventory()
         .into_iter()
         .filter(|(path, _)| is_compatibility_test(path))
@@ -116,6 +120,6 @@ fn no_legacy_compatibility_callers_remain() {
 
     assert!(
         compatibility.is_empty(),
-        "C5 physical removal requires zero compatibility callers: {compatibility:?}"
+        "C5 post-removal gate requires zero retired :9999 compatibility callers: {compatibility:?}"
     );
 }
