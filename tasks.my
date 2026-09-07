@@ -591,8 +591,9 @@
     (priority . 9.2)
     (capabilities . (my-lisp surface ukrainian audit tooling))
     (origin . my-lisp)
+    (context . "Completed 2026-09-07 by Anviksha: lib/surface/uk-inventory.wsm classifies the live Canon, necessary forms, language/compatibility forms, exact root builtin set, and every core.my definition as public or internal. Predicate identity is explicit; future Ukrainian predicate spellings must end in ?. Word-first public names are primary for reading; mathematical marks are explicit symbolic sugar over the same operations. Targeted inventory tests 5/5 pass and oracle-check reports valid.")
     (description . "Inventory every eligible public English-facing symbol from Canon 0+7, necessary forms, live root builtins and core library. Define explicit eligibility rules so internal helpers do not inflate the translation surface. Plan: docs/ukrainian-surface-plan.md.")
-    (done . ())))
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-COVERAGE-TABLE" . (
     (priority . 9.1)
@@ -698,5 +699,4 @@
     (description . "Define and prove the completion gate for the selected public programming surface: all eligible target-layer names are explicitly classified, all approved Ukrainian mappings are stable and tested, and ordinary programs can avoid English builtin names. Do not require translation of compatibility-only or internal symbols.")
     (done . ())))
   )))
-
 
