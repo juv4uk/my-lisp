@@ -1,10 +1,25 @@
-use my_lisp::{eval_program, load_core_library, load_time_library, Session};
+use my_lisp::{eval_program, load_core_library, Session};
+
+fn load_surface_prerequisites(session: &mut Session) {
+    for source in [
+        include_str!("../../../lib/unify.my"),
+        include_str!("../../../lib/reason.my"),
+        include_str!("../../../lib/forward.my"),
+        include_str!("../../../lib/knowledge.my"),
+        include_str!("../../../lib/persistent-map.my"),
+        include_str!("../../../lib/persistent-vector.my"),
+        include_str!("../../../lib/time.my"),
+        include_str!("../../../lib/epistemic.my"),
+    ] {
+        eval_program(source, session).expect("surface prerequisite should load");
+    }
+}
 
 /// Load core + time + Ukrainian surface, return a fresh session.
 fn uk_session_full() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core bootstrap");
-    load_time_library(&mut session).expect("time library");
+    load_surface_prerequisites(&mut session);
     eval_program(include_str!("../../../lib/surface/uk.my"), &mut session)
         .expect("Ukrainian surface should load");
     session
@@ -14,7 +29,7 @@ fn uk_session_full() -> Session {
 fn sa_session_full() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core bootstrap");
-    load_time_library(&mut session).expect("time library");
+    load_surface_prerequisites(&mut session);
     eval_program(include_str!("../../../lib/surface/sa.my"), &mut session)
         .expect("Sanskrit surface should load");
     session
@@ -25,18 +40,20 @@ fn sa_session_full() -> Session {
 #[test]
 fn uk_persistent_map_basic() {
     let mut s = uk_session_full();
-    let r = eval_program("(карта-порожня)", &mut s).expect("eval");
+    let r = eval_program("карта-порожня", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "()");
     let r2 = eval_program(
-        "(карта-містить? (карта-вставити (карта-порожня) 'ключ 42) 'ключ)",
+        "(карта-містить? (як-є ключ) (карта-вставити (як-є ключ) 42 карта-порожня))",
         &mut s,
-    ).expect("eval");
+    )
+    .expect("eval");
     assert_eq!(r2.value.to_string(), "t");
     let r3 = eval_program(
-        "(карта-отримати (карта-вставити (карта-порожня) 'ключ 42) 'ключ)",
+        "(карта-отримати (як-є ключ) (карта-вставити (як-є ключ) 42 карта-порожня))",
         &mut s,
-    ).expect("eval");
-    assert_eq!(r3.value.to_string(), "42");
+    )
+    .expect("eval");
+    assert_eq!(r3.value.to_string(), "(42)");
 }
 
 // ── Persistent vector: Ukrainian surface ───────────────────────
@@ -44,18 +61,20 @@ fn uk_persistent_map_basic() {
 #[test]
 fn uk_persistent_vector_basic() {
     let mut s = uk_session_full();
-    let r = eval_program("(вектор-розмір (вектор-порожній))", &mut s).expect("eval");
+    let r = eval_program("(вектор-розмір вектор-порожній)", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "0");
     let r2 = eval_program(
-        "(вектор-розмір (вектор-додати (вектор-додати (вектор-порожній) 10) 20))",
+        "(вектор-розмір (вектор-додати 20 (вектор-додати 10 вектор-порожній)))",
         &mut s,
-    ).expect("eval");
+    )
+    .expect("eval");
     assert_eq!(r2.value.to_string(), "2");
     let r3 = eval_program(
-        "(вектор-за-номером (вектор-додати (вектор-порожній) 99) 0)",
+        "(вектор-за-номером 0 (вектор-додати 99 вектор-порожній))",
         &mut s,
-    ).expect("eval");
-    assert_eq!(r3.value.to_string(), "99");
+    )
+    .expect("eval");
+    assert_eq!(r3.value.to_string(), "(99)");
 }
 
 // ── Time library: Ukrainian surface ────────────────────────────
@@ -63,9 +82,8 @@ fn uk_persistent_vector_basic() {
 #[test]
 fn uk_time_utc_now_works() {
     let mut s = uk_session_full();
-    let r = eval_program("(поточний-utc)", &mut s).expect("eval");
-    // utc-now returns (utc-time seconds nanoseconds) list
-    assert!(r.value.to_string().contains("utc-time"));
+    let r = eval_program("(перше (поточний-utc))", &mut s).expect("eval");
+    assert_eq!(r.value.to_string(), "utc");
 }
 
 #[test]
@@ -74,8 +92,10 @@ fn uk_time_mono_ms_works() {
     let r = eval_program("(монотонний-мс)", &mut s).expect("eval");
     // should be a number
     let val = r.value.to_string();
-    assert!(val.parse::<f64>().is_ok() || val.parse::<i64>().is_ok(),
-        "monotонний-мс should return a number, got: {val}");
+    assert!(
+        val.parse::<f64>().is_ok() || val.parse::<i64>().is_ok(),
+        "monotонний-мс should return a number, got: {val}"
+    );
 }
 
 // ── Knowledge: Ukrainian surface ───────────────────────────────
@@ -84,9 +104,8 @@ fn uk_time_mono_ms_works() {
 fn uk_describe_works() {
     let mut s = uk_session_full();
     // describe should work on a simple value
-    let r = eval_program("(описати 42)", &mut s).expect("eval");
-    // describe returns a string description
-    assert!(!r.value.to_string().is_empty());
+    let r = eval_program("(описати 42 (як-є невідомий-модуль))", &mut s).expect("eval");
+    assert_eq!(r.value.to_string(), "Module-not-found");
 }
 
 // ── Unification: Ukrainian surface ─────────────────────────────
@@ -95,9 +114,9 @@ fn uk_describe_works() {
 fn uk_unify_basic() {
     let mut s = uk_session_full();
     // unify two identical atoms → empty substitution (success)
-    let r = eval_program("(уніфікувати 'x 'x '())", &mut s).expect("eval");
+    let r = eval_program("(уніфікувати (як-є x) (як-є x) (як-є ()))", &mut s).expect("eval");
     // result should be a non-failed substitution
-    assert_ne!(r.value.to_string(), "()");
+    assert_ne!(r.value.to_string(), "fail");
 }
 
 // ── Epistemic: Ukrainian surface ────────────────────────────────
@@ -115,7 +134,7 @@ fn uk_claim_predicate() {
 #[test]
 fn sa_io_eval_works() {
     let mut s = sa_session_full();
-    let r = eval_program("(vicāraṇa '(+ 1 2))", &mut s).expect("eval");
+    let r = eval_program("(vicāraṇa (svarūpa (+ 1 2)))", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "3");
 }
 
@@ -134,7 +153,7 @@ fn sa_conversions_work() {
     let mut s = sa_session_full();
     let r = eval_program("(saṅkhyā-śabda 42)", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "\"42\"");
-    let r2 = eval_program("(nāman-śabda 'кіт)", &mut s).expect("eval");
+    let r2 = eval_program("(nāman-śabda (svarūpa кіт))", &mut s).expect("eval");
     assert_eq!(r2.value.to_string(), "\"кіт\"");
 }
 
@@ -164,15 +183,17 @@ fn uk_batch2_en_equivalence() {
     let mut s = uk_session_full();
     // map-get = карта-отримати
     let uk_r = eval_program(
-        "(карта-отримати (карта-вставити (карта-порожня) 'x 99) 'x)",
+        "(карта-отримати (як-є x) (карта-вставити (як-є x) 99 карта-порожня))",
         &mut s,
-    ).expect("eval");
+    )
+    .expect("eval");
     let en_r = eval_program(
-        "(map-get (map-insert (map-empty) 'x 99) 'x)",
+        "(map-get (quote x) (map-insert (quote x) 99 map-empty))",
         &mut s,
-    ).expect("eval");
+    )
+    .expect("eval");
     assert_eq!(uk_r.value.to_string(), en_r.value.to_string());
-    assert_eq!(uk_r.value.to_string(), "99");
+    assert_eq!(uk_r.value.to_string(), "(99)");
 }
 
 // ── Cross-surface: SA Batch 2 = EN ─────────────────────────────
@@ -180,8 +201,8 @@ fn uk_batch2_en_equivalence() {
 #[test]
 fn sa_batch2_en_equivalence() {
     let mut s = sa_session_full();
-    let sa_r = eval_program("(vicāraṇa '(* 3 4))", &mut s).expect("eval");
-    let en_r = eval_program("(eval '(* 3 4))", &mut s).expect("eval");
+    let sa_r = eval_program("(vicāraṇa (svarūpa (* 3 4)))", &mut s).expect("eval");
+    let en_r = eval_program("(eval (quote (* 3 4)))", &mut s).expect("eval");
     assert_eq!(sa_r.value.to_string(), en_r.value.to_string());
     assert_eq!(sa_r.value.to_string(), "12");
 }
