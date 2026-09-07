@@ -212,7 +212,8 @@
           // The WASM session persists definitions itself, so a failed line needs
           // no JS-side bookkeeping to stay out of a replayed history.
         } catch (error) {
-          printLine("Error: " + (error && error.message ? error.message : String(error)), "line-error");
+          const message = error && error.message ? error.message : String(error);
+          printLine(currentSurface === "ук" ? message : "Error: " + message, "line-error");
         }
       }
 
