@@ -14,6 +14,12 @@
 //! makes the B5 indexing decision measurable without changing semantics or
 //! comparing unrelated fixtures. `reason_index.rs` remains the stronger proof
 //! that the two paths preserve exact result/proof structure.
+//!
+//! A second diagnostic slice asks several DIFFERENT questions about one
+//! unchanged module. It compares the current public path with a test-only
+//! prepared path that reuses one projection and one finite index. This is not a
+//! cache proposal: it measures how much repeated reconstruction is available to
+//! remove before any reusable context or invalidation semantics are designed.
 
 use my_lisp::{eval_program, Session};
 use std::time::Instant;
@@ -155,10 +161,162 @@ fn profile_sizes(sizes: &[usize]) {
     println!("\n{table}");
 }
 
+const REPEATED_GOALS: [&str; 6] = [
+    "(valuable target)",
+    "(planet f0)",
+    "(orbits f1 s1)",
+    "(has-mass f2)",
+    "(located-in f3 sector3)",
+    "(valuable missing)",
+];
+
+/// A test-only copy of `reason-observe`'s observable decision shape that takes
+/// an already-built index. Keeping this helper local to the profile avoids
+/// inventing a public prepared/cache API before the measurement justifies one.
+fn install_prepared_observer(session: &mut Session) {
+    let source = r#"
+      (def bench-observe-with-index
+        (lambda (goal index)
+          (let* ((opposite (result-opposite-goal goal))
+                 (positive-results
+                   (prove-goal
+                     goal
+                     (reason-index-candidates goal index)
+                     (quote ())
+                     index
+                     0))
+                 (opposite-results
+                   (prove-goal
+                     opposite
+                     (reason-index-candidates opposite index)
+                     (quote ())
+                     index
+                     0)))
+            (cond
+              ((and (not (atom positive-results))
+                    (not (atom opposite-results)))
+               (make-disputed
+                 (list
+                   (make-proved goal positive-results)
+                   (make-proved opposite opposite-results))))
+              ((not (atom positive-results))
+               (make-proved goal positive-results))
+              ((not (atom opposite-results))
+               (make-proved opposite opposite-results))
+              (t (make-unknown goal)))))))
+    "#;
+    eval_session(session, source);
+}
+
+fn public_observe_source(goal: &str) -> String {
+    format!("(reason-in-observe (quote bench) (quote {goal}))")
+}
+
+fn prepared_observe_source(goal: &str) -> String {
+    format!("(bench-observe-with-index (quote {goal}) bench-index)")
+}
+
+fn timed_query_batch(session: &mut Session, prepared: bool) -> u128 {
+    let start = Instant::now();
+    for goal in REPEATED_GOALS {
+        let source = if prepared {
+            prepared_observe_source(goal)
+        } else {
+            public_observe_source(goal)
+        };
+        let _ = eval_session(session, &source);
+    }
+    start.elapsed().as_nanos()
+}
+
+fn timed_repeated_eval(session: &mut Session, source: &str, expected: &str) -> u128 {
+    let start = Instant::now();
+    for _ in REPEATED_GOALS {
+        assert_eq!(eval_session(session, source), expected);
+    }
+    start.elapsed().as_nanos()
+}
+
+fn profile_repeated_queries(distractors: usize) {
+    let mut session = loaded_session();
+    let clauses = install_mixed_module(&mut session, distractors);
+    install_prepared_observer(&mut session);
+
+    eval_session(
+        &mut session,
+        "(def bench-rules (module-clauses-now (quote bench)))",
+    );
+    assert_eq!(
+        eval_session(&mut session, "(length bench-rules)"),
+        clauses.to_string()
+    );
+    eval_session(
+        &mut session,
+        "(def bench-index (reason-make-index bench-rules))",
+    );
+    assert_eq!(
+        eval_session(&mut session, "(reason-index-mode bench-index)"),
+        "indexed"
+    );
+
+    // Exact outcome parity for every distinct query before timing anything.
+    for goal in REPEATED_GOALS {
+        let parity = format!(
+            "(equal? {} {})",
+            public_observe_source(goal),
+            prepared_observe_source(goal)
+        );
+        assert_eq!(
+            eval_session(&mut session, &parity),
+            "t",
+            "prepared diagnostic path changed outcome/proof structure for {goal}"
+        );
+    }
+
+    // Warm both batch paths. The prepared path intentionally reuses the same
+    // immutable projection/index across distinct questions.
+    let _ = timed_query_batch(&mut session, false);
+    let _ = timed_query_batch(&mut session, true);
+
+    let public_batch_ns = median_ns(|| timed_query_batch(&mut session, false));
+    let prepared_batch_ns = median_ns(|| timed_query_batch(&mut session, true));
+    let projection_batch_ns = median_ns(|| {
+        timed_repeated_eval(
+            &mut session,
+            "(length (module-clauses-now (quote bench)))",
+            &clauses.to_string(),
+        )
+    });
+    let index_batch_ns = median_ns(|| {
+        timed_repeated_eval(
+            &mut session,
+            "(reason-index-mode (reason-make-index bench-rules))",
+            "indexed",
+        )
+    });
+
+    let speedup = if prepared_batch_ns == 0 {
+        0.0
+    } else {
+        public_batch_ns as f64 / prepared_batch_ns as f64
+    };
+
+    println!(
+        "\nAdvice Taker B5 repeated-query profile ({} distinct goals, {clauses} clauses, 3-sample median)\n\
+         public_batch_ns   prepared_batch_ns   public/prepared   repeated_projection_ns   repeated_index_ns\n\
+         {public_batch_ns:<17} {prepared_batch_ns:<19} {speedup:<17.2} {projection_batch_ns:<24} {index_batch_ns}\n",
+        REPEATED_GOALS.len()
+    );
+}
+
 #[test]
 #[ignore = "B5 diagnostic profile; run explicitly with --ignored --nocapture"]
 fn advice_taker_profile_100_500_1000_distractors() {
     profile_sizes(&[100, 500, 1_000]);
+    // One medium-size same-module batch is enough to decide whether repeated
+    // reconstruction deserves a separate design experiment; larger reuse
+    // profiles remain unnecessary until this measurement says otherwise.
+    profile_repeated_queries(500);
 }
 
 #[test]
