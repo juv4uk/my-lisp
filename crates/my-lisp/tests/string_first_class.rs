@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, Session, Value};
+use my_lisp::{eval_program, ErrorKind, Session, Value};
 use std::rc::Rc;
 
 fn eval(source: &str) -> Value {
@@ -72,6 +72,29 @@ fn codepoint_and_digest_mechanisms_are_first_class_values() {
 }
 
 #[test]
+fn json_parse_is_first_class_and_shadowable() {
+    assert_eq!(
+        eval("(def decode json-parse) (decode \"{\\\"a\\\":1}\")").to_string(),
+        r#"(("a" . 1))"#,
+    );
+    assert_eq!(
+        eval("((lambda (json-parse) (json-parse \"{}\")) (lambda (x) (quote shadowed)))"),
+        Value::Symbol(Rc::from("shadowed")),
+    );
+}
+
+#[test]
+fn json_parse_preserves_named_failure_classes() {
+    let type_error = eval_program("(json-parse 42)", &mut Session::default())
+        .expect_err("non-string JSON input must fail");
+    assert_eq!(type_error.kind, ErrorKind::Type);
+
+    let parse_error = eval_program("(json-parse \"{\")", &mut Session::default())
+        .expect_err("malformed JSON must fail");
+    assert_eq!(parse_error.kind, ErrorKind::Parse);
+}
+
+#[test]
 fn evaluator_source_does_not_dispatch_migrated_eager_names() {
     let evaluator = include_str!("../src/eval/mod.rs");
     for name in [
@@ -85,6 +108,7 @@ fn evaluator_source_does_not_dispatch_migrated_eager_names() {
         "codepoint->string",
         "string->codepoint",
         "sha256-hex",
+        "json-parse",
     ] {
         assert!(
             !evaluator.contains(&format!("Some(\"{name}\")")),

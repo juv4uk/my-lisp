@@ -229,10 +229,6 @@ fn evaluate_list(
         Some("read-all") => {
             special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("json-parse") => {
-            special_forms::json::evaluate_json_parse(arguments, environment, span)
-                .map(EvalStep::Value)
-        }
         _ => {
             if let Some(name) = items[0].kind.as_symbol() {
                 if let Some(result) = capabilities::dispatch_capability(name, arguments, environment, span) {

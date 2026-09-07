@@ -9,11 +9,13 @@
 //! Batch 2 (2026-09-07): eager string/symbol, Unicode-codepoint, and digest
 //! mechanisms are ordinary builtin values too; the evaluator does not need
 //! head-name dispatch for them.
+//! Batch 3 (2026-09-07): JSON decode is likewise an eager first-class builtin.
 
 use crate::environment::Environment;
 use crate::eval::arithmetic::{
     arithmetic_on_values, comparison_on_values, division_on_values, exact_value,
 };
+use crate::eval::special_forms::json::json_parse_values;
 use crate::eval::special_forms::{
     car_value, cdr_value, codepoint_to_string_values, cons_values, eq_values,
     sha256_hex_values, string_append_values, string_first_values, string_less_than_values,
@@ -355,6 +357,7 @@ pub(crate) fn install(environment: &Environment) {
     define!(environment, "codepoint->string", |args: &[Value], _env: &Environment, span: Span| codepoint_to_string_values(args, span));
     define!(environment, "string->codepoint", |args: &[Value], _env: &Environment, span: Span| string_to_codepoint_values(args, span));
     define!(environment, "sha256-hex", |args: &[Value], _env: &Environment, span: Span| sha256_hex_values(args, span));
+    define!(environment, "json-parse", |args: &[Value], _env: &Environment, span: Span| json_parse_values(args, span));
 
     define!(environment, "numeric-buffer?", |args: &[Value], _env: &Environment, span: Span| {
         exact_args("numeric-buffer?", args, 1, span)?;

@@ -1,16 +1,8 @@
-//! `json-parse` — the wire-format decode boundary for talking to
-//! OpenAI-compatible HTTP endpoints (PLAN.md item 21's "talk to other AI
-//! systems"). Deliberately generic: it knows JSON, nothing about any agent,
-//! message schema, or tool protocol — those live in .my libraries on top.
+//! `json-parse` — JSON wire-format decoding mechanism.
 //!
-//! Why this cannot be expressed in .my itself: string walking primitives
-//! (`string-first`/`string-rest`) make a hand-rolled JSON tokenizer possible,
-//! but constructing a character from a numeric codepoint is not expressible —
-//! `digit->string` in lib/core.my is a hardcoded ASCII digit table and no
-//! primitive maps an integer to an arbitrary character string. `\uXXXX`
-//! escapes (emitted by real providers for any non-ASCII content) are therefore
-//! the proven kernel gap; decoding them happens here, once, at the I/O
-//! boundary.
+//! The decoder remains implemented in Rust for now, but callable identity is
+//! no longer evaluator syntax: `json-parse` is installed as an ordinary
+//! first-class builtin.  Agent/message/tool policy remains in `.my` libraries.
 //!
 //! Representation handed back to the language:
 //! - object  → alist of dotted pairs `("key" . value)`
@@ -20,26 +12,29 @@
 //! - true/false → `Value::Bool`
 //! - null    → `Value::Nil`
 //!
-//! Hand-rolled, no external dependency — this crate's zero-dependency
-//! policy (see Cargo.toml) predates and outlives this primitive.
+//! Hand-rolled, no external dependency — this crate's zero-dependency policy
+//! (see Cargo.toml) predates and outlives this mechanism.
 
-use super::core::exact_arity;
-use crate::eval::evaluate;
-use crate::{Environment, ErrorKind, Expr, LanguageError, Span, Value};
+use crate::{ErrorKind, LanguageError, Span, Value};
 use std::rc::Rc;
 
-pub(crate) fn evaluate_json_parse(
-    arguments: &[Expr],
-    environment: &Environment,
+/// Value-level callable form used by the root builtin registry.
+pub(crate) fn json_parse_values(
+    arguments: &[Value],
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("json-parse", arguments, 1, span)?;
-    let text_value = evaluate(&arguments[0], environment)?;
-    let Value::String(ref text) = text_value else {
+    if arguments.len() != 1 {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            "json-parse expects exactly 1 argument(s)",
+            span,
+        ));
+    }
+    let Value::String(text) = &arguments[0] else {
         return Err(LanguageError::new(
             ErrorKind::Type,
             "json-parse expects a string · json-parse ochikuie riadok · json-parse erwartet einen String",
-            arguments[0].span,
+            span,
         ));
     };
     parse_json(text).map_err(|message| {
@@ -49,10 +44,9 @@ pub(crate) fn evaluate_json_parse(
 
 /// Plain-function form of the canonical JSON decoder, for host adapters
 /// (LSP, CLI tooling) that must consume JSON without going through `eval`.
-/// This is an extraction of existing logic, not a new capability: the
-/// special form above delegates here. The matching *serializer* is
-/// deliberately NOT provided — JSON output is a transport concern of each
-/// adapter, not my-lisp semantics.
+/// The matching serializer is deliberately not provided: JSON output is a
+/// transport concern of each adapter, not my-lisp semantics.
+///
 /// Maximum container nesting. Recursive descent needs a bound so deeply
 /// nested input fails named instead of overflowing the Rust stack - the
 /// same S3-shaped discipline the reader applies to numeric literals.
@@ -172,8 +166,6 @@ impl<'a> JsonParser<'a> {
                 _ => return Err(self.error("expected ',' or '}' in object")),
             }
         }
-        // Build the dotted-pair alist right-to-left so each entry is a real
-        // `(key . value)` pair, matching language-contract.my's data convention.
         let mut alist = Value::Nil;
         for (key, value) in pairs.into_iter().rev() {
             alist = Value::Pair(
@@ -230,10 +222,6 @@ impl<'a> JsonParser<'a> {
                     Some(b't') => out.push('\t'),
                     Some(b'u') => {
                         let code = self.parse_hex4()?;
-                        // Surrogate pair handling: high surrogate must be
-                        // followed by \uDC00-\uDFFF to form one codepoint;
-                        // a lone surrogate decodes as replacement char
-                        // rather than failing the whole document.
                         let codepoint = if (0xD800..0xDC00).contains(&code) {
                             if self.bytes[self.pos..].starts_with(b"\\u") {
                                 self.pos += 2;
@@ -259,8 +247,6 @@ impl<'a> JsonParser<'a> {
                     _ => return Err(self.error("invalid escape sequence")),
                 },
                 Some(_byte) => {
-                    // Collect one full UTF-8 scalar: continuation bytes
-                    // (0b10xxxxxx) append to whatever is being built.
                     let start = self.pos - 1;
                     let mut end = self.pos;
                     while end < self.bytes.len() && self.bytes[end] & 0xC0 == 0x80 {
@@ -329,8 +315,6 @@ impl<'a> JsonParser<'a> {
 
 #[cfg(test)]
 mod extraction_tests {
-    // The plain-function form must behave exactly like the special form:
-    // same input, same Value, same failure strictness.
     use super::*;
 
     #[test]

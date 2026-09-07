@@ -114,12 +114,6 @@ const SYNTAX_FORMS: &[(&str, &str, &str, Arity)] = &[
         "Read all expressions from a string",
         Arity::Exact(1),
     ),
-    (
-        "json-parse",
-        "(json-parse string)",
-        "Parse JSON into my-lisp values",
-        Arity::Exact(1),
-    ),
 ];
 
 fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
@@ -323,6 +317,11 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
         "sha256-hex" => (
             "(sha256-hex string)",
             "Return the SHA-256 hex digest",
+            Arity::Exact(1),
+        ),
+        "json-parse" => (
+            "(json-parse string)",
+            "Parse JSON into my-lisp values",
             Arity::Exact(1),
         ),
         _ => (
