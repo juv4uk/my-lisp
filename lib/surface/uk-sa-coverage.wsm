@@ -138,14 +138,14 @@
 
   ;; ── Time ──────────────────────────────────────────────────
   (entry (time mono-ns монотонний-час kāla-mono stable candidate "kāla = time; monotonic nanoseconds"))
-  (entry (time unix-time-now unix-час-зараз kāla-unix stable candidate "current unix time"))
+  (entry (time unix-time-now юнікс-час-зараз kāla-unix stable candidate "current Unix time; phonetic Ukrainian spelling"))
   (entry (time ntp-query-raw — — compatibility-only compatibility-only "low-level NTP"))
   (entry (time timezone-declarations-raw — — compatibility-only compatibility-only "low-level"))
 
   ;; ── Time library (Batch 2) ─────────────────────────────────
-  (entry (time utc-now поточний-utc kāla-adya stable candidate "kāla-adya = time-now"))
-  (entry (time utc-from-unix utc-із-unix — stable missing "UTC from unix timestamp"))
-  (entry (time unix-time-observation->utc unix-із-спостереження — stable missing "observation to UTC conversion"))
+  (entry (time utc-now поточний-всч kāla-adya stable candidate "ВСЧ = всесвітній скоординований час"))
+  (entry (time utc-from-unix всч-із-юнікс — stable missing "ВСЧ from Unix timestamp"))
+  (entry (time unix-time-observation->utc юнікс-із-спостереження — stable missing "observation to ВСЧ conversion"))
   (entry (time milliseconds-from-nanoseconds мілісекунди-із-наносекунд kāla-millisecondāni stable candidate "kāla-millisecondāni = time-milliseconds"))
   (entry (time mono-ms монотонний-мс kāla-mono-ms stable candidate "monotonic milliseconds"))
   (entry (time timezone-name часовий-пояс-назва deśa-kāla-nāma stable candidate "deśa-kāla = timezone"))

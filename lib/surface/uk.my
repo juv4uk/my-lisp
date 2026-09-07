@@ -166,7 +166,7 @@
 ;; ═══════════════════════════════════════════════════════════════
 
 (define монотонний-час mono-ns)
-(define unix-час-зараз unix-time-now)
+(define юнікс-час-зараз unix-time-now)
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Batch 1 — Other (status: candidate)
@@ -209,9 +209,9 @@
 ;; Бібліотека часу
 ;; ═══════════════════════════════════════════════════════════════
 
-(define поточний-utc utc-now)
-(define utc-із-unix utc-from-unix)
-(define unix-із-спостереження unix-time-observation->utc)
+(define поточний-всч utc-now)
+(define всч-із-юнікс utc-from-unix)
+(define юнікс-із-спостереження unix-time-observation->utc)
 (define мілісекунди-із-наносекунд milliseconds-from-nanoseconds)
 (define монотонний-мс mono-ms)
 (define часовий-пояс-назва timezone-name)

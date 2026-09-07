@@ -712,6 +712,6 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-PUBLIC-DOCS))
     (description . "Define and prove the completion gate for the selected public programming surface: all eligible target-layer names are explicitly classified, all approved Ukrainian mappings are stable and tested, and ordinary programs can avoid English builtin names. Do not require translation of compatibility-only or internal symbols.")
-    (context . "Completed 2026-09-07 by Anviksha: визначити-макрос closes the sole missing Ukrainian entry as an alias of the same first-class Macro value. The table now has 140 stable translation-eligible rows, 0 candidate, 0 missing, and 21 explicit compatibility-only rows. The table-driven gate proves stable identities and the Ukrainian-only acceptance program passes.")
+    (context . "Completed 2026-09-07 by Anviksha: визначити-макрос closes the sole missing Ukrainian entry as an alias of the same first-class Macro value. The table now has 140 stable translation-eligible rows, 0 candidate, 0 missing, and 21 explicit compatibility-only rows. The table-driven gate proves stable identities, every stable name is typeable on the Ukrainian layout, executable acceptance tokens contain no Latin letters, and the Ukrainian-only acceptance program passes.")
     (done . t)))
   )))

@@ -82,7 +82,7 @@ fn uk_persistent_vector_basic() {
 #[test]
 fn uk_time_utc_now_works() {
     let mut s = uk_session_full();
-    let r = eval_program("(перше (поточний-utc))", &mut s).expect("eval");
+    let r = eval_program("(перше (поточний-всч))", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "utc");
 }
 
