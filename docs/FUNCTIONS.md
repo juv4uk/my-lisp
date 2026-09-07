@@ -2,7 +2,7 @@
 
 **Live builtin section refreshed:** 2026-09-06 · base `e58209f`
 **Library inventory base:** 2026-09-02 · `8b4529f`
-**Incremental library refresh:** 2026-09-07 · `narrate.my` + `result-status.my` + `translation.my`
+**Incremental library refresh:** 2026-09-07 · `narrate.my` + `result-status.my` + `translation.my` + `quantity.my` + `si.my`
 **Source:** root `(env)` / `language_items.rs` for builtins; static `lib/*.my` scan for the library sections below.
 **Builtin count:** 35 root builtins. `mono-ms`, `utc-now`, `internet-time-sync`, and `timezone-detect` are language-owned in `lib/time.my`. `mono-ns`, `unix-time-now`, `ntp-query-raw`, and `timezone-declarations-raw` are the retained raw host observations/mechanisms.
 
@@ -16,7 +16,7 @@
 
 ### clips-import.my (40)
 
-`clips-all-asserts?`, `clips-assert-conclusions`, `clips-assert-form?`, `clips-clauses-for-conclusions`, `clips-cons-each-onto`, `clips-convert-template`, `clips-convert-template-list`, `clips-convert-vars`, `clips-deffacts->clauses`, `clips-defrule->clauses`, `clips-deftemplate-form?`, `clips-deftemplate-name`, `clips-deftemplate-slots`, `clips-drop-printouts`, `clips-fact-clause`, `clips-facts->clauses`, `clips-facts->clauses-onto`, `clips-form->clauses`, `clips-import`, `clips-import-file`, `clips-import-forms`, `clips-import-forms-onto`, `clips-lookup-slot-value`, `clips-positional-args`, `clips-printout-form?`, `clips-rule-preamble-form?`, `clips-slot-name`, `clips-slot-names`, `clips-slot-value-of`, `clips-split-at-arrow`, `clips-string-after-last-double-colon`, `clips-string-empty?`, `clips-string-starts-with-double-colon?`, `clips-strip-module-prefix`, `clips-strip-rule-preamble`, `clips-symbol-starts-with-?`, `clips-template-slot-order`, `clips-templates-from-forms`, `clips-var-term`, `clips-var?`
+`clips-all-asserts?`, `clips-assert-conclusions`, `clips-assert-form?`, `clips-clauses-for-conclusions`, `clips-cons-each-onto`, `clips-convert-template`, `clips-convert-template-list`, `clips-convert-vars`, `clips-deffacts->clauses`, `clips-deftemplate-form?`, `clips-deffacts->clauses`, `clips-defrule->clauses`, `clips-deftemplate-name`, `clips-deftemplate-slots`, `clips-drop-printouts`, `clips-fact-clause`, `clips-facts->clauses`, `clips-facts->clauses-onto`, `clips-form->clauses`, `clips-import`, `clips-import-file`, `clips-import-forms`, `clips-import-forms-onto`, `clips-lookup-slot-value`, `clips-positional-args`, `clips-printout-form?`, `clips-rule-preamble-form?`, `clips-slot-name`, `clips-slot-names`, `clips-slot-value-of`, `clips-split-at-arrow`, `clips-string-after-last-double-colon`, `clips-string-empty?`, `clips-string-starts-with-double-colon?`, `clips-strip-module-prefix`, `clips-strip-rule-preamble`, `clips-symbol-starts-with-?`, `clips-template-slot-order`, `clips-templates-from-forms`, `clips-var-term`, `clips-var?`
 
 ### content-store.my (6)
 
@@ -60,6 +60,10 @@
 
 `vbalance`, `vbalance-factor`, `vec->list`, `vec-conj`, `vec-count`, `vec-empty`, `vec-from-list`, `vec-from-list-onto`, `vec-nth`, `vec-tree`, `vheight-of`, `vmake-balanced-node`, `vmax2`, `vnode-height`, `vnode-index`, `vnode-left`, `vnode-right`, `vnode-value`, `vrotate-left`, `vrotate-right`, `vtree->list`, `vtree-get`, `vtree-insert`
 
+### quantity.my (35)
+
+`*dimension-schema*`, `*unit-schema*`, `*quantity-schema*`, `*science-source-schema*`, `*scientific-constant-schema*`, `science-proper-list?`, `science-sixth`, `science-seventh`, `make-dimension`, `dimension?`, `dimension-base`, `dimension-exponent`, `science-dimensions-valid?`, `make-unit`, `unit?`, `unit-dimensions`, `make-quantity`, `quantity?`, `quantity-value`, `quantity-unit`, `make-science-source`, `science-source?`, `scientific-constant-status-valid?`, `scientific-constant-kind-valid?`, `make-scientific-constant`, `scientific-constant?`, `scientific-constant-name`, `scientific-constant-quantity`, `scientific-constant-value`, `scientific-constant-unit`, `scientific-constant-status`, `scientific-constant-kind`, `scientific-constant-system`, `scientific-constant-source`, `scientific-constant->clauses`
+
 ### reason.my (20)
 
 `add-usage`, `count-usage`, `count-usage-list`, `explain-proof`, `explain-proof-list`, `explain-proof-node`, `map-goal-results`, `map-proofs`, `merge-usage`, `print-indent`, `prove-goal`, `prove-goal-state`, `prove-goals`, `prove-rule`, `provenance`, `provenance-list`, `reason`, `reason-explain`, `rename-vars`, `source-of`
@@ -67,6 +71,10 @@
 ### result-status.my (15)
 
 `make-blocked`, `make-disputed`, `make-invalid`, `make-partial`, `make-proved`, `make-unknown`, `reason-in-observe`, `reason-observe`, `result-goal?`, `result-negated-goal?`, `result-opposite-goal`, `result-payload`, `result-proper-list?`, `result-status`, `result-tagged?`
+
+### si.my (29)
+
+`si:defining-cesium-frequency`, `si:defining-speed-of-light`, `si:defining-planck-constant`, `si:defining-elementary-charge`, `si:defining-boltzmann-constant`, `si:defining-avogadro-constant`, `si:defining-luminous-efficacy`, `si:constant-value`, `si:cesium-frequency`, `si:speed-of-light`, `si:planck-constant`, `si:elementary-charge`, `si:boltzmann-constant`, `si:avogadro-constant`, `si:luminous-efficacy`, `delta-nu-cs`, `c`, `h`, `e`, `k`, `n-a`, `k-cd`, `si:delta-nu-cs`, `si:c`, `si:h`, `si:e`, `si:k`, `si:n-a`, `si:k-cd`
 
 ### translation.my (31)
 
