@@ -20,6 +20,16 @@ fn stable_uk_pairs() -> Vec<(&'static str, &'static str, &'static str)> {
         .collect()
 }
 
+fn uk_statuses() -> Vec<&'static str> {
+    COVERAGE
+        .lines()
+        .filter_map(|line| {
+            let fields = line.split_whitespace().collect::<Vec<_>>();
+            (fields.first() == Some(&"(entry")).then(|| fields[5])
+        })
+        .collect()
+}
+
 fn uk_session() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core bootstrap");
@@ -54,7 +64,7 @@ fn is_same_runtime_value(left: &Value, right: &Value) -> bool {
 #[test]
 fn every_stable_uk_surface_entry_is_wired_to_its_declared_operation() {
     let pairs = stable_uk_pairs();
-    assert_eq!(pairs.len(), 139, "coverage summary and entries drifted");
+    assert_eq!(pairs.len(), 140, "coverage summary and entries drifted");
 
     let session = uk_session();
     let syntax = [
@@ -86,5 +96,20 @@ fn every_stable_uk_surface_entry_is_wired_to_its_declared_operation() {
     // uk_surface.rs and uk_sa_surface.rs; all other stable rows are values.
     // Чотири керівні/необхідні форми перевіряються поведінково; решта рядків
     // мусять бути тими самими runtime-значеннями.
-    assert_eq!(checked_values, 135);
+    assert_eq!(checked_values, 136);
+}
+
+#[test]
+fn selected_ukrainian_surface_has_no_candidate_or_missing_rows() {
+    let statuses = uk_statuses();
+    let stable = statuses.iter().filter(|status| **status == "stable").count();
+    let compatibility = statuses
+        .iter()
+        .filter(|status| **status == "compatibility-only")
+        .count();
+
+    assert_eq!(statuses.len(), 161);
+    assert_eq!(stable, 140);
+    assert_eq!(compatibility, 21);
+    assert_eq!(stable + compatibility, statuses.len());
 }

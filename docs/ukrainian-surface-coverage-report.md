@@ -2,7 +2,7 @@
 # Звіт про покриття української та санскритської поверхні
 
 **Date:** 2026-09-07
-**Source:** `lib/surface/uk-sa-coverage.wsm` (schema uk-sa-coverage/1)
+**Source:** `lib/surface/uk-sa-coverage.wsm` (schema `uk-sa-coverage/3`)
 **Issue:** #1 — Ukrainian Surface Coverage
 
 ---
@@ -11,38 +11,56 @@
 
 USC = stable mappings / eligible public names
 
-| Layer | Eligible | UK stable | UK candidate | UK missing | UK compat | UK USC | SA stable | SA candidate | SA missing | SA compat | SA USC |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Canon 0+7 | 7 | 7 | 0 | 0 | 0 | **100%** | 7 | 0 | 0 | 0 | **100%** |
-| Necessary forms | 2 | 2 | 0 | 0 | 0 | **100%** | 0 | 0 | 2 | 0 | 0% |
-| Language macros | 1 | 0 | 0 | 1 | 0 | 0% | 0 | 0 | 1 | 0 | 0% |
-| Compatibility | 1 | 0 | 0 | 0 | 1 | — | 0 | 0 | 0 | 1 | — |
-| Arithmetic | 13 | 0 | 13 | 0 | 0 | 0% | 0 | 11 | 2 | 0 | 0% |
-| Comparisons | 5 | 0 | 5 | 0 | 0 | 0% | 0 | 5 | 0 | 0 | 0% |
-| Predicates | 6 | 0 | 6 | 0 | 0 | 0% | 0 | 5 | 1 | 0 | 0% |
-| Lists | 17 | 0 | 13 | 0 | 4 | 0% | 0 | 13 | 4 | 4 | 0% |
-| Higher-order | 3 | 0 | 3 | 0 | 0 | 0% | 0 | 3 | 0 | 0 | 0% |
-| Strings | 13 | 0 | 13 | 0 | 0 | 0% | 0 | 7 | 6 | 0 | 0% |
-| I/O | 7 | 0 | 7 | 0 | 0 | 0% | 0 | 0 | 7 | 0 | 0% |
-| Vectors | 5 | 0 | 5 | 0 | 0 | 0% | 0 | 0 | 5 | 0 | 0% |
-| Buffers | 6 | 0 | 0 | 0 | 6 | — | 0 | 0 | 0 | 6 | — |
-| Time | 4 | 0 | 2 | 0 | 2 | 0% | 0 | 0 | 4 | 0 | 0% |
-| Other | 10 | 0 | 6 | 3 | 1 | 0% | 0 | 3 | 7 | 1 | 0% |
-| **Overall** | **89** | **9** | **62** | **4** | **14** | **79.8%** | **7** | **38** | **30** | **14** | **50.6%** |
+| Layer | Eligible | UK stable | UK missing | UK compatibility-only |
+|:---|---:|---:|---:|---:|
+| Canon 0+7 | 7 | 7 | 0 | 0 |
+| Necessary forms | 2 | 2 | 0 | 0 |
+| Language macros | 1 | 1 | 0 | 0 |
+| Arithmetic + comparisons + predicates | 27 | 24 | 0 | 3 |
+| Lists + higher-order | 19 | 15 | 0 | 4 |
+| Strings + I/O | 21 | 20 | 0 | 1 |
+| Vectors + buffers | 11 | 5 | 0 | 6 |
+| Time | 18 | 16 | 0 | 2 |
+| Persistent collections | 11 | 11 | 0 | 0 |
+| Knowledge + reasoning + unification + epistemic | 33 | 33 | 0 | 0 |
+| Other + compatibility | 11 | 6 | 0 | 5 |
+| **Overall** | **161** | **140** | **0** | **21** |
 
-Примітка: USC% рахує (stable + candidate) / eligible, бо candidate — це вже вибране ім'я, що очікує ратифікації. Compatibility-only не збільшує словник користувача і виключається зі знаменника.
+Чинний підсумок таблиці: **140 stable**, **0 candidate**, **0 missing** і
+**21 compatibility-only**. Для обраної перекладної поверхні USC дорівнює
+**140 / (161 − 21) = 100%**. Compatibility-only не вимагає окремого
+українського слова й не є прогалиною.
 
 ---
 
-## Прогресія Batch 1
+## Як програмувати через українську поверхню
 
-```
-До Batch 1:   UK 9/75 = 12.0%    SA 7/75 = 9.3%
-Після Batch 1: UK 71/75 = 94.7%   SA 45/75 = 60.0%
-Загалом (з compat): UK 71/89 = 79.8%   SA 45/89 = 50.6%
+Словесний запис лишається основним читабельним стилем:
+
+```lisp
+(визначити хвіст-якщо-кіт
+  (функція (пара)
+    (за-умовою
+      ((тотожне? (перше пара) 'кіт)
+       (решта пара))
+      (t '()))))
 ```
 
-Batch 1 додав: 62 UK candidate + 38 SA candidate для arithmetic, comparisons, predicates, lists, strings, higher-order.
+Для REPL і малих виразів Canon має необов'язкову стенографію, доступну з
+української розкладки:
+
+```lisp
+'   ; як-є
+.?  ; атом?
+=?  ; тотожне?
+:   ; сполучити
+:п  ; перше
+:р  ; решта
+?:  ; за-умовою
+```
+
+Наприклад, `(:п (: 'кіт 'пес))` повертає `кіт`. Це ті самі канонічні
+операції, а не друге компактне ядро.
 
 ---
 
@@ -80,15 +98,12 @@ Batch 1 додав: 62 UK candidate + 38 SA candidate для arithmetic, compari
 
 ---
 
-## Наступні кроки
+## Що ще не завершено
 
-1. **Ратифікація Batch 1** — перевірити кандидати через тести еквівалентності (task 7-8 з issue)
-2. **Batch 2: I/O** — print, princ, read, eval, write-to-string (потрібні санскритські відповідники)
-3. **Batch 3: Vectors** — vector, make-vector, vector-ref, vector-set!
-4. **Batch 4: Conversions** — number->string, symbol->string, codepoint->string
-5. **Batch 5: Missing** — gensym, env, defmacro
-6. **CI drift detection** — новий public name не може з'явитись без класифікації
-7. **Ukrainian-only acceptance program** — програма що використовує тільки укр. словник
+Українська перекладна поверхня має 100% класифікованих stable відповідностей.
+Наступне розширення інвентарю — окремо представити компактні символи Canon;
+це не прогалина перекладу, бо вони вже виконуються як додаткові написання тих
+самих семи операцій.
 
 ---
 
@@ -108,4 +123,6 @@ UK метафори тяжіють до **практичних дій** (сит�
 
 ---
 
-*Звіт згенеровано з `lib/surface/uk-sa-coverage.wsm`. Всі candidate імена потребують ратифікації через тести еквівалентності.*
+*Числа звірено з `lib/surface/uk-sa-coverage.wsm` schema /3. Тест
+`uk_surface_equivalence.rs` читає ту саму таблицю й перевіряє всі 140 stable
+українських відповідностей.*

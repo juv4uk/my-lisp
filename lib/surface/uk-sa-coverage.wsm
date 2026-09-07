@@ -14,12 +14,11 @@
 ; Format: (entry (category EN UK SA uk-status sa-status notes))
 ;
 ; Canon 0+7 + necessary forms: stable (ratified in calibration doc).
-; Batch 1 UK: stable (implemented in lib/surface/uk.my, tested in uk_sa_surface.rs).
+; All translation-eligible UK rows are stable (implemented in uk.my and
+; checked from this table by uk_surface_equivalence.rs).
 ; Batch 1 SA: stable for Canon + arithmetic + comparisons + predicates + lists;
 ;             candidate for higher-order, strings, other (implemented but
 ;             pending broader review of Sanskrit term choices).
-; Batch 2 UK: candidate (persistent map, persistent vector, time library,
-;             knowledge/reasoning, unification, epistemic, gensym, env).
 ; Batch 2 SA: candidate (I/O, vectors, conversions, time, persistent map,
 ;             persistent vector, knowledge/reasoning, unification, epistemic, gensym).
 
@@ -38,7 +37,7 @@
   ;; ── Necessary forms ────────────────────────────────────────
   (entry (necessary lambda функція — stable missing "macro expanding to lambda"))
   (entry (necessary define визначити — stable missing "macro expanding to define"))
-  (entry (language-macro defmacro — — missing missing "bootstrap mechanism"))
+  (entry (language-macro defmacro визначити-макрос — stable missing "same first-class macro value; no second macro mechanism"))
   (entry (compatibility def — — compatibility-only compatibility-only "historical alias for define"))
 
   ;; ── Arithmetic ─────────────────────────────────────────────
@@ -228,14 +227,14 @@
   ;; ── Summary statistics ─────────────────────────────────────
   (summary
     (total-eligible 161)
-    (stable-uk 139)
+    (stable-uk 140)
     (candidate-uk 0)
-    (missing-uk 1)
+    (missing-uk 0)
     (compatibility-uk 21)
     (stable-sa 36)
     (candidate-sa 88)
     (missing-sa 16)
     (compatibility-sa 21)
-    (usc-uk-percent "86.3%")
+    (usc-uk-percent "100.0%")
     (usc-sa-percent "77.0%")
-    (notes "Batch 2 complete. UK: 139 surface names implemented. SA: 124 surface names (36 stable + 88 candidate). Remaining SA gaps: defmacro, lambda, define, min-list, max-list, numeric-buffer?, vector-set!, utc-from-unix, unix-time-observation->utc, internet-time-sync, module-known?, module-clauses-now, and, or, let, let*.")))
+    (notes "Selected Ukrainian surface complete: 140 stable of 140 translation-eligible names; 21 compatibility-only names are explicitly outside the translation denominator. SA: 124 surface names (36 stable + 88 candidate). Remaining SA gaps: defmacro, lambda, define, min-list, max-list, numeric-buffer?, vector-set!, utc-from-unix, unix-time-observation->utc, internet-time-sync, module-known?, module-clauses-now, and, or, let, let*.")))

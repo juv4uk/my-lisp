@@ -665,7 +665,7 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-ARITHMETIC-COMPARISONS UKRAINIAN-SURFACE-LISTS-HOF UKRAINIAN-SURFACE-STRINGS-READER-IO))
     (description . "Prove that Ukrainian names reach the same behavior as the existing public surface. Where canonical identities exist, test identity invariants; elsewhere test observable equivalence without pointer-identity assumptions.")
-    (context . "Completed 2026-09-07 by Anviksha: uk_surface_equivalence.rs reads all 139 stable Ukrainian rows from the coverage table, proves 135 ordinary aliases retain the declared runtime value/operation identity, and delegates the four evaluation-control/necessary forms to existing behavioral suites. Related 54 tests plus the new gate pass.")
+    (context . "Completed 2026-09-07 by Anviksha: uk_surface_equivalence.rs reads all 140 stable Ukrainian rows from the coverage table, proves 136 ordinary aliases retain the declared runtime value/operation identity, and delegates the four evaluation-control/necessary forms to existing behavioral suites. Related 54 tests plus the table-driven gates pass.")
     (done . t)))
 
   ("UKRAINIAN-SURFACE-COVERAGE-METRIC" . (
@@ -702,14 +702,16 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-UKRAINIAN-ONLY-ACCEPTANCE))
     (description . "Document the stable Ukrainian programming surface with examples generated or checked against the same coverage source. Clearly distinguish Ukrainian Lisp surface from natural-language NLP work and from Sanskrit research naming.")
-    (context . "Claimed 2026-09-07 by Anviksha after completing UKRAINIAN-SURFACE-EQUIVALENCE-TESTS. Updating public documentation from coverage schema /3 and the executable Canon symbol surface.")
-    (done . ())))
+    (context . "Completed 2026-09-07 by Anviksha: public coverage report now matches schema /3, documents the final 140 stable/0 missing/21 compatibility-only state, gives checked Ukrainian examples, distinguishes readable words from optional Canon shorthand, and points to the table-driven equivalence gate.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-100-PERCENT-GATE" . (
+    (claimed-by . anviksha)
     (priority . 7.5)
     (capabilities . (my-lisp surface ukrainian release testing))
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-PUBLIC-DOCS))
     (description . "Define and prove the completion gate for the selected public programming surface: all eligible target-layer names are explicitly classified, all approved Ukrainian mappings are stable and tested, and ordinary programs can avoid English builtin names. Do not require translation of compatibility-only or internal symbols.")
-    (done . ())))
+    (context . "Completed 2026-09-07 by Anviksha: визначити-макрос closes the sole missing Ukrainian entry as an alias of the same first-class Macro value. The table now has 140 stable translation-eligible rows, 0 candidate, 0 missing, and 21 explicit compatibility-only rows. The table-driven gate proves stable identities and the Ukrainian-only acceptance program passes.")
+    (done . t)))
   )))

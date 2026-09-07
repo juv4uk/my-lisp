@@ -26,6 +26,10 @@
         (cons name
               (cons value (quote ())))))
 
+; DEFMACRO is already a first-class macro value installed by macro.my.
+; This is another name for that same value, not a second macro mechanism.
+(define визначити-макрос defmacro)
+
 ;; ═══════════════════════════════════════════════════════════════
 ;; Canon 0+7 — Ukrainian surface aliases (status: stable)
 ;; Канон 0+7 — українські поверхневі аліаси (статус: stable)
