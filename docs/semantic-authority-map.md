@@ -45,7 +45,7 @@ Do not collapse three different questions:
 - **evaluator-controlled bootstrap forms** — machinery needed to create language behavior;
 - **derived language forms** — behavior expressible by the language once the bootstrap substrate exists.
 
-The current implementation is actively reducing host-owned bootstrap behavior. `lib/macro.my` owns the normal `defmacro` binding after the macro layer loads; a Rust fallback still exists during migration. `define`/`lambda` have explicit necessary-form identities in the evaluator, while historical `def` compatibility remains. These are implementation facts and do not silently rewrite `language-contract.my`; observable-contract changes still require the contract process.
+The current implementation is actively reducing host-owned bootstrap behavior. `lib/macro.my` owns the normal `defmacro` binding, and the Rust evaluator no longer has a `defmacro` fallback. Standard `Session` construction evaluates the macro layer before user code; a bare `Environment::root()` intentionally remains the smaller Rust kernel. `define`/`lambda` have explicit necessary-form identities in the evaluator, while historical `def` compatibility remains. These are implementation facts and do not silently rewrite `language-contract.my`; observable-contract changes still require the contract process.
 
 ## Project identity and source extensions
 
