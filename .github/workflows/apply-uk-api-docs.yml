@@ -1,0 +1,48 @@
+name: Apply Ukrainian API documentation sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/apply-uk-api-docs.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Синхронізувати український API та Guard
+        run: python3 scripts/apply-uk-api-docs.py
+
+      - name: Перевірити surface і документаційні інваріанти
+        run: |
+          cargo test -p my-lisp --test uk_surface_equivalence
+          cargo test -p my-lisp --test ukrainian_api_docs
+          cargo test -p my-lisp --test guard
+          cargo test -p my-lisp --test documentation_contract
+          cargo clippy -p my-lisp --all-targets -- -D warnings
+
+      - name: Перевірити, що main не зрушив паралельно
+        run: |
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+
+      - name: Зафіксувати кінцевий зріз і прибрати helper
+        run: |
+          git config user.name juv4uk
+          git config user.email 85576956+juv4uk@users.noreply.github.com
+          git rm .github/workflows/apply-uk-api-docs.yml scripts/apply-uk-api-docs.py
+          git add AGENTS.md README.md docs/FUNCTIONS.md docs/ukrainian-surface-inventory.md knowledge/guard-reference.wsm lib/surface/uk.my lib/surface/uk-sa-coverage.wsm crates/my-lisp/tests/ukrainian_api_docs.rs
+          git diff --cached --check
+          git commit -m "docs(uk): enforce complete predicate-aware API reference"
+          git push origin HEAD:main
