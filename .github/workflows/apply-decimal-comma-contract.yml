@@ -1,0 +1,48 @@
+name: Apply decimal comma contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/apply-decimal-comma-contract.py
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Застосувати точну reader-міграцію
+        run: python3 scripts/apply-decimal-comma-contract.py
+
+      - name: Перевірити новий контракт reader-а
+        run: |
+          cargo test -p my-lisp --test decimal_comma
+          cargo test -p my-lisp --test documentation_contract
+          cargo test -p my-lisp --test typed_buffer_proposal
+          cargo test -p my-lisp-cli --test semantic_oracle_preservation
+          cargo clippy -p my-lisp --all-targets -- -D warnings
+
+      - name: Перевірити, що main не зрушив паралельно
+        run: |
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+
+      - name: Зафіксувати лише кінцеву зміну
+        run: |
+          git config user.name juv4uk
+          git config user.email 85576956+juv4uk@users.noreply.github.com
+          git rm .github/workflows/apply-decimal-comma-contract.yml scripts/apply-decimal-comma-contract.py
+          git add crates/my-lisp/src/parser.rs crates/my-lisp/tests/decimal_comma.rs language-contract.my docs/language-core-axioms.md README.md
+          git diff --cached --check
+          git commit -m "feat(reader): accept Ukrainian decimal comma"
+          git push origin HEAD:main
