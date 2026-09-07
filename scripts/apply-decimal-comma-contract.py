@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 
+# Цей файл є одноразовим fail-closed applicator-ом і сам видаляється після успіху.
 
 def zaminyty_odyn_raz(shliakh: str, stare: str, nove: str) -> None:
     path = Path(shliakh)
