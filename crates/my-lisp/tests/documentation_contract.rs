@@ -109,18 +109,21 @@ fn tracked_function_reference_tracks_live_library_definitions() {
 }
 
 #[test]
-fn agent_onboarding_keeps_semantic_and_coordination_planes_separate() {
+fn agent_onboarding_records_removed_coordination_surface() {
     let agents = include_str!("../../../AGENTS.md");
     let deprecation = include_str!("../../../knowledge/swarm-legacy-deprecation.wsm");
 
     assert!(agents.contains("my-lisp :9999"));
     assert!(agents.contains("swarm-node :910x"));
-    assert!(agents.contains("deprecated compatibility surface"));
+    assert!(agents.contains("Стара coordination surface на `:9999` фізично видалена"));
+    assert!(agents.contains("мають повертати `unknown op`"));
     assert!(agents.contains("knowledge/swarm-legacy-deprecation.wsm"));
     assert!(
         !agents.contains("This is a\n  first-class pattern, not a fallback"),
         "legacy :9999 mailbox instructions must not return as current onboarding"
     );
     assert!(deprecation.contains("(status . deprecated)"));
+    assert!(deprecation.contains("(physical-status . removed)"));
+    assert!(deprecation.contains("(runtime-rejection . confirmed)"));
     assert!(deprecation.contains("(coordination-authority . swarm-node)"));
 }

@@ -6,8 +6,30 @@ const NO_LIVE_CALLERS_AUDIT: &str =
 const MESH_DOC: &str = include_str!("../../../docs/swarm-mesh-v2.md");
 const AGENT_GUIDE: &str = include_str!("../../../AGENTS.md");
 
+const RETIRED_COORDINATION_OPS: &[&str] = &[
+    "hello",
+    "heartbeat",
+    "claim",
+    "release",
+    "complete-task",
+    "define-task",
+    "validate-tasks",
+    "sync-tasks",
+    "sync-milestone",
+    "next-best-action",
+    "list-task-state",
+    "list-tasks",
+    "presence",
+    "list-claims",
+    "capability-request",
+    "subscribe",
+    "publish",
+    "notify",
+    "poll",
+];
+
 #[test]
-fn legacy_coordination_deprecation_is_machine_readable() {
+fn legacy_coordination_deprecation_records_retired_physical_surface() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     eval_program(DEPRECATION, &mut session).unwrap();
@@ -19,19 +41,23 @@ fn legacy_coordination_deprecation_is_machine_readable() {
         .to_string();
 
     assert!(value.contains("(status . deprecated)"), "{value}");
+    assert!(value.contains("(physical-status . removed)"), "{value}");
     assert!(
         value.contains("(coordination-authority . swarm-node)"),
         "{value}"
     );
-    assert!(value.contains("hello"), "{value}");
-    assert!(value.contains("claim"), "{value}");
-    assert!(value.contains("subscribe"), "{value}");
-    assert!(value.contains("notify"), "{value}");
-    assert!(value.contains("preserve-eval-parse-diagnose"), "{value}");
+    assert!(value.contains("(runtime-rejection . confirmed)"), "{value}");
+    assert!(
+        DEPRECATION.contains("legacy_coordination_rejected.rs"),
+        "machine marker must point to the runtime rejection witness"
+    );
+    for op in RETIRED_COORDINATION_OPS {
+        assert!(value.contains(op), "retired operation {op} is missing: {value}");
+    }
 }
 
 #[test]
-fn no_live_callers_gate_is_ready_for_physical_removal() {
+fn no_live_callers_audit_records_physical_removal() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     eval_program(NO_LIVE_CALLERS_AUDIT, &mut session).unwrap();
@@ -47,39 +73,38 @@ fn no_live_callers_gate_is_ready_for_physical_removal() {
         "{value}"
     );
     assert!(value.contains("(scope . ecosystem)"), "{value}");
-    assert!(value.contains("(status . ready-for-removal)"), "{value}");
+    assert!(value.contains("(status . removed)"), "{value}");
     assert!(
         NO_LIVE_CALLERS_AUDIT.contains("(safe-to-remove . t)"),
-        "physical removal must remain forbidden until the executable audit explicitly opens the gate"
+        "the historical removal gate must remain recorded as open"
     );
     assert!(
         value.contains("(my-lisp-production-operational . confirmed)"),
         "{value}"
     );
     assert!(
-        value.contains("(my-lisp-production-operational-callers)"),
-        "{value}"
+        NO_LIVE_CALLERS_AUDIT.contains("(my-lisp-production-operational-callers . ())"),
+        "production caller inventory must remain empty"
     );
-    assert!(value.contains("(blockers)"), "{value}");
     assert!(
-        value.contains("(active-guidance-legacy-callers)"),
-        "{value}"
+        NO_LIVE_CALLERS_AUDIT.contains("(my-lisp-compatibility-callers . ())"),
+        "compatibility callers must be gone with the physical surface"
     );
-    assert!(value.contains("removal-coupled-evidence"), "{value}");
-    assert!(value.contains("legacy-cli-compatibility-test"), "{value}");
-    assert!(value.contains("semantic-preservation-shield"), "{value}");
-    assert!(value.contains("semantic-callers-allowed"), "{value}");
-    assert!(
-        value.contains("sibling-executable-legacy-caller-search"),
-        "{value}"
-    );
+    assert!(NO_LIVE_CALLERS_AUDIT.contains("(blockers . ())"));
+    assert!(NO_LIVE_CALLERS_AUDIT.contains("(legacy-compatibility-tests . ())"));
+    assert!(NO_LIVE_CALLERS_AUDIT.contains("(physical-surface-still-present . ())"));
+    assert!(NO_LIVE_CALLERS_AUDIT.contains("physical-removal-commit . 32a087f"));
+    assert!(NO_LIVE_CALLERS_AUDIT.contains("swarm_live_caller_inventory.rs"));
+    assert!(NO_LIVE_CALLERS_AUDIT.contains("legacy_coordination_rejected.rs"));
+    assert!(NO_LIVE_CALLERS_AUDIT.contains("semantic_oracle_preservation.rs"));
 }
 
 #[test]
-fn current_agent_authority_forbids_new_legacy_coordination_callers() {
+fn current_agent_authority_records_removed_legacy_coordination() {
     assert!(AGENT_GUIDE.contains("Current coordination authority:"));
     assert!(AGENT_GUIDE.contains("`swarm-node`"));
-    assert!(AGENT_GUIDE.contains("must not be used for new coordination workflows"));
+    assert!(AGENT_GUIDE.contains("Стара coordination surface на `:9999` фізично видалена"));
+    assert!(AGENT_GUIDE.contains("мають повертати `unknown op`"));
     assert!(AGENT_GUIDE.contains("my-lisp :9999"));
     assert!(AGENT_GUIDE.contains("swarm-node :910x"));
 }
