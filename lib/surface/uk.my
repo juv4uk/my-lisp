@@ -47,7 +47,7 @@
 (define решта cdr)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — Arithmetic (status: candidate)
+;; Batch 1 — Arithmetic (status: stable)
 ;; Арифметика
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -66,7 +66,7 @@
 (define найбільше-у-списку max-list)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — Comparisons (status: candidate)
+;; Batch 1 — Comparisons (status: stable)
 ;; Порівняння
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -77,7 +77,7 @@
 (define не-менше? >=)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — Predicates (status: candidate)
+;; Batch 1 — Predicates (status: stable)
 ;; Предикати
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -89,7 +89,7 @@
 (define числовий-буфер? numeric-buffer?)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — Lists (status: candidate)
+;; Batch 1 — Lists (status: stable)
 ;; Списки
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -107,7 +107,7 @@
 (define п'яте fifth)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — Higher-order functions (status: candidate)
+;; Batch 1 — Higher-order functions (status: stable)
 ;; Функції вищого порядку
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -116,7 +116,7 @@
 (define згорнути reduce)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — Strings (status: candidate)
+;; Batch 1 — Strings (status: stable)
 ;; Рядки
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -135,7 +135,7 @@
 (define число-у-текст number->string)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — I/O (status: candidate)
+;; Batch 1 — I/O (status: stable)
 ;; Ввід/вивід
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -148,7 +148,7 @@
 (define середовище env)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — Vectors (status: candidate)
+;; Batch 1 — Vectors (status: stable)
 ;; Вектори
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -157,11 +157,11 @@
 (define довжина-вектора vector-length)
 (define елемент-вектора vector-ref)
 
-; vector-set! is a mutation — keep the ! suffix in Ukrainian too.
+; vector-set! є мутацією — тому знак ! зберігається і в українській назві.
 (define встановити-вектор! vector-set!)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — Time (status: candidate)
+;; Batch 1 — Time (status: stable)
 ;; Час
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -169,7 +169,7 @@
 (define юнікс-час-зараз unix-time-now)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 1 — Other (status: candidate)
+;; Batch 1 — Other (status: stable)
 ;; Інше
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -180,7 +180,7 @@
 (define нехай* let*)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 2 — Persistent map (status: candidate)
+;; Batch 2 — Persistent map (status: stable)
 ;; Сталі асоціативні карти
 ;; User-facing API only; AVL internals (node-*, rotate-*, balance-*) excluded.
 ;; ═══════════════════════════════════════════════════════════════
@@ -192,7 +192,7 @@
 (define карта-у-список map->list)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 2 — Persistent vector (status: candidate)
+;; Batch 2 — Persistent vector (status: stable)
 ;; Сталі вектори
 ;; User-facing API only; RRB-tree internals (vnode-*, vrotate-*, vbalance-*) excluded.
 ;; ═══════════════════════════════════════════════════════════════
@@ -205,7 +205,7 @@
 (define вектор-із-списку vec-from-list)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 2 — Time library (status: candidate)
+;; Batch 2 — Time library (status: stable)
 ;; Бібліотека часу
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -225,7 +225,7 @@
 (define інтернет-час-синхронізація internet-time-sync)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 2 — Knowledge/Reasoning (status: candidate)
+;; Batch 2 — Knowledge/Reasoning (status: stable)
 ;; База знань та логічний висновок
 ;; User-facing API only; indexing internals excluded.
 ;; ═══════════════════════════════════════════════════════════════
@@ -236,6 +236,9 @@
 (define містить-атом? contains-atom?)
 (define вперед-висновок forward-in)
 (define логічний-висновок reason-in)
+; Публічний предикат читається як питання; стара дієслівна назва лишається
+; compatibility alias, щоб наявні українські програми не ламалися.
+(define конфлікт? check-conflict)
 (define перевірити-конфлікт check-conflict)
 (define модуль-відомий? module-known?)
 (define модуль-умови-зараз module-clauses-now)
@@ -255,10 +258,13 @@
 (define змінна? var?)
 (define підставити apply-subst)
 (define відшукати walk)
+; Occurs-check є питанням t/(), тому preferred-назва має ?. Стара назва
+; збережена як compatibility alias.
+(define змінна-зустрічається? occurs-check)
 (define перевірити-зустрічання occurs-check)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 2 — Epistemic (status: candidate)
+;; Batch 2 — Epistemic (status: stable)
 ;; Епістемічні структури
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -275,7 +281,7 @@
 (define підтримуючий-доказ supporting-evidence)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Batch 2 — Missing UK fill (status: candidate)
+;; Batch 2 — Missing UK fill (status: stable)
 ;; ═══════════════════════════════════════════════════════════════
 
 (define генерувати-символ gensym)

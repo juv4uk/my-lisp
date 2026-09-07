@@ -8,6 +8,8 @@
 
 > Regeneration rule: use `scripts/gen-functions.my` for a full refresh. The library sections are a generated snapshot and do not define semantic authority; see [`semantic-authority-map.md`](semantic-authority-map.md).
 
+> Для україномовного програмування користуйтеся [`ukrainian-api.md`](ukrainian-api.md): це повний пояснений довідник 140 stable українських публічних назв. Цей файл лишається технічним інвентарем реалізації, включно з внутрішніми helper-ами та compatibility-only іменами.
+
 ## 1. Builtin'и ядра (live env)
 
 `*`, `+`, `-`, `/`, `<`, `=`, `>`, `abs`, `atom`, `car`, `cdr`, `cons`, `env`, `eq`, `f32-buffer`, `i32-buffer`, `make-vector`, `max`, `max-list`, `min`, `min-list`, `mono-ns`, `ntp-query-raw`, `numeric-buffer-length`, `numeric-buffer-map`, `numeric-buffer-ref`, `numeric-buffer-type`, `numeric-buffer?`, `string-slice`, `timezone-declarations-raw`, `unix-time-now`, `vector`, `vector-length`, `vector-ref`, `vector-set!`

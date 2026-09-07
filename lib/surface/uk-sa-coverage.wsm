@@ -180,7 +180,7 @@
   (entry (knowledge contains-atom? містить-атом? aṇu-sambaddha? stable candidate "aṇu = atom; sambaddha = contained"))
   (entry (knowledge forward-in вперед-висновок abhimukha-anumāna stable candidate "abhimukha = forward; anumāna = inference"))
   (entry (knowledge reason-in логічний-висновок anumāna stable candidate "anumāna = inference"))
-  (entry (knowledge check-conflict перевірити-конфлікт virodha-parīkṣā stable candidate "virodha = conflict; parīkṣā = check"))
+  (entry (knowledge check-conflict конфлікт? virodha-parīkṣā stable candidate "virodha = conflict; parīkṣā = check"))
   (entry (knowledge module-known? модуль-відомий? — stable missing "no SA yet"))
   (entry (knowledge module-clauses-now модуль-умови-зараз — stable missing "no SA yet"))
   (entry (reasoning prove-goal довести-мету siddhi-sādhana stable candidate "siddhi = proof; sādhana = accomplishment"))
@@ -197,7 +197,7 @@
   (entry (unification var? змінна? cihna? stable candidate "cihna = mark/symbol"))
   (entry (unification apply-subst підставити pratyāroha stable candidate "pratyāroha = substitution"))
   (entry (unification walk відшукати vicāraṇa-gamana stable candidate "vicāraṇa-gamana = investigation-path"))
-  (entry (unification occurs-check перевірити-зустрічання parivṛtti-parīkṣā stable candidate "parivṛtti = occurrence; parīkṣā = check"))
+  (entry (unification occurs-check змінна-зустрічається? parivṛtti-parīkṣā stable candidate "parivṛtti = occurrence; parīkṣā = check"))
 
   ;; ── Epistemic (Batch 2) ─────────────────────────────────────
   (entry (epistemic claim? твердження? pratyaya? stable candidate "pratyaya = claim/conviction"))
