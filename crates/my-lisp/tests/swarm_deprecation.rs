@@ -31,7 +31,7 @@ fn legacy_coordination_deprecation_is_machine_readable() {
 }
 
 #[test]
-fn no_live_callers_removal_gate_fails_closed_while_blockers_exist() {
+fn no_live_callers_gate_is_ready_for_physical_removal() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     eval_program(NO_LIVE_CALLERS_AUDIT, &mut session).unwrap();
@@ -47,10 +47,10 @@ fn no_live_callers_removal_gate_fails_closed_while_blockers_exist() {
         "{value}"
     );
     assert!(value.contains("(scope . ecosystem)"), "{value}");
-    assert!(value.contains("(status . partial)"), "{value}");
+    assert!(value.contains("(status . ready-for-removal)"), "{value}");
     assert!(
-        NO_LIVE_CALLERS_AUDIT.contains("(safe-to-remove . ())"),
-        "partial audit must fail closed instead of claiming removal safety"
+        NO_LIVE_CALLERS_AUDIT.contains("(safe-to-remove . t)"),
+        "physical removal must remain forbidden until the executable audit explicitly opens the gate"
     );
     assert!(
         value.contains("(my-lisp-production-operational . confirmed)"),
@@ -60,9 +60,14 @@ fn no_live_callers_removal_gate_fails_closed_while_blockers_exist() {
         value.contains("(my-lisp-production-operational-callers)"),
         "{value}"
     );
-    assert!(value.contains("cross-repo-active-guidance"), "{value}");
-    assert!(value.contains("cml/tasks.my"), "{value}");
+    assert!(value.contains("(blockers)"), "{value}");
+    assert!(
+        value.contains("(active-guidance-legacy-callers)"),
+        "{value}"
+    );
+    assert!(value.contains("removal-coupled-evidence"), "{value}");
     assert!(value.contains("legacy-cli-compatibility-test"), "{value}");
+    assert!(value.contains("semantic-preservation-shield"), "{value}");
     assert!(value.contains("semantic-callers-allowed"), "{value}");
     assert!(
         value.contains("sibling-executable-legacy-caller-search"),
