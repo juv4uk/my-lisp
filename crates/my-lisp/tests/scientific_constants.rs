@@ -15,6 +15,26 @@ fn eval_science(source: &str) -> String {
         .to_string()
 }
 
+fn eval_science_knowledge(source: &str) -> String {
+    let mut session = Session::default();
+    for library in [
+        include_str!("../../../lib/core.my"),
+        include_str!("../../../lib/unify.my"),
+        include_str!("../../../lib/reason.my"),
+        include_str!("../../../lib/forward.my"),
+        include_str!("../../../lib/knowledge.my"),
+        include_str!("../../../lib/result-status.my"),
+        include_str!("../../../lib/quantity.my"),
+        include_str!("../../../lib/si.my"),
+    ] {
+        eval_program(library, &mut session).expect("science/knowledge library should load");
+    }
+    eval_program(source, &mut session)
+        .unwrap_or_else(|e| panic!("science knowledge expression failed: {e}\nsource: {source}"))
+        .value
+        .to_string()
+}
+
 #[test]
 fn bare_number_quantity_and_scientific_constant_are_distinct_data_levels() {
     let source = r#"
@@ -112,6 +132,54 @@ fn exact_rational_values_remain_unchanged_after_structuring() {
         eval_science("si:avogadro-constant"),
         "602214076000000000000000"
     );
+}
+
+#[test]
+fn constant_to_knowledge_projection_is_pure_and_admission_ready() {
+    let source = r#"
+        (def before *knowledge-journal*)
+        (def clauses
+          (scientific-constant->clauses si:defining-speed-of-light))
+        (list
+          (length clauses)
+          (knowledge-clauses-valid? clauses)
+          (equal? before *knowledge-journal*))
+    "#;
+    assert_eq!(eval_science_knowledge(source), "(7 t t)");
+}
+
+#[test]
+fn advice_taker_can_reason_about_an_admitted_scientific_constant() {
+    let source = r#"
+        (def admission
+          (advise-all science
+            (scientific-constant->clauses si:defining-speed-of-light)))
+        (list
+          (car admission)
+          (result-status
+            (reason-in-observe
+              (quote science)
+              (quote (constant-value si:speed-of-light 299792458))))
+          (result-status
+            (reason-in-observe
+              (quote science)
+              (quote (constant-status si:speed-of-light exact-by-definition))))
+          (result-status
+            (reason-in-observe
+              (quote science)
+              (quote (constant-unit si:speed-of-light
+                       (unit/1 ((metre 1) (second -1))))))))
+    "#;
+    assert_eq!(eval_science_knowledge(source), "(accepted proved proved proved)");
+}
+
+#[test]
+fn malformed_constant_cannot_project_into_knowledge() {
+    let source = r#"
+        (scientific-constant->clauses
+          (quote (scientific-constant/1 broken)))
+    "#;
+    assert_eq!(eval_science(source), "()");
 }
 
 #[test]
