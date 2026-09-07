@@ -64,11 +64,10 @@ fn main() {
         environment: Environment::root(),
     };
 
-    // The language-owned macro layer must exist before core.my is evaluated.
-    // This keeps the optimized FASL path while ensuring core definitions such
-    // as `and`, `or`, and `let` resolve `defmacro` to lib/macro.my rather than
-    // silently using the evaluator compatibility fallback.
-    if let Err(e) = my_lisp::eval_program(my_lisp::MACRO_LIBRARY_SOURCE, &mut session) {
+    // Establish the one narrow host mechanism needed to construct macros,
+    // then evaluate the language-owned macro layer. This is explicit now:
+    // the evaluator no longer has a `make-macro` head-name escape hatch.
+    if let Err(e) = my_lisp::load_macro_library(&mut session) {
         eprintln!(
             "Error loading bootstrap macro.my: {}",
             e.render(my_lisp::MACRO_LIBRARY_SOURCE)
@@ -160,17 +159,15 @@ fn main() {
     #[allow(unused_variables)]
     let core_lib = CORE_SRC;
 
-    // The sexpr/oracle server creates a fresh Session for every connection.
-    // Give those sessions the same semantic bootstrap order as the local CLI:
-    // language-owned macros first, then core, time, UTF-8 and process policy.
-    // Keep this as one immutable process-lifetime string because the threaded
-    // server accepts a 'static seed.
+    // The sexpr/oracle server creates a fresh custom Environment per connection.
+    // Its handler now establishes the macro substrate explicitly before this
+    // remaining language-owned seed is evaluated, so macro.my need not be
+    // duplicated into the seed string.
     static SEXPR_BOOTSTRAP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     let sexpr_bootstrap_lib: &'static str = SEXPR_BOOTSTRAP
         .get_or_init(|| {
             format!(
-                "{}\n{}\n{}\n{}\n{}",
-                my_lisp::MACRO_LIBRARY_SOURCE,
+                "{}\n{}\n{}\n{}",
                 CORE_SRC,
                 my_lisp::TIME_LIBRARY_SOURCE,
                 my_lisp::UTF8_LIBRARY_SOURCE,
