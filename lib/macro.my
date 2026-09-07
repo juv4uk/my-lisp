@@ -8,10 +8,9 @@
 ; `make-macro` is the narrow host substrate Closure -> Macro. Everything
 ; that introduces a named macro is expressed here in the language itself.
 ;
-; The canonical library binding now owns the real surface name `defmacro`.
-; The evaluator still keeps a temporary compatibility fallback for sessions
-; that have not loaded this library yet; once this file is loaded, the
-; language-owned macro binding takes precedence over that fallback.
+; The canonical library binding owns the real surface name `defmacro`.
+; Standard `Session` construction evaluates this file before user code, while
+; a bare `Environment::root()` intentionally remains the smaller Rust kernel.
 
 (define defmacro
   (make-macro

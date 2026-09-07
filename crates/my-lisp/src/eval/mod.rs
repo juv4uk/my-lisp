@@ -4,7 +4,7 @@
 //!
 //! The evaluator is split by concern: this module owns the trampoline loop and
 //! dispatch table, `arithmetic` owns exact/inexact number handling, `special_forms`
-//! owns the McCarthy primitives plus compatibility `def`/`defmacro`/`cond`,
+//! owns the McCarthy primitives plus compatibility `def`/`cond`,
 //! `necessary_forms` owns the immutable DEFINE/LAMBDA identities, and `closures`
 //! owns lambda construction and function/macro application.
 pub(crate) use special_forms::digest::sha256 as digest_sha256;
@@ -188,13 +188,6 @@ fn evaluate_list(
         }
         Some("def") => {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("defmacro") => {
-            if let Some(Value::Macro(ref closure)) = environment.get("defmacro") {
-                closures::apply_macro(closure.clone(), arguments, environment, span)
-            } else {
-                special_forms::evaluate_defmacro(arguments, environment, span).map(EvalStep::Value)
-            }
         }
         Some("make-macro") => {
             special_forms::exact_arity("make-macro", arguments, 1, span)?;

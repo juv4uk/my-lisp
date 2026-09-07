@@ -1,9 +1,8 @@
 //! The McCarthy primitives (`eq`, `car`, `cdr`, `cons`, `cond`, `quote`'s
-//! helper), plus `def` and `defmacro` — the kernel special forms, split out
-//! from the host-capability primitives (`io`, `file_io`, `tcp`, `process`)
-//! and string ops (`strings`) that used to share one file with them.
+//! helper), plus the compatibility `def` surface. Language-owned `defmacro`
+//! is bootstrapped from `lib/macro.my`; the Rust kernel no longer implements it.
 
-use crate::eval::{closures, evaluate, evaluate_step, EvalStep};
+use crate::eval::{evaluate, evaluate_step, EvalStep};
 use crate::{Environment, ErrorKind, Expr, ExprKind, LanguageError, Span, Value};
 use std::rc::Rc;
 
@@ -26,34 +25,6 @@ pub(crate) fn evaluate_definition(
     // Der gemeinsame lexikalische Frame macht rekursive Definitionen nach der Bindung für ihre Closure sichtbar.
     environment.define(name.clone(), value.clone());
     Ok(value)
-}
-
-pub(crate) fn evaluate_defmacro(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    if arguments.len() < 2 {
-        return Err(LanguageError::new(
-            ErrorKind::Arity,
-            "defmacro expects a name, parameters, and a body · defmacro ochikuie nazvu, parametry y tilo · defmacro erwartet einen Namen, Parameter und einen Rumpf",
-            span,
-        ));
-    }
-    let ExprKind::Symbol(name) = &arguments[0].kind else {
-        return Err(LanguageError::new(
-            ErrorKind::InvalidForm,
-            "defmacro expects a symbol name · defmacro ochikuie nazvu-symvol · defmacro erwartet einen Symbolnamen",
-            arguments[0].span,
-        ));
-    };
-    let closure_val = closures::create_lambda(&arguments[1..], environment, span)?;
-    let Value::Closure(closure) = &closure_val else {
-        unreachable!("create_lambda always returns Closure")
-    };
-    let macro_val = Value::Macro(closure.clone());
-    environment.define(name.clone(), macro_val.clone());
-    Ok(macro_val)
 }
 
 pub(crate) fn evaluate_cond(
