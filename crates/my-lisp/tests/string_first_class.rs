@@ -54,7 +54,25 @@ fn all_migrated_string_mechanisms_keep_their_surface_behavior() {
 }
 
 #[test]
-fn evaluator_source_does_not_dispatch_migrated_string_names() {
+fn codepoint_and_digest_mechanisms_are_first_class_values() {
+    assert_eq!(
+        eval("(def materialize codepoint->string) (materialize 955)"),
+        Value::String(Rc::from("λ")),
+    );
+    assert_eq!(
+        eval("(def scalar string->codepoint) (scalar \"λ\")"),
+        Value::Number(955.0, my_lisp::Exactness::Exact),
+    );
+    assert_eq!(
+        eval("(def digest sha256-hex) (digest \"abc\")"),
+        Value::String(Rc::from(
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        )),
+    );
+}
+
+#[test]
+fn evaluator_source_does_not_dispatch_migrated_eager_names() {
     let evaluator = include_str!("../src/eval/mod.rs");
     for name in [
         "string-append",
@@ -64,6 +82,9 @@ fn evaluator_source_does_not_dispatch_migrated_string_names() {
         "string->symbol",
         "string-first",
         "string-rest",
+        "codepoint->string",
+        "string->codepoint",
+        "sha256-hex",
     ] {
         assert!(
             !evaluator.contains(&format!("Some(\"{name}\")")),
