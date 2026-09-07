@@ -9,13 +9,14 @@ permissions:
 
 jobs:
   test:
-    name: cargo test --workspace before release
+    name: cargo test + clippy before release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
+      - run: cargo clippy --workspace --all-targets -- -D warnings
 
   create-release:
     name: Create the GitHub release
