@@ -96,7 +96,7 @@ Those mechanisms do not become new members of the seven-operation semantic primi
 
 Current implementation work distinguishes evaluator-controlled necessary-form identities from forms the language can derive after bootstrapping.
 
-`define` and `lambda` have explicit necessary-form identities in the evaluator. Historical `def` compatibility remains. `lib/macro.my` now owns the normal `defmacro` binding after the macro layer loads; a Rust fallback still exists during migration.
+`define` and `lambda` have explicit necessary-form identities in the evaluator. Historical `def` compatibility remains. `lib/macro.my` owns the normal `defmacro` binding, and the Rust evaluator no longer has a `defmacro` fallback. A bare `Environment::root()` remains the smaller Rust kernel, while standard `Session` construction evaluates the macro layer before user code.
 
 This is an **implementation ownership migration**, not an automatic semantic-contract rewrite. `language-contract.my` remains authoritative for observable Level 1/2 guarantees until deliberately revised.
 
