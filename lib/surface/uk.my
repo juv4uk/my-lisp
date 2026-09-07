@@ -9,8 +9,9 @@
 ; Principle: one semantic implementation, multiple surface names.
 ;           одна семантична реалізація, багато поверхневих імен.
 ;
-; Loading order: macro.my → core.my → uk.my (this file).
-; All English names referenced here are already bound before this file loads.
+; Full-profile loading order: macro.my → core.my → unify.my → reason.my →
+; forward.my → knowledge.my → persistent-map.my → persistent-vector.my →
+; time.my → epistemic.my → uk.my (this file).
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Necessary evaluator forms — macros expanding to canonical surfaces
@@ -229,7 +230,7 @@
 (define описати describe)
 (define зібрати-факти-про collect-facts-about)
 (define містить-атом? contains-atom?)
-(define往前-висновок forward-in)
+(define вперед-висновок forward-in)
 (define логічний-висновок reason-in)
 (define перевірити-конфлікт check-conflict)
 (define модуль-відомий? module-known?)
@@ -282,4 +283,3 @@
 ;; The actual SA bindings are in sa.my; these UK lines ensure UK
 ;; coverage for gensym and env which were previously missing.
 ;; ═══════════════════════════════════════════════════════════════
-

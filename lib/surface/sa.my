@@ -10,8 +10,9 @@
 ;   stable    — ratified against primary sources (Canon 0+7 calibration doc)
 ;   candidate — proposed in Batch 1 research, pending ratification
 ;
-; Loading order: macro.my → core.my → sa.my (this file).
-; All English names referenced here are already bound before this file loads.
+; Full-profile loading order: macro.my → core.my → unify.my → reason.my →
+; forward.my → knowledge.my → persistent-map.my → persistent-vector.my →
+; time.my → epistemic.my → sa.my (this file).
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Canon 0+7 — Sanskrit surface (status: stable)
@@ -283,4 +284,3 @@
 
 ; nāman-nirmāṇa = name generation
 (define nāman-nirmāṇa gensym)
-

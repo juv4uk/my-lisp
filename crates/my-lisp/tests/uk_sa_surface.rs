@@ -1,9 +1,25 @@
 use my_lisp::{eval_program, load_core_library, Session};
 
+fn load_surface_prerequisites(session: &mut Session) {
+    for source in [
+        include_str!("../../../lib/unify.my"),
+        include_str!("../../../lib/reason.my"),
+        include_str!("../../../lib/forward.my"),
+        include_str!("../../../lib/knowledge.my"),
+        include_str!("../../../lib/persistent-map.my"),
+        include_str!("../../../lib/persistent-vector.my"),
+        include_str!("../../../lib/time.my"),
+        include_str!("../../../lib/epistemic.my"),
+    ] {
+        eval_program(source, session).expect("surface prerequisite should load");
+    }
+}
+
 /// Load core library + Ukrainian surface, return a fresh session.
 fn uk_session() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core bootstrap");
+    load_surface_prerequisites(&mut session);
     eval_program(include_str!("../../../lib/surface/uk.my"), &mut session)
         .expect("Ukrainian surface should load");
     session
@@ -13,6 +29,7 @@ fn uk_session() -> Session {
 fn sa_session() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core bootstrap");
+    load_surface_prerequisites(&mut session);
     eval_program(include_str!("../../../lib/surface/sa.my"), &mut session)
         .expect("Sanskrit surface should load");
     session
@@ -397,6 +414,7 @@ fn uk_and_sa_produce_same_result() {
     // Load both surfaces
     let mut s = Session::default();
     load_core_library(&mut s).expect("core");
+    load_surface_prerequisites(&mut s);
     eval_program(include_str!("../../../lib/surface/uk.my"), &mut s).expect("uk");
     eval_program(include_str!("../../../lib/surface/sa.my"), &mut s).expect("sa");
 

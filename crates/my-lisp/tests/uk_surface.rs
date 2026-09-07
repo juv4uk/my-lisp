@@ -1,9 +1,25 @@
 use my_lisp::{eval_program, load_core_library, Session};
 
+fn load_surface_prerequisites(session: &mut Session) {
+    for source in [
+        include_str!("../../../lib/unify.my"),
+        include_str!("../../../lib/reason.my"),
+        include_str!("../../../lib/forward.my"),
+        include_str!("../../../lib/knowledge.my"),
+        include_str!("../../../lib/persistent-map.my"),
+        include_str!("../../../lib/persistent-vector.my"),
+        include_str!("../../../lib/time.my"),
+        include_str!("../../../lib/epistemic.my"),
+    ] {
+        eval_program(source, session).expect("surface prerequisite should load");
+    }
+}
+
 #[test]
 fn ukrainian_surface_defines_functions_without_rust_knowing_ukrainian_form_names() {
     let mut session = Session::default();
     load_core_library(&mut session).expect("canonical macro + core bootstrap should preload");
+    load_surface_prerequisites(&mut session);
     eval_program(include_str!("../../../lib/surface/uk.my"), &mut session)
         .expect("Ukrainian surface should preload");
 
@@ -25,6 +41,7 @@ fn ukrainian_surface_defines_functions_without_rust_knowing_ukrainian_form_names
 fn canonical_ukrainian_syntax_and_batch_one_aliases_preserve_results() {
     let mut session = Session::default();
     load_core_library(&mut session).expect("canonical macro + core bootstrap should preload");
+    load_surface_prerequisites(&mut session);
     eval_program(include_str!("../../../lib/surface/uk.my"), &mut session)
         .expect("Ukrainian surface should preload");
 
