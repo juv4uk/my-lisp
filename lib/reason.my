@@ -1,10 +1,153 @@
 ; reason.my — backward-chaining Advice Taker inference engine.
 ; Rules are `(head . body)`. `reason` preserves its historical public result:
 ; a list of `(substitution proof)` pairs, or `()` when no proof is found.
+;
+; B5 indexing remains ordinary finite Lisp data. A rule set is indexed only
+; when every rule head and the current goal have a safely observable symbol
+; predicate. Variable heads/goals and other unusual historical shapes fall
+; back to the exact linear scan. The small alist index is also capped at 64
+; distinct predicates so an adversarial unique-predicate corpus cannot turn
+; index construction into an unbounded O(N^2) walk.
+
+(def *reason-index-schema* (quote reason-index/1))
+(def *reason-index-max-predicates* 64)
+
+; Shape: (reason-index/1 indexed|linear ORIGINAL-RULES BUCKETS)
+; A bucket is (PREDICATE RULE...), with rules restored to original order.
+(def reason-index-mode second)
+(def reason-index-rules third)
+(def reason-index-buckets fourth)
+
+(def reason-index?
+  (lambda (value)
+    (cond
+      ((atom value) (quote ()))
+      ((eq (car value) *reason-index-schema*) t)
+      (t (quote ())))))
+
+(def reason-index-linear
+  (lambda (rules)
+    (list *reason-index-schema* (quote linear) rules (quote ()))))
+
+; Only ordinary predicate-headed compound terms are safe index keys.
+; `(var x)` is deliberately excluded: as a logic variable it can unify with
+; any rule head and must therefore retain the historical full scan.
+(def reason-term-predicate
+  (lambda (term)
+    (cond
+      ((atom term) (quote ()))
+      ((var? term) (quote ()))
+      ((atom (car term))
+       (cond
+         ((symbol? (car term)) (car term))
+         (t (quote ()))))
+      (t (quote ())))))
+
+(def reason-rule-predicate
+  (lambda (rule)
+    (cond
+      ((atom rule) (quote ()))
+      (t (reason-term-predicate (car rule))))))
+
+; Buckets are accumulated with each bucket's rules reversed. Predicate count
+; is bounded, so this structural alist update has a fixed worst-case bucket
+; walk rather than an unbounded distinct-predicate walk.
+(def reason-index-add-reversed
+  (lambda (predicate rule buckets)
+    (cond
+      ((atom buckets) (list (list predicate rule)))
+      ((eq predicate (car (car buckets)))
+       (cons
+         (cons predicate (cons rule (cdr (car buckets))))
+         (cdr buckets)))
+      (t
+       (cons
+         (car buckets)
+         (reason-index-add-reversed predicate rule (cdr buckets)))))))
+
+(def reason-index-normalize-buckets
+  (lambda (buckets)
+    (cond
+      ((atom buckets) (quote ()))
+      (t
+       (cons
+         (cons (car (car buckets)) (reverse (cdr (car buckets))))
+         (reason-index-normalize-buckets (cdr buckets)))))))
+
+(def reason-index-build-scan
+  (lambda (remaining original buckets predicate-count)
+    (cond
+      ((atom remaining)
+       (list
+         *reason-index-schema*
+         (quote indexed)
+         original
+         (reason-index-normalize-buckets buckets)))
+      (t
+       (let ((predicate (reason-rule-predicate (car remaining))))
+         (cond
+           ; One non-indexable head is enough to require the exact historical
+           ; scan, because that head may unify with predicates outside a bucket.
+           ((atom predicate) (reason-index-linear original))
+           (t
+            (let ((entry (assoc predicate buckets)))
+              (cond
+                ((atom entry)
+                 (cond
+                   ((< predicate-count *reason-index-max-predicates*)
+                    (reason-index-build-scan
+                      (cdr remaining)
+                      original
+                      (reason-index-add-reversed
+                        predicate (car remaining) buckets)
+                      (+ predicate-count 1)))
+                   (t (reason-index-linear original))))
+                (t
+                 (reason-index-build-scan
+                   (cdr remaining)
+                   original
+                   (reason-index-add-reversed
+                     predicate (car remaining) buckets)
+                   predicate-count)))))))))))
+
+(def reason-make-index
+  (lambda (rules)
+    (reason-index-build-scan rules rules (quote ()) 0)))
+
+(def reason-ensure-index
+  (lambda (rules-or-index)
+    (cond
+      ((reason-index? rules-or-index) rules-or-index)
+      (t (reason-make-index rules-or-index)))))
+
+; If indexing is safe, only rules whose head starts with the same predicate
+; can unify with this goal. Bucket order is exactly source rule order. Any
+; unsafe goal or disabled index returns every original rule unchanged.
+(def reason-index-candidates
+  (lambda (goal rules-or-index)
+    (let ((index (reason-ensure-index rules-or-index)))
+      (cond
+        ((eq (reason-index-mode index) (quote linear))
+         (reason-index-rules index))
+        (t
+         (let ((predicate (reason-term-predicate goal)))
+           (cond
+             ((atom predicate) (reason-index-rules index))
+             (t
+              (let ((entry (assoc predicate (reason-index-buckets index))))
+                (cond
+                  ((atom entry) (quote ()))
+                  (t (cdr entry))))))))))))
 
 (def reason
   (lambda (goal rules)
-    (prove-goal goal rules (quote ()) rules 0)))
+    (let ((index (reason-make-index rules)))
+      (prove-goal
+        goal
+        (reason-index-candidates goal index)
+        (quote ())
+        index
+        0))))
 
 ; Accumulate one rule's result list onto a reversed global accumulator.
 ; Walking `results` left-to-right and consing each item means `acc` is always
@@ -17,14 +160,18 @@
            (cdr results)
            (cons (car results) acc))))))
 
-; Tail-recursive rule scan. The old implementation nested the recursive
-; `prove-goal` call under `append`, consuming O(number-of-rules) host stack
-; and repeatedly copying prefixes. We now scan in tail position, accumulate
-; reversed results with cons, and reverse exactly once at the end. Observable
-; result order and proof shape are unchanged.
+; Tail-recursive rule scan. `all-rules` may be a plain historical rule list or
+; a B5 reason-index/1. We normalize it once here; recursive body goals then
+; reuse the same finite index instead of rebuilding it at every depth.
 (def prove-goal
   (lambda (goal rules subst all-rules depth)
-    (prove-goal-scan goal rules subst all-rules depth (quote ()))))
+    (prove-goal-scan
+      goal
+      rules
+      subst
+      (reason-ensure-index all-rules)
+      depth
+      (quote ()))))
 
 (def prove-goal-scan
   (lambda (goal rules subst all-rules depth acc)
@@ -94,31 +241,38 @@
 (def prove-goal-state
   (lambda (goal state all-rules depth)
     (let ((subst (car state))
-          (proofs (second state)))
+          (proofs (second state))
+          (index (reason-ensure-index all-rules)))
       (cond
         ((eq (car goal) (quote not))
-         (let ((not-result
-                 (prove-goal
-                   (second goal)
-                   all-rules
-                   subst
-                   all-rules
-                   depth)))
-           (cond
-             ((atom not-result)
-              (list
+         (let ((inner (second goal)))
+           (let ((not-result
+                   (prove-goal
+                     inner
+                     (reason-index-candidates inner index)
+                     subst
+                     index
+                     depth)))
+             (cond
+               ((atom not-result)
                 (list
-                  subst
-                  (append
-                    proofs
-                    (list
+                  (list
+                    subst
+                    (append
+                      proofs
                       (list
-                        (quote proved-not)
-                        (second goal)))))))
-             (t (quote ())))))
+                        (list
+                          (quote proved-not)
+                          inner))))))
+               (t (quote ()))))))
         (t
          (map-goal-results
-           (prove-goal goal all-rules subst all-rules depth)
+           (prove-goal
+             goal
+             (reason-index-candidates goal index)
+             subst
+             index
+             depth)
            proofs))))))
 
 (def map-goal-results
