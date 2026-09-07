@@ -4,7 +4,7 @@
 
 use my_lisp::{
     eval_parsed_expressions, eval_parsed_expressions_incremental, eval_program,
-    load_process_library, parse, Environment, Session, MACRO_LIBRARY_SOURCE, TIME_LIBRARY_SOURCE,
+    load_macro_library, load_process_library, parse, Environment, Session, TIME_LIBRARY_SOURCE,
 };
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener};
@@ -62,11 +62,10 @@ pub(crate) fn run_tcp_repl(port: u16, core_lib: &str, allowed: &[String]) {
         let mut session = Session { environment };
 
         // Keep the same language bootstrap invariant as the local CLI:
-        // establish the language-owned `defmacro` before core.my defines
-        // its macros, then install language-owned time and process semantics.
-        // The host contributes only raw observations/capabilities such as
-        // mono-ns, unix-time-now, and process-run-raw.
-        if eval_program(MACRO_LIBRARY_SOURCE, &mut session).is_ok() {
+        // explicitly install the narrow make-macro mechanism, then let Lisp
+        // own defmacro before core.my defines its derived forms. No evaluator
+        // head-name fallback is allowed to rescue a bare custom Environment.
+        if load_macro_library(&mut session).is_ok() {
             if let Ok(core_ast) = parse(core_lib) {
                 if eval_parsed_expressions(&core_ast, &mut session).is_ok()
                     && eval_program(TIME_LIBRARY_SOURCE, &mut session).is_ok()
