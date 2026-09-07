@@ -175,7 +175,9 @@ Found as a real gap while walking `conformance.my` fixture-by-fixture (`docs/con
 
 ### S1 — Never silently turn an exact value into an approximation · Ніколи мовчки не перетворювати точне значення на наближення
 
-**Numeric literal syntax does not imply inexactness. A finite decimal or base-10 scientific literal denotes its exact mathematical rational value.** `(/ 1 3)` means exactly `1/3`, not `0.333...`. A concrete machine may have real resource limits and refuse the operation (`NumericOverflow` or similar) — but it must never quietly turn `1/3` into `0.333343` and pretend that's the same value.
+**Контракт 5.0:** крапка й кома є рівноправними написаннями десяткового роздільника, коли весь токен є коректним скінченним десятковим або base-10 scientific числом. `12.455` і `12,455` означають одне й те саме точне раціональне значення; кома в нечисловому символі лишається частиною символу.
+
+**Numeric literal syntax does not imply inexactness. A finite decimal or base-10 scientific literal denotes its exact mathematical rational value. Contract 5.0 accepts either `.` or `,` as its decimal-separator spelling when the whole token is otherwise numeric.** `(/ 1 3)` means exactly `1/3`, not `0.333...`. A concrete machine may have real resource limits and refuse the operation (`NumericOverflow` or similar) — but it must never quietly turn `1/3` into `0.333343` and pretend that's the same value.
 
 **Синтаксис числового літерала не означає неточність. Скінченний десятковий або експоненційний літерал означає його точне математичне раціональне значення.** `(/ 1 3)` означає точно `1/3`, не `0.333...`. Конкретна машина може мати реальні обмеження ресурсів і відмовити у виконанні операції (`NumericOverflow` чи подібне) — але вона ніколи не має мовчки перетворити `1/3` на `0.333343`, вдаючи, що це те саме значення.
 

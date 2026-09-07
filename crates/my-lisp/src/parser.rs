@@ -115,18 +115,8 @@ impl Parser<'_> {
                     let buffer = if f32_elements {
                         let mut values = Vec::with_capacity(elements.len());
                         for element in elements {
-                            let span = element.span;
                             let number = match element.kind {
-                                ExprKind::Number(_, _) => self.source[span.start..span.end]
-                                    .parse::<f32>()
-                                    .map(f64::from)
-                                    .map_err(|_| {
-                                        self.error(
-                                            "#f32 expects numeric elements",
-                                            span.start,
-                                            span.end,
-                                        )
-                                    })?,
+                                ExprKind::Number(value, _) => value,
                                 ExprKind::Rational(value) => value.as_f64(),
                                 _ => {
                                     return Err(self.error(
@@ -328,6 +318,12 @@ impl Parser<'_> {
             self.bump();
         }
         let token = &self.source[start..self.cursor];
+        let decimal_with_dot = if token.contains(',') && !token.contains('.') {
+            Some(token.replace(',', "."))
+        } else {
+            None
+        };
+        let decimal_text = decimal_with_dot.as_deref().unwrap_or(token);
         // `Rational::from_literal` parses arbitrary-precision numerator/denominator
         // text directly (see bignum.rs) — a token like `123456789012345678901/2`,
         // far too big for `i64`, is still an exact rational literal, not a symbol.
@@ -345,8 +341,8 @@ impl Parser<'_> {
             } else {
                 ExprKind::Symbol(token.into())
             }
-        } else if token.contains(['.', 'e', 'E']) {
-            let kind = match crate::value::Rational::from_decimal_literal(token) {
+        } else if token.contains(['.', ',', 'e', 'E']) {
+            let kind = match crate::value::Rational::from_decimal_literal(decimal_text) {
                 Ok(r) => match r.as_precise_i64() {
                     Some(value) => ExprKind::Number(value as f64, Exactness::Exact),
                     None => ExprKind::Rational(r),

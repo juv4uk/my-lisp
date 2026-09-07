@@ -69,8 +69,8 @@
 ; зворотносумісній зміні семантики. Що НЕ піднімає цей файл: додавання
 ; функції в lib/core.my, фікс бага в lib/*.my, фікс CI, новий
 ; Rust-примітив у вже покритому Рівнем 2 класі можливостей.
-((major . 4) (minor . 0)
- (note . "RATIFIED by owner 2026-09-07. Reader apostrophe semantics are observable S2 semantics: an apostrophe at expression start is canonical QUOTE reader sugar, while an apostrophe inside an identifier remains an ordinary symbol character (for example, об'єкт and п'ять stay single identifiers). This corrects the earlier over-broad rule that removed quote sugar entirely; because existing source text beginning with apostrophe changes observable parsing/evaluation, the contract bumps 3.0 -> 4.0. Contract 3.0 error classifications remain unchanged. · Апостроф на початку виразу є синтаксичним цукром канонічного QUOTE; апостроф усередині ідентифікатора лишається звичайним знаком символу. Це спостережувана семантика reader-а, тому контракт піднято з 3.0 до 4.0.")
+((major . 5) (minor . 0)
+ (note . "RATIFIED by owner 2026-09-07. Contract 5.0 accepts both dot and comma as spellings of the decimal separator for an otherwise valid finite decimal or base-10 scientific numeric token: 12.455 and 12,455 denote the same exact value. Comma gains numeric meaning only when the whole token parses as a number; ordinary symbols containing commas remain symbols. This is observable reader semantics: 12,455 was previously a symbol, so the contract bumps 4.0 -> 5.0. Contract 4.0 apostrophe semantics and Contract 3.0 error classifications remain unchanged. · Контракт 5.0 дозволяє і крапку, і кому як написання десяткового роздільника у коректному числовому токені: 12.455 і 12,455 означають те саме точне значення. Кома має числовий сенс лише тоді, коли весь токен є числом; у звичайному символі вона лишається частиною символу. Оскільки раніше 12,455 читалося як символ, це спостережувана зміна reader-а і major-перехід 4.0 -> 5.0.")
  (covers . (G1 G2 G3 G4 G5 G6 G7 G8 S1 S2 S3))
  (invariants
    . ((shadowing
@@ -86,6 +86,8 @@
            callable namespace. This boundary is part of contract 2.1.")
       (reader-apostrophe
         . "Contract 4.0: apostrophe is context-sensitive reader syntax. At the start of an expression, 'form desugars exactly to (quote form). Inside an identifier, apostrophe is an ordinary symbol character; об'єкт, п'ять and зв'язок remain single identifiers. The reader must not split internal apostrophes or reinterpret them as nested quote syntax.")
+      (reader-decimal-separator
+        . "Contract 5.0: dot and comma are equivalent decimal-separator spellings only for an otherwise valid finite decimal/base-10 scientific numeric token. 12.455 and 12,455 denote the same exact rational value; -0,25 and 1,5e3 are valid numeric spellings. A comma in a non-numeric token remains an ordinary symbol character, so а,б and версія1,2 remain symbols; mixed or repeated separators that do not form a valid number also remain symbols under the existing malformed-literal rule.")
       (error-classification
         . "Contract 3.0: ErrorKind is observable semantics. DivisionByZero
            names a zero divisor; NumericOverflow names an exact-arithmetic
