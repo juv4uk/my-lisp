@@ -1,7 +1,7 @@
 //! Consume the bounded F6 record stream and reconstruct its WSM root.
 //! Stored envelopes are quoted data; this binary never evaluates their payload.
 
-use my_lisp::{eval_program, Environment, Session, Value};
+use my_lisp::{eval_program, load_core_library, Environment, Session, Value};
 use std::io::{self, Read};
 
 fn string_literal(value: &str) -> String {
@@ -22,8 +22,8 @@ fn main() {
     let mut session = Session {
         environment: Environment::root(),
     };
+    load_core_library(&mut session).unwrap();
     for source in [
-        include_str!("../../../../lib/core.my"),
         include_str!("../../../../lib/unify.my"),
         include_str!("../../../../lib/reason.my"),
         include_str!("../../../../lib/forward.my"),

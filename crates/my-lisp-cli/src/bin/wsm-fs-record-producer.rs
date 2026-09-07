@@ -4,7 +4,7 @@
 //! `eval_program` boundary used by the canonical Rust fixtures. It prints
 //! only data-only root/object envelopes, one per line.
 
-use my_lisp::{eval_program, Environment, Session, Value};
+use my_lisp::{eval_program, load_core_library, Environment, Session, Value};
 
 const MAX_RECORD_BYTES: usize = 64 * 1024;
 
@@ -12,8 +12,11 @@ fn main() {
     let mut session = Session {
         environment: Environment::root(),
     };
+    if let Err(error) = load_core_library(&mut session) {
+        eprintln!("wsm-fs-record-producer: core bootstrap failed: {error}");
+        std::process::exit(1);
+    }
     for source in [
-        include_str!("../../../../lib/core.my"),
         include_str!("../../../../lib/unify.my"),
         include_str!("../../../../lib/reason.my"),
         include_str!("../../../../lib/forward.my"),
