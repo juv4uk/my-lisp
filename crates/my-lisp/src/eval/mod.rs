@@ -199,9 +199,7 @@ fn evaluate_list(
         Some("make-macro") => {
             special_forms::exact_arity("make-macro", arguments, 1, span)?;
             match evaluate(&arguments[0], environment)? {
-                Value::Closure(ref closure) => {
-                    Ok(EvalStep::Value(Value::Macro(closure.clone())))
-                }
+                Value::Closure(ref closure) => Ok(EvalStep::Value(Value::Macro(closure.clone()))),
                 _ => Err(LanguageError::new(
                     ErrorKind::Type,
                     "make-macro expects a closure · make-macro ochikuie zamykannia · make-macro erwartet eine Closure",
@@ -231,26 +229,13 @@ fn evaluate_list(
         Some("read-all") => {
             special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("codepoint->string") => {
-            special_forms::evaluate_codepoint_to_string(arguments, environment, span)
-                .map(EvalStep::Value)
-        }
-        Some("string->codepoint") => {
-            special_forms::evaluate_string_to_codepoint(arguments, environment, span)
-                .map(EvalStep::Value)
-        }
-        Some("sha256-hex") => {
-            special_forms::evaluate_sha256_hex(arguments, environment, span).map(EvalStep::Value)
-        }
         Some("json-parse") => {
             special_forms::json::evaluate_json_parse(arguments, environment, span)
                 .map(EvalStep::Value)
         }
         _ => {
             if let Some(name) = items[0].kind.as_symbol() {
-                if let Some(result) =
-                    capabilities::dispatch_capability(name, arguments, environment, span)
-                {
+                if let Some(result) = capabilities::dispatch_capability(name, arguments, environment, span) {
                     return result;
                 }
             }
@@ -263,9 +248,7 @@ fn evaluate_list(
                     }
                     (builtin.func)(&values, environment, span).map(EvalStep::Value)
                 }
-                Value::Macro(closure) => {
-                    closures::apply_macro(closure.clone(), arguments, environment, span)
-                }
+                Value::Macro(closure) => closures::apply_macro(closure.clone(), arguments, environment, span),
                 _ => closures::apply(function, arguments, environment, span),
             }
         }
@@ -273,10 +256,6 @@ fn evaluate_list(
 }
 
 trait ExprKindExt {
-    fn as_symbol(&self) -> Option<&str>;
-}
-
-impl ExprKindExt for ExprKind {
     fn as_symbol(&self) -> Option<&str> {
         match self {
             ExprKind::Symbol(symbol) => Some(symbol),
@@ -393,11 +372,8 @@ mod single_pass_eval_tests {
     #[test]
     fn ukrainian_double_projection_reads_the_tree() {
         let mut session = Session::default();
-        let result = eval_program(
-            "(перше (решта (як-є (яблуко груша слива))))",
-            &mut session,
-        )
-        .expect("canonical composition should evaluate");
+        let result = eval_program("(перше (решта (як-є (яблуко груша слива))))", &mut session)
+            .expect("canonical composition should evaluate");
         assert_eq!(result.value.to_string(), "груша");
     }
 
