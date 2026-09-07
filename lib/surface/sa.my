@@ -1,0 +1,147 @@
+; Sanskrit surface for canonical primitives and core vocabulary.
+; संस्कृत-पृष्ठम् — Sanskrit surface layer.
+;
+; This file binds Sanskrit (IAST) surface names to the same semantic
+; identities that the English names resolve to.  No duplicate semantics.
+;
+; Principle: one semantic implementation, multiple surface names.
+;
+; Status legend:
+;   stable    — ratified against primary sources (Canon 0+7 calibration doc)
+;   candidate — proposed in Batch 1 research, pending ratification
+;
+; Loading order: macro.my → core.my → sa.my (this file).
+; All English names referenced here are already bound before this file loads.
+
+;; ═══════════════════════════════════════════════════════════════
+;; Canon 0+7 — Sanskrit surface (status: stable)
+;; ═══════════════════════════════════════════════════════════════
+
+(define svarūpa quote)
+(define aṇu atom)
+(define abheda eq)
+(define saṃyuj cons)
+(define ādi car)
+(define śeṣa cdr)
+; krama (cond) is a syntax form — needs macro wrapper
+(defmacro krama clauses
+  (cons (quote cond) clauses))
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Arithmetic (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; yoga = addition (Brahmagupta, Bhāskara)
+(define yoga +)
+; viyoga = subtraction (vi- + yoga)
+(define viyoga -)
+; guṇana = multiplication
+(define guṇana *)
+; haraṇa = division operation
+(define haraṇa /)
+; rūpa = absolute value (candidate — polysemous)
+(define rūpa abs)
+; alpatara = least (alpa + -tara comparative)
+(define alpatara min)
+; brhattara = greatest (bṛhat + -tara comparative)
+(define brhattara max)
+; avasiṣṭa = remainder (ava-śiṣ; ≠ śeṣa CDR)
+(define avasiṣṭa mod)
+; bhāga = quotient (result of division)
+(define bhāga quotient)
+; mūla = square root
+(define mūla sqrt)
+; sakalamūla = integer square root
+(define sakalamūla isqrt)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Comparisons (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; hīna = lesser (≠ alpatara min)
+(define hīna? <)
+; adhika = greater (≠ brhattara max)
+(define adhika? >)
+; sama = equal in quantity (≠ abheda eq)
+(define sama? =)
+; na-adhika = not-greater (compound)
+(define na-adhika? <=)
+; na-hīna = not-lesser (compound)
+(define na-hīna? >=)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Predicates (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; na = not (universal negation)
+(define na not)
+; tulya = structurally equal (≠ abheda eq, sama =)
+(define tulya? equal?)
+; nāman = symbol/name (Pāṇini 1.1.62)
+(define nāman? symbol?)
+; śabda = string/text
+(define śabda? string?)
+(define śabda-hīna? string<?)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Lists (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; śreṇī = ordered sequence
+(define śreṇī list)
+; pramāṇa = measure/quantity
+(define pramāṇa length)
+; saṅkalana = collection (≠ saṃyuj CONS)
+(define saṅkalana append)
+; viloma = reverse order
+(define viloma reverse)
+; kramāṅka = ordinal number (candidate)
+(define kramāṅka nth)
+; sambaddha = included/bound (candidate)
+(define sambaddha? member?)
+; saṃbandha = relation/connection
+(define saṃbandha assoc)
+; dvandva = pair (Pāṇini 2.2.29-34)
+(define dvandva pair)
+; ordinals — safe: return element, not sublist
+(define dvitīya second)
+(define tṛtīya third)
+(define caturtha fourth)
+(define pañcama fifth)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Higher-order (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; āvartana = repeated application (candidate — no direct traditional source)
+(define āvartana map)
+; kalpana = selection/postulation (Mīmāṃsā)
+(define kalpana filter)
+; saṅgraha = comprehension/collection
+(define saṅgraha reduce)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Strings (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; śabdasaṃyoga = joining of words (≠ saṃyuj CONS)
+(define śabdasaṃyoga string-append)
+(define śabdapramāṇa string-length)
+; śūnya = empty/void
+(define śūnya? string-empty?)
+; pūrva = preceding (≠ ādi CAR)
+(define pūrva? string-prefix?)
+(define śabdasambaddha? string-contains?)
+; prathamavarṇa = first letter (≠ ādi CAR)
+(define prathamavarṇa string-first)
+; śeṣavarṇa = rest of letters (≠ śeṣa CDR)
+(define śeṣavarṇa string-rest)
+; cheda = cut/slice
+(define cheda string-slice)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Other (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; svabhāva = own nature/identity (≠ svarūpa QUOTE)
+(define svabhāva identity)
