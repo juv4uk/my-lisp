@@ -8,6 +8,12 @@
 //! measurement. Timings are diagnostic evidence only; semantic assertions
 //! remain deterministic. Both timing profiles are ignored by default so
 //! `cargo test --workspace` remains a correctness gate rather than a benchmark.
+//!
+//! The profile also times the public indexed `reason` path and an exact
+//! forced-linear `prove-goal` path over the SAME projected rules and goal. This
+//! makes the B5 indexing decision measurable without changing semantics or
+//! comparing unrelated fixtures. `reason_index.rs` remains the stronger proof
+//! that the two paths preserve exact result/proof structure.
 
 use my_lisp::{eval_program, Session};
 use std::time::Instant;
@@ -78,7 +84,7 @@ fn timed_eval(session: &mut Session, source: &str, expected: &str) -> u128 {
     elapsed
 }
 
-fn profile_size(distractors: usize) -> (u128, u128, u128, usize) {
+fn profile_size(distractors: usize) -> (u128, u128, u128, u128, u128, usize) {
     let mut session = loaded_session();
     let clauses = install_mixed_module(&mut session, distractors);
 
@@ -86,36 +92,63 @@ fn profile_size(distractors: usize) -> (u128, u128, u128, usize) {
     let expected_len = clauses.to_string();
     assert_eq!(eval_session(&mut session, projection), expected_len);
 
-    // Pre-project once so the raw reasoning number excludes journal replay.
+    // Pre-project once so the direct reasoning comparison excludes journal replay.
     eval_session(
         &mut session,
         "(def bench-rules (module-clauses-now (quote bench)))",
     );
 
+    let indexed_direct = "(length (reason (quote (valuable target)) bench-rules))";
+    let linear_direct = "(length (prove-goal (quote (valuable target)) bench-rules (quote ()) (reason-index-linear bench-rules) 0))";
     let raw_reason = "(result-status (reason-observe (quote (valuable target)) bench-rules))";
     let end_to_end = "(result-status (reason-in-observe (quote bench) (quote (valuable target))))";
 
-    // Warm both reasoning paths before the three-sample median.
+    // Warm every measured reasoning path before the three-sample median. The
+    // direct pair intentionally has the same projected corpus, goal and result
+    // cardinality; only index selection differs.
+    assert_eq!(eval_session(&mut session, indexed_direct), "1");
+    assert_eq!(eval_session(&mut session, linear_direct), "1");
     assert_eq!(eval_session(&mut session, raw_reason), "proved");
     assert_eq!(eval_session(&mut session, end_to_end), "proved");
 
     let projection_ns = median_ns(|| timed_eval(&mut session, projection, &expected_len));
+    let indexed_direct_ns = median_ns(|| timed_eval(&mut session, indexed_direct, "1"));
+    let linear_direct_ns = median_ns(|| timed_eval(&mut session, linear_direct, "1"));
     let raw_reason_ns = median_ns(|| timed_eval(&mut session, raw_reason, "proved"));
     let end_to_end_ns = median_ns(|| timed_eval(&mut session, end_to_end, "proved"));
 
-    (projection_ns, raw_reason_ns, end_to_end_ns, clauses)
+    (
+        projection_ns,
+        indexed_direct_ns,
+        linear_direct_ns,
+        raw_reason_ns,
+        end_to_end_ns,
+        clauses,
+    )
 }
 
 fn profile_sizes(sizes: &[usize]) {
     let mut table = String::from(
         "Advice Taker B5 profile (3-sample median, default stack)\n\
-         distractors clauses projection_ns raw_reason_ns end_to_end_ns\n",
+         distractors clauses projection_ns indexed_ns linear_ns linear/indexed raw_reason_ns end_to_end_ns\n",
     );
 
     for &n in sizes {
-        let (projection_ns, raw_reason_ns, end_to_end_ns, clauses) = profile_size(n);
+        let (
+            projection_ns,
+            indexed_direct_ns,
+            linear_direct_ns,
+            raw_reason_ns,
+            end_to_end_ns,
+            clauses,
+        ) = profile_size(n);
+        let ratio = if indexed_direct_ns == 0 {
+            0.0
+        } else {
+            linear_direct_ns as f64 / indexed_direct_ns as f64
+        };
         table.push_str(&format!(
-            "{n:<11} {clauses:<7} {projection_ns:<13} {raw_reason_ns:<13} {end_to_end_ns}\n"
+            "{n:<11} {clauses:<7} {projection_ns:<13} {indexed_direct_ns:<10} {linear_direct_ns:<10} {ratio:<14.2} {raw_reason_ns:<13} {end_to_end_ns}\n"
         ));
     }
 
@@ -129,7 +162,7 @@ fn advice_taker_profile_100_500_1000_distractors() {
 }
 
 #[test]
-#[ignore = "manual B5 extended profile before an indexing decision"]
+#[ignore = "manual B5 extended profile before further indexing/representation changes"]
 fn advice_taker_profile_5000_10000_distractors() {
     // Run explicitly with:
     // cargo test -p my-lisp --test reason_advice_scale advice_taker_profile_5000_10000 -- --ignored --nocapture
