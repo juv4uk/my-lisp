@@ -84,15 +84,38 @@
               (list (quote list) (list (quote quote) (quote retract)) (list (quote quote) module-name) clause)
               (quote *knowledge-journal*))))
 
-;; module-journal-events filters the whole journal down to one module's
-;; own events, preserving their relative (newest-first) order.
+;; module-journal-events used to cons after its recursive call returned.
+;; That preserved order, but consumed one host stack frame per journal event
+;; and failed on a realistic Advice Taker module at B5 scale. Keep the same
+;; newest-first result through a reversed accumulator and one final reverse.
+(def module-journal-events-onto
+  (lambda (module-name journal acc)
+    (cond
+      ((atom journal) (reverse acc))
+      ((equal? (second (car journal)) module-name)
+       (module-journal-events-onto
+         module-name
+         (cdr journal)
+         (cons (car journal) acc)))
+      (t
+       (module-journal-events-onto
+         module-name
+         (cdr journal)
+         acc)))))
+
 (def module-journal-events
+  (lambda (module-name journal)
+    (module-journal-events-onto module-name journal (quote ()))))
+
+;; Existence needs no filtered-list allocation. This tail-recursive scan
+;; returns at the first event for the module and still treats a fully
+;; retracted module as known because its historical journal events remain.
+(def module-journal-has-module?
   (lambda (module-name journal)
     (cond
       ((atom journal) (quote ()))
-      ((equal? (second (car journal)) module-name)
-       (cons (car journal) (module-journal-events module-name (cdr journal))))
-      (t (module-journal-events module-name (cdr journal))))))
+      ((equal? (second (car journal)) module-name) t)
+      (t (module-journal-has-module? module-name (cdr journal))))))
 
 ;; module-known? distinguishes "no module by this name was ever told
 ;; anything" from "the module exists but every clause it was ever told has
@@ -103,9 +126,7 @@
 ;; promised before the journal existed.
 (def module-known?
   (lambda (module-name)
-    (cond
-      ((atom (module-journal-events module-name *knowledge-journal*)) (quote ()))
-      (t t))))
+    (module-journal-has-module? module-name *knowledge-journal*)))
 
 ;; apply-journal-event folds one event onto a running clause list: `tell`
 ;; adds the clause, `retract` removes one matching occurrence — reusing
@@ -166,7 +187,7 @@
 ;;
 ;; Forward-Chaining-Integration (lib/forward.my) — `reason-in` stellt
 ;; einem Modul eine gezielte Frage (Backward-Chaining: Ziel rein, ein
-;; Beweis raus). `forward-in` bittet ein Modul, alles zu materialisieren,
+;; Beweis raus). `forward-in` bittet ein Modul zu materialisieren, alles
 ;; was es ableiten kann (Forward-Chaining: run-multi bis zum Fixpunkt).
 ;; Kein neues Clause-Format nötig — die flache Clause-Liste eines Moduls
 ;; aus `defmodule` (Fakten als Clauses ohne Bedingungen, Regeln als `(head
