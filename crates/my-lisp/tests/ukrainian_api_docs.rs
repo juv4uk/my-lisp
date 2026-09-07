@@ -1,3 +1,4 @@
+use my_lisp::{eval_program, load_core_library, Session};
 use std::collections::{BTreeMap, BTreeSet};
 
 const COVERAGE: &str = include_str!("../../../lib/surface/uk-sa-coverage.wsm");
@@ -121,5 +122,47 @@ fn dovidnyk_poiasniuie_ne_predykaty_shcho_mozhut_povernuty_pustyi_spysok() {
             .unwrap_or_else(|| panic!("немає документаційного запису для {name}"));
         assert_ne!(kind, "predicate", "{name} повертає дані/значення, а не лише t/()");
         assert!(!name.ends_with('?'));
+    }
+}
+
+fn uk_session() -> Session {
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core bootstrap");
+    for source in [
+        include_str!("../../../lib/unify.my"),
+        include_str!("../../../lib/reason.my"),
+        include_str!("../../../lib/forward.my"),
+        include_str!("../../../lib/knowledge.my"),
+        include_str!("../../../lib/persistent-map.my"),
+        include_str!("../../../lib/persistent-vector.my"),
+        include_str!("../../../lib/time.my"),
+        include_str!("../../../lib/epistemic.my"),
+    ] {
+        eval_program(source, &mut session)
+            .expect("передумови української поверхні мають завантажитися");
+    }
+    eval_program(UK_SURFACE, &mut session).expect("українська поверхня має завантажитися");
+    session
+}
+
+#[test]
+fn novi_predykatni_nazvy_i_stari_aliasy_vykonuiutsia_odnakovo() {
+    let mut session = uk_session();
+
+    for source in [
+        "(конфлікт? 'невідомий '())",
+        "(перевірити-конфлікт 'невідомий '())",
+    ] {
+        let result =
+            eval_program(source, &mut session).expect("перевірка конфлікту має виконатися");
+        assert_eq!(result.value.to_string(), "()");
+    }
+
+    for source in [
+        "(змінна-зустрічається? (логічна-змінна 'x) '(f (var x)) '())",
+        "(перевірити-зустрічання (логічна-змінна 'x) '(f (var x)) '())",
+    ] {
+        let result = eval_program(source, &mut session).expect("occurs-check має виконатися");
+        assert_eq!(result.value.to_string(), "t");
     }
 }
