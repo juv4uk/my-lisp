@@ -1,0 +1,90 @@
+use my_lisp::{eval_program, load_core_library, Session, Value};
+use std::rc::Rc;
+
+const COVERAGE: &str = include_str!("../../../lib/surface/uk-sa-coverage.wsm");
+
+fn stable_uk_pairs() -> Vec<(&'static str, &'static str, &'static str)> {
+    COVERAGE
+        .lines()
+        .filter_map(|line| {
+            let fields = line.split_whitespace().collect::<Vec<_>>();
+            if fields.first() != Some(&"(entry") || fields.get(5) != Some(&"stable") {
+                return None;
+            }
+            Some((
+                fields[1].trim_start_matches('('),
+                fields[2],
+                fields[3],
+            ))
+        })
+        .collect()
+}
+
+fn uk_session() -> Session {
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core bootstrap");
+    for source in [
+        include_str!("../../../lib/unify.my"),
+        include_str!("../../../lib/reason.my"),
+        include_str!("../../../lib/forward.my"),
+        include_str!("../../../lib/knowledge.my"),
+        include_str!("../../../lib/persistent-map.my"),
+        include_str!("../../../lib/persistent-vector.my"),
+        include_str!("../../../lib/time.my"),
+        include_str!("../../../lib/epistemic.my"),
+    ] {
+        eval_program(source, &mut session).expect("surface prerequisite should load");
+    }
+    eval_program(include_str!("../../../lib/surface/uk.my"), &mut session)
+        .expect("Ukrainian surface should load");
+    session
+}
+
+fn is_same_runtime_value(left: &Value, right: &Value) -> bool {
+    match (left, right) {
+        // A builtin is an operation handle. The alias must retain the same
+        // allocation, not merely point at another builtin with a similar name.
+        // Builtin — це handle операції. Аліас має зберігати те саме виділення
+        // пам'яті, а не окремий builtin зі схожою назвою.
+        (Value::Builtin(left), Value::Builtin(right)) => Rc::ptr_eq(left, right),
+        _ => left == right,
+    }
+}
+
+#[test]
+fn every_stable_uk_surface_entry_is_wired_to_its_declared_operation() {
+    let pairs = stable_uk_pairs();
+    assert_eq!(pairs.len(), 139, "coverage summary and entries drifted");
+
+    let session = uk_session();
+    let syntax = [
+        ("quote", "як-є"),
+        ("cond", "за-умовою"),
+        ("lambda", "функція"),
+        ("define", "визначити"),
+    ];
+    let mut checked_values = 0;
+
+    for (category, english, ukrainian) in pairs {
+        if syntax.contains(&(english, ukrainian)) {
+            continue;
+        }
+        let english_value = session.environment.get(english).unwrap_or_else(|| {
+            panic!("stable English binding is missing: {category}/{english}")
+        });
+        let ukrainian_value = session.environment.get(ukrainian).unwrap_or_else(|| {
+            panic!("stable Ukrainian binding is missing: {category}/{ukrainian}")
+        });
+        assert!(
+            is_same_runtime_value(&english_value, &ukrainian_value),
+            "stable alias changed identity: {category}/{english} -> {ukrainian}"
+        );
+        checked_values += 1;
+    }
+
+    // Four evaluation-control/necessary forms are verified behaviorally in
+    // uk_surface.rs and uk_sa_surface.rs; all other stable rows are values.
+    // Чотири керівні/необхідні форми перевіряються поведінково; решта рядків
+    // мусять бути тими самими runtime-значеннями.
+    assert_eq!(checked_values, 135);
+}

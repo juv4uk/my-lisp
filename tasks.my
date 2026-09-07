@@ -601,7 +601,8 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-INVENTORY))
     (description . "Create a machine-readable English-to-Ukrainian surface correspondence table with stable, candidate, missing and compatibility-only states. The table must describe names, not duplicate semantics or implementation.")
-    (done . ())))
+    (context . "Completed 2026-09-07: lib/surface/uk-sa-coverage.wsm schema /3 classifies 162 English-facing names with stable, candidate, missing, and compatibility-only states; scripts/check_surface_coverage.py passes on the live tree.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-CANON-SEED" . (
     (priority . 9.0)
@@ -609,7 +610,8 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-COVERAGE-TABLE))
     (description . "Seed the correspondence table with the already established Canon 0+7 Ukrainian surface plus necessary-form mappings функція and визначити. Preserve the rule that surface spelling is not semantic identity.")
-    (done . ())))
+    (context . "Completed 2026-09-07: Canon 0+7 and функція/визначити are stable in the coverage table and executable surfaces; b0c1f53 additionally makes the Ukrainian-keyboard symbols executable aliases of the same Canon identities.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-ARITHMETIC-COMPARISONS" . (
     (priority . 8.8)
@@ -617,7 +619,8 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-CANON-SEED))
     (description . "Review and add Ukrainian surface names for ordinary arithmetic, comparisons and numeric predicates. Bind to existing semantics only; do not create parallel Ukrainian implementations.")
-    (done . ())))
+    (context . "Completed 2026-09-07: lib/surface/uk.my binds the reviewed arithmetic, comparison, and numeric-predicate vocabulary to existing operations; uk_sa_surface and uk_sa_batch2 exercise the surface.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-LISTS-HOF" . (
     (priority . 8.7)
@@ -625,7 +628,8 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-CANON-SEED))
     (description . "Review and add Ukrainian names for list operations and higher-order functions such as map, filter, reduce, append, reverse, length and membership-style predicates. Keep one implementation and multiple names.")
-    (done . ())))
+    (context . "Completed 2026-09-07: list and higher-order Ukrainian aliases are implemented in lib/surface/uk.my and exercised by map/filter/reduce/list equivalence tests and the Ukrainian-only acceptance program.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-STRINGS-READER-IO" . (
     (priority . 8.5)
@@ -633,7 +637,8 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-CANON-SEED))
     (description . "Review Ukrainian surface coverage for strings, reader/writer helpers and ordinary user-facing I/O names. Host capability boundaries remain explicit; translation must not change capability semantics.")
-    (done . ())))
+    (context . "Completed 2026-09-07: reviewed string, conversion, reader/writer, and ordinary I/O aliases are implemented without changing host capability semantics; targeted surface tests pass.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-TIME" . (
     (priority . 8.4)
@@ -641,7 +646,8 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-COVERAGE-TABLE))
     (description . "Add reviewed Ukrainian names for user-facing lib/time.my functions after the host-vs-language time split. Preserve raw host observations as capabilities and derived calendar/deadline meaning as Lisp-owned semantics.")
-    (done . ())))
+    (context . "Completed 2026-09-07: raw observations and language-owned time functions have distinct Ukrainian aliases in lib/surface/uk.my; Batch 2 time witnesses pass.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-REASONING-KNOWLEDGE" . (
     (priority . 8.2)
@@ -649,15 +655,18 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-COVERAGE-TABLE))
     (description . "Extend the Ukrainian surface to selected public reasoning, knowledge and World APIs without translating internal implementation helpers. Keep symbolic meaning and public vocabulary review separate.")
-    (done . ())))
+    (context . "Completed 2026-09-07: selected public knowledge, reasoning, unification, and epistemic APIs have Ukrainian aliases; implementation helpers remain excluded; Batch 2 witnesses pass.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-EQUIVALENCE-TESTS" . (
+    (claimed-by . anviksha)
     (priority . 9.0)
     (capabilities . (my-lisp surface ukrainian testing semantics))
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-ARITHMETIC-COMPARISONS UKRAINIAN-SURFACE-LISTS-HOF UKRAINIAN-SURFACE-STRINGS-READER-IO))
     (description . "Prove that Ukrainian names reach the same behavior as the existing public surface. Where canonical identities exist, test identity invariants; elsewhere test observable equivalence without pointer-identity assumptions.")
-    (done . ())))
+    (context . "Completed 2026-09-07 by Anviksha: uk_surface_equivalence.rs reads all 139 stable Ukrainian rows from the coverage table, proves 135 ordinary aliases retain the declared runtime value/operation identity, and delegates the four evaluation-control/necessary forms to existing behavioral suites. Related 54 tests plus the new gate pass.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-COVERAGE-METRIC" . (
     (priority . 8.8)
@@ -665,7 +674,8 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-COVERAGE-TABLE))
     (description . "Implement Ukrainian Surface Coverage reporting by layer and overall. Report classified eligible names and stable coverage separately so candidate spellings do not count as finished coverage.")
-    (done . ())))
+    (context . "Completed 2026-09-07: schema /3 records per-state counts and Ukrainian/Sanskrit coverage percentages; the local coverage checker reports classified live inventory separately.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-CI-DRIFT-GUARD" . (
     (priority . 9.1)
@@ -673,7 +683,8 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-COVERAGE-METRIC))
     (description . "Add CI drift detection: every newly eligible public English-facing name must appear in the Ukrainian coverage table as stable, candidate, missing or compatibility-only. CI must detect unclassified surface growth, not force premature translation.")
-    (done . ())))
+    (context . "Completed 2026-09-07: .github/workflows/surface-drift-check.yml runs scripts/check_surface_coverage.py; live local check passes with all eligible public names classified.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-UKRAINIAN-ONLY-ACCEPTANCE" . (
     (priority . 9.3)
@@ -681,14 +692,17 @@
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-EQUIVALENCE-TESTS UKRAINIAN-SURFACE-CI-DRIFT-GUARD UKRAINIAN-SURFACE-TIME))
     (description . "Create an acceptance program written through the Ukrainian programming surface that exercises definitions, functions, conditions, arithmetic, lists, higher-order functions, strings and at least one non-core library without relying on English builtin names in the program body.")
-    (done . ())))
+    (context . "Completed 2026-09-07: lib/surface/uk-acceptance.my uses Ukrainian vocabulary for definitions, functions, conditions, arithmetic, lists, HOFs, strings, and time; uk_acceptance_program_passes returns успіх.")
+    (done . t)))
 
   ("UKRAINIAN-SURFACE-PUBLIC-DOCS" . (
+    (claimed-by . anviksha)
     (priority . 7.8)
     (capabilities . (my-lisp surface ukrainian documentation examples))
     (origin . my-lisp)
     (depends-on . (UKRAINIAN-SURFACE-UKRAINIAN-ONLY-ACCEPTANCE))
     (description . "Document the stable Ukrainian programming surface with examples generated or checked against the same coverage source. Clearly distinguish Ukrainian Lisp surface from natural-language NLP work and from Sanskrit research naming.")
+    (context . "Claimed 2026-09-07 by Anviksha after completing UKRAINIAN-SURFACE-EQUIVALENCE-TESTS. Updating public documentation from coverage schema /3 and the executable Canon symbol surface.")
     (done . ())))
 
   ("UKRAINIAN-SURFACE-100-PERCENT-GATE" . (
@@ -699,4 +713,3 @@
     (description . "Define and prove the completion gate for the selected public programming surface: all eligible target-layer names are explicitly classified, all approved Ukrainian mappings are stable and tested, and ordinary programs can avoid English builtin names. Do not require translation of compatibility-only or internal symbols.")
     (done . ())))
   )))
-
