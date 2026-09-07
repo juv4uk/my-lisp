@@ -14,9 +14,11 @@ pub(crate) mod builtins;
 mod canon;
 mod capabilities;
 mod closures;
+mod macro_substrate;
 mod necessary_forms;
 mod special_forms;
 
+pub(crate) use macro_substrate::install as install_macro_substrate;
 pub use capabilities::{
     capability_installed, installed_capabilities, register_capability, unregister_capability,
 };
