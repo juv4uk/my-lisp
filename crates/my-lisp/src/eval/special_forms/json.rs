@@ -19,10 +19,7 @@ use crate::{ErrorKind, LanguageError, Span, Value};
 use std::rc::Rc;
 
 /// Value-level callable form used by the root builtin registry.
-pub(crate) fn json_parse_values(
-    arguments: &[Value],
-    span: Span,
-) -> Result<Value, LanguageError> {
+pub(crate) fn json_parse_values(arguments: &[Value], span: Span) -> Result<Value, LanguageError> {
     if arguments.len() != 1 {
         return Err(LanguageError::new(
             ErrorKind::Arity,

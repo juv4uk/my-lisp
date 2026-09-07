@@ -3,7 +3,10 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 fn translate(source: &str, from: &str, to: &str) -> String {
-    let script = concat!(env!("CARGO_MANIFEST_DIR"), "/../../scripts/translate-program.py");
+    let script = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../scripts/translate-program.py"
+    );
     let mut child = Command::new("python3")
         .args([script, "--from", from, "--to", to, "-"])
         .stdin(Stdio::piped())
@@ -34,8 +37,7 @@ fn translated_programs_execute_with_the_same_result_on_all_three_surfaces() {
     let english_result = eval_program(english, &mut english_session).expect("English program");
     let ukrainian_result =
         eval_program(&ukrainian, &mut ukrainian_session).expect("Ukrainian program");
-    let sanskrit_result =
-        eval_program(&sanskrit, &mut sanskrit_session).expect("Sanskrit program");
+    let sanskrit_result = eval_program(&sanskrit, &mut sanskrit_session).expect("Sanskrit program");
 
     assert_eq!(english_result.value.to_string(), "cat");
     assert_eq!(ukrainian_result.value.to_string(), "cat");

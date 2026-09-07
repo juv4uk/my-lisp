@@ -45,7 +45,10 @@ fn consecutive_top_level_functions_can_refer_to_each_other_in_main_meta_eval() {
     for probe in ["(even? 20)", "(odd? 21)", "(even? 19)", "(odd? 20)"] {
         let via_meta = eval_meta_program(program, probe);
         let via_native = eval_native(program, probe);
-        assert_eq!(via_meta, via_native, "mutual-recursion parity failed for {probe}");
+        assert_eq!(
+            via_meta, via_native,
+            "mutual-recursion parity failed for {probe}"
+        );
     }
 }
 
@@ -72,6 +75,9 @@ fn three_member_recursive_group_is_finite_lisp_data_in_main_meta_eval() {
     for probe in ["(mod0? 30)", "(mod1? 31)", "(mod2? 32)"] {
         let via_meta = eval_meta_program(program, probe);
         let via_native = eval_native(program, probe);
-        assert_eq!(via_meta, via_native, "three-member group parity failed for {probe}");
+        assert_eq!(
+            via_meta, via_native,
+            "three-member group parity failed for {probe}"
+        );
     }
 }

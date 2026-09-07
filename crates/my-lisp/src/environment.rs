@@ -380,8 +380,14 @@ mod tests {
             .with_tcp_listen_allowlist(vec![("127.0.0.1".into(), 9999, 9999)]);
         let child = root.child();
 
-        assert_eq!(child.fs_read_roots(), Some(vec![PathBuf::from("/safe/read")]));
-        assert_eq!(child.fs_write_roots(), Some(vec![PathBuf::from("/safe/write")]));
+        assert_eq!(
+            child.fs_read_roots(),
+            Some(vec![PathBuf::from("/safe/read")])
+        );
+        assert_eq!(
+            child.fs_write_roots(),
+            Some(vec![PathBuf::from("/safe/write")])
+        );
         assert!(child.is_tcp_connect_allowed("127.0.0.1", 8080));
         assert!(!child.is_tcp_connect_allowed("example.org", 8080));
         assert!(child.is_tcp_listen_allowed("127.0.0.1", 9999));

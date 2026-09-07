@@ -418,10 +418,7 @@ fn implements_mccarthys_seven_primitives() {
         eval("(eq (quote radio) (quote radio))"),
         Value::Symbol("t".into())
     );
-    assert_eq!(
-        eval("(eq (quote radio) (quote antenna))"),
-        Value::Nil
-    );
+    assert_eq!(eval("(eq (quote radio) (quote antenna))"), Value::Nil);
     assert_eq!(
         eval("(car (quote (radio antenna)))"),
         Value::Symbol("radio".into())
@@ -1639,11 +1636,8 @@ fn si_defining_constants_exact_rationals() {
 
     // 3. h = 132521403 / 200000000000000000000000000000000000000000 J s
     let h = eval_program("h", &mut session).unwrap().value;
-    let expected_h = Rational::from_literal(
-        "132521403",
-        "200000000000000000000000000000000000000000",
-    )
-    .unwrap();
+    let expected_h =
+        Rational::from_literal("132521403", "200000000000000000000000000000000000000000").unwrap();
     assert_eq!(h, Value::Rational(expected_h.clone()));
     assert_eq!(
         format!("{}", expected_h),
@@ -1652,11 +1646,8 @@ fn si_defining_constants_exact_rationals() {
 
     // Exact rational arithmetic: (* 2 h) simplifies denominator by 2
     let two_h = eval_program("(* 2 h)", &mut session).unwrap().value;
-    let expected_2h = Rational::from_literal(
-        "132521403",
-        "100000000000000000000000000000000000000000",
-    )
-    .unwrap();
+    let expected_2h =
+        Rational::from_literal("132521403", "100000000000000000000000000000000000000000").unwrap();
     assert_eq!(two_h, Value::Rational(expected_2h));
 
     // 4. e = 801088317 / 5000000000000000000000000000 C
@@ -1694,7 +1685,10 @@ fn si_defining_constants_exact_rationals() {
     assert_eq!(eval_program("si:k", &mut session).unwrap().value, k);
     assert_eq!(eval_program("si:n-a", &mut session).unwrap().value, na);
     assert_eq!(eval_program("si:k-cd", &mut session).unwrap().value, k_cd);
-    assert_eq!(eval_program("si:delta-nu-cs", &mut session).unwrap().value, cs);
+    assert_eq!(
+        eval_program("si:delta-nu-cs", &mut session).unwrap().value,
+        cs
+    );
 }
 
 #[test]
@@ -1738,7 +1732,8 @@ fn meta_eval_lambda_witness_env_capture_and_application() {
     assert_eq!(shadow_res.to_string(), "99");
 
     // Proves original witness-env remained untouched (7)
-    let original_res = eval_program("(my-apply closure-val (cons 0 (quote ())))", &mut session).unwrap().value;
+    let original_res = eval_program("(my-apply closure-val (cons 0 (quote ())))", &mut session)
+        .unwrap()
+        .value;
     assert_eq!(original_res.to_string(), "7");
 }
-

@@ -108,23 +108,14 @@ fn no_production_or_operational_legacy_coordination_callers_remain() {
 }
 
 #[test]
-fn compatibility_callers_are_exactly_the_known_legacy_cli_regression() {
+fn no_legacy_compatibility_callers_remain() {
     let compatibility: BTreeMap<_, _> = inventory()
         .into_iter()
         .filter(|(path, _)| is_compatibility_test(path))
         .collect();
 
-    let expected = BTreeMap::from([(
-        "crates/my-lisp-cli/tests/cli.rs".to_string(),
-        vec![
-            "complete-task".to_string(),
-            "next-best-action".to_string(),
-            "sync-tasks".to_string(),
-        ],
-    )]);
-
-    assert_eq!(
-        compatibility, expected,
-        "C5 compatibility inventory changed: retire removals together with the legacy surface, and reject any new legacy test caller"
+    assert!(
+        compatibility.is_empty(),
+        "C5 physical removal requires zero compatibility callers: {compatibility:?}"
     );
 }

@@ -57,13 +57,11 @@ pub(crate) fn read_values(
     let source = if let Some(argument) = arguments.first() {
         match argument {
             Value::String(text) => text.to_string(),
-            _ => {
-                return Err(LanguageError::new(
-                    ErrorKind::Type,
-                    "read expects a string · read ochikuie riadok · read erwartet eine Zeichenkette",
-                    span,
-                ))
-            }
+            _ => return Err(LanguageError::new(
+                ErrorKind::Type,
+                "read expects a string · read ochikuie riadok · read erwartet eine Zeichenkette",
+                span,
+            )),
         }
     } else {
         read_stdin_line(span)?

@@ -9,7 +9,10 @@ use my_lisp::{
     eval_expr, exact_arity, register_capability, Environment, ErrorKind, Exactness, Expr,
     LanguageError, Span, Value,
 };
-use std::{path::{Path, PathBuf}, rc::Rc};
+use std::{
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 mod process_raw;
 
@@ -33,7 +36,9 @@ fn canonical_write_target(path: &Path) -> Option<PathBuf> {
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
     let file_name = path.file_name()?;
-    std::fs::canonicalize(parent).ok().map(|p| p.join(file_name))
+    std::fs::canonicalize(parent)
+        .ok()
+        .map(|p| p.join(file_name))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -403,7 +408,9 @@ fn evaluate_tcp_connect(
         return Err(denied("tcp-connect", format!("{host}:{port}"), span));
     }
     let stream = tcp_connect(host, port, span)?;
-    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
+    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(
+        stream,
+    ))))
 }
 
 fn evaluate_tcp_listen_raw(
@@ -443,7 +450,9 @@ fn evaluate_tcp_accept(
         ));
     };
     let stream = tcp_accept(listener, span)?;
-    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(stream))))
+    Ok(Value::TcpConnection(Rc::new(std::cell::RefCell::new(
+        stream,
+    ))))
 }
 
 fn evaluate_tcp_read_raw(
@@ -577,13 +586,16 @@ fn tcp_accept(
     listener: &std::net::TcpListener,
     span: Span,
 ) -> Result<std::net::TcpStream, LanguageError> {
-    listener.accept().map(|(stream, _)| stream).map_err(|error| {
-        LanguageError::new(
-            ErrorKind::InvalidForm,
-            format!("tcp-accept: failed to accept a connection: {error}"),
-            span,
-        )
-    })
+    listener
+        .accept()
+        .map(|(stream, _)| stream)
+        .map_err(|error| {
+            LanguageError::new(
+                ErrorKind::InvalidForm,
+                format!("tcp-accept: failed to accept a connection: {error}"),
+                span,
+            )
+        })
 }
 
 fn tcp_read_raw(

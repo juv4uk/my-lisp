@@ -120,306 +120,629 @@ pub(crate) fn install(environment: &Environment) {
         };
     }
 
-    define!(environment, "car", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("car", args, 1, span)?;
-        car_value(&args[0], span)
-    });
-    define!(environment, "cdr", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("cdr", args, 1, span)?;
-        cdr_value(&args[0], span)
-    });
-    define!(environment, "cons", |args: &[Value], env: &Environment, span: Span| {
-        exact_args("cons", args, 2, span)?;
-        cons_values(args[0].clone(), args[1].clone(), env, span)
-    });
-    define!(environment, "eq", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("eq", args, 2, span)?;
-        eq_values(args[0].clone(), args[1].clone(), span)
-    });
-    define!(environment, "atom", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("atom", args, 1, span)?;
-        Ok(Value::truth(args[0].is_atom()))
-    });
+    define!(
+        environment,
+        "car",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("car", args, 1, span)?;
+            car_value(&args[0], span)
+        }
+    );
+    define!(
+        environment,
+        "cdr",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("cdr", args, 1, span)?;
+            cdr_value(&args[0], span)
+        }
+    );
+    define!(
+        environment,
+        "cons",
+        |args: &[Value], env: &Environment, span: Span| {
+            exact_args("cons", args, 2, span)?;
+            cons_values(args[0].clone(), args[1].clone(), env, span)
+        }
+    );
+    define!(
+        environment,
+        "eq",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("eq", args, 2, span)?;
+            eq_values(args[0].clone(), args[1].clone(), span)
+        }
+    );
+    define!(
+        environment,
+        "atom",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("atom", args, 1, span)?;
+            Ok(Value::truth(args[0].is_atom()))
+        }
+    );
 
-    define!(environment, "abs", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("abs", args, 1, span)?;
-        Ok(match &args[0] {
-            Value::Number(f, e) => Value::Number(if *f < 0.0 { -*f } else { *f }, *e),
-            Value::Rational(r) => {
-                if r.is_negative() { Value::Rational(-r.clone()) } else { Value::Rational(r.clone()) }
+    define!(
+        environment,
+        "abs",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("abs", args, 1, span)?;
+            Ok(match &args[0] {
+                Value::Number(f, e) => Value::Number(if *f < 0.0 { -*f } else { *f }, *e),
+                Value::Rational(r) => {
+                    if r.is_negative() {
+                        Value::Rational(-r.clone())
+                    } else {
+                        Value::Rational(r.clone())
+                    }
+                }
+                other => other.clone(),
+            })
+        }
+    );
+
+    define!(
+        environment,
+        "min-list",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("min-list", args, 1, span)?;
+            let mut items = Vec::new();
+            let mut cur = args[0].clone();
+            while let Value::Pair(h, t) = &cur {
+                items.push((**h).clone());
+                cur = (**t).clone();
             }
-            other => other.clone(),
-        })
-    });
-
-    define!(environment, "min-list", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("min-list", args, 1, span)?;
-        let mut items = Vec::new();
-        let mut cur = args[0].clone();
-        while let Value::Pair(h, t) = &cur {
-            items.push((**h).clone());
-            cur = (**t).clone();
+            if items.is_empty() {
+                return Ok(Value::Nil);
+            }
+            let mut best = items[0].clone();
+            for item in &items[1..] {
+                if super::arithmetic::order_pair("<", item, &best, span)? {
+                    best = item.clone();
+                }
+            }
+            Ok(best)
         }
-        if items.is_empty() { return Ok(Value::Nil); }
-        let mut best = items[0].clone();
-        for item in &items[1..] {
-            if super::arithmetic::order_pair("<", item, &best, span)? { best = item.clone(); }
+    );
+    define!(
+        environment,
+        "max-list",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("max-list", args, 1, span)?;
+            let mut items = Vec::new();
+            let mut cur = args[0].clone();
+            while let Value::Pair(h, t) = &cur {
+                items.push((**h).clone());
+                cur = (**t).clone();
+            }
+            if items.is_empty() {
+                return Ok(Value::Nil);
+            }
+            let mut best = items[0].clone();
+            for item in &items[1..] {
+                if super::arithmetic::order_pair(">", item, &best, span)? {
+                    best = item.clone();
+                }
+            }
+            Ok(best)
         }
-        Ok(best)
-    });
-    define!(environment, "max-list", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("max-list", args, 1, span)?;
-        let mut items = Vec::new();
-        let mut cur = args[0].clone();
-        while let Value::Pair(h, t) = &cur {
-            items.push((**h).clone());
-            cur = (**t).clone();
-        }
-        if items.is_empty() { return Ok(Value::Nil); }
-        let mut best = items[0].clone();
-        for item in &items[1..] {
-            if super::arithmetic::order_pair(">", item, &best, span)? { best = item.clone(); }
-        }
-        Ok(best)
-    });
-    define!(environment, "min", |args: &[Value], _env: &Environment, span: Span| {
-        if args.is_empty() {
-            return Err(crate::LanguageError::new(crate::ErrorKind::Arity,
+    );
+    define!(
+        environment,
+        "min",
+        |args: &[Value], _env: &Environment, span: Span| {
+            if args.is_empty() {
+                return Err(crate::LanguageError::new(crate::ErrorKind::Arity,
                 "min expects at least one argument · min ochikuie shchonaimenshe odyn arhument · min erwartet mindestens ein Argument", span));
+            }
+            let mut best = args[0].clone();
+            for v in &args[1..] {
+                if super::arithmetic::order_pair("<", v, &best, span)? {
+                    best = v.clone();
+                }
+            }
+            Ok(best)
         }
-        let mut best = args[0].clone();
-        for v in &args[1..] {
-            if super::arithmetic::order_pair("<", v, &best, span)? { best = v.clone(); }
-        }
-        Ok(best)
-    });
-    define!(environment, "max", |args: &[Value], _env: &Environment, span: Span| {
-        if args.is_empty() {
-            return Err(crate::LanguageError::new(crate::ErrorKind::Arity,
+    );
+    define!(
+        environment,
+        "max",
+        |args: &[Value], _env: &Environment, span: Span| {
+            if args.is_empty() {
+                return Err(crate::LanguageError::new(crate::ErrorKind::Arity,
                 "max expects at least one argument · max ochikuie shchonaimenshe odyn arhument · max erwartet mindestens ein Argument", span));
+            }
+            let mut best = args[0].clone();
+            for v in &args[1..] {
+                if super::arithmetic::order_pair(">", v, &best, span)? {
+                    best = v.clone();
+                }
+            }
+            Ok(best)
         }
-        let mut best = args[0].clone();
-        for v in &args[1..] {
-            if super::arithmetic::order_pair(">", v, &best, span)? { best = v.clone(); }
-        }
-        Ok(best)
-    });
+    );
 
-    define!(environment, "make-vector", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("make-vector", args, 1, span)?;
-        match &args[0] {
+    define!(
+        environment,
+        "make-vector",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("make-vector", args, 1, span)?;
+            match &args[0] {
             Value::Number(f, Exactness::Exact) if *f >= 0.0 && f.fract() == 0.0 =>
                 Ok(Value::vector(std::iter::repeat_n(Value::Nil, *f as usize))),
             _ => Err(crate::LanguageError::new(crate::ErrorKind::Type,
                 "make-vector expects an exact non-negative integer · make-vector ochikuie tochnyi nenulevyi tsilyi · make-vector erwartet eine exakte nichtnegative ganze Zahl", span)),
         }
-    });
-    define!(environment, "vector", |args: &[Value], _env: &Environment, _span: Span| {
-        Ok(Value::vector(args.iter().cloned()))
-    });
-
-    define!(environment, "mono-ns", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("mono-ns", args, 0, span)?;
-        static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
-        let elapsed = START.get_or_init(std::time::Instant::now).elapsed();
-        Ok(exact_value(Rational::integer(elapsed.as_nanos() as i64)))
-    });
-    define!(environment, "unix-time-now", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("unix-time-now", args, 0, span)?;
-        let duration = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
-            .map_err(|_| crate::LanguageError::new(crate::ErrorKind::Type,
-                "unix-time-now is unavailable before the Unix epoch", span))?;
-        let seconds = i64::try_from(duration.as_secs()).map_err(|_| {
-            crate::LanguageError::new(crate::ErrorKind::NumericOverflow,
-                "unix-time-now seconds exceed the signed 64-bit range", span)
-        })?;
-        Ok(Value::list([
-            Value::Symbol(std::rc::Rc::from("unix-time")),
-            exact_value(Rational::integer(seconds)),
-            exact_value(Rational::integer(duration.subsec_nanos() as i64)),
-        ]))
-    });
-    define!(environment, "ntp-query-raw", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("ntp-query-raw", args, 2, span)?;
-        let host = match &args[0] {
-            Value::String(value) => value.as_ref(),
-            _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                "ntp-query-raw expects host string", span)),
-        };
-        let timeout = match &args[1] {
-            Value::Number(value, Exactness::Exact) if *value >= 0.0 && value.fract() == 0.0 => *value as u64,
-            _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                "ntp-query-raw expects exact timeout milliseconds", span)),
-        };
-        ntp_query_raw_value(host, timeout, span)
-    });
-    define!(environment, "timezone-declarations-raw", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("timezone-declarations-raw", args, 0, span)?;
-        let tz_value = std::env::var("TZ").ok().filter(|value| !value.is_empty())
-            .map(|value| Value::String(std::rc::Rc::from(value))).unwrap_or(Value::Nil);
-        let etc_timezone_value = std::fs::read_to_string("/etc/timezone").ok()
-            .map(|value| value.trim().to_string()).filter(|value| !value.is_empty())
-            .map(|value| Value::String(std::rc::Rc::from(value))).unwrap_or(Value::Nil);
-        Ok(Value::list([
-            Value::Symbol(std::rc::Rc::from("timezone-declarations")), tz_value, etc_timezone_value,
-        ]))
-    });
-
-    define!(environment, "vector-length", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("vector-length", args, 1, span)?;
-        match &args[0] {
-            Value::Vector(vec) => Ok(Value::Number(vec.borrow().len() as f64, Exactness::Exact)),
-            _ => Err(crate::LanguageError::new(crate::ErrorKind::Type, "vector-length expects a vector", span)),
         }
-    });
-    define!(environment, "vector-ref", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("vector-ref", args, 2, span)?;
-        let index = match &args[1] {
-            Value::Number(f, Exactness::Exact) if *f >= 0.0 && f.fract() == 0.0 && *f <= usize::MAX as f64 => *f as usize,
-            _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                "vector-ref expects an exact non-negative integer index", span)),
-        };
-        match &args[0] {
-            Value::Vector(vec) => vec.borrow().get(index).cloned().ok_or_else(|| {
-                crate::LanguageError::new(crate::ErrorKind::InvalidForm,
-                    format!("vector-ref index {index} out of bounds for length {}", vec.borrow().len()), span)
-            }),
-            _ => Err(crate::LanguageError::new(crate::ErrorKind::Type, "vector-ref expects a vector", span)),
+    );
+    define!(
+        environment,
+        "vector",
+        |args: &[Value], _env: &Environment, _span: Span| {
+            Ok(Value::vector(args.iter().cloned()))
         }
-    });
-    define!(environment, "vector-set!", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("vector-set!", args, 3, span)?;
-        let index = match &args[1] {
-            Value::Number(f, Exactness::Exact) if *f >= 0.0 && f.fract() == 0.0 && *f <= usize::MAX as f64 => *f as usize,
-            _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                "vector-set! expects an exact non-negative integer index", span)),
-        };
-        match &args[0] {
-            Value::Vector(vec) => {
-                let mut vec = vec.borrow_mut();
-                if index >= vec.len() {
-                    let len = vec.len();
-                    return Err(crate::LanguageError::new(crate::ErrorKind::InvalidForm,
-                        format!("vector-set! index {index} out of bounds for length {len}"), span));
+    );
+
+    define!(
+        environment,
+        "mono-ns",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("mono-ns", args, 0, span)?;
+            static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+            let elapsed = START.get_or_init(std::time::Instant::now).elapsed();
+            Ok(exact_value(Rational::integer(elapsed.as_nanos() as i64)))
+        }
+    );
+    define!(
+        environment,
+        "unix-time-now",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("unix-time-now", args, 0, span)?;
+            let duration = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|_| {
+                    crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "unix-time-now is unavailable before the Unix epoch",
+                        span,
+                    )
+                })?;
+            let seconds = i64::try_from(duration.as_secs()).map_err(|_| {
+                crate::LanguageError::new(
+                    crate::ErrorKind::NumericOverflow,
+                    "unix-time-now seconds exceed the signed 64-bit range",
+                    span,
+                )
+            })?;
+            Ok(Value::list([
+                Value::Symbol(std::rc::Rc::from("unix-time")),
+                exact_value(Rational::integer(seconds)),
+                exact_value(Rational::integer(duration.subsec_nanos() as i64)),
+            ]))
+        }
+    );
+    define!(
+        environment,
+        "ntp-query-raw",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("ntp-query-raw", args, 2, span)?;
+            let host = match &args[0] {
+                Value::String(value) => value.as_ref(),
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "ntp-query-raw expects host string",
+                        span,
+                    ))
                 }
-                vec[index] = args[2].clone();
-                Ok(Value::Nil)
-            }
-            _ => Err(crate::LanguageError::new(crate::ErrorKind::Type, "vector-set! expects a vector", span)),
-        }
-    });
-
-    define!(environment, "i32-buffer", |args: &[Value], _env: &Environment, span: Span| {
-        let mut values = Vec::with_capacity(args.len());
-        for value in args {
-            let integer = match value {
-                Value::Number(number, Exactness::Exact) if number.fract() == 0.0 => *number as i64,
-                Value::Rational(rational) if rational.is_integer() => rational.as_precise_i64().ok_or_else(|| {
-                    crate::LanguageError::new(crate::ErrorKind::NumericOverflow,
-                        "i32-buffer element is outside the signed 32-bit range", span)
-                })?,
-                _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                    "i32-buffer expects exact integer elements", span)),
             };
-            values.push(i32::try_from(integer).map_err(|_| {
-                crate::LanguageError::new(crate::ErrorKind::NumericOverflow,
-                    "i32-buffer element is outside the signed 32-bit range", span)
-            })?);
-        }
-        Ok(Value::NumericBuffer(NumericBuffer::I32(values.into())))
-    });
-    define!(environment, "f32-buffer", |args: &[Value], _env: &Environment, span: Span| {
-        let mut values = Vec::with_capacity(args.len());
-        for value in args {
-            let number = match value {
-                Value::Number(number, _) => *number,
-                Value::Rational(rational) => rational.as_f64(),
-                _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                    "f32-buffer expects numeric elements", span)),
+            let timeout = match &args[1] {
+                Value::Number(value, Exactness::Exact) if *value >= 0.0 && value.fract() == 0.0 => {
+                    *value as u64
+                }
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "ntp-query-raw expects exact timeout milliseconds",
+                        span,
+                    ))
+                }
             };
-            let narrowed = number as f32;
-            if !number.is_finite() || !narrowed.is_finite() {
-                return Err(crate::LanguageError::new(crate::ErrorKind::NumericOverflow,
-                    "f32-buffer element is outside the finite binary32 domain", span));
-            }
-            values.push(narrowed);
+            ntp_query_raw_value(host, timeout, span)
         }
-        Ok(Value::NumericBuffer(NumericBuffer::F32(values.into())))
-    });
+    );
+    define!(
+        environment,
+        "timezone-declarations-raw",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("timezone-declarations-raw", args, 0, span)?;
+            let tz_value = std::env::var("TZ")
+                .ok()
+                .filter(|value| !value.is_empty())
+                .map(|value| Value::String(std::rc::Rc::from(value)))
+                .unwrap_or(Value::Nil);
+            let etc_timezone_value = std::fs::read_to_string("/etc/timezone")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+                .map(|value| Value::String(std::rc::Rc::from(value)))
+                .unwrap_or(Value::Nil);
+            Ok(Value::list([
+                Value::Symbol(std::rc::Rc::from("timezone-declarations")),
+                tz_value,
+                etc_timezone_value,
+            ]))
+        }
+    );
 
-    define!(environment, "string-slice", |args: &[Value], _env: &Environment, span: Span| {
-        super::special_forms::evaluate_string_slice(args, span)
-    });
-    define!(environment, "string-append", |args: &[Value], _env: &Environment, span: Span| string_append_values(args, span));
-    define!(environment, "string<?", |args: &[Value], _env: &Environment, span: Span| string_less_than_values(args, span));
-    define!(environment, "string?", |args: &[Value], _env: &Environment, span: Span| string_predicate_values(args, span));
-    define!(environment, "symbol->string", |args: &[Value], _env: &Environment, span: Span| symbol_to_string_values(args, span));
-    define!(environment, "string->symbol", |args: &[Value], _env: &Environment, span: Span| string_to_symbol_values(args, span));
-    define!(environment, "string-first", |args: &[Value], _env: &Environment, span: Span| string_first_values(args, span));
-    define!(environment, "string-rest", |args: &[Value], _env: &Environment, span: Span| string_rest_values(args, span));
-    define!(environment, "codepoint->string", |args: &[Value], _env: &Environment, span: Span| codepoint_to_string_values(args, span));
-    define!(environment, "string->codepoint", |args: &[Value], _env: &Environment, span: Span| string_to_codepoint_values(args, span));
-    define!(environment, "sha256-hex", |args: &[Value], _env: &Environment, span: Span| sha256_hex_values(args, span));
-    define!(environment, "json-parse", |args: &[Value], _env: &Environment, span: Span| json_parse_values(args, span));
+    define!(
+        environment,
+        "vector-length",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("vector-length", args, 1, span)?;
+            match &args[0] {
+                Value::Vector(vec) => {
+                    Ok(Value::Number(vec.borrow().len() as f64, Exactness::Exact))
+                }
+                _ => Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "vector-length expects a vector",
+                    span,
+                )),
+            }
+        }
+    );
+    define!(
+        environment,
+        "vector-ref",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("vector-ref", args, 2, span)?;
+            let index = match &args[1] {
+                Value::Number(f, Exactness::Exact)
+                    if *f >= 0.0 && f.fract() == 0.0 && *f <= usize::MAX as f64 =>
+                {
+                    *f as usize
+                }
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "vector-ref expects an exact non-negative integer index",
+                        span,
+                    ))
+                }
+            };
+            match &args[0] {
+                Value::Vector(vec) => vec.borrow().get(index).cloned().ok_or_else(|| {
+                    crate::LanguageError::new(
+                        crate::ErrorKind::InvalidForm,
+                        format!(
+                            "vector-ref index {index} out of bounds for length {}",
+                            vec.borrow().len()
+                        ),
+                        span,
+                    )
+                }),
+                _ => Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "vector-ref expects a vector",
+                    span,
+                )),
+            }
+        }
+    );
+    define!(
+        environment,
+        "vector-set!",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("vector-set!", args, 3, span)?;
+            let index = match &args[1] {
+                Value::Number(f, Exactness::Exact)
+                    if *f >= 0.0 && f.fract() == 0.0 && *f <= usize::MAX as f64 =>
+                {
+                    *f as usize
+                }
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "vector-set! expects an exact non-negative integer index",
+                        span,
+                    ))
+                }
+            };
+            match &args[0] {
+                Value::Vector(vec) => {
+                    let mut vec = vec.borrow_mut();
+                    if index >= vec.len() {
+                        let len = vec.len();
+                        return Err(crate::LanguageError::new(
+                            crate::ErrorKind::InvalidForm,
+                            format!("vector-set! index {index} out of bounds for length {len}"),
+                            span,
+                        ));
+                    }
+                    vec[index] = args[2].clone();
+                    Ok(Value::Nil)
+                }
+                _ => Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "vector-set! expects a vector",
+                    span,
+                )),
+            }
+        }
+    );
 
-    define!(environment, "print", |args: &[Value], env: &Environment, span: Span| print_values(args, env, span));
-    define!(environment, "princ", |args: &[Value], env: &Environment, span: Span| princ_values(args, env, span));
-    define!(environment, "write-to-string", |args: &[Value], env: &Environment, span: Span| write_to_string_values(args, env, span));
-    define!(environment, "read", |args: &[Value], env: &Environment, span: Span| read_values(args, env, span));
-    define!(environment, "read-all", |args: &[Value], env: &Environment, span: Span| read_all_values(args, env, span));
-    define!(environment, "eval", |args: &[Value], env: &Environment, span: Span| eval_values(args, env, span));
+    define!(
+        environment,
+        "i32-buffer",
+        |args: &[Value], _env: &Environment, span: Span| {
+            let mut values = Vec::with_capacity(args.len());
+            for value in args {
+                let integer = match value {
+                    Value::Number(number, Exactness::Exact) if number.fract() == 0.0 => {
+                        *number as i64
+                    }
+                    Value::Rational(rational) if rational.is_integer() => {
+                        rational.as_precise_i64().ok_or_else(|| {
+                            crate::LanguageError::new(
+                                crate::ErrorKind::NumericOverflow,
+                                "i32-buffer element is outside the signed 32-bit range",
+                                span,
+                            )
+                        })?
+                    }
+                    _ => {
+                        return Err(crate::LanguageError::new(
+                            crate::ErrorKind::Type,
+                            "i32-buffer expects exact integer elements",
+                            span,
+                        ))
+                    }
+                };
+                values.push(i32::try_from(integer).map_err(|_| {
+                    crate::LanguageError::new(
+                        crate::ErrorKind::NumericOverflow,
+                        "i32-buffer element is outside the signed 32-bit range",
+                        span,
+                    )
+                })?);
+            }
+            Ok(Value::NumericBuffer(NumericBuffer::I32(values.into())))
+        }
+    );
+    define!(
+        environment,
+        "f32-buffer",
+        |args: &[Value], _env: &Environment, span: Span| {
+            let mut values = Vec::with_capacity(args.len());
+            for value in args {
+                let number = match value {
+                    Value::Number(number, _) => *number,
+                    Value::Rational(rational) => rational.as_f64(),
+                    _ => {
+                        return Err(crate::LanguageError::new(
+                            crate::ErrorKind::Type,
+                            "f32-buffer expects numeric elements",
+                            span,
+                        ))
+                    }
+                };
+                let narrowed = number as f32;
+                if !number.is_finite() || !narrowed.is_finite() {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::NumericOverflow,
+                        "f32-buffer element is outside the finite binary32 domain",
+                        span,
+                    ));
+                }
+                values.push(narrowed);
+            }
+            Ok(Value::NumericBuffer(NumericBuffer::F32(values.into())))
+        }
+    );
 
-    define!(environment, "numeric-buffer?", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("numeric-buffer?", args, 1, span)?;
-        Ok(if matches!(args[0], Value::NumericBuffer(_)) { Value::truth(true) } else { Value::Nil })
-    });
-    define!(environment, "numeric-buffer-type", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("numeric-buffer-type", args, 1, span)?;
-        let name = match &args[0] {
-            Value::NumericBuffer(NumericBuffer::I32(_)) => "i32",
-            Value::NumericBuffer(NumericBuffer::F32(_)) => "f32",
-            _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                "numeric-buffer-type expects a numeric buffer", span)),
-        };
-        Ok(Value::Symbol(name.into()))
-    });
-    define!(environment, "numeric-buffer-length", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("numeric-buffer-length", args, 1, span)?;
-        let length = match &args[0] {
-            Value::NumericBuffer(NumericBuffer::I32(values)) => values.len(),
-            Value::NumericBuffer(NumericBuffer::F32(values)) => values.len(),
-            _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                "numeric-buffer-length expects a numeric buffer", span)),
-        };
-        Ok(Value::Number(length as f64, Exactness::Exact))
-    });
-    define!(environment, "numeric-buffer-ref", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("numeric-buffer-ref", args, 2, span)?;
-        let index = match args[1] {
-            Value::Number(number, Exactness::Exact)
-                if number >= 0.0 && number.fract() == 0.0 && number <= usize::MAX as f64 => number as usize,
-            _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                "numeric-buffer-ref expects an exact non-negative integer index", span)),
-        };
-        match &args[0] {
-            Value::NumericBuffer(NumericBuffer::I32(values)) => values.get(index)
-                .map(|value| Value::Number(f64::from(*value), Exactness::Exact)),
-            Value::NumericBuffer(NumericBuffer::F32(values)) => values.get(index)
-                .map(|value| Value::Number(f64::from(*value), Exactness::Inexact)),
-            _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                "numeric-buffer-ref expects a numeric buffer", span)),
-        }.ok_or_else(|| crate::LanguageError::new(crate::ErrorKind::InvalidForm,
-            "numeric-buffer-ref index is out of bounds", span))
-    });
-    define!(environment, "numeric-buffer-map", |args: &[Value], env: &Environment, span: Span| {
-        exact_args("numeric-buffer-map", args, 2, span)?;
-        match &args[1] {
-            Value::NumericBuffer(NumericBuffer::I32(input)) => {
-                let mut output = Vec::with_capacity(input.len());
-                for element in input.iter() {
-                    let result = super::invoke_value(&args[0],
-                        &[Value::Number(f64::from(*element), Exactness::Exact)], env, span)?;
-                    let integer = match &result {
+    define!(
+        environment,
+        "string-slice",
+        |args: &[Value], _env: &Environment, span: Span| {
+            super::special_forms::evaluate_string_slice(args, span)
+        }
+    );
+    define!(
+        environment,
+        "string-append",
+        |args: &[Value], _env: &Environment, span: Span| string_append_values(args, span)
+    );
+    define!(
+        environment,
+        "string<?",
+        |args: &[Value], _env: &Environment, span: Span| string_less_than_values(args, span)
+    );
+    define!(
+        environment,
+        "string?",
+        |args: &[Value], _env: &Environment, span: Span| string_predicate_values(args, span)
+    );
+    define!(
+        environment,
+        "symbol->string",
+        |args: &[Value], _env: &Environment, span: Span| symbol_to_string_values(args, span)
+    );
+    define!(
+        environment,
+        "string->symbol",
+        |args: &[Value], _env: &Environment, span: Span| string_to_symbol_values(args, span)
+    );
+    define!(
+        environment,
+        "string-first",
+        |args: &[Value], _env: &Environment, span: Span| string_first_values(args, span)
+    );
+    define!(
+        environment,
+        "string-rest",
+        |args: &[Value], _env: &Environment, span: Span| string_rest_values(args, span)
+    );
+    define!(
+        environment,
+        "codepoint->string",
+        |args: &[Value], _env: &Environment, span: Span| codepoint_to_string_values(args, span)
+    );
+    define!(
+        environment,
+        "string->codepoint",
+        |args: &[Value], _env: &Environment, span: Span| string_to_codepoint_values(args, span)
+    );
+    define!(
+        environment,
+        "sha256-hex",
+        |args: &[Value], _env: &Environment, span: Span| sha256_hex_values(args, span)
+    );
+    define!(
+        environment,
+        "json-parse",
+        |args: &[Value], _env: &Environment, span: Span| json_parse_values(args, span)
+    );
+
+    define!(
+        environment,
+        "print",
+        |args: &[Value], env: &Environment, span: Span| print_values(args, env, span)
+    );
+    define!(
+        environment,
+        "princ",
+        |args: &[Value], env: &Environment, span: Span| princ_values(args, env, span)
+    );
+    define!(
+        environment,
+        "write-to-string",
+        |args: &[Value], env: &Environment, span: Span| write_to_string_values(args, env, span)
+    );
+    define!(
+        environment,
+        "read",
+        |args: &[Value], env: &Environment, span: Span| read_values(args, env, span)
+    );
+    define!(
+        environment,
+        "read-all",
+        |args: &[Value], env: &Environment, span: Span| read_all_values(args, env, span)
+    );
+    define!(
+        environment,
+        "eval",
+        |args: &[Value], env: &Environment, span: Span| eval_values(args, env, span)
+    );
+
+    define!(
+        environment,
+        "numeric-buffer?",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("numeric-buffer?", args, 1, span)?;
+            Ok(if matches!(args[0], Value::NumericBuffer(_)) {
+                Value::truth(true)
+            } else {
+                Value::Nil
+            })
+        }
+    );
+    define!(
+        environment,
+        "numeric-buffer-type",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("numeric-buffer-type", args, 1, span)?;
+            let name = match &args[0] {
+                Value::NumericBuffer(NumericBuffer::I32(_)) => "i32",
+                Value::NumericBuffer(NumericBuffer::F32(_)) => "f32",
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "numeric-buffer-type expects a numeric buffer",
+                        span,
+                    ))
+                }
+            };
+            Ok(Value::Symbol(name.into()))
+        }
+    );
+    define!(
+        environment,
+        "numeric-buffer-length",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("numeric-buffer-length", args, 1, span)?;
+            let length = match &args[0] {
+                Value::NumericBuffer(NumericBuffer::I32(values)) => values.len(),
+                Value::NumericBuffer(NumericBuffer::F32(values)) => values.len(),
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "numeric-buffer-length expects a numeric buffer",
+                        span,
+                    ))
+                }
+            };
+            Ok(Value::Number(length as f64, Exactness::Exact))
+        }
+    );
+    define!(
+        environment,
+        "numeric-buffer-ref",
+        |args: &[Value], _env: &Environment, span: Span| {
+            exact_args("numeric-buffer-ref", args, 2, span)?;
+            let index = match args[1] {
+                Value::Number(number, Exactness::Exact)
+                    if number >= 0.0 && number.fract() == 0.0 && number <= usize::MAX as f64 =>
+                {
+                    number as usize
+                }
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "numeric-buffer-ref expects an exact non-negative integer index",
+                        span,
+                    ))
+                }
+            };
+            match &args[0] {
+                Value::NumericBuffer(NumericBuffer::I32(values)) => values
+                    .get(index)
+                    .map(|value| Value::Number(f64::from(*value), Exactness::Exact)),
+                Value::NumericBuffer(NumericBuffer::F32(values)) => values
+                    .get(index)
+                    .map(|value| Value::Number(f64::from(*value), Exactness::Inexact)),
+                _ => {
+                    return Err(crate::LanguageError::new(
+                        crate::ErrorKind::Type,
+                        "numeric-buffer-ref expects a numeric buffer",
+                        span,
+                    ))
+                }
+            }
+            .ok_or_else(|| {
+                crate::LanguageError::new(
+                    crate::ErrorKind::InvalidForm,
+                    "numeric-buffer-ref index is out of bounds",
+                    span,
+                )
+            })
+        }
+    );
+    define!(
+        environment,
+        "numeric-buffer-map",
+        |args: &[Value], env: &Environment, span: Span| {
+            exact_args("numeric-buffer-map", args, 2, span)?;
+            match &args[1] {
+                Value::NumericBuffer(NumericBuffer::I32(input)) => {
+                    let mut output = Vec::with_capacity(input.len());
+                    for element in input.iter() {
+                        let result = super::invoke_value(
+                            &args[0],
+                            &[Value::Number(f64::from(*element), Exactness::Exact)],
+                            env,
+                            span,
+                        )?;
+                        let integer = match &result {
                         Value::Number(number, Exactness::Exact) if number.fract() == 0.0 => *number as i64,
                         Value::Rational(rational) if rational.is_integer() => rational.as_precise_i64().ok_or_else(|| {
                             crate::LanguageError::new(crate::ErrorKind::NumericOverflow,
@@ -428,62 +751,97 @@ pub(crate) fn install(environment: &Environment) {
                         _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
                             "numeric-buffer-map over i32 requires exact integer results", span)),
                     };
-                    output.push(i32::try_from(integer).map_err(|_| {
-                        crate::LanguageError::new(crate::ErrorKind::NumericOverflow,
-                            "numeric-buffer-map i32 result is outside the signed 32-bit range", span)
-                    })?);
-                }
-                Ok(Value::NumericBuffer(NumericBuffer::I32(output.into())))
-            }
-            Value::NumericBuffer(NumericBuffer::F32(input)) => {
-                let mut output = Vec::with_capacity(input.len());
-                for bits in input.iter() {
-                    let result = super::invoke_value(&args[0],
-                        &[Value::Number(f64::from(*bits), Exactness::Inexact)], env, span)?;
-                    let number = match &result {
-                        Value::Number(number, _) => *number,
-                        Value::Rational(rational) => rational.as_f64(),
-                        _ => return Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                            "numeric-buffer-map over f32 requires numeric results", span)),
-                    };
-                    let narrowed = number as f32;
-                    if !number.is_finite() || !narrowed.is_finite() {
-                        return Err(crate::LanguageError::new(crate::ErrorKind::NumericOverflow,
-                            "numeric-buffer-map f32 result is outside the finite binary32 domain", span));
+                        output.push(i32::try_from(integer).map_err(|_| {
+                            crate::LanguageError::new(
+                                crate::ErrorKind::NumericOverflow,
+                                "numeric-buffer-map i32 result is outside the signed 32-bit range",
+                                span,
+                            )
+                        })?);
                     }
-                    output.push(narrowed);
+                    Ok(Value::NumericBuffer(NumericBuffer::I32(output.into())))
                 }
-                Ok(Value::NumericBuffer(NumericBuffer::F32(output.into())))
+                Value::NumericBuffer(NumericBuffer::F32(input)) => {
+                    let mut output = Vec::with_capacity(input.len());
+                    for bits in input.iter() {
+                        let result = super::invoke_value(
+                            &args[0],
+                            &[Value::Number(f64::from(*bits), Exactness::Inexact)],
+                            env,
+                            span,
+                        )?;
+                        let number = match &result {
+                            Value::Number(number, _) => *number,
+                            Value::Rational(rational) => rational.as_f64(),
+                            _ => {
+                                return Err(crate::LanguageError::new(
+                                    crate::ErrorKind::Type,
+                                    "numeric-buffer-map over f32 requires numeric results",
+                                    span,
+                                ))
+                            }
+                        };
+                        let narrowed = number as f32;
+                        if !number.is_finite() || !narrowed.is_finite() {
+                            return Err(crate::LanguageError::new(crate::ErrorKind::NumericOverflow,
+                            "numeric-buffer-map f32 result is outside the finite binary32 domain", span));
+                        }
+                        output.push(narrowed);
+                    }
+                    Ok(Value::NumericBuffer(NumericBuffer::F32(output.into())))
+                }
+                _ => Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "numeric-buffer-map expects a numeric buffer",
+                    span,
+                )),
             }
-            _ => Err(crate::LanguageError::new(crate::ErrorKind::Type,
-                "numeric-buffer-map expects a numeric buffer", span)),
         }
-    });
+    );
 
     for op in ["+", "-", "*"] {
-        define!(environment, op, move |args: &[Value], env: &Environment, span: Span| {
-            arithmetic_on_values(op, args, env, span)
-        });
+        define!(
+            environment,
+            op,
+            move |args: &[Value], env: &Environment, span: Span| {
+                arithmetic_on_values(op, args, env, span)
+            }
+        );
     }
-    define!(environment, "/", move |args: &[Value], env: &Environment, span: Span| {
-        division_on_values(args, args.len(), env, span)
-    });
-    define!(environment, "env", |args: &[Value], env: &Environment, span: Span| {
-        exact_args("env", args, 0, span)?;
-        let mut items = Vec::new();
-        for (name, value) in env.snapshot() {
-            items.push(Value::Pair(std::rc::Rc::new(Value::String(name)), std::rc::Rc::new(value)));
+    define!(
+        environment,
+        "/",
+        move |args: &[Value], env: &Environment, span: Span| {
+            division_on_values(args, args.len(), env, span)
         }
-        let mut list = Value::Nil;
-        for item in items.into_iter().rev() {
-            list = Value::Pair(std::rc::Rc::new(item), std::rc::Rc::new(list));
+    );
+    define!(
+        environment,
+        "env",
+        |args: &[Value], env: &Environment, span: Span| {
+            exact_args("env", args, 0, span)?;
+            let mut items = Vec::new();
+            for (name, value) in env.snapshot() {
+                items.push(Value::Pair(
+                    std::rc::Rc::new(Value::String(name)),
+                    std::rc::Rc::new(value),
+                ));
+            }
+            let mut list = Value::Nil;
+            for item in items.into_iter().rev() {
+                list = Value::Pair(std::rc::Rc::new(item), std::rc::Rc::new(list));
+            }
+            Ok(list)
         }
-        Ok(list)
-    });
+    );
     for op in ["<", ">", "="] {
-        define!(environment, op, move |args: &[Value], _env: &Environment, span: Span| {
-            comparison_on_values(op, args, span)
-        });
+        define!(
+            environment,
+            op,
+            move |args: &[Value], _env: &Environment, span: Span| {
+                comparison_on_values(op, args, span)
+            }
+        );
     }
 }
 

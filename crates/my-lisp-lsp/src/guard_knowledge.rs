@@ -18,8 +18,8 @@
 
 use my_lisp::{Arity, Expr, ExprKind, LanguageItemKind, Span};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::path::Path;
+use std::path::PathBuf;
 
 /// One entry of the reference bureau directory.
 #[derive(Clone, Debug)]
@@ -175,9 +175,7 @@ fn as_list(expr: &Expr) -> Option<&[Expr]> {
 }
 
 /// Read `(field value...)` pairs from a list of expressions.
-fn read_fields<'a>(
-    items: &'a [Expr],
-) -> impl Iterator<Item = (&'a str, Vec<&'a Expr>)> + 'a {
+fn read_fields<'a>(items: &'a [Expr]) -> impl Iterator<Item = (&'a str, Vec<&'a Expr>)> + 'a {
     items.iter().filter_map(|item| {
         let list = as_list(item)?;
         let field = as_symbol(list.first()?)?;
@@ -217,7 +215,9 @@ fn parse_topics(source: &str) -> HashMap<String, GuardReference> {
             continue;
         };
         for entry in data {
-            let Some(fields) = as_list(entry) else { continue };
+            let Some(fields) = as_list(entry) else {
+                continue;
+            };
             if fields.first().and_then(as_symbol) != Some("reference") {
                 continue;
             }
@@ -368,7 +368,10 @@ mod tests {
             semantics.authority,
             vec!["language-contract.my", "docs/language-core-axioms.md"]
         );
-        assert_eq!(semantics.how_to, vec!["read-contract", "run-conformance-fixtures"]);
+        assert_eq!(
+            semantics.how_to,
+            vec!["read-contract", "run-conformance-fixtures"]
+        );
         assert_eq!(
             semantics.verify,
             vec!["cargo-test-workspace", "evidence/README.md"]
@@ -379,10 +382,7 @@ mod tests {
 
     #[test]
     fn ignores_entries_without_topic() {
-        let broken = SAMPLE_REFERENCE.replace(
-            "(topic language-semantics)",
-            "(topic )",
-        );
+        let broken = SAMPLE_REFERENCE.replace("(topic language-semantics)", "(topic )");
         let topics = parse_topics(&broken);
         assert_eq!(topics.len(), 1);
         assert!(topics.contains_key("second-topic"));
@@ -410,7 +410,8 @@ mod tests {
         // Real evidence: the actual repo's lib/guard.wsm must yield the
         // guard functions. This is the cheap half (milliseconds).
         let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("..").join("..");
+            .join("..")
+            .join("..");
         let knowledge = GuardKnowledge::load_functions(&root);
         assert!(
             knowledge.functions.contains_key("guard-unknown"),
@@ -420,7 +421,9 @@ mod tests {
             knowledge.functions.contains_key("make-guard-finding"),
             "make-guard-finding function missing"
         );
-        assert!(knowledge.source_of(&knowledge.functions["guard-unknown"]).is_some());
+        assert!(knowledge
+            .source_of(&knowledge.functions["guard-unknown"])
+            .is_some());
     }
 
     #[test]
@@ -430,9 +433,13 @@ mod tests {
         // in the live canonical directory. Slower than a normal unit test,
         // so it stays explicit rather than slowing every `cargo test`.
         let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("..").join("..");
+            .join("..")
+            .join("..");
         let knowledge = GuardKnowledge::load(&root);
-        assert!(knowledge.topics.contains_key("guard"), "guard topic missing");
+        assert!(
+            knowledge.topics.contains_key("guard"),
+            "guard topic missing"
+        );
         assert!(
             knowledge.topics.contains_key("swarm-coordination"),
             "swarm-coordination topic missing"

@@ -12,11 +12,7 @@ fn stable_uk_pairs() -> Vec<(&'static str, &'static str, &'static str)> {
             if fields.first() != Some(&"(entry") || fields.get(5) != Some(&"stable") {
                 return None;
             }
-            Some((
-                fields[1].trim_start_matches('('),
-                fields[2],
-                fields[3],
-            ))
+            Some((fields[1].trim_start_matches('('), fields[2], fields[3]))
         })
         .collect()
 }
@@ -80,9 +76,10 @@ fn every_stable_uk_surface_entry_is_wired_to_its_declared_operation() {
         if syntax.contains(&(english, ukrainian)) {
             continue;
         }
-        let english_value = session.environment.get(english).unwrap_or_else(|| {
-            panic!("stable English binding is missing: {category}/{english}")
-        });
+        let english_value = session
+            .environment
+            .get(english)
+            .unwrap_or_else(|| panic!("stable English binding is missing: {category}/{english}"));
         let ukrainian_value = session.environment.get(ukrainian).unwrap_or_else(|| {
             panic!("stable Ukrainian binding is missing: {category}/{ukrainian}")
         });
@@ -103,7 +100,10 @@ fn every_stable_uk_surface_entry_is_wired_to_its_declared_operation() {
 #[test]
 fn selected_ukrainian_surface_has_no_candidate_or_missing_rows() {
     let statuses = uk_statuses();
-    let stable = statuses.iter().filter(|status| **status == "stable").count();
+    let stable = statuses
+        .iter()
+        .filter(|status| **status == "stable")
+        .count();
     let compatibility = statuses
         .iter()
         .filter(|status| **status == "compatibility-only")
