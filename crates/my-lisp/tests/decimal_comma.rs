@@ -38,4 +38,7 @@ fn f32_buffer_pryimaie_desiatkovu_komu() {
     let forms = parse("#f32(1,5 2,25)").expect("#f32 має приймати десяткову кому");
     assert_eq!(forms.len(), 1);
     assert!(matches!(forms[0].kind, ExprKind::NumericBuffer(_)));
+
+    assert_eq!(obchyslyty("(eq #f32(-0,0) #f32(0,0))"), "()");
+    assert_eq!(obchyslyty("(eq #f32(-0.0) #f32(0.0))"), "()");
 }

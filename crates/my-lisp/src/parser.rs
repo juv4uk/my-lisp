@@ -115,8 +115,30 @@ impl Parser<'_> {
                     let buffer = if f32_elements {
                         let mut values = Vec::with_capacity(elements.len());
                         for element in elements {
+                            let span = element.span;
                             let number = match element.kind {
-                                ExprKind::Number(value, _) => value,
+                                ExprKind::Number(_, _) => {
+                                    let spelling = &self.source[span.start..span.end];
+                                    let spelling_with_dot = if spelling.contains(',')
+                                        && !spelling.contains('.')
+                                    {
+                                        Some(spelling.replace(',', "."))
+                                    } else {
+                                        None
+                                    };
+                                    spelling_with_dot
+                                        .as_deref()
+                                        .unwrap_or(spelling)
+                                        .parse::<f32>()
+                                        .map(f64::from)
+                                        .map_err(|_| {
+                                            self.error(
+                                                "#f32 expects numeric elements",
+                                                span.start,
+                                                span.end,
+                                            )
+                                        })?
+                                }
                                 ExprKind::Rational(value) => value.as_f64(),
                                 _ => {
                                     return Err(self.error(
