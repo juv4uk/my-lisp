@@ -1,12 +1,31 @@
-//! String/symbol primitives that genuinely need a Rust primitive
-//! (`string-append`, `string<?`, `symbol->string`, `string->symbol`) or
-//! were added deliberately for `lib/clips-import.my`'s introspection needs
-//! (`string?`, `string-first`, `string-rest`).
+//! String/symbol mechanisms that genuinely need the Rust substrate.
+//!
+//! Public callable identity does not belong here.  The value-level helpers in
+//! this module are deliberately independent of evaluator syntax dispatch so
+//! they can be installed as ordinary first-class `Value::Builtin` values.
+//! Transitional Expr wrappers remain only until the evaluator-name migration
+//! is complete.
 
 use super::core::exact_arity;
 use crate::eval::evaluate;
 use crate::{Environment, ErrorKind, Expr, LanguageError, Span, Value};
 use std::rc::Rc;
+
+fn exact_value_arity(
+    name: &'static str,
+    arguments: &[Value],
+    expected: usize,
+    span: Span,
+) -> Result<(), LanguageError> {
+    if arguments.len() != expected {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            format!("{name} expects exactly {expected} argument(s)"),
+            span,
+        ));
+    }
+    Ok(())
+}
 
 /// Return the half-open character-indexed slice of a string.
 ///
@@ -44,18 +63,18 @@ fn slice_index(value: &Value, span: Span) -> Result<usize, LanguageError> {
         {
             if *number < 0.0 {
                 return Err(LanguageError::new(
-                        ErrorKind::Type,
-                        "string-slice indices must be non-negative exact integers · indeksy string-slice maiut buty nevidiemni tochnymy tsilymy · string-slice-Indizes müssen nichtnegative exakte Ganzzahlen sein",
-                        span,
-                    ));
+                    ErrorKind::Type,
+                    "string-slice indices must be non-negative exact integers · indeksy string-slice maiut buty nevidiemni tochnymy tsilymy · string-slice-Indizes müssen nichtnegative exakte Ganzzahlen sein",
+                    span,
+                ));
             }
             (*number as u128).try_into().map_err(|_| {
-                    LanguageError::new(
-                        ErrorKind::NumericOverflow,
-                        "string-slice index is too large · indeks string-slice zavelykyi · string-slice-Index ist zu groß",
-                        span,
-                    )
-                })?
+                LanguageError::new(
+                    ErrorKind::NumericOverflow,
+                    "string-slice index is too large · indeks string-slice zavelykyi · string-slice-Index ist zu groß",
+                    span,
+                )
+            })?
         }
         Value::Rational(rational) if rational.is_integer() => {
             let number = rational.as_precise_i64().ok_or_else(|| {
@@ -84,27 +103,19 @@ fn slice_index(value: &Value, span: Span) -> Result<usize, LanguageError> {
     Ok(integer)
 }
 
-/// String concatenation (PLAN.md item 14) — genuinely needs a Rust
-/// primitive, unlike `string-length`/`string-contains?` (both now in
-/// `lib/core.my`, expressible via `string-first`/`string-rest`/`eq`
-/// alone): `Value::String` wraps an immutable `Rc<str>`, and no
-/// existing primitive combines two strings into a new one.
-pub(crate) fn evaluate_string_append(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn string_append_values(
+    arguments: &[Value],
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("string-append", arguments, 2, span)?;
-    let left_value = evaluate(&arguments[0], environment)?;
-    let Value::String(ref left) = left_value else {
+    exact_value_arity("string-append", arguments, 2, span)?;
+    let Value::String(left) = &arguments[0] else {
         return Err(LanguageError::new(
             ErrorKind::Type,
             "string-append expects two strings · string-append ochikuie dva riadky · string-append erwartet zwei Zeichenketten",
             span,
         ));
     };
-    let right_value = evaluate(&arguments[1], environment)?;
-    let Value::String(ref right) = right_value else {
+    let Value::String(right) = &arguments[1] else {
         return Err(LanguageError::new(
             ErrorKind::Type,
             "string-append expects two strings · string-append ochikuie dva riadky · string-append erwartet zwei Zeichenketten",
@@ -114,28 +125,19 @@ pub(crate) fn evaluate_string_append(
     Ok(Value::String(Rc::from(format!("{left}{right}").as_str())))
 }
 
-/// Lexicographic string ordering (PLAN.md item 15) — the one new Rust
-/// primitive the persistent-map design actually needs: Rust's `Ord` for
-/// `&str` gives this for free, but nothing in the language could derive
-/// "is one string before another" from `string-first`/`string-rest`/`eq`
-/// alone (those only ever test *equality* one character at a time, never
-/// ordering).
-pub(crate) fn evaluate_string_less_than(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn string_less_than_values(
+    arguments: &[Value],
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("string<?", arguments, 2, span)?;
-    let left_value = evaluate(&arguments[0], environment)?;
-    let Value::String(ref left) = left_value else {
+    exact_value_arity("string<?", arguments, 2, span)?;
+    let Value::String(left) = &arguments[0] else {
         return Err(LanguageError::new(
             ErrorKind::Type,
             "string<? expects two strings · string<? ochikuie dva riadky · string<? erwartet zwei Zeichenketten",
             span,
         ));
     };
-    let right_value = evaluate(&arguments[1], environment)?;
-    let Value::String(ref right) = right_value else {
+    let Value::String(right) = &arguments[1] else {
         return Err(LanguageError::new(
             ErrorKind::Type,
             "string<? expects two strings · string<? ochikuie dva riadky · string<? erwartet zwei Zeichenketten",
@@ -145,32 +147,21 @@ pub(crate) fn evaluate_string_less_than(
     Ok(Value::truth(left.as_ref() < right.as_ref()))
 }
 
-/// The minimal symbol/string introspection this project held off on for a
-/// long time (per CLAUDE.md's "don't grow the Rust surface" principle) —
-/// added deliberately when `lib/clips-import.my`'s Step 2 hit a real wall:
-/// converting CLIPS's `?x` variable syntax into `(var x)` needs to peel
-/// the leading `?` off a symbol's name, and there was no way to inspect a
-/// symbol's characters from within my-lisp itself.
-pub(crate) fn evaluate_string_predicate(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn string_predicate_values(
+    arguments: &[Value],
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("string?", arguments, 1, span)?;
-    Ok(Value::truth(matches!(
-        evaluate(&arguments[0], environment)?,
-        Value::String(_)
-    )))
+    exact_value_arity("string?", arguments, 1, span)?;
+    Ok(Value::truth(matches!(arguments[0], Value::String(_))))
 }
 
-pub(crate) fn evaluate_symbol_to_string(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn symbol_to_string_values(
+    arguments: &[Value],
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("symbol->string", arguments, 1, span)?;
-    match evaluate(&arguments[0], environment)? {
-        Value::Symbol(ref symbol) => Ok(Value::String(symbol.clone())),
+    exact_value_arity("symbol->string", arguments, 1, span)?;
+    match &arguments[0] {
+        Value::Symbol(symbol) => Ok(Value::String(symbol.clone())),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
             "symbol->string expects a symbol · symbol->string ochikuie symvol · symbol->string erwartet ein Symbol",
@@ -179,14 +170,13 @@ pub(crate) fn evaluate_symbol_to_string(
     }
 }
 
-pub(crate) fn evaluate_string_to_symbol(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn string_to_symbol_values(
+    arguments: &[Value],
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("string->symbol", arguments, 1, span)?;
-    match evaluate(&arguments[0], environment)? {
-        Value::String(ref text) => Ok(Value::Symbol(text.clone())),
+    exact_value_arity("string->symbol", arguments, 1, span)?;
+    match &arguments[0] {
+        Value::String(text) => Ok(Value::Symbol(text.clone())),
         _ => Err(LanguageError::new(
             ErrorKind::Type,
             "string->symbol expects a string · string->symbol ochikuie riadok · string->symbol erwartet eine Zeichenkette",
@@ -195,16 +185,13 @@ pub(crate) fn evaluate_string_to_symbol(
     }
 }
 
-/// The first character, as a one-character string — the string analogue
-/// of `car`. Errors on an empty string, same as `car` on an empty list.
-pub(crate) fn evaluate_string_first(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn string_first_values(
+    arguments: &[Value],
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("string-first", arguments, 1, span)?;
-    match evaluate(&arguments[0], environment)? {
-        Value::String(ref text) => match text.chars().next() {
+    exact_value_arity("string-first", arguments, 1, span)?;
+    match &arguments[0] {
+        Value::String(text) => match text.chars().next() {
             Some(character) => Ok(Value::String(Rc::from(character.to_string().as_str()))),
             None => Err(LanguageError::new(
                 ErrorKind::Type,
@@ -220,17 +207,13 @@ pub(crate) fn evaluate_string_first(
     }
 }
 
-/// All but the first character — the string analogue of `cdr`. Errors on
-/// an empty string rather than silently returning one, the same way `car`
-/// errors on an empty list instead of returning `()`.
-pub(crate) fn evaluate_string_rest(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn string_rest_values(
+    arguments: &[Value],
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("string-rest", arguments, 1, span)?;
-    match evaluate(&arguments[0], environment)? {
-        Value::String(ref text) => {
+    exact_value_arity("string-rest", arguments, 1, span)?;
+    match &arguments[0] {
+        Value::String(text) => {
             let mut characters = text.chars();
             if characters.next().is_none() {
                 return Err(LanguageError::new(
@@ -247,4 +230,82 @@ pub(crate) fn evaluate_string_rest(
             span,
         )),
     }
+}
+
+// Transitional Expr wrappers.  Delete these once `eval/mod.rs` no longer
+// dispatches these names specially.
+pub(crate) fn evaluate_string_append(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string-append", arguments, 2, span)?;
+    let values = [
+        evaluate(&arguments[0], environment)?,
+        evaluate(&arguments[1], environment)?,
+    ];
+    string_append_values(&values, span)
+}
+
+pub(crate) fn evaluate_string_less_than(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string<?", arguments, 2, span)?;
+    let values = [
+        evaluate(&arguments[0], environment)?,
+        evaluate(&arguments[1], environment)?,
+    ];
+    string_less_than_values(&values, span)
+}
+
+pub(crate) fn evaluate_string_predicate(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string?", arguments, 1, span)?;
+    let values = [evaluate(&arguments[0], environment)?];
+    string_predicate_values(&values, span)
+}
+
+pub(crate) fn evaluate_symbol_to_string(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("symbol->string", arguments, 1, span)?;
+    let values = [evaluate(&arguments[0], environment)?];
+    symbol_to_string_values(&values, span)
+}
+
+pub(crate) fn evaluate_string_to_symbol(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string->symbol", arguments, 1, span)?;
+    let values = [evaluate(&arguments[0], environment)?];
+    string_to_symbol_values(&values, span)
+}
+
+pub(crate) fn evaluate_string_first(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string-first", arguments, 1, span)?;
+    let values = [evaluate(&arguments[0], environment)?];
+    string_first_values(&values, span)
+}
+
+pub(crate) fn evaluate_string_rest(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    exact_arity("string-rest", arguments, 1, span)?;
+    let values = [evaluate(&arguments[0], environment)?];
+    string_rest_values(&values, span)
 }
