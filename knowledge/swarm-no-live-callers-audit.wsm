@@ -1,0 +1,36 @@
+; Repository-scoped C5 audit for the legacy :9999 coordination surface.
+; This is evidence about the removal gate, not a claim that the gate passed.
+; The authoritative coordination plane is swarm-node :910x; :9999 remains the
+; semantic oracle. Physical legacy removal is forbidden while status is partial.
+
+(def *swarm-no-live-callers-audit*
+  (quote
+    ((schema . swarm-no-live-callers-audit/1)
+     (as-of . "2026-09-07")
+     (scope . repository)
+     (status . partial)
+     (safe-to-remove . ())
+     (coordination-authority . swarm-node)
+     (semantic-oracle . my-lisp-9999)
+     (semantic-operations . (eval parse diagnose contract-version))
+     (confirmed .
+       ((primary-agent-guide . AGENTS.md)
+        (migration-authority . docs/swarm-mesh-v2.md)
+        (deprecation-marker . knowledge/swarm-legacy-deprecation.wsm)))
+     (blockers .
+       ((active-snapshot-guidance
+          ecosystem-status.my
+          "still directs time-sensitive coordination to notify/poll on :9999")
+        (superseded-operational-example
+          docs/swarm-autonomy.md
+          "still contains a copy-paste (op notify) command for :9999")
+        (legacy-cli-regression-caller
+          crates/my-lisp-cli/tests/cli.rs
+          "still invokes sync-tasks/complete-task/next-best-action on the legacy server")))
+     (physical-surface-still-present .
+       (crates/my-lisp-cli/src/swarm.rs))
+     (next-proof .
+       (remove-or-quarantine-active-legacy-guidance
+        retire-legacy-regression-callers
+        scan-executable-call-sites
+        preserve-eval-parse-diagnose)))))
