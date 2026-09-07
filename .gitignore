@@ -20,6 +20,10 @@ node_modules
 # Private lokale Dateien (kein Teil des Sprach-Repos)
 /private/
 
+# Приватні конкурсні матеріали та чернетки. Вони живуть локально в docs,
+# але навмисно не входять до публічної історії репозиторію.
+/docs/contest/
+
 # Standalone Web HTML (generated artifact)
 # Standalone Web HTML (згенерований артефакт)
 # Standalone Web HTML (generiertes Artefakt)
