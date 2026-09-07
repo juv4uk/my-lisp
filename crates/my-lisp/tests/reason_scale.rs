@@ -9,7 +9,7 @@
 //! shared CI timing is noisy and is not a semantic contract. The stable claims
 //! here are functional correctness and successful completion on the ordinary
 //! stack. Use the ignored extended test manually when larger measurements are
-//! needed before an indexing decision.
+//! needed before a further indexing/representation change.
 
 use my_lisp::{eval_program, Session};
 use std::time::Instant;
@@ -76,7 +76,7 @@ fn reason_scale_profile_default_stack_100_500_1000() {
 }
 
 #[test]
-#[ignore = "manual extended profile before indexing decisions"]
+#[ignore = "manual extended profile before further indexing/representation changes"]
 fn reason_scale_profile_extended_5000_10000() {
     // Run explicitly with:
     // cargo test -p my-lisp --test reason_scale reason_scale_profile_extended -- --ignored --nocapture
