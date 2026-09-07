@@ -15,16 +15,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 3
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Recover the reviewed fail-closed surgery recipe
         run: |
-          git show HEAD^:.github/workflows/c5-physical-removal.yml > /tmp/c5-recipe.yml
-          sed -n "/python3 - <<'PY'/,/^[[:space:]]*PY$/p" /tmp/c5-recipe.yml \
+          git show HEAD~2:.github/workflows/c5-physical-removal.yml > /tmp/c5-recipe.yml
+          sed -n "/^[[:space:]]*python3 - <<'PY'$/,/^[[:space:]]*PY$/p" /tmp/c5-recipe.yml \
             | sed '1d;$d;s/^          //' > /tmp/c5-remove.py
           test -s /tmp/c5-remove.py
           grep -q 'legacy surface survived surgery' /tmp/c5-remove.py
+          python3 -m py_compile /tmp/c5-remove.py
       - name: Apply physical removal in the worktree
         run: |
           python3 /tmp/c5-remove.py
