@@ -85,9 +85,15 @@ fn tracked_function_reference_tracks_live_library_definitions() {
     let reference = include_str!("../../../docs/FUNCTIONS.md");
 
     for (file, source) in [
-        ("result-status.my", include_str!("../../../lib/result-status.my")),
+        (
+            "result-status.my",
+            include_str!("../../../lib/result-status.my"),
+        ),
         ("narrate.my", include_str!("../../../lib/narrate.my")),
-        ("translation.my", include_str!("../../../lib/translation.my")),
+        (
+            "translation.my",
+            include_str!("../../../lib/translation.my"),
+        ),
         ("quantity.my", include_str!("../../../lib/quantity.my")),
         ("si.my", include_str!("../../../lib/si.my")),
     ] {

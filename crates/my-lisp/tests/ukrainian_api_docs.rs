@@ -31,7 +31,10 @@ fn documented() -> BTreeMap<(String, String), String> {
                 fields.len() >= 5,
                 "рядок документації має містити category EN UK kind: {line}"
             );
-            Some(((fields[2].to_string(), fields[3].to_string()), fields[4].to_string()))
+            Some((
+                (fields[2].to_string(), fields[3].to_string()),
+                fields[4].to_string(),
+            ))
         })
         .collect()
 }
@@ -115,12 +118,16 @@ fn stari_nazvy_dvokh_predykativ_lyshaiutsia_aliasamy_symisnosti() {
 
 #[test]
 fn dovidnyk_poiasniuie_ne_predykaty_shcho_mozhut_povernuty_pustyi_spysok() {
-    for name in ["карта-отримати", "підтримуючий-доказ", "та", "або"] {
+    for name in ["карта-отримати", "підтримуючий-доказ", "та", "або"]
+    {
         let kind = documented()
             .into_iter()
             .find_map(|((_en, uk), kind)| (uk == name).then_some(kind))
             .unwrap_or_else(|| panic!("немає документаційного запису для {name}"));
-        assert_ne!(kind, "predicate", "{name} повертає дані/значення, а не лише t/()");
+        assert_ne!(
+            kind, "predicate",
+            "{name} повертає дані/значення, а не лише t/()"
+        );
         assert!(!name.ends_with('?'));
     }
 }
@@ -143,6 +150,25 @@ fn uk_session() -> Session {
     }
     eval_program(UK_SURFACE, &mut session).expect("українська поверхня має завантажитися");
     session
+}
+
+#[test]
+fn istina_i_khyba_ie_imenamy_tyh_samykh_kanonichnykh_znachen() {
+    let mut session = uk_session();
+    assert_eq!(
+        eval_program("істина", &mut session)
+            .expect("істина має бути доступна")
+            .value
+            .to_string(),
+        "t"
+    );
+    assert_eq!(
+        eval_program("хиба", &mut session)
+            .expect("хиба має бути доступна")
+            .value
+            .to_string(),
+        "()"
+    );
 }
 
 #[test]

@@ -16,7 +16,12 @@ fn raw_host_time_surface_is_small_and_semantic_names_are_absent() {
         );
     }
 
-    for name in ["mono-ms", "utc-now", "internet-time-sync", "timezone-detect"] {
+    for name in [
+        "mono-ms",
+        "utc-now",
+        "internet-time-sync",
+        "timezone-detect",
+    ] {
         assert!(
             session.environment.get(name).is_none(),
             "{name} is semantic policy and must not reappear in the root host surface"
@@ -30,7 +35,12 @@ fn time_library_builds_public_meanings_over_raw_host_observations() {
     load_core_library(&mut session).unwrap();
     load_time_library(&mut session).unwrap();
 
-    for name in ["mono-ms", "utc-now", "internet-time-sync", "timezone-detect"] {
+    for name in [
+        "mono-ms",
+        "utc-now",
+        "internet-time-sync",
+        "timezone-detect",
+    ] {
         assert!(
             matches!(session.environment.get(name), Some(Value::Closure(_))),
             "{name} must be language-owned after lib/time.my loads"

@@ -3,8 +3,8 @@
 //! це команди оболонки над одним і тим самим семантичним ядром.
 
 use my_lisp::{
-    eval_parsed_expressions_incremental, eval_program, parse, Environment, ErrorKind, ExprKind,
-    Session,
+    eval_parsed_expressions_incremental, eval_program, parse, render_error_for_presentation,
+    render_value_for_presentation, Environment, ErrorKind, ExprKind, PresentationLanguage, Session,
 };
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -65,6 +65,15 @@ impl ReplSurface {
             Self::English => "англійська",
             Self::Ukrainian => "українська",
             Self::Sanskrit => "санскрит",
+        }
+    }
+
+    fn presentation(self) -> PresentationLanguage {
+        match self {
+            Self::Core => PresentationLanguage::Canonical,
+            Self::English => PresentationLanguage::English,
+            Self::Ukrainian => PresentationLanguage::Ukrainian,
+            Self::Sanskrit => PresentationLanguage::Sanskrit,
         }
     }
 }
@@ -234,7 +243,13 @@ pub(crate) fn run_repl(session: Session, initial_surface: ReplSurface) {
                                 for out in result.output {
                                     println!("{out}");
                                 }
-                                println!("{}", result.value);
+                                println!(
+                                    "{}",
+                                    render_value_for_presentation(
+                                        &result.value,
+                                        state.surface.presentation(),
+                                    )
+                                );
                             }
                             Err(e) => {
                                 // Це лише interaction policy: невідомий standalone symbol
@@ -246,12 +261,22 @@ pub(crate) fn run_repl(session: Session, initial_surface: ReplSurface) {
                                 {
                                     println!("echo {line}");
                                 } else {
-                                    eprintln!("Error: {}", e.render(line));
+                                    eprintln!(
+                                        "{}",
+                                        render_error_for_presentation(
+                                            &e,
+                                            line,
+                                            state.surface.presentation(),
+                                        )
+                                    );
                                 }
                             }
                         }
                     }
-                    Err(e) => eprintln!("Parse error: {}", e.render(line)),
+                    Err(e) => eprintln!(
+                        "{}",
+                        render_error_for_presentation(&e, line, state.surface.presentation(),)
+                    ),
                 }
             }
             Err(ReadlineError::Interrupted | ReadlineError::Eof) => break,
@@ -285,7 +310,16 @@ mod tests {
         let mut state = core_state();
         state.switch_surface(ReplSurface::Ukrainian).expect("uk");
         assert_eq!(value(&mut state, "(атом? 'мама)"), "t");
+        let truth = eval_program("(атом? 'мама)", &mut state.session)
+            .expect("uk predicate")
+            .value;
+        assert_eq!(
+            render_value_for_presentation(&truth, state.surface.presentation()),
+            "істина"
+        );
         assert!(state.session.environment.get("атом?").is_some());
+        assert_eq!(value(&mut state, "істина"), "t");
+        assert_eq!(value(&mut state, "хиба"), "()");
 
         state.switch_surface(ReplSurface::Core).expect("core");
         assert!(state.session.environment.get("атом?").is_none());

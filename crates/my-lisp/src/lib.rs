@@ -15,6 +15,7 @@ mod error;
 pub(crate) mod eval;
 mod language_items;
 mod parser;
+mod presentation;
 pub mod syntax;
 mod value;
 
@@ -32,6 +33,10 @@ pub use eval::{
     eval_program_incremental, evaluate as eval_expr, EvalResult,
 };
 pub use parser::parse;
+pub use presentation::{
+    present_system_message, render_error_for_presentation, render_value_for_presentation,
+    PresentationLanguage,
+};
 pub use syntax::fasl::{
     decode_program as fasl_decode_program, encode_program as fasl_encode_program,
 };

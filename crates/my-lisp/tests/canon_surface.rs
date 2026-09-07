@@ -21,10 +21,7 @@ fn ukrainian_surface_executes_all_seven_canonical_operations() {
     assert_eq!(eval("(сполучити (як-є кіт) 42)"), "(кіт . 42)");
     assert_eq!(eval("(перше (сполучити 10 20))"), "10");
     assert_eq!(eval("(решта (як-є (1 2 3)))"), "(2 3)");
-    assert_eq!(
-        eval("(за-умовою (() (як-є ні)) (t (як-є так)))"),
-        "так"
-    );
+    assert_eq!(eval("(за-умовою (() (як-є ні)) (t (як-є так)))"), "так");
 }
 
 #[test]
@@ -45,12 +42,32 @@ fn sanskrit_surface_executes_all_seven_canonical_operations() {
 fn historical_ukrainian_and_sanskrit_surfaces_are_observationally_equal() {
     let cases = [
         ("(quote (1 2 3))", "(як-є (1 2 3))", "(svarūpa (1 2 3))"),
-        ("(atom (quote кіт))", "(атом? (як-є кіт))", "(aṇu (svarūpa кіт))"),
-        ("(eq (quote кіт) (quote кіт))", "(тотожне? (як-є кіт) (як-є кіт))", "(abheda (svarūpa кіт) (svarūpa кіт))"),
+        (
+            "(atom (quote кіт))",
+            "(атом? (як-є кіт))",
+            "(aṇu (svarūpa кіт))",
+        ),
+        (
+            "(eq (quote кіт) (quote кіт))",
+            "(тотожне? (як-є кіт) (як-є кіт))",
+            "(abheda (svarūpa кіт) (svarūpa кіт))",
+        ),
         ("(cons 1 2)", "(сполучити 1 2)", "(saṃyuj 1 2)"),
-        ("(car (cons 1 2))", "(перше (сполучити 1 2))", "(ādi (saṃyuj 1 2))"),
-        ("(cdr (quote (1 2 3)))", "(решта (як-є (1 2 3)))", "(śeṣa (svarūpa (1 2 3)))"),
-        ("(cond (() (quote ні)) (t (quote так)))", "(за-умовою (() (як-є ні)) (t (як-є так)))", "(anukrama (() (svarūpa na)) (t (svarūpa так)))"),
+        (
+            "(car (cons 1 2))",
+            "(перше (сполучити 1 2))",
+            "(ādi (saṃyuj 1 2))",
+        ),
+        (
+            "(cdr (quote (1 2 3)))",
+            "(решта (як-є (1 2 3)))",
+            "(śeṣa (svarūpa (1 2 3)))",
+        ),
+        (
+            "(cond (() (quote ні)) (t (quote так)))",
+            "(за-умовою (() (як-є ні)) (t (як-є так)))",
+            "(anukrama (() (svarūpa na)) (t (svarūpa так)))",
+        ),
     ];
 
     for (historical, ukrainian, sanskrit) in cases {

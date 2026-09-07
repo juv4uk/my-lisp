@@ -189,10 +189,7 @@ fn one_alternative_is_not_allowed_to_masquerade_as_ambiguity() {
           (translation-review-code review)
           (translation-admission-payload review))
     "#;
-    assert_eq!(
-        eval_translation(source),
-        "(rejected invalid-ambiguity ())"
-    );
+    assert_eq!(eval_translation(source), "(rejected invalid-ambiguity ())");
 }
 
 #[test]

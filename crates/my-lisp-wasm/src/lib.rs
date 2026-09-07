@@ -1,7 +1,10 @@
 //! WebAssembly bindings exposing the canonical my-lisp engine to the browser.
 //! Persistent session with core.my preloaded on first call.
 
-use my_lisp::{eval_program, Environment, Session};
+use my_lisp::{
+    eval_program, present_system_message, render_error_for_presentation,
+    render_value_for_presentation, Environment, PresentationLanguage, Session,
+};
 use my_lisp_literate::SourceMode;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -53,6 +56,15 @@ impl WebSurface {
             Self::English => "en",
             Self::Ukrainian => "ук",
             Self::Sanskrit => "sa",
+        }
+    }
+
+    fn presentation(self) -> PresentationLanguage {
+        match self {
+            Self::Core => PresentationLanguage::Canonical,
+            Self::English => PresentationLanguage::English,
+            Self::Ukrainian => PresentationLanguage::Ukrainian,
+            Self::Sanskrit => PresentationLanguage::Sanskrit,
         }
     }
 }
@@ -170,11 +182,18 @@ pub fn evaluate(source: &str, mode: JsValue) -> Result<JsValue, JsValue> {
         let mut guard = slot.borrow_mut();
         let state = guard.as_mut().expect("session set by init_if_needed");
         let (result, forms) =
-            my_lisp_literate::eval_literate(source, source_mode, &mut state.session)
-                .map_err(|e| JsValue::from_str(&e.to_string()))?;
+            my_lisp_literate::eval_literate(source, source_mode, &mut state.session).map_err(
+                |e| {
+                    JsValue::from_str(&render_error_for_presentation(
+                        &e,
+                        source,
+                        state.surface.presentation(),
+                    ))
+                },
+            )?;
 
         let evaluation = Evaluation {
-            value: result.value.to_string(),
+            value: render_value_for_presentation(&result.value, state.surface.presentation()),
             output: result.output,
             ast: format!("{forms:#?}"),
             engine: "my-lisp · WASM".to_string(),
@@ -227,13 +246,37 @@ pub fn current_surface() -> String {
 pub fn diagnose(source: &str, mode: JsValue) -> JsValue {
     let mode_str = mode.as_string().unwrap_or_default();
     let is_literate = mode_str == "markdown";
-    serde_wasm_bindgen::to_value(&diagnose_impl(source, is_literate)).unwrap_or(JsValue::NULL)
+    let presentation = if init_if_needed().is_ok() {
+        SESSION.with(|slot| {
+            slot.borrow()
+                .as_ref()
+                .map(|state| state.surface.presentation())
+                .unwrap_or(PresentationLanguage::Canonical)
+        })
+    } else {
+        PresentationLanguage::Canonical
+    };
+    serde_wasm_bindgen::to_value(&diagnose_impl_with_presentation(
+        source,
+        is_literate,
+        presentation,
+    ))
+    .unwrap_or(JsValue::NULL)
 }
 
 /// Non-wasm_bindgen core of diagnose() -- pulled out so native #[test]s
 /// can exercise it directly (JsValue isn't constructible from a plain
 /// native test without the wasm-bindgen-test harness).
+#[cfg(test)]
 fn diagnose_impl(source: &str, is_literate: bool) -> Vec<Diagnostic> {
+    diagnose_impl_with_presentation(source, is_literate, PresentationLanguage::Canonical)
+}
+
+fn diagnose_impl_with_presentation(
+    source: &str,
+    is_literate: bool,
+    presentation: PresentationLanguage,
+) -> Vec<Diagnostic> {
     // extract_code/remap_offset are the same functions parse_literate()
     // itself uses internally (my-lisp-literate/src/lib.rs) -- called
     // directly here, instead of going through parse_literate(), so the
@@ -252,7 +295,7 @@ fn diagnose_impl(source: &str, is_literate: bool) -> Vec<Diagnostic> {
             from: my_lisp_literate::remap_offset(e.span.start, &offset_maps),
             to: my_lisp_literate::remap_offset(e.span.end, &offset_maps),
             severity: "error",
-            message: e.to_string(),
+            message: present_system_message(&e.message, presentation),
         }),
         // Only meaningful to check arity once the source actually
         // parses -- same order the native LSP server uses
@@ -266,7 +309,7 @@ fn diagnose_impl(source: &str, is_literate: bool) -> Vec<Diagnostic> {
                         from: my_lisp_literate::remap_offset(d.span.start, &offset_maps),
                         to: my_lisp_literate::remap_offset(d.span.end, &offset_maps),
                         severity: "error",
-                        message: d.message,
+                        message: present_system_message(&d.message, presentation),
                     });
                 }
             }
@@ -319,6 +362,10 @@ mod tests {
             let session = &mut guard.as_mut().unwrap().session;
             let uk = eval_program("(атом? 'мама)", session).expect("uk alias");
             assert_eq!(uk.value.to_string(), "t");
+            assert_eq!(
+                render_value_for_presentation(&uk.value, WebSurface::Ukrainian.presentation()),
+                "істина"
+            );
             eval_program("(define крок 2)", session).expect("redefine user value");
             let closure = eval_program("(додай-крок 5)", session).expect("closure");
             assert_eq!(closure.value.to_string(), "7");

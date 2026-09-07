@@ -625,7 +625,9 @@ fn t16_workspace_scan_recognizes_wsm_extension() {
 /// workspace root so initialize loads guard knowledge from the REAL
 /// lib/guard.wsm and knowledge/guard-reference.wsm.
 fn my_lisp_repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
 }
 
 fn init_with_root(root: &Path) -> String {
@@ -675,10 +677,7 @@ fn t18_g3_guard_function_wrong_arity_is_diagnosed() {
     let r = replies[1].as_str();
     assert!(r.contains("publishDiagnostics"), "{r}");
     assert!(r.contains("arity: guard-unknown expects"), "{r}");
-    assert!(
-        !r.contains("\"diagnostics\":[]"),
-        "must not be empty: {r}"
-    );
+    assert!(!r.contains("\"diagnostics\":[]"), "must not be empty: {r}");
 }
 
 /// Hover over a guard topic symbol surfaces the reference-bureau entry.
