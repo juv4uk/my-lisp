@@ -11,7 +11,7 @@
 ;   (science-source/1 AUTHORITY EDITION)
 ;   (scientific-constant/1 NAME QUANTITY STATUS KIND SYSTEM SOURCE)
 ;
-; DIMENSIONS is data, currently a list of (BASE EXPONENT) terms.  This first
+; DIMENSIONS is data, currently a list of (BASE EXPONENT) terms. This first
 ; slice does not perform unit algebra; it gives reasoning a stable structure
 ; to inspect before arithmetic/normalization is added by evidence.
 
@@ -152,3 +152,39 @@
 
 (def scientific-constant-source
   (lambda (constant) (science-seventh constant)))
+
+; Pure projection into the existing knowledge clause format. It does not write
+; *knowledge-journal*: callers must still pass the returned batch through the
+; explicit advise-all admission boundary. A malformed constant projects to ().
+(def scientific-constant->clauses
+  (lambda (constant)
+    (cond
+      ((eq (scientific-constant? constant) (quote ())) (quote ()))
+      (t
+       (let ((name (scientific-constant-name constant)))
+         (list
+           (list (list (quote scientific-constant) name))
+           (list
+             (list (quote constant-value)
+                   name
+                   (scientific-constant-value constant)))
+           (list
+             (list (quote constant-unit)
+                   name
+                   (scientific-constant-unit constant)))
+           (list
+             (list (quote constant-status)
+                   name
+                   (scientific-constant-status constant)))
+           (list
+             (list (quote constant-kind)
+                   name
+                   (scientific-constant-kind constant)))
+           (list
+             (list (quote constant-system)
+                   name
+                   (scientific-constant-system constant)))
+           (list
+             (list (quote constant-source)
+                   name
+                   (scientific-constant-source constant)))))))))
