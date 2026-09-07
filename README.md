@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/wsm-quadrivium-hero.webp" alt="WSM над квадривіумом — арифметика, геометрія, музика й астрономія" width="100%">
+<img src="docs/assets/wsm-lisp-hero.svg" alt="my-lisp — CANON 0+7 · META-EVAL · WASM" width="100%">
 
 # my-lisp
 
