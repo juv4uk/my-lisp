@@ -22,6 +22,12 @@ zaminyty_odyn_raz(
 
 zaminyty_odyn_raz(
     parser,
+    """                        for element in elements {\n                            let span = element.span;\n                            let number = match element.kind {\n""",
+    """                        for element in elements {\n                            let number = match element.kind {\n""",
+)
+
+zaminyty_odyn_raz(
+    parser,
     """        let token = &self.source[start..self.cursor];\n""",
     """        let token = &self.source[start..self.cursor];\n        let decimal_with_dot = if token.contains(',') && !token.contains('.') {\n            Some(token.replace(',', \".\"))\n        } else {\n            None\n        };\n        let decimal_text = decimal_with_dot.as_deref().unwrap_or(token);\n""",
 )
@@ -69,6 +75,6 @@ test_path = Path("crates/my-lisp/tests/decimal_comma.rs")
 if test_path.exists():
     raise SystemExit(f"{test_path}: файл уже існує")
 test_path.write_text(
-    '''use my_lisp::{eval_program, parse, ExprKind, Session};\n\nfn obchyslyty(source: &str) -> String {\n    let mut session = Session::default();\n    eval_program(source, &mut session)\n        .expect("обчислення має бути успішним")\n        .to_string()\n}\n\nfn ochikuvaty_symvol(source: &str) {\n    let forms = parse(source).expect("читання символу має бути успішним");\n    assert_eq!(forms.len(), 1);\n    match &forms[0].kind {\n        ExprKind::Symbol(symbol) => assert_eq!(&**symbol, source),\n        other => panic!("очікував символ {source:?}, отримав {other:?}"),\n    }\n}\n\n#[test]\nfn desiatkova_koma_i_krapka_maiut_odnu_tochnu_semantyku() {\n    assert_eq!(obchyslyty("(eq 12,455 12.455)"), "t");\n    assert_eq!(obchyslyty("(+ 1,5 2,5)"), "4");\n    assert_eq!(obchyslyty("(eq -0,25 -0.25)"), "t");\n    assert_eq!(obchyslyty("(eq 1,5e3 1500)"), "t");\n}\n\n#[test]\nfn koma_ne_staied_punktuatsiieiu_zvychaynykh_symvoliv() {\n    ochikuvaty_symvol("а,б");\n    ochikuvaty_symvol("версія1,2");\n    ochikuvaty_symvol("1,2,3");\n    ochikuvaty_symvol("1,2.3");\n}\n\n#[test]\nfn f32_buffer_pryimaie_desiatkovu_komu() {\n    let forms = parse("#f32(1,5 2,25)").expect("#f32 має приймати десяткову кому");\n    assert_eq!(forms.len(), 1);\n    assert!(matches!(forms[0].kind, ExprKind::NumericBuffer(_)));\n}\n''',
+    '''use my_lisp::{eval_program, parse, ExprKind, Session};\n\nfn obchyslyty(source: &str) -> String {\n    let mut session = Session::default();\n    eval_program(source, &mut session)\n        .expect("обчислення має бути успішним")\n        .value\n        .to_string()\n}\n\nfn ochikuvaty_symvol(source: &str) {\n    let forms = parse(source).expect("читання символу має бути успішним");\n    assert_eq!(forms.len(), 1);\n    match &forms[0].kind {\n        ExprKind::Symbol(symbol) => assert_eq!(&**symbol, source),\n        other => panic!("очікував символ {source:?}, отримав {other:?}"),\n    }\n}\n\n#[test]\nfn desiatkova_koma_i_krapka_maiut_odnu_tochnu_semantyku() {\n    assert_eq!(obchyslyty("(eq 12,455 12.455)"), "t");\n    assert_eq!(obchyslyty("(+ 1,5 2,5)"), "4");\n    assert_eq!(obchyslyty("(eq -0,25 -0.25)"), "t");\n    assert_eq!(obchyslyty("(eq 1,5e3 1500)"), "t");\n}\n\n#[test]\nfn koma_ne_staied_punktuatsiieiu_zvychaynykh_symvoliv() {\n    ochikuvaty_symvol("а,б");\n    ochikuvaty_symvol("версія1,2");\n    ochikuvaty_symvol("1,2,3");\n    ochikuvaty_symvol("1,2.3");\n}\n\n#[test]\nfn f32_buffer_pryimaie_desiatkovu_komu() {\n    let forms = parse("#f32(1,5 2,25)").expect("#f32 має приймати десяткову кому");\n    assert_eq!(forms.len(), 1);\n    assert!(matches!(forms[0].kind, ExprKind::NumericBuffer(_)));\n}\n''',
     encoding="utf-8",
 )
