@@ -111,22 +111,20 @@
 ; - both => disputed(two proved observations)
 ; - neither => unknown(goal)
 ;
-; Positive and opposite observations intentionally share one finite B5 index.
-; Calling top-level `reason` twice would rebuild the same index twice even
-; though both questions use the identical rule set. We therefore perform the
-; exact public reason entry step directly against one `reason-index/1`: choose
-; the indexed candidate bucket, start with an empty substitution, and pass the
-; same index through `prove-goal`. Recursive body goals already reuse that index
-; in `reason.my`; this extends the same reuse across the two top-level sides of
-; one epistemic observation. Result/proof semantics remain those of `reason`.
+; `rules-or-index` may be the historical rule list or an explicitly prepared
+; immutable `reason-index/1`. Positive and opposite observations share that one
+; finite snapshot. Plain callers still build exactly one index per observation;
+; repeated-query callers may retain the prepared index themselves. There is no
+; hidden cache or invalidation policy: a retained index continues to represent
+; the exact rules captured when it was built.
 (def reason-observe
-  (lambda (goal rules)
+  (lambda (goal rules-or-index)
     (cond
       ((not (result-goal? goal))
        (make-invalid (quote invalid-goal) goal))
       (t
        (let* ((opposite (result-opposite-goal goal))
-              (index (reason-make-index rules))
+              (index (reason-ensure-index rules-or-index))
               (positive-results
                 (prove-goal
                   goal
