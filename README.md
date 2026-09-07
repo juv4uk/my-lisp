@@ -237,6 +237,13 @@ Lisp-визначена інтерпретація / політика / прот
 
 ## Швидкий старт
 
+**Спробувати `my-lisp` можна без встановлення:**  
+[**завантажити автономний web-REPL**](https://github.com/juv4uk/my-lisp/releases/latest/download/my-lisp-cli-web.html)
+
+Це один portable-файл `.html` із термінальним REPL, який працює локально у браузері.
+
+### Запуск із вихідного коду
+
 Потрібні Rust toolchain і залежності workspace. У репозиторії також є Guix manifest для відтворюваного середовища.
 
 ```bash
