@@ -142,9 +142,14 @@
                   ((atom entry) (quote ()))
                   (t (cdr entry))))))))))))
 
+; Public `reason` accepts either the historical rule list or an already-built
+; finite `reason-index/1`. Plain callers are unchanged; repeated-query callers
+; may explicitly retain an immutable index snapshot and avoid rebuilding it.
+; There is no hidden cache or invalidation: an index continues to describe the
+; exact rule list captured when it was constructed.
 (def reason
-  (lambda (goal rules)
-    (let ((index (reason-make-index rules)))
+  (lambda (goal rules-or-index)
+    (let ((index (reason-ensure-index rules-or-index)))
       (prove-goal
         goal
         (reason-index-candidates goal index)
