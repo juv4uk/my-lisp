@@ -49,7 +49,7 @@ fn indexed_reason_is_structurally_identical_to_forced_linear_reason() {
            ((path (var x) left) (seed (var x)))
            ((noise two))
            ((path (var x) right) (seed (var x)))
-           ((reachable (var x)) (path (var x) (var side)))))))
+           ((reachable (var x)) (path (var x) (var side))))))
       (def indexed (reason (quote (reachable a)) rules))
       (def linear
         (prove-goal
