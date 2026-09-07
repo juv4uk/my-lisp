@@ -4,10 +4,9 @@
 //!
 //! The evaluator is split by concern: this module owns the trampoline loop and
 //! dispatch table, `arithmetic` owns exact/inexact number handling, `special_forms`
-//! owns the McCarthy form helpers, `necessary_forms` owns the immutable
-//! DEFINE/LAMBDA identities, and `closures` owns lambda construction and
-//! function/macro application. Historical `def` is language-owned compatibility
-//! syntax bootstrapped from `lib/macro.my`.
+//! owns the McCarthy primitives plus compatibility `def`/`cond`,
+//! `necessary_forms` owns the immutable DEFINE/LAMBDA identities, and `closures`
+//! owns lambda construction and function/macro application.
 pub(crate) use special_forms::digest::sha256 as digest_sha256;
 
 mod arithmetic;
@@ -187,6 +186,9 @@ fn evaluate_list(
             if necessary_forms::identity_for_surface(name)
                 == Some(necessary_forms::NecessaryFormIdentity::Define) =>
         {
+            special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
+        }
+        Some("def") => {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
         }
         Some("cond" | "за-умовою" | "anukrama") => {
