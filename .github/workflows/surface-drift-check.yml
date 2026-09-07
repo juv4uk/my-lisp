@@ -1,0 +1,33 @@
+name: Surface Drift Check
+
+on:
+  push:
+    paths:
+      - 'lib/core.my'
+      - 'lib/surface/**'
+      - 'crates/my-lisp/src/eval/builtins.rs'
+      - 'crates/my-lisp/src/language_items.rs'
+      - 'scripts/check_surface_coverage.py'
+  pull_request:
+    paths:
+      - 'lib/core.my'
+      - 'lib/surface/**'
+      - 'crates/my-lisp/src/eval/builtins.rs'
+      - 'crates/my-lisp/src/language_items.rs'
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check surface coverage drift
+        run: python3 scripts/check_surface_coverage.py
+
+      - name: Report
+        if: always()
+        run: |
+          echo "Surface drift check complete."
+          echo "Every eligible public English name must be classified in"
+          echo "lib/surface/uk-sa-coverage.wsm"
+          echo "Run locally: python3 scripts/check_surface_coverage.py"
