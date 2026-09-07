@@ -191,17 +191,6 @@ fn evaluate_list(
         Some("def") => {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("make-macro") => {
-            special_forms::exact_arity("make-macro", arguments, 1, span)?;
-            match evaluate(&arguments[0], environment)? {
-                Value::Closure(ref closure) => Ok(EvalStep::Value(Value::Macro(closure.clone()))),
-                _ => Err(LanguageError::new(
-                    ErrorKind::Type,
-                    "make-macro expects a closure · make-macro ochikuie zamykannia · make-macro erwartet eine Closure",
-                    span,
-                )),
-            }
-        }
         Some("cond" | "за-умовою" | "anukrama") => {
             special_forms::evaluate_cond(arguments, environment, span)
         }
