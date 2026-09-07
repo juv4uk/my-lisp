@@ -22,7 +22,10 @@
   (lambda (value)
     (cond
       ((atom value) (quote ()))
-      ((eq (car value) *reason-index-schema*) t)
+      ((atom (car value))
+       (cond
+         ((eq (car value) *reason-index-schema*) t)
+         (t (quote ()))))
       (t (quote ())))))
 
 (def reason-index-linear
@@ -88,7 +91,7 @@
          (cond
            ; One non-indexable head is enough to require the exact historical
            ; scan, because that head may unify with predicates outside a bucket.
-           ((atom predicate) (reason-index-linear original))
+           ((eq predicate (quote ())) (reason-index-linear original))
            (t
             (let ((entry (assoc predicate buckets)))
               (cond
@@ -132,7 +135,7 @@
         (t
          (let ((predicate (reason-term-predicate goal)))
            (cond
-             ((atom predicate) (reason-index-rules index))
+             ((eq predicate (quote ())) (reason-index-rules index))
              (t
               (let ((entry (assoc predicate (reason-index-buckets index))))
                 (cond
