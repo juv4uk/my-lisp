@@ -27,6 +27,14 @@
       ((atom x) (quote ()))
       (t (science-proper-list? (cdr x))))))
 
+(def science-sixth
+  (lambda (values)
+    (car (cdr (cdr (cdr (cdr (cdr values))))))))
+
+(def science-seventh
+  (lambda (values)
+    (car (cdr (cdr (cdr (cdr (cdr (cdr values)))))))))
+
 (def make-unit
   (lambda (dimensions)
     (list *unit-schema* dimensions)))
@@ -114,8 +122,8 @@
          ((eq (quantity? (third x)) (quote ())) (quote ()))
          ((eq (scientific-constant-status-valid? (fourth x)) (quote ())) (quote ()))
          ((eq (scientific-constant-kind-valid? (fifth x)) (quote ())) (quote ()))
-         ((eq (symbol? (sixth x)) (quote ())) (quote ()))
-         ((eq (science-source? (seventh x)) (quote ())) (quote ()))
+         ((eq (symbol? (science-sixth x)) (quote ())) (quote ()))
+         ((eq (science-source? (science-seventh x)) (quote ())) (quote ()))
          (t t)))
       (t (quote ())))))
 
@@ -140,7 +148,7 @@
   (lambda (constant) (fifth constant)))
 
 (def scientific-constant-system
-  (lambda (constant) (sixth constant)))
+  (lambda (constant) (science-sixth constant)))
 
 (def scientific-constant-source
-  (lambda (constant) (seventh constant)))
+  (lambda (constant) (science-seventh constant)))
