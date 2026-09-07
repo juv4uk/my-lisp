@@ -72,15 +72,24 @@ fn semantic_oracle_surface_survives_coordination_removal() {
     assert!(contract.contains("(status ok)"), "{contract}");
     assert!(contract.contains("(contract-version"), "{contract}");
 
-    let eval = request(port, r#"(request (id 2) (op eval) (source "(+ 1 2)"))"#);
+    let eval = request(
+        port,
+        r#"(request (id 2) (op eval) (source "(+ 1 2)"))"#,
+    );
     assert!(eval.contains("(status ok)"), "{eval}");
     assert!(eval.contains("(value 3)"), "{eval}");
 
-    let parse = request(port, r#"(request (id 3) (op parse) (source "(+ 1 2)"))"#);
+    let parse = request(
+        port,
+        r#"(request (id 3) (op parse) (source "(+ 1 2)"))"#,
+    );
     assert!(parse.contains("(status ok)"), "{parse}");
     assert!(parse.contains("(value (+ 1 2))"), "{parse}");
 
-    let diagnose = request(port, r#"(request (id 4) (op diagnose) (source "(car 1)"))"#);
+    let diagnose = request(
+        port,
+        r#"(request (id 4) (op diagnose) (source "(car 1)"))"#,
+    );
     assert!(diagnose.contains("(status error)"), "{diagnose}");
     assert!(diagnose.contains("(kind type-error)"), "{diagnose}");
 
@@ -90,7 +99,10 @@ fn semantic_oracle_surface_survives_coordination_removal() {
         port,
         r#"(request (id 5) (op eval) (source "(def c5-private 999)"))"#,
     );
-    let isolated = request(port, r#"(request (id 6) (op eval) (source "c5-private"))"#);
+    let isolated = request(
+        port,
+        r#"(request (id 6) (op eval) (source "c5-private"))"#,
+    );
     assert!(isolated.contains("(status error)"), "{isolated}");
     assert!(isolated.contains("unknown-symbol"), "{isolated}");
 

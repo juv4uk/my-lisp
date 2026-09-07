@@ -182,7 +182,10 @@ pub(crate) fn string_to_symbol_values(
     }
 }
 
-pub(crate) fn string_first_values(arguments: &[Value], span: Span) -> Result<Value, LanguageError> {
+pub(crate) fn string_first_values(
+    arguments: &[Value],
+    span: Span,
+) -> Result<Value, LanguageError> {
     exact_value_arity("string-first", arguments, 1, span)?;
     match &arguments[0] {
         Value::String(text) => match text.chars().next() {
@@ -201,7 +204,10 @@ pub(crate) fn string_first_values(arguments: &[Value], span: Span) -> Result<Val
     }
 }
 
-pub(crate) fn string_rest_values(arguments: &[Value], span: Span) -> Result<Value, LanguageError> {
+pub(crate) fn string_rest_values(
+    arguments: &[Value],
+    span: Span,
+) -> Result<Value, LanguageError> {
     exact_value_arity("string-rest", arguments, 1, span)?;
     match &arguments[0] {
         Value::String(text) => {

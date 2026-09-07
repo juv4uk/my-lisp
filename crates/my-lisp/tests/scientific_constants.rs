@@ -189,10 +189,7 @@ fn advice_taker_can_reason_about_an_admitted_scientific_constant() {
                 (quote si:speed-of-light)
                 expected-unit))))
     "#;
-    assert_eq!(
-        eval_science_knowledge(source),
-        "(accepted proved proved proved)"
-    );
+    assert_eq!(eval_science_knowledge(source), "(accepted proved proved proved)");
 }
 
 #[test]
@@ -229,9 +226,6 @@ fn si_source_does_not_reintroduce_a_second_literal_authority_for_numeric_views()
         "(def si:avogadro-constant (si:constant-value si:defining-avogadro-constant))",
         "(def si:luminous-efficacy (si:constant-value si:defining-luminous-efficacy))",
     ] {
-        assert!(
-            si.contains(derived),
-            "missing derived SI numeric view: {derived}"
-        );
+        assert!(si.contains(derived), "missing derived SI numeric view: {derived}");
     }
 }

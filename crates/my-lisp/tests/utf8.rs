@@ -9,18 +9,12 @@ fn utf8_session() -> Session {
 
 fn eval(source: &str) -> String {
     let mut session = utf8_session();
-    eval_program(source, &mut session)
-        .unwrap()
-        .value
-        .to_string()
+    eval_program(source, &mut session).unwrap().value.to_string()
 }
 
 #[test]
 fn utf8_decodes_ascii_exactly() {
-    assert_eq!(
-        eval("(utf8-decode (quote (65 66 67)))"),
-        "(decoded (65 66 67))"
-    );
+    assert_eq!(eval("(utf8-decode (quote (65 66 67)))"), "(decoded (65 66 67))");
 }
 
 #[test]
@@ -60,9 +54,9 @@ fn utf8_encode_decode_round_trip_is_language_owned() {
 #[test]
 fn utf8_rejects_overlong_surrogate_and_out_of_range_sequences() {
     for bytes in [
-        "(192 128)",         // overlong 2-byte form
-        "(224 128 128)",     // overlong 3-byte form
-        "(237 160 128)",     // UTF-16 surrogate U+D800
+        "(192 128)",       // overlong 2-byte form
+        "(224 128 128)",   // overlong 3-byte form
+        "(237 160 128)",   // UTF-16 surrogate U+D800
         "(244 144 128 128)", // above U+10FFFF
     ] {
         assert_eq!(

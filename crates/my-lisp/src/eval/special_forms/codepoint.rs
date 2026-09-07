@@ -61,16 +61,16 @@ pub(crate) fn string_to_codepoint_values(
 
 fn exact_scalar_value(value: &Value, span: Span) -> Result<u32, LanguageError> {
     let integer = match value {
-        Value::Number(number, Exactness::Exact) if number.is_finite() && number.fract() == 0.0 => {
+        Value::Number(number, Exactness::Exact)
+            if number.is_finite() && number.fract() == 0.0 =>
+        {
             if *number < 0.0 || *number > 0x10ffff as f64 {
                 return Err(invalid_scalar(span));
             }
             *number as u32
         }
         Value::Rational(rational) if rational.is_integer() => {
-            let number = rational
-                .as_precise_i64()
-                .ok_or_else(|| invalid_scalar(span))?;
+            let number = rational.as_precise_i64().ok_or_else(|| invalid_scalar(span))?;
             u32::try_from(number).map_err(|_| invalid_scalar(span))?
         }
         _ => return Err(invalid_scalar(span)),

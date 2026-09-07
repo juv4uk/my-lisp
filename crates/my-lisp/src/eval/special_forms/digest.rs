@@ -7,7 +7,10 @@
 
 use crate::{ErrorKind, LanguageError, Span, Value};
 
-pub(crate) fn sha256_hex_values(arguments: &[Value], span: Span) -> Result<Value, LanguageError> {
+pub(crate) fn sha256_hex_values(
+    arguments: &[Value],
+    span: Span,
+) -> Result<Value, LanguageError> {
     if arguments.len() != 1 {
         return Err(LanguageError::new(
             ErrorKind::Arity,

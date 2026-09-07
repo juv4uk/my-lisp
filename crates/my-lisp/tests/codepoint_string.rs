@@ -3,7 +3,12 @@ use my_lisp::{eval_program, ErrorKind, Session};
 #[test]
 fn codepoint_to_string_materializes_unicode_scalars() {
     let mut session = Session::default();
-    for (scalar, expected) in [(65, "A"), (162, "¢"), (8364, "€"), (128512, "😀")] {
+    for (scalar, expected) in [
+        (65, "A"),
+        (162, "¢"),
+        (8364, "€"),
+        (128512, "😀"),
+    ] {
         let result = eval_program(&format!("(codepoint->string {scalar})"), &mut session)
             .expect("valid Unicode scalar should materialize");
         assert_eq!(result.value.to_string(), format!("\"{expected}\""));
