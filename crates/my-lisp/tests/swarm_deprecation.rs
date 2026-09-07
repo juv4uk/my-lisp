@@ -52,9 +52,17 @@ fn no_live_callers_removal_gate_fails_closed_while_blockers_exist() {
         NO_LIVE_CALLERS_AUDIT.contains("(safe-to-remove . ())"),
         "partial audit must fail closed instead of claiming removal safety"
     );
+    assert!(
+        value.contains("(my-lisp-production-operational . confirmed)"),
+        "{value}"
+    );
+    assert!(
+        value.contains("(my-lisp-production-operational-callers)"),
+        "{value}"
+    );
     assert!(value.contains("cross-repo-active-guidance"), "{value}");
     assert!(value.contains("cml/tasks.my"), "{value}");
-    assert!(value.contains("legacy-cli-regression-caller"), "{value}");
+    assert!(value.contains("legacy-cli-compatibility-test"), "{value}");
     assert!(value.contains("semantic-callers-allowed"), "{value}");
     assert!(
         value.contains("sibling-executable-legacy-caller-search"),
