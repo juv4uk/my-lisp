@@ -6,7 +6,8 @@
 ; Each defining constant has one authoritative finite-data record:
 ;
 ;   (scientific-constant/1 NAME
-;     (quantity/1 VALUE (unit/1 BASE-DIMENSIONS))
+;     (quantity/1 VALUE
+;       (unit/1 (dimension/1 BASE EXPONENT) ...))
 ;     exact-by-definition physical-defining si
 ;     (science-source/1 bipm-si-brochure-9 2019))
 ;
@@ -17,14 +18,16 @@
 ; this file itself remains standalone-loadable and derives numeric views using
 ; only car/cdr.
 ;
-; BASE-DIMENSIONS uses SI base dimensions as (BASE EXPONENT) terms. This file
-; stores dimensions as data; no unit algebra is claimed here.
+; Every base dimension is a named `(dimension/1 BASE EXPONENT)` term so the
+; same unit data is directly admissible to the Advice Taker knowledge grammar.
+; Unit algebra itself is not claimed here.
 
 (def si:defining-cesium-frequency
   (quote
     (scientific-constant/1 si:cesium-frequency
       (quantity/1 9192631770
-        (unit/1 ((second -1))))
+        (unit/1
+          (dimension/1 second -1)))
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
@@ -32,7 +35,9 @@
   (quote
     (scientific-constant/1 si:speed-of-light
       (quantity/1 299792458
-        (unit/1 ((metre 1) (second -1))))
+        (unit/1
+          (dimension/1 metre 1)
+          (dimension/1 second -1)))
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
@@ -41,7 +46,10 @@
     (scientific-constant/1 si:planck-constant
       (quantity/1
         132521403/200000000000000000000000000000000000000000
-        (unit/1 ((kilogram 1) (metre 2) (second -1))))
+        (unit/1
+          (dimension/1 kilogram 1)
+          (dimension/1 metre 2)
+          (dimension/1 second -1)))
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
@@ -50,7 +58,9 @@
     (scientific-constant/1 si:elementary-charge
       (quantity/1
         801088317/5000000000000000000000000000
-        (unit/1 ((ampere 1) (second 1))))
+        (unit/1
+          (dimension/1 ampere 1)
+          (dimension/1 second 1)))
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
@@ -59,7 +69,11 @@
     (scientific-constant/1 si:boltzmann-constant
       (quantity/1
         1380649/100000000000000000000000000000
-        (unit/1 ((kilogram 1) (metre 2) (second -2) (kelvin -1))))
+        (unit/1
+          (dimension/1 kilogram 1)
+          (dimension/1 metre 2)
+          (dimension/1 second -2)
+          (dimension/1 kelvin -1)))
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
@@ -67,7 +81,8 @@
   (quote
     (scientific-constant/1 si:avogadro-constant
       (quantity/1 602214076000000000000000
-        (unit/1 ((mole -1))))
+        (unit/1
+          (dimension/1 mole -1)))
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
@@ -75,7 +90,11 @@
   (quote
     (scientific-constant/1 si:luminous-efficacy
       (quantity/1 683
-        (unit/1 ((candela 1) (kilogram -1) (metre -2) (second 3))))
+        (unit/1
+          (dimension/1 candela 1)
+          (dimension/1 kilogram -1)
+          (dimension/1 metre -2)
+          (dimension/1 second 3)))
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
