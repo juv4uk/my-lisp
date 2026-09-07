@@ -1,10 +1,21 @@
-; Ukrainian surface for necessary evaluator forms.
-; Українська поверхня для необхідних форм evaluator-а.
+; Ukrainian surface for necessary evaluator forms and core vocabulary.
+; Українська поверхня для необхідних форм та основного словника.
 ;
 ; The Rust kernel does not know these Ukrainian words.  They are ordinary
-; my-lisp macros that expand to the canonical necessary-form surfaces.
-; This keeps semantics in the canonical identities while allowing the
-; language itself to define its human-facing vocabulary.
+; my-lisp macros and aliases that expand to / bind to the canonical English
+; surfaces.  This keeps semantics in the canonical identities while allowing
+; the language itself to define its human-facing vocabulary.
+;
+; Principle: one semantic implementation, multiple surface names.
+;           одна семантична реалізація, багато поверхневих імен.
+;
+; Loading order: macro.my → core.my → uk.my (this file).
+; All English names referenced here are already bound before this file loads.
+
+;; ═══════════════════════════════════════════════════════════════
+;; Necessary evaluator forms — macros expanding to canonical surfaces
+;; Необхідні форми — макроси що розгортаються до канонічних поверхонь
+;; ═══════════════════════════════════════════════════════════════
 
 (defmacro функція args
   (cons (quote lambda) args))
@@ -13,3 +24,155 @@
   (cons (quote define)
         (cons name
               (cons value (quote ())))))
+
+;; ═══════════════════════════════════════════════════════════════
+;; Canon 0+7 — Ukrainian surface aliases (status: stable)
+;; Канон 0+7 — українські поверхневі аліаси (статус: stable)
+;; ═══════════════════════════════════════════════════════════════
+
+; These seven names are the ratified Ukrainian surface for the McCarthy
+; primitives.  They bind to the same first-class builtin values that the
+; English names resolve to — no duplicate implementation.
+
+(define як-є quote)
+(define атом? atom)
+(define тотожне? eq)
+(define сполучити cons)
+(define перше car)
+(define решта cdr)
+; cond is a syntax form, not a builtin — it needs a macro wrapper.
+(defmacro за-умовою clauses
+  (cons (quote cond) clauses))
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Arithmetic (status: candidate)
+;; Арифметика
+;; ═══════════════════════════════════════════════════════════════
+
+(define додати +)
+(define відняти -)
+(define помножити *)
+(define поділити /)
+(define модуль abs)
+(define найменше min)
+(define найбільше max)
+(define остача mod)
+(define частка quotient)
+(define корінь sqrt)
+(define цілий-корінь isqrt)
+(define найменше-у-списку min-list)
+(define найбільше-у-списку max-list)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Comparisons (status: candidate)
+;; Порівняння
+;; ═══════════════════════════════════════════════════════════════
+
+(define менше? <)
+(define більше? >)
+(define рівне? =)
+(define не-більше? <=)
+(define не-менше? >=)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Predicates (status: candidate)
+;; Предикати
+;; ═══════════════════════════════════════════════════════════════
+
+(define не not)
+(define однакові? equal?)
+(define символ? symbol?)
+(define текст? string?)
+(define текст-менше? string<?)
+(define числовий-буфер? numeric-buffer?)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Lists (status: candidate)
+;; Списки
+;; ═══════════════════════════════════════════════════════════════
+
+(define список list)
+(define довжина length)
+(define приєднати append)
+(define зворот reverse)
+(define за-номером nth)
+(define містить? member?)
+(define зв'язок assoc)
+(define пара pair)
+(define друге second)
+(define третє third)
+(define четверте fourth)
+(define п'яте fifth)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Higher-order functions (status: candidate)
+;; Функції вищого порядку
+;; ═══════════════════════════════════════════════════════════════
+
+(define відобразити map)
+(define відсіяти filter)
+(define згорнути reduce)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Strings (status: candidate)
+;; Рядки
+;; ═══════════════════════════════════════════════════════════════
+
+(define зчепити string-append)
+(define довжина-тексту string-length)
+(define порожній? string-empty?)
+(define починається? string-prefix?)
+(define містить-текст? string-contains?)
+(define перший-знак string-first)
+(define решта-знаків string-rest)
+(define відрізати string-slice)
+(define символ-у-текст symbol->string)
+(define текст-у-символ string->symbol)
+(define текст-у-код string->codepoint)
+(define кодувана-у-текст codepoint->string)
+(define число-у-текст number->string)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — I/O (status: candidate)
+;; Ввід/вивід
+;; ═══════════════════════════════════════════════════════════════
+
+(define друкувати print)
+(define показати princ)
+(define прочитати read)
+(define прочитати-усе read-all)
+(define у-текст write-to-string)
+(define обчислити eval)
+(define середовище env)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Vectors (status: candidate)
+;; Вектори
+;; ═══════════════════════════════════════════════════════════════
+
+(define вектор vector)
+(define створити-вектор make-vector)
+(define довжина-вектора vector-length)
+(define елемент-вектора vector-ref)
+
+;; vector-set! is a mutation — keep the ! suffix in Ukrainian too.
+(define встановити-вектор! vector-set!)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Time (status: candidate)
+;; Час
+;; ═══════════════════════════════════════════════════════════════
+
+(define monotонний-час mono-ns)
+(define unix-час-зараз unix-time-now)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 1 — Other (status: candidate)
+;; Інше
+;; ═══════════════════════════════════════════════════════════════
+
+(define само-собою identity)
+(define та and)
+(define або or)
+(define нехай let)
+(define нехай* let*)
