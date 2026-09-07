@@ -6,14 +6,18 @@
 //! bootstrap-description only.
 //!
 //! Batch 1 (2026-08-23): car cdr cons eq atom + - * / < > =.
-//! Remaining primitives (print, string ops, sha256, json, ...) stay in
-//! the evaluator match until converted -- see PROPOSAL §8.
+//! Batch 2 (2026-09-07): eager string/symbol mechanisms are ordinary builtin
+//! values too; the evaluator no longer needs head-name dispatch for them.
 
 use crate::environment::Environment;
 use crate::eval::arithmetic::{
     arithmetic_on_values, comparison_on_values, division_on_values, exact_value,
 };
-use crate::eval::special_forms::{car_value, cdr_value, cons_values, eq_values};
+use crate::eval::special_forms::{
+    car_value, cdr_value, cons_values, eq_values, string_append_values,
+    string_first_values, string_less_than_values, string_predicate_values,
+    string_rest_values, string_to_symbol_values, symbol_to_string_values,
+};
 use crate::{Exactness, NumericBuffer, Rational, Span, Value};
 
 type Native =
@@ -102,7 +106,7 @@ fn ntp_query_raw_value(
     ]))
 }
 
-/// Registers batch-1 builtins into `environment`. Idempotent per name:
+/// Registers builtin mechanisms into `environment`. Idempotent per name:
 /// later definitions simply shadow earlier ones like any other binding.
 pub(crate) fn install(environment: &Environment) {
     macro_rules! define {
@@ -232,10 +236,10 @@ pub(crate) fn install(environment: &Environment) {
         |args: &[Value], _env: &Environment, span: Span| {
             if args.is_empty() {
                 return Err(crate::LanguageError::new(
-                crate::ErrorKind::Arity,
-                "min expects at least one argument · min ochikuie shchonaimenshe odyn arhument · min erwartet mindestens ein Argument",
-                span,
-            ));
+                    crate::ErrorKind::Arity,
+                    "min expects at least one argument · min ochikuie shchonaimenshe odyn arhument · min erwartet mindestens ein Argument",
+                    span,
+                ));
             }
             let mut best = args[0].clone();
             for v in &args[1..] {
@@ -253,10 +257,10 @@ pub(crate) fn install(environment: &Environment) {
         |args: &[Value], _env: &Environment, span: Span| {
             if args.is_empty() {
                 return Err(crate::LanguageError::new(
-                crate::ErrorKind::Arity,
-                "max expects at least one argument · max ochikuie shchonaimenshe odyn arhument · max erwartet mindestens ein Argument",
-                span,
-            ));
+                    crate::ErrorKind::Arity,
+                    "max expects at least one argument · max ochikuie shchonaimenshe odyn arhument · max erwartet mindestens ein Argument",
+                    span,
+                ));
             }
             let mut best = args[0].clone();
             for v in &args[1..] {
@@ -274,15 +278,15 @@ pub(crate) fn install(environment: &Environment) {
         |args: &[Value], _env: &Environment, span: Span| {
             exact_args("make-vector", args, 1, span)?;
             match &args[0] {
-            Value::Number(f, Exactness::Exact) if *f >= 0.0 && f.fract() == 0.0 => {
-                Ok(Value::vector(std::iter::repeat_n(Value::Nil, *f as usize)))
+                Value::Number(f, Exactness::Exact) if *f >= 0.0 && f.fract() == 0.0 => {
+                    Ok(Value::vector(std::iter::repeat_n(Value::Nil, *f as usize)))
+                }
+                _ => Err(crate::LanguageError::new(
+                    crate::ErrorKind::Type,
+                    "make-vector expects an exact non-negative integer · make-vector ochikuie tochnyi nenulevyi tsilyi · make-vector erwartet eine exakte nichtnegative ganze Zahl",
+                    span,
+                )),
             }
-            _ => Err(crate::LanguageError::new(
-                crate::ErrorKind::Type,
-                "make-vector expects an exact non-negative integer · make-vector ochikuie tochnyi nenulevyi tsilyi · make-vector erwartet eine exakte nichtnegative ganze Zahl",
-                span,
-            )),
-        }
         }
     );
 
@@ -393,9 +397,6 @@ pub(crate) fn install(environment: &Environment) {
                 .map(|value| Value::String(std::rc::Rc::from(value)))
                 .unwrap_or(Value::Nil);
 
-            // `/etc/timezone` is conventionally a one-line declaration. Keep
-            // whitespace normalization at the host boundary for now; source
-            // precedence and public interpretation live in Lisp.
             let etc_timezone_value = std::fs::read_to_string("/etc/timezone")
                 .ok()
                 .map(|value| value.trim().to_string())
@@ -590,6 +591,42 @@ pub(crate) fn install(environment: &Environment) {
 
     define!(
         environment,
+        "string-append",
+        |args: &[Value], _env: &Environment, span: Span| string_append_values(args, span)
+    );
+    define!(
+        environment,
+        "string<?",
+        |args: &[Value], _env: &Environment, span: Span| string_less_than_values(args, span)
+    );
+    define!(
+        environment,
+        "string?",
+        |args: &[Value], _env: &Environment, span: Span| string_predicate_values(args, span)
+    );
+    define!(
+        environment,
+        "symbol->string",
+        |args: &[Value], _env: &Environment, span: Span| symbol_to_string_values(args, span)
+    );
+    define!(
+        environment,
+        "string->symbol",
+        |args: &[Value], _env: &Environment, span: Span| string_to_symbol_values(args, span)
+    );
+    define!(
+        environment,
+        "string-first",
+        |args: &[Value], _env: &Environment, span: Span| string_first_values(args, span)
+    );
+    define!(
+        environment,
+        "string-rest",
+        |args: &[Value], _env: &Environment, span: Span| string_rest_values(args, span)
+    );
+
+    define!(
+        environment,
         "numeric-buffer?",
         |args: &[Value], _env: &Environment, span: Span| {
             exact_args("numeric-buffer?", args, 1, span)?;
@@ -707,10 +744,10 @@ pub(crate) fn install(environment: &Environment) {
                             Value::Rational(rational) if rational.is_integer() => {
                                 rational.as_precise_i64().ok_or_else(|| {
                                     crate::LanguageError::new(
-                                crate::ErrorKind::NumericOverflow,
-                                "numeric-buffer-map i32 result is outside the signed 32-bit range",
-                                span,
-                            )
+                                        crate::ErrorKind::NumericOverflow,
+                                        "numeric-buffer-map i32 result is outside the signed 32-bit range",
+                                        span,
+                                    )
                                 })?
                             }
                             _ => {
@@ -754,10 +791,10 @@ pub(crate) fn install(environment: &Environment) {
                         let narrowed = number as f32;
                         if !number.is_finite() || !narrowed.is_finite() {
                             return Err(crate::LanguageError::new(
-                            crate::ErrorKind::NumericOverflow,
-                            "numeric-buffer-map f32 result is outside the finite binary32 domain",
-                            span,
-                        ));
+                                crate::ErrorKind::NumericOverflow,
+                                "numeric-buffer-map f32 result is outside the finite binary32 domain",
+                                span,
+                            ));
                         }
                         output.push(narrowed);
                     }
