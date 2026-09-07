@@ -919,9 +919,18 @@ fn handle_sexpr_connection(
 
     // The oracle protocol is an unauthenticated network boundary. Keep its
     // process policy explicit even though trusted native root sessions are
-    // unrestricted by default.
+    // unrestricted by default. The custom Environment must also establish the
+    // macro substrate explicitly; the evaluator no longer supplies make-macro
+    // through a head-name fallback.
     let environment = Environment::root().with_process_allowlist(allowed.to_vec());
     let mut session = Session { environment };
+    if let Err(error) = my_lisp::load_macro_library(&mut session) {
+        eprintln!(
+            "TCP REPL: {peer} macro bootstrap failed: {}",
+            error.render(my_lisp::MACRO_LIBRARY_SOURCE)
+        );
+        return;
+    }
     if let Ok(core_ast) = parse(core_lib) {
         let _ = eval_parsed_expressions(&core_ast, &mut session);
     }
@@ -1245,13 +1254,6 @@ fn handle_sexpr_connection(
                                 to: to.clone(),
                                 message: message.clone(),
                             });
-                            // Bounded so a long-lived server (or a
-                            // runaway notifier) can't grow this
-                            // in-memory, non-persistent mailbox
-                            // without limit — oldest entries are
-                            // dropped first; a `poll` with `since`
-                            // older than what's left just gets
-                            // whatever's still here.
                             const MAILBOX_CAPACITY: usize = 500;
                             if state.entries.len() > MAILBOX_CAPACITY {
                                 let excess = state.entries.len() - MAILBOX_CAPACITY;
@@ -1274,11 +1276,6 @@ fn handle_sexpr_connection(
                             ok_response(&id, Value::list(matches), &[], &contract_version)
                         }
                     },
-                    // `publish` delivers to every `subscribe`d connection
-                    // whose `topics` is empty (subscribed to everything)
-                    // or contains this `topic`, then responds with how
-                    // many actually received it — visibility into
-                    // whether anyone was listening, not just an ack.
                     Some("publish") => match (&from, &topic, &message) {
                         (None, _, _) => error_response(&id, "invalid-form", "op `publish` requires a `from` field", &contract_version),
                         (_, None, _) => error_response(&id, "invalid-form", "op `publish` requires a `topic` field", &contract_version),
@@ -1288,28 +1285,6 @@ fn handle_sexpr_connection(
                             ok_response(&id, Value::Number(delivered as f64, Exactness::Exact), &[], &contract_version)
                         }
                     },
-                    // `subscribe` permanently turns this connection into a
-                    // push receiver: after the ack below, it stops reading
-                    // further requests and instead blocks on its channel,
-                    // writing each matching `publish` as an `(event ...)`
-                    // line the instant it arrives. One connection, one
-                    // purpose — a client that also wants to `eval`/`notify`
-                    // opens a second connection for that, the same way a
-                    // real pub/sub client library keeps publish and
-                    // subscribe on separate sockets.
-                    //
-                    // `since` (an event id, default 0) replays everything
-                    // matching `topics` from `Broker::event_log` before
-                    // switching to live delivery — a reconnecting agent
-                    // that remembers the last event id it saw doesn't lose
-                    // whatever happened while its connection was down.
-                    // The replay snapshot and the live-subscriber
-                    // registration happen under the same lock acquisition
-                    // (below), so there's no gap an event could fall
-                    // through: anything logged before this point is in
-                    // the replay list, anything logged after is delivered
-                    // live, and `broadcast_event` itself only ever logs
-                    // and delivers under that identical lock.
                     Some("subscribe") => {
                         let (sender, receiver) = mpsc::channel::<String>();
                         let (subscriber_id, replay) = {
@@ -1357,23 +1332,7 @@ fn handle_sexpr_connection(
                         let mut broker_state = broker.lock().unwrap_or_else(|e| e.into_inner());
                         broker_state.subscribers.retain(|s| s.id != subscriber_id);
                         break;
-                    }
-                    // Compare-and-swap under one lock acquisition: a
-                    // `claim` only succeeds if `task` has no holder yet,
-                    // or `from` already holds it (idempotent re-claim), or
-                    // the current holder's `presence` heartbeat is stale
-                    // past `STALE_CLAIM_SECS` — a claim held by an agent
-                    // that's gone quiet shouldn't block the task forever.
-                    // `None` in `presence` (holder never called `hello`)
-                    // is deliberately treated as "can't tell, don't steal"
-                    // rather than "stale" — reclaim is an opt-in safety
-                    // net for agents that heartbeat, not a way to bypass
-                    // the claim guarantee for agents that never registered.
-                    // Two agents racing for the same task can still never
-                    // both see success. `value` is `t` on success, or the
-                    // current (still-live) holder's name if someone else
-                    // already has it, so the loser knows who to wait on or
-                    // `publish` a `need` at.
+                    },
                     Some("claim") => match (&task, &from) {
                         (None, _) => error_response(&id, "invalid-form", "op `claim` requires a `task` field", &contract_version),
                         (_, None) => error_response(&id, "invalid-form", "op `claim` requires a `from` field", &contract_version),
@@ -1414,9 +1373,6 @@ fn handle_sexpr_connection(
                             }
                         }
                     },
-                    // Only the current holder can release; releasing an
-                    // unclaimed or already-your-own-released task is a
-                    // no-op success (idempotent), same spirit as `claim`.
                     Some("release") => match (&task, &from) {
                         (None, _) => error_response(&id, "invalid-form", "op `release` requires a `task` field", &contract_version),
                         (_, None) => error_response(&id, "invalid-form", "op `release` requires a `from` field", &contract_version),
@@ -1435,9 +1391,6 @@ fn handle_sexpr_connection(
                             }
                         }
                     },
-                    // Read-only: every currently-held claim, so an agent
-                    // computing its own next-best-action can see what's
-                    // already spoken for before claiming.
                     Some("list-claims") => {
                         let claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
                         let task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
@@ -1461,18 +1414,6 @@ fn handle_sexpr_connection(
                             .collect();
                         ok_response(&id, Value::list(entries), &[], &contract_version)
                     }
-                    // Full, unfiltered dump of every `define-task`d task —
-                    // the debugging counterpart to `next-best-action`,
-                    // which deliberately hides anything excluded (wrong
-                    // capability, unmet dependency, already claimed by
-                    // someone else, already done). Without this there's
-                    // no way to tell "the task doesn't exist" from "it
-                    // exists but next-best-action filtered it for a
-                    // reason" — direct feedback this ambiguity cost real
-                    // debugging time. Includes `done` and, for each still
-                    // held, the current holder — cross-referencing
-                    // `list-claims` shouldn't be necessary just to see
-                    // the whole board.
                     Some("list-tasks") => {
                         let task_state = tasks.lock().unwrap_or_else(|e| e.into_inner());
                         let claim_state = claims.lock().unwrap_or_else(|e| e.into_inner());
@@ -1511,13 +1452,6 @@ fn handle_sexpr_connection(
                             .collect();
                         ok_response(&id, Value::list(entries), &[], &contract_version)
                     }
-                    // `hello`/`heartbeat` both write the same table —
-                    // `hello` is just the first heartbeat, with an
-                    // optional `project`/`capabilities` attached. Neither
-                    // requires the other to have been called first,
-                    // deliberately: an agent that only ever calls
-                    // `heartbeat` still shows up in `presence`, just
-                    // without capability info until it sends a `hello`.
                     Some(op_name @ ("hello" | "heartbeat")) => match &from {
                         None => error_response(&id, "invalid-form", &format!("op `{op_name}` requires a `from` field"), &contract_version),
                         Some(from) => {
@@ -1554,10 +1488,6 @@ fn handle_sexpr_connection(
                             ok_response(&id, Value::list(peers), &[], &contract_version)
                         }
                     },
-                    // Read-only snapshot of every registered agent,
-                    // including staleness (`seconds-since-heartbeat`) so
-                    // the caller judges liveness itself rather than the
-                    // server silently evicting anyone.
                     Some("presence") => {
                         let presence_state = presence.lock().unwrap_or_else(|e| e.into_inner());
                         let entries: Vec<Value> = presence_state
@@ -1567,10 +1497,6 @@ fn handle_sexpr_connection(
                             .collect();
                         ok_response(&id, Value::list(entries), &[], &contract_version)
                     }
-                    // Registers or redefines a task's scoring inputs.
-                    // Redefining an existing task keeps its `done` status
-                    // (changing priority/capabilities/deps shouldn't
-                    // un-complete it) — only `complete-task` sets `done`.
                     Some("define-task") => match &task {
                         None => error_response(&id, "invalid-form", "op `define-task` requires a `task` field", &contract_version),
                         Some(task) => {
@@ -1593,14 +1519,6 @@ fn handle_sexpr_connection(
                             ok_response(&id, Value::Bool(true), &[], &contract_version)
                         }
                     },
-                    // Marks a task done and drops its claim (if any) —
-                    // deliberately does NOT require the caller to be the
-                    // current holder: a task can legitimately get
-                    // completed by someone other than whoever claimed it
-                    // (a handoff), and this registry is a coordination
-                    // hint, not an access-control system. The durable
-                    // "who actually did it" record still belongs in
-                    // evidence/, same as everything else here.
                     Some("complete-task") => match &task {
                         None => error_response(&id, "invalid-form", "op `complete-task` requires a `task` field", &contract_version),
                         Some(task) => {
@@ -1616,19 +1534,6 @@ fn handle_sexpr_connection(
                             }
                         }
                     },
-                    // Dry-run of `sync-tasks` (below): same file, same
-                    // parsing, same per-entry checks, but never touches
-                    // the task registry — no lock acquisition on `tasks`,
-                    // no `task-created` events. Written because a
-                    // malformed `tasks.my` (an extra paren, a typo'd key)
-                    // used to be found by trial and error against the
-                    // live registry; this reports a top-level parse
-                    // error's exact 1-indexed `(line . N) (column . N)`
-                    // (from the same `LanguageError` `span` `sync-tasks`
-                    // already gets, just not previously surfaced as a
-                    // position) plus every per-entry warning `sync-tasks`
-                    // would have produced, so a syntax mistake is visible
-                    // before it ever reaches the shared server-wide state.
                     Some("validate-tasks") => match &file {
                         None => error_response(&id, "invalid-form", "op `validate-tasks` requires a `file` field", &contract_version),
                         Some(path) if require_absolute_path(path).is_err() => {
@@ -1713,24 +1618,6 @@ fn handle_sexpr_connection(
                             },
                         },
                     },
-                    // Imports the durable task plan from a `tasks.my`
-                    // flat-alist file (same data convention as
-                    // ecosystem-status.my): `((kind . tasks-my) (tasks .
-                    // (("TASK-ID" . ((priority . 0.8) (capabilities .
-                    // (compiler rust)) (depends-on . ("OTHER")) (done . ()))))
-                    // ...)))`. Upsert — defines or redefines each listed
-                    // task, preserving `done` unless the file says
-                    // otherwise; tasks *not* listed are left alone (so
-                    // re-syncing can't clobber auto-created `HELP:...`
-                    // tasks or the in-memory claims). This is the bridge
-                    // between the durable plan (git-tracked files) and the
-                    // in-memory registry `next-best-action` scores, and the
-                    // fix for the restart-loss the AGENTS.md durability
-                    // rule warns about: after a server restart an agent
-                    // re-runs `sync-tasks` and the plan is back. A file
-                    // error fails the whole op; a malformed entry inside an
-                    // otherwise valid file is skipped with a warning, so
-                    // one typo doesn't silently drop the whole board.
                     Some("sync-tasks") => match &file {
                         None => error_response(&id, "invalid-form", "op `sync-tasks` requires a `file` field", &contract_version),
                         Some(path) if require_absolute_path(path).is_err() => {
@@ -1747,11 +1634,6 @@ fn handle_sexpr_connection(
                                     &contract_version,
                                 ),
                                 Ok(_) => {
-                                    // `parse` yields `Expr`s, not `Value`s,
-                                    // so the file's structure is turned into
-                                    // data the same way the request envelope
-                                    // and the `parse` op do: `quote` it and
-                                    // evaluate — dotted pairs stay dotted.
                                     let quoted_file = format!("(quote {content})");
                                     let rendered = parse(&quoted_file).ok().and_then(|q| {
                                         eval_parsed_expressions_incremental(&q, &mut session).ok().map(|r| r.value)
@@ -1840,29 +1722,6 @@ fn handle_sexpr_connection(
                             },
                         },
                     },
-                    // Auto-derives claimable tasks from
-                    // `ecosystem-status.my`'s `next-milestone.per-repo`
-                    // alist — the prose "what cml/fpga-lisp/my-idea
-                    // should each do next" the file already carries by
-                    // hand, turned into a `HELP:`-style task per repo
-                    // without redundantly retyping it via `define-task`.
-                    // One task per `per-repo` entry, id
-                    // `MILESTONE:<name>:<repo>`, `capabilities` set to
-                    // exactly `(repo)` — the convention this creates:
-                    // include your own repo name in `hello`'s
-                    // `capabilities` (e.g. `cml` declares `(compiler rust
-                    // cml)`) so this task surfaces specifically to that
-                    // repo's own agent, not everyone. Priority fixed at
-                    // 5.0 — well above hand-defined tasks, since this is
-                    // the ecosystem's one pinned current milestone, not
-                    // routine work. The task registry only stores an id
-                    // and scoring inputs, not the description itself
-                    // (same shape `define-task` always had) — the
-                    // `task-created` event's `message` carries the prose
-                    // once, at creation, but `next-best-action` results
-                    // are just ids; read `ecosystem-status.my` itself for
-                    // the actual instructions, same as any other task
-                    // requires reading its own definition somewhere.
                     Some("sync-milestone") => match &file {
                         None => error_response(&id, "invalid-form", "op `sync-milestone` requires a `file` field", &contract_version),
                         Some(path) if require_absolute_path(path).is_err() => {
@@ -1962,23 +1821,6 @@ fn handle_sexpr_connection(
                             },
                         },
                     },
-                    // `score = priority × capability-match × (1 +
-                    // unblock-impact)`, per docs/swarm-coordination.md.
-                    // capability-match is a hard gate here, not a
-                    // fraction: a task naming capabilities the caller
-                    // doesn't have is excluded outright, not merely
-                    // down-ranked — claiming work you can't actually do
-                    // isn't a "lower-priority" outcome, it's not an
-                    // option. unblock-impact counts how many *other*,
-                    // not-yet-done tasks list this one in `depends-on` —
-                    // finishing a task blocking 5 others outranks one
-                    // blocking none, all else equal. A task with any
-                    // unsatisfied dependency, already `done`, or already
-                    // claimed by someone else is excluded entirely —
-                    // it's not actionable yet or not available.
-                    // `capabilities` may be passed explicitly; if not,
-                    // falls back to whatever the caller's last `hello`
-                    // registered in `presence`.
                     Some("next-best-action") => match &from {
                         None => error_response(&id, "invalid-form", "op `next-best-action` requires a `from` field", &contract_version),
                         Some(from) => {
@@ -2036,22 +1878,6 @@ fn handle_sexpr_connection(
                             ok_response(&id, value, &[], &contract_version)
                         }
                     },
-                    // Forms a temporary coalition around a stuck agent's
-                    // unmet need. Three things happen atomically from the
-                    // caller's point of view: (1) every `presence`-
-                    // registered agent whose `capabilities` include
-                    // `needs` gets the request pushed instantly if
-                    // they're `subscribe`d to the `capability-request`
-                    // topic, and (2) gets it left in their `notify`
-                    // mailbox regardless, so a non-subscribed agent
-                    // still sees it on its next `poll`; (3) a task named
-                    // `HELP:<needs>:<task-or-from>` is auto-`define-task`d
-                    // at high priority requiring exactly `needs`, so it
-                    // surfaces at the top of `next-best-action` for any
-                    // agent with that capability — the "system sees fpga
-                    // offers waveform-debug" step from the proposal,
-                    // done via the scoring machinery already built
-                    // rather than a separate matching engine.
                     Some("capability-request") => match (&from, &needs) {
                         (None, _) => error_response(&id, "invalid-form", "op `capability-request` requires a `from` field", &contract_version),
                         (_, None) => error_response(&id, "invalid-form", "op `capability-request` requires a `needs` field", &contract_version),
