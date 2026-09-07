@@ -11,12 +11,15 @@ pub mod json;
 mod strings;
 
 pub use core::exact_arity;
-pub(super) use codepoint::{evaluate_codepoint_to_string, evaluate_string_to_codepoint};
+pub(super) use codepoint::{
+    codepoint_to_string_values, evaluate_codepoint_to_string, evaluate_string_to_codepoint,
+    string_to_codepoint_values,
+};
 pub(super) use core::{
     car_value, cdr_value, cons_values, eq_values, evaluate_cond, evaluate_definition,
     evaluate_defmacro, quoted,
 };
-pub(super) use digest::evaluate_sha256_hex;
+pub(super) use digest::{evaluate_sha256_hex, sha256_hex_values};
 pub(super) use io::{
     evaluate_eval, evaluate_princ, evaluate_print, evaluate_read, evaluate_read_all,
     evaluate_write_to_string,
