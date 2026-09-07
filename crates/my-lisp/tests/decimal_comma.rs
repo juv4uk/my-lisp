@@ -36,8 +36,16 @@ fn koma_ne_staied_punktuatsiieiu_zvychaynykh_symvoliv() {
 
 #[test]
 fn desiatkova_koma_zberihaie_nazvanu_vidmovu_na_resursnii_mezhi() {
-    let error = parse("1,25e10001").expect_err("завелика експонента має бути відхилена");
-    assert_eq!(error.kind, ErrorKind::NumericOverflow);
+    // Межа захищає фактичний степінь 10^N, який reader матеріалізує після
+    // врахування цифр після десяткового роздільника. Тому 1,25e10002 має
+    // effective exponent 10000 і ще допустиме, а 1,25e10003 -> 10001 вже ні.
+    assert!(parse("1,25e10002").is_ok());
+    assert!(parse("1.25e10002").is_ok());
+
+    for source in ["1,25e10003", "1.25e10003"] {
+        let error = parse(source).expect_err("фактичний степінь 10 має перевищити межу");
+        assert_eq!(error.kind, ErrorKind::NumericOverflow);
+    }
 }
 
 #[test]
