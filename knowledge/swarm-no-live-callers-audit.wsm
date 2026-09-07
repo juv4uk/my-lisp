@@ -1,63 +1,62 @@
 ; Ecosystem-scoped C5 audit for the legacy :9999 coordination surface.
-; This is evidence about the removal gate, not a claim that the whole gate passed.
-; The authoritative coordination plane is swarm-node :910x; :9999 remains the
-; semantic oracle. Physical legacy removal is forbidden while status is partial.
+; This file answers one narrow question: is physical removal of the deprecated
+; coordination surface now safe? It does NOT claim that removal has happened.
 ;
-; Important: semantic-oracle callers of :9999 are intentionally NOT blockers.
-; The gate concerns only the deprecated coordination operations. Stale prose
-; that can teach a future agent a legacy call is tracked separately from an
-; executable call-site; those are not the same claim.
+; Coordination authority is swarm-node :910x / swarm/1. my-lisp :9999 remains
+; the semantic oracle. Semantic-oracle callers are intentionally allowed and
+; are outside this removal gate.
 
 (def *swarm-no-live-callers-audit*
   (quote
     ((schema . swarm-no-live-callers-audit/1)
      (as-of . "2026-09-07")
      (scope . ecosystem)
-     (status . partial)
-     (safe-to-remove . ())
+     (status . ready-for-removal)
+     (safe-to-remove . t)
      (coordination-authority . swarm-node)
      (semantic-oracle . my-lisp-9999)
      (semantic-operations . (eval parse diagnose contract-version))
      (checked-heads .
-       ((my-lisp . 6a3274f49337ddd158060632e81bf572e8b060c8)
-        (cml . 39ffb9c2cf6b67a2fc9eb9577f7724efbc238f34)
+       ((my-lisp . fe857e31f4e0fbd14b972b316f3f417382307032)
+        (cml . f96fc754e8fd5563bf01c5ae63ea371bc8adf2bb)
         (fpga-lisp . 502e43bbcb248d2ddbdfb15f8742a1bedd4f4e37)
         (my-idea . cb5dd10fccfe788e101bd6d63bc2e4c8c0a136c3)))
      (live-caller-proof .
        ((my-lisp-production-operational . confirmed)
         (my-lisp-production-operational-callers . ())
         (method . crates/my-lisp/tests/swarm_live_caller_inventory.rs)
-        (compatibility-test-callers .
-          ((crates/my-lisp-cli/tests/cli.rs .
-             (complete-task next-best-action sync-tasks))))
         (sibling-repositories . targeted-search-confirmed)
         (sibling-observed-executable-legacy-callers . ())))
+     (guidance-proof .
+       ((my-lisp-agent-guide . confirmed)
+        (my-lisp-migration-authority . confirmed)
+        (my-lisp-ecosystem-status-guidance . swarm-node-only)
+        (my-lisp-swarm-autonomy-v1 . superseded-quarantined)
+        (cml-agent-guide . swarm-node-only)
+        (cml-tasks-guidance . swarm-node-only)
+        (fpga-lisp-agent-guide . swarm-node-only)
+        (my-idea-agent-guide . swarm-node-only)))
      (confirmed .
        ((primary-agent-guide . AGENTS.md)
         (migration-authority . docs/swarm-mesh-v2.md)
         (deprecation-marker . knowledge/swarm-legacy-deprecation.wsm)
-        (cml-primary-guide . "cml/AGENTS.md sends join/sync-tasks/next-best-action to swarm-node")
-        (fpga-lisp-primary-guide . "fpga-lisp/AGENTS.md sends join/sync-tasks to swarm-node and forbids poll/claim on :9999")
-        (my-idea-primary-guide . "my-idea/AGENTS.md sends join/sync-tasks to swarm-node and forbids poll/claim on :9999")
-        (semantic-callers-allowed . "fpga-lisp oracle crosscheck and my-idea oracle client use :9999 as semantic oracle")
-        (sibling-executable-legacy-caller-search . "no executable legacy :9999 coordination request found in cml/fpga-lisp/my-idea by the 2026-09-07 targeted search; stale historical/guidance text still exists")))
-     (blockers .
-       ((active-snapshot-guidance
-          ecosystem-status.my
-          "still directs time-sensitive coordination to notify/poll on :9999")
-        (superseded-operational-example
-          docs/swarm-autonomy.md
-          "still contains a copy-paste (op notify) command for :9999")
-        (legacy-cli-compatibility-test
+        (semantic-callers-allowed . "fpga-lisp oracle crosscheck and my-idea oracle client use :9999 only as semantic oracle")
+        (sibling-executable-legacy-caller-search . "no executable legacy :9999 coordination request observed in cml/fpga-lisp/my-idea at the checked heads")
+        (active-guidance-legacy-callers . ())))
+     (blockers . ())
+     (removal-coupled-evidence .
+       ((legacy-cli-compatibility-test
           crates/my-lisp-cli/tests/cli.rs
-          "still intentionally exercises sync-tasks/complete-task/next-best-action on the compatibility server; this is not a live operational caller and must retire with the physical surface")
-        (cross-repo-active-guidance
-          cml/tasks.my
-          "still instructs the cml agent to sync the durable plan into the shared :9999 registry with sync-tasks; this is guidance drift, not an observed executable caller")))
+          (complete-task next-best-action sync-tasks)
+          "intentional compatibility witness, not a live caller; retire atomically with the physical legacy surface")
+        (semantic-preservation-shield
+          crates/my-lisp-cli/tests/semantic_oracle_preservation.rs
+          (contract-version eval parse diagnose connection-isolation))))
      (physical-surface-still-present .
        (crates/my-lisp-cli/src/swarm.rs))
      (next-proof .
-       (remove-or-quarantine-active-legacy-guidance
-        retire-cross-repo-legacy-guidance
-        retire-compatibility-test-with-physical-surface
-        preserve-eval-parse-diagnose)))))
+       (remove-legacy-coordination-state-and-dispatch
+        retire-compatibility-test-atomically
+        preserve-semantic-oracle-wire-behavior
+        prove-zero-production-and-compatibility-callers
+        run-c5-removal-gate-and-full-ci)))))
