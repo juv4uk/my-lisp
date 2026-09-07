@@ -60,3 +60,22 @@ fn aliased_make_macro_preserves_named_arity_and_type_failures() {
         .expect_err("non-closure argument must fail with Type");
     assert_eq!(ty.kind, ErrorKind::Type);
 }
+
+#[test]
+fn canonical_make_macro_name_obeys_ordinary_lexical_shadowing() {
+    let mut session = Session::default();
+    let result = eval_program(
+        "(define make-macro (lambda (x) (quote shadowed))) (make-macro 42)",
+        &mut session,
+    )
+    .expect("make-macro head position must resolve through the ordinary environment");
+
+    assert_eq!(result.value.to_string(), "shadowed");
+}
+
+#[test]
+fn evaluator_source_has_no_make_macro_head_dispatch() {
+    let evaluator = include_str!("../src/eval/mod.rs");
+    assert!(!evaluator.contains("Some(\"make-macro\")"));
+    assert!(!evaluator.contains("make-macro expects a closure"));
+}
