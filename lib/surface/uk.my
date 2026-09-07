@@ -30,11 +30,12 @@
 ;; Канон 0+7 — українські поверхневі аліаси (статус: stable)
 ;; ═══════════════════════════════════════════════════════════════
 
-; These seven names are the ratified Ukrainian surface for the McCarthy
-; primitives.  They bind to the same first-class builtin values that the
-; English names resolve to — no duplicate implementation.
+; `як-є` is already the canonical Ukrainian spelling of QUOTE in the immutable
+; Canon registry. QUOTE is a special form, not a first-class value, so it must
+; not be rebound with `(define як-є quote)`.
+; The value primitives below can be ordinary aliases because they are
+; first-class builtin values backed by the same canonical identities.
 
-(define як-є quote)
 (define атом? atom)
 (define тотожне? eq)
 (define сполучити cons)
