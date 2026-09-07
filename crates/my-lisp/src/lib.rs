@@ -62,6 +62,19 @@ pub const PROCESS_LIBRARY_SOURCE: &str = include_str!("../../../lib/process.my")
 /// `tcp-read` by applying the shared UTF-8 semantics.
 pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
 
+/// Install the one primitive macro-construction mechanism required by the
+/// language-owned macro layer, then evaluate that layer in this session.
+///
+/// Embedders that deliberately construct a custom/bare `Environment` must use
+/// this function before evaluating source that depends on `defmacro`. Keeping
+/// this step explicit lets `Environment::root()` remain the minimal kernel and
+/// prevents an evaluator head-name fallback from silently supplying bootstrap
+/// semantics.
+pub fn load_macro_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
+    eval::install_macro_substrate(&session.environment);
+    eval_program(MACRO_LIBRARY_SOURCE, session)
+}
+
 /// Install the narrow macro substrate, then load the language-owned macro
 /// layer and finally the ordinary core library.
 ///
@@ -69,8 +82,7 @@ pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
 /// `Environment::root()`: the root itself stays smaller, while the bootstrap
 /// explicitly gains `make-macro` before evaluating `lib/macro.my`.
 pub fn load_core_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
-    eval::install_macro_substrate(&session.environment);
-    eval_program(MACRO_LIBRARY_SOURCE, session)?;
+    load_macro_library(session)?;
     eval_program(CORE_LIBRARY_SOURCE, session)
 }
 
@@ -118,8 +130,8 @@ pub use value::{Closure, NumericBuffer, Rational, Value};
 /// direct host bindings, so adapters cannot silently drift from language
 /// semantics. Argument validation remains the caller's responsibility.
 pub fn string_slice_text(text: &str, start: usize, end: usize) -> String {
-    if start >= end {
-        return String::new();
-    }
-    text.chars().skip(start).take(end - start).collect()
+    let chars: Vec<char> = text.chars().collect();
+    let start = start.min(chars.len());
+    let end = end.min(chars.len()).max(start);
+    chars[start..end].iter().collect()
 }
