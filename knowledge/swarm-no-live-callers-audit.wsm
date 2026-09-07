@@ -1,5 +1,5 @@
 ; Ecosystem-scoped C5 audit for the legacy :9999 coordination surface.
-; This is evidence about the removal gate, not a claim that the gate passed.
+; This is evidence about the removal gate, not a claim that the whole gate passed.
 ; The authoritative coordination plane is swarm-node :910x; :9999 remains the
 ; semantic oracle. Physical legacy removal is forbidden while status is partial.
 ;
@@ -19,10 +19,19 @@
      (semantic-oracle . my-lisp-9999)
      (semantic-operations . (eval parse diagnose contract-version))
      (checked-heads .
-       ((my-lisp . fd879d195494ac8871de8e60e827786e41a36467)
+       ((my-lisp . 6a3274f49337ddd158060632e81bf572e8b060c8)
         (cml . 39ffb9c2cf6b67a2fc9eb9577f7724efbc238f34)
         (fpga-lisp . 502e43bbcb248d2ddbdfb15f8742a1bedd4f4e37)
         (my-idea . cb5dd10fccfe788e101bd6d63bc2e4c8c0a136c3)))
+     (live-caller-proof .
+       ((my-lisp-production-operational . confirmed)
+        (my-lisp-production-operational-callers . ())
+        (method . crates/my-lisp/tests/swarm_live_caller_inventory.rs)
+        (compatibility-test-callers .
+          ((crates/my-lisp-cli/tests/cli.rs .
+             (complete-task next-best-action sync-tasks))))
+        (sibling-repositories . targeted-search-confirmed)
+        (sibling-observed-executable-legacy-callers . ())))
      (confirmed .
        ((primary-agent-guide . AGENTS.md)
         (migration-authority . docs/swarm-mesh-v2.md)
@@ -39,9 +48,9 @@
         (superseded-operational-example
           docs/swarm-autonomy.md
           "still contains a copy-paste (op notify) command for :9999")
-        (legacy-cli-regression-caller
+        (legacy-cli-compatibility-test
           crates/my-lisp-cli/tests/cli.rs
-          "still invokes sync-tasks/complete-task/next-best-action on the legacy server")
+          "still intentionally exercises sync-tasks/complete-task/next-best-action on the compatibility server; this is not a live operational caller and must retire with the physical surface")
         (cross-repo-active-guidance
           cml/tasks.my
           "still instructs the cml agent to sync the durable plan into the shared :9999 registry with sync-tasks; this is guidance drift, not an observed executable caller")))
@@ -50,6 +59,5 @@
      (next-proof .
        (remove-or-quarantine-active-legacy-guidance
         retire-cross-repo-legacy-guidance
-        retire-legacy-regression-callers
-        scan-executable-coordination-call-sites
+        retire-compatibility-test-with-physical-surface
         preserve-eval-parse-diagnose)))))
