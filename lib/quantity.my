@@ -1,0 +1,146 @@
+; lib/quantity.my — scientific quantities and constants as finite Lisp data
+;
+; This is deliberately a library layer, not a new evaluator primitive.
+; It distinguishes a bare numeric value from a quantity with a unit and from
+; a scientific constant with epistemic metadata/provenance.
+;
+; Versioned shapes:
+;
+;   (unit/1 DIMENSIONS)
+;   (quantity/1 VALUE UNIT)
+;   (science-source/1 AUTHORITY EDITION)
+;   (scientific-constant/1 NAME QUANTITY STATUS KIND SYSTEM SOURCE)
+;
+; DIMENSIONS is data, currently a list of (BASE EXPONENT) terms.  This first
+; slice does not perform unit algebra; it gives reasoning a stable structure
+; to inspect before arithmetic/normalization is added by evidence.
+
+(def *unit-schema* (quote unit/1))
+(def *quantity-schema* (quote quantity/1))
+(def *science-source-schema* (quote science-source/1))
+(def *scientific-constant-schema* (quote scientific-constant/1))
+
+(def science-proper-list?
+  (lambda (x)
+    (cond
+      ((eq x (quote ())) t)
+      ((atom x) (quote ()))
+      (t (science-proper-list? (cdr x))))))
+
+(def make-unit
+  (lambda (dimensions)
+    (list *unit-schema* dimensions)))
+
+(def unit?
+  (lambda (x)
+    (cond
+      ((atom x) (quote ()))
+      ((eq (science-proper-list? x) (quote ())) (quote ()))
+      ((eq (= (length x) 2) (quote ())) (quote ()))
+      ((eq (car x) *unit-schema*) t)
+      (t (quote ())))))
+
+(def unit-dimensions
+  (lambda (unit) (second unit)))
+
+(def make-quantity
+  (lambda (value unit)
+    (list *quantity-schema* value unit)))
+
+(def quantity?
+  (lambda (x)
+    (cond
+      ((atom x) (quote ()))
+      ((eq (science-proper-list? x) (quote ())) (quote ()))
+      ((eq (= (length x) 3) (quote ())) (quote ()))
+      ((eq (car x) *quantity-schema*)
+       (unit? (third x)))
+      (t (quote ())))))
+
+(def quantity-value
+  (lambda (quantity) (second quantity)))
+
+(def quantity-unit
+  (lambda (quantity) (third quantity)))
+
+(def make-science-source
+  (lambda (authority edition)
+    (list *science-source-schema* authority edition)))
+
+(def science-source?
+  (lambda (x)
+    (cond
+      ((atom x) (quote ()))
+      ((eq (science-proper-list? x) (quote ())) (quote ()))
+      ((eq (= (length x) 3) (quote ())) (quote ()))
+      ((eq (car x) *science-source-schema*) t)
+      (t (quote ())))))
+
+(def scientific-constant-status-valid?
+  (lambda (status)
+    (cond
+      ((eq status (quote exact-by-definition)) t)
+      ((eq status (quote measured)) t)
+      (t (quote ())))))
+
+(def scientific-constant-kind-valid?
+  (lambda (kind)
+    (cond
+      ((eq kind (quote physical-defining)) t)
+      ((eq kind (quote physical-measured)) t)
+      ((eq kind (quote mathematical)) t)
+      (t (quote ())))))
+
+(def make-scientific-constant
+  (lambda (name quantity status kind system source)
+    (list
+      *scientific-constant-schema*
+      name
+      quantity
+      status
+      kind
+      system
+      source)))
+
+(def scientific-constant?
+  (lambda (x)
+    (cond
+      ((atom x) (quote ()))
+      ((eq (science-proper-list? x) (quote ())) (quote ()))
+      ((eq (= (length x) 7) (quote ())) (quote ()))
+      ((eq (car x) *scientific-constant-schema*)
+       (cond
+         ((eq (symbol? (second x)) (quote ())) (quote ()))
+         ((eq (quantity? (third x)) (quote ())) (quote ()))
+         ((eq (scientific-constant-status-valid? (fourth x)) (quote ())) (quote ()))
+         ((eq (scientific-constant-kind-valid? (fifth x)) (quote ())) (quote ()))
+         ((eq (symbol? (sixth x)) (quote ())) (quote ()))
+         ((eq (science-source? (seventh x)) (quote ())) (quote ()))
+         (t t)))
+      (t (quote ())))))
+
+(def scientific-constant-name
+  (lambda (constant) (second constant)))
+
+(def scientific-constant-quantity
+  (lambda (constant) (third constant)))
+
+(def scientific-constant-value
+  (lambda (constant)
+    (quantity-value (scientific-constant-quantity constant))))
+
+(def scientific-constant-unit
+  (lambda (constant)
+    (quantity-unit (scientific-constant-quantity constant))))
+
+(def scientific-constant-status
+  (lambda (constant) (fourth constant)))
+
+(def scientific-constant-kind
+  (lambda (constant) (fifth constant)))
+
+(def scientific-constant-system
+  (lambda (constant) (sixth constant)))
+
+(def scientific-constant-source
+  (lambda (constant) (seventh constant)))
