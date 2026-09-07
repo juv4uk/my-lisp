@@ -1,0 +1,298 @@
+name: C5 physical removal helper
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/c5-physical-removal.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  remove-legacy-coordination:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Remove only the gated legacy coordination surface
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def require_once(text: str, needle: str, label: str) -> None:
+              count = text.count(needle)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one marker, found {count}")
+
+          def cut_between(text: str, start: str, end: str, label: str) -> str:
+              require_once(text, start, label + " start")
+              require_once(text, end, label + " end")
+              a = text.index(start)
+              b = text.index(end, a)
+              return text[:a] + text[b:]
+
+          swarm_path = Path("crates/my-lisp-cli/src/swarm.rs")
+          text = swarm_path.read_text(encoding="utf-8")
+
+          old_header = """//! swarm.rs - the legacy semantic TCP/oracle layer still owned by the CLI:
+//! the sexpr request/response protocol, broker/mailbox/claims/presence/task
+//! tables, and the `--connect` P2P client. Moved out of main.rs verbatim
+//! (2026-08-22 mechanical CLI split, no behavior changes).
+"""
+          new_header = """//! swarm.rs — the CLI-owned semantic TCP/oracle transport.
+//! :9999 is intentionally semantic-only: request framing, eval/parse/diagnose,
+//! contract-version and related oracle operations. Agent coordination lives in
+//! swarm-node (:910x, swarm/1) and has no state or dispatch path in this module.
+"""
+          require_once(text, old_header, "module header")
+          text = text.replace(old_header, new_header, 1)
+          require_once(text, "use std::fs;\n", "legacy fs import")
+          text = text.replace("use std::fs;\n", "", 1)
+          require_once(text, "use std::sync::mpsc;\n", "legacy mpsc import")
+          text = text.replace("use std::sync::mpsc;\n", "", 1)
+          require_once(text, "use std::sync::{Arc, Mutex};\n", "sync import")
+          text = text.replace("use std::sync::{Arc, Mutex};\n", "use std::sync::Arc;\n", 1)
+
+          text = cut_between(
+              text,
+              "/// A bare atom usable as an id or capability name",
+              "/// Set once, at this process's first response",
+              "legacy data-file helpers",
+          )
+          text = cut_between(
+              text,
+              "/// 1-indexed (line, column) for a byte offset into `source`",
+              "fn server_generation() -> u64 {",
+              "legacy task-file helpers",
+          )
+          text = cut_between(
+              text,
+              "/// A single `notify`d message",
+              "fn error_kind_symbol(kind: &ErrorKind) -> &'static str {",
+              "legacy coordination state",
+          )
+
+          old_generation_comment = """/// Set once, at this process's first response, to the wall-clock second
+/// it started — not persisted, not synced, just a number that's
+/// guaranteed different after any restart. Exists for exactly one
+/// reason: a *stateless* client (one tool call per turn, no long-lived
+/// process to hold a `subscribe` connection or notice a dropped socket)
+/// has no other way to detect "the server I last talked to is gone and
+/// this is a new one" — everything else in this protocol (`claim`,
+/// `presence`, the task registry) resets silently on restart, and
+/// polling alone can't distinguish "nothing changed" from "everything
+/// I knew was wiped." Carried on every response so any single call
+/// reveals it, without a dedicated op to ask.
+"""
+          new_generation_comment = """/// Process generation carried on every semantic-oracle response so a stateless
+/// client can detect that the reference process restarted between calls. It is
+/// transport metadata only: no coordination state is attached to it.
+"""
+          require_once(text, old_generation_comment, "server-generation comment")
+          text = text.replace(old_generation_comment, new_generation_comment, 1)
+
+          old_state_init = """    let allowed = Arc::new(allowed);
+    let mailbox: Arc<Mutex<MailboxState>> = Arc::new(Mutex::new(MailboxState::default()));
+    let broker: Arc<Mutex<Broker>> = Arc::new(Mutex::new(Broker::default()));
+    let claims: Arc<Mutex<ClaimTable>> = Arc::new(Mutex::new(ClaimTable::default()));
+    let presence: Arc<Mutex<PresenceTable>> = Arc::new(Mutex::new(PresenceTable::default()));
+    let tasks: Arc<Mutex<TaskTable>> = Arc::new(Mutex::new(TaskTable::default()));
+"""
+          require_once(text, old_state_init, "shared legacy state init")
+          text = text.replace(old_state_init, "    let allowed = Arc::new(allowed);\n", 1)
+
+          old_clones = """        let allowed = Arc::clone(&allowed);
+        let mailbox = Arc::clone(&mailbox);
+        let broker = Arc::clone(&broker);
+        let claims = Arc::clone(&claims);
+        let presence = Arc::clone(&presence);
+        let tasks = Arc::clone(&tasks);
+"""
+          require_once(text, old_clones, "legacy state clones")
+          text = text.replace(old_clones, "        let allowed = Arc::clone(&allowed);\n", 1)
+
+          old_call = """                handle_sexpr_connection(
+                    stream,
+                    core_lib,
+                    &allowed,
+                    contract_major,
+                    contract_minor,
+                    &mailbox,
+                    &broker,
+                    &claims,
+                    &presence,
+                    &tasks,
+                );
+"""
+          require_once(text, old_call, "legacy handler call")
+          text = text.replace(
+              old_call,
+              """                handle_sexpr_connection(
+                    stream,
+                    core_lib,
+                    &allowed,
+                    contract_major,
+                    contract_minor,
+                );
+""",
+              1,
+          )
+
+          old_signature = """#[allow(clippy::too_many_arguments)] // wire-protocol handler: every table is a distinct input
+fn handle_sexpr_connection(
+    mut stream: TcpStream,
+    core_lib: &str,
+    allowed: &[String],
+    contract_major: f64,
+    contract_minor: f64,
+    mailbox: &Arc<Mutex<MailboxState>>,
+    broker: &Arc<Mutex<Broker>>,
+    claims: &Arc<Mutex<ClaimTable>>,
+    presence: &Arc<Mutex<PresenceTable>>,
+    tasks: &Arc<Mutex<TaskTable>>,
+) {
+"""
+          require_once(text, old_signature, "legacy handler signature")
+          text = text.replace(
+              old_signature,
+              """fn handle_sexpr_connection(
+    mut stream: TcpStream,
+    core_lib: &str,
+    allowed: &[String],
+    contract_major: f64,
+    contract_minor: f64,
+) {
+""",
+              1,
+          )
+
+          request_start = "            let mut id = Value::Nil;\n"
+          request_end = "            if !id_seen || matches!(id, Value::Nil) {\n"
+          require_once(text, request_start, "request field parser start")
+          require_once(text, request_end, "request field parser end")
+          a = text.index(request_start)
+          b = text.index(request_end, a)
+          compact_parser = """            let mut id = Value::Nil;
+            let mut id_seen = false;
+            let mut op: Option<String> = None;
+            let mut source: Option<String> = None;
+            let mut topic: Option<String> = None;
+            for field in fields.iter().skip(1) {
+                let kv = list_items(field);
+                let (Some(key), Some(val)) = (kv.first(), kv.get(1)) else {
+                    continue;
+                };
+                if let Value::Symbol(name) = key {
+                    match &**name {
+                        "id" => {
+                            id_seen = true;
+                            id = val.clone();
+                        }
+                        "op" => {
+                            if let Value::Symbol(value) = val {
+                                op = Some(value.to_string());
+                            }
+                        }
+                        "source" => {
+                            if let Value::String(value) = val {
+                                source = Some(value.to_string());
+                            }
+                        }
+                        "topic" => {
+                            if let Value::String(value) = val {
+                                topic = Some(value.to_string());
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+"""
+          text = text[:a] + compact_parser + text[b:]
+
+          dispatch_start = '                    Some("notify") =>'
+          dispatch_end = '                    Some(other) => error_response(&id, "invalid-form", &format!("unknown op `{other}`"), &contract_version),'
+          require_once(text, dispatch_start, "legacy dispatch start")
+          require_once(text, dispatch_end, "unknown-op fallback")
+          a = text.index(dispatch_start)
+          b = text.index(dispatch_end, a)
+          text = text[:a] + text[b:]
+
+          client_start = "/// One-shot P2P client: connects to a peer's TCP REPL"
+          client_end = "pub(crate) fn run_client(address: &str) {"
+          require_once(text, client_start, "legacy client comment start")
+          require_once(text, client_end, "run_client marker")
+          a = text.index(client_start)
+          b = text.index(client_end, a)
+          new_client_comment = """/// One-shot machine client for the semantic TCP oracle. It forwards one
+/// newline-delimited sexpr request from stdin and prints one response line.
+/// This transport helper carries no coordination semantics of its own.
+"""
+          text = text[:a] + new_client_comment + text[b:]
+
+          require_once(text, "Value::Number(3.0, Exactness::Exact),", "oracle test contract major")
+          text = text.replace("Value::Number(3.0, Exactness::Exact),", "Value::Number(4.0, Exactness::Exact),", 1)
+          require_once(text, "(contract-revision (3 0))", "oracle test revision assertion")
+          text = text.replace("(contract-revision (3 0))", "(contract-revision (4 0))", 1)
+
+          forbidden = [
+              "struct MailboxState",
+              "struct Broker",
+              "struct ClaimTable",
+              "struct PresenceTable",
+              "struct TaskTable",
+              'Some("notify")',
+              'Some("sync-tasks")',
+              'Some("claim")',
+              'Some("next-best-action")',
+          ]
+          for needle in forbidden:
+              if needle in text:
+                  raise SystemExit(f"legacy surface survived surgery: {needle}")
+          for required in ['Some("contract-version")', 'Some("parse")', '"eval" | "diagnose"', 'Some("oracle-eval")', 'Some("oracle-check")']:
+              if required not in text:
+                  raise SystemExit(f"semantic oracle surface was lost: {required}")
+          swarm_path.write_text(text, encoding="utf-8")
+
+          cli_path = Path("crates/my-lisp-cli/tests/cli.rs")
+          cli = cli_path.read_text(encoding="utf-8")
+          legacy_test = "#[test]\nfn sexpr_protocol_sync_tasks_loads_durable_plan() {\n"
+          require_once(cli, legacy_test, "legacy compatibility test")
+          a = cli.index(legacy_test)
+          if cli[a:].count("#[test]") != 1:
+              raise SystemExit("legacy compatibility test is no longer the final test; refuse broad deletion")
+          cli = cli[:a].rstrip() + "\n"
+          if "(op sync-tasks)" in cli or "(op complete-task)" in cli or "(op next-best-action)" in cli:
+              raise SystemExit("legacy compatibility request survived cli.rs")
+          cli_path.write_text(cli, encoding="utf-8")
+
+          inventory_path = Path("crates/my-lisp/tests/swarm_live_caller_inventory.rs")
+          inventory = inventory_path.read_text(encoding="utf-8")
+          old_test_start = "#[test]\nfn compatibility_callers_are_exactly_the_known_legacy_cli_regression() {\n"
+          require_once(inventory, old_test_start, "compatibility inventory test")
+          a = inventory.index(old_test_start)
+          replacement = """#[test]
+fn no_legacy_compatibility_callers_remain() {
+    let compatibility: BTreeMap<_, _> = inventory()
+        .into_iter()
+        .filter(|(path, _)| is_compatibility_test(path))
+        .collect();
+
+    assert!(
+        compatibility.is_empty(),
+        "C5 physical removal requires zero compatibility callers: {compatibility:?}"
+    );
+}
+"""
+          inventory = inventory[:a] + replacement
+          inventory_path.write_text(inventory, encoding="utf-8")
+          PY
+      - name: Commit atomic removal
+        run: |
+          git config user.name "C5 removal"
+          git config user.email "85576956+juv4uk@users.noreply.github.com"
+          git add crates/my-lisp-cli/src/swarm.rs crates/my-lisp-cli/tests/cli.rs crates/my-lisp/tests/swarm_live_caller_inventory.rs
+          git diff --cached --check
+          git commit -m "refactor(swarm): remove legacy :9999 coordination surface"
+          git push
