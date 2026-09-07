@@ -228,29 +228,8 @@ fn evaluate_list(
         Some("eval") => {
             special_forms::evaluate_eval(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("string-append") => {
-            special_forms::evaluate_string_append(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("string<?") => special_forms::evaluate_string_less_than(arguments, environment, span)
-            .map(EvalStep::Value),
         Some("read-all") => {
             special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("string?") => special_forms::evaluate_string_predicate(arguments, environment, span)
-            .map(EvalStep::Value),
-        Some("symbol->string") => {
-            special_forms::evaluate_symbol_to_string(arguments, environment, span)
-                .map(EvalStep::Value)
-        }
-        Some("string->symbol") => {
-            special_forms::evaluate_string_to_symbol(arguments, environment, span)
-                .map(EvalStep::Value)
-        }
-        Some("string-first") => {
-            special_forms::evaluate_string_first(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("string-rest") => {
-            special_forms::evaluate_string_rest(arguments, environment, span).map(EvalStep::Value)
         }
         Some("codepoint->string") => {
             special_forms::evaluate_codepoint_to_string(arguments, environment, span)
