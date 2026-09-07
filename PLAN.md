@@ -201,20 +201,30 @@ accepted knowledge candidate?
 adapter має пройти той самий versioned corpus і не мати bypass до knowledge
 journal. Не будувати provider-specific semantic layer наперед.
 
-## B5. Reasoning performance — **INDEXING MEASURED; NEXT = REPEATED-QUERY PROFILE**
+## B5. Reasoning performance — **IMMUTABLE INDEX REUSE CONFIRMED**
 
-Stack-safety і N=100/500/1000 ordinary-stack completion підтверджені. Після
-цього predicate/head indexing уже був реалізований як finite Lisp data з exact
-linear fallback для небезпечних/неіндексованих форм. B5 тепер має прямий
-same-corpus A/B proof, а не лише implementation claim.
+Stack-safety і N=100/500/1000 ordinary-stack completion підтверджені.
+Predicate/head indexing є finite Lisp data з exact linear fallback для
+небезпечних/неіндексованих форм і має прямий same-corpus A/B proof.
 
-CI #1139 diagnostic profile, debug build, 3-sample median:
+CI #1151 diagnostic profile, debug build, 3-sample median:
 
 ```text
 clauses   indexed reason   forced-linear   linear/indexed
-103       ~0.127 s         ~0.367 s        2.89x
-503       ~0.578 s         ~1.767 s        3.06x
-1003      ~1.144 s         ~3.500 s        3.06x
+103       ~0.129 s         ~0.368 s        2.85x
+503       ~0.585 s         ~1.769 s        3.03x
+1003      ~1.148 s         ~3.551 s        3.09x
+```
+
+Repeated-query public-path profile на одному незмінному 503-clause module:
+
+```text
+6 distinct goals
+public reason-in-observe batch         ~3.823 s
+prepared reason-observe + one index    ~1.092 s
+public/prepared                         3.50x
+6 repeated module projections          ~0.443 s
+6 repeated index builds                ~2.332 s
 ```
 
 Ці wall-clock числа — evidence конкретного CI run, не performance contract.
@@ -223,35 +233,30 @@ clauses   indexed reason   forced-linear   linear/indexed
 - ✅ indexed і forced-linear paths виконують той самий realistic mixed-predicate corpus;
 - ✅ `reason_index.rs` доводить exact proof/result parity, source rule order,
   recursion/negation parity і safe fallback;
-- ✅ на виміряному corpus indexing дає приблизно 3x виграш, тому його існування
-  виправдане експериментом;
+- ✅ на виміряному corpus indexing дає приблизно 3x виграш;
 - ✅ recursive proof goals reuse один finite index;
-- ✅ `reason-observe` тепер також будує один index на observation і reuse-ить
-  його для goal та explicit opposite замість двох однакових побудов;
-- ✅ після цього `raw_reason` практично збігається з direct indexed path:
-  на 1003 clauses ~1.149 s проти ~1.144 s;
-- ✅ `reason-in-observe` на тому ж 1003-clause profile зменшився приблизно з
-  ~2.08 s попереднього CI baseline до ~1.27 s у CI #1139; це diagnostic
-  improvement (~39%), не нормативна latency guarantee;
-- ✅ projection knowledge journal на 1003 clauses лишається близько ~0.146 s:
-  видимий, але не домінантний компонент.
+- ✅ `reason-observe` reuse-ить один index для goal та explicit opposite;
+- ✅ repeated-query corpus має 6 різних goals і exact public-path outcome/proof
+  parity перед будь-яким timing;
+- ✅ repeated work домінується `reason-make-index`, а не knowledge projection;
+- ✅ public `reason` приймає або historical rules list, або готовий
+  `reason-index/1` без зміни результату;
+- ✅ public `reason-observe` так само приймає rules або готовий index snapshot;
+- ✅ готовий index є явним immutable snapshot: пізніше додані rules не
+  з'являються в старому snapshot, але видимі після explicit rebuild;
+- ✅ немає global mutable cache, прихованої invalidation або нового runtime
+  representation;
+- ✅ caller сам вирішує, коли reuse-ити snapshot і коли побудувати новий.
 
-Наступний B5 експеримент не повинен вводити нову representation наперед.
-Потрібно виміряти **серію запитів до одного незмінного module/world**:
-
-1. зафіксувати repeated-query corpus з різними goals;
-2. окремо виміряти повторну `module-clauses-now` projection;
-3. окремо виміряти повторну `reason-make-index` побудову;
-4. порівняти чинний public path із diagnostic prepared/reused projection+index;
-5. перевірити exact result/proof parity для кожного query;
-6. лише якщо repeated work реально домінує — проектувати reusable prepared
-   reasoning context/cache з явною invalidation semantics;
-7. не вводити global mutable cache або приховану invalidation до такого proof;
-8. manual 5k/10k profile лишається falsification gate перед наступною
-   indexing/representation зміною.
+Таким чином measured B5 bottleneck закритий найвужчим механізмом, який уже був
+виражений у мові. Не проектувати cache/invalidation layer поверх цього без нового
+реального workload, який доведе, що explicit immutable index reuse недостатній.
+Manual 5k/10k profile лишається falsification gate перед наступною
+indexing/representation зміною, а не автоматичним active milestone.
 
 Evidence: `reason_index.rs`, `reason_advice_scale.rs`, `result_status.rs`,
-CI #1139; commits `025d75c` і `a7fb51f`.
+CI #1151 + WASM #88; commits `0493beb`, `70269c3`, `c5605f7`, `9f1b6f1`,
+`84d882b`.
 
 ---
 
@@ -343,13 +348,12 @@ Programmatic embedding enforcement уже confirmed. Залишилися окр
 # Поточний порядок робіт
 
 ```text
-1. B5 — repeated-query profile на одному незмінному module/world
-2. reusable prepared reasoning context/cache — лише якщо repeated work виміряно як bottleneck
-3. B4 external-provider adapter лише разом із конкретним translator і corpus proof
-4. swarm — no-live-callers proof, потім physical legacy removal
-5. CLI host-scope surface лише після explicit operational decision
-6. later-binding / deeper self-hosting proof, якщо Advice Taker його потребує
-7. CML/FPGA subset за реальною цінністю для reasoning
+1. B4 external-provider adapter лише разом із конкретним translator і corpus proof
+2. swarm — no-live-callers proof, потім physical legacy removal
+3. CLI host-scope surface лише після explicit operational decision
+4. later-binding / deeper self-hosting proof, якщо Advice Taker його потребує
+5. CML/FPGA subset за реальною цінністю для reasoning
+6. B5 performance — повертатися лише при новому measured workload/bottleneck
 ```
 
 ## Стоп-умови
