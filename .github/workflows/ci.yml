@@ -30,3 +30,25 @@ jobs:
       - name: B5 Advice Taker diagnostic profile
         run: cargo test -p my-lisp --test reason_advice_scale advice_taker_profile_100_500_1000_distractors -- --ignored --nocapture
       - run: cargo build --workspace
+
+  web-repl:
+    name: portable web REPL build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: wasm
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: 'v0.15.0'
+      - name: Build WASM bindings
+        run: wasm-pack build crates/my-lisp-wasm --target web --out-dir ../../public/wasm
+      - name: Bundle standalone HTML
+        run: |
+          node scripts/make-portable-web.mjs public/my-lisp-cli-web.html my-lisp-cli-web.html
+          test -s my-lisp-cli-web.html
