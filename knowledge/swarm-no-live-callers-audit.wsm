@@ -4,7 +4,9 @@
 ; semantic oracle. Physical legacy removal is forbidden while status is partial.
 ;
 ; Important: semantic-oracle callers of :9999 are intentionally NOT blockers.
-; The gate concerns only the deprecated coordination operations.
+; The gate concerns only the deprecated coordination operations. Stale prose
+; that can teach a future agent a legacy call is tracked separately from an
+; executable call-site; those are not the same claim.
 
 (def *swarm-no-live-callers-audit*
   (quote
@@ -25,10 +27,11 @@
        ((primary-agent-guide . AGENTS.md)
         (migration-authority . docs/swarm-mesh-v2.md)
         (deprecation-marker . knowledge/swarm-legacy-deprecation.wsm)
-        (cml-primary-guide . "cml/AGENTS.md separates swarm-node coordination from :9999 semantics")
-        (fpga-lisp-primary-guide . "fpga-lisp/AGENTS.md separates swarm-node coordination from :9999 semantics")
-        (my-idea-primary-guide . "my-idea/AGENTS.md separates swarm-node coordination from :9999 semantics")
-        (semantic-callers-allowed . "fpga-lisp oracle crosscheck and my-idea oracle client use :9999 as semantic oracle")))
+        (cml-primary-guide . "cml/AGENTS.md sends join/sync-tasks/next-best-action to swarm-node")
+        (fpga-lisp-primary-guide . "fpga-lisp/AGENTS.md sends join/sync-tasks to swarm-node and forbids poll/claim on :9999")
+        (my-idea-primary-guide . "my-idea/AGENTS.md sends join/sync-tasks to swarm-node and forbids poll/claim on :9999")
+        (semantic-callers-allowed . "fpga-lisp oracle crosscheck and my-idea oracle client use :9999 as semantic oracle")
+        (sibling-executable-legacy-caller-search . "no executable legacy :9999 coordination request found in cml/fpga-lisp/my-idea by the 2026-09-07 targeted search; stale historical/guidance text still exists")))
      (blockers .
        ((active-snapshot-guidance
           ecosystem-status.my
@@ -39,9 +42,9 @@
         (legacy-cli-regression-caller
           crates/my-lisp-cli/tests/cli.rs
           "still invokes sync-tasks/complete-task/next-best-action on the legacy server")
-        (cross-repo-active-caller
+        (cross-repo-active-guidance
           cml/tasks.my
-          "still instructs the cml agent to sync the durable plan into the shared :9999 registry with sync-tasks")))
+          "still instructs the cml agent to sync the durable plan into the shared :9999 registry with sync-tasks; this is guidance drift, not an observed executable caller")))
      (physical-surface-still-present .
        (crates/my-lisp-cli/src/swarm.rs))
      (next-proof .
