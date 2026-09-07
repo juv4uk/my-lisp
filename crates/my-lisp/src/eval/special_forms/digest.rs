@@ -1,11 +1,11 @@
 //! `sha256-hex` — a genuine Rust mechanism, in the same category as the
-//! bitwise ops documented in language-core.md.  The algorithm stays in Rust;
+//! bitwise ops documented in language-core.md. The algorithm stays in Rust;
 //! callable identity is an ordinary first-class builtin owned by the root
 //! environment rather than evaluator name dispatch.
 //!
 //! Pure-std implementation (no external crate), SHA-256 per FIPS 180-4.
 
-use crate::{Environment, ErrorKind, Expr, LanguageError, Span, Value};
+use crate::{ErrorKind, LanguageError, Span, Value};
 
 pub(crate) fn sha256_hex_values(
     arguments: &[Value],
@@ -31,17 +31,6 @@ pub(crate) fn sha256_hex_values(
         hex.push_str(&format!("{byte:02x}"));
     }
     Ok(Value::String(std::rc::Rc::from(hex.as_str())))
-}
-
-// Transitional Expr wrapper retained until eval/mod.rs forgets `sha256-hex`.
-pub(crate) fn evaluate_sha256_hex(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    super::core::exact_arity("sha256-hex", arguments, 1, span)?;
-    let values = [crate::eval::evaluate(&arguments[0], environment)?];
-    sha256_hex_values(&values, span)
 }
 
 /// SHA-256 (FIPS 180-4), returns the 32-byte digest.
