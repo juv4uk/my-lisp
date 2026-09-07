@@ -1,4 +1,19 @@
-use my_lisp::{eval_program, ErrorKind, Session, Value};
+use my_lisp::{eval_expr, eval_program, parse, Environment, ErrorKind, Session, Value};
+
+#[test]
+fn bare_kernel_root_does_not_own_historical_def() {
+    let root = Environment::root();
+    assert!(root.get("def").is_none());
+
+    let expression = parse("(def answer 42)")
+        .expect("probe should parse")
+        .into_iter()
+        .next()
+        .expect("one expression");
+    let error = eval_expr(&expression, &root)
+        .expect_err("bare kernel must not implement historical def");
+    assert_eq!(error.kind, ErrorKind::UnknownSymbol);
+}
 
 #[test]
 fn default_session_binds_historical_def_as_a_language_macro() {
@@ -7,6 +22,14 @@ fn default_session_binds_historical_def_as_a_language_macro() {
         session.environment.get("def"),
         Some(Value::Macro(_))
     ));
+}
+
+#[test]
+fn literal_def_still_preserves_historical_program_behavior() {
+    let mut session = Session::default();
+    let result = eval_program("(def answer (+ 20 22)) answer", &mut session)
+        .expect("bootstrapped historical def must remain compatible");
+    assert_eq!(result.value.to_string(), "42");
 }
 
 #[test]
@@ -42,4 +65,22 @@ fn aliased_def_preserves_definition_error_classes() {
 
     assert_eq!(alias_invalid.kind, canonical_invalid.kind);
     assert_eq!(alias_invalid.kind, ErrorKind::InvalidForm);
+}
+
+#[test]
+fn historical_def_name_obeys_ordinary_lexical_shadowing() {
+    let mut session = Session::default();
+    let result = eval_program(
+        "(define def (lambda (x y) (quote shadowed))) (def 1 2)",
+        &mut session,
+    )
+    .expect("literal def head must resolve through the ordinary environment");
+
+    assert_eq!(result.value.to_string(), "shadowed");
+}
+
+#[test]
+fn evaluator_source_has_no_historical_def_dispatch() {
+    let evaluator = include_str!("../src/eval/mod.rs");
+    assert!(!evaluator.contains("Some(\"def\")"));
 }
