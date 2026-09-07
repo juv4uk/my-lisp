@@ -1,226 +1,303 @@
+<div align="center">
+
 # my-lisp
 
-**A small language that grows itself · Маленька мова, що вирощує себе · Eine kleine Sprache, die sich selbst wachsen lässt**
+**Маленька Lisp-мова, що вирощує себе**
 
-`my-lisp` is a Lisp research language built around a deliberately small semantic nucleus, exact arithmetic, executable conformance, and one architectural rule: **if behavior can be derived inside the language, it must justify why it still lives in the host**.
+*Дослідження того, наскільки малою може бути незвідна машина, якщо дедалі більше значення, правил і поведінки належить самій мові.*
 
-`my-lisp` is the project name. The separate repository `juv4uk/wsm` is unrelated foundational research. The current canonical source extension here is **`.wsm`**; **`.my`** and **`.lisp`** remain fully supported aliases.
+[![CI](https://github.com/juv4uk/my-lisp/actions/workflows/ci.yml/badge.svg)](https://github.com/juv4uk/my-lisp/actions/workflows/ci.yml)
+[![WASM](https://github.com/juv4uk/my-lisp/actions/workflows/wasm-browser-test.yml/badge.svg)](https://github.com/juv4uk/my-lisp/actions/workflows/wasm-browser-test.yml)
+[![Surface drift](https://github.com/juv4uk/my-lisp/actions/workflows/surface-drift-check.yml/badge.svg)](https://github.com/juv4uk/my-lisp/actions/workflows/surface-drift-check.yml)
 
-## Quick try · Швидко спробувати · Schnell ausprobieren
+**Українська — перша мова проєкту.** Англійська й німецька — допоміжні.
 
-The release workflow publishes a standalone browser REPL, and the native CLI can be built directly:
+</div>
 
-```bash
-cargo run -p my-lisp-cli
-cargo run -p my-lisp-cli -- path/to/file.wsm
+---
+
+## Що таке `my-lisp`
+
+`my-lisp` — дослідницька Lisp-мова з навмисно малим семантичним ядром, точною арифметикою, виконуваними законами та незалежними реалізаціями для перевірки припущень.
+
+Головний архітектурний принцип:
+
+> **Механізм може належати хосту. Значення має належати мові.**
+
+Rust тут є **референсною реалізацією**, але не джерелом семантичної істини. Якщо поведінку можна виразити й перевірити всередині Lisp, вона повинна обґрунтувати, чому досі живе в хості.
+
+```text
+закон мови
+    ↓
+Lisp-визначення / виконуваний доказ
+    ↓
+референсна реалізація Rust
+    ↓
+незалежні субстрати: C / CML / FPGA / WASM / Racket
 ```
 
-Build and test the whole workspace with:
+Поточний машинний семантичний контракт — [`language-contract.my`](language-contract.my), версія **4.0**.
 
-```bash
-cargo build --workspace
-cargo test --workspace
+---
+
+## Canon 0 + 7
+
+Семантичне ядро замкнене. Є **Canon 0** — конкретний порожній правильний список `()` — і рівно сім канонічних операцій Маккарті.
+
+| Канонічна тотожність | Українська поверхня | Символ з української розкладки | Історичне ім'я |
+|---|---|---:|---|
+| Canon 0 | `()` | `()` | `()` |
+| QUOTE | `як-є` | `'` | `quote` |
+| ATOM | `атом?` | `.?` | `atom` |
+| EQ | `тотожне?` | `=?` | `eq` |
+| CONS | `сполучити` | `:` | `cons` |
+| CAR | `перше` | `:п` | `car` |
+| CDR | `решта` | `:р` | `cdr` |
+| COND | `за-умовою` | `?:` | `cond` |
+
+`() ` — **не восьмий примітив**. Це первинний об'єкт і база індукції для правильних списків.
+
+Символи також не створюють нових примітивів: `'`, `.?`, `=?`, `:`, `:п`, `:р`, `?:` — це компактні написання тих самих канонічних тотожностей. Виконуваний доказ лежить у [`lib/canon.my`](lib/canon.my).
+
+`QUOTE` і `COND` керують обчисленням і не маскуються під звичайні callable values.
+
+### Апостроф
+
+Контракт 4.0 фіксує просте правило:
+
+```lisp
+'кіт        ; те саме, що (quote кіт)
+
+об'єкт      ; один ідентифікатор
+п'ять       ; один ідентифікатор
+зв'язок     ; один ідентифікатор
 ```
 
-## Semantic authority
+Апостроф на початку виразу — reader syntax для `QUOTE`; апостроф усередині слова — звичайна частина ідентифікатора.
 
-The Rust implementation is the **reference implementation**, not the owner of language semantics.
+---
 
-Authority is intentionally ordered:
+## Українською можна програмувати
+
+Українська — не лише мова README. У репозиторії є виконувана українська програмна поверхня [`lib/surface/uk.my`](lib/surface/uk.my).
+
+Наприклад, після її завантаження код може виглядати так:
+
+```lisp
+(визначити квадрат
+  (функція (число)
+    (помножити число число)))
+
+(визначити факторіал
+  (функція (число)
+    (за-умовою
+      ((не-більше? число 1) 1)
+      (t (помножити число
+                    (факторіал (відняти число 1)))))))
+```
+
+Повна самоперевірна українська програма є в [`lib/surface/uk-acceptance.my`](lib/surface/uk-acceptance.my).
+
+Українська, англійська та санскритська **програмні поверхні не розмножують семантику**. Вони відображають різні імена на ті самі визначення й канонічні тотожності. Машинний словник лежить у [`lib/surface/uk-sa-coverage.wsm`](lib/surface/uk-sa-coverage.wsm).
+
+Є й програмний перекладач поверхонь:
+
+```bash
+python3 scripts/translate-program.py --from en --to uk input.wsm
+python3 scripts/translate-program.py --from uk --to sa input.wsm
+```
+
+Він підтримує всі шість напрямків між `en`, `uk` і `sa`, зберігаючи форматування, коментарі, рядки та невідомі користувацькі символи. Деталі: [`docs/program-surface-translator.md`](docs/program-surface-translator.md).
+
+---
+
+## Мовна політика репозиторію
+
+Людська комунікація проєкту має окрему ратифіковану політику: [`knowledge/language-policy.wsm`](knowledge/language-policy.wsm).
+
+```text
+1. Українська — перша і головна.
+2. Англійська й німецька — допоміжні.
+3. Текстові файли репозиторію — UTF-8.
+4. Нові коментарі в коді — українською кирилицею.
+5. Точні API, protocol literals, identifiers, filenames і upstream-назви не перекладаються довільно.
+```
+
+[`scripts/uk-latynka.py`](scripts/uk-latynka.py) лишається оборотним ASCII-інструментом для спеціальних зовнішніх меж без Unicode. Це **не** штатний стиль коментарів у репозиторії.
+
+---
+
+## Семантична влада
+
+README пояснює проєкт, але не визначає його семантику.
 
 ```text
 language-contract.my
         ↓
-ratified ADRs
+ратифіковані ADR
         ↓
-executable conformance fixtures / language-owned laws
+виконувані закони та conformance fixtures
         ↓
-reference implementation (Rust)
+референсна реалізація Rust
         ↓
-independent substrates
+незалежні реалізації
         ↓
-generated reference
+згенерована документація
         ↓
-README / tutorials / historical plans
+README / tutorials / історичні плани
 ```
 
-See [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md). If explanatory prose conflicts with a higher-level contract source, the prose is stale.
+Якщо нижчий рівень суперечить вищому — нижчий рівень застарів. Повна карта: [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md).
 
-## Closed semantic core
+Це одна з головних дисциплін проєкту:
 
-The primitive semantic operation set is permanently closed:
+> **Назва явища не може бути сильнішою за найсильніший експеримент, який його підтримує.**
+
+---
+
+## Мова, що вирощує себе
+
+У `my-lisp` дедалі більше систем живе не в Rust, а в самій мові:
+
+| Шар | Де дивитися | Що там |
+|---|---|---|
+| Bootstrap | [`lib/core.my`](lib/core.my), [`lib/macro.my`](lib/macro.my) | базова бібліотека, макроси |
+| Canon | [`lib/canon.my`](lib/canon.my) | виконувані закони 0+7 |
+| Meta-eval | [`lib/meta-eval.my`](lib/meta-eval.my) | метациркулярне обчислення, finite mutual recursion |
+| Логіка | [`lib/unify.my`](lib/unify.my), [`lib/reason.my`](lib/reason.my) | уніфікація, backward reasoning |
+| Forward reasoning | [`lib/forward.my`](lib/forward.my) | forward chaining / JTMS |
+| Знання | [`lib/knowledge.my`](lib/knowledge.my), [`lib/world.my`](lib/world.my) | модулі знань, незмінні світи |
+| Епістеміка | [`lib/epistemic.my`](lib/epistemic.my) | явні стани знання й невизначеності |
+| Мова ↔ текст | [`lib/understand.my`](lib/understand.my), [`lib/narrate.my`](lib/narrate.my) | контрольовані мовні мости |
+| Час | [`lib/time.my`](lib/time.my) | дедалі більше language-owned time semantics |
+
+Головне питання не «скільки рядків уже переписано на Lisp?», а:
+
+> **Якою мінімальною може бути незвідна хост-машина, якщо корисна система продовжує вирощуватися всередині самої мови?**
+
+---
+
+## Advice Taker і reasoning-напрям
+
+Один із центральних дослідницьких напрямів — не просто інтерпретувати S-вирази, а будувати систему, яка може працювати зі знанням, доказами, суперечностями й поясненнями.
 
 ```text
-quote · atom · eq · cons · car · cdr · cond
+факти / правила
+      ↓
+   unify.my
+      ↓
+  reason.my  ←→  forward.my
+      ↓
+ knowledge.my / world.my
+      ↓
+ advice / proof / provenance
 ```
 
-The concrete empty proper list `()` is treated as Canon 0: a value/syntax identity and the inductive base of proper lists, **not an eighth operation**.
+Саме тут маленьке Lisp-ядро перевіряється не «hello world», а реальною композицією рекурсії, символічного reasoning, immutable state та knowledge layers.
 
-The implementation also contains a small evaluator/bootstrap substrate for closures, definitions, macro bootstrapping, exact numbers, structured errors, and host capabilities. Those mechanisms are not allowed to silently expand the seven-operation semantic primitive set.
+---
 
-The current bootstrap work deliberately distinguishes:
+## Хост не є семантикою
 
-```text
-semantic primitive identity
-≠ evaluator mechanism
-≠ surface spelling
-≠ derived library form
-```
-
-For example, `lib/macro.my` now owns the normal `defmacro` binding after the macro layer loads, while a Rust fallback remains during migration. Observable contract changes still go through `language-contract.my`; implementation refactoring does not rewrite the contract by implication.
-
-## The host boundary
-
-The project does not pursue “rewrite Rust in Lisp” as a goal. It separates **external mechanism** from **language meaning**.
+`my-lisp` не ставить собі за мету механічно «переписати Rust на Lisp». Межа інша:
 
 ```text
 OS / hardware
-    ↓
-host observations and capabilities
-    ↓
-my-lisp values
-    ↓
-Lisp-owned interpretation / policy / protocol
+      ↓
+спостереження та capability-механізми
+      ↓
+значення my-lisp
+      ↓
+Lisp-визначена інтерпретація / політика / протокол
 ```
 
-Recent examples:
+Тому низькорівнева операція може чесно лишатися в Rust, C або FPGA, якщо вона є механізмом. Але semantic policy не повинна випадково ставати властивістю конкретного хоста.
 
-```text
-Rust: mono-ns
-Lisp: mono-ms, elapsed time, deadline arithmetic
-
-Rust: unix-time-now
-Lisp: Gregorian conversion, UTC interpretation, utc-now
-
-Rust: raw NTP/network observation
-Lisp: timestamp meaning and synchronization policy
-```
-
-The living audit is [`docs/host-semantic-surface.md`](docs/host-semantic-surface.md).
-
-## Exact arithmetic
-
-Exactness is a core design choice, not a display preference. Integer and rational arithmetic remains exact instead of silently becoming floating point. The Rust runtime supplies the low-level arbitrary-precision machinery; language semantics decide what exact results mean.
-
-This project prefers measurable costs over hidden compromises: performance regressions caused by stronger exactness or stack-safety guarantees are documented and tested rather than disguised.
-
-## A language that grows itself
-
-The slogan is tested by executable code, not only by prose. The repository contains substantial systems written in my-lisp itself:
-
-- [`lib/core.my`](lib/core.my) — bootstrapped standard library;
-- [`lib/macro.my`](lib/macro.my) — language-owned macro bootstrap layer;
-- [`lib/canon.my`](lib/canon.my) — executable Canon 0+7 semantic laws;
-- [`lib/meta-eval.my`](lib/meta-eval.my) — metacircular evaluation experiments;
-- [`lib/unify.my`](lib/unify.my), [`lib/reason.my`](lib/reason.my), [`lib/forward.my`](lib/forward.my) — symbolic reasoning;
-- [`lib/knowledge.my`](lib/knowledge.my), [`lib/world.my`](lib/world.my), [`lib/content-store.my`](lib/content-store.my), [`lib/epistemic.my`](lib/epistemic.my) — knowledge/history/epistemic layers;
-- [`lib/understand.my`](lib/understand.my), [`lib/narrate.my`](lib/narrate.my) — controlled language bridges;
-- [`lib/clips-import.my`](lib/clips-import.my) — CLIPS import;
-- [`lib/time.my`](lib/time.my) — increasingly language-owned time semantics.
-
-The scientific question is therefore not “how many lines are Lisp?” but:
-
-> **How small can the irreducible host remain while the useful system continues to grow inside the language?**
-
-## Implementations and tools
-
-This repository contains the mature software reference and tooling:
-
-- [`crates/my-lisp`](crates/my-lisp) — parser, evaluator, values, exact arithmetic, environments, diagnostics;
-- [`crates/my-lisp-cli`](crates/my-lisp-cli) — CLI / REPL;
-- [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly bindings;
-- [`crates/my-lisp-literate`](crates/my-lisp-literate) — literate source mapping;
-- [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — LSP adapter;
-- [`crates/my-lisp-host`](crates/my-lisp-host) — explicit OS capability layer;
-- [`crates/my-lisp-semantic`](crates/my-lisp-semantic) — experimental Sanskrit/Pāṇinian semantic research;
-- [`crates/swarm-node`](crates/swarm-node) and Guard crates — ecosystem experiments built around the same mechanism/policy separation;
-- [`racket/`](racket/) — `#lang my-lisp` support for Racket/DrRacket;
-- [`c-runtime/`](c-runtime/) — reinstated C + x86_64 assembly substrate.
-
-A physically different HDL Lisp-machine implementation lives in the separate [`fpga-lisp`](https://github.com/juv4uk/fpga-lisp) repository. Independent substrates exist to **falsify implementation-specific assumptions**, not to share one implementation architecture.
-
-## Research scope
-
-The repository is intentionally more than a toy interpreter, but the layers have different status:
-
-```text
-L0  runtime/substrate mechanisms
-L1  closed semantic core
-L2  bootstrap + standard language
-L3  semantic libraries
-L4  reasoning
-L5  knowledge/history
-L6  explicit host capabilities
-L7  applications and ecosystem experiments
-```
-
-Not every experiment is part of the language contract. In particular, Sanskrit/Pāṇinian work, Guard, swarm coordination, natural-language bridges, and agent experiments must not silently acquire primitive-language status merely because they are in the same repository.
-
-## Documentation
-
-Start here:
-
-- [`language-contract.my`](language-contract.my) — machine-readable Level 1/2 semantic-contract version;
-- [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md) — what outranks what when documents disagree;
-- [`docs/language-core.md`](docs/language-core.md) — compact human-readable core architecture;
-- [`docs/host-semantic-surface.md`](docs/host-semantic-surface.md) — host/Lisp ownership inventory;
-- [`docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`](docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md) — ratified closed seven-operation core;
-- [`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) — executable conformance fixtures;
-- [`docs/FUNCTIONS.md`](docs/FUNCTIONS.md) — generated function/builtin reference;
-- [`docs/testing.md`](docs/testing.md) — test inventory;
-- [`docs/benchmarks.md`](docs/benchmarks.md) — benchmark methodology;
-- [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — historical grounding and explicit departures;
-- [`docs/versioning.md`](docs/versioning.md) — project/version history.
-
-Historical decisions, dated audits, `PLAN.md`, and agent notes remain useful evidence of how the project evolved, but they are not allowed to override the current semantic authority chain.
+Живий аудит цієї межі: [`docs/host-semantic-surface.md`](docs/host-semantic-surface.md).
 
 ---
 
-## Українською
+## Незалежні субстрати
 
-`my-lisp` — дослідницька Lisp-мова з навмисно малим семантичним ядром, точною арифметикою й виконуваним контрактом сумісності.
+Різні реалізації потрібні не для того, щоб копіювати одну архітектуру, а щоб **ламати приховані припущення одна одної**.
 
-Семантичні примітиви назавжди замкнені:
+- [`crates/my-lisp`](crates/my-lisp) — референсний Rust runtime;
+- [`crates/my-lisp-cli`](crates/my-lisp-cli) — CLI, REPL і semantic oracle;
+- [`crates/my-lisp-wasm`](crates/my-lisp-wasm) — WebAssembly;
+- [`crates/my-lisp-lsp`](crates/my-lisp-lsp) — LSP;
+- [`crates/my-lisp-host`](crates/my-lisp-host) — явна межа OS capabilities;
+- [`c-runtime/`](c-runtime/) — C + x86_64 substrate;
+- [`racket/`](racket/) — `#lang my-lisp` для Racket/DrRacket;
+- [`juv4uk/cml`](https://github.com/juv4uk/cml) — AOT / heterogeneous compiler напрям;
+- [`juv4uk/fpga-lisp`](https://github.com/juv4uk/fpga-lisp) — фізично інша Lisp-машина на FPGA.
 
-```text
-quote · atom · eq · cons · car · cdr · cond
-```
-
-`() ` — Canon 0, конкретний порожній правильний список; це значення, а не восьма операція.
-
-Rust є **референсною реалізацією**, а не джерелом семантичної істини. Джерело істини — машинний контракт, ратифіковані рішення та виконувані conformance-тести. Якщо поведінку можна вивести всередині Lisp, вона має пояснити, навіщо лишається в host.
-
-Поточний канонічний суфікс файлів — **`.wsm`**; **`.my`** та **`.lisp`** лишаються повністю підтримуваними. Назва проєкту — **`my-lisp`**; окремий репозиторій `wsm` не перейменовує цю мову.
-
-Найважливіша архітектурна межа:
-
-```text
-host дає спостереження / ефект
-Lisp визначає значення / політику
-```
-
-Саме тому `mono-ms` уже виведений із `mono-ns` у Lisp, а `utc-now` переходить на Lisp-інтерпретацію сирого `unix-time-now`.
-
-Головне дослідницьке питання проєкту: **якою мінімальною може бути незвідна host-машина, якщо решта корисної системи вирощується самою мовою?**
+Сумісність визначається контрактами, а не тим, наскільки схожий код реалізацій.
 
 ---
 
-## Deutsch
+## Швидкий старт
 
-`my-lisp` ist eine Lisp-Forschungssprache mit bewusst kleinem semantischem Kern, exakter Arithmetik und ausführbarer Konformität.
+Потрібні Rust toolchain і залежності workspace. У репозиторії також є Guix manifest для відтворюваного середовища.
 
-Der semantische Primitivsatz ist dauerhaft geschlossen:
+```bash
+# REPL
+cargo run -p my-lisp-cli
 
-```text
-quote · atom · eq · cons · car · cdr · cond
+# виконати файл
+cargo run -p my-lisp-cli -- path/to/file.wsm
+
+# повний workspace
+cargo test --workspace
+cargo build --workspace
+cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-`() ` ist Canon 0, die konkrete leere richtige Liste; kein achtes Primitiv.
+Канонічне розширення вихідного коду — **`.wsm`**. **`.my`** і **`.lisp`** лишаються підтримуваними aliases.
 
-Rust ist die **Referenzimplementierung**, nicht die semantische Autorität. Autorität liegt beim maschinenlesbaren Vertrag, ratifizierten Entscheidungen und ausführbaren Konformitätstests. Ableitbare Bedeutung soll in Lisp leben; der Host bleibt für echte Beobachtungen und Fähigkeiten zuständig.
+---
 
-Die aktuelle kanonische Quelldateiendung ist **`.wsm`**; **`.my`** und **`.lisp`** bleiben vollständig unterstützt. Der Projektname bleibt **`my-lisp`**.
+## З чого читати проєкт
 
-## License · Ліцензія · Lizenz
+Якщо відкриваєте `my-lisp` уперше, цей порядок дає найменше плутанини:
+
+1. [`language-contract.my`](language-contract.my) — що саме обіцяє мова;
+2. [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md) — хто має право визначати істину;
+3. [`lib/canon.my`](lib/canon.my) — виконуваний Canon 0+7;
+4. [`docs/language-core.md`](docs/language-core.md) — компактна архітектура ядра;
+5. [`lib/surface/uk-acceptance.my`](lib/surface/uk-acceptance.my) — українська мова як виконуваний програмний інтерфейс;
+6. [`lib/meta-eval.my`](lib/meta-eval.my) — як мова починає обчислювати саму себе;
+7. [`lib/reason.my`](lib/reason.my) — reasoning-напрям;
+8. [`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) — спостережувані факти, які мають пережити зміну реалізації.
+
+Додатково:
+
+- [`docs/testing.md`](docs/testing.md) — карта тестів;
+- [`docs/benchmarks.md`](docs/benchmarks.md) — методика вимірювань;
+- [`docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`](docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md) — чому ядро 0+7 замкнене;
+- [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — історичний контекст і свідомі відхилення;
+- [`AGENTS.md`](AGENTS.md) — правила роботи агентів у репозиторії;
+- [`knowledge/guard-reference.wsm`](knowledge/guard-reference.wsm) — машинно-читане довідкове бюро Guard.
+
+---
+
+## English · auxiliary
+
+`my-lisp` is a Lisp research language built around a permanently closed McCarthy 0+7 semantic nucleus, exact arithmetic, executable conformance, language-owned semantics, and independent substrates used to falsify implementation-specific assumptions.
+
+Ukrainian is the project's primary human language. English and German are auxiliary. The Rust runtime is the reference implementation, not semantic authority; start with [`language-contract.my`](language-contract.my) and [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md).
+
+The central research question is: **how small can the irreducible host remain while the useful system continues to grow inside the language?**
+
+## Deutsch · ergänzend
+
+`my-lisp` ist eine Lisp-Forschungssprache mit einem dauerhaft geschlossenen semantischen McCarthy-Kern 0+7, exakter Arithmetik, ausführbarer Konformität und mehreren unabhängigen Substraten.
+
+Ukrainisch ist die primäre menschliche Sprache des Projekts; Englisch und Deutsch sind Hilfssprachen. Rust ist die Referenzimplementierung, aber nicht die semantische Autorität. Maßgeblich sind [`language-contract.my`](language-contract.my), ratifizierte Entscheidungen und ausführbare Konformitätsbelege.
+
+Die zentrale Forschungsfrage lautet: **Wie klein kann der irreduzible Host bleiben, während das nützliche System innerhalb der Sprache weiterwächst?**
+
+---
+
+## Ліцензія
 
 [ВОЛЬНІСТЬ](LICENSE)
