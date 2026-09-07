@@ -290,12 +290,15 @@ fn sa_lists_higher_order_work() {
     let r2 = eval_program("(pramāṇa (śreṇī 1 2 3))", &mut s).expect("eval");
     assert_eq!(r2.value.to_string(), "3");
     let r3 = eval_program(
-        "(āvartana (krama (x) (guṇana x 2)) (śreṇī 1 2 3))",
+        "(āvartana (lambda (x) (guṇana x 2)) (śreṇī 1 2 3))",
         &mut s,
     ).expect("eval");
-    // krama is cond macro — but we need lambda here, not cond.
-    // Use the English lambda for the inner function since sa.my doesn't
-    // define a Sanskrit lambda alias yet.
+    assert_eq!(r3.value.to_string(), "(2 4 6)");
+    let r4 = eval_program(
+        "(kalpana (lambda (x) (hīna? x 3)) (śreṇī 1 2 3 4))",
+        &mut s,
+    ).expect("eval");
+    assert_eq!(r4.value.to_string(), "(1 2)");
 }
 
 #[test]
@@ -323,4 +326,19 @@ fn uk_and_sa_produce_same_result() {
     assert_eq!(uk_r.value.to_string(), sa_r.value.to_string());
     assert_eq!(uk_r.value.to_string(), en_r.value.to_string());
     assert_eq!(uk_r.value.to_string(), "3");
+}
+
+// ── Ukrainian acceptance program ───────────────────────────────
+
+#[test]
+fn uk_acceptance_program_passes() {
+    let mut s = uk_session();
+    let r = eval_program(
+        include_str!("../../../lib/surface/uk-acceptance.my"),
+        &mut s,
+    ).expect("Ukrainian acceptance program should evaluate");
+    assert_eq!(
+        r.value.to_string(), "успіх",
+        "Ukrainian acceptance program must return 'успіх (success)"
+    );
 }
