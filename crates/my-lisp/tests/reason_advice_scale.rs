@@ -6,7 +6,8 @@
 //! timed region and deliberately bypasses `advise-all`: atomic batch admission
 //! has its own conflict-check complexity and must not contaminate a reasoning
 //! measurement. Timings are diagnostic evidence only; semantic assertions
-//! remain deterministic.
+//! remain deterministic. Both timing profiles are ignored by default so
+//! `cargo test --workspace` remains a correctness gate rather than a benchmark.
 
 use my_lisp::{eval_program, Session};
 use std::time::Instant;
@@ -122,6 +123,7 @@ fn profile_sizes(sizes: &[usize]) {
 }
 
 #[test]
+#[ignore = "B5 diagnostic profile; run explicitly with --ignored --nocapture"]
 fn advice_taker_profile_100_500_1000_distractors() {
     profile_sizes(&[100, 500, 1_000]);
 }
