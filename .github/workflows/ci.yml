@@ -28,5 +28,5 @@ jobs:
       - name: B5 full-scan diagnostic profile
         run: cargo test -p my-lisp --test reason_scale reason_scale_profile_default_stack_100_500_1000 -- --nocapture
       - name: B5 Advice Taker diagnostic profile
-        run: cargo test -p my-lisp --test reason_advice_scale advice_taker_profile_100_500_1000_distractors -- --nocapture
+        run: cargo test -p my-lisp --test reason_advice_scale advice_taker_profile_100_500_1000_distractors -- --ignored --nocapture
       - run: cargo build --workspace
