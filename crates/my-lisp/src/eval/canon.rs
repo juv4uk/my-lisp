@@ -35,6 +35,7 @@ pub(crate) struct CanonEntry {
     pub historical: &'static str,
     pub ukrainian: &'static str,
     pub sanskrit: &'static str,
+    pub symbolic: &'static [&'static str],
 }
 
 /// The immutable 0 + 7 registry.  There is intentionally no setter, mutable
@@ -46,6 +47,7 @@ pub(crate) const CANON: [CanonEntry; 8] = [
         historical: "()",
         ukrainian: "()",
         sanskrit: "()",
+        symbolic: &[],
     },
     CanonEntry {
         identity: CanonicalIdentity::Quote,
@@ -53,6 +55,7 @@ pub(crate) const CANON: [CanonEntry; 8] = [
         historical: "quote",
         ukrainian: "як-є",
         sanskrit: "svarūpa",
+        symbolic: &["'"],
     },
     CanonEntry {
         identity: CanonicalIdentity::Atom,
@@ -60,6 +63,7 @@ pub(crate) const CANON: [CanonEntry; 8] = [
         historical: "atom",
         ukrainian: "атом?",
         sanskrit: "aṇu",
+        symbolic: &[".?"],
     },
     CanonEntry {
         identity: CanonicalIdentity::Eq,
@@ -67,6 +71,7 @@ pub(crate) const CANON: [CanonEntry; 8] = [
         historical: "eq",
         ukrainian: "тотожне?",
         sanskrit: "abheda",
+        symbolic: &["=?"],
     },
     CanonEntry {
         identity: CanonicalIdentity::Cons,
@@ -74,6 +79,7 @@ pub(crate) const CANON: [CanonEntry; 8] = [
         historical: "cons",
         ukrainian: "сполучити",
         sanskrit: "saṃyuj",
+        symbolic: &[":"],
     },
     CanonEntry {
         identity: CanonicalIdentity::Car,
@@ -81,6 +87,7 @@ pub(crate) const CANON: [CanonEntry; 8] = [
         historical: "car",
         ukrainian: "перше",
         sanskrit: "ādi",
+        symbolic: &[":п"],
     },
     CanonEntry {
         identity: CanonicalIdentity::Cdr,
@@ -88,6 +95,7 @@ pub(crate) const CANON: [CanonEntry; 8] = [
         historical: "cdr",
         ukrainian: "решта",
         sanskrit: "śeṣa",
+        symbolic: &[":р"],
     },
     CanonEntry {
         identity: CanonicalIdentity::Cond,
@@ -95,13 +103,18 @@ pub(crate) const CANON: [CanonEntry; 8] = [
         historical: "cond",
         ukrainian: "за-умовою",
         sanskrit: "anukrama",
+        symbolic: &["?:"],
     },
 ];
 
 pub(crate) fn identity_for_surface(name: &str) -> Option<CanonicalIdentity> {
-    CANON.iter()
+    CANON
+        .iter()
         .find(|entry| {
-            entry.historical == name || entry.ukrainian == name || entry.sanskrit == name
+            entry.historical == name
+                || entry.ukrainian == name
+                || entry.sanskrit == name
+                || entry.symbolic.contains(&name)
         })
         .map(|entry| entry.identity)
 }
@@ -195,6 +208,7 @@ mod tests {
         assert_eq!(identity_for_surface("car"), Some(CanonicalIdentity::Car));
         assert_eq!(identity_for_surface("перше"), Some(CanonicalIdentity::Car));
         assert_eq!(identity_for_surface("ādi"), Some(CanonicalIdentity::Car));
+        assert_eq!(identity_for_surface(":п"), Some(CanonicalIdentity::Car));
     }
 
     #[test]

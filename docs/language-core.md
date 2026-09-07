@@ -20,15 +20,23 @@ independent implementations = fpga-lisp, c-runtime, other declared substrates
 
 ## Reader invariant
 
-The apostrophe `'` has no quotation syntax role. Natural-language apostrophes must survive as ordinary symbol characters.
+At the start of an expression, apostrophe `'` is reader sugar for canonical
+quotation. Inside a symbol it remains an ordinary Unicode character, so natural
+Ukrainian words are not split.
 
-Quotation is explicit:
+На початку виразу апостроф `'` є синтаксичним цукром канонічного цитування.
+Усередині символу він лишається звичайним знаком, тому українські слова не
+розриваються.
+
+These forms are equivalent:
 
 ```lisp
 (quote expression)
+'expression
 ```
 
-So, for example, `об'єкт` is one symbol rather than reader sugar around another form.
+For example, `об'єкт` is one symbol, while `'об'єкт` means
+`(quote об'єкт)`.
 
 ## Closed McCarthy semantic set
 

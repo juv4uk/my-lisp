@@ -18,10 +18,10 @@ mod macro_substrate;
 mod necessary_forms;
 mod special_forms;
 
-pub(crate) use macro_substrate::install as install_macro_substrate;
 pub use capabilities::{
     capability_installed, installed_capabilities, register_capability, unregister_capability,
 };
+pub(crate) use macro_substrate::install as install_macro_substrate;
 pub use special_forms::{exact_arity, json::parse_json};
 
 use crate::{parse, Environment, ErrorKind, Expr, ExprKind, LanguageError, Session, Span, Value};
@@ -171,7 +171,9 @@ fn evaluate_list(
 ) -> Result<EvalStep, LanguageError> {
     let arguments = &items[1..];
     match items[0].kind.as_symbol() {
-        Some(name @ ("quote" | "як-є" | "svarūpa")) => {
+        Some(name)
+            if canon::identity_for_surface(name) == Some(canon::CanonicalIdentity::Quote) =>
+        {
             special_forms::exact_arity(name, arguments, 1, span)?;
             let value = special_forms::quoted(&arguments[0])?;
             Ok(EvalStep::Value(value))
@@ -191,12 +193,14 @@ fn evaluate_list(
         Some("def") => {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("cond" | "за-умовою" | "anukrama") => {
+        Some(name) if canon::identity_for_surface(name) == Some(canon::CanonicalIdentity::Cond) => {
             special_forms::evaluate_cond(arguments, environment, span)
         }
         _ => {
             if let Some(name) = items[0].kind.as_symbol() {
-                if let Some(result) = capabilities::dispatch_capability(name, arguments, environment, span) {
+                if let Some(result) =
+                    capabilities::dispatch_capability(name, arguments, environment, span)
+                {
                     return result;
                 }
             }
@@ -209,7 +213,9 @@ fn evaluate_list(
                     }
                     (builtin.func)(&values, environment, span).map(EvalStep::Value)
                 }
-                Value::Macro(closure) => closures::apply_macro(closure.clone(), arguments, environment, span),
+                Value::Macro(closure) => {
+                    closures::apply_macro(closure.clone(), arguments, environment, span)
+                }
                 _ => closures::apply(function, arguments, environment, span),
             }
         }
@@ -354,8 +360,8 @@ mod single_pass_eval_tests {
               (t (svarūpa doṣa)))
         "#;
         let mut session = Session::default();
-        let result = eval_program(source, &mut session)
-            .expect("Sanskrit canonical surface should evaluate");
+        let result =
+            eval_program(source, &mut session).expect("Sanskrit canonical surface should evaluate");
         assert_eq!(result.value.to_string(), "prathama");
     }
 

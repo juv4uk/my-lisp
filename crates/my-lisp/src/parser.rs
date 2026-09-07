@@ -58,6 +58,7 @@ impl Parser<'_> {
                 start + 1,
             )),
             Some('"') => self.string(start),
+            Some('\'') => self.quote_sugar(start),
             Some(_) => self.atom(start),
             None => Err(self.error(
                 "expected an expression · ochikuvavsia vyraz · Ausdruck erwartet",
@@ -65,6 +66,41 @@ impl Parser<'_> {
                 start,
             )),
         }
+    }
+
+    /// Reader sugar: `'form` is exactly `(quote form)` in the produced AST.
+    /// The evaluator therefore sees the existing canonical QUOTE identity;
+    /// the apostrophe introduces no eighth primitive and no duplicate semantics.
+    fn quote_sugar(&mut self, start: usize) -> Result<Expr, LanguageError> {
+        self.bump();
+        self.skip_ignored();
+        if self.cursor >= self.source.len() {
+            return Err(self.error(
+                "expected an expression after apostrophe · pislia apostrofa ochikuietsia vyraz · nach dem Apostroph wird ein Ausdruck erwartet",
+                start,
+                self.cursor,
+            ));
+        }
+        let quoted = self.expression()?;
+        Ok(Expr {
+            kind: ExprKind::List(
+                vec![
+                    Expr {
+                        kind: ExprKind::Symbol("quote".into()),
+                        span: Span {
+                            start,
+                            end: start + 1,
+                        },
+                    },
+                    quoted,
+                ]
+                .into(),
+            ),
+            span: Span {
+                start,
+                end: self.cursor,
+            },
+        })
     }
 
     fn numeric_buffer(&mut self, start: usize, f32_elements: bool) -> Result<Expr, LanguageError> {
@@ -558,6 +594,20 @@ mod tests {
     }
 
     #[test]
+    fn apostrophe_desugars_to_canonical_quote_form() {
+        let ExprKind::List(items) = parse_one("'кіт").kind else {
+            panic!("apostrophe should produce a quote form");
+        };
+        assert!(matches!(&items[0].kind, ExprKind::Symbol(s) if &**s == "quote"));
+        assert!(matches!(&items[1].kind, ExprKind::Symbol(s) if &**s == "кіт"));
+    }
+
+    #[test]
+    fn dot_question_mark_is_a_symbol_not_a_dotted_pair_marker() {
+        assert!(matches!(parse_one(".?").kind, ExprKind::Symbol(s) if &*s == ".?"));
+    }
+
+    #[test]
     fn parses_strings_with_escapes() {
         let ExprKind::String(value) = parse_one(r#""line\n\ttab\"quote""#).kind else {
             panic!("expected a string literal");
@@ -654,11 +704,6 @@ mod tests {
     fn unexpected_closing_paren_is_a_parse_error() {
         let error = parse(")").unwrap_err();
         assert_eq!(error.kind, ErrorKind::Parse);
-    }
-
-    #[test]
-    fn apostrophe_is_no_longer_quote_sugar_but_part_of_symbol() {
-        assert!(matches!(parse_one("'x").kind, ExprKind::Symbol(s) if &*s == "'x"));
     }
 
     #[test]

@@ -30,6 +30,10 @@
 ; QUOTE and COND are evaluation-control forms, not ordinary first-class values.
 ; Their Ukrainian/Sanskrit spellings are still bootstrap syntax at this stage;
 ; the laws below state their required behavior without pretending otherwise.
+;
+; Keyboard-symbol surface (typed without leaving the Ukrainian layout):
+;   '  .?  =?  :  :п  :р  ?:
+; These are spellings of the same 0+7 identities, never additional primitives.
 
 ; --- Constitutive laws ----------------------------------------------------
 ; Each function returns t exactly when the runtime satisfies the stated law
@@ -101,6 +105,19 @@
         ((never-defined-canon-predicate) (як-є forbidden)))
       (quote selected))))
 
+; The compact Ukrainian-keyboard surface must denote the same seven
+; operations. This law deliberately exercises every symbolic spelling in one
+; vertical slice: quote, atom, eq, cons, car, cdr, and cond.
+(def canon-law-symbolic-surface
+  (lambda ()
+    (?:
+      ((=? (:п (: 'ліве 'праве)) 'ліве)
+       (?:
+         ((=? (:р (: 'ліве 'праве)) 'праве)
+          (.? 'атом))
+         (t '())))
+      (t '()))))
+
 ; One language-level verdict used by every runtime conformance test.
 (def canon-conforms?
   (lambda ()
@@ -122,7 +139,10 @@
                            ((canon-law-cdr-improper)
                             (за-умовою
                               ((canon-law-quote-suppresses-evaluation)
-                               (canon-law-cond-first-true-short-circuit))
+                               (за-умовою
+                                 ((canon-law-cond-first-true-short-circuit)
+                                  (canon-law-symbolic-surface))
+                                 (t (quote ()))))
                               (t (quote ()))))
                            (t (quote ()))))
                         (t (quote ()))))

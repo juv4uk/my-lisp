@@ -44,3 +44,17 @@ fn canon_zero_is_stated_by_the_language_as_the_empty_list_itself() {
         .expect("language canon should expose its Canon 0 witness");
     assert_eq!(result.value.to_string(), "()");
 }
+
+#[test]
+fn ukrainian_keyboard_symbols_execute_the_same_canon() {
+    let mut session = session_with_language_canon();
+    let result = eval_program(
+        "(?: ((=? (:п (: 'кіт 'пес)) 'кіт) (:р (: 'кіт 'пес))))",
+        &mut session,
+    )
+    .expect("symbolic Canon surface should execute without changing identity");
+    assert_eq!(result.value.to_string(), "пес");
+
+    let atom = eval_program("(.? 'кіт)", &mut session).expect(".? should denote PRIM_ATOM");
+    assert_eq!(atom.value.to_string(), "t");
+}
