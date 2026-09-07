@@ -145,3 +145,144 @@
 
 ; svabhāva = own nature/identity (≠ svarūpa QUOTE)
 (define svabhāva identity)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — I/O (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; mudraṇa = impression/printing
+(define mudraṇa print)
+; darśana = showing/display
+(define darśana princ)
+; pāṭhana = reading
+(define pāṭhana read)
+(define pāṭhana-sarva read-all)
+; likhana = writing
+(define likhana write-to-string)
+; vicāraṇa = deliberation/evaluation
+(define vicāraṇa eval)
+; āśraya = substrate/environment
+(define āśraya env)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Vectors (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; samūha = collection/aggregate
+(define samūha vector)
+(define samūha-nirmāṇa make-vector)
+(define samūha-pramāṇa vector-length)
+(define samūha-āvartana vector-ref)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Conversions (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+(define nāman-śabda symbol->string)
+(define śabda-nāman string->symbol)
+(define varṇa-śabda codepoint->string)
+(define śabda-varṇa string->codepoint)
+; saṅkhyā-śabda = number-to-word
+(define saṅkhyā-śabda number->string)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Time (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; kāla = time
+(define kāla-adya utc-now)
+(define kāla-unix unix-time-now)
+(define kāla-mono mono-ns)
+(define kāla-mono-ms mono-ms)
+(define kāla-millisecondāni milliseconds-from-nanoseconds)
+; deśa-kāla = timezone
+(define deśa-kāla-nāma timezone-name)
+(define deśa-kāla-jñāna timezone-detect)
+(define deśa-kāla-śeṣa timezone-offset-seconds)
+;avadhi = deadline
+(define avadhi-gatā? deadline-reached?)
+(define avadhi-gatā-kadā? deadline-reached-at?)
+(define avadhi-nirmāṇa deadline-from)
+(define avadhi-anantara-ns deadline-after-ns)
+(define atīta-ns elapsed-ns)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Persistent map (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; kośa = repository/map
+(define kośa-śūnya map-empty)
+(define kośa-grahaṇa map-get)
+(define kośa-niveśana map-insert)
+(define kośa-sambaddha? map-contains?)
+(define kośa-śreṇī map->list)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Persistent vector (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+(define samūha-śūnya vec-empty)
+(define samūha-yukti vec-conj)
+(define samūha-gaṇana vec-count)
+(define samūha-kramāṅka vec-nth)
+(define samūha-śreṇī vec->list)
+(define śreṇī-samūha vec-from-list)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Knowledge/Reasoning (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; jñāna = knowledge
+(define jñāna-satya? is-fact?)
+(define varṇana describe)
+(define jñāna-saṅgraha collect-facts-about)
+(define aṇu-sambaddha? contains-atom?)
+; abhimukha = forward
+(define abhimukha-anumāna forward-in)
+; anumāna = inference
+(define anumāna reason-in)
+(define virodha-parīkṣā check-conflict)
+; pramāṇa-siddhi = proof
+(define siddhi-sādhana prove-goal)
+(define siddhi-sādhana-sarva prove-goals)
+(define siddhi-vyākhyā explain-proof)
+(define siddhi-mūla source-of)
+(define utpatti provenance)
+(define tarka reason)
+(define tarka-vyākhyā reason-explain)
+
+; Unification
+(define ekīkaraṇa unify)
+(define tarka-cihna logic-var)
+(define cihna? var?)
+(define pratyāroha apply-subst)
+(define vicāraṇa-gamana walk)
+(define parivṛtti-parīkṣā occurs-check)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Epistemic (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; pratyaya = claim/conviction
+(define pratyaya? claim?)
+(define pratyaya-vākya claim-statement)
+(define pratyaya-parīkṣā claim-review)
+; pramāṇa = evidence
+(define pramāṇa? evidence?)
+(define pramāṇa-vidhi evidence-method)
+(define pramāṇa-phala evidence-outcome)
+; pratyakṣa = observation
+(define pratyakṣa? observation?)
+(define pratyakṣa-vākya observation-statement)
+; saṅkalpa = intent
+(define saṅkalpa? intent?)
+(define saṅkalpa-lakṣya intent-goal)
+(define sahāya-pramāṇa supporting-evidence)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Missing SA fill (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+; nāman-nirmāṇa = name generation
+(define nāman-nirmāṇa gensym)
+
