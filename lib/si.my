@@ -10,16 +10,17 @@
 ;     exact-by-definition physical-defining si
 ;     (science-source/1 bipm-si-brochure-9 2019))
 ;
-; The established numeric names remain backward-compatible arithmetic views,
-; but their values are extracted from those records rather than duplicated as
-; a second authority.  lib/quantity.my provides the general validators and
-; accessors for these shapes; this file itself remains standalone-loadable and
-; derives the numeric view using only car/cdr.
+; Authoritative records live under the regular `si:defining-*` surface. The
+; established numeric names remain backward-compatible arithmetic views, but
+; their values are extracted from those records rather than duplicated as a
+; second authority. lib/quantity.my provides the general validators/accessors;
+; this file itself remains standalone-loadable and derives numeric views using
+; only car/cdr.
 ;
-; BASE-DIMENSIONS uses SI base dimensions as (BASE EXPONENT) terms.  This file
+; BASE-DIMENSIONS uses SI base dimensions as (BASE EXPONENT) terms. This file
 ; stores dimensions as data; no unit algebra is claimed here.
 
-(def si:cesium-frequency-constant
+(def si:defining-cesium-frequency
   (quote
     (scientific-constant/1 si:cesium-frequency
       (quantity/1 9192631770
@@ -27,7 +28,7 @@
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
-(def si:speed-of-light-constant
+(def si:defining-speed-of-light
   (quote
     (scientific-constant/1 si:speed-of-light
       (quantity/1 299792458
@@ -35,7 +36,7 @@
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
-(def si:planck-constant-record
+(def si:defining-planck-constant
   (quote
     (scientific-constant/1 si:planck-constant
       (quantity/1
@@ -44,7 +45,7 @@
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
-(def si:elementary-charge-constant
+(def si:defining-elementary-charge
   (quote
     (scientific-constant/1 si:elementary-charge
       (quantity/1
@@ -53,7 +54,7 @@
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
-(def si:boltzmann-constant-record
+(def si:defining-boltzmann-constant
   (quote
     (scientific-constant/1 si:boltzmann-constant
       (quantity/1
@@ -62,7 +63,7 @@
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
-(def si:avogadro-constant-record
+(def si:defining-avogadro-constant
   (quote
     (scientific-constant/1 si:avogadro-constant
       (quantity/1 602214076000000000000000
@@ -70,7 +71,7 @@
       exact-by-definition physical-defining si
       (science-source/1 bipm-si-brochure-9 2019))))
 
-(def si:luminous-efficacy-constant
+(def si:defining-luminous-efficacy
   (quote
     (scientific-constant/1 si:luminous-efficacy
       (quantity/1 683
@@ -85,15 +86,15 @@
     (car (cdr (car (cdr (cdr constant)))))))
 
 ; Backward-compatible arithmetic surface, derived from the records above.
-(def si:cesium-frequency (si:constant-value si:cesium-frequency-constant))
-(def si:speed-of-light (si:constant-value si:speed-of-light-constant))
-(def si:planck-constant (si:constant-value si:planck-constant-record))
-(def si:elementary-charge (si:constant-value si:elementary-charge-constant))
-(def si:boltzmann-constant (si:constant-value si:boltzmann-constant-record))
-(def si:avogadro-constant (si:constant-value si:avogadro-constant-record))
-(def si:luminous-efficacy (si:constant-value si:luminous-efficacy-constant))
+(def si:cesium-frequency (si:constant-value si:defining-cesium-frequency))
+(def si:speed-of-light (si:constant-value si:defining-speed-of-light))
+(def si:planck-constant (si:constant-value si:defining-planck-constant))
+(def si:elementary-charge (si:constant-value si:defining-elementary-charge))
+(def si:boltzmann-constant (si:constant-value si:defining-boltzmann-constant))
+(def si:avogadro-constant (si:constant-value si:defining-avogadro-constant))
+(def si:luminous-efficacy (si:constant-value si:defining-luminous-efficacy))
 
-; Transitional compatibility aliases.  These are not canonical names and may
+; Transitional compatibility aliases. These are not canonical names and may
 ; be removed once repository callers have migrated to the descriptive surface.
 (def delta-nu-cs si:cesium-frequency)
 (def c si:speed-of-light)
