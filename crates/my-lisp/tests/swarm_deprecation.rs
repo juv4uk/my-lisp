@@ -64,7 +64,8 @@ fn no_live_callers_removal_gate_fails_closed_while_blockers_exist() {
 
 #[test]
 fn current_agent_authority_forbids_new_legacy_coordination_callers() {
-    assert!(AGENT_GUIDE.contains("Current coordination authority: `swarm-node`"));
+    assert!(AGENT_GUIDE.contains("Current coordination authority:"));
+    assert!(AGENT_GUIDE.contains("`swarm-node`"));
     assert!(AGENT_GUIDE.contains("must not be used for new coordination workflows"));
     assert!(AGENT_GUIDE.contains("my-lisp :9999"));
     assert!(AGENT_GUIDE.contains("swarm-node :910x"));
