@@ -1,10 +1,15 @@
 <div align="center">
 
+<img src="docs/assets/wsm-quadrivium-hero.webp" alt="WSM над квадривіумом — арифметика, геометрія, музика й астрономія" width="100%">
+
 # my-lisp
 
 **Маленька Lisp-мова, що вирощує себе**
 
 *Дослідження того, наскільки малою може бути незвідна машина, якщо дедалі більше значення, правил і поведінки належить самій мові.*
+
+<p><a href="https://github.com/juv4uk/my-lisp/releases/latest/download/my-lisp-cli-web.html"><strong>▶ Спробувати my-lisp у вебі</strong></a></p>
+<sub>Один автономний portable-файл <code>.html</code> · без встановлення · працює локально у браузері</sub>
 
 [![CI](https://github.com/juv4uk/my-lisp/actions/workflows/ci.yml/badge.svg)](https://github.com/juv4uk/my-lisp/actions/workflows/ci.yml)
 [![WASM](https://github.com/juv4uk/my-lisp/actions/workflows/wasm-browser-test.yml/badge.svg)](https://github.com/juv4uk/my-lisp/actions/workflows/wasm-browser-test.yml)
@@ -262,14 +267,7 @@ Lisp-визначена інтерпретація / політика / прот
 
 ---
 
-## Швидкий старт
-
-**Спробувати `my-lisp` можна без встановлення:**  
-[**завантажити автономний web-REPL**](https://github.com/juv4uk/my-lisp/releases/latest/download/my-lisp-cli-web.html)
-
-Це один portable-файл `.html` із термінальним REPL, який працює локально у браузері.
-
-### Запуск із вихідного коду
+## Локальний запуск
 
 Потрібні Rust toolchain і залежності workspace. У репозиторії також є Guix manifest для відтворюваного середовища.
 
