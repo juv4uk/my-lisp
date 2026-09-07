@@ -25,7 +25,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Apply presentation layer
-        run: python3 scripts/.tmp-uk-presentation.py
+        run: |
+          python3 scripts/.tmp-uk-presentation.py
+          python3 scripts/.tmp-uk-presentation-fix.py
 
       - name: Format
         run: cargo fmt --all
@@ -43,6 +45,7 @@ jobs:
       - name: Commit tested implementation
         run: |
           rm scripts/.tmp-uk-presentation.py
+          rm scripts/.tmp-uk-presentation-fix.py
           rm .github/workflows/uk-presentation-implementation.yml
           git add -A
           git config user.name 'juv4uk'
