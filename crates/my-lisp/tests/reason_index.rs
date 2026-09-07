@@ -64,6 +64,27 @@ fn indexed_reason_is_structurally_identical_to_forced_linear_reason() {
 }
 
 #[test]
+fn public_reason_accepts_prebuilt_index_as_an_immutable_snapshot() {
+    let mut s = session();
+    let source = r#"
+      (def old-rules
+        (quote
+          (((seed a))
+           ((reachable (var x)) (seed (var x))))))
+      (def prepared (reason-make-index old-rules))
+      (def newer-rules
+        (append old-rules (quote (((later yes))))))
+      (list
+        (equal?
+          (reason (quote (reachable a)) old-rules)
+          (reason (quote (reachable a)) prepared))
+        (length (reason (quote (later yes)) prepared))
+        (length (reason (quote (later yes)) newer-rules)))
+    "#;
+    assert_eq!(eval(&mut s, source), "(t 0 1)");
+}
+
+#[test]
 fn variable_goal_falls_back_to_every_rule() {
     let mut s = session();
     let source = r#"
