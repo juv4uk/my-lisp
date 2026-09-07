@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
@@ -51,8 +51,8 @@ fn request(port: u16, message: &str) -> String {
                 let mut response = String::new();
                 let mut reader = BufReader::new(stream);
                 reader
-                    .read_to_string(&mut response)
-                    .expect("response should be readable");
+                    .read_line(&mut response)
+                    .expect("one response frame should be readable");
                 if !response.trim().is_empty() {
                     return response;
                 }
