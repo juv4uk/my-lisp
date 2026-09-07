@@ -18,9 +18,13 @@
 ; Batch 1 SA: stable for Canon + arithmetic + comparisons + predicates + lists;
 ;             candidate for higher-order, strings, other (implemented but
 ;             pending broader review of Sanskrit term choices).
+; Batch 2 UK: candidate (persistent map, persistent vector, time library,
+;             knowledge/reasoning, unification, epistemic, gensym, env).
+; Batch 2 SA: candidate (I/O, vectors, conversions, time, persistent map,
+;             persistent vector, knowledge/reasoning, unification, epistemic, gensym).
 
 (uk-sa-coverage
-  (schema uk-sa-coverage/2)
+  (schema uk-sa-coverage/3)
 
   ;; ── Canon 0+7 ──────────────────────────────────────────────
   (entry (canon quote як-є svarūpa stable stable "AS 1.1.68 svam rūpam"))
@@ -99,27 +103,27 @@
   (entry (string string-first перший-знак prathamavarṇa stable candidate "varṇa = letter; ≠ ādi (CAR)"))
   (entry (string string-rest решта-знаків śeṣavarṇa stable candidate "varṇa suffix distinguishes from Canon śeṣa"))
   (entry (string string-slice відрізати cheda stable candidate "cheda = cut/slice"))
-  (entry (string symbol->string символ-у-текст — stable missing "conversion"))
-  (entry (string string->symbol текст-у-символ — stable missing "conversion"))
-  (entry (string codepoint->string кодувана-у-текст — stable missing "conversion"))
-  (entry (string string->codepoint текст-у-код — stable missing "conversion"))
-  (entry (string number->string число-у-текст — stable missing "conversion"))
+  (entry (string symbol->string символ-у-текст nāman-śabda stable candidate "conversion"))
+  (entry (string string->symbol текст-у-символ śabda-nāman stable candidate "conversion"))
+  (entry (string codepoint->string кодувана-у-текст varṇa-śabda stable candidate "conversion"))
+  (entry (string string->codepoint текст-у-код śabda-varṇa stable candidate "conversion"))
+  (entry (string number->string число-у-текст saṅkhyā-śabda stable candidate "conversion"))
 
   ;; ── I/O ────────────────────────────────────────────────────
-  (entry (io print друкувати — stable missing "mudraṇa candidate — polysemous"))
-  (entry (io princ показати — stable missing "display without quotes"))
-  (entry (io read прочитати — stable missing "input"))
-  (entry (io read-all прочитати-усе — stable missing "read all forms"))
-  (entry (io write-to-string у-текст — stable missing "convert to string representation"))
-  (entry (io eval обчислити — stable missing "vicāraṇa? — needs research"))
-  (entry (io env середовище — stable missing "āśraya? — needs research"))
+  (entry (io print друкувати mudraṇa stable candidate "mudraṇa = impression/printing"))
+  (entry (io princ показати darśana stable candidate "darśana = showing/display"))
+  (entry (io read прочитати pāṭhana stable candidate "pāṭhana = reading"))
+  (entry (io read-all прочитати-усе pāṭhana-sarva stable candidate "pāṭhana + sarva = read all"))
+  (entry (io write-to-string у-текст likhana stable candidate "likhana = writing"))
+  (entry (io eval обчислити vicāraṇa stable candidate "vicāraṇa = deliberation/evaluation"))
+  (entry (io env середовище āśraya stable candidate "āśraya = substrate/environment"))
 
   ;; ── Vectors ────────────────────────────────────────────────
-  (entry (vector vector вектор — stable missing "samūha? — needs research"))
-  (entry (vector make-vector створити-вектор — stable missing ""))
-  (entry (vector vector-length довжина-вектора — stable missing ""))
-  (entry (vector vector-ref елемент-вектора — stable missing ""))
-  (entry (vector vector-set! встановити-вектор! — stable missing ""))
+  (entry (vector vector вектор samūha stable candidate "samūha = collection/aggregate"))
+  (entry (vector make-vector створити-вектор samūha-nirmāṇa stable candidate "samūha + nirmāṇa = creation"))
+  (entry (vector vector-length довжина-вектора samūha-pramāṇa stable candidate "samūha + pramāṇa = measure"))
+  (entry (vector vector-ref елемент-вектора samūha-āvartana stable candidate "samūha + āvartana = access"))
+  (entry (vector vector-set! встановити-вектор! — stable missing "mutation; no SA yet"))
 
   ;; ── Buffers ───────────────────────────────────────────────
   (entry (buffer i32-buffer — — compatibility-only compatibility-only "low-level FFI"))
@@ -130,14 +134,84 @@
   (entry (buffer numeric-buffer-map — — compatibility-only compatibility-only "low-level"))
 
   ;; ── Time ──────────────────────────────────────────────────
-  (entry (time mono-ns monotонний-час — stable missing "monotonic nanoseconds"))
-  (entry (time unix-time-now unix-час-зараз — stable missing "current unix time"))
+  (entry (time mono-ns monotонний-час kāla-mono stable candidate "kāla = time; monotonic nanoseconds"))
+  (entry (time unix-time-now unix-час-зараз kāla-unix stable candidate "current unix time"))
   (entry (time ntp-query-raw — — compatibility-only compatibility-only "low-level NTP"))
   (entry (time timezone-declarations-raw — — compatibility-only compatibility-only "low-level"))
 
+  ;; ── Time library (Batch 2) ─────────────────────────────────
+  (entry (time utc-now поточний-utc kāla-adya stable candidate "kāla-adya = time-now"))
+  (entry (time utc-from-unix utc-із-unix — stable missing "UTC from unix timestamp"))
+  (entry (time unix-time-observation->utc unix-із-спостереження — stable missing "observation to UTC conversion"))
+  (entry (time milliseconds-from-nanoseconds мілісекунди-із-наносекунд kāla-millisecondāni stable candidate "kāla-millisecondāni = time-milliseconds"))
+  (entry (time mono-ms монотонний-мс kāla-mono-ms stable candidate "monotonic milliseconds"))
+  (entry (time timezone-name часовий-пояс-назва deśa-kāla-nāma stable candidate "deśa-kāla = timezone"))
+  (entry (time timezone-detect часовий-пояс-виявити deśa-kāla-jñāna stable candidate "deśa-kāla-jñāna = timezone detection"))
+  (entry (time timezone-offset-seconds часовий-пояс-зміщення deśa-kāla-śeṣa stable candidate "deśa-kāla-śeṣa = timezone offset"))
+  (entry (time deadline-reached? дедлайн-досягнуто? avadhi-gatā? stable candidate "avadhi = deadline; gatā = reached"))
+  (entry (time deadline-reached-at? дедлайн-досягнуто-о? avadhi-gatā-kadā? stable candidate "kadā = when"))
+  (entry (time elapsed-ns минуло-нс atīta-ns stable candidate "atīta = elapsed/past"))
+  (entry (time deadline-from дедлайн-з avadhi-nirmāṇa stable candidate "avadhi-nirmāṇa = deadline creation"))
+  (entry (time deadline-after-ns дедлайн-після-нс avadhi-anantara-ns stable candidate "avadhi-anantara = deadline after"))
+  (entry (time internet-time-sync інтернет-час-синхронізація — stable missing "internet time synchronization"))
+
+  ;; ── Persistent map (Batch 2) ───────────────────────────────
+  (entry (persistent-map map-empty карта-порожня kośa-śūnya stable candidate "kośa = repository/map; śūnya = empty"))
+  (entry (persistent-map map-get карта-отримати kośa-grahaṇa stable candidate "grahaṇa = taking/getting"))
+  (entry (persistent-map map-insert карта-вставити kośa-niveśana stable candidate "niveśana = placing in"))
+  (entry (persistent-map map-contains? карта-містить? kośa-sambaddha? stable candidate "sambaddha = contained"))
+  (entry (persistent-map map->list карта-у-список kośa-śreṇī stable candidate "śreṇī = sequence/list"))
+
+  ;; ── Persistent vector (Batch 2) ─────────────────────────────
+  (entry (persistent-vector vec-empty вектор-порожній samūha-śūnya stable candidate "samūha = aggregate; śūnya = empty"))
+  (entry (persistent-vector vec-conj вектор-додати samūha-yukti stable candidate "yukti = joining"))
+  (entry (persistent-vector vec-count вектор-розмір samūha-gaṇana stable candidate "gaṇana = counting"))
+  (entry (persistent-vector vec-nth вектор-за-номером samūha-kramāṅka stable candidate "kramāṅka = ordinal"))
+  (entry (persistent-vector vec->list вектор-у-список samūha-śreṇī stable candidate "śreṇī = sequence/list"))
+  (entry (persistent-vector vec-from-list вектор-із-списку śreṇī-samūha stable candidate "śreṇī-samūha = list to aggregate"))
+
+  ;; ── Knowledge / Reasoning (Batch 2) ─────────────────────────
+  (entry (knowledge is-fact? факт? jñāna-satya? stable candidate "jñāna = knowledge; satya = truth"))
+  (entry (knowledge describe описати varṇana stable candidate "varṇana = description"))
+  (entry (knowledge collect-facts-about зібрати-факти-про jñāna-saṅgraha stable candidate "saṅgraha = collection"))
+  (entry (knowledge contains-atom? містить-атом? aṇu-sambaddha? stable candidate "aṇu = atom; sambaddha = contained"))
+  (entry (knowledge forward-in вперед-висновок abhimukha-anumāna stable candidate "abhimukha = forward; anumāna = inference"))
+  (entry (knowledge reason-in логічний-висновок anumāna stable candidate "anumāna = inference"))
+  (entry (knowledge check-conflict перевірити-конфлікт virodha-parīkṣā stable candidate "virodha = conflict; parīkṣā = check"))
+  (entry (knowledge module-known? модуль-відомий? — stable missing "no SA yet"))
+  (entry (knowledge module-clauses-now модуль-умови-зараз — stable missing "no SA yet"))
+  (entry (reasoning prove-goal довести-мету siddhi-sādhana stable candidate "siddhi = proof; sādhana = accomplishment"))
+  (entry (reasoning prove-goals довести-мети siddhi-sādhana-sarva stable candidate "sarva = all"))
+  (entry (reasoning explain-proof обґрунтувати-доведення siddhi-vyākhyā stable candidate "vyākhyā = explanation"))
+  (entry (reasoning source-of джерело-доведення siddhi-mūla stable candidate "mūla = root/source"))
+  (entry (reasoning provenance походження utpatti stable candidate "utpatti = origin"))
+  (entry (reasoning reason міркування tarka stable candidate "tarka = reasoning/logic"))
+  (entry (reasoning reason-explain міркування-пояснити tarka-vyākhyā stable candidate "tarka + vyākhyā"))
+
+  ;; ── Unification (Batch 2) ──────────────────────────────────
+  (entry (unification unify уніфікувати ekīkaraṇa stable candidate "ekīkaraṇa = unification"))
+  (entry (unification logic-var логічна-змінна tarka-cihna stable candidate "tarka = logic; cihna = mark"))
+  (entry (unification var? змінна? cihna? stable candidate "cihna = mark/symbol"))
+  (entry (unification apply-subst підставити pratyāroha stable candidate "pratyāroha = substitution"))
+  (entry (unification walk відшукати vicāraṇa-gamana stable candidate "vicāraṇa-gamana = investigation-path"))
+  (entry (unification occurs-check перевірити-зустрічання parivṛtti-parīkṣā stable candidate "parivṛtti = occurrence; parīkṣā = check"))
+
+  ;; ── Epistemic (Batch 2) ─────────────────────────────────────
+  (entry (epistemic claim? твердження? pratyaya? stable candidate "pratyaya = claim/conviction"))
+  (entry (epistemic claim-statement твердження-текст pratyaya-vākya stable candidate "vākya = statement"))
+  (entry (epistemic claim-review твердження-відгук pratyaya-parīkṣā stable candidate "parīkṣā = review/check"))
+  (entry (epistemic evidence? доказ? pramāṇa? stable candidate "pramāṇa = evidence/proof"))
+  (entry (epistemic evidence-method доказ-метод pramāṇa-vidhi stable candidate "vidhi = method"))
+  (entry (epistemic evidence-outcome доказ-результат pramāṇa-phala stable candidate "phala = result"))
+  (entry (epistemic observation? спостереження? pratyakṣa? stable candidate "pratyakṣa = direct perception"))
+  (entry (epistemic observation-statement спостереження-текст pratyakṣa-vākya stable candidate "vākya = statement"))
+  (entry (epistemic intent? намір? saṅkalpa? stable candidate "saṅkalpa = intention"))
+  (entry (epistemic intent-goal намір-мета saṅkalpa-lakṣya stable candidate "lakṣya = goal/target"))
+  (entry (epistemic supporting-evidence підтримуючий-доказ sahāya-pramāṇa stable candidate "sahāya = supporting"))
+
   ;; ── Other ─────────────────────────────────────────────────
   (entry (other identity само-собою svabhāva stable candidate "svabhāva = own nature; ≠ svarūpa"))
-  (entry (other gensym — — missing missing "needs research"))
+  (entry (other gensym генерувати-символ nāman-nirmāṇa stable candidate "nāman-nirmāṇa = name generation"))
   (entry (other and та — stable missing "logical conjunction"))
   (entry (other or або — stable missing "logical disjunction"))
   (entry (other let нехай — stable missing "binding form"))
@@ -149,15 +223,15 @@
 
   ;; ── Summary statistics ─────────────────────────────────────
   (summary
-    (total-eligible 89)
-    (stable-uk 75)
+    (total-eligible 157)
+    (stable-uk 139)
     (candidate-uk 0)
-    (missing-uk 4)
-    (compatibility-uk 14)
-    (stable-sa 25)
-    (candidate-sa 20)
-    (missing-sa 30)
-    (compatibility-sa 14)
-    (usc-uk-percent "100%")
-    (usc-sa-percent "50.6%")
-    (notes "UK: all non-compat names implemented as aliases in uk.my. SA: Canon+arithmetic+comparisons+predicates+lists+some strings stable; higher-order+remaining strings candidate.")))
+    (missing-uk 1)
+    (compatibility-uk 17)
+    (stable-sa 36)
+    (candidate-sa 88)
+    (missing-sa 16)
+    (compatibility-sa 17)
+    (usc-uk-percent "88.5%")
+    (usc-sa-percent "79.0%")
+    (notes "Batch 2 complete. UK: 139 surface names implemented. SA: 124 surface names (36 stable + 88 candidate). Remaining SA gaps: defmacro, lambda, define, min-list, max-list, numeric-buffer?, vector-set!, utc-from-unix, unix-time-observation->utc, internet-time-sync, module-known?, module-clauses-now, and, or, let, let*.")))
