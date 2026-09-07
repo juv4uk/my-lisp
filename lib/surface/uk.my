@@ -31,18 +31,15 @@
 ;; ═══════════════════════════════════════════════════════════════
 
 ; These seven names are the ratified Ukrainian surface for the McCarthy
-; primitives.  They bind to the same first-class builtin values that the
-; English names resolve to — no duplicate implementation.
+; primitives. `як-є` and `за-умовою` already belong to the canonical syntax;
+; this surface file must not redefine them. The five callable primitives below
+; bind to the same first-class values as their historical spellings.
 
-(define як-є quote)
 (define атом? atom)
 (define тотожне? eq)
 (define сполучити cons)
 (define перше car)
 (define решта cdr)
-; cond is a syntax form, not a builtin — it needs a macro wrapper.
-(defmacro за-умовою clauses
-  (cons (quote cond) clauses))
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Batch 1 — Arithmetic (status: candidate)
@@ -79,7 +76,7 @@
 ;; Предикати
 ;; ═══════════════════════════════════════════════════════════════
 
-(define не not)
+(define хибне? not)
 (define однакові? equal?)
 (define символ? symbol?)
 (define текст? string?)
@@ -97,7 +94,7 @@
 (define зворот reverse)
 (define за-номером nth)
 (define містить? member?)
-(define зв'язок assoc)
+(define знайти-за-ключем assoc)
 (define пара pair)
 (define друге second)
 (define третє third)
@@ -120,8 +117,8 @@
 
 (define зчепити string-append)
 (define довжина-тексту string-length)
-(define порожній? string-empty?)
-(define починається? string-prefix?)
+(define текст-порожній? string-empty?)
+(define текст-починається? string-prefix?)
 (define містить-текст? string-contains?)
 (define перший-знак string-first)
 (define решта-знаків string-rest)
@@ -129,7 +126,7 @@
 (define символ-у-текст symbol->string)
 (define текст-у-символ string->symbol)
 (define текст-у-код string->codepoint)
-(define кодувана-у-текст codepoint->string)
+(define код-у-текст codepoint->string)
 (define число-у-текст number->string)
 
 ;; ═══════════════════════════════════════════════════════════════
@@ -163,7 +160,7 @@
 ;; Час
 ;; ═══════════════════════════════════════════════════════════════
 
-(define monotонний-час mono-ns)
+(define монотонний-час mono-ns)
 (define unix-час-зараз unix-time-now)
 
 ;; ═══════════════════════════════════════════════════════════════
@@ -171,7 +168,7 @@
 ;; Інше
 ;; ═══════════════════════════════════════════════════════════════
 
-(define само-собою identity)
+(define без-змін identity)
 (define та and)
 (define або or)
 (define нехай let)

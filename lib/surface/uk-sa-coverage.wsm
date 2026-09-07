@@ -64,7 +64,7 @@
   (entry (comparison >= не-менше? na-hīna? stable candidate "na + hīna; compound form"))
 
   ;; ── Predicates ─────────────────────────────────────────────
-  (entry (predicate not не na stable stable "na = not; universal negation"))
+  (entry (predicate not хибне? na stable stable "true exactly when the argument is false"))
   (entry (predicate equal? однакові? tulya? stable stable "tulya = structurally equal"))
   (entry (predicate symbol? символ? nāman? stable stable "Pāṇini 1.1.62: pratyayaḥ sa nāma"))
   (entry (predicate string? текст? śabda? stable stable "śabda = word/sound/text"))
@@ -78,7 +78,7 @@
   (entry (list reverse зворот viloma stable stable "viloma = reverse order"))
   (entry (list nth за-номером kramāṅka stable stable "kramāṅka = ordinal number"))
   (entry (list member? містить? sambaddha? stable candidate "sam-badh = bind together"))
-  (entry (list assoc зв'язок saṃbandha stable stable "saṃbandha = relation/connection"))
+  (entry (list assoc знайти-за-ключем saṃbandha stable stable "lookup an association by key"))
   (entry (list pair пара dvandva stable stable "Pāṇini 2.2.29-34: dvandva samāsa"))
   (entry (list second друге dvitīya stable stable "ordinal; safe — returns element"))
   (entry (list third третє tṛtīya stable stable "ordinal"))
@@ -97,15 +97,15 @@
   ;; ── Strings ────────────────────────────────────────────────
   (entry (string string-append зчепити śabdasaṃyoga stable candidate "śabda + saṃyoga; ≠ saṃyuj"))
   (entry (string string-length довжина-тексту śabdapramāṇa stable candidate "śabda + pramāṇa"))
-  (entry (string string-empty? порожній? śūnya? stable stable "śūnya = empty/void"))
-  (entry (string string-prefix? починається? pūrva? stable candidate "pūrva = preceding; ≠ ādi (CAR)"))
+  (entry (string string-empty? текст-порожній? śūnya? stable stable "string-domain predicate"))
+  (entry (string string-prefix? текст-починається? pūrva? stable candidate "string-domain predicate; ≠ ādi (CAR)"))
   (entry (string string-contains? містить-текст? śabdasambaddha? stable candidate "compound; may need shortening"))
   (entry (string string-first перший-знак prathamavarṇa stable candidate "varṇa = letter; ≠ ādi (CAR)"))
   (entry (string string-rest решта-знаків śeṣavarṇa stable candidate "varṇa suffix distinguishes from Canon śeṣa"))
   (entry (string string-slice відрізати cheda stable candidate "cheda = cut/slice"))
   (entry (string symbol->string символ-у-текст nāman-śabda stable candidate "conversion"))
   (entry (string string->symbol текст-у-символ śabda-nāman stable candidate "conversion"))
-  (entry (string codepoint->string кодувана-у-текст varṇa-śabda stable candidate "conversion"))
+  (entry (string codepoint->string код-у-текст varṇa-śabda stable candidate "conversion"))
   (entry (string string->codepoint текст-у-код śabda-varṇa stable candidate "conversion"))
   (entry (string number->string число-у-текст saṅkhyā-śabda stable candidate "conversion"))
 
@@ -134,7 +134,7 @@
   (entry (buffer numeric-buffer-map — — compatibility-only compatibility-only "low-level"))
 
   ;; ── Time ──────────────────────────────────────────────────
-  (entry (time mono-ns monotонний-час kāla-mono stable candidate "kāla = time; monotonic nanoseconds"))
+  (entry (time mono-ns монотонний-час kāla-mono stable candidate "kāla = time; monotonic nanoseconds"))
   (entry (time unix-time-now unix-час-зараз kāla-unix stable candidate "current unix time"))
   (entry (time ntp-query-raw — — compatibility-only compatibility-only "low-level NTP"))
   (entry (time timezone-declarations-raw — — compatibility-only compatibility-only "low-level"))
@@ -210,7 +210,7 @@
   (entry (epistemic supporting-evidence підтримуючий-доказ sahāya-pramāṇa stable candidate "sahāya = supporting"))
 
   ;; ── Other ─────────────────────────────────────────────────
-  (entry (other identity само-собою svabhāva stable candidate "svabhāva = own nature; ≠ svarūpa"))
+  (entry (other identity без-змін svabhāva stable candidate "returns its argument unchanged"))
   (entry (other gensym генерувати-символ nāman-nirmāṇa stable candidate "nāman-nirmāṇa = name generation"))
   (entry (other and та — stable missing "logical conjunction"))
   (entry (other or або — stable missing "logical disjunction"))
