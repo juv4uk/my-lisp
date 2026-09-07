@@ -1,24 +1,24 @@
-//! `sha256-hex` — a genuine Rust primitive, in the same category as the
-//! bitwise ops documented in language-core.md ("no primitive exposes a
-//! number's binary representation at all"). SHA-256 is the hash fixed by
-//! specs/trace-canonical-serialization-v0.1.md for content-addressed trace
-//! states, and no combination of string-first/string-rest/eq/arithmetic can
-//! produce it from inside the language — so it is a deliberate, documented
-//! addition to the Rust surface (PLAN.md G5: "already expressible
-//! acceptably?" returns no).
+//! `sha256-hex` — a genuine Rust mechanism, in the same category as the
+//! bitwise ops documented in language-core.md.  The algorithm stays in Rust;
+//! callable identity is an ordinary first-class builtin owned by the root
+//! environment rather than evaluator name dispatch.
 //!
 //! Pure-std implementation (no external crate), SHA-256 per FIPS 180-4.
 
 use crate::{Environment, ErrorKind, Expr, LanguageError, Span, Value};
 
-/// `(sha256-hex string)` → lowercase-hex SHA-256 digest of the UTF-8 bytes.
-pub(crate) fn evaluate_sha256_hex(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn sha256_hex_values(
+    arguments: &[Value],
     span: Span,
 ) -> Result<Value, LanguageError> {
-    super::core::exact_arity("sha256-hex", arguments, 1, span)?;
-    let Value::String(ref text) = crate::eval::evaluate(&arguments[0], environment)? else {
+    if arguments.len() != 1 {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            "sha256-hex expects exactly 1 argument(s)",
+            span,
+        ));
+    }
+    let Value::String(text) = &arguments[0] else {
         return Err(LanguageError::new(
             ErrorKind::Type,
             "sha256-hex expects a string · sha256-hex ochikuie riadok · sha256-hex erwartet eine Zeichenkette",
@@ -31,6 +31,17 @@ pub(crate) fn evaluate_sha256_hex(
         hex.push_str(&format!("{byte:02x}"));
     }
     Ok(Value::String(std::rc::Rc::from(hex.as_str())))
+}
+
+// Transitional Expr wrapper retained until eval/mod.rs forgets `sha256-hex`.
+pub(crate) fn evaluate_sha256_hex(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    super::core::exact_arity("sha256-hex", arguments, 1, span)?;
+    let values = [crate::eval::evaluate(&arguments[0], environment)?];
+    sha256_hex_values(&values, span)
 }
 
 /// SHA-256 (FIPS 180-4), returns the 32-byte digest.
@@ -52,7 +63,6 @@ pub(crate) fn sha256(input: &[u8]) -> [u8; 32] {
         0x5be0cd19,
     ];
 
-    // Padding: append 0x80, zeros, then 64-bit big-endian bit length.
     let bit_len = (input.len() as u64).wrapping_mul(8);
     let mut padded = Vec::with_capacity(((input.len() + 72) / 64) * 64);
     padded.extend_from_slice(input);
