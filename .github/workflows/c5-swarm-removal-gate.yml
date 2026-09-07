@@ -29,7 +29,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Machine-readable migration and fail-closed audit
         run: cargo test -p my-lisp --test swarm_deprecation
-      - name: Executable legacy caller inventory
+      - name: Executable retired caller inventory
         run: cargo test -p my-lisp --test swarm_live_caller_inventory
+      - name: Retired coordination ops are unknown on :9999
+        run: cargo test -p my-lisp-cli --test legacy_coordination_rejected
       - name: Semantic oracle preservation shield
         run: cargo test -p my-lisp-cli --test semantic_oracle_preservation
