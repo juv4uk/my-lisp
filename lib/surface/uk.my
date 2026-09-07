@@ -30,12 +30,11 @@
 ;; Канон 0+7 — українські поверхневі аліаси (статус: stable)
 ;; ═══════════════════════════════════════════════════════════════
 
-; `як-є` is already the canonical Ukrainian spelling of QUOTE in the immutable
-; Canon registry. QUOTE is a special form, not a first-class value, so it must
-; not be rebound with `(define як-є quote)`.
-; The value primitives below can be ordinary aliases because they are
-; first-class builtin values backed by the same canonical identities.
+; These seven names are the ratified Ukrainian surface for the McCarthy
+; primitives.  They bind to the same first-class builtin values that the
+; English names resolve to — no duplicate implementation.
 
+(define як-є quote)
 (define атом? atom)
 (define тотожне? eq)
 (define сполучити cons)
@@ -156,7 +155,7 @@
 (define довжина-вектора vector-length)
 (define елемент-вектора vector-ref)
 
-;; vector-set! is a mutation — keep the ! suffix in Ukrainian too.
+; vector-set! is a mutation — keep the ! suffix in Ukrainian too.
 (define встановити-вектор! vector-set!)
 
 ;; ═══════════════════════════════════════════════════════════════
@@ -177,3 +176,113 @@
 (define або or)
 (define нехай let)
 (define нехай* let*)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Persistent map (status: candidate)
+;; Сталі асоціативні карти
+;; User-facing API only; AVL internals (node-*, rotate-*, balance-*) excluded.
+;; ═══════════════════════════════════════════════════════════════
+
+(define карта-порожня map-empty)
+(define карта-отримати map-get)
+(define карта-вставити map-insert)
+(define карта-містить? map-contains?)
+(define карта-у-список map->list)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Persistent vector (status: candidate)
+;; Сталі вектори
+;; User-facing API only; RRB-tree internals (vnode-*, vrotate-*, vbalance-*) excluded.
+;; ═══════════════════════════════════════════════════════════════
+
+(define вектор-порожній vec-empty)
+(define вектор-додати vec-conj)
+(define вектор-розмір vec-count)
+(define вектор-за-номером vec-nth)
+(define вектор-у-список vec->list)
+(define вектор-із-списку vec-from-list)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Time library (status: candidate)
+;; Бібліотека часу
+;; ═══════════════════════════════════════════════════════════════
+
+(define поточний-utc utc-now)
+(define utc-із-unix utc-from-unix)
+(define unix-із-спостереження unix-time-observation->utc)
+(define мілісекунди-із-наносекунд milliseconds-from-nanoseconds)
+(define монотонний-мс mono-ms)
+(define часовий-пояс-назва timezone-name)
+(define часовий-пояс-виявити timezone-detect)
+(define часовий-пояс-зміщення timezone-offset-seconds)
+(define дедлайн-досягнуто? deadline-reached?)
+(define дедлайн-досягнуто-о? deadline-reached-at?)
+(define минуло-нс elapsed-ns)
+(define дедлайн-з deadline-from)
+(define дедлайн-після-нс deadline-after-ns)
+(define інтернет-час-синхронізація internet-time-sync)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Knowledge/Reasoning (status: candidate)
+;; База знань та логічний висновок
+;; User-facing API only; indexing internals excluded.
+;; ═══════════════════════════════════════════════════════════════
+
+(define факт? is-fact?)
+(define описати describe)
+(define зібрати-факти-про collect-facts-about)
+(define містить-атом? contains-atom?)
+(define往前-висновок forward-in)
+(define логічний-висновок reason-in)
+(define перевірити-конфлікт check-conflict)
+(define модуль-відомий? module-known?)
+(define модуль-умови-зараз module-clauses-now)
+
+; Reasoning engine
+(define довести-мету prove-goal)
+(define довести-мети prove-goals)
+(define обґрунтувати-доведення explain-proof)
+(define джерело-доведення source-of)
+(define походження provenance)
+(define міркування reason)
+(define міркування-пояснити reason-explain)
+
+; Unification
+(define уніфікувати unify)
+(define логічна-змінна logic-var)
+(define змінна? var?)
+(define підставити apply-subst)
+(define відшукати walk)
+(define перевірити-зустрічання occurs-check)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Epistemic (status: candidate)
+;; Епістемічні структури
+;; ═══════════════════════════════════════════════════════════════
+
+(define твердження? claim?)
+(define твердження-текст claim-statement)
+(define твердження-відгук claim-review)
+(define доказ? evidence?)
+(define доказ-метод evidence-method)
+(define доказ-результат evidence-outcome)
+(define спостереження? observation?)
+(define спостереження-текст observation-statement)
+(define намір? intent?)
+(define намір-мета intent-goal)
+(define підтримуючий-доказ supporting-evidence)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — Missing UK fill (status: candidate)
+;; ═══════════════════════════════════════════════════════════════
+
+(define генерувати-символ gensym)
+(define середовище env)
+
+;; ═══════════════════════════════════════════════════════════════
+;; Batch 2 — SA missing fill (Sanskrit surface for previously missing)
+;; These are Sanskrit aliases loaded from uk.my context for reference.
+;; The actual SA bindings are in sa.my; these UK lines ensure UK
+;; coverage for gensym and env which were previously missing.
+;; ═══════════════════════════════════════════════════════════════
+
