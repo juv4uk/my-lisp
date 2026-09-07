@@ -6,15 +6,17 @@
 ;
 ; Versioned shapes:
 ;
-;   (unit/1 DIMENSIONS)
+;   (dimension/1 BASE EXPONENT)
+;   (unit/1 DIMENSION...)
 ;   (quantity/1 VALUE UNIT)
 ;   (science-source/1 AUTHORITY EDITION)
 ;   (scientific-constant/1 NAME QUANTITY STATUS KIND SYSTEM SOURCE)
 ;
-; DIMENSIONS is data, currently a list of (BASE EXPONENT) terms. This first
-; slice does not perform unit algebra; it gives reasoning a stable structure
-; to inspect before arithmetic/normalization is added by evidence.
+; A dimension is a named Lisp term rather than an anonymous pair so the same
+; finite data can pass through Advice Taker's existing knowledge grammar.
+; This first slice stores dimensions; it does not yet claim unit algebra.
 
+(def *dimension-schema* (quote dimension/1))
 (def *unit-schema* (quote unit/1))
 (def *quantity-schema* (quote quantity/1))
 (def *science-source-schema* (quote science-source/1))
@@ -37,21 +39,55 @@
   (lambda (values)
     (car (cdr (cdr (cdr (cdr (cdr (cdr values)))))))))
 
+(def make-dimension
+  (lambda (base exponent)
+    (list *dimension-schema* base exponent)))
+
+(def dimension?
+  (lambda (x)
+    (cond
+      ((atom x) (quote ()))
+      ((eq (science-proper-list? x) (quote ())) (quote ()))
+      ((eq (= (length x) 3) (quote ())) (quote ()))
+      ((eq (car x) *dimension-schema*)
+       (cond
+         ((eq (symbol? (second x)) (quote ())) (quote ()))
+         ((atom (third x)) t)
+         (t (quote ()))))
+      (t (quote ())))))
+
+(def dimension-base
+  (lambda (dimension) (second dimension)))
+
+(def dimension-exponent
+  (lambda (dimension) (third dimension)))
+
+(def science-dimensions-valid?
+  (lambda (dimensions)
+    (cond
+      ((atom dimensions)
+       (cond
+         ((eq dimensions (quote ())) t)
+         (t (quote ()))))
+      ((dimension? (car dimensions))
+       (science-dimensions-valid? (cdr dimensions)))
+      (t (quote ())))))
+
 (def make-unit
   (lambda (dimensions)
-    (list *unit-schema* dimensions)))
+    (cons *unit-schema* dimensions)))
 
 (def unit?
   (lambda (x)
     (cond
       ((atom x) (quote ()))
       ((eq (science-proper-list? x) (quote ())) (quote ()))
-      ((eq (= (length x) 2) (quote ())) (quote ()))
-      ((eq (car x) *unit-schema*) t)
+      ((eq (car x) *unit-schema*)
+       (science-dimensions-valid? (cdr x)))
       (t (quote ())))))
 
 (def unit-dimensions
-  (lambda (unit) (second unit)))
+  (lambda (unit) (cdr unit)))
 
 (def make-quantity
   (lambda (value unit)
@@ -83,13 +119,18 @@
       ((atom x) (quote ()))
       ((eq (science-proper-list? x) (quote ())) (quote ()))
       ((eq (= (length x) 3) (quote ())) (quote ()))
-      ((eq (car x) *science-source-schema*) t)
+      ((eq (car x) *science-source-schema*)
+       (cond
+         ((eq (symbol? (second x)) (quote ())) (quote ()))
+         ((atom (third x)) t)
+         (t (quote ()))))
       (t (quote ())))))
 
 (def scientific-constant-status-valid?
   (lambda (status)
     (cond
       ((eq status (quote exact-by-definition)) t)
+      ((eq status (quote exact-derived)) t)
       ((eq status (quote measured)) t)
       (t (quote ())))))
 
@@ -97,6 +138,7 @@
   (lambda (kind)
     (cond
       ((eq kind (quote physical-defining)) t)
+      ((eq kind (quote physical-derived)) t)
       ((eq kind (quote physical-measured)) t)
       ((eq kind (quote mathematical)) t)
       (t (quote ())))))
