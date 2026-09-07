@@ -1,25 +1,97 @@
-; lib/si.my — 7 BIPM SI defining constants as exact rational values
-; 7 визначальних констант SI (BIPM 2019) як точні раціональні значення
+; lib/si.my — 7 BIPM SI defining constants as exact scientific data
+; 7 визначальних констант SI (BIPM 2019) як точні Lisp-дані
 ;
 ; Reference: BIPM SI Brochure (9th edition, 2019)
 ;
-; The public names are deliberately descriptive.  Short physics symbols such
-; as c, h, e, and k are excellent notation inside equations but poor global
-; program identifiers because they collide with ordinary variable names.
+; Each defining constant has one authoritative finite-data record:
 ;
-; In SI, these defining values are exact terminating decimals with zero
-; experimental uncertainty, allowing exact rational representation without floats.
+;   (scientific-constant/1 NAME
+;     (quantity/1 VALUE (unit/1 BASE-DIMENSIONS))
+;     exact-by-definition physical-defining si
+;     (science-source/1 bipm-si-brochure-9 2019))
+;
+; The established numeric names remain backward-compatible arithmetic views,
+; but their values are extracted from those records rather than duplicated as
+; a second authority.  lib/quantity.my provides the general validators and
+; accessors for these shapes; this file itself remains standalone-loadable and
+; derives the numeric view using only car/cdr.
+;
+; BASE-DIMENSIONS uses SI base dimensions as (BASE EXPONENT) terms.  This file
+; stores dimensions as data; no unit algebra is claimed here.
 
-(def si:cesium-frequency 9192631770)
-(def si:speed-of-light 299792458)
-(def si:planck-constant
-  (/ 132521403 200000000000000000000000000000000000000000))
-(def si:elementary-charge
-  (/ 801088317 5000000000000000000000000000))
-(def si:boltzmann-constant
-  (/ 1380649 100000000000000000000000000000))
-(def si:avogadro-constant 602214076000000000000000)
-(def si:luminous-efficacy 683)
+(def si:cesium-frequency-constant
+  (quote
+    (scientific-constant/1 si:cesium-frequency
+      (quantity/1 9192631770
+        (unit/1 ((second -1))))
+      exact-by-definition physical-defining si
+      (science-source/1 bipm-si-brochure-9 2019))))
+
+(def si:speed-of-light-constant
+  (quote
+    (scientific-constant/1 si:speed-of-light
+      (quantity/1 299792458
+        (unit/1 ((metre 1) (second -1))))
+      exact-by-definition physical-defining si
+      (science-source/1 bipm-si-brochure-9 2019))))
+
+(def si:planck-constant-record
+  (quote
+    (scientific-constant/1 si:planck-constant
+      (quantity/1
+        132521403/200000000000000000000000000000000000000000
+        (unit/1 ((kilogram 1) (metre 2) (second -1))))
+      exact-by-definition physical-defining si
+      (science-source/1 bipm-si-brochure-9 2019))))
+
+(def si:elementary-charge-constant
+  (quote
+    (scientific-constant/1 si:elementary-charge
+      (quantity/1
+        801088317/5000000000000000000000000000
+        (unit/1 ((ampere 1) (second 1))))
+      exact-by-definition physical-defining si
+      (science-source/1 bipm-si-brochure-9 2019))))
+
+(def si:boltzmann-constant-record
+  (quote
+    (scientific-constant/1 si:boltzmann-constant
+      (quantity/1
+        1380649/100000000000000000000000000000
+        (unit/1 ((kilogram 1) (metre 2) (second -2) (kelvin -1))))
+      exact-by-definition physical-defining si
+      (science-source/1 bipm-si-brochure-9 2019))))
+
+(def si:avogadro-constant-record
+  (quote
+    (scientific-constant/1 si:avogadro-constant
+      (quantity/1 602214076000000000000000
+        (unit/1 ((mole -1))))
+      exact-by-definition physical-defining si
+      (science-source/1 bipm-si-brochure-9 2019))))
+
+(def si:luminous-efficacy-constant
+  (quote
+    (scientific-constant/1 si:luminous-efficacy
+      (quantity/1 683
+        (unit/1 ((candela 1) (kilogram -1) (metre -2) (second 3))))
+      exact-by-definition physical-defining si
+      (science-source/1 bipm-si-brochure-9 2019))))
+
+; A scientific-constant/1 record stores its quantity in the third field; a
+; quantity/1 stores its numeric value in the second field.
+(def si:constant-value
+  (lambda (constant)
+    (car (cdr (car (cdr (cdr constant)))))))
+
+; Backward-compatible arithmetic surface, derived from the records above.
+(def si:cesium-frequency (si:constant-value si:cesium-frequency-constant))
+(def si:speed-of-light (si:constant-value si:speed-of-light-constant))
+(def si:planck-constant (si:constant-value si:planck-constant-record))
+(def si:elementary-charge (si:constant-value si:elementary-charge-constant))
+(def si:boltzmann-constant (si:constant-value si:boltzmann-constant-record))
+(def si:avogadro-constant (si:constant-value si:avogadro-constant-record))
+(def si:luminous-efficacy (si:constant-value si:luminous-efficacy-constant))
 
 ; Transitional compatibility aliases.  These are not canonical names and may
 ; be removed once repository callers have migrated to the descriptive surface.
