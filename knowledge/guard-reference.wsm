@@ -641,11 +641,10 @@
         (provenance "inbox candidate 2026-09-04 verified live 2026-09-05 (tula)")
         (unknown-route ask-owner))
       (reference
-        (topic yantra-scope-and-license-gap)
-        (summary "yantra is a minimal ~125-line single-file (yantra.py) LLM coding-agent implementation: a tool-calling loop (default tool: bash) against any OpenAI-compatible API (Ollama, vLLM, LM Studio), zero SDK dependencies (only requests). Explicitly a fork of alexey-goloburdin/chebupelka -- README credits the original author and design honestly. No repo.my (confirmed absent). NO LICENSE file found in this checkout -- upstream chebupelka's license terms are NOT reproduced here; sibling task YANTRA-DOCUMENT-ADAPTATION-FROM-UPSTREAM (completed by karaka) should address this. Conceptually: a small from-scratch reference for the exact tool-calling-agent-loop pattern ecosystem agents run on heavier stacks -- useful minimal-surface comparison for what an agent loop actually requires | yantra -- мінімальна ~125-рядкова однофа�
-йлова (yantra.py) реалізація LLM-кодинг-агента: tool-calling цикл (дефолтний tool: bash) проти будь-якого OpenAI-сумісного API (Ollama, vLLM, LM Studio), нуль SDK-залежностей (лише requests). Явний форк alexey-goloburdin/chebupelka -- README чесно кредитує оригінального автора та дизайн. repo.my немає (підтверджено). ФАЙЛ LICENSE не знайдено в цьому checkout -- ліцензійні умови upstream chebupelka НЕ відтворені; сестринська задача YANTRA-DOCUMENT-ADAPTATION-FROM-UPSTREAM (завершена karaka) мала б це виправити. Концептуально: невелика from-scratch референс-реалізація того самого патерну tool-calling-agent-loop, на якому працюють агенти екосистеми поверх важчих стеків -- корисна мінімальна поверхня для розуміння, що агенту реально потрібно")
-        (authority (../yantra/yantra.py ../yantra/README.md ../ecosystem/docs/policy/LICENSE-MATRIX.md))
-        (how-to (read-yantra.py-read-loop read-README-fork-attribution))
+        (topic chebupelka-scope-and-license-gap)
+        (summary "Chebupelka is the separate Python fork of alexey-goloburdin/chebupelka: a small single-file tool-calling agent using requests. It is not my-lisp Yantra and is not authority for lib/yantra.my. README preserves upstream attribution; repo.my and LICENSE were absent at the 2026-09-05 review | Chebupelka — окремий Python-форк alexey-goloburdin/chebupelka: малий однофайловий tool-calling агент на requests. Це не my-lisp Yantra і не authority для lib/yantra.my. README зберігає upstream-атрибуцію; repo.my та LICENSE були відсутні під час перевірки 2026-09-05")
+        (authority (../chebupelka/chebupelka.py ../chebupelka/README.md ../ecosystem/docs/policy/LICENSE-MATRIX.md))
+        (how-to (read-chebupelka.py-read-loop read-README-fork-attribution distinguish-from-lib/yantra.my))
         (verify (fork-credited license-gap-tracked))
         (lifecycle current-contract)
         (provenance "inbox candidate 2026-09-04 verified live 2026-09-05 (tula)")

@@ -1,5 +1,5 @@
-; yantra.my — my-lisp-yantra: the smallest Chebupelka-style coding agent,
-; control logic entirely in my-lisp. Host boundary is exactly three
+; yantra.my — my-lisp-yantra: a minimal evidence-aware coding agent whose
+; control logic lives entirely in my-lisp. Host boundary is exactly three
 ; capabilities, none of them agent-specific:
 ;   1. `process-run` (existing) — the bash tool and the HTTP transport
 ;      (`curl` subprocess; see http-post-json below),

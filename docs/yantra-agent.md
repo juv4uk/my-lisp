@@ -1,7 +1,12 @@
 # my-lisp-yantra — the smallest coding agent in .my
 
-> A Chebupelka-style agent whose control logic lives entirely in my-lisp.
+> A minimal evidence-aware coding agent whose control logic lives entirely in my-lisp.
 > The host boundary is one generic primitive; everything else is `.my`.
+
+Yantra is Volodymyr's own my-lisp agent implementation. Its identity and
+architecture are defined by this repository's code and evidence contract.
+
+Українська версія: [`yantra-agent.uk.md`](yantra-agent.uk.md).
 
 ## Architecture
 
