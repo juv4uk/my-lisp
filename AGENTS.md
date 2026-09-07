@@ -1,6 +1,25 @@
+# Мовна політика — українська первинна (2026-09-07)
+
+**Статус: ратифікована пряма настанова власника.** Машинний контракт: `knowledge/language-policy.wsm`. Guard-тема: `(guard-reference (quote language-policy))`.
+
+1. **Українська — перша і головна мова** людської комунікації репозиторію: агентських інструкцій, документації, пояснень і нового людського тексту.
+2. **Англійська та німецька — допоміжні.** Вони можуть іти після української, коли це корисно для зовнішньої сумісності або читачів, але не замінюють український первинний текст.
+3. **Коментарі в коді писати українською.** Якщо середовище справді вимагає 1-байтового ASCII, використовувати оборотну українську латинку `uk-latynka/1` через `python3 scripts/uk-latynka.py encode` і перевіряти зворотність через `decode`/`self-test`.
+4. Старі неукраїнські коментарі й prose не переписувати масово як побічний ефект. Коли коментар суттєво редагується — переводити його українською; масова міграція є окремою перевірюваною задачею.
+5. Точні upstream-назви, API, identifiers, protocol literals, filenames і цитати зберігають оригінальне написання.
+6. Ця політика **не скасовує програмні surface мови**: Sanskrit surface, канонічні ідентичності та інші предметні представлення лишаються у своїх семантичних ролях. Політика визначає мову людського пояснення, а не перелік допустимих програмних символів.
+
+Guard також реєструє інструмент `(guard-script (quote uk-latynka))`. Канонічний self-test:
+
+```sh
+python3 scripts/uk-latynka.py self-test
+```
+
+---
+
 ## Дисципліна співпраці з агентами — основний документ (2026-09-03)
 
-**Статус: основний (primary) для всіх активних репозиторіїв екосистеми.** Цей розділ визначає, як агенти працюють із власником над кодом — і йде першим, перед будь-яким іншим вмістом цього файлу.
+**Статус: основний (primary) для всіх активних репозиторіїв екосистеми.** Цей розділ визначає, як агенти працюють із власником над кодом, і застосовується одразу після ратифікованої мовної політики вище.
 
 ### Головний зсув: не "агент пише за мене", а "агент будує експеримент, а я розбираю, як ідея стала кодом"
 
@@ -99,13 +118,13 @@ typedef uintptr_t Value;
 ---
 # AGENTS.md — my-lisp
 
-See also `docs/agent-doctrine.md` — cross-repo rules (prose vs. contract precedence, evidence discipline, subagent/specialist-model usage) that apply to every sibling in this swarm, not just this repo.
+Див. також `docs/agent-doctrine.md` — міжрепозиторні правила (пріоритет prose/contract, дисципліна доказів, використання subagent/specialist-model), які застосовуються до всіх сусідніх репозиторіїв рою, не лише до цього.
 
-## Guard як довідкове бюро / Guard as a reference bureau
+## Guard як довідкове бюро
 
 Перед пошуком навмання або створенням нового workflow завантажте `lib/guard.wsm` і `knowledge/guard-reference.wsm`. Запитайте `(guard-reference topic)`, `(guard-authority topic)`, `(guard-how-to topic)` або `(guard-verify topic)`. Каталог указує, де лежить авторитетна інформація; він не копіює і не замінює її. Невідома тема повертає `UNKNOWN/UNRESOLVED`, після чого потрібен перевірений новий запис, а не здогад.
 
-Before searching blindly or inventing a workflow, load `lib/guard.wsm` and `knowledge/guard-reference.wsm`. Ask `(guard-reference topic)`, `(guard-authority topic)`, `(guard-how-to topic)`, or `(guard-verify topic)`. The directory points to authoritative information; it does not copy or replace it. An unknown topic returns `UNKNOWN/UNRESOLVED`: ask the responsible agent/owner or research an authoritative external source rather than guessing.
+English auxiliary note: before searching blindly or inventing a workflow, load `lib/guard.wsm` and `knowledge/guard-reference.wsm`. The directory points to authority; it does not replace it.
 
 ## Session start — join the swarm
 
@@ -125,9 +144,9 @@ contract-version                       claim-task / release-task
 2. `(join (capabilities (...)))` → `(list-members)` → `(next-best-action (capabilities (...)))`.
 3. `(claim-task (task ...))` → work → `(complete-task (task ...) (generation N))` → `(emit (type ...) (payload ...))` for durable coordination events.
 
-The old `:9999` coordination operations (`hello`, `claim`, `notify`, `poll`, `subscribe`, task registry, etc.) are **deprecated compatibility surface**. They must not be used for new coordination workflows. The machine-readable migration marker is `knowledge/swarm-legacy-deprecation.wsm`; historical implementation details remain in git history. Physical removal waits for a `no-live-callers` proof.
+Стара coordination surface на `:9999` фізично видалена. Retired operations (`hello`, `claim`, `notify`, `poll`, `subscribe`, task registry та інші) мають повертати `unknown op`; їхню відсутність перевіряє C5 removal gate. Машинний migration marker — `knowledge/swarm-legacy-deprecation.wsm`, історичні деталі лишаються в git history.
 
-The `my-lisp --tcp=9999 --protocol=sexpr` process remains the semantic oracle. Do not confuse it with swarm coordination.
+`my-lisp --tcp=9999 --protocol=sexpr` лишається **лише semantic oracle**. Не змішуйте його з coordination plane `swarm-node :910x`.
 
 ## Role
 
