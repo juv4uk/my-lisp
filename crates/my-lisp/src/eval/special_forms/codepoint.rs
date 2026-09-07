@@ -1,8 +1,9 @@
-use super::core::exact_arity;
-use crate::eval::evaluate;
-use crate::{Environment, ErrorKind, Exactness, Expr, LanguageError, Span, Value};
+use crate::{ErrorKind, Exactness, LanguageError, Span, Value};
 use std::rc::Rc;
 
+/// Minimal runtime bridge from an exact Unicode scalar value to the language's
+/// immutable string representation. Unicode/UTF-8 decoding policy stays in
+/// Lisp; this function only materializes one already-interpreted scalar.
 pub(crate) fn codepoint_to_string_values(
     arguments: &[Value],
     span: Span,
@@ -25,6 +26,9 @@ pub(crate) fn codepoint_to_string_values(
     Ok(Value::String(Rc::from(character.to_string().as_str())))
 }
 
+/// Minimal inverse bridge for UTF-8 encoding owned by Lisp. The runtime only
+/// exposes the scalar value of exactly one already-materialized character;
+/// byte encoding, validation policy, and transport meaning remain in Lisp.
 pub(crate) fn string_to_codepoint_values(
     arguments: &[Value],
     span: Span,
@@ -53,27 +57,6 @@ pub(crate) fn string_to_codepoint_values(
     }
 
     Ok(Value::Number(character as u32 as f64, Exactness::Exact))
-}
-
-// Transitional Expr wrappers retained until eval/mod.rs forgets these names.
-pub(crate) fn evaluate_codepoint_to_string(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("codepoint->string", arguments, 1, span)?;
-    let values = [evaluate(&arguments[0], environment)?];
-    codepoint_to_string_values(&values, span)
-}
-
-pub(crate) fn evaluate_string_to_codepoint(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("string->codepoint", arguments, 1, span)?;
-    let values = [evaluate(&arguments[0], environment)?];
-    string_to_codepoint_values(&values, span)
 }
 
 fn exact_scalar_value(value: &Value, span: Span) -> Result<u32, LanguageError> {
