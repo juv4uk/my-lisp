@@ -1,8 +1,7 @@
 //! The McCarthy primitives (`eq`, `car`, `cdr`, `cons`, `cond`, `quote`'s helper),
 //! plus the small compatibility/bootstrap surface and host mechanisms that still
-//! require Rust. Ordinary eager operations should enter the language through
-//! first-class `Value::Builtin` bindings rather than by adding names to the
-//! evaluator dispatcher.
+//! require Rust. Ordinary eager operations enter the language through first-class
+//! `Value::Builtin` bindings rather than by adding names to the evaluator dispatcher.
 
 mod codepoint;
 mod core;
@@ -23,9 +22,6 @@ pub(super) use io::{
     evaluate_write_to_string,
 };
 pub(super) use strings::{
-    evaluate_string_append, evaluate_string_first, evaluate_string_less_than,
-    evaluate_string_predicate, evaluate_string_rest, evaluate_string_slice,
-    evaluate_string_to_symbol, evaluate_symbol_to_string, string_append_values,
-    string_first_values, string_less_than_values, string_predicate_values,
-    string_rest_values, string_to_symbol_values, symbol_to_string_values,
+    evaluate_string_slice, string_append_values, string_first_values, string_less_than_values,
+    string_predicate_values, string_rest_values, string_to_symbol_values, symbol_to_string_values,
 };
