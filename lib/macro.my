@@ -28,13 +28,3 @@
 ; Transitional proof name retained so older experiments keep working while
 ; callers migrate to the real language-owned surface above.
 (define defmacro-derived defmacro)
-
-; Historical DEF is compatibility syntax, not a necessary evaluator law.
-; It expands to the canonical DEFINE form without evaluating NAME or VALUE
-; during expansion.  Keeping the compatibility spelling in Lisp lets the
-; evaluator shed a dedicated head-name branch while preserving ordinary
-; definition semantics for bootstrapped sessions.
-(defmacro def (name value)
-  (cons (quote define)
-    (cons name
-      (cons value (quote ())))))
