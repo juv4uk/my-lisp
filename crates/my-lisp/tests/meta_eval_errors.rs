@@ -23,10 +23,7 @@ fn eval_meta(source: &str) -> String {
 fn eval_native_error(source: &str, expected_kind: ErrorKind, normalized: &str) -> String {
     let mut session = Session::default();
     let error = eval_program(source, &mut session).unwrap_err();
-    assert_eq!(
-        error.kind, expected_kind,
-        "wrong native error kind for {source}"
-    );
+    assert_eq!(error.kind, expected_kind, "wrong native error kind for {source}");
 
     // Error wording and source spans are presentation details. S2 contracts the
     // named category; tests normalize only the semantic observation shared with
@@ -81,10 +78,7 @@ fn fixed_lambda_arity_mismatch_is_named_lisp_data() {
         let via_meta = eval_meta(source);
         let via_native = eval_native_error(source, ErrorKind::Arity, expected);
 
-        assert_eq!(
-            via_meta, via_native,
-            "fixed arity parity failed for {source}"
-        );
+        assert_eq!(via_meta, via_native, "fixed arity parity failed for {source}");
     }
 }
 
@@ -96,10 +90,7 @@ fn dotted_lambda_reports_minimum_arity_not_exact_arity() {
     let via_meta = eval_meta(source);
     let via_native = eval_native_error(source, ErrorKind::Arity, expected);
 
-    assert_eq!(
-        via_meta, via_native,
-        "dotted arity parity failed for {source}"
-    );
+    assert_eq!(via_meta, via_native, "dotted arity parity failed for {source}");
 }
 
 #[test]

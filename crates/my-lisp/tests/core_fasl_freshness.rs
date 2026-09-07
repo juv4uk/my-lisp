@@ -7,8 +7,8 @@
 #[test]
 fn committed_core_fasl_matches_current_core_source() {
     let fasl = include_bytes!("../../../lib/core.my.fasl");
-    let (_, embedded_hash) =
-        my_lisp::fasl_decode_program(fasl).expect("committed lib/core.my.fasl must decode");
+    let (_, embedded_hash) = my_lisp::fasl_decode_program(fasl)
+        .expect("committed lib/core.my.fasl must decode");
     let current_hash = my_lisp::sha256_source(my_lisp::CORE_LIBRARY_SOURCE.as_bytes());
 
     assert_eq!(

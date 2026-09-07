@@ -600,18 +600,12 @@ fn write_to_string_round_trips_every_core_predicate_result_bool_stays_a_boundary
         "eq's own result now round-trips: it returns Symbol(\"t\")/Nil, not Bool -- if this fails, that changed again"
     );
     assert_eq!(
-        run(
-            &mut session,
-            "(eq (read (write-to-string (< 2 1))) (< 2 1))"
-        ),
+        run(&mut session, "(eq (read (write-to-string (< 2 1))) (< 2 1))"),
         "t",
         "FIXED: `<` now returns Value::truth, not Value::Bool -- round-trips like Nil/t always did"
     );
     assert_eq!(
-        run(
-            &mut session,
-            "(eq (read (write-to-string (< 1 2))) (< 1 2))"
-        ),
+        run(&mut session, "(eq (read (write-to-string (< 1 2))) (< 1 2))"),
         "t",
         "FIXED: same for the true case"
     );

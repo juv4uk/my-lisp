@@ -18,7 +18,8 @@ fn eval_native(expr: &str) -> String {
 
 fn eval_via_meta(expr: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).expect("core.my should load");
+    eval_program(include_str!("../../../lib/core.my"), &mut session)
+        .expect("core.my should load");
     eval_program(include_str!("../../../lib/meta-eval.my"), &mut session)
         .expect("main metacircular evaluator should load");
 

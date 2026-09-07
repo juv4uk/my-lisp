@@ -95,10 +95,7 @@ fn make_invalid_keeps_reason_and_payload() {
 #[test]
 fn result_status_extracts_every_canonical_tag() {
     for (source, expected) in [
-        (
-            "(result-status (make-proved (quote x) (quote ())))",
-            "proved",
-        ),
+        ("(result-status (make-proved (quote x) (quote ())))", "proved"),
         ("(result-status (make-unknown (quote x)))", "unknown"),
         ("(result-status (make-partial 1 2))", "partial"),
         ("(result-status (make-blocked (quote x)))", "blocked"),
@@ -178,7 +175,10 @@ fn reason_observe_reports_an_explicit_negative_as_proved_opposite() {
         (let ((rules (quote (((not (mortal socrates)))))))
           (second (reason-observe (quote (mortal socrates)) rules)))
     "#;
-    assert_eq!(eval_reason_observation(source), "(not (mortal socrates))");
+    assert_eq!(
+        eval_reason_observation(source),
+        "(not (mortal socrates))"
+    );
 }
 
 #[test]

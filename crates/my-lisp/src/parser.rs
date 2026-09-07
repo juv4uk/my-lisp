@@ -119,12 +119,13 @@ impl Parser<'_> {
                             let number = match element.kind {
                                 ExprKind::Number(_, _) => {
                                     let spelling = &self.source[span.start..span.end];
-                                    let spelling_with_dot =
-                                        if spelling.contains(',') && !spelling.contains('.') {
-                                            Some(spelling.replace(',', "."))
-                                        } else {
-                                            None
-                                        };
+                                    let spelling_with_dot = if spelling.contains(',')
+                                        && !spelling.contains('.')
+                                    {
+                                        Some(spelling.replace(',', "."))
+                                    } else {
+                                        None
+                                    };
                                     spelling_with_dot
                                         .as_deref()
                                         .unwrap_or(spelling)

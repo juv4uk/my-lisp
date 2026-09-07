@@ -3,8 +3,8 @@
 //! swarm.rs. Moved verbatim from main.rs (2026-08-22 mechanical split).
 
 use my_lisp::{
-    eval_parsed_expressions, eval_parsed_expressions_incremental, eval_program, load_macro_library,
-    load_process_library, parse, Environment, Session, TIME_LIBRARY_SOURCE,
+    eval_parsed_expressions, eval_parsed_expressions_incremental, eval_program,
+    load_macro_library, load_process_library, parse, Environment, Session, TIME_LIBRARY_SOURCE,
 };
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener};

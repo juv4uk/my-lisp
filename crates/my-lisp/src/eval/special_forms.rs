@@ -10,14 +10,15 @@ mod io;
 pub mod json;
 mod strings;
 
-pub(super) use codepoint::{codepoint_to_string_values, string_to_codepoint_values};
 pub use core::exact_arity;
+pub(super) use codepoint::{codepoint_to_string_values, string_to_codepoint_values};
 pub(super) use core::{
     car_value, cdr_value, cons_values, eq_values, evaluate_cond, evaluate_definition, quoted,
 };
 pub(super) use digest::sha256_hex_values;
 pub(super) use io::{
-    eval_values, princ_values, print_values, read_all_values, read_values, write_to_string_values,
+    eval_values, princ_values, print_values, read_all_values, read_values,
+    write_to_string_values,
 };
 pub(super) use strings::{
     evaluate_string_slice, string_append_values, string_first_values, string_less_than_values,
