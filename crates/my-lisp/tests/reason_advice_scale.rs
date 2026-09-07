@@ -203,7 +203,7 @@ fn install_prepared_observer(session: &mut Session) {
                (make-proved goal positive-results))
               ((not (atom opposite-results))
                (make-proved opposite opposite-results))
-              (t (make-unknown goal)))))))
+              (t (make-unknown goal))))))
     "#;
     eval_session(session, source);
 }
