@@ -1,14 +1,11 @@
 //! String/symbol mechanisms that genuinely need the Rust substrate.
 //!
-//! Public callable identity does not belong here.  The value-level helpers in
-//! this module are deliberately independent of evaluator syntax dispatch so
-//! they can be installed as ordinary first-class `Value::Builtin` values.
-//! Transitional Expr wrappers remain only until the evaluator-name migration
-//! is complete.
+//! Callable identity does not belong here. Every operation in this module is
+//! value-level (`&[Value] -> Value`) so the root environment can expose it as an
+//! ordinary first-class builtin. The evaluator therefore has no reason to know
+//! any of these operation names.
 
-use super::core::exact_arity;
-use crate::eval::evaluate;
-use crate::{Environment, ErrorKind, Expr, LanguageError, Span, Value};
+use crate::{ErrorKind, LanguageError, Span, Value};
 use std::rc::Rc;
 
 fn exact_value_arity(
@@ -230,82 +227,4 @@ pub(crate) fn string_rest_values(
             span,
         )),
     }
-}
-
-// Transitional Expr wrappers.  Delete these once `eval/mod.rs` no longer
-// dispatches these names specially.
-pub(crate) fn evaluate_string_append(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("string-append", arguments, 2, span)?;
-    let values = [
-        evaluate(&arguments[0], environment)?,
-        evaluate(&arguments[1], environment)?,
-    ];
-    string_append_values(&values, span)
-}
-
-pub(crate) fn evaluate_string_less_than(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("string<?", arguments, 2, span)?;
-    let values = [
-        evaluate(&arguments[0], environment)?,
-        evaluate(&arguments[1], environment)?,
-    ];
-    string_less_than_values(&values, span)
-}
-
-pub(crate) fn evaluate_string_predicate(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("string?", arguments, 1, span)?;
-    let values = [evaluate(&arguments[0], environment)?];
-    string_predicate_values(&values, span)
-}
-
-pub(crate) fn evaluate_symbol_to_string(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("symbol->string", arguments, 1, span)?;
-    let values = [evaluate(&arguments[0], environment)?];
-    symbol_to_string_values(&values, span)
-}
-
-pub(crate) fn evaluate_string_to_symbol(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("string->symbol", arguments, 1, span)?;
-    let values = [evaluate(&arguments[0], environment)?];
-    string_to_symbol_values(&values, span)
-}
-
-pub(crate) fn evaluate_string_first(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("string-first", arguments, 1, span)?;
-    let values = [evaluate(&arguments[0], environment)?];
-    string_first_values(&values, span)
-}
-
-pub(crate) fn evaluate_string_rest(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("string-rest", arguments, 1, span)?;
-    let values = [evaluate(&arguments[0], environment)?];
-    string_rest_values(&values, span)
 }
