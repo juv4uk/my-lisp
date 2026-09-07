@@ -21,8 +21,23 @@ jobs:
       - name: Recover the reviewed fail-closed surgery recipe
         run: |
           git show 69b65a628683573790a5af675d27433fa69968c7:.github/workflows/c5-physical-removal.yml > /tmp/c5-recipe.yml
-          sed -n "/^[[:space:]]*python3 - <<'PY'$/,/^[[:space:]]*PY$/p" /tmp/c5-recipe.yml \
-            | sed '1d;$d;s/^          //' > /tmp/c5-remove.py
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path('/tmp/c5-recipe.yml').read_text(encoding='utf-8').splitlines(keepends=True)
+          start = next(i for i, line in enumerate(lines) if line.strip() == "python3 - <<'PY'") + 1
+          end = next(i for i in range(start, len(lines)) if lines[i].strip() == 'PY')
+          out = []
+          in_triple = False
+          for line in lines[start:end]:
+              if not in_triple and line.startswith('          '):
+                  line = line[10:]
+              out.append(line)
+              if line.count('"""') % 2 == 1:
+                  in_triple = not in_triple
+          if in_triple:
+              raise SystemExit('unterminated triple-quoted marker in recovered recipe')
+          Path('/tmp/c5-remove.py').write_text(''.join(out), encoding='utf-8')
+          PY
           test -s /tmp/c5-remove.py
           grep -q 'legacy surface survived surgery' /tmp/c5-remove.py
           python3 -m py_compile /tmp/c5-remove.py
