@@ -115,12 +115,6 @@ const SYNTAX_FORMS: &[(&str, &str, &str, Arity)] = &[
         Arity::Exact(1),
     ),
     (
-        "sha256-hex",
-        "(sha256-hex string)",
-        "Return the SHA-256 hex digest",
-        Arity::Exact(1),
-    ),
-    (
         "json-parse",
         "(json-parse string)",
         "Parse JSON into my-lisp values",
@@ -314,6 +308,21 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
         "string-rest" => (
             "(string-rest string)",
             "Return the string without its first character",
+            Arity::Exact(1),
+        ),
+        "codepoint->string" => (
+            "(codepoint->string scalar)",
+            "Materialize one Unicode scalar as a string",
+            Arity::Exact(1),
+        ),
+        "string->codepoint" => (
+            "(string->codepoint string)",
+            "Return the Unicode scalar value of one-character string",
+            Arity::Exact(1),
+        ),
+        "sha256-hex" => (
+            "(sha256-hex string)",
+            "Return the SHA-256 hex digest",
             Arity::Exact(1),
         ),
         _ => (
