@@ -163,6 +163,11 @@ fn constant_to_knowledge_projection_is_pure_and_admission_ready() {
 #[test]
 fn advice_taker_can_reason_about_an_admitted_scientific_constant() {
     let source = r#"
+        (def expected-unit
+          (quote
+            (unit/1
+              (dimension/1 metre 1)
+              (dimension/1 second -1))))
         (def admission
           (advise-all science
             (scientific-constant->clauses si:defining-speed-of-light)))
@@ -179,11 +184,10 @@ fn advice_taker_can_reason_about_an_admitted_scientific_constant() {
           (result-status
             (reason-in-observe
               (quote science)
-              (quote
-                (constant-unit si:speed-of-light
-                  (unit/1
-                    (dimension/1 metre 1)
-                    (dimension/1 second -1))))))))
+              (list
+                (quote constant-unit)
+                (quote si:speed-of-light)
+                expected-unit))))
     "#;
     assert_eq!(eval_science_knowledge(source), "(accepted proved proved proved)");
 }
