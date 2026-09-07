@@ -288,9 +288,12 @@ pub struct Session {
 
 impl Default for Session {
     fn default() -> Self {
-        Self {
+        let mut session = Self {
             environment: Environment::root(),
-        }
+        };
+        crate::eval::eval_program(crate::MACRO_LIBRARY_SOURCE, &mut session)
+            .expect("embedded lib/macro.my must bootstrap a default Session");
+        session
     }
 }
 
