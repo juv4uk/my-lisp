@@ -1,0 +1,53 @@
+; Мовна політика екосистеми my-lisp.
+; Ратифіковано прямою настановою власника 2026-09-07.
+;
+; Цей контракт стосується людської комунікації в репозиторії: документації,
+; інструкцій агентам, пояснень і коментарів у коді. Він НЕ скасовує окремі
+; програмні surface мови (зокрема Sanskrit surface), канонічні ідентичності,
+; зовнішні API, точні назви символів, протоколів, файлів чи upstream-термінів.
+
+(def *language-policy*
+  (quote
+    ((schema . language-policy/1)
+     (status . ratified)
+     (ratified-at . "2026-09-07")
+     (primary-language . ukrainian)
+     (auxiliary-languages . (english german))
+     (human-facing-order . (ukrainian english german))
+     (code-comments . ukrainian)
+     (one-byte-comment-fallback . reversible-ascii-ukrainian-latynka)
+     (transliteration-contract . uk-latynka/1)
+     (transliterator . scripts/uk-latynka.py)
+     (rules .
+       ((ukrainian-first . t)
+        (auxiliary-may-follow-ukrainian . t)
+        (auxiliary-must-not-replace-ukrainian . t)
+        (new-code-comments-ukrainian . t)
+        (edited-code-comments-migrate-to-ukrainian . t)
+        (ascii-only-comments-use-uk-latynka-1 . t)
+        (mass-comment-rewrite-without-task . ())
+        (exact-upstream-spelling-preserved . t)
+        (identifiers-and-protocol-literals-preserved . t)))
+     (scope .
+       (agent-instructions
+        human-facing-documentation
+        code-comments
+        explanatory-prose
+        guard-summaries))
+     (outside-scope .
+       (canonical-programming-identities
+        programming-language-surfaces
+        sanskrit-domain-surface
+        exact-upstream-quotes
+        external-api-identifiers
+        protocol-literals
+        filenames))
+     (migration .
+       ((existing-english-or-german-prose . migrate-when-touched)
+        (existing-non-ukrainian-code-comments . migrate-when-touched)
+        (bulk-rewrite . separate-reviewed-task)))
+     (evidence .
+       ((guard-topic . language-policy)
+        (guard-tool . uk-latynka)
+        (round-trip-check . "python3 scripts/uk-latynka.py self-test")
+        (ascii-check . "encode output contains only bytes 0..127")))))))
