@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="uk">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -110,6 +110,39 @@
       // переобчислення всього буфера не потрібне й не бажане.
       const history = [];
       let historyIndex = -1;
+      let currentSurface = "core";
+      const promptEl = document.getElementById("prompt");
+
+      function updatePrompt() {
+        promptEl.textContent = `my-lisp[${currentSurface}]>`;
+      }
+
+      function handleMetaCommand(line, wasmModule) {
+        const parts = line.split(/\s+/);
+        const command = parts[0];
+        if (command === ":допомога" || command === ":help") {
+          printLine("Поверхні: :мова ук | en | sa | core", "line-system");
+          printLine("Технічний alias: :surface uk | en | sa | core", "line-system");
+          return true;
+        }
+        if (command !== ":мова" && command !== ":surface") return false;
+        if (parts.length === 1) {
+          printLine(`Поточна поверхня: ${currentSurface}`, "line-system");
+          return true;
+        }
+        if (parts.length !== 2) {
+          printLine("Поверхня приймає рівно одне ім'я.", "line-error");
+          return true;
+        }
+        try {
+          currentSurface = wasmModule.set_surface(parts[1]);
+          updatePrompt();
+          printLine(`Поверхня: ${currentSurface}`, "line-system");
+        } catch (error) {
+          printLine("Помилка перемикання поверхні: " + String(error), "line-error");
+        }
+        return true;
+      }
 
       async function main() {
         let wasmModule;
@@ -120,12 +153,18 @@
           return;
         }
 
-        printLine("my-lisp-cli (Web) — pure Rust my-lisp core compiled to WebAssembly.", "line-system");
-        printLine("Type an expression and press Enter. Ctrl-L clears the screen.", "line-system");
+        try {
+          currentSurface = wasmModule.set_surface("uk");
+        } catch (error) {
+          printLine("Помилка запуску української поверхні: " + String(error), "line-error");
+        }
+        updatePrompt();
+        printLine("my-lisp-cli · Web — українська поверхня над тим самим семантичним ядром.", "line-system");
+        printLine("Змінити: :мова en | sa | core · допомога: :допомога · Ctrl-L очищає екран.", "line-system");
         printLine("", "line-system");
 
         inputEl.disabled = false;
-        inputEl.placeholder = "(+ 1 2)";
+        inputEl.placeholder = "(атом? 'мама)";
         inputEl.focus();
 
         inputEl.addEventListener("keydown", (event) => {
@@ -160,7 +199,9 @@
         inputEl.value = "";
         history.push(line);
         historyIndex = -1;
-        printLine("my-lisp> " + line, "line-input");
+        printLine(`my-lisp[${currentSurface}]> ${line}`, "line-input");
+
+        if (handleMetaCommand(line, wasmModule)) return;
 
         try {
           const evaluation = wasmModule.evaluate(line, "my-lisp");

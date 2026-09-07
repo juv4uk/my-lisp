@@ -1,7 +1,7 @@
 //! WebAssembly bindings exposing the canonical my-lisp engine to the browser.
 //! Persistent session with core.my preloaded on first call.
 
-use my_lisp::Session;
+use my_lisp::{eval_program, Environment, Session};
 use my_lisp_literate::SourceMode;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -9,8 +9,111 @@ use wasm_bindgen::prelude::*;
 
 const CORE_FASL: &[u8] = include_bytes!("../../../lib/core.my.fasl");
 
+const SURFACE_PREREQUISITES: &[(&str, &str)] = &[
+    ("unify.my", include_str!("../../../lib/unify.my")),
+    ("reason.my", include_str!("../../../lib/reason.my")),
+    ("forward.my", include_str!("../../../lib/forward.my")),
+    ("knowledge.my", include_str!("../../../lib/knowledge.my")),
+    (
+        "persistent-map.my",
+        include_str!("../../../lib/persistent-map.my"),
+    ),
+    (
+        "persistent-vector.my",
+        include_str!("../../../lib/persistent-vector.my"),
+    ),
+    ("time.my", include_str!("../../../lib/time.my")),
+    ("epistemic.my", include_str!("../../../lib/epistemic.my")),
+];
+const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
+const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.my");
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WebSurface {
+    Core,
+    English,
+    Ukrainian,
+    Sanskrit,
+}
+
+impl WebSurface {
+    fn parse(value: &str) -> Option<Self> {
+        match value.trim().to_lowercase().as_str() {
+            "core" | "ядро" => Some(Self::Core),
+            "en" | "english" | "англійська" => Some(Self::English),
+            "uk" | "ук" | "українська" => Some(Self::Ukrainian),
+            "sa" | "sanskrit" | "санскрит" => Some(Self::Sanskrit),
+            _ => None,
+        }
+    }
+
+    fn code(self) -> &'static str {
+        match self {
+            Self::Core => "core",
+            Self::English => "en",
+            Self::Ukrainian => "ук",
+            Self::Sanskrit => "sa",
+        }
+    }
+}
+
+fn build_surface_layer(base: &Environment, surface: WebSurface) -> Result<Environment, String> {
+    let layer = base.child();
+    if matches!(surface, WebSurface::Ukrainian | WebSurface::Sanskrit) {
+        let mut session = Session {
+            environment: layer.clone(),
+        };
+        for (name, source) in SURFACE_PREREQUISITES {
+            eval_program(source, &mut session)
+                .map_err(|error| format!("failed to load {name}: {}", error.render(source)))?;
+        }
+        let (name, source) = match surface {
+            WebSurface::Ukrainian => ("uk.my", UK_SURFACE),
+            WebSurface::Sanskrit => ("sa.my", SA_SURFACE),
+            WebSurface::Core | WebSurface::English => unreachable!(),
+        };
+        eval_program(source, &mut session)
+            .map_err(|error| format!("failed to load {name}: {}", error.render(source)))?;
+    }
+    Ok(layer)
+}
+
+struct WebSession {
+    session: Session,
+    base_environment: Environment,
+    user_environment: Environment,
+    surface: WebSurface,
+}
+
+impl WebSession {
+    fn new(mut session: Session) -> Result<Self, String> {
+        let base_environment = session.environment.clone();
+        let surface_environment = build_surface_layer(&base_environment, WebSurface::Core)?;
+        let user_environment = surface_environment.child();
+        session.environment = user_environment.clone();
+        Ok(Self {
+            session,
+            base_environment,
+            user_environment,
+            surface: WebSurface::Core,
+        })
+    }
+
+    fn switch_surface(&mut self, surface: WebSurface) -> Result<(), String> {
+        if self.surface == surface {
+            return Ok(());
+        }
+        let surface_environment = build_surface_layer(&self.base_environment, surface)?;
+        self.user_environment
+            .reparent(surface_environment)
+            .map_err(str::to_string)?;
+        self.surface = surface;
+        Ok(())
+    }
+}
+
 thread_local! {
-    static SESSION: RefCell<Option<Session>> = const { RefCell::new(None) };
+    static SESSION: RefCell<Option<WebSession>> = const { RefCell::new(None) };
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -37,7 +140,7 @@ fn init_if_needed() -> Result<(), String> {
     SESSION.with(|slot| {
         let mut guard = slot.borrow_mut();
         if guard.is_none() {
-            *guard = Some(session_with_core_fasl(CORE_FASL)?);
+            *guard = Some(WebSession::new(session_with_core_fasl(CORE_FASL)?)?);
         }
         Ok(())
     })
@@ -65,9 +168,10 @@ pub fn evaluate(source: &str, mode: JsValue) -> Result<JsValue, JsValue> {
 
     SESSION.with(|slot| {
         let mut guard = slot.borrow_mut();
-        let session = guard.as_mut().expect("session set by init_if_needed");
-        let (result, forms) = my_lisp_literate::eval_literate(source, source_mode, session)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let state = guard.as_mut().expect("session set by init_if_needed");
+        let (result, forms) =
+            my_lisp_literate::eval_literate(source, source_mode, &mut state.session)
+                .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         let evaluation = Evaluation {
             value: result.value.to_string(),
@@ -86,6 +190,37 @@ pub fn reset_session() {
     SESSION.with(|slot| {
         *slot.borrow_mut() = None;
     });
+}
+
+fn set_surface_impl(name: &str) -> Result<String, String> {
+    init_if_needed()?;
+    let surface = WebSurface::parse(name)
+        .ok_or_else(|| format!("unknown surface: {name}; expected uk|en|sa|core"))?;
+    SESSION.with(|slot| {
+        let mut guard = slot.borrow_mut();
+        let state = guard.as_mut().expect("session set by init_if_needed");
+        state.switch_surface(surface)?;
+        Ok(state.surface.code().to_string())
+    })
+}
+
+/// Змінює лише interaction/programming surface поточної browser-сесії.
+#[wasm_bindgen]
+pub fn set_surface(name: &str) -> Result<String, JsValue> {
+    set_surface_impl(name).map_err(|error| JsValue::from_str(&error))
+}
+
+#[wasm_bindgen]
+pub fn current_surface() -> String {
+    if init_if_needed().is_err() {
+        return "core".to_string();
+    }
+    SESSION.with(|slot| {
+        slot.borrow()
+            .as_ref()
+            .map(|state| state.surface.code().to_string())
+            .unwrap_or_else(|| "core".to_string())
+    })
 }
 
 #[wasm_bindgen]
@@ -154,7 +289,7 @@ mod tests {
         init_if_needed().expect("core.my preload must succeed");
         SESSION.with(|slot| {
             let mut guard = slot.borrow_mut();
-            let session = guard.as_mut().unwrap();
+            let session = &mut guard.as_mut().unwrap().session;
             let (result, _) = my_lisp_literate::eval_literate(
                 "(length (quote (a b c)))",
                 SourceMode::PureLisp,
@@ -162,6 +297,39 @@ mod tests {
             )
             .expect("length should work after core.my preload");
             assert_eq!(result.value.to_string(), "3");
+        });
+    }
+
+    #[test]
+    fn web_surface_switch_is_layered_and_preserves_user_definitions() {
+        reset_session();
+        init_if_needed().expect("core preload");
+
+        SESSION.with(|slot| {
+            let mut guard = slot.borrow_mut();
+            let session = &mut guard.as_mut().unwrap().session;
+            eval_program("(define крок 1)", session).expect("user def");
+            eval_program("(define додай-крок (lambda (x) (+ x крок)))", session)
+                .expect("closure def");
+        });
+
+        assert_eq!(set_surface_impl("uk").expect("uk"), "ук");
+        SESSION.with(|slot| {
+            let mut guard = slot.borrow_mut();
+            let session = &mut guard.as_mut().unwrap().session;
+            let uk = eval_program("(атом? 'мама)", session).expect("uk alias");
+            assert_eq!(uk.value.to_string(), "t");
+            eval_program("(define крок 2)", session).expect("redefine user value");
+            let closure = eval_program("(додай-крок 5)", session).expect("closure");
+            assert_eq!(closure.value.to_string(), "7");
+        });
+
+        assert_eq!(set_surface_impl("core").expect("core"), "core");
+        SESSION.with(|slot| {
+            let guard = slot.borrow();
+            let state = guard.as_ref().unwrap();
+            assert!(state.session.environment.get("атом?").is_none());
+            assert!(state.session.environment.get("додай-крок").is_some());
         });
     }
 
@@ -182,7 +350,7 @@ mod tests {
 
         SESSION.with(|slot| {
             let mut guard = slot.borrow_mut();
-            let session = guard.as_mut().unwrap();
+            let session = &mut guard.as_mut().unwrap().session;
 
             let (unicode, _) = my_lisp_literate::eval_literate(
                 r#"(string-slice "привіт" 1 3)"#,
@@ -210,7 +378,7 @@ mod tests {
         // Define foo in one call
         SESSION.with(|slot| {
             let mut guard = slot.borrow_mut();
-            let session = guard.as_mut().unwrap();
+            let session = &mut guard.as_mut().unwrap().session;
             let _ = my_lisp_literate::eval_literate(
                 "(def foo (lambda (x) (+ x 1)))",
                 SourceMode::PureLisp,
@@ -222,7 +390,7 @@ mod tests {
         // Call foo in a separate eval — same session
         SESSION.with(|slot| {
             let mut guard = slot.borrow_mut();
-            let session = guard.as_mut().unwrap();
+            let session = &mut guard.as_mut().unwrap().session;
             let (result, _) =
                 my_lisp_literate::eval_literate("(foo 5)", SourceMode::PureLisp, session)
                     .expect("foo should be visible from previous eval");

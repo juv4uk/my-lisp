@@ -20,6 +20,42 @@ fn allowed_processes(args: &[String]) -> Vec<String> {
         .map(|list| list.split(',').map(str::to_string).collect())
         .unwrap_or_default()
 }
+
+fn extract_repl_surface(args: Vec<String>) -> Result<(Vec<String>, repl::ReplSurface), String> {
+    let mut output = Vec::with_capacity(args.len());
+    let mut input = args.into_iter();
+    let Some(program) = input.next() else {
+        return Ok((output, repl::ReplSurface::Core));
+    };
+    output.push(program);
+    let mut input = input.peekable();
+    let mut surface = repl::ReplSurface::Core;
+    let mut seen = false;
+
+    while let Some(arg) = input.next() {
+        let surface_value = if arg == "--surface" {
+            Some(
+                input
+                    .next()
+                    .ok_or_else(|| "--surface requires uk|en|sa|core".to_string())?,
+            )
+        } else {
+            arg.strip_prefix("--surface=").map(str::to_string)
+        };
+
+        if let Some(value) = surface_value {
+            if seen {
+                return Err("--surface may be specified only once".to_string());
+            }
+            surface = repl::ReplSurface::parse(&value)
+                .ok_or_else(|| format!("unknown REPL surface: {value}"))?;
+            seen = true;
+        } else {
+            output.push(arg);
+        }
+    }
+    Ok((output, surface))
+}
 fn main() {
     // The CLI is a trusted local Lisp-machine surface: install the OS
     // capability layer (filesystem, process execution, TCP). The semantic
@@ -32,6 +68,13 @@ fn main() {
         .into_iter()
         .filter(|arg| !arg.starts_with("--allow-process=") && arg != "--protocol=sexpr")
         .collect();
+    let (args, repl_surface) = match extract_repl_surface(args) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            eprintln!("my-lisp: {error}");
+            process::exit(2);
+        }
+    };
     let allowed_for_tcp = allowed.clone();
     // Plain `f64`s, not a `Value` — `run_tcp_repl_sexpr` spawns one thread
     // per connection, and `Value`'s `Rc`-based sharing isn't `Send`; each
@@ -198,6 +241,7 @@ fn main() {
             println!("  lsp                          Run the Language Server (LSP over stdio)");
             println!("  -V, --version               Print version information");
             println!("  -h, --help                  Print help information");
+            println!("  --surface=uk|en|sa|core      Start the interactive REPL with this programming surface");
             println!(
                 "  --allow-process=a,b,c        TCP/oracle only: allow exactly these process names"
             );
@@ -367,6 +411,12 @@ fn main() {
             }
         }
 
+        // `--surface` належить інтерактивному REPL, а не semantics/file execution.
+        if repl_surface != repl::ReplSurface::Core {
+            eprintln!("my-lisp: --surface is available only when starting the interactive REPL");
+            process::exit(2);
+        }
+
         // Run file
         let filename = arg;
 
@@ -417,6 +467,6 @@ fn main() {
         }
     } else {
         // REPL mode
-        repl::run_repl(session);
+        repl::run_repl(session, repl_surface);
     }
 }

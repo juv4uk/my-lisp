@@ -188,6 +188,27 @@ impl Environment {
         )
     }
 
+    /// Перепід'єднує лише безпосереднього lexical parent цього frame.
+    /// Це host/UI-механізм для стабільного user-frame поверх змінної
+    /// програмної поверхні; Lisp-семантику він не розширює.
+    /// Відхиляє цикли та parent з іншими transcript/limits.
+    pub fn reparent(&self, parent: Environment) -> Result<(), &'static str> {
+        if !Rc::ptr_eq(&self.1, &parent.1) || !Rc::ptr_eq(&self.2, &parent.2) {
+            return Err("new parent must share transcript and limits");
+        }
+
+        let mut current = Some(parent.clone());
+        while let Some(environment) = current {
+            if Rc::ptr_eq(&self.0, &environment.0) {
+                return Err("reparent would create an environment cycle");
+            }
+            current = environment.0.borrow().parent.clone();
+        }
+
+        self.0.borrow_mut().parent = Some(parent);
+        Ok(())
+    }
+
     pub fn print(&self, line: String) {
         self.1.borrow_mut().lines.push(line);
     }
@@ -348,6 +369,29 @@ mod tests {
     }
 
     #[test]
+    fn reparent_changes_only_inherited_bindings_and_keeps_local_bindings() {
+        let root = Environment::root();
+        let first_parent = root.child();
+        first_parent.define("surface", Value::Symbol(Rc::from("first")));
+        let user = first_parent.child();
+        user.define("mine", Value::Number(7.0, Exactness::Exact));
+
+        let second_parent = root.child();
+        second_parent.define("surface", Value::Symbol(Rc::from("second")));
+        user.reparent(second_parent).expect("safe sibling reparent");
+
+        assert_eq!(user.get("surface"), Some(Value::Symbol(Rc::from("second"))));
+        assert_eq!(user.get("mine"), Some(Value::Number(7.0, Exactness::Exact)));
+    }
+
+    #[test]
+    fn reparent_rejects_a_cycle() {
+        let root = Environment::root();
+        let child = root.child();
+        assert!(root.reparent(child).is_err());
+    }
+
+    #[test]
     fn child_binding_shadows_the_parent_without_mutating_it() {
         let root = Environment::root();
         root.define("x", Value::Number(1.0, Exactness::Exact));
@@ -380,8 +424,14 @@ mod tests {
             .with_tcp_listen_allowlist(vec![("127.0.0.1".into(), 9999, 9999)]);
         let child = root.child();
 
-        assert_eq!(child.fs_read_roots(), Some(vec![PathBuf::from("/safe/read")]));
-        assert_eq!(child.fs_write_roots(), Some(vec![PathBuf::from("/safe/write")]));
+        assert_eq!(
+            child.fs_read_roots(),
+            Some(vec![PathBuf::from("/safe/read")])
+        );
+        assert_eq!(
+            child.fs_write_roots(),
+            Some(vec![PathBuf::from("/safe/write")])
+        );
         assert!(child.is_tcp_connect_allowed("127.0.0.1", 8080));
         assert!(!child.is_tcp_connect_allowed("example.org", 8080));
         assert!(child.is_tcp_listen_allowed("127.0.0.1", 9999));
