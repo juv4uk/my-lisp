@@ -1,22 +1,34 @@
-; Repository-scoped C5 audit for the legacy :9999 coordination surface.
+; Ecosystem-scoped C5 audit for the legacy :9999 coordination surface.
 ; This is evidence about the removal gate, not a claim that the gate passed.
 ; The authoritative coordination plane is swarm-node :910x; :9999 remains the
 ; semantic oracle. Physical legacy removal is forbidden while status is partial.
+;
+; Important: semantic-oracle callers of :9999 are intentionally NOT blockers.
+; The gate concerns only the deprecated coordination operations.
 
 (def *swarm-no-live-callers-audit*
   (quote
     ((schema . swarm-no-live-callers-audit/1)
      (as-of . "2026-09-07")
-     (scope . repository)
+     (scope . ecosystem)
      (status . partial)
      (safe-to-remove . ())
      (coordination-authority . swarm-node)
      (semantic-oracle . my-lisp-9999)
      (semantic-operations . (eval parse diagnose contract-version))
+     (checked-heads .
+       ((my-lisp . fd879d195494ac8871de8e60e827786e41a36467)
+        (cml . 39ffb9c2cf6b67a2fc9eb9577f7724efbc238f34)
+        (fpga-lisp . 502e43bbcb248d2ddbdfb15f8742a1bedd4f4e37)
+        (my-idea . cb5dd10fccfe788e101bd6d63bc2e4c8c0a136c3)))
      (confirmed .
        ((primary-agent-guide . AGENTS.md)
         (migration-authority . docs/swarm-mesh-v2.md)
-        (deprecation-marker . knowledge/swarm-legacy-deprecation.wsm)))
+        (deprecation-marker . knowledge/swarm-legacy-deprecation.wsm)
+        (cml-primary-guide . "cml/AGENTS.md separates swarm-node coordination from :9999 semantics")
+        (fpga-lisp-primary-guide . "fpga-lisp/AGENTS.md separates swarm-node coordination from :9999 semantics")
+        (my-idea-primary-guide . "my-idea/AGENTS.md separates swarm-node coordination from :9999 semantics")
+        (semantic-callers-allowed . "fpga-lisp oracle crosscheck and my-idea oracle client use :9999 as semantic oracle")))
      (blockers .
        ((active-snapshot-guidance
           ecosystem-status.my
@@ -26,11 +38,15 @@
           "still contains a copy-paste (op notify) command for :9999")
         (legacy-cli-regression-caller
           crates/my-lisp-cli/tests/cli.rs
-          "still invokes sync-tasks/complete-task/next-best-action on the legacy server")))
+          "still invokes sync-tasks/complete-task/next-best-action on the legacy server")
+        (cross-repo-active-caller
+          cml/tasks.my
+          "still instructs the cml agent to sync the durable plan into the shared :9999 registry with sync-tasks")))
      (physical-surface-still-present .
        (crates/my-lisp-cli/src/swarm.rs))
      (next-proof .
        (remove-or-quarantine-active-legacy-guidance
+        retire-cross-repo-legacy-guidance
         retire-legacy-regression-callers
-        scan-executable-call-sites
+        scan-executable-coordination-call-sites
         preserve-eval-parse-diagnose)))))
