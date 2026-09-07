@@ -21,8 +21,8 @@ fn bare_number_quantity_and_scientific_constant_are_distinct_data_levels() {
         (list
           (quantity? 299792458)
           (quantity?
-            (scientific-constant-quantity si:speed-of-light-constant))
-          (scientific-constant? si:speed-of-light-constant)
+            (scientific-constant-quantity si:defining-speed-of-light))
+          (scientific-constant? si:defining-speed-of-light)
           (scientific-constant? 299792458))
     "#;
     assert_eq!(eval_science(source), "(() t t ())");
@@ -32,14 +32,14 @@ fn bare_number_quantity_and_scientific_constant_are_distinct_data_levels() {
 fn speed_of_light_record_keeps_value_unit_status_kind_system_and_source() {
     let source = r#"
         (list
-          (scientific-constant-name si:speed-of-light-constant)
-          (scientific-constant-value si:speed-of-light-constant)
+          (scientific-constant-name si:defining-speed-of-light)
+          (scientific-constant-value si:defining-speed-of-light)
           (unit-dimensions
-            (scientific-constant-unit si:speed-of-light-constant))
-          (scientific-constant-status si:speed-of-light-constant)
-          (scientific-constant-kind si:speed-of-light-constant)
-          (scientific-constant-system si:speed-of-light-constant)
-          (scientific-constant-source si:speed-of-light-constant))
+            (scientific-constant-unit si:defining-speed-of-light))
+          (scientific-constant-status si:defining-speed-of-light)
+          (scientific-constant-kind si:defining-speed-of-light)
+          (scientific-constant-system si:defining-speed-of-light)
+          (scientific-constant-source si:defining-speed-of-light))
     "#;
     assert_eq!(
         eval_science(source),
@@ -58,13 +58,13 @@ fn all_seven_si_records_are_valid_exact_defining_constants() {
               (scientific-constant-kind constant)
               (scientific-constant-system constant)))
           (list
-            si:cesium-frequency-constant
-            si:speed-of-light-constant
-            si:planck-constant-record
-            si:elementary-charge-constant
-            si:boltzmann-constant-record
-            si:avogadro-constant-record
-            si:luminous-efficacy-constant))
+            si:defining-cesium-frequency
+            si:defining-speed-of-light
+            si:defining-planck-constant
+            si:defining-elementary-charge
+            si:defining-boltzmann-constant
+            si:defining-avogadro-constant
+            si:defining-luminous-efficacy))
     "#;
     assert_eq!(
         eval_science(source),
@@ -77,19 +77,19 @@ fn established_numeric_si_surface_is_derived_from_the_authoritative_records() {
     let source = r#"
         (list
           (= si:cesium-frequency
-             (scientific-constant-value si:cesium-frequency-constant))
+             (scientific-constant-value si:defining-cesium-frequency))
           (= si:speed-of-light
-             (scientific-constant-value si:speed-of-light-constant))
+             (scientific-constant-value si:defining-speed-of-light))
           (= si:planck-constant
-             (scientific-constant-value si:planck-constant-record))
+             (scientific-constant-value si:defining-planck-constant))
           (= si:elementary-charge
-             (scientific-constant-value si:elementary-charge-constant))
+             (scientific-constant-value si:defining-elementary-charge))
           (= si:boltzmann-constant
-             (scientific-constant-value si:boltzmann-constant-record))
+             (scientific-constant-value si:defining-boltzmann-constant))
           (= si:avogadro-constant
-             (scientific-constant-value si:avogadro-constant-record))
+             (scientific-constant-value si:defining-avogadro-constant))
           (= si:luminous-efficacy
-             (scientific-constant-value si:luminous-efficacy-constant)))
+             (scientific-constant-value si:defining-luminous-efficacy)))
     "#;
     assert_eq!(eval_science(source), "(t t t t t t t)");
 }
@@ -131,13 +131,13 @@ fn si_source_does_not_reintroduce_a_second_literal_authority_for_numeric_views()
     }
 
     for derived in [
-        "(def si:cesium-frequency (si:constant-value si:cesium-frequency-constant))",
-        "(def si:speed-of-light (si:constant-value si:speed-of-light-constant))",
-        "(def si:planck-constant (si:constant-value si:planck-constant-record))",
-        "(def si:elementary-charge (si:constant-value si:elementary-charge-constant))",
-        "(def si:boltzmann-constant (si:constant-value si:boltzmann-constant-record))",
-        "(def si:avogadro-constant (si:constant-value si:avogadro-constant-record))",
-        "(def si:luminous-efficacy (si:constant-value si:luminous-efficacy-constant))",
+        "(def si:cesium-frequency (si:constant-value si:defining-cesium-frequency))",
+        "(def si:speed-of-light (si:constant-value si:defining-speed-of-light))",
+        "(def si:planck-constant (si:constant-value si:defining-planck-constant))",
+        "(def si:elementary-charge (si:constant-value si:defining-elementary-charge))",
+        "(def si:boltzmann-constant (si:constant-value si:defining-boltzmann-constant))",
+        "(def si:avogadro-constant (si:constant-value si:defining-avogadro-constant))",
+        "(def si:luminous-efficacy (si:constant-value si:defining-luminous-efficacy))",
     ] {
         assert!(si.contains(derived), "missing derived SI numeric view: {derived}");
     }
