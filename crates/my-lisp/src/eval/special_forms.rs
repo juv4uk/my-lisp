@@ -18,8 +18,8 @@ pub(super) use core::{
 };
 pub(super) use digest::sha256_hex_values;
 pub(super) use io::{
-    evaluate_eval, evaluate_princ, evaluate_print, evaluate_read, evaluate_read_all,
-    evaluate_write_to_string,
+    eval_values, princ_values, print_values, read_all_values, read_values,
+    write_to_string_values,
 };
 pub(super) use strings::{
     evaluate_string_slice, string_append_values, string_first_values, string_less_than_values,

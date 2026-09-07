@@ -10,6 +10,8 @@
 //! mechanisms are ordinary builtin values too; the evaluator does not need
 //! head-name dispatch for them.
 //! Batch 3 (2026-09-07): JSON decode is likewise an eager first-class builtin.
+//! Batch 4 (2026-09-07): print/read/eval reflection mechanisms are ordinary
+//! first-class builtins; only genuine syntax remains in evaluator dispatch.
 
 use crate::environment::Environment;
 use crate::eval::arithmetic::{
@@ -17,10 +19,11 @@ use crate::eval::arithmetic::{
 };
 use crate::eval::special_forms::json::json_parse_values;
 use crate::eval::special_forms::{
-    car_value, cdr_value, codepoint_to_string_values, cons_values, eq_values,
-    sha256_hex_values, string_append_values, string_first_values, string_less_than_values,
-    string_predicate_values, string_rest_values, string_to_codepoint_values,
-    string_to_symbol_values, symbol_to_string_values,
+    car_value, cdr_value, codepoint_to_string_values, cons_values, eq_values, eval_values,
+    princ_values, print_values, read_all_values, read_values, sha256_hex_values,
+    string_append_values, string_first_values, string_less_than_values, string_predicate_values,
+    string_rest_values, string_to_codepoint_values, string_to_symbol_values,
+    symbol_to_string_values, write_to_string_values,
 };
 use crate::{Exactness, NumericBuffer, Rational, Span, Value};
 
@@ -358,6 +361,13 @@ pub(crate) fn install(environment: &Environment) {
     define!(environment, "string->codepoint", |args: &[Value], _env: &Environment, span: Span| string_to_codepoint_values(args, span));
     define!(environment, "sha256-hex", |args: &[Value], _env: &Environment, span: Span| sha256_hex_values(args, span));
     define!(environment, "json-parse", |args: &[Value], _env: &Environment, span: Span| json_parse_values(args, span));
+
+    define!(environment, "print", |args: &[Value], env: &Environment, span: Span| print_values(args, env, span));
+    define!(environment, "princ", |args: &[Value], env: &Environment, span: Span| princ_values(args, env, span));
+    define!(environment, "write-to-string", |args: &[Value], env: &Environment, span: Span| write_to_string_values(args, env, span));
+    define!(environment, "read", |args: &[Value], env: &Environment, span: Span| read_values(args, env, span));
+    define!(environment, "read-all", |args: &[Value], env: &Environment, span: Span| read_all_values(args, env, span));
+    define!(environment, "eval", |args: &[Value], env: &Environment, span: Span| eval_values(args, env, span));
 
     define!(environment, "numeric-buffer?", |args: &[Value], _env: &Environment, span: Span| {
         exact_args("numeric-buffer?", args, 1, span)?;

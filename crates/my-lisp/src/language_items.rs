@@ -78,42 +78,6 @@ const SYNTAX_FORMS: &[(&str, &str, &str, Arity)] = &[
         "Evaluate the first matching clause",
         Arity::AtLeast(0),
     ),
-    (
-        "print",
-        "(print value)",
-        "Output value followed by newline",
-        Arity::Exact(1),
-    ),
-    (
-        "princ",
-        "(princ value)",
-        "Output value without newline",
-        Arity::Exact(1),
-    ),
-    (
-        "write-to-string",
-        "(write-to-string value)",
-        "Return a readable string representation",
-        Arity::Exact(1),
-    ),
-    (
-        "read",
-        "(read [source])",
-        "Read one s-expression from a string or stdin",
-        Arity::Between { min: 0, max: 1 },
-    ),
-    (
-        "eval",
-        "(eval expression)",
-        "Evaluate an expression represented as data",
-        Arity::Exact(1),
-    ),
-    (
-        "read-all",
-        "(read-all source)",
-        "Read all expressions from a string",
-        Arity::Exact(1),
-    ),
 ];
 
 fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
@@ -322,6 +286,36 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
         "json-parse" => (
             "(json-parse string)",
             "Parse JSON into my-lisp values",
+            Arity::Exact(1),
+        ),
+        "print" => (
+            "(print value)",
+            "Output value followed by newline",
+            Arity::Exact(1),
+        ),
+        "princ" => (
+            "(princ value)",
+            "Output value without reader quoting",
+            Arity::Exact(1),
+        ),
+        "write-to-string" => (
+            "(write-to-string value)",
+            "Return a readable string representation",
+            Arity::Exact(1),
+        ),
+        "read" => (
+            "(read [source])",
+            "Read one s-expression from a string or stdin",
+            Arity::Between { min: 0, max: 1 },
+        ),
+        "read-all" => (
+            "(read-all source)",
+            "Read all expressions from a string",
+            Arity::Exact(1),
+        ),
+        "eval" => (
+            "(eval expression)",
+            "Evaluate an expression represented as data",
             Arity::Exact(1),
         ),
         _ => (

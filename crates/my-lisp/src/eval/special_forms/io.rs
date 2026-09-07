@@ -1,70 +1,50 @@
-//! `print`/`princ`/`write-to-string`, the `read`/`eval`/`read-all`/`load`
-//! read-eval-loop primitives, and the one place in the crate that touches
-//! real stdin (`read_stdin_line`, behind `(read)` with no arguments).
+//! `print`/`princ`/`write-to-string`, `read`/`eval`/`read-all`, and the one
+//! place in the crate that touches real stdin (`read_stdin_line`, behind
+//! `(read)` with no arguments).
+//!
+//! These operations are value-level mechanisms. Their callable identities are
+//! ordinary root `Value::Builtin` bindings; the evaluator does not dispatch on
+//! their names.
 
-use super::core::{exact_arity, quoted};
+use super::core::quoted;
 use crate::eval::{closures, evaluate};
 use crate::{Environment, ErrorKind, Expr, LanguageError, Span, Value};
 use std::rc::Rc;
 
-/// `print` evaluates its one argument and appends its `Display` text to the
-/// session-wide output transcript (`Environment::print`) rather than writing
-/// to stdout/stderr directly — the crate stays capability-free, and it's the
-/// host (`my-lisp-cli`, `my-lisp-wasm`) that decides where `EvalResult.output`
-/// actually goes. Returns the evaluated value, so `(print x)` composes like
-/// Common Lisp's `print` instead of being a dead end in an expression.
-pub(crate) fn evaluate_print(
-    arguments: &[Expr],
+pub(crate) fn print_values(
+    arguments: &[Value],
     environment: &Environment,
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("print", arguments, 1, span)?;
-    let value = evaluate(&arguments[0], environment)?;
+    exact_values("print", arguments, 1, span)?;
+    let value = arguments[0].clone();
     environment.print(value.to_string());
     Ok(value)
 }
 
-/// `princ`, the `display`/`princ` half of the classic Lisp print-function
-/// pair `print` is the other half of (see `Value::to_princ_string`):
-/// strings come out raw, no surrounding quotes or escapes — for output
-/// meant for a person or for reassembling as literal text, never meant to
-/// be `read` back as the same value.
-pub(crate) fn evaluate_princ(
-    arguments: &[Expr],
+pub(crate) fn princ_values(
+    arguments: &[Value],
     environment: &Environment,
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("princ", arguments, 1, span)?;
-    let value = evaluate(&arguments[0], environment)?;
+    exact_values("princ", arguments, 1, span)?;
+    let value = arguments[0].clone();
     environment.print(value.to_princ_string());
     Ok(value)
 }
 
-/// Returns the same canonical, read-back-safe representation used by `print`
-/// without touching the output transcript. This is the minimal bridge needed
-/// to compose structured Lisp data with `write-file` and `tcp-write`.
-pub(crate) fn evaluate_write_to_string(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn write_to_string_values(
+    arguments: &[Value],
+    _environment: &Environment,
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("write-to-string", arguments, 1, span)?;
-    let value = evaluate(&arguments[0], environment)?;
-    Ok(Value::String(Rc::from(value.to_string())))
+    exact_values("write-to-string", arguments, 1, span)?;
+    Ok(Value::String(Rc::from(arguments[0].to_string())))
 }
 
-/// `read` is McCarthy's original reader primitive: it turns text into one
-/// s-expression of *data*, the same way `'expr` does, without evaluating it —
-/// `(eval (read "(+ 1 2)"))` is the read/eval loop written out by hand, in
-/// the language itself. `(read "...")` (one argument) stays capability-free,
-/// same as the rest of the crate — it parses the given string. `(read)`
-/// (zero arguments) is the deliberate, explicit exception: it blocks on one
-/// line of real stdin via `read_stdin_line`, which is `#[cfg]`-gated to a
-/// clear `InvalidForm` error instead of a panic on `wasm32` — the browser
-/// REPL (`crates/my-lisp-wasm`) has no console to block on.
-pub(crate) fn evaluate_read(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn read_values(
+    arguments: &[Value],
+    _environment: &Environment,
     span: Span,
 ) -> Result<Value, LanguageError> {
     if arguments.len() > 1 {
@@ -75,17 +55,15 @@ pub(crate) fn evaluate_read(
         ));
     }
     let source = if let Some(argument) = arguments.first() {
-        // `Value` has a custom `Drop` impl (iterative, for stack-safe deep-list
-        // drop), which forbids partially moving a field out of a match on it by
-        // value — hence matching on a reference and cloning the cheap `Rc<str>`.
-        let evaluated = evaluate(argument, environment)?;
-        match &evaluated {
+        match argument {
             Value::String(text) => text.to_string(),
-            _ => return Err(LanguageError::new(
-                ErrorKind::Type,
-                "read expects a string · read ochikuie riadok · read erwartet eine Zeichenkette",
-                argument.span,
-            )),
+            _ => {
+                return Err(LanguageError::new(
+                    ErrorKind::Type,
+                    "read expects a string · read ochikuie riadok · read erwartet eine Zeichenkette",
+                    span,
+                ))
+            }
         }
     } else {
         read_stdin_line(span)?
@@ -107,17 +85,6 @@ pub(crate) fn evaluate_read(
     }
 }
 
-/// Blocks on one line of real stdin. This is the one place in the crate that
-/// touches an actual host I/O stream — see `evaluate_read`'s doc comment for
-/// why this exception exists and how it's scoped away from `wasm32`.
-// Reliable when `my-lisp-cli` runs a *file* (verified: `(eval (read))` in a
-// file, piped stdin data, evaluates correctly end to end). Inside the
-// interactive REPL, this competes with rustyline for the same stdin — with
-// piped/redirected (non-TTY) input, rustyline's own line reading can buffer
-// ahead of what it hands back, so a later `(read)` call sees less than a
-// real terminal session would. A genuine TTY reads line-by-line in raw mode
-// without that over-buffering, so typed-at-a-terminal REPL use is expected
-// to behave; piped REPL input is the documented edge case, not a silent gap.
 #[cfg(not(target_arch = "wasm32"))]
 fn read_stdin_line(span: Span) -> Result<String, LanguageError> {
     use std::io::BufRead;
@@ -141,20 +108,13 @@ fn read_stdin_line(span: Span) -> Result<String, LanguageError> {
     ))
 }
 
-/// `eval` closes the read/eval loop McCarthy's Lisp is built around:
-/// evaluates its argument to get a *datum* (typically from `read` or
-/// `quote`), then evaluates that datum as code. Reuses `closures::value_to_expr`,
-/// the same data->code conversion macro expansion already relies on, rather
-/// than duplicating the cons-cell walk. `Closure`/`Macro` values are
-/// self-evaluating (returned unchanged) since there's no source syntax for
-/// them to convert back into.
-pub(crate) fn evaluate_eval(
-    arguments: &[Expr],
+pub(crate) fn eval_values(
+    arguments: &[Value],
     environment: &Environment,
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("eval", arguments, 1, span)?;
-    let datum = evaluate(&arguments[0], environment)?;
+    exact_values("eval", arguments, 1, span)?;
+    let datum = arguments[0].clone();
     if matches!(datum, Value::Closure(_) | Value::Macro(_)) {
         return Ok(datum);
     }
@@ -162,21 +122,13 @@ pub(crate) fn evaluate_eval(
     evaluate(&expression, environment)
 }
 
-/// Step 4 of `lib/clips-import.my`: reading a *real* `.clp` file off disk
-/// rather than a caller-supplied quoted literal. `load` already reads a
-/// file, but evaluates every top-level form it finds — exactly wrong for
-/// CLIPS source, whose `defrule`/`=>` forms aren't meaningful my-lisp code
-/// to *run*, only to read as data. `read-all` parses text into every
-/// top-level form as data, the multi-form counterpart to `read` (which
-/// errors unless the string holds exactly one form).
-pub(crate) fn evaluate_read_all(
-    arguments: &[Expr],
-    environment: &Environment,
+pub(crate) fn read_all_values(
+    arguments: &[Value],
+    _environment: &Environment,
     span: Span,
 ) -> Result<Value, LanguageError> {
-    exact_arity("read-all", arguments, 1, span)?;
-    let evaluated = evaluate(&arguments[0], environment)?;
-    let Value::String(ref text) = evaluated else {
+    exact_values("read-all", arguments, 1, span)?;
+    let Value::String(text) = &arguments[0] else {
         return Err(LanguageError::new(
             ErrorKind::Type,
             "read-all expects a string · read-all ochikuie riadok · read-all erwartet eine Zeichenkette",
@@ -192,4 +144,20 @@ pub(crate) fn evaluate_read_all(
         values.push(quoted(expression)?);
     }
     Ok(Value::list(values))
+}
+
+fn exact_values(
+    name: &'static str,
+    arguments: &[Value],
+    expected: usize,
+    span: Span,
+) -> Result<(), LanguageError> {
+    if arguments.len() != expected {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            format!("{name} expects exactly {expected} argument(s)"),
+            span,
+        ));
+    }
+    Ok(())
 }

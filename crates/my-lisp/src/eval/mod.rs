@@ -210,25 +210,6 @@ fn evaluate_list(
         Some("cond" | "за-умовою" | "anukrama") => {
             special_forms::evaluate_cond(arguments, environment, span)
         }
-        Some("print") => {
-            special_forms::evaluate_print(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("princ") => {
-            special_forms::evaluate_princ(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("write-to-string") => {
-            special_forms::evaluate_write_to_string(arguments, environment, span)
-                .map(EvalStep::Value)
-        }
-        Some("read") => {
-            special_forms::evaluate_read(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("eval") => {
-            special_forms::evaluate_eval(arguments, environment, span).map(EvalStep::Value)
-        }
-        Some("read-all") => {
-            special_forms::evaluate_read_all(arguments, environment, span).map(EvalStep::Value)
-        }
         _ => {
             if let Some(name) = items[0].kind.as_symbol() {
                 if let Some(result) = capabilities::dispatch_capability(name, arguments, environment, span) {
