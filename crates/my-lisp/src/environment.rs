@@ -1,138 +1,128 @@
 use crate::Value;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::path::PathBuf;
-use std::rc::Rc;
+use std::{cell::RefCell, collections::HashMap, path::PathBuf, rc::Rc};
 
-#[derive(Clone, Debug, Default)]
-struct Limits {
-    max_numeric_bits: Option<usize>,
-    max_cons_cells: Option<usize>,
-    cons_cells_used: usize,
-    fs_read_roots: Option<Vec<PathBuf>>,
-    fs_write_roots: Option<Vec<PathBuf>>,
-    tcp_connect_allow: Option<Vec<(IpAddr, u16)>>,
-    tcp_listen_allow: Option<Vec<(IpAddr, u16)>>,
-    process_allowlist: Option<Vec<String>>,
-}
-
-#[derive(Clone, Debug)]
-struct Frame {
-    bindings: HashMap<String, Value>,
-    parent: Option<Environment>,
+/// Dropping a deeply nested `Environment` chain (thousands of `let`/currying
+/// levels) would otherwise recurse through `Rc<RefCell<Frame>>`'s default
+/// `Drop` one stack frame per level and could overflow the stack. `Environment`
+/// has its own `Drop` below (mirroring `Value::Pair`'s iterative Drop in
+/// `value.rs`) that walks the parent chain with an explicit worklist instead,
+/// so this is fixed, not just documented as a live risk.
+/// Session-wide print transcript plus a consumer cursor, so hot hosts
+/// (REPL, LSP, swarm TCP) can take only the lines appended since their
+/// last read instead of re-cloning the whole history per evaluation.
+#[derive(Debug)]
+pub struct Transcript {
+    lines: Vec<String>,
+    taken: usize,
 }
 
 #[derive(Clone, Debug)]
 pub struct Environment(
     Rc<RefCell<Frame>>,
-    Rc<RefCell<Vec<String>>>,
+    Rc<RefCell<Transcript>>,
     Rc<RefCell<Limits>>,
 );
 
+#[derive(Debug)]
+struct Frame {
+    values: HashMap<Rc<str>, Value>,
+    parent: Option<Environment>,
+}
+
+/// Opt-in resource/capability limits for one session, shared across every
+/// lexical child. `None` remains the trusted native profile: unrestricted for
+/// that dimension once the host capability layer is installed. Embeddings can
+/// opt into narrower policies without changing language semantics.
+#[derive(Debug, Default)]
+struct Limits {
+    cons_limit: Option<usize>,
+    cons_count: usize,
+    numeric_bit_limit: Option<usize>,
+    /// Exact program-name policy. `None` = unrestricted, `Some([])` = deny all.
+    process_allowlist: Option<Vec<String>>,
+    /// Filesystem roots are stored as caller-supplied paths. The host layer,
+    /// not the language core, owns canonicalization/symlink enforcement.
+    fs_read_roots: Option<Vec<PathBuf>>,
+    fs_write_roots: Option<Vec<PathBuf>>,
+    /// (host-or-bind-address, first-port, last-port), inclusive.
+    tcp_connect_allowlist: Option<Vec<(String, u16, u16)>>,
+    tcp_listen_allowlist: Option<Vec<(String, u16, u16)>>,
+}
+
 impl Environment {
     pub fn root() -> Self {
-        let mut bindings = HashMap::new();
-        bindings.insert("t".into(), Value::Symbol(Rc::from("t")));
-        Self(
+        let environment = Self(
             Rc::new(RefCell::new(Frame {
-                bindings,
+                values: HashMap::new(),
                 parent: None,
             })),
-            Rc::new(RefCell::new(Vec::new())),
-            Rc::new(RefCell::new(Limits::default())),
-        )
-    }
-
-    pub fn child(&self) -> Self {
-        Self(
-            Rc::new(RefCell::new(Frame {
-                bindings: HashMap::new(),
-                parent: Some(self.clone()),
+            Rc::new(RefCell::new(Transcript {
+                lines: Vec::new(),
+                taken: 0,
             })),
-            self.1.clone(),
-            self.2.clone(),
-        )
+            Rc::new(RefCell::new(Limits::default())),
+        );
+        // `t` is the canonical truth value itself, not a variable that
+        // merely holds one: bound to the symbol `t` (self-referential),
+        // so `t` evaluates to `Symbol("t")` -- the exact value `eq`/`atom`
+        // (Value::truth) already return for true.
+        environment.define("t", Value::Symbol(Rc::from("t")));
+        // contract 2.1: primitives enter the root environment as first-class
+        // builtin values -- one runtime authority, no head-only registry.
+        crate::eval::builtins::install(&environment);
+        environment
     }
 
-    pub fn define(&self, name: impl Into<String>, value: Value) {
-        self.0.borrow_mut().bindings.insert(name.into(), value);
-    }
-
-    pub fn get(&self, name: &str) -> Option<Value> {
-        let mut current = Some(self.clone());
-        while let Some(environment) = current {
-            let frame = environment.0.borrow();
-            if let Some(value) = frame.bindings.get(name) {
-                return Some(value.clone());
-            }
-            current = frame.parent.clone();
-        }
-        None
-    }
-
-    pub fn record_output(&self, line: String) {
-        self.1.borrow_mut().push(line);
-    }
-
-    pub fn output_snapshot(&self) -> Vec<String> {
-        self.1.borrow().clone()
-    }
-
-    pub fn output_take_new(&self) -> Vec<String> {
-        std::mem::take(&mut *self.1.borrow_mut())
-    }
-
-    /// Opt in to a maximum exact-integer/rational numerator/denominator size.
-    /// `None` (the default) preserves the language's unbounded arithmetic
-    /// contract. The limit is a resource guard, not a numeric semantic change.
-    pub fn with_max_numeric_bits(self, max_bits: usize) -> Self {
-        self.2.borrow_mut().max_numeric_bits = Some(max_bits);
+    /// Opts this session into a maximum `cons` allocation count — past it,
+    /// `cons` returns `ErrorKind::OutOfMemory` instead of succeeding.
+    pub fn with_cons_limit(self, limit: usize) -> Self {
+        self.2.borrow_mut().cons_limit = Some(limit);
         self
     }
 
-    pub fn max_numeric_bits(&self) -> Option<usize> {
-        self.2.borrow().max_numeric_bits
-    }
-
-    /// Opt in to a maximum number of cons cells allocated through the evaluator.
-    /// `None` (the default) keeps the historical unbounded behavior.
-    pub fn with_max_cons_cells(self, max_cells: usize) -> Self {
-        self.2.borrow_mut().max_cons_cells = Some(max_cells);
+    /// Opts this session into a maximum bit width for exact arithmetic
+    /// results — past it arithmetic returns `ErrorKind::NumericOverflow`.
+    pub fn with_numeric_bit_limit(self, limit: usize) -> Self {
+        self.2.borrow_mut().numeric_bit_limit = Some(limit);
         self
     }
 
-    pub fn max_cons_cells(&self) -> Option<usize> {
-        self.2.borrow().max_cons_cells
+    /// Restricts process execution to exact program names.
+    pub fn with_process_allowlist(self, programs: Vec<String>) -> Self {
+        self.2.borrow_mut().process_allowlist = Some(programs);
+        self
     }
 
-    pub(crate) fn reserve_cons_cell(&self) -> bool {
-        let mut limits = self.2.borrow_mut();
-        let Some(max_cells) = limits.max_cons_cells else {
-            return true;
-        };
-        if limits.cons_cells_used >= max_cells {
-            return false;
-        }
-        limits.cons_cells_used += 1;
-        true
-    }
-
-    /// Restrict filesystem reads (`read-file`, `read-dir`, `load`, raw byte
-    /// reads) to these roots. `None` remains the trusted native default;
-    /// `Some([])` is explicit deny-all.
+    /// Restricts host filesystem reads (`read-file`, `read-file-bytes`,
+    /// `read-dir`, `load`) to paths under one of these roots. Canonicalization
+    /// and symlink checks are deliberately performed by `my-lisp-host`.
     pub fn with_fs_read_roots(self, roots: Vec<PathBuf>) -> Self {
         self.2.borrow_mut().fs_read_roots = Some(roots);
         self
     }
 
-    /// Restrict filesystem writes (`write-file`, raw byte writes) to these
-    /// roots. `None` remains unrestricted; `Some([])` is deny-all.
+    /// Restricts host filesystem writes (`write-file`, `write-file-bytes`) to
+    /// paths under one of these roots.
     pub fn with_fs_write_roots(self, roots: Vec<PathBuf>) -> Self {
         self.2.borrow_mut().fs_write_roots = Some(roots);
         self
     }
 
+    /// Restricts outbound TCP connects to explicit host + inclusive port
+    /// ranges. `None` remains unrestricted; an empty list is deny-all.
+    pub fn with_tcp_connect_allowlist(self, entries: Vec<(String, u16, u16)>) -> Self {
+        self.2.borrow_mut().tcp_connect_allowlist = Some(entries);
+        self
+    }
+
+    /// Restricts TCP listen/bind operations independently from connect.
+    pub fn with_tcp_listen_allowlist(self, entries: Vec<(String, u16, u16)>) -> Self {
+        self.2.borrow_mut().tcp_listen_allowlist = Some(entries);
+        self
+    }
+
+    /// Host-owned canonicalization needs a snapshot of the configured roots;
+    /// exposing data does not give the core any filesystem behavior itself.
     pub fn fs_read_roots(&self) -> Option<Vec<PathBuf>> {
         self.2.borrow().fs_read_roots.clone()
     }
@@ -141,81 +131,132 @@ impl Environment {
         self.2.borrow().fs_write_roots.clone()
     }
 
-    /// Restrict outbound TCP connects to exact IP/port pairs. `None` is the
-    /// trusted native default; `Some([])` is deny-all.
-    pub fn with_tcp_connect_allow(self, destinations: Vec<(IpAddr, u16)>) -> Self {
-        self.2.borrow_mut().tcp_connect_allow = Some(destinations);
-        self
+    pub fn is_tcp_connect_allowed(&self, host: &str, port: u16) -> bool {
+        match &self.2.borrow().tcp_connect_allowlist {
+            Some(entries) => entries.iter().any(|(allowed_host, first, last)| {
+                allowed_host == host && *first <= port && port <= *last
+            }),
+            None => true,
+        }
     }
 
-    /// Restrict TCP listeners to exact IP/port pairs. `None` is the trusted
-    /// native default; `Some([])` is deny-all.
-    pub fn with_tcp_listen_allow(self, destinations: Vec<(IpAddr, u16)>) -> Self {
-        self.2.borrow_mut().tcp_listen_allow = Some(destinations);
-        self
+    pub fn is_tcp_listen_allowed(&self, address: &str, port: u16) -> bool {
+        match &self.2.borrow().tcp_listen_allowlist {
+            Some(entries) => entries.iter().any(|(allowed_address, first, last)| {
+                allowed_address == address && *first <= port && port <= *last
+            }),
+            None => true,
+        }
     }
 
-    pub fn tcp_connect_allow(&self) -> Option<Vec<(IpAddr, u16)>> {
-        self.2.borrow().tcp_connect_allow.clone()
+    /// Called by `cons` before allocating; `Err(())` means the configured
+    /// limit (if any) is already reached. No-op when unbounded.
+    pub(crate) fn try_alloc_cons(&self) -> Result<(), ()> {
+        let mut limits = self.2.borrow_mut();
+        if let Some(limit) = limits.cons_limit {
+            if limits.cons_count >= limit {
+                return Err(());
+            }
+        }
+        limits.cons_count += 1;
+        Ok(())
     }
 
-    pub fn tcp_listen_allow(&self) -> Option<Vec<(IpAddr, u16)>> {
-        self.2.borrow().tcp_listen_allow.clone()
+    pub(crate) fn numeric_bit_limit(&self) -> Option<usize> {
+        self.2.borrow().numeric_bit_limit
     }
 
-    /// Restrict process execution to exact program names. `None` keeps the
-    /// trusted native profile unrestricted; `Some([])` is explicit deny-all.
-    pub fn with_process_allowlist(self, programs: Vec<String>) -> Self {
-        self.2.borrow_mut().process_allowlist = Some(programs);
-        self
-    }
-
-    pub fn process_allowlist(&self) -> Option<Vec<String>> {
-        self.2.borrow().process_allowlist.clone()
-    }
-
+    /// Native root sessions are unrestricted (`None`). An embedding can set
+    /// an exact allowlist; an empty allowlist is an explicit deny-all policy.
     pub fn is_process_allowed(&self, program: &str) -> bool {
-        self.2
-            .borrow()
-            .process_allowlist
-            .as_ref()
-            .map(|programs| programs.iter().any(|allowed| allowed == program))
-            .unwrap_or(true)
+        match &self.2.borrow().process_allowlist {
+            Some(programs) => programs.iter().any(|allowed| allowed == program),
+            None => true,
+        }
     }
 
-    pub fn is_tcp_connect_allowed(&self, ip: IpAddr, port: u16) -> bool {
-        self.2
-            .borrow()
-            .tcp_connect_allow
-            .as_ref()
-            .map(|allowed| allowed.iter().any(|entry| *entry == (ip, port)))
-            .unwrap_or(true)
+    /// A child frame is the future lexical boundary captured by a closure. It
+    /// shares transcript and all session policy/limits with its parent.
+    pub fn child(&self) -> Self {
+        Self(
+            Rc::new(RefCell::new(Frame {
+                values: HashMap::new(),
+                parent: Some(self.clone()),
+            })),
+            self.1.clone(),
+            self.2.clone(),
+        )
     }
 
-    pub fn is_tcp_listen_allowed(&self, ip: IpAddr, port: u16) -> bool {
-        self.2
-            .borrow()
-            .tcp_listen_allow
-            .as_ref()
-            .map(|allowed| allowed.iter().any(|entry| *entry == (ip, port)))
-            .unwrap_or(true)
+    pub fn print(&self, line: String) {
+        self.1.borrow_mut().lines.push(line);
+    }
+
+    pub fn output_snapshot(&self) -> Vec<String> {
+        self.1.borrow().lines.clone()
+    }
+
+    pub fn output_take_new(&self) -> Vec<String> {
+        let mut transcript = self.1.borrow_mut();
+        let new = transcript.lines[transcript.taken..].to_vec();
+        transcript.taken = transcript.lines.len();
+        new
+    }
+
+    /// Snapshot of every visible binding, root-first, shadowed names resolved
+    /// to their innermost value.
+    pub fn snapshot(&self) -> Vec<(Rc<str>, Value)> {
+        let mut frames = Vec::new();
+        let mut current = Some(self.clone());
+        while let Some(env) = current {
+            frames.push(env.0.clone());
+            current = env.0.borrow().parent.clone();
+        }
+        let mut out: Vec<(Rc<str>, Value)> = Vec::new();
+        for frame in frames.iter().rev() {
+            let f = frame.borrow();
+            for (name, value) in f.values.iter() {
+                match out.iter_mut().find(|(n, _)| n == name) {
+                    Some(slot) => slot.1 = value.clone(),
+                    None => out.push((name.clone(), value.clone())),
+                }
+            }
+        }
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out
+    }
+
+    pub fn define(&self, name: impl Into<Rc<str>>, value: Value) {
+        self.0.borrow_mut().values.insert(name.into(), value);
+    }
+
+    pub fn get(&self, name: &str) -> Option<Value> {
+        let mut current = Some(self.clone());
+        while let Some(env) = current {
+            if let Some(value) = env.0.borrow().values.get(name) {
+                return Some(value.clone());
+            }
+            current = env.0.borrow().parent.clone();
+        }
+        None
     }
 }
 
 impl Drop for Environment {
     fn drop(&mut self) {
-        if Rc::strong_count(&self.0) != 1 {
-            return;
-        }
-
+        // Swap this Environment's real content out for a cheap, parentless
+        // sentinel, then walk the extracted parent chain iteratively.
         let taken = std::mem::replace(
             self,
             Environment(
                 Rc::new(RefCell::new(Frame {
-                    bindings: HashMap::new(),
+                    values: HashMap::new(),
                     parent: None,
                 })),
-                Rc::new(RefCell::new(Vec::new())),
+                Rc::new(RefCell::new(Transcript {
+                    lines: Vec::new(),
+                    taken: 0,
+                })),
                 Rc::new(RefCell::new(Limits::default())),
             ),
         );
@@ -250,7 +291,8 @@ impl Default for Session {
         let mut session = Self {
             environment: Environment::root(),
         };
-        crate::load_macro_library(&mut session)
+        crate::eval::install_macro_substrate(&session.environment);
+        crate::eval::eval_program(crate::MACRO_LIBRARY_SOURCE, &mut session)
             .expect("embedded lib/macro.my must bootstrap a default Session");
         session
     }
@@ -325,17 +367,24 @@ mod tests {
 
     #[test]
     fn host_policies_are_unrestricted_by_default_and_shared_with_children() {
-        let root = Environment::root()
-            .with_fs_read_roots(vec![PathBuf::from("/tmp/read")])
-            .with_fs_write_roots(vec![PathBuf::from("/tmp/write")])
-            .with_tcp_connect_allow(vec![("127.0.0.1".parse().unwrap(), 9999)])
-            .with_tcp_listen_allow(vec![("127.0.0.1".parse().unwrap(), 9100)])
-            .with_process_allowlist(vec!["git".into()]);
+        let root = Environment::root();
+        assert!(root.fs_read_roots().is_none());
+        assert!(root.fs_write_roots().is_none());
+        assert!(root.is_tcp_connect_allowed("example.org", 443));
+        assert!(root.is_tcp_listen_allowed("0.0.0.0", 9999));
+
+        let root = root
+            .with_fs_read_roots(vec![PathBuf::from("/safe/read")])
+            .with_fs_write_roots(vec![PathBuf::from("/safe/write")])
+            .with_tcp_connect_allowlist(vec![("127.0.0.1".into(), 8000, 9000)])
+            .with_tcp_listen_allowlist(vec![("127.0.0.1".into(), 9999, 9999)]);
         let child = root.child();
-        assert_eq!(child.fs_read_roots(), root.fs_read_roots());
-        assert_eq!(child.fs_write_roots(), root.fs_write_roots());
-        assert_eq!(child.tcp_connect_allow(), root.tcp_connect_allow());
-        assert_eq!(child.tcp_listen_allow(), root.tcp_listen_allow());
-        assert_eq!(child.process_allowlist(), root.process_allowlist());
+
+        assert_eq!(child.fs_read_roots(), Some(vec![PathBuf::from("/safe/read")]));
+        assert_eq!(child.fs_write_roots(), Some(vec![PathBuf::from("/safe/write")]));
+        assert!(child.is_tcp_connect_allowed("127.0.0.1", 8080));
+        assert!(!child.is_tcp_connect_allowed("example.org", 8080));
+        assert!(child.is_tcp_listen_allowed("127.0.0.1", 9999));
+        assert!(!child.is_tcp_listen_allowed("0.0.0.0", 9999));
     }
 }
