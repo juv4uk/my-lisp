@@ -16,10 +16,10 @@
 //! that the two paths preserve exact result/proof structure.
 //!
 //! A second diagnostic slice asks several DIFFERENT questions about one
-//! unchanged module. It compares the current public path with a test-only
-//! prepared path that reuses one projection and one finite index. This is not a
-//! cache proposal: it measures how much repeated reconstruction is available to
-//! remove before any reusable context or invalidation semantics are designed.
+//! unchanged module. It compares `reason-in-observe` with the public
+//! `reason-observe` entry supplied an explicitly prepared immutable
+//! `reason-index/1`. This is not a cache: the caller owns a finite snapshot and
+//! chooses when to prepare a newer one.
 
 use my_lisp::{eval_program, Session};
 use std::time::Instant;
@@ -170,50 +170,12 @@ const REPEATED_GOALS: [&str; 6] = [
     "(valuable missing)",
 ];
 
-/// A test-only copy of `reason-observe`'s observable decision shape that takes
-/// an already-built index. Keeping this helper local to the profile avoids
-/// inventing a public prepared/cache API before the measurement justifies one.
-fn install_prepared_observer(session: &mut Session) {
-    let source = r#"
-      (def bench-observe-with-index
-        (lambda (goal index)
-          (let* ((opposite (result-opposite-goal goal))
-                 (positive-results
-                   (prove-goal
-                     goal
-                     (reason-index-candidates goal index)
-                     (quote ())
-                     index
-                     0))
-                 (opposite-results
-                   (prove-goal
-                     opposite
-                     (reason-index-candidates opposite index)
-                     (quote ())
-                     index
-                     0)))
-            (cond
-              ((and (not (atom positive-results))
-                    (not (atom opposite-results)))
-               (make-disputed
-                 (list
-                   (make-proved goal positive-results)
-                   (make-proved opposite opposite-results))))
-              ((not (atom positive-results))
-               (make-proved goal positive-results))
-              ((not (atom opposite-results))
-               (make-proved opposite opposite-results))
-              (t (make-unknown goal))))))
-    "#;
-    eval_session(session, source);
-}
-
 fn public_observe_source(goal: &str) -> String {
     format!("(reason-in-observe (quote bench) (quote {goal}))")
 }
 
 fn prepared_observe_source(goal: &str) -> String {
-    format!("(bench-observe-with-index (quote {goal}) bench-index)")
+    format!("(reason-observe (quote {goal}) bench-index)")
 }
 
 fn timed_query_batch(session: &mut Session, prepared: bool) -> u128 {
@@ -240,7 +202,6 @@ fn timed_repeated_eval(session: &mut Session, source: &str, expected: &str) -> u
 fn profile_repeated_queries(distractors: usize) {
     let mut session = loaded_session();
     let clauses = install_mixed_module(&mut session, distractors);
-    install_prepared_observer(&mut session);
 
     eval_session(
         &mut session,
@@ -259,7 +220,9 @@ fn profile_repeated_queries(distractors: usize) {
         "indexed"
     );
 
-    // Exact outcome parity for every distinct query before timing anything.
+    // Exact public-API outcome/proof parity for every distinct query before
+    // timing anything. The prepared side passes the immutable index snapshot
+    // through the same `reason-observe` entry point ordinary callers use.
     for goal in REPEATED_GOALS {
         let parity = format!(
             "(equal? {} {})",
@@ -269,7 +232,7 @@ fn profile_repeated_queries(distractors: usize) {
         assert_eq!(
             eval_session(&mut session, &parity),
             "t",
-            "prepared diagnostic path changed outcome/proof structure for {goal}"
+            "prepared public path changed outcome/proof structure for {goal}"
         );
     }
 
