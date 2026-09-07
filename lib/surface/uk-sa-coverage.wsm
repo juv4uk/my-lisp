@@ -1,0 +1,160 @@
+; Machine-readable English ↔ Ukrainian ↔ Sanskrit coverage table.
+; Машинно-читана таблиця покриття EN ↔ UK ↔ SA.
+;
+; This table records surface-name mappings for every eligible public
+; English-facing name. It does NOT define semantics — every mapping targets
+; an existing semantic identity or public definition.
+;
+; Status values:
+;   stable            — name selected, tested, ratified
+;   candidate         — proposed name, not yet ratified
+;   missing           — no mapping yet
+;   compatibility-only — English name intentionally has no separate translation
+;
+; Format: (entry (category EN UK SA uk-status sa-status notes))
+;
+; Canon 0+7 and necessary forms are STABLE (ratified in calibration doc).
+; Batch 1 entries are CANDIDATE (proposed in batch1 research doc, pending ratification).
+
+(uk-sa-coverage
+  (schema uk-sa-coverage/1)
+
+  ;; ── Canon 0+7 ──────────────────────────────────────────────
+  (entry (canon quote як-є svarūpa stable stable "AS 1.1.68 svam rūpam"))
+  (entry (canon atom атом? aṇu stable stable "niravayava"))
+  (entry (canon eq тотожне? abheda stable stable "TS §80"))
+  (entry (canon cons сполучити saṃyuj stable stable "TS §27"))
+  (entry (canon car перше ādi stable stable "VS 4.2.9"))
+  (entry (canon cdr решта śeṣa stable stable "NS 1.1.5 śeṣavat"))
+  (entry (canon cond за-умовою krama stable stable "Mīmāṃsā"))
+
+  ;; ── Necessary forms ────────────────────────────────────────
+  (entry (necessary lambda функція — stable missing "macro expanding to lambda"))
+  (entry (necessary define визначити — stable missing "macro expanding to define"))
+  (entry (language-macro defmacro — — missing missing "bootstrap mechanism"))
+  (entry (compatibility def — — compatibility-only compatibility-only "historical alias for define"))
+
+  ;; ── Arithmetic ─────────────────────────────────────────────
+  (entry (arithmetic + додати yoga candidate candidate "Brahmagupta/Bhāskara: yoga = addition"))
+  (entry (arithmetic - відняти viyoga candidate candidate "vi- + yoga = subtraction"))
+  (entry (arithmetic * помножити guṇana candidate candidate "standard mathematical term"))
+  (entry (arithmetic / поділити haraṇa candidate candidate "haraṇa = division operation; bhāga = result"))
+  (entry (arithmetic abs модуль rūpa candidate candidate "rūpa = form; candidate — polysemous"))
+  (entry (arithmetic min найменше alpatara candidate candidate "alpa = small, -tara = comparative"))
+  (entry (arithmetic max найбільше brhattara candidate candidate "bṛhat = great, -tara = comparative"))
+  (entry (arithmetic mod остача avasiṣṭa candidate candidate "ava-śiṣ = remain; ≠ śeṣa (CDR)"))
+  (entry (arithmetic quotient частка bhāga candidate candidate "bhāga = result of division"))
+  (entry (arithmetic sqrt корінь mūla candidate candidate "standard mathematical term"))
+  (entry (arithmetic isqrt цілий-корінь sakalamūla candidate candidate "sakala = whole/integer"))
+  (entry (arithmetic min-list найменше-у-списку — candidate missing "list reduction over min"))
+  (entry (arithmetic max-list найбільше-у-списку — candidate missing "list reduction over max"))
+
+  ;; ── Comparisons ────────────────────────────────────────────
+  (entry (comparison < менше? hīna? candidate candidate "hīna = lower/lesser; ≠ alpatara (min)"))
+  (entry (comparison > більше? adhika? candidate candidate "adhika = greater; ≠ brhattara (max)"))
+  (entry (comparison = рівне? sama? candidate candidate "sama = equal in quantity; ≠ abheda (eq)"))
+  (entry (comparison <= не-більше? na-adhika? candidate candidate "na + adhika; compound form"))
+  (entry (comparison >= не-менше? na-hīna? candidate candidate "na + hīna; compound form"))
+
+  ;; ── Predicates ─────────────────────────────────────────────
+  (entry (predicate not не na candidate candidate "na = not; universal negation"))
+  (entry (predicate equal? однакові? tulya? candidate candidate "tulya = structurally equal; ≠ abheda (eq), sama (=)"))
+  (entry (predicate symbol? символ? nāman? candidate candidate "Pāṇini 1.1.62: pratyayaḥ sa nāma"))
+  (entry (predicate string? текст? śabda? candidate candidate "śabda = word/sound/text"))
+  (entry (predicate string<? текст-менше? śabda-hīna? candidate candidate "compound"))
+  (entry (predicate numeric-buffer? числовий-буфер? — candidate missing "low-level buffer type"))
+
+  ;; ── Lists ──────────────────────────────────────────────────
+  (entry (list list список śreṇī candidate candidate "śreṇī = ordered sequence"))
+  (entry (list length довжина pramāṇa candidate candidate "pramāṇa = measure/quantity"))
+  (entry (list append приєднати saṅkalana candidate candidate "saṅkalana = collection; ≠ saṃyuj (CONS)"))
+  (entry (list reverse зворот viloma candidate candidate "viloma = reverse order"))
+  (entry (list nth за-номером kramāṅka candidate candidate "kramāṅka = ordinal number"))
+  (entry (list member? містить? sambaddha? candidate candidate "sam-badh = bind together"))
+  (entry (list assoc зв'язок saṃbandha candidate candidate "saṃbandha = relation/connection"))
+  (entry (list pair пара dvandva candidate candidate "Pāṇini 2.2.29-34: dvandva samāsa"))
+  (entry (list second друге dvitīya candidate candidate "ordinal; safe — returns element not sublist"))
+  (entry (list third третє tṛtīya candidate candidate "ordinal"))
+  (entry (list fourth четверте caturtha candidate candidate "ordinal"))
+  (entry (list fifth п'яте pañcama candidate candidate "ordinal"))
+  (entry (list caar — — compatibility-only compatibility-only "low-level car/cdr composition"))
+  (entry (list cadr — — compatibility-only compatibility-only "use друге instead"))
+  (entry (list cddr — — compatibility-only compatibility-only "low-level composition"))
+  (entry (list cadddr — — compatibility-only compatibility-only "use четверте instead"))
+
+  ;; ── Higher-order ───────────────────────────────────────────
+  (entry (higher-order map відобразити āvartana candidate candidate "āvartana = repeated application; candidate — no direct traditional source"))
+  (entry (higher-order filter відсіяти kalpana candidate candidate "kalpana = selection/postulation (Mīmāṃsā); candidate"))
+  (entry (higher-order reduce згорнути saṅgraha candidate candidate "saṅgraha = comprehension/collection; candidate"))
+
+  ;; ── Strings ────────────────────────────────────────────────
+  (entry (string string-append зчепити śabdasaṃyoga candidate candidate "śabda + saṃyoga; ≠ saṃyuj (CONS)"))
+  (entry (string string-length довжина-тексту śabdapramāṇa candidate candidate "śabda + pramāṇa"))
+  (entry (string string-empty? порожній? śūnya? candidate candidate "śūnya = empty/void"))
+  (entry (string string-prefix? починається? pūrva? candidate candidate "pūrva = preceding; ≠ ādi (CAR)"))
+  (entry (string string-contains? містить-текст? śabdasambaddha? candidate candidate "compound; candidate — may need shortening"))
+  (entry (string string-first перший-знак prathamavarṇa candidate candidate "varṇa = letter; ≠ ādi (CAR)"))
+  (entry (string string-rest решта-знаків śeṣavarṇa candidate candidate "varṇa suffix distinguishes from Canon śeṣa"))
+  (entry (string string-slice відрізати cheda candidate candidate "cheda = cut/slice"))
+  (entry (string symbol->string символ-у-текст — candidate missing "conversion"))
+  (entry (string string->symbol текст-у-символ — candidate missing "conversion"))
+  (entry (string codepoint->string кодувана-у-текст — candidate missing "conversion"))
+  (entry (string string->codepoint текст-у-код — candidate missing "conversion"))
+  (entry (string number->string число-у-текст — candidate missing "conversion"))
+
+  ;; ── I/O ────────────────────────────────────────────────────
+  (entry (io print друкувати — candidate missing "mudraṇa candidate — polysemous"))
+  (entry (io princ показати — candidate missing "display without quotes"))
+  (entry (io read прочитати — candidate missing "input"))
+  (entry (io read-all прочитати-усе — candidate missing "read all forms"))
+  (entry (io write-to-string у-текст — candidate missing "convert to string representation"))
+  (entry (io eval обчислити — candidate missing "vicāraṇa? gamana? — needs research"))
+  (entry (io env середовище — candidate missing "āśraya? — needs research"))
+
+  ;; ── Vectors ────────────────────────────────────────────────
+  (entry (vector vector вектор — candidate missing "samūha? — needs research"))
+  (entry (vector make-vector створити-вектор — candidate missing ""))
+  (entry (vector vector-length довжина-вектора — candidate missing ""))
+  (entry (vector vector-ref елемент-вектора — candidate missing ""))
+  (entry (vector vector-set! встановити-вектор! — candidate missing ""))
+
+  ;; ── Buffers ───────────────────────────────────────────────
+  (entry (buffer i32-buffer — — compatibility-only compatibility-only "low-level FFI"))
+  (entry (buffer f32-buffer — — compatibility-only compatibility-only "low-level FFI"))
+  (entry (buffer numeric-buffer-type — — compatibility-only compatibility-only "low-level"))
+  (entry (buffer numeric-buffer-length — — compatibility-only compatibility-only "low-level"))
+  (entry (buffer numeric-buffer-ref — — compatibility-only compatibility-only "low-level"))
+  (entry (buffer numeric-buffer-map — — compatibility-only compatibility-only "low-level"))
+
+  ;; ── Time ──────────────────────────────────────────────────
+  (entry (time mono-ns monotонний-час — candidate missing "monotonic nanoseconds"))
+  (entry (time unix-time-now unix-час-зараз — candidate missing "current unix time"))
+  (entry (time ntp-query-raw — — compatibility-only compatibility-only "low-level NTP"))
+  (entry (time timezone-declarations-raw — — compatibility-only compatibility-only "low-level"))
+
+  ;; ── Other ─────────────────────────────────────────────────
+  (entry (other identity само-собою svabhāva candidate candidate "svabhāva = own nature; ≠ svarūpa (QUOTE)"))
+  (entry (other gensym — — missing missing "needs research"))
+  (entry (other and та — candidate missing "logical conjunction; short form"))
+  (entry (other or або — candidate missing "logical disjunction"))
+  (entry (other let нехай — candidate missing "binding form; 'let' in Ukrainian"))
+  (entry (other let* нехай* — candidate missing "sequential binding"))
+  (entry (other or -> -> — compatibility-only compatibility-only "threading macro"))
+  (entry (other ->> ->> — compatibility-only compatibility-only "threading macro"))
+  (entry (other json-parse — — compatibility-only compatibility-only "format name"))
+  (entry (other sha256-hex — — compatibility-only compatibility-only "algorithm name"))
+
+  ;; ── Summary statistics ─────────────────────────────────────
+  (summary
+    (total-eligible 89)
+    (stable-uk 9)
+    (candidate-uk 62)
+    (missing-uk 4)
+    (compatibility-uk 14)
+    (stable-sa 7)
+    (candidate-sa 38)
+    (missing-sa 30)
+    (compatibility-sa 14)
+    (usc-uk-percent "79.8%")
+    (usc-sa-percent "50.6%")
+    (usc-combined-percent "65.2%")))
