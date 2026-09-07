@@ -76,18 +76,43 @@ fn scan_tree(root: &Path, dir: &Path, hits: &mut BTreeMap<String, Vec<String>>) 
     }
 }
 
-#[test]
-fn legacy_coordination_executable_callers_are_exactly_the_known_compatibility_test() {
+fn inventory() -> BTreeMap<String, Vec<String>> {
     let root = repo_root();
-    let mut actual = BTreeMap::new();
+    let mut hits = BTreeMap::new();
 
-    scan_tree(&root, &root.join("crates"), &mut actual);
-    scan_tree(&root, &root.join("scripts"), &mut actual);
+    scan_tree(&root, &root.join("crates"), &mut hits);
+    scan_tree(&root, &root.join("scripts"), &mut hits);
 
-    for ops in actual.values_mut() {
+    for ops in hits.values_mut() {
         ops.sort();
         ops.dedup();
     }
+    hits
+}
+
+fn is_compatibility_test(path: &str) -> bool {
+    path.starts_with("crates/") && path.contains("/tests/")
+}
+
+#[test]
+fn no_production_or_operational_legacy_coordination_callers_remain() {
+    let live: BTreeMap<_, _> = inventory()
+        .into_iter()
+        .filter(|(path, _)| !is_compatibility_test(path))
+        .collect();
+
+    assert!(
+        live.is_empty(),
+        "C5 no-live-callers gate failed; production/operational legacy callers remain: {live:?}"
+    );
+}
+
+#[test]
+fn compatibility_callers_are_exactly_the_known_legacy_cli_regression() {
+    let compatibility: BTreeMap<_, _> = inventory()
+        .into_iter()
+        .filter(|(path, _)| is_compatibility_test(path))
+        .collect();
 
     let expected = BTreeMap::from([(
         "crates/my-lisp-cli/tests/cli.rs".to_string(),
@@ -99,7 +124,7 @@ fn legacy_coordination_executable_callers_are_exactly_the_known_compatibility_te
     )]);
 
     assert_eq!(
-        actual, expected,
-        "C5 removal gate changed: any new legacy caller is a regression; any removed caller must be reflected in the audit in the same change"
+        compatibility, expected,
+        "C5 compatibility inventory changed: retire removals together with the legacy surface, and reject any new legacy test caller"
     );
 }
