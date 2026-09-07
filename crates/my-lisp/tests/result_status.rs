@@ -141,6 +141,23 @@ fn reason_observe_reports_positive_proof_without_changing_reason() {
 }
 
 #[test]
+fn reason_observe_accepts_prebuilt_index_with_exact_outcome_parity() {
+    let source = r#"
+        (let* ((rules (quote (
+                  ((seed a))
+                  ((noise one))
+                  ((reachable (var x)) (seed (var x)))
+                )))
+               (index (reason-make-index rules))
+               (goal (quote (reachable a))))
+          (equal?
+            (reason-observe goal rules)
+            (reason-observe goal index)))
+    "#;
+    assert_eq!(eval_reason_observation(source), "t");
+}
+
+#[test]
 fn reason_observe_distinguishes_unknown_from_false() {
     let source = r#"
         (let ((rules (quote (((parent alice bob))))))
