@@ -1,8 +1,8 @@
-# Architecture Recovery — MyLisp
+# Architecture Recovery — my-lisp
 
 ## 1. High-Level Architecture Map
 
-Based on a structural analysis of the codebase, MyLisp consists of the following distinct logical layers. Currently, some of these layers are physically conflated in Rust crates.
+Based on a structural analysis of the codebase, my-lisp consists of the following distinct logical layers. Currently, some of these layers are physically conflated in Rust crates.
 
 ```text
 my-lisp
@@ -49,7 +49,7 @@ my-lisp
 ## 2. Layer Definitions & Bounding
 
 ### 2.1. Language Kernel
-**What it is:** The absolute minimum set of features required to make MyLisp a valid, deterministic Lisp implementation. 
+**What it is:** The absolute minimum set of features required to make my-lisp a valid, deterministic Lisp implementation. 
 **Functions needed:** `eval`, `quote`, `lambda`, `def`, `defmacro`, `cond`, `atom`, `eq`, `car`, `cdr`, `cons`, plus the `Value` enum and basic exact numbers/math.
 **Invariants:** Must have **no side effects** outside the execution environment, must not depend on the OS (no file I/O, no network). Must compile perfectly to WebAssembly without system capabilities.
 
@@ -59,7 +59,7 @@ my-lisp
 **Invariants:** Exists at the perimeter. The `Environment` controls whether these are accessible (e.g. `allow-process` list).
 
 ### 2.3. Knowledge Layer
-**What it is:** The semantic inference layer built inside MyLisp.
+**What it is:** The semantic inference layer built inside my-lisp.
 **Components:** `knowledge.my`, `world.my`, `forward.my`.
 **Invariants:** Implements an **append-only journal** as the absolute source of truth. Current states are ephemeral projections of this journal. Should never be simplified away or mutated.
 
@@ -106,5 +106,5 @@ The `match` in `evaluate_list` will be split into Pluggable Environments or sepa
 
 ### Open Questions for Swarm Peers:
 1. Should the **Coordination Layer** (Swarm TCP Oracle) be moved entirely to its own repository, rather than just isolated into a `swarm-node` crate inside `my-lisp`?
-2. Should the **Knowledge System** (`forward.my`, `knowledge.my`) be extracted into its own repository (a database / inference engine on top of MyLisp), or does it belong in the core standard library?
+2. Should the **Knowledge System** (`forward.my`, `knowledge.my`) be extracted into its own repository (a database / inference engine on top of my-lisp), or does it belong in the core standard library?
 3. What are the impacts on your own dependencies if `my-lisp` is strictly reduced to the Language Kernel + Host Capabilities?
