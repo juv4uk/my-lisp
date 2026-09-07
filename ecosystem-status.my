@@ -25,10 +25,10 @@
    it before starting work so effort isn't duplicated, update your own
    repo's entry (and `as-of`) when your task changes. Not a live feed:
    a snapshot, refreshed by hand, same as the rest of this file. For
-   anything time-sensitive faster than a hand-edit, use notify/poll on
-   the my-lisp TCP oracle (127.0.0.1:9999, --protocol=sexpr) — but a
-   mailbox ping is a hint to re-read this file or an evidence/ record,
-   never itself the durable fact.")
+   anything time-sensitive faster than a hand-edit, use swarm-node
+   (:910x, swarm/1) for coordination. The my-lisp TCP service on :9999 is
+   the semantic oracle only (eval/parse/diagnose/contract-version) and
+   must not be used as a coordination mailbox.")
  (repositories .
   ((my-lisp .
     ((role . semantic-source-of-truth)
@@ -39,7 +39,7 @@
      (environment . "WSL2 + Guix, shared profile /var/guix/profiles/shared/guix-profile, per-repo Linux user (wsl -u my-lisp), working dir stays /mnt/c/GitHub/my-lisp — owner-confirmed, not ~/projects or ~/src")
      (channels-scm . "channels.scm at repo root, pins guix commit 5375f33 (verified: cargo build/test --workspace clean under it)")
      (tcp-repl . (flag "--tcp[=PORT]" protocol-flag "--protocol=sexpr"
-                   note "each connection gets its own fresh Environment::root() for eval/parse/diagnose — a connection's def is invisible to every other connection. notify/poll (commit c1299f3) are the one exception: a single server-wide in-memory mailbox, 500-entry cap, non-persistent, separate from the isolated eval sessions"))
+                   note "each connection gets its own fresh Environment::root() for semantic-oracle eval/parse/diagnose; a connection's def is invisible to every other connection. Coordination is a separate swarm-node :910x/swarm/1 plane and must not be reintroduced here"))
      (open-item . "crates/my-lisp-cli/tests/cli.rs: 4 sexpr_protocol_* tests still #[ignore]d — ConnectionRefused, root cause unknown, confirmed NOT Windows/WSL/DrvFs/libtest-in-general, isolated to that specific test binary (commit 4eb85ce documents what's been ruled out)")
      (current-task . "infra/coordination support (guix toolchain, TCP oracle protocol, channels.scm/evidence schema) — no open product work on the language itself right now")))
    (fpga-lisp .
@@ -89,4 +89,4 @@
      (my-idea . "not started — one panel: source -> compiled instructions -> execution -> decoded result -> oracle match, PASS/FAIL")))
    (anti-pattern-to-avoid . "no more NOTE-*.md proliferation or (quote agent) X replied to agent Y' commits — coordinate through this file's current-task fields and normal commits that actually touch code")))
  (how-to-refresh .
-  "Before starting new work, read this file's current-task fields. When your own repo's task changes, hand-update your repository's current-task entry and this file's as-of date directly (or notify the my-lisp session to do it if you can't write here) — don't let it go stale the way it did between 2026-08-11 and 2026-08-12 (recursive-def and M28-M32 status both drifted out of date here while very much current in mailbox/NOTE-* traffic)."))
+  "Before starting new work, read this file's current-task fields. When your own repo's task changes, hand-update your repository's current-task entry and this file's as-of date directly. For live coordination use swarm-node (:910x, swarm/1); never use the my-lisp :9999 semantic oracle as a coordination channel. Don't let this snapshot go stale the way it did between 2026-08-11 and 2026-08-12."))
