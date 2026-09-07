@@ -11,6 +11,15 @@
 (def *guard-reference-directory*
   (quote
     ((reference
+       (topic language-policy)
+       (summary "Українська — первинна мова; кодові коментарі — українською кирилицею в UTF-8; англійська й німецька — допоміжні")
+       (authority (knowledge/language-policy.wsm AGENTS.md scripts/uk-latynka.py))
+       (how-to (write-ukrainian-first write-code-comments-in-ukrainian-utf8 use-english-or-german-as-auxiliary use-uk-latynka-only-at-explicit-ascii-boundary))
+       (verify (utf-8-primary ukrainian-comment-rule uk-latynka-round-trip))
+       (lifecycle current-contract)
+       (provenance "owner directive 2026-09-07; my-lisp e6bf9b6")
+       (unknown-route ask-owner))
+     (reference
        (topic language-semantics)
        (summary "Meaning of WSM programs and conformance obligations | Значення WSM-програм і зобов'язання конформності")
        (authority (language-contract.my docs/language-core-axioms.md tests/fixtures/conformance.my))
@@ -758,6 +767,13 @@
        (invoke "bash /home/agents/ecosystem/scripts/preflight.sh [max-load]")
        (risk read-only)
        (verify (exit-0-go exit-1-wait)))
+     (tool
+       (name uk-latynka)
+       (summary "Оборотно кодувати український Unicode-текст в ASCII лише для явної не-Unicode межі")
+       (path "scripts/uk-latynka.py")
+       (invoke "python3 scripts/uk-latynka.py encode [FILE|-]; python3 scripts/uk-latynka.py decode [FILE|-]; python3 scripts/uk-latynka.py self-test")
+       (risk read-only-text-transform)
+       (verify (utf8-source ascii-encoded-output exact-round-trip)))
      (tool
        (name bilingual-docs-check)
        (summary "Перевірити український відповідник змінених людських документів · Check Ukrainian coverage for changed human documentation")
