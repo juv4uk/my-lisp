@@ -55,6 +55,7 @@
   (entry (arithmetic isqrt цілий-корінь sakalamūla stable stable "sakala = whole/integer"))
   (entry (arithmetic min-list найменше-у-списку — stable missing "list reduction over min"))
   (entry (arithmetic max-list найбільше-у-списку — stable missing "list reduction over max"))
+  (entry (arithmetic largest-chunk — — compatibility-only compatibility-only "internal quotient helper"))
 
   ;; ── Comparisons ────────────────────────────────────────────
   (entry (comparison < менше? hīna? stable stable "hīna = lower/lesser"))
@@ -62,6 +63,8 @@
   (entry (comparison = рівне? sama? stable stable "sama = equal in quantity; ≠ abheda (eq)"))
   (entry (comparison <= не-більше? na-adhika? stable candidate "na + adhika; compound form"))
   (entry (comparison >= не-менше? na-hīna? stable candidate "na + hīna; compound form"))
+  (entry (comparison nondecreasing-from? — — compatibility-only compatibility-only "internal <= recursion helper"))
+  (entry (comparison nonincreasing-from? — — compatibility-only compatibility-only "internal >= recursion helper"))
 
   ;; ── Predicates ─────────────────────────────────────────────
   (entry (predicate not хибне? na stable stable "true exactly when the argument is false"))
@@ -108,6 +111,7 @@
   (entry (string codepoint->string код-у-текст varṇa-śabda stable candidate "conversion"))
   (entry (string string->codepoint текст-у-код śabda-varṇa stable candidate "conversion"))
   (entry (string number->string число-у-текст saṅkhyā-śabda stable candidate "conversion"))
+  (entry (string digit->string — — compatibility-only compatibility-only "superseded internal conversion helper"))
 
   ;; ── I/O ────────────────────────────────────────────────────
   (entry (io print друкувати mudraṇa stable candidate "mudraṇa = impression/printing"))
@@ -223,15 +227,15 @@
 
   ;; ── Summary statistics ─────────────────────────────────────
   (summary
-    (total-eligible 157)
+    (total-eligible 161)
     (stable-uk 139)
     (candidate-uk 0)
     (missing-uk 1)
-    (compatibility-uk 17)
+    (compatibility-uk 21)
     (stable-sa 36)
     (candidate-sa 88)
     (missing-sa 16)
-    (compatibility-sa 17)
-    (usc-uk-percent "88.5%")
-    (usc-sa-percent "79.0%")
+    (compatibility-sa 21)
+    (usc-uk-percent "86.3%")
+    (usc-sa-percent "77.0%")
     (notes "Batch 2 complete. UK: 139 surface names implemented. SA: 124 surface names (36 stable + 88 candidate). Remaining SA gaps: defmacro, lambda, define, min-list, max-list, numeric-buffer?, vector-set!, utc-from-unix, unix-time-observation->utc, internet-time-sync, module-known?, module-clauses-now, and, or, let, let*.")))

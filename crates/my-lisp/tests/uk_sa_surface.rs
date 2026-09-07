@@ -39,7 +39,7 @@ fn uk_atom_predicates_correctly() {
 #[test]
 fn uk_eq_compares_identity() {
     let mut s = uk_session();
-    let r = eval_program("(тотожне? 'а 'а)", &mut s).expect("eval");
+    let r = eval_program("(тотожне? (як-є а) (як-є а))", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "t");
 }
 
@@ -57,10 +57,11 @@ fn uk_cond_branches_correctly() {
     let mut s = uk_session();
     let r = eval_program(
         r#"(за-умовою
-             ((тотожне? 1 1) 'так)
-             (інакше 'ні))"#,
+             ((тотожне? 1 1) (як-є так))
+             ((тотожне? 1 1) (як-є ні)))"#,
         &mut s,
-    ).expect("eval");
+    )
+    .expect("eval");
     assert_eq!(r.value.to_string(), "так");
 }
 
@@ -124,11 +125,41 @@ fn uk_mod_quotient_work() {
 #[test]
 fn uk_comparisons_work() {
     let mut s = uk_session();
-    assert_eq!(eval_program("(менше? 1 2)", &mut s).unwrap().value.to_string(), "t");
-    assert_eq!(eval_program("(більше? 2 1)", &mut s).unwrap().value.to_string(), "t");
-    assert_eq!(eval_program("(рівне? 3 3)", &mut s).unwrap().value.to_string(), "t");
-    assert_eq!(eval_program("(не-більше? 2 3)", &mut s).unwrap().value.to_string(), "t");
-    assert_eq!(eval_program("(не-менше? 3 3)", &mut s).unwrap().value.to_string(), "t");
+    assert_eq!(
+        eval_program("(менше? 1 2)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "t"
+    );
+    assert_eq!(
+        eval_program("(більше? 2 1)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "t"
+    );
+    assert_eq!(
+        eval_program("(рівне? 3 3)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "t"
+    );
+    assert_eq!(
+        eval_program("(не-більше? 2 3)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "t"
+    );
+    assert_eq!(
+        eval_program("(не-менше? 3 3)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "t"
+    );
 }
 
 // ── Predicates: Ukrainian surface ──────────────────────────────
@@ -136,8 +167,20 @@ fn uk_comparisons_work() {
 #[test]
 fn uk_not_works() {
     let mut s = uk_session();
-    assert_eq!(eval_program("(не 't)", &mut s).unwrap().value.to_string(), "()");
-    assert_eq!(eval_program("(не '())", &mut s).unwrap().value.to_string(), "t");
+    assert_eq!(
+        eval_program("(хибне? (як-є t))", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "()"
+    );
+    assert_eq!(
+        eval_program("(хибне? (як-є ()))", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "t"
+    );
 }
 
 #[test]
@@ -150,7 +193,7 @@ fn uk_equal_works() {
 #[test]
 fn uk_symbol_predicate_works() {
     let mut s = uk_session();
-    let r = eval_program("(символ? 'кіт)", &mut s).expect("eval");
+    let r = eval_program("(символ? (як-є кіт))", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "t");
 }
 
@@ -179,7 +222,7 @@ fn uk_list_length_append_reverse() {
 #[test]
 fn uk_nth_member_assoc() {
     let mut s = uk_session();
-    let r = eval_program("(за-номером (список 10 20 30) 1)", &mut s).expect("eval");
+    let r = eval_program("(за-номером 1 (список 10 20 30))", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "20");
     let r2 = eval_program("(містить? 2 (список 1 2 3))", &mut s).expect("eval");
     assert_eq!(r2.value.to_string(), "t");
@@ -204,7 +247,8 @@ fn uk_map_works() {
     let r = eval_program(
         "(відобразити (функція (x) (помножити x 2)) (список 1 2 3))",
         &mut s,
-    ).expect("eval");
+    )
+    .expect("eval");
     assert_eq!(r.value.to_string(), "(2 4 6)");
 }
 
@@ -214,17 +258,15 @@ fn uk_filter_works() {
     let r = eval_program(
         "(відсіяти (функція (x) (менше? x 3)) (список 1 2 3 4))",
         &mut s,
-    ).expect("eval");
+    )
+    .expect("eval");
     assert_eq!(r.value.to_string(), "(1 2)");
 }
 
 #[test]
 fn uk_reduce_works() {
     let mut s = uk_session();
-    let r = eval_program(
-        "(згорнути додати (список 1 2 3 4))",
-        &mut s,
-    ).expect("eval");
+    let r = eval_program("(згорнути додати 0 (список 1 2 3 4))", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "10");
 }
 
@@ -235,7 +277,7 @@ fn uk_string_operations() {
     let mut s = uk_session();
     let r = eval_program(r#"(довжина-тексту "привіт")"#, &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "6");
-    let r2 = eval_program(r#"(порожній? "")"#, &mut s).expect("eval");
+    let r2 = eval_program(r#"(текст-порожній? "")"#, &mut s).expect("eval");
     assert_eq!(r2.value.to_string(), "t");
     let r3 = eval_program(r#"(зчепити "abc" "def")"#, &mut s).expect("eval");
     assert_eq!(r3.value.to_string(), "\"abcdef\"");
@@ -268,18 +310,60 @@ fn sa_canon_works() {
 #[test]
 fn sa_arithmetic_works() {
     let mut s = sa_session();
-    assert_eq!(eval_program("(yoga 1 2 3)", &mut s).unwrap().value.to_string(), "6");
-    assert_eq!(eval_program("(viyoga 10 3)", &mut s).unwrap().value.to_string(), "7");
-    assert_eq!(eval_program("(guṇana 2 3 4)", &mut s).unwrap().value.to_string(), "24");
-    assert_eq!(eval_program("(haraṇa 6 2)", &mut s).unwrap().value.to_string(), "3");
+    assert_eq!(
+        eval_program("(yoga 1 2 3)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "6"
+    );
+    assert_eq!(
+        eval_program("(viyoga 10 3)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "7"
+    );
+    assert_eq!(
+        eval_program("(guṇana 2 3 4)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "24"
+    );
+    assert_eq!(
+        eval_program("(haraṇa 6 2)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "3"
+    );
 }
 
 #[test]
 fn sa_comparisons_work() {
     let mut s = sa_session();
-    assert_eq!(eval_program("(hīna? 1 2)", &mut s).unwrap().value.to_string(), "t");
-    assert_eq!(eval_program("(adhika? 2 1)", &mut s).unwrap().value.to_string(), "t");
-    assert_eq!(eval_program("(sama? 3 3)", &mut s).unwrap().value.to_string(), "t");
+    assert_eq!(
+        eval_program("(hīna? 1 2)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "t"
+    );
+    assert_eq!(
+        eval_program("(adhika? 2 1)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "t"
+    );
+    assert_eq!(
+        eval_program("(sama? 3 3)", &mut s)
+            .unwrap()
+            .value
+            .to_string(),
+        "t"
+    );
 }
 
 #[test]
@@ -289,15 +373,11 @@ fn sa_lists_higher_order_work() {
     assert_eq!(r.value.to_string(), "(1 2 3)");
     let r2 = eval_program("(pramāṇa (śreṇī 1 2 3))", &mut s).expect("eval");
     assert_eq!(r2.value.to_string(), "3");
-    let r3 = eval_program(
-        "(āvartana (lambda (x) (guṇana x 2)) (śreṇī 1 2 3))",
-        &mut s,
-    ).expect("eval");
+    let r3 =
+        eval_program("(āvartana (lambda (x) (guṇana x 2)) (śreṇī 1 2 3))", &mut s).expect("eval");
     assert_eq!(r3.value.to_string(), "(2 4 6)");
-    let r4 = eval_program(
-        "(kalpana (lambda (x) (hīna? x 3)) (śreṇī 1 2 3 4))",
-        &mut s,
-    ).expect("eval");
+    let r4 =
+        eval_program("(kalpana (lambda (x) (hīna? x 3)) (śreṇī 1 2 3 4))", &mut s).expect("eval");
     assert_eq!(r4.value.to_string(), "(1 2)");
 }
 
@@ -336,9 +416,11 @@ fn uk_acceptance_program_passes() {
     let r = eval_program(
         include_str!("../../../lib/surface/uk-acceptance.my"),
         &mut s,
-    ).expect("Ukrainian acceptance program should evaluate");
+    )
+    .expect("Ukrainian acceptance program should evaluate");
     assert_eq!(
-        r.value.to_string(), "успіх",
+        r.value.to_string(),
+        "успіх",
         "Ukrainian acceptance program must return 'успіх (success)"
     );
 }

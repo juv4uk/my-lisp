@@ -17,15 +17,13 @@
 ;; Canon 0+7 — Sanskrit surface (status: stable)
 ;; ═══════════════════════════════════════════════════════════════
 
-(define svarūpa quote)
+; `svarūpa` and `krama` already belong to canonical syntax and are not
+; redefined here. The five callable primitives are ordinary value aliases.
 (define aṇu atom)
 (define abheda eq)
 (define saṃyuj cons)
 (define ādi car)
 (define śeṣa cdr)
-; krama (cond) is a syntax form — needs macro wrapper
-(defmacro krama clauses
-  (cons (quote cond) clauses))
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Batch 1 — Arithmetic (status: candidate)
