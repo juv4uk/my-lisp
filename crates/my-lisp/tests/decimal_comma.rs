@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, parse, ExprKind, Session};
+use my_lisp::{eval_program, parse, ErrorKind, ExprKind, Session};
 
 fn obchyslyty(source: &str) -> String {
     let mut session = Session::default();
@@ -23,6 +23,7 @@ fn desiatkova_koma_i_krapka_maiut_odnu_tochnu_semantyku() {
     assert_eq!(obchyslyty("(+ 1,5 2,5)"), "4");
     assert_eq!(obchyslyty("(eq -0,25 -0.25)"), "t");
     assert_eq!(obchyslyty("(eq 1,5e3 1500)"), "t");
+    assert_eq!(obchyslyty("(eq (read \"12,455\") 12.455)"), "t");
 }
 
 #[test]
@@ -31,6 +32,12 @@ fn koma_ne_staied_punktuatsiieiu_zvychaynykh_symvoliv() {
     ochikuvaty_symvol("версія1,2");
     ochikuvaty_symvol("1,2,3");
     ochikuvaty_symvol("1,2.3");
+}
+
+#[test]
+fn desiatkova_koma_zberihaie_nazvanu_vidmovu_na_resursnii_mezhi() {
+    let error = parse("1,25e10001").expect_err("завелика експонента має бути відхилена");
+    assert_eq!(error.kind, ErrorKind::NumericOverflow);
 }
 
 #[test]
