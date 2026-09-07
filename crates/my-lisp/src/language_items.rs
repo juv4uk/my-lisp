@@ -109,51 +109,9 @@ const SYNTAX_FORMS: &[(&str, &str, &str, Arity)] = &[
         Arity::Exact(1),
     ),
     (
-        "string-append",
-        "(string-append left right)",
-        "Concatenate two strings",
-        Arity::Exact(2),
-    ),
-    (
-        "string<?",
-        "(string<? left right)",
-        "Compare strings lexicographically",
-        Arity::Exact(2),
-    ),
-    (
         "read-all",
         "(read-all source)",
         "Read all expressions from a string",
-        Arity::Exact(1),
-    ),
-    (
-        "string?",
-        "(string? value)",
-        "Return t if value is a string",
-        Arity::Exact(1),
-    ),
-    (
-        "symbol->string",
-        "(symbol->string symbol)",
-        "Return the string form of a symbol",
-        Arity::Exact(1),
-    ),
-    (
-        "string->symbol",
-        "(string->symbol string)",
-        "Create a symbol from a string",
-        Arity::Exact(1),
-    ),
-    (
-        "string-first",
-        "(string-first string)",
-        "Return the first character as a string",
-        Arity::Exact(1),
-    ),
-    (
-        "string-rest",
-        "(string-rest string)",
-        "Return the string without its first character",
         Arity::Exact(1),
     ),
     (
@@ -322,6 +280,41 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "(string-slice string start end)",
             "Return a UTF-8-safe substring",
             Arity::Exact(3),
+        ),
+        "string-append" => (
+            "(string-append left right)",
+            "Concatenate two strings",
+            Arity::Exact(2),
+        ),
+        "string<?" => (
+            "(string<? left right)",
+            "Compare strings lexicographically",
+            Arity::Exact(2),
+        ),
+        "string?" => (
+            "(string? value)",
+            "Return t if value is a string",
+            Arity::Exact(1),
+        ),
+        "symbol->string" => (
+            "(symbol->string symbol)",
+            "Return the string form of a symbol",
+            Arity::Exact(1),
+        ),
+        "string->symbol" => (
+            "(string->symbol string)",
+            "Create a symbol from a string",
+            Arity::Exact(1),
+        ),
+        "string-first" => (
+            "(string-first string)",
+            "Return the first character as a string",
+            Arity::Exact(1),
+        ),
+        "string-rest" => (
+            "(string-rest string)",
+            "Return the string without its first character",
+            Arity::Exact(1),
         ),
         _ => (
             "(builtin ...)",
