@@ -15,12 +15,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 4
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Recover the reviewed fail-closed surgery recipe
         run: |
-          git show HEAD~3:.github/workflows/c5-physical-removal.yml > /tmp/c5-recipe.yml
+          git show 69b65a628683573790a5af675d27433fa69968c7:.github/workflows/c5-physical-removal.yml > /tmp/c5-recipe.yml
           sed -n "/^[[:space:]]*python3 - <<'PY'$/,/^[[:space:]]*PY$/p" /tmp/c5-recipe.yml \
             | sed '1d;$d;s/^          //' > /tmp/c5-remove.py
           test -s /tmp/c5-remove.py
