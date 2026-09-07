@@ -2,9 +2,11 @@
 //!
 //! Unlike `reason_scale.rs`, which isolates one worst-case full scan, this
 //! harness keeps the knowledge journal/module projection and canonical
-//! `reason-in-observe` adapter visible. Setup/admission is outside the timed
-//! region. Timings are diagnostic evidence only; semantic assertions remain
-//! deterministic.
+//! `reason-in-observe` adapter visible. Fixture installation is outside the
+//! timed region and deliberately bypasses `advise-all`: atomic batch admission
+//! has its own conflict-check complexity and must not contaminate a reasoning
+//! measurement. Timings are diagnostic evidence only; semantic assertions
+//! remain deterministic.
 
 use my_lisp::{eval_program, Session};
 use std::time::Instant;
@@ -31,7 +33,7 @@ fn eval_session(session: &mut Session, source: &str) -> String {
         .to_string()
 }
 
-/// Install a mixed module through the real Advice Taker admission boundary.
+/// Install a mixed module directly through the ordinary module/journal shape.
 /// Distractor predicates model a heterogeneous knowledge base. The target is
 /// intentionally placed after them and requires a two-rule derivation:
 ///
@@ -39,8 +41,8 @@ fn eval_session(session: &mut Session, source: &str) -> String {
 ///
 /// Without predicate/head indexing, each proof level still scans the whole
 /// projected clause list.
-fn install_advice_module(session: &mut Session, distractors: usize) -> usize {
-    let mut source = String::from("(advise-all bench (quote (");
+fn install_mixed_module(session: &mut Session, distractors: usize) -> usize {
+    let mut source = String::from("(defmodule bench (quote (");
     for i in 0..distractors {
         match i % 4 {
             0 => source.push_str(&format!("((planet f{i}))")),
@@ -54,11 +56,7 @@ fn install_advice_module(session: &mut Session, distractors: usize) -> usize {
     source.push_str("((valuable (var x)) (has (var x) mass))");
     source.push_str(")))");
 
-    let admission = eval_session(session, &source);
-    assert!(
-        admission.starts_with("(accepted "),
-        "benchmark fixture must cross advise-all successfully: {admission}"
-    );
+    eval_session(session, &source);
     distractors + 3
 }
 
@@ -81,7 +79,7 @@ fn timed_eval(session: &mut Session, source: &str, expected: &str) -> u128 {
 
 fn profile_size(distractors: usize) -> (u128, u128, u128, usize) {
     let mut session = loaded_session();
-    let clauses = install_advice_module(&mut session, distractors);
+    let clauses = install_mixed_module(&mut session, distractors);
 
     let projection = "(length (module-clauses-now (quote bench)))";
     let expected_len = clauses.to_string();
