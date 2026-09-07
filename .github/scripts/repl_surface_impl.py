@@ -1,0 +1,811 @@
+from pathlib import Path
+
+# 1. Environment: stable user frame can be reattached to a new surface frame.
+p = Path("crates/my-lisp/src/environment.rs")
+s = p.read_text()
+anchor = """    pub fn child(&self) -> Self {
+        Self(
+            Rc::new(RefCell::new(Frame {
+                values: HashMap::new(),
+                parent: Some(self.clone()),
+            })),
+            self.1.clone(),
+            self.2.clone(),
+        )
+    }
+"""
+insert = anchor + """
+    /// Перепід'єднує лише безпосереднього lexical parent цього frame.
+    /// Це host/UI-механізм для стабільного user-frame поверх змінної
+    /// програмної поверхні; Lisp-семантику він не розширює.
+    /// Відхиляє цикли та parent з іншими transcript/limits.
+    pub fn reparent(&self, parent: Environment) -> Result<(), &'static str> {
+        if !Rc::ptr_eq(&self.1, &parent.1) || !Rc::ptr_eq(&self.2, &parent.2) {
+            return Err("new parent must share transcript and limits");
+        }
+
+        let mut current = Some(parent.clone());
+        while let Some(environment) = current {
+            if Rc::ptr_eq(&self.0, &environment.0) {
+                return Err("reparent would create an environment cycle");
+            }
+            current = environment.0.borrow().parent.clone();
+        }
+
+        self.0.borrow_mut().parent = Some(parent);
+        Ok(())
+    }
+"""
+if s.count(anchor) != 1:
+    raise SystemExit("environment child anchor drifted")
+s = s.replace(anchor, insert)
+
+test_anchor = """    fn child_definitions_do_not_leak_into_the_parent() {
+        let root = Environment::root();
+        let child = root.child();
+        child.define("local", Value::Number(2.0, Exactness::Exact));
+        assert_eq!(root.get("local"), None);
+    }
+"""
+tests = test_anchor + """
+
+    #[test]
+    fn reparent_changes_only_inherited_bindings_and_keeps_local_bindings() {
+        let root = Environment::root();
+        let first_parent = root.child();
+        first_parent.define("surface", Value::Symbol(Rc::from("first")));
+        let user = first_parent.child();
+        user.define("mine", Value::Number(7.0, Exactness::Exact));
+
+        let second_parent = root.child();
+        second_parent.define("surface", Value::Symbol(Rc::from("second")));
+        user.reparent(second_parent).expect("safe sibling reparent");
+
+        assert_eq!(user.get("surface"), Some(Value::Symbol(Rc::from("second"))));
+        assert_eq!(user.get("mine"), Some(Value::Number(7.0, Exactness::Exact)));
+    }
+
+    #[test]
+    fn reparent_rejects_a_cycle() {
+        let root = Environment::root();
+        let child = root.child();
+        assert!(root.reparent(child).is_err());
+    }
+"""
+if s.count(test_anchor) != 1:
+    raise SystemExit("environment test anchor drifted")
+s = s.replace(test_anchor, tests)
+p.write_text(s)
+
+# 2. Native REPL: layered programming surfaces, interaction-owned commands.
+Path("crates/my-lisp-cli/src/repl.rs").write_text(r'''//! Інтерактивний stdio REPL: історія, interaction-only echo fallback і
+//! перемикання програмних поверхонь. `:мова` / `:surface` не є Lisp syntax:
+//! це команди оболонки над одним і тим самим семантичним ядром.
+
+use my_lisp::{
+    eval_parsed_expressions_incremental, eval_program, parse, Environment, ErrorKind, ExprKind,
+    Session,
+};
+use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
+use std::env;
+use std::path::PathBuf;
+use std::process;
+
+const SURFACE_PREREQUISITES: &[(&str, &str)] = &[
+    ("unify.my", include_str!("../../../lib/unify.my")),
+    ("reason.my", include_str!("../../../lib/reason.my")),
+    ("forward.my", include_str!("../../../lib/forward.my")),
+    ("knowledge.my", include_str!("../../../lib/knowledge.my")),
+    ("persistent-map.my", include_str!("../../../lib/persistent-map.my")),
+    ("persistent-vector.my", include_str!("../../../lib/persistent-vector.my")),
+    ("time.my", include_str!("../../../lib/time.my")),
+    ("epistemic.my", include_str!("../../../lib/epistemic.my")),
+];
+const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
+const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.my");
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ReplSurface {
+    Core,
+    English,
+    Ukrainian,
+    Sanskrit,
+}
+
+impl ReplSurface {
+    pub(crate) fn parse(value: &str) -> Option<Self> {
+        match value.trim().to_lowercase().as_str() {
+            "core" | "ядро" => Some(Self::Core),
+            "en" | "english" | "англійська" => Some(Self::English),
+            "uk" | "ук" | "українська" => Some(Self::Ukrainian),
+            "sa" | "sanskrit" | "санскрит" => Some(Self::Sanskrit),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn code(self) -> &'static str {
+        match self {
+            Self::Core => "core",
+            Self::English => "en",
+            Self::Ukrainian => "ук",
+            Self::Sanskrit => "sa",
+        }
+    }
+
+    fn title(self) -> &'static str {
+        match self {
+            Self::Core => "ядро",
+            Self::English => "англійська",
+            Self::Ukrainian => "українська",
+            Self::Sanskrit => "санскрит",
+        }
+    }
+}
+
+fn build_surface_layer(base: &Environment, surface: ReplSurface) -> Result<Environment, String> {
+    let layer = base.child();
+    if matches!(surface, ReplSurface::Ukrainian | ReplSurface::Sanskrit) {
+        let mut session = Session {
+            environment: layer.clone(),
+        };
+        for (name, source) in SURFACE_PREREQUISITES {
+            eval_program(source, &mut session).map_err(|error| {
+                format!("не вдалося завантажити {name}: {}", error.render(source))
+            })?;
+        }
+        let (name, source) = match surface {
+            ReplSurface::Ukrainian => ("uk.my", UK_SURFACE),
+            ReplSurface::Sanskrit => ("sa.my", SA_SURFACE),
+            ReplSurface::Core | ReplSurface::English => unreachable!(),
+        };
+        eval_program(source, &mut session).map_err(|error| {
+            format!("не вдалося завантажити {name}: {}", error.render(source))
+        })?;
+    }
+    Ok(layer)
+}
+
+struct ReplState {
+    session: Session,
+    base_environment: Environment,
+    user_environment: Environment,
+    surface: ReplSurface,
+}
+
+impl ReplState {
+    fn new(mut session: Session, surface: ReplSurface) -> Result<Self, String> {
+        let base_environment = session.environment.clone();
+        let surface_environment = build_surface_layer(&base_environment, surface)?;
+        let user_environment = surface_environment.child();
+        session.environment = user_environment.clone();
+        Ok(Self {
+            session,
+            base_environment,
+            user_environment,
+            surface,
+        })
+    }
+
+    fn switch_surface(&mut self, surface: ReplSurface) -> Result<(), String> {
+        if self.surface == surface {
+            return Ok(());
+        }
+        let surface_environment = build_surface_layer(&self.base_environment, surface)?;
+        self.user_environment
+            .reparent(surface_environment)
+            .map_err(str::to_string)?;
+        self.surface = surface;
+        Ok(())
+    }
+}
+
+/// `~/.my-lisp-history`, якщо home directory доступний.
+pub(crate) fn history_path() -> Option<PathBuf> {
+    let home = env::var_os("HOME").or_else(|| env::var_os("USERPROFILE"))?;
+    Some(PathBuf::from(home).join(".my-lisp-history"))
+}
+
+fn print_surface_help() {
+    println!("Поверхні: :мова ук | en | sa | core");
+    println!("Технічний alias: :surface uk | en | sa | core");
+    println!("Перемикання змінює лише surface-frame; ваші define/closures лишаються живими.");
+}
+
+fn handle_meta_command(line: &str, state: &mut ReplState) -> bool {
+    let mut parts = line.split_whitespace();
+    let Some(command) = parts.next() else {
+        return false;
+    };
+
+    match command {
+        ":мова" | ":surface" => {
+            let Some(requested) = parts.next() else {
+                println!("Поточна поверхня: {} ({})", state.surface.title(), state.surface.code());
+                print_surface_help();
+                return true;
+            };
+            if parts.next().is_some() {
+                eprintln!("Поверхня приймає рівно одне ім'я.");
+                print_surface_help();
+                return true;
+            }
+            let Some(surface) = ReplSurface::parse(requested) else {
+                eprintln!("Невідома поверхня: {requested}");
+                print_surface_help();
+                return true;
+            };
+            match state.switch_surface(surface) {
+                Ok(()) => println!("Поверхня: {} ({})", surface.title(), surface.code()),
+                Err(error) => eprintln!("Помилка перемикання поверхні: {error}"),
+            }
+            true
+        }
+        ":допомога" | ":help" => {
+            print_surface_help();
+            true
+        }
+        _ => false,
+    }
+}
+
+pub(crate) fn run_repl(session: Session, initial_surface: ReplSurface) {
+    let mut state = match ReplState::new(session, initial_surface) {
+        Ok(state) => state,
+        Err(error) => {
+            eprintln!("Error: could not initialize REPL surface: {error}");
+            process::exit(1);
+        }
+    };
+
+    println!("my-lisp REPL v{} (pure Rust)", env!("CARGO_PKG_VERSION"));
+    println!(
+        "Поверхня: {} ({}) · змінити: :мова ук|en|sa|core · :допомога",
+        state.surface.title(),
+        state.surface.code()
+    );
+    println!("Ctrl-C або Ctrl-D — вихід.");
+
+    let mut rl = match DefaultEditor::new() {
+        Ok(editor) => editor,
+        Err(err) => {
+            eprintln!("Error: could not start the REPL line editor: {err}");
+            process::exit(1);
+        }
+    };
+
+    let history_path = history_path();
+    if let Some(path) = &history_path {
+        let _ = rl.load_history(path);
+    }
+
+    loop {
+        let prompt = format!("my-lisp[{}]> ", state.surface.code());
+        let readline = rl.readline(&prompt);
+        match readline {
+            Ok(line) => {
+                let line = line.trim();
+                if line.is_empty() {
+                    continue;
+                }
+
+                let _ = rl.add_history_entry(line);
+                if let Some(path) = &history_path {
+                    let _ = rl.append_history(path);
+                }
+
+                if handle_meta_command(line, &mut state) {
+                    continue;
+                }
+
+                match parse(line) {
+                    Ok(ast) => match eval_parsed_expressions_incremental(&ast, &mut state.session) {
+                        Ok(result) => {
+                            for out in result.output {
+                                println!("{out}");
+                            }
+                            println!("{}", result.value);
+                        }
+                        Err(e) => {
+                            // Це лише interaction policy: невідомий standalone symbol
+                            // вітається через `echo`, але всередині справжньої форми
+                            // UnknownSymbol лишається звичайною мовною помилкою.
+                            if e.kind == ErrorKind::UnknownSymbol
+                                && ast.len() == 1
+                                && matches!(ast[0].kind, ExprKind::Symbol(_))
+                            {
+                                println!("echo {line}");
+                            } else {
+                                eprintln!("Error: {}", e.render(line));
+                            }
+                        }
+                    },
+                    Err(e) => eprintln!("Parse error: {}", e.render(line)),
+                }
+            }
+            Err(ReadlineError::Interrupted | ReadlineError::Eof) => break,
+            Err(err) => {
+                eprintln!("Error: {err:?}");
+                break;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn core_state() -> ReplState {
+        let mut session = Session::default();
+        my_lisp::load_core_library(&mut session).expect("core bootstrap");
+        ReplState::new(session, ReplSurface::Core).expect("REPL state")
+    }
+
+    fn value(state: &mut ReplState, source: &str) -> String {
+        eval_program(source, &mut state.session)
+            .unwrap_or_else(|error| panic!("{source}: {}", error.render(source)))
+            .value
+            .to_string()
+    }
+
+    #[test]
+    fn ukrainian_surface_is_real_and_disappears_when_switching_back_to_core() {
+        let mut state = core_state();
+        state.switch_surface(ReplSurface::Ukrainian).expect("uk");
+        assert_eq!(value(&mut state, "(атом? 'мама)"), "t");
+        assert!(state.session.environment.get("атом?").is_some());
+
+        state.switch_surface(ReplSurface::Core).expect("core");
+        assert!(state.session.environment.get("атом?").is_none());
+        assert_eq!(value(&mut state, "(atom 'мама)"), "t");
+    }
+
+    #[test]
+    fn switching_surface_preserves_user_frame_and_closure_view() {
+        let mut state = core_state();
+        value(&mut state, "(define крок 1)");
+        value(&mut state, "(define додай-крок (lambda (x) (+ x крок)))");
+        assert_eq!(value(&mut state, "(додай-крок 5)"), "6");
+
+        state.switch_surface(ReplSurface::Ukrainian).expect("uk");
+        value(&mut state, "(define крок 2)");
+        assert_eq!(value(&mut state, "(додай-крок 5)"), "7");
+
+        state.switch_surface(ReplSurface::English).expect("en");
+        assert_eq!(value(&mut state, "(додай-крок 5)"), "7");
+    }
+}
+''')
+
+# 3. CLI argument --surface[=]...
+p = Path("crates/my-lisp-cli/src/main.rs")
+s = p.read_text()
+anchor = """fn allowed_processes(args: &[String]) -> Vec<String> {
+    args.iter()
+        .find_map(|arg| arg.strip_prefix("--allow-process="))
+        .map(|list| list.split(',').map(str::to_string).collect())
+        .unwrap_or_default()
+}
+"""
+helper = anchor + """
+fn extract_repl_surface(
+    args: Vec<String>,
+) -> Result<(Vec<String>, repl::ReplSurface), String> {
+    let mut output = Vec::with_capacity(args.len());
+    let mut input = args.into_iter();
+    let Some(program) = input.next() else {
+        return Ok((output, repl::ReplSurface::Core));
+    };
+    output.push(program);
+    let mut input = input.peekable();
+    let mut surface = repl::ReplSurface::Core;
+    let mut seen = false;
+
+    while let Some(arg) = input.next() {
+        let surface_value = if arg == "--surface" {
+            Some(
+                input
+                    .next()
+                    .ok_or_else(|| "--surface requires uk|en|sa|core".to_string())?,
+            )
+        } else {
+            arg.strip_prefix("--surface=").map(str::to_string)
+        };
+
+        if let Some(value) = surface_value {
+            if seen {
+                return Err("--surface may be specified only once".to_string());
+            }
+            surface = repl::ReplSurface::parse(&value)
+                .ok_or_else(|| format!("unknown REPL surface: {value}"))?;
+            seen = true;
+        } else {
+            output.push(arg);
+        }
+    }
+    Ok((output, surface))
+}
+"""
+if s.count(anchor) != 1:
+    raise SystemExit("main allowed_processes anchor drifted")
+s = s.replace(anchor, helper)
+
+old = """    let args: Vec<String> = args
+        .into_iter()
+        .filter(|arg| !arg.starts_with("--allow-process=") && arg != "--protocol=sexpr")
+        .collect();
+    let allowed_for_tcp = allowed.clone();
+"""
+new = """    let args: Vec<String> = args
+        .into_iter()
+        .filter(|arg| !arg.starts_with("--allow-process=") && arg != "--protocol=sexpr")
+        .collect();
+    let (args, repl_surface) = match extract_repl_surface(args) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            eprintln!("my-lisp: {error}");
+            process::exit(2);
+        }
+    };
+    let allowed_for_tcp = allowed.clone();
+"""
+if s.count(old) != 1:
+    raise SystemExit("main args anchor drifted")
+s = s.replace(old, new)
+
+help_anchor = '            println!("  -h, --help                  Print help information");\n'
+help_new = help_anchor + '            println!("  --surface=uk|en|sa|core      Start the interactive REPL with this programming surface");\n'
+if s.count(help_anchor) != 1:
+    raise SystemExit("main help anchor drifted")
+s = s.replace(help_anchor, help_new)
+
+file_anchor = """        // Run file
+        let filename = arg;
+"""
+file_new = """        // `--surface` належить інтерактивному REPL, а не semantics/file execution.
+        if repl_surface != repl::ReplSurface::Core {
+            eprintln!("my-lisp: --surface is available only when starting the interactive REPL");
+            process::exit(2);
+        }
+
+        // Run file
+        let filename = arg;
+"""
+if s.count(file_anchor) != 1:
+    raise SystemExit("main file anchor drifted")
+s = s.replace(file_anchor, file_new)
+
+tail = """    } else {
+        // REPL mode
+        repl::run_repl(session);
+    }
+}
+"""
+tail_new = """    } else {
+        // REPL mode
+        repl::run_repl(session, repl_surface);
+    }
+}
+"""
+if s.count(tail) != 1:
+    raise SystemExit("main repl tail drifted")
+s = s.replace(tail, tail_new)
+p.write_text(s)
+
+# 4. WASM: same layered model, exported set_surface() for browser hosts.
+p = Path("crates/my-lisp-wasm/src/lib.rs")
+s = p.read_text()
+s = s.replace("use my_lisp::Session;", "use my_lisp::{eval_program, Environment, Session};", 1)
+
+old_thread = """thread_local! {
+    static SESSION: RefCell<Option<Session>> = const { RefCell::new(None) };
+}
+"""
+new_thread = r'''const SURFACE_PREREQUISITES: &[(&str, &str)] = &[
+    ("unify.my", include_str!("../../../lib/unify.my")),
+    ("reason.my", include_str!("../../../lib/reason.my")),
+    ("forward.my", include_str!("../../../lib/forward.my")),
+    ("knowledge.my", include_str!("../../../lib/knowledge.my")),
+    ("persistent-map.my", include_str!("../../../lib/persistent-map.my")),
+    ("persistent-vector.my", include_str!("../../../lib/persistent-vector.my")),
+    ("time.my", include_str!("../../../lib/time.my")),
+    ("epistemic.my", include_str!("../../../lib/epistemic.my")),
+];
+const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
+const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.my");
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WebSurface {
+    Core,
+    English,
+    Ukrainian,
+    Sanskrit,
+}
+
+impl WebSurface {
+    fn parse(value: &str) -> Option<Self> {
+        match value.trim().to_lowercase().as_str() {
+            "core" | "ядро" => Some(Self::Core),
+            "en" | "english" | "англійська" => Some(Self::English),
+            "uk" | "ук" | "українська" => Some(Self::Ukrainian),
+            "sa" | "sanskrit" | "санскрит" => Some(Self::Sanskrit),
+            _ => None,
+        }
+    }
+
+    fn code(self) -> &'static str {
+        match self {
+            Self::Core => "core",
+            Self::English => "en",
+            Self::Ukrainian => "ук",
+            Self::Sanskrit => "sa",
+        }
+    }
+}
+
+fn build_surface_layer(base: &Environment, surface: WebSurface) -> Result<Environment, String> {
+    let layer = base.child();
+    if matches!(surface, WebSurface::Ukrainian | WebSurface::Sanskrit) {
+        let mut session = Session {
+            environment: layer.clone(),
+        };
+        for (name, source) in SURFACE_PREREQUISITES {
+            eval_program(source, &mut session).map_err(|error| {
+                format!("failed to load {name}: {}", error.render(source))
+            })?;
+        }
+        let (name, source) = match surface {
+            WebSurface::Ukrainian => ("uk.my", UK_SURFACE),
+            WebSurface::Sanskrit => ("sa.my", SA_SURFACE),
+            WebSurface::Core | WebSurface::English => unreachable!(),
+        };
+        eval_program(source, &mut session)
+            .map_err(|error| format!("failed to load {name}: {}", error.render(source)))?;
+    }
+    Ok(layer)
+}
+
+struct WebSession {
+    session: Session,
+    base_environment: Environment,
+    user_environment: Environment,
+    surface: WebSurface,
+}
+
+impl WebSession {
+    fn new(mut session: Session) -> Result<Self, String> {
+        let base_environment = session.environment.clone();
+        let surface_environment = build_surface_layer(&base_environment, WebSurface::Core)?;
+        let user_environment = surface_environment.child();
+        session.environment = user_environment.clone();
+        Ok(Self {
+            session,
+            base_environment,
+            user_environment,
+            surface: WebSurface::Core,
+        })
+    }
+
+    fn switch_surface(&mut self, surface: WebSurface) -> Result<(), String> {
+        if self.surface == surface {
+            return Ok(());
+        }
+        let surface_environment = build_surface_layer(&self.base_environment, surface)?;
+        self.user_environment
+            .reparent(surface_environment)
+            .map_err(str::to_string)?;
+        self.surface = surface;
+        Ok(())
+    }
+}
+
+thread_local! {
+    static SESSION: RefCell<Option<WebSession>> = const { RefCell::new(None) };
+}
+'''
+if s.count(old_thread) != 1:
+    raise SystemExit("wasm thread_local anchor drifted")
+s = s.replace(old_thread, new_thread)
+
+init_old = """        if guard.is_none() {
+            *guard = Some(session_with_core_fasl(CORE_FASL)?);
+        }
+"""
+init_new = """        if guard.is_none() {
+            *guard = Some(WebSession::new(session_with_core_fasl(CORE_FASL)?)?);
+        }
+"""
+if s.count(init_old) != 1:
+    raise SystemExit("wasm init anchor drifted")
+s = s.replace(init_old, init_new)
+
+eval_old = """        let session = guard.as_mut().expect("session set by init_if_needed");
+        let (result, forms) = my_lisp_literate::eval_literate(source, source_mode, session)
+"""
+eval_new = """        let state = guard.as_mut().expect("session set by init_if_needed");
+        let (result, forms) =
+            my_lisp_literate::eval_literate(source, source_mode, &mut state.session)
+"""
+if s.count(eval_old) != 1:
+    raise SystemExit("wasm evaluate anchor drifted")
+s = s.replace(eval_old, eval_new)
+
+reset_anchor = """#[wasm_bindgen]
+pub fn reset_session() {
+    SESSION.with(|slot| {
+        *slot.borrow_mut() = None;
+    });
+}
+"""
+surface_api = reset_anchor + """
+fn set_surface_impl(name: &str) -> Result<String, String> {
+    init_if_needed()?;
+    let surface = WebSurface::parse(name)
+        .ok_or_else(|| format!("unknown surface: {name}; expected uk|en|sa|core"))?;
+    SESSION.with(|slot| {
+        let mut guard = slot.borrow_mut();
+        let state = guard.as_mut().expect("session set by init_if_needed");
+        state.switch_surface(surface)?;
+        Ok(state.surface.code().to_string())
+    })
+}
+
+/// Змінює лише interaction/programming surface поточної browser-сесії.
+#[wasm_bindgen]
+pub fn set_surface(name: &str) -> Result<String, JsValue> {
+    set_surface_impl(name).map_err(|error| JsValue::from_str(&error))
+}
+
+#[wasm_bindgen]
+pub fn current_surface() -> String {
+    if init_if_needed().is_err() {
+        return "core".to_string();
+    }
+    SESSION.with(|slot| {
+        slot.borrow()
+            .as_ref()
+            .map(|state| state.surface.code().to_string())
+            .unwrap_or_else(|| "core".to_string())
+    })
+}
+"""
+if s.count(reset_anchor) != 1:
+    raise SystemExit("wasm reset anchor drifted")
+s = s.replace(reset_anchor, surface_api)
+
+s = s.replace(
+    'let session = guard.as_mut().unwrap();',
+    'let session = &mut guard.as_mut().unwrap().session;',
+)
+
+test_anchor = """    #[test]
+    fn broken_core_preload_is_reported_instead_of_installing_partial_session() {
+"""
+new_test = """    #[test]
+    fn web_surface_switch_is_layered_and_preserves_user_definitions() {
+        reset_session();
+        init_if_needed().expect("core preload");
+
+        SESSION.with(|slot| {
+            let mut guard = slot.borrow_mut();
+            let session = &mut guard.as_mut().unwrap().session;
+            eval_program("(define крок 1)", session).expect("user def");
+            eval_program("(define додай-крок (lambda (x) (+ x крок)))", session)
+                .expect("closure def");
+        });
+
+        assert_eq!(set_surface_impl("uk").expect("uk"), "ук");
+        SESSION.with(|slot| {
+            let mut guard = slot.borrow_mut();
+            let session = &mut guard.as_mut().unwrap().session;
+            let uk = eval_program("(атом? 'мама)", session).expect("uk alias");
+            assert_eq!(uk.value.to_string(), "t");
+            eval_program("(define крок 2)", session).expect("redefine user value");
+            let closure = eval_program("(додай-крок 5)", session).expect("closure");
+            assert_eq!(closure.value.to_string(), "7");
+        });
+
+        assert_eq!(set_surface_impl("core").expect("core"), "core");
+        SESSION.with(|slot| {
+            let guard = slot.borrow();
+            let state = guard.as_ref().unwrap();
+            assert!(state.session.environment.get("атом?").is_none());
+            assert!(state.session.environment.get("додай-крок").is_some());
+        });
+    }
+
+""" + test_anchor
+if s.count(test_anchor) != 1:
+    raise SystemExit("wasm test anchor drifted")
+s = s.replace(test_anchor, new_test)
+p.write_text(s)
+
+# 5. Web terminal: Ukrainian by default, same commands.
+p = Path("public/my-lisp-cli-web.html")
+s = p.read_text()
+s = s.replace('<html lang="en">', '<html lang="uk">', 1)
+
+history_anchor = """      const history = [];
+      let historyIndex = -1;
+"""
+history_new = """      const history = [];
+      let historyIndex = -1;
+      let currentSurface = "core";
+      const promptEl = document.getElementById("prompt");
+
+      function updatePrompt() {
+        promptEl.textContent = `my-lisp[${currentSurface}]>`;
+      }
+
+      function handleMetaCommand(line, wasmModule) {
+        const parts = line.split(/\\s+/);
+        const command = parts[0];
+        if (command === ":допомога" || command === ":help") {
+          printLine("Поверхні: :мова ук | en | sa | core", "line-system");
+          printLine("Технічний alias: :surface uk | en | sa | core", "line-system");
+          return true;
+        }
+        if (command !== ":мова" && command !== ":surface") return false;
+        if (parts.length === 1) {
+          printLine(`Поточна поверхня: ${currentSurface}`, "line-system");
+          return true;
+        }
+        if (parts.length !== 2) {
+          printLine("Поверхня приймає рівно одне ім'я.", "line-error");
+          return true;
+        }
+        try {
+          currentSurface = wasmModule.set_surface(parts[1]);
+          updatePrompt();
+          printLine(`Поверхня: ${currentSurface}`, "line-system");
+        } catch (error) {
+          printLine("Помилка перемикання поверхні: " + String(error), "line-error");
+        }
+        return true;
+      }
+"""
+if s.count(history_anchor) != 1:
+    raise SystemExit("web history anchor drifted")
+s = s.replace(history_anchor, history_new)
+
+banner_anchor = """        printLine("my-lisp-cli (Web) — pure Rust my-lisp core compiled to WebAssembly.", "line-system");
+        printLine("Type an expression and press Enter. Ctrl-L clears the screen.", "line-system");
+        printLine("", "line-system");
+
+        inputEl.disabled = false;
+        inputEl.placeholder = "(+ 1 2)";
+"""
+banner_new = """        try {
+          currentSurface = wasmModule.set_surface("uk");
+        } catch (error) {
+          printLine("Помилка запуску української поверхні: " + String(error), "line-error");
+        }
+        updatePrompt();
+        printLine("my-lisp-cli · Web — українська поверхня над тим самим семантичним ядром.", "line-system");
+        printLine("Змінити: :мова en | sa | core · допомога: :допомога · Ctrl-L очищає екран.", "line-system");
+        printLine("", "line-system");
+
+        inputEl.disabled = false;
+        inputEl.placeholder = "(атом? 'мама)";
+"""
+if s.count(banner_anchor) != 1:
+    raise SystemExit("web banner anchor drifted")
+s = s.replace(banner_anchor, banner_new)
+
+submit_anchor = """        printLine("my-lisp> " + line, "line-input");
+
+        try {
+          const evaluation = wasmModule.evaluate(line, "my-lisp");
+"""
+submit_new = """        printLine(`my-lisp[${currentSurface}]> ${line}`, "line-input");
+
+        if (handleMetaCommand(line, wasmModule)) return;
+
+        try {
+          const evaluation = wasmModule.evaluate(line, "my-lisp");
+"""
+if s.count(submit_anchor) != 1:
+    raise SystemExit("web submit anchor drifted")
+s = s.replace(submit_anchor, submit_new)
+p.write_text(s)
