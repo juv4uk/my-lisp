@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, Session};
+use my_lisp::{eval_program, ErrorKind, Session};
 
 fn eval(source: &str) -> String {
     let mut session = Session::default();
@@ -63,9 +63,13 @@ fn historical_ukrainian_and_sanskrit_surfaces_are_observationally_equal() {
 }
 
 #[test]
-fn ukrainian_builtin_surface_remains_lexically_shadowable() {
-    assert_eq!(
-        eval("(def перше (lambda (x) (як-є затінено))) (перше 42)"),
-        "затінено"
-    );
+fn ukrainian_canon_surface_is_reserved_but_noncanon_builtin_is_shadowable() {
+    let mut session = Session::default();
+    let error = eval_program("(def перше (lambda (x) (як-є затінено)))", &mut session)
+        .expect_err("Contract 6.0 must reject shadowing a Ukrainian Canon spelling");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+
+    let ordinary = eval_program("(def + (lambda (x y) (як-є локально))) (+ 1 2)", &mut session)
+        .expect("non-Canon builtins must remain ordinary lexical values");
+    assert_eq!(ordinary.value.to_string(), "локально");
 }
