@@ -8,6 +8,18 @@ fn eval(source: &str) -> String {
         .to_string()
 }
 
+fn invalid_binding(source: &str) {
+    let mut session = Session::default();
+    let error = eval_program(source, &mut session)
+        .expect_err("Contract 6.0 must reject Canon binding attempts");
+    assert_eq!(error.kind, ErrorKind::InvalidForm, "source: {source}");
+    assert!(
+        error.message.contains("canonical name is immutable"),
+        "unexpected error for {source}: {}",
+        error.message
+    );
+}
+
 #[test]
 fn canon_zero_is_atomic_but_not_a_pair() {
     assert_eq!(eval("(атом? ())"), "t");
@@ -59,27 +71,48 @@ fn car_and_cdr_on_canon_zero_fail_named_not_panic() {
 }
 
 #[test]
-fn historical_shadowing_must_not_retarget_canonical_surface() {
-    // Canonical spellings denote the same primitive meaning, not a late-bound
-    // alias to whatever the historical spelling happens to name now.
-    assert_eq!(
-        eval("(def car (lambda (x) (як-є зламано))) (перше (сполучити 1 2))"),
-        "1"
-    );
-    assert_eq!(
-        eval("(def cdr (lambda (x) (svarūpa broken))) (śeṣa (saṃyuj 1 2))"),
-        "2"
-    );
+fn every_human_surface_rejects_canon_redefinition() {
+    for source in [
+        "(def car 42)",
+        "(def перше 42)",
+        "(def ādi 42)",
+        "(def atom 42)",
+        "(def атом? 42)",
+        "(def aṇu 42)",
+        "(def quote 42)",
+        "(def як-є 42)",
+        "(def svarūpa 42)",
+        "(def cond 42)",
+        "(def за-умовою 42)",
+        "(def anukrama 42)",
+    ] {
+        invalid_binding(source);
+    }
 }
 
 #[test]
-fn canonical_builtin_shadowing_is_local_to_that_surface_name() {
+fn every_binder_shape_rejects_canon_names() {
+    for source in [
+        "(lambda (car) car)",
+        "(lambda (перше) перше)",
+        "(lambda (ādi) ādi)",
+        "(lambda atom atom)",
+        "(lambda (x . решта) x)",
+        "(let ((car 42)) car)",
+        "(let* ((перше 42)) перше)",
+    ] {
+        invalid_binding(source);
+    }
+}
+
+#[test]
+fn ordinary_noncanon_values_remain_shadowable() {
     assert_eq!(
-        eval("(def перше (lambda (x) (як-є локально))) (перше 42)"),
+        eval("(def + (lambda (x y) (як-є локально))) (+ 1 2)"),
         "локально"
     );
     assert_eq!(
-        eval("(def ādi (lambda (x) (svarūpa sthānika))) (ādi 42)"),
+        eval("(def map (lambda args (svarūpa sthānika))) (map 1 2)"),
         "sthānika"
     );
 }
