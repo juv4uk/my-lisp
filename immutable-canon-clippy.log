@@ -1,22 +1,106 @@
 [1m[92m    Checking[0m my-lisp v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp)
-[1m[92m    Checking[0m bitflags v2.13.1
 [1m[92m    Checking[0m cfg-if v1.0.4
+[1m[92m    Checking[0m bitflags v2.13.1
 [1m[92m    Checking[0m memchr v2.8.3
-[1m[92m    Checking[0m linux-raw-sys v0.12.1
 [1m[92m    Checking[0m smallvec v1.15.2
+[1m[92m    Checking[0m linux-raw-sys v0.12.1
 [1m[92m    Checking[0m nibble_vec v0.1.0
 [1m[92m    Checking[0m libc v0.2.189
-[1m[92m    Checking[0m rustix v1.1.4
 [1m[92m   Compiling[0m proc-macro2 v1.0.107
-[1m[91merror[0m[1m: function `value_for_surface` is never used[0m
-   [1m[94m--> [0mcrates/my-lisp/src/eval/canon.rs:235:15
-    [1m[94m|[0m
-[1m[94m235[0m [1m[94m|[0m pub(crate) fn value_for_surface(name: &str) -> Option<Value> {
-    [1m[94m|[0m               [1m[91m^^^^^^^^^^^^^^^^^[0m
-    [1m[94m|[0m
-    [1m[94m= [0m[1mnote[0m: `-D dead-code` implied by `-D warnings`
-    [1m[94m= [0m[1mhelp[0m: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
-
+[1m[92m    Checking[0m rustix v1.1.4
 [1m[92m   Compiling[0m unicode-ident v1.0.24
-[1m[91merror[0m: could not compile `my-lisp` (lib) due to 1 previous error
+[1m[92m    Checking[0m endian-type v0.1.2
+[1m[92m    Checking[0m radix_trie v0.2.1
+[1m[92m    Checking[0m my-lisp-host v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-host)
+[1m[92m    Checking[0m my-lisp-lsp v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-lsp)
+[1m[92m    Checking[0m wsm-guard-core v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-core)
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m    Checking[0m log v0.4.33
+[1m[92m    Checking[0m unicode-segmentation v1.13.3
+[1m[92m    Checking[0m unicode-width v0.1.14
+[1m[92m    Checking[0m utf8parse v0.2.2
+[1m[92m    Checking[0m home v0.5.11
+[1m[92m   Compiling[0m wasm-bindgen-shared v0.2.126
+[1m[92m    Checking[0m nix v0.28.0
+[1m[92m   Compiling[0m rustversion v1.0.23
+[1m[92m    Checking[0m fd-lock v4.0.4
+[1m[92m   Compiling[0m syn v2.0.119
+[1m[92m   Compiling[0m bumpalo v3.20.3
+[1m[92m   Compiling[0m wasm-bindgen v0.2.126
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m syn v3.0.3
+[1m[92m   Compiling[0m pulldown-cmark v0.12.2
+[1m[92m    Checking[0m once_cell v1.21.4
+[1m[92m    Checking[0m slab v0.4.12
+[1m[92m    Checking[0m unicode-width v0.2.2
+[1m[92m    Checking[0m futures-task v0.3.33
+[1m[92m    Checking[0m rustyline v14.0.0
+[1m[92m    Checking[0m pin-project-lite v0.2.17
+[1m[92m    Checking[0m futures-core v0.3.33
+[1m[92m    Checking[0m futures-util v0.3.33
+[1m[92m    Checking[0m getopts v0.2.24
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m    Checking[0m unicase v2.9.0
+[1m[92m    Checking[0m pulldown-cmark-escape v0.11.0
+[1m[92m   Compiling[0m wasm-bindgen-macro-support v0.2.126
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m autocfg v1.5.1
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m num-traits v0.2.19
+[1m[92m   Compiling[0m serde_json v1.0.151
+[1m[92m    Checking[0m my-lisp-literate v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-literate)
+[1m[92m    Checking[0m itoa v1.0.18
+[1m[92m   Compiling[0m wasm-bindgen-test-macro v0.3.76
+[1m[92m   Compiling[0m async-trait v0.1.92
+[1m[92m    Checking[0m nu-ansi-term v0.50.3
+[1m[92m    Checking[0m wasm-bindgen-test-shared v0.2.126
+[1m[92m    Checking[0m oorandom v11.1.5
+[1m[92m    Checking[0m cast v0.3.0
+[1m[92m    Checking[0m my-lisp-cli v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-cli)
+[1m[92m   Compiling[0m wasm-bindgen-macro v0.2.126
+[1m[92m    Checking[0m wsm-guard-facts v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-facts)
+[1m[92m    Checking[0m wsm-guard-slice v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-slice)
+[1m[91merror[E0509][0m[1m: cannot move out of type `value::Value`, which implements the `Drop` trait[0m
+   [1m[94m--> [0mcrates/my-lisp/src/eval/canon.rs:264:13
+    [1m[94m|[0m
+[1m[94m263[0m [1m[94m|[0m         let (Value::Builtin(historical), Value::Builtin(ukrainian), Value::Builtin(sanskrit)) =
+    [1m[94m|[0m                             [1m[94m----------[0m [1m[94mdata moved here because `historical` has type `std::rc::Rc<value::Builtin>`, which does not implement the `Copy` trait[0m
+[1m[94m264[0m [1m[94m|[0m             (historical, ukrainian, sanskrit)
+    [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mcannot move out of here[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: consider borrowing the pattern binding
+    [1m[94m|[0m
+[1m[94m263[0m [1m[94m| [0m        let (Value::Builtin([92mref [0mhistorical), Value::Builtin(ukrainian), Value::Builtin(sanskrit)) =
+    [1m[94m|[0m                             [92m+++[0m
+
+[1m[91merror[E0509][0m[1m: cannot move out of type `value::Value`, which implements the `Drop` trait[0m
+   [1m[94m--> [0mcrates/my-lisp/src/eval/canon.rs:264:13
+    [1m[94m|[0m
+[1m[94m263[0m [1m[94m|[0m         let (Value::Builtin(historical), Value::Builtin(ukrainian), Value::Builtin(sanskrit)) =
+    [1m[94m|[0m                                                         [1m[94m---------[0m [1m[94mdata moved here because `ukrainian` has type `std::rc::Rc<value::Builtin>`, which does not implement the `Copy` trait[0m
+[1m[94m264[0m [1m[94m|[0m             (historical, ukrainian, sanskrit)
+    [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mcannot move out of here[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: consider borrowing the pattern binding
+    [1m[94m|[0m
+[1m[94m263[0m [1m[94m| [0m        let (Value::Builtin(historical), Value::Builtin([92mref [0mukrainian), Value::Builtin(sanskrit)) =
+    [1m[94m|[0m                                                         [92m+++[0m
+
+[1m[91merror[E0509][0m[1m: cannot move out of type `value::Value`, which implements the `Drop` trait[0m
+   [1m[94m--> [0mcrates/my-lisp/src/eval/canon.rs:264:13
+    [1m[94m|[0m
+[1m[94m263[0m [1m[94m|[0m         let (Value::Builtin(historical), Value::Builtin(ukrainian), Value::Builtin(sanskrit)) =
+    [1m[94m|[0m                                                                                    [1m[94m--------[0m [1m[94mdata moved here because `sanskrit` has type `std::rc::Rc<value::Builtin>`, which does not implement the `Copy` trait[0m
+[1m[94m264[0m [1m[94m|[0m             (historical, ukrainian, sanskrit)
+    [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mcannot move out of here[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: consider borrowing the pattern binding
+    [1m[94m|[0m
+[1m[94m263[0m [1m[94m| [0m        let (Value::Builtin(historical), Value::Builtin(ukrainian), Value::Builtin([92mref [0msanskrit)) =
+    [1m[94m|[0m                                                                                    [92m+++[0m
+
+[1m[92m    Checking[0m js-sys v0.3.103
+[1mFor more information about this error, try `rustc --explain E0509`.[0m
+[1m[91merror[0m: could not compile `my-lisp` (lib test) due to 3 previous errors
 [1m[33mwarning[0m: build failed, waiting for other jobs to finish...
