@@ -28,6 +28,8 @@ jobs:
           replacements = {
               'assert!(en.contains("surface en: stable 140"));':
                   'assert!(en.contains("surface en: stable 131 · candidate 0 · missing 9"));',
+              'assert!(uk.contains("surface ук: stable 140"));':
+                  'assert!(uk.contains("surface uk: stable 140"));',
               'assert!(help.contains("identity: map"));':
                   'assert!(help.contains("identity: 0101"));',
               'assert!(status.contains("trilingual stable: 36/140"));':
