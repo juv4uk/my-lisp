@@ -17,21 +17,24 @@
 ; Necessary forms are selected by numeric semantic identity, not by an EN/UK
 ; spelling. `string->symbol` constructs the pure Symbol("0010") bootstrap
 ; LAMBDA datum and first-class `eval` evaluates that datum in the current
-; environment. The macro expansion likewise emits pure Symbol("0010") /
-; Symbol("0011") heads. No additional source spelling or reader syntax exists.
-; Sanskrit remains explicitly missing.
+; environment. The bootstrap lambda uses the Lisp-family bare-symbol rest form
+; (`args`) so the data->code boundary stays a proper list throughout. The macro
+; expansion likewise emits pure Symbol("0010") / Symbol("0011") heads. No
+; additional source spelling or reader syntax exists. Sanskrit remains missing.
 
 (make-macro
   (eval
     (cons (string->symbol "0010")
-      (quote
-        ((name params . body)
-          (cons (string->symbol "0011")
-            (cons name
-              (cons
-                (cons (quote make-macro)
-                  (cons
-                    (cons (string->symbol "0010")
-                      (cons params body))
-                    (quote ())))
-                (quote ())))))))))
+      (cons (quote args)
+        (quote
+          ((cons (string->symbol "0011")
+             (cons (car args)
+               (cons
+                 (cons (quote make-macro)
+                   (cons
+                     (cons (string->symbol "0010")
+                       (cons
+                         (car (cdr args))
+                         (cdr (cdr args))))
+                     (quote ())))
+                 (quote ()))))))))))
