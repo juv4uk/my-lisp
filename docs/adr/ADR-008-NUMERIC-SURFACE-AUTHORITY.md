@@ -17,11 +17,13 @@ Semantic identity у цьому реєстрі — непрозорий атом
                            │
               ┌────────────┼────────────┐
               │            │            │
-             UK           EN           SA
+             UK           EN            SA
         відобразити       map       āvartana
 ```
 
-Жодна людська назва не є ключем іншої людської назви.
+Жодна людська назва не є ключем іншої людської назви. Це правило machine layer
+і воно не змінює project-level політику: **українська є першою мовою проєкту**,
+тоді як англійська й санскрит є допоміжними поверхнями.
 
 ## Спільна символіка
 
@@ -93,11 +95,26 @@ authority.
 показує numeric machine handles; його runtime environment може залишатися
 implementation-oriented.
 
+## Виконуваний gate
+
+Authority закрита не лише текстом ADR. CI виконує три незалежні перевірки:
+
+```bash
+python3 scripts/check_semantic_registry.py
+python3 scripts/check_surface_coverage.py
+python3 scripts/check_trilingual_surface.py
+```
+
+Вони доводять, що semantic IDs numeric-only, чиста пунктуація не приписана
+людській мові, runtime public names класифіковані через numeric registry, а
+status matrix обчислюється з тієї самої authority. Strict workspace CI окремо
+перевіряє Rust consumer-и, включно з REPL catalog.
+
 ## Межа цього ADR
 
 Цей ADR закриває **authority та introspection debt**. Він не стверджує, що всі
 140+ public values уже мають direct runtime peer binding одного `Rc`/closure.
-Це окремі етапи B–D плану повного рівноправ'я і потребують executable proof для
+Це окремі етапи B–D плану runtime topology і потребують executable proof для
 кожної мігрованої identity.
 
 Отже не плутаємо:
@@ -107,7 +124,7 @@ numeric authority complete        ✅
 REPL numeric introspection         ✅
 legacy EN key retired             ✅
 all runtime peer bindings complete ⏳
-full UK/EN/SA release parity       ⏳
+full auxiliary-surface parity      ⏳
 ```
 
 ## Supersession
@@ -115,8 +132,10 @@ full UK/EN/SA release parity       ⏳
 Цей ADR завершує перехідний пункт ADR-007, за яким
 `uk-sa-coverage.wsm` тимчасово залишалася authority під час міграції.
 
-В ADR-005 зберігається фундаментальний висновок про peer human surfaces, але
-його legacy-інтерпретація `canonical/EN` колонки більше не є чинною машинною
+В ADR-005 зберігається фундаментальний висновок, що human surface spelling не
+може отримати machine-semantic владу лише через історичне походження. Його
+legacy-інтерпретація `canonical/EN` колонки більше не є чинною машинною
 архітектурою.
 
-> **Значення первинне. Мови рівноправні. Символи не є мовою.**
+> **Machine layer: значення первинне; людська назва не є semantic key.**  
+> **Project layer: українська — перша мова проєкту.**
