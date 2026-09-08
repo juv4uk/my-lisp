@@ -4,7 +4,8 @@
 ; Canon 0+7 names are NOT defined here. The immutable Canon resolver owns the
 ; ratified Sanskrit spellings directly, before ordinary lexical lookup.
 ; Everything below Canon remains language-owned aliases over the same semantic
-; environment.
+; environment, except identities migrated under ADR-007: those peer spellings
+; are installed directly by the runtime and are not defined here.
 ;
 ; Principle: one semantic implementation, multiple human surfaces.
 ;
@@ -27,8 +28,8 @@
 ;; Batch 1 — Arithmetic (status: candidate)
 ;; ═══════════════════════════════════════════════════════════════
 
-; yoga = addition (Brahmagupta, Bhāskara)
-(define yoga +)
+; ADR-007 / 0104: `додати`, `+`, `yoga` are direct peer bindings of one
+; callable value. yoga is intentionally NOT defined through another surface.
 ; viyoga = subtraction (vi- + yoga)
 (define viyoga -)
 ; guṇana = multiplication

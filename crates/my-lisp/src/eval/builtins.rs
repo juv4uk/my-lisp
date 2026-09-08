@@ -6,6 +6,11 @@
 //! the immutable Canon resolver wins before `Environment` lookup for every
 //! reserved Canon spelling.
 //!
+//! ADR-007 extends the meaning-first shape beyond Canon. Ordinary public
+//! operations stay shadowable lexical values, but peer human spellings may be
+//! installed as direct names of one `Value::Builtin` allocation instead of as
+//! aliases through another human surface. ADD is the first proved slice.
+//!
 //! Batch 1 (2026-08-23): car cdr cons eq atom + - * / < > =.
 //! Batch 2 (2026-09-07): eager string/symbol, Unicode-codepoint, and digest
 //! mechanisms are ordinary builtin values too; the evaluator does not need
@@ -461,7 +466,20 @@ pub(crate) fn install(environment: &Environment) {
         }
     });
 
-    for op in ["+", "-", "*"] {
+    // ADR-007 first ordinary identity: ADD has one callable allocation and
+    // three peer human spellings. `+` is kept as the builtin diagnostic token
+    // and arithmetic selector; no surface resolves through another surface.
+    let add = builtin(
+        "+",
+        std::rc::Rc::new(|args: &[Value], env: &Environment, span: Span| {
+            arithmetic_on_values("+", args, env, span)
+        }),
+    );
+    for name in ["додати", "+", "yoga"] {
+        environment.define(name, add.clone());
+    }
+
+    for op in ["-", "*"] {
         define!(environment, op, move |args: &[Value], env: &Environment, span: Span| {
             arithmetic_on_values(op, args, env, span)
         });

@@ -2,6 +2,7 @@ use my_lisp::{language_items, parse, LanguageItemKind, CORE_LIBRARY_SOURCE};
 use std::collections::BTreeSet;
 
 const INVENTORY: &str = include_str!("../../../lib/surface/uk-inventory.wsm");
+const SEMANTIC_REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
 
 fn names_after(source: &str, marker: &str) -> BTreeSet<String> {
     let start = source.find(marker).expect("inventory marker must exist") + marker.len();
@@ -12,6 +13,33 @@ fn names_after(source: &str, marker: &str) -> BTreeSet<String> {
         .map(|word| word.trim_matches(|c| c == '(' || c == ')'))
         .filter(|word| !word.is_empty())
         .map(str::to_owned)
+        .collect()
+}
+
+fn semantic_registry_surface_names() -> BTreeSet<String> {
+    SEMANTIC_REGISTRY
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            if !line.starts_with('(') || line.starts_with("(sr/") {
+                return None;
+            }
+            let fields = line
+                .trim_matches(|c| c == '(' || c == ')')
+                .split_whitespace()
+                .collect::<Vec<_>>();
+            if fields.len() != 3 {
+                return None;
+            }
+            let language = fields[0];
+            let name = fields[1];
+            let status = fields[2];
+            if language.chars().all(char::is_alphabetic) && status != "missing" {
+                Some(name.to_owned())
+            } else {
+                None
+            }
+        })
         .collect()
 }
 
@@ -37,14 +65,31 @@ fn inventory_is_valid_my_lisp_data() {
 #[test]
 fn every_discoverable_runtime_item_is_classified() {
     let root_builtins = names_after(INVENTORY, "(root-builtins");
+    let registry_names = semantic_registry_surface_names();
     let live_builtins = language_items()
         .into_iter()
         .filter(|item| item.kind == LanguageItemKind::Builtin)
         .map(|item| item.name)
         .collect::<BTreeSet<_>>();
-    assert_eq!(live_builtins, root_builtins);
+
+    assert!(
+        root_builtins.is_subset(&live_builtins),
+        "legacy inventory contains root builtins no longer discoverable: {:?}",
+        root_builtins.difference(&live_builtins).collect::<Vec<_>>()
+    );
+
+    let mut classified_builtins = root_builtins.clone();
+    classified_builtins.extend(registry_names.iter().cloned());
+    assert!(
+        live_builtins.is_subset(&classified_builtins),
+        "runtime builtin bindings are absent from both legacy inventory and semantic registry: {:?}",
+        live_builtins
+            .difference(&classified_builtins)
+            .collect::<Vec<_>>()
+    );
 
     let mut classified = root_builtins;
+    classified.extend(registry_names);
     classified.extend(names_after(INVENTORY, "(canon"));
     classified.extend(names_after(INVENTORY, "(necessary-forms"));
     classified.extend(names_after(INVENTORY, "(language-macros"));

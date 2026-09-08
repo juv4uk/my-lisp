@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = ROOT / "lib" / "surface" / "semantic-registry.wsm"
 STATUSES = {"stable", "candidate", "missing", "compatibility-only"}
-ID = re.compile(r"^m[0-9]{4,}$")
+ID = re.compile(r"^[0-9]{4,}$")
 
 
 def tokens(source: str) -> list[str]:
@@ -56,7 +56,9 @@ def check(root) -> tuple[int, set[str]]:
             raise ValueError(f"malformed semantic entry: {entry!r}")
         identity = entry[0]
         if not isinstance(identity, str) or not ID.fullmatch(identity):
-            raise ValueError(f"identity must be opaque mNNNN: {identity!r}")
+            raise ValueError(
+                f"semantic identity must contain digits only (minimum four): {identity!r}"
+            )
         if identity in seen_ids:
             raise ValueError(f"duplicate semantic identity: {identity}")
         seen_ids.add(identity)

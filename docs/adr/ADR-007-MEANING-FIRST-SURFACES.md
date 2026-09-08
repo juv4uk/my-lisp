@@ -47,32 +47,60 @@ SA --/
 A surface spelling is not an alias of another surface spelling. It is a direct
 name of the same semantic identity.
 
+## Numeric semantic identities
+
+Semantic identity handles contain digits only.
+
+This is a neutrality rule, not a formatting preference. Alphabetic prefixes are
+forbidden because even a seemingly generic prefix such as `m` silently imports
+a word from one human language (for example, "meaning") into the machine
+identity layer.
+
+Required examples:
+
+```text
+0001
+0101
+0104
+```
+
+Forbidden examples:
+
+```text
+m0104
+id0104
+meaning0104
+```
+
+The digits are opaque handles. They do not name the operation and do not encode
+a human-language word. Their only job is to provide one stable, language-neutral
+reference to one semantic identity.
+
 ## Minimal registry form
 
 The migration uses a deliberately small Lisp-shaped data format:
 
 ```lisp
 (sr/1
-  (m0001
+  (0001
     (uk як-є stable)
     (en quote stable)
     (sa svarūpa stable))
 
-  (m0101
+  (0101
     (uk відобразити stable)
     (en map stable)
     (sa āvartana candidate)))
 ```
 
-`m0001`, `m0101`, ... are opaque machine identities. They are intentionally not
-words from UK, EN, SA, or any future human surface. Their only job is to give
-one stable handle to one meaning.
+`0001`, `0101`, ... are opaque numeric machine identities. They are
+intentionally not words from UK, EN, SA, or any future human surface.
 
 The order of `(uk ...)`, `(en ...)`, `(sa ...)` has no semantic significance.
 A future language is added by adding another peer form, for example:
 
 ```lisp
-(m0101
+(0101
   (uk відобразити stable)
   (en map stable)
   (sa āvartana candidate)
@@ -123,7 +151,8 @@ is not English. This ADR generalizes that decision:
 - peer status applies to every present and future human surface;
 - no surface may be the implementation substrate of another;
 - the machine registry itself must not use a human-language spelling as the
-  semantic identity.
+  semantic identity;
+- semantic identity handles themselves must be numeric-only.
 
 The short project law is:
 
