@@ -1,0 +1,10 @@
+name: Temporary branch CI trigger
+on:
+  push:
+    branches:
+      - feat/direct-necessary-form-peers
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo parity-slice-ready
