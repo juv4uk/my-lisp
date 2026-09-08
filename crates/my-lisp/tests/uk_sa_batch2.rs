@@ -40,16 +40,16 @@ fn sa_session_full() -> Session {
 #[test]
 fn uk_persistent_map_basic() {
     let mut s = uk_session_full();
-    let r = eval_program("карта-порожня", &mut s).expect("eval");
+    let r = eval_program("порожня-карта", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "()");
     let r2 = eval_program(
-        "(карта-містить? (як-є ключ) (карта-вставити (як-є ключ) 42 карта-порожня))",
+        "(ключ-у-карті? (як-є ключ) (вставити-в-карту (як-є ключ) 42 порожня-карта))",
         &mut s,
     )
     .expect("eval");
     assert_eq!(r2.value.to_string(), "t");
     let r3 = eval_program(
-        "(карта-отримати (як-є ключ) (карта-вставити (як-є ключ) 42 карта-порожня))",
+        "(отримати-з-карти (як-є ключ) (вставити-в-карту (як-є ключ) 42 порожня-карта))",
         &mut s,
     )
     .expect("eval");
@@ -61,16 +61,16 @@ fn uk_persistent_map_basic() {
 #[test]
 fn uk_persistent_vector_basic() {
     let mut s = uk_session_full();
-    let r = eval_program("(вектор-розмір вектор-порожній)", &mut s).expect("eval");
+    let r = eval_program("(розмір-вектора порожній-вектор)", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "0");
     let r2 = eval_program(
-        "(вектор-розмір (вектор-додати 20 (вектор-додати 10 вектор-порожній)))",
+        "(розмір-вектора (додати-до-вектора 20 (додати-до-вектора 10 порожній-вектор)))",
         &mut s,
     )
     .expect("eval");
     assert_eq!(r2.value.to_string(), "2");
     let r3 = eval_program(
-        "(вектор-за-номером 0 (вектор-додати 99 вектор-порожній))",
+        "(елемент-вектора-за-індексом 0 (додати-до-вектора 99 порожній-вектор))",
         &mut s,
     )
     .expect("eval");
@@ -181,9 +181,9 @@ fn sa_time_unix_works() {
 #[test]
 fn uk_batch2_en_equivalence() {
     let mut s = uk_session_full();
-    // map-get = карта-отримати
+    // map-get = отримати-з-карти
     let uk_r = eval_program(
-        "(карта-отримати (як-є x) (карта-вставити (як-є x) 99 карта-порожня))",
+        "(отримати-з-карти (як-є x) (вставити-в-карту (як-є x) 99 порожня-карта))",
         &mut s,
     )
     .expect("eval");
