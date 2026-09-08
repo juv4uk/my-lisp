@@ -18,23 +18,32 @@
 ; spelling. `string->symbol` constructs the pure Symbol("0010") bootstrap
 ; LAMBDA datum and first-class `eval` evaluates that datum in the current
 ; environment. The bootstrap lambda uses the Lisp-family bare-symbol rest form
-; (`args`) so the data->code boundary stays a proper list throughout. The macro
-; expansion likewise emits pure Symbol("0010") / Symbol("0011") heads. No
-; additional source spelling or reader syntax exists. Sanskrit remains missing.
+; (`args`) so the data->code boundary stays a proper list throughout. Its
+; minimum-arity contract (name + parameter form) is preserved here in Lisp;
+; `?:` and `.?` are language-neutral Canon spellings, and a deliberately
+; wrong-arity `make-macro` call retains the named Arity failure class. The
+; expansion emits pure Symbol("0010") / Symbol("0011") heads. No additional
+; source spelling or reader syntax exists. Sanskrit remains explicitly missing.
 
 (make-macro
   (eval
     (cons (string->symbol "0010")
       (cons (quote args)
         (quote
-          ((cons (string->symbol "0011")
-             (cons (car args)
-               (cons
-                 (cons (quote make-macro)
-                   (cons
-                     (cons (string->symbol "0010")
-                       (cons
-                         (car (cdr args))
-                         (cdr (cdr args))))
-                     (quote ())))
-                 (quote ()))))))))))
+          ((?:
+             ((.? args)
+              (make-macro))
+             ((.? (cdr args))
+              (make-macro))
+             (t
+              (cons (string->symbol "0011")
+                (cons (car args)
+                  (cons
+                    (cons (quote make-macro)
+                      (cons
+                        (cons (string->symbol "0010")
+                          (cons
+                            (car (cdr args))
+                            (cdr (cdr args))))
+                        (quote ())))
+                    (quote ()))))))))))))
