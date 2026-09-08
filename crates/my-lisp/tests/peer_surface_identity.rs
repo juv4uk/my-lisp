@@ -17,11 +17,11 @@ fn add_peer_spellings_exist_before_any_human_surface_library_loads() {
     let mut session = Session::default();
 
     let uk = eval_program("додати", &mut session).expect("UK 0104").value;
-    let en = eval_program("+", &mut session).expect("EN 0104").value;
+    let sym = eval_program("+", &mut session).expect("SYM 0104").value;
     let sa = eval_program("yoga", &mut session).expect("SA 0104").value;
 
-    assert_same_builtin(&uk, &en);
-    assert_same_builtin(&en, &sa);
+    assert_same_builtin(&uk, &sym);
+    assert_same_builtin(&sym, &sa);
     assert_eq!(
         eval_program("(додати 20 22)", &mut session)
             .unwrap()
@@ -90,6 +90,7 @@ fn migrated_surface_files_no_longer_define_add_through_another_language() {
     assert!(REGISTRY.contains("(0104"));
     assert!(!REGISTRY.contains("(m0104"));
     assert!(REGISTRY.contains("(uk додати stable)"));
-    assert!(REGISTRY.contains("(en + stable)"));
+    assert!(REGISTRY.contains("(en — missing)"));
     assert!(REGISTRY.contains("(sa yoga stable)"));
+    assert!(REGISTRY.contains("(sym + stable)"));
 }
