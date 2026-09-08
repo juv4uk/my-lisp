@@ -28,14 +28,9 @@
 ;; Batch 1 — Arithmetic (status: candidate)
 ;; ═══════════════════════════════════════════════════════════════
 
-; ADR-007 / 0104: `додати`, `+`, `yoga` are direct peer bindings of one
-; callable value. yoga is intentionally NOT defined through another surface.
-; viyoga = subtraction (vi- + yoga)
-(define viyoga -)
-; guṇana = multiplication
-(define guṇana *)
-; haraṇa = division operation
-(define haraṇa /)
+; ADR-007/008 / 0104, 1001–1003: yoga, viyoga, guṇana and haraṇa
+; are ratified stable peers installed directly by the runtime together with
+; Ukrainian and symbolic spellings. None is defined through another surface.
 ; rūpa = absolute value (candidate — polysemous)
 (define rūpa abs)
 ; alpatara = least (alpa + -tara comparative)
@@ -55,12 +50,8 @@
 ;; Batch 1 — Comparisons (status: candidate)
 ;; ═══════════════════════════════════════════════════════════════
 
-; hīna = lesser (≠ alpatara min)
-(define hīna? <)
-; adhika = greater (≠ brhattara max)
-(define adhika? >)
-; sama = equal in quantity (≠ abheda eq)
-(define sama? =)
+; ADR-007/008 / 1014–1016: hīna?, adhika? and sama? are ratified
+; stable peers installed directly by the runtime with UK and symbolic names.
 ; na-adhika = not-greater (compound)
 (define na-adhika? <=)
 ; na-hīna = not-lesser (compound)

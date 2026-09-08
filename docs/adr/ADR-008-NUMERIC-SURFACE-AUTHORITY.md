@@ -144,3 +144,12 @@ legacy-інтерпретація `canonical/EN` колонки більше н�
 
 > **Machine layer: значення первинне; людська назва не є semantic key.**  
 > **Project layer: українська — перша мова проєкту.**
+
+## Runtime peer progress — 2026-09-08
+
+Numeric authority is now consumed by interactive Ukrainian builtin presentation,
+so `presentation.rs` no longer reads the legacy EN-shaped audit table. The first
+stable symbolic arithmetic/comparison wave is also direct at runtime: identities
+`0104`, `1001`–`1003`, and `1014`–`1016` allocate one builtin value each and bind
+UK/SA/symbolic spellings directly. The historical builtin display token remains
+a diagnostic compatibility token, not semantic identity.

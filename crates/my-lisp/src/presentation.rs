@@ -8,7 +8,7 @@ use crate::{ErrorKind, Exactness, LanguageError, NumericBuffer, Value};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-const UK_COVERAGE: &str = include_str!("../../../lib/surface/uk-sa-coverage.wsm");
+const SURFACE_REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PresentationLanguage {
@@ -22,13 +22,38 @@ fn uk_names() -> &'static HashMap<&'static str, &'static str> {
     static NAMES: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
     NAMES.get_or_init(|| {
         let mut names = HashMap::new();
-        for line in UK_COVERAGE.lines() {
+        for line in SURFACE_REGISTRY.lines() {
             let fields = line.split_whitespace().collect::<Vec<_>>();
-            if fields.first() == Some(&"(entry")
-                && fields.get(5) == Some(&"stable")
-                && fields.get(3) != Some(&"—")
-            {
-                names.insert(fields[2], fields[3]);
+            let Some(identity_token) = fields.first() else {
+                continue;
+            };
+            let identity = identity_token.trim_start_matches('(');
+            if identity.len() < 4 || !identity.chars().all(|character| character.is_ascii_digit()) {
+                continue;
+            }
+
+            let mut uk = None;
+            let mut stable_spellings = Vec::new();
+            for row in fields[1..].chunks(3) {
+                if row.len() != 3 {
+                    continue;
+                }
+                let surface = row[0].trim_start_matches('(');
+                let name = row[1];
+                let status = row[2].trim_end_matches(')');
+                if status == "stable" && name != "—" {
+                    stable_spellings.push(name);
+                    if surface == "uk" {
+                        uk = Some(name);
+                    }
+                }
+            }
+
+            if let Some(uk) = uk {
+                names.insert(identity, uk);
+                for spelling in stable_spellings {
+                    names.insert(spelling, uk);
+                }
             }
         }
         names

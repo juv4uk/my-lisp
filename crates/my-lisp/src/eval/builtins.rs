@@ -9,7 +9,8 @@
 //! ADR-007 extends the meaning-first shape beyond Canon. Ordinary public
 //! operations stay shadowable lexical values, but peer human spellings may be
 //! installed as direct names of one `Value::Builtin` allocation instead of as
-//! aliases through another human surface. ADD is the first proved slice.
+//! aliases through another human surface. ADD plus the stable arithmetic and
+//! comparison operator peers are now proved runtime slices.
 //!
 //! Batch 1 (2026-08-23): car cdr cons eq atom + - * / < > =.
 //! Batch 2 (2026-09-07): eager string/symbol, Unicode-codepoint, and digest
@@ -38,6 +39,18 @@ type Native =
 
 fn builtin(name: &'static str, func: Native) -> Value {
     Value::Builtin(std::rc::Rc::new(crate::value::Builtin { name, func }))
+}
+
+fn define_peer_builtin(
+    environment: &Environment,
+    diagnostic_name: &'static str,
+    names: &[&'static str],
+    func: Native,
+) {
+    let value = builtin(diagnostic_name, func);
+    for name in names {
+        environment.define(*name, value.clone());
+    }
 }
 
 fn ntp_query_raw_value(
@@ -466,27 +479,42 @@ pub(crate) fn install(environment: &Environment) {
         }
     });
 
-    // ADR-007 first ordinary identity: ADD has one callable allocation and
-    // three peer human spellings. `+` is kept as the builtin diagnostic token
-    // and arithmetic selector; no surface resolves through another surface.
-    let add = builtin(
+    // ADR-007/008 runtime peer slices: each identity below allocates one
+    // callable value, then binds every ratified stable spelling directly.
+    // The builtin diagnostic token remains the historical symbolic spelling
+    // for Contract 2.1 display compatibility; it is NOT semantic identity.
+    define_peer_builtin(
+        environment,
         "+",
+        &["додати", "+", "yoga"],
         std::rc::Rc::new(|args: &[Value], env: &Environment, span: Span| {
             arithmetic_on_values("+", args, env, span)
         }),
     );
-    for name in ["додати", "+", "yoga"] {
-        environment.define(name, add.clone());
-    }
-
-    for op in ["-", "*"] {
-        define!(environment, op, move |args: &[Value], env: &Environment, span: Span| {
-            arithmetic_on_values(op, args, env, span)
-        });
-    }
-    define!(environment, "/", move |args: &[Value], env: &Environment, span: Span| {
-        division_on_values(args, args.len(), env, span)
-    });
+    define_peer_builtin(
+        environment,
+        "-",
+        &["відняти", "-", "viyoga"],
+        std::rc::Rc::new(|args: &[Value], env: &Environment, span: Span| {
+            arithmetic_on_values("-", args, env, span)
+        }),
+    );
+    define_peer_builtin(
+        environment,
+        "*",
+        &["помножити", "*", "guṇana"],
+        std::rc::Rc::new(|args: &[Value], env: &Environment, span: Span| {
+            arithmetic_on_values("*", args, env, span)
+        }),
+    );
+    define_peer_builtin(
+        environment,
+        "/",
+        &["поділити", "/", "haraṇa"],
+        std::rc::Rc::new(|args: &[Value], env: &Environment, span: Span| {
+            division_on_values(args, args.len(), env, span)
+        }),
+    );
     define!(environment, "env", |args: &[Value], env: &Environment, span: Span| {
         exact_args("env", args, 0, span)?;
         let mut items = Vec::new();
@@ -499,11 +527,30 @@ pub(crate) fn install(environment: &Environment) {
         }
         Ok(list)
     });
-    for op in ["<", ">", "="] {
-        define!(environment, op, move |args: &[Value], _env: &Environment, span: Span| {
-            comparison_on_values(op, args, span)
-        });
-    }
+    define_peer_builtin(
+        environment,
+        "<",
+        &["менше?", "<", "hīna?"],
+        std::rc::Rc::new(|args: &[Value], _env: &Environment, span: Span| {
+            comparison_on_values("<", args, span)
+        }),
+    );
+    define_peer_builtin(
+        environment,
+        ">",
+        &["більше?", ">", "adhika?"],
+        std::rc::Rc::new(|args: &[Value], _env: &Environment, span: Span| {
+            comparison_on_values(">", args, span)
+        }),
+    );
+    define_peer_builtin(
+        environment,
+        "=",
+        &["рівне?", "=", "sama?"],
+        std::rc::Rc::new(|args: &[Value], _env: &Environment, span: Span| {
+            comparison_on_values("=", args, span)
+        }),
+    );
 }
 
 fn exact_args(
