@@ -87,9 +87,10 @@ pub struct ArityDiagnostic {
     pub span: Span,
 }
 
-/// Diagnose only calls whose head is a canonical runtime builtin or
-/// syntax-dispatched form. Unknown/dynamic heads and locally shadowed
-/// first-class builtins remain untouched; quoted subtrees are data.
+/// Diagnose only calls whose head is a known runtime builtin or
+/// syntax-dispatched form. Unknown/dynamic heads and locally shadowed ordinary
+/// first-class builtins remain untouched; Contract-6 Canon names are never
+/// considered shadowed. Quoted subtrees are data.
 pub fn arity_diagnostics(source: &str) -> Result<Vec<ArityDiagnostic>, LanguageError> {
     arity_diagnostics_with_items(source, &[])
 }
@@ -139,7 +140,9 @@ fn collect_arity_diagnostics(
             });
             if let Some(name) = head_name {
                 if let Some((kind, arity)) = items.get(name) {
-                    let shadowed = *kind == LanguageItemKind::Builtin && local_defs.contains(name);
+                    let shadowed = *kind == LanguageItemKind::Builtin
+                        && local_defs.contains(name)
+                        && !my_lisp::is_canonical_surface_name(name);
                     let received = elements.len().saturating_sub(1);
                     if !shadowed && !arity.accepts(received) {
                         diagnostics.push(ArityDiagnostic {
@@ -226,8 +229,8 @@ impl Analysis {
     }
 
     pub fn lookup(&self, name: &str) -> Option<&DefInfo> {
-        // Last definition wins, matching the evaluator's own shadowing of
-        // a repeated `def` in one session/document.
+        // Last definition wins for ordinary names. Contract-6 Canon attempts
+        // are still structurally visible here but never change evaluator meaning.
         self.defs.iter().rev().find(|d| d.name == name)
     }
 
