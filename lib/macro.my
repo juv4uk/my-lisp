@@ -5,26 +5,27 @@
 ;
 ;   DEFMACRO = DEFINE + LAMBDA + MAKE_MACRO + list construction
 ;
-; `make-macro` is the narrow host substrate Closure -> Macro. Everything
-; that introduces a named macro is expressed here in the language itself.
+; `make-macro` is the narrow host substrate Closure -> Macro. The behavior of
+; macro definition is still constructed here in the language itself.
 ;
-; The canonical library binding owns the real surface name `defmacro`.
-; Standard `Session` construction evaluates this file before user code, while
-; a bare `Environment::root()` intentionally remains the smaller Rust kernel.
+; This source deliberately binds NO human surface name. It evaluates to one
+; first-class Macro value; the bootstrap loader then exposes that same value
+; directly under the ratified peer spellings `defmacro` and
+; `визначити-макрос` (plus the historical `defmacro-derived` compatibility
+; spelling). Thus no human surface is implemented as an alias of another.
+;
+; The expansion body below still emits `define`/`lambda` source spellings.
+; Neutralizing expansion AST tokens is a separate form-identity migration and
+; is not silently claimed by this direct-binding step.
 
-(define defmacro
-  (make-macro
-    (lambda (name params . body)
-      (cons (quote define)
-        (cons name
-          (cons
-            (cons (quote make-macro)
-              (cons
-                (cons (quote lambda)
-                  (cons params body))
-                (quote ())))
-            (quote ())))))))
-
-; Transitional proof name retained so older experiments keep working while
-; callers migrate to the real language-owned surface above.
-(define defmacro-derived defmacro)
+(make-macro
+  (lambda (name params . body)
+    (cons (quote define)
+      (cons name
+        (cons
+          (cons (quote make-macro)
+            (cons
+              (cons (quote lambda)
+                (cons params body))
+              (quote ())))
+          (quote ()))))))

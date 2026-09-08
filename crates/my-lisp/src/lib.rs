@@ -41,9 +41,11 @@ pub use syntax::fasl::{
     decode_program as fasl_decode_program, encode_program as fasl_encode_program,
 };
 
-/// Language-owned macro layer. Its only host-side bootstrap dependency is the
-/// narrow first-class `make-macro` binding that materializes Closure -> Macro.
-/// The normal `defmacro` surface itself is defined by this Lisp source.
+/// Language-owned macro constructor. Its only host-side bootstrap dependency
+/// is the narrow first-class `make-macro` binding that materializes
+/// Closure -> Macro. The source returns one Macro value and deliberately binds
+/// no human surface name; `load_macro_library` installs peer spellings onto
+/// that same value after evaluation.
 pub const MACRO_LIBRARY_SOURCE: &str = include_str!("../../../lib/macro.my");
 
 /// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
@@ -68,16 +70,34 @@ pub const PROCESS_LIBRARY_SOURCE: &str = include_str!("../../../lib/process.my")
 pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
 
 /// Install the one primitive macro-construction mechanism required by the
-/// language-owned macro layer, then evaluate that layer in this session.
+/// language-owned macro layer, evaluate the Lisp derivation exactly once, and
+/// bind every admitted public spelling directly to the resulting Macro value.
+///
+/// The loader owns only binding mechanics. Macro-definition behavior remains
+/// in `lib/macro.my`; there is still no evaluator head-name fallback for
+/// `defmacro` or `визначити-макрос`. `defmacro-derived` is retained as a
+/// compatibility spelling and points to the same runtime value.
 ///
 /// Embedders that deliberately construct a custom/bare `Environment` must use
-/// this function before evaluating source that depends on `defmacro`. Keeping
-/// this step explicit lets `Environment::root()` remain the minimal kernel and
-/// prevents an evaluator head-name fallback from silently supplying bootstrap
-/// semantics.
+/// this function before evaluating source that depends on the macro-definition
+/// surface. `Environment::root()` therefore remains the minimal kernel.
 pub fn load_macro_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     eval::install_macro_substrate(&session.environment);
-    eval_program(MACRO_LIBRARY_SOURCE, session)
+    let result = eval_program(MACRO_LIBRARY_SOURCE, session)?;
+
+    if !matches!(&result.value, Value::Macro(_)) {
+        return Err(LanguageError::new(
+            ErrorKind::InvalidForm,
+            "macro library must evaluate to one Macro value",
+            Span { start: 0, end: 0 },
+        ));
+    }
+
+    for name in ["defmacro", "визначити-макрос", "defmacro-derived"] {
+        session.environment.define(name, result.value.clone());
+    }
+
+    Ok(result)
 }
 
 /// Install the narrow macro substrate, then load the language-owned macro

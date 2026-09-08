@@ -312,8 +312,7 @@ impl Default for Session {
         let mut session = Self {
             environment: Environment::root(),
         };
-        crate::eval::install_macro_substrate(&session.environment);
-        crate::eval::eval_program(crate::MACRO_LIBRARY_SOURCE, &mut session)
+        crate::load_macro_library(&mut session)
             .expect("embedded lib/macro.my must bootstrap a default Session");
         session
     }
