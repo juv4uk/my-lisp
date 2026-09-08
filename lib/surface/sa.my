@@ -28,7 +28,7 @@
 ;; Batch 1 — Arithmetic (status: candidate)
 ;; ═══════════════════════════════════════════════════════════════
 
-; ADR-007 / m0104: `додати`, `+`, `yoga` are direct peer bindings of one
+; ADR-007 / 0104: `додати`, `+`, `yoga` are direct peer bindings of one
 ; callable value. yoga is intentionally NOT defined through another surface.
 ; viyoga = subtraction (vi- + yoga)
 (define viyoga -)
