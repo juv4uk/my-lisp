@@ -2,7 +2,8 @@
 //! перемикання програмних поверхонь. `:мова` / `:surface` не є Lisp syntax:
 //! це команди оболонки над одним і тим самим семантичним ядром.
 
-use my_lisp::syntax::Expr;
+mod surface_catalog;
+
 use my_lisp::{
     eval_parsed_expressions_incremental, eval_program, parse, render_error_for_presentation,
     render_value_for_presentation, Environment, ErrorKind, ExprKind, PresentationLanguage, Session,
@@ -31,7 +32,6 @@ const SURFACE_PREREQUISITES: &[(&str, &str)] = &[
 ];
 const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
 const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.my");
-const UK_API_DOCS: &str = include_str!("../../../lib/surface/uk-docs.wsm");
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ReplSurface {
@@ -80,207 +80,16 @@ impl ReplSurface {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct SurfaceDoc {
-    category: String,
-    canonical: String,
-    name: String,
-    kind: String,
-    call: String,
-    description: String,
-}
-
-fn expr_list(expr: &Expr) -> Option<&[Expr]> {
-    match &expr.kind {
-        ExprKind::List(items) => Some(items.as_ref()),
-        _ => None,
-    }
-}
-
-fn expr_symbol(expr: &Expr) -> Option<&str> {
-    match &expr.kind {
-        ExprKind::Symbol(symbol) => Some(symbol.as_ref()),
-        _ => None,
-    }
-}
-
-fn expr_string(expr: &Expr) -> Option<&str> {
-    match &expr.kind {
-        ExprKind::String(text) => Some(text.as_ref()),
-        _ => None,
-    }
-}
-
-fn expr_usize(expr: &Expr) -> Option<usize> {
-    match &expr.kind {
-        ExprKind::Number(value, _) if value.is_finite() && *value >= 0.0 && value.fract() == 0.0 => {
-            Some(*value as usize)
-        }
-        _ => None,
-    }
-}
-
-fn ukrainian_api_docs() -> Result<Vec<SurfaceDoc>, String> {
-    let program = parse(UK_API_DOCS)
-        .map_err(|error| format!("не вдалося прочитати uk-docs.wsm: {}", error.render(UK_API_DOCS)))?;
-    let root = program
-        .first()
-        .and_then(expr_list)
-        .ok_or_else(|| "uk-docs.wsm: очікувався кореневий список".to_string())?;
-    if expr_symbol(root.first().ok_or_else(|| "uk-docs.wsm: порожній корінь".to_string())?)
-        != Some("uk-api-docs")
-    {
-        return Err("uk-docs.wsm: невідомий кореневий тег".to_string());
-    }
-
-    let expected_count = root
-        .iter()
-        .filter_map(expr_list)
-        .find(|items| items.first().and_then(expr_symbol) == Some("count"))
-        .and_then(|items| items.get(1))
-        .and_then(expr_usize)
-        .ok_or_else(|| "uk-docs.wsm: відсутній коректний count".to_string())?;
-
-    let docs_form = root
-        .iter()
-        .filter_map(expr_list)
-        .find(|items| items.first().and_then(expr_symbol) == Some("docs"))
-        .ok_or_else(|| "uk-docs.wsm: відсутня секція docs".to_string())?;
-
-    let mut docs = Vec::with_capacity(expected_count);
-    for entry in docs_form.iter().skip(1) {
-        let fields = expr_list(entry).ok_or_else(|| "uk-docs.wsm: doc має бути списком".to_string())?;
-        if fields.len() != 7 || fields.first().and_then(expr_symbol) != Some("doc") {
-            return Err("uk-docs.wsm: некоректний doc-запис".to_string());
-        }
-        docs.push(SurfaceDoc {
-            category: expr_symbol(&fields[1])
-                .ok_or_else(|| "uk-docs.wsm: category має бути символом".to_string())?
-                .to_string(),
-            canonical: expr_symbol(&fields[2])
-                .ok_or_else(|| "uk-docs.wsm: canonical має бути символом".to_string())?
-                .to_string(),
-            name: expr_symbol(&fields[3])
-                .ok_or_else(|| "uk-docs.wsm: українське ім'я має бути символом".to_string())?
-                .to_string(),
-            kind: expr_symbol(&fields[4])
-                .ok_or_else(|| "uk-docs.wsm: kind має бути символом".to_string())?
-                .to_string(),
-            call: expr_string(&fields[5])
-                .ok_or_else(|| "uk-docs.wsm: call має бути рядком".to_string())?
-                .to_string(),
-            description: expr_string(&fields[6])
-                .ok_or_else(|| "uk-docs.wsm: description має бути рядком".to_string())?
-                .to_string(),
-        });
-    }
-
-    if docs.len() != expected_count {
-        return Err(format!(
-            "uk-docs.wsm: count={expected_count}, але прочитано {} doc-записів",
-            docs.len()
-        ));
-    }
-    Ok(docs)
-}
-
-fn category_title(category: &str) -> &str {
-    match category {
-        "canon" => "Канон 0+7",
-        "forms" => "Форми та макроси",
-        "arithmetic" => "Арифметика",
-        "comparison" => "Порівняння",
-        "predicate" => "Предикати",
-        "list" => "Списки",
-        "higher-order" => "Функції вищого порядку",
-        "string" => "Текст і символи",
-        "io" => "Читання, обчислення та вивід",
-        "vector" => "Звичайні вектори",
-        "time" => "Час",
-        "persistent-map" => "Персистентні карти",
-        "persistent-vector" => "Персистентні вектори",
-        "knowledge" => "Знання",
-        "reasoning" => "Логічне міркування",
-        "unification" => "Уніфікація",
-        "epistemic" => "Епістемічні структури",
-        "other" => "Інші засоби",
-        other => other,
-    }
-}
-
-fn kind_title(kind: &str) -> &str {
-    match kind {
-        "form" => "форма",
-        "macro" => "макрос",
-        "function" => "функція",
-        "predicate" => "предикат",
-        "mutation" => "мутація",
-        "value" => "значення",
-        other => other,
-    }
-}
-
 fn render_surface_names(surface: ReplSurface) -> Result<String, String> {
-    if surface != ReplSurface::Ukrainian {
-        return Ok(format!(
-            "Публічний машинний каталог для поверхні «{}» ще не визначений.\n\
-             Перемкніться на :мова ук для українського каталогу; (env)/(середовище) лишається сирою інтроспекцією середовища.",
-            surface.title()
-        ));
-    }
-
-    let docs = ukrainian_api_docs()?;
-    let mut output = format!(
-        "Публічна українська поверхня: {} рекомендованих стабільних імен\n\
-         Джерело: lib/surface/uk-docs.wsm\n\
-         (середовище) показує всі реально видимі зв'язування, включно з базовими, сумісними та внутрішніми.\n",
-        docs.len()
-    );
-
-    let mut current_category: Option<&str> = None;
-    for doc in &docs {
-        if current_category != Some(doc.category.as_str()) {
-            current_category = Some(doc.category.as_str());
-            output.push('\n');
-            output.push_str(category_title(&doc.category));
-            output.push_str(":\n  ");
-        } else {
-            output.push_str(" · ");
-        }
-        output.push_str(&doc.name);
-    }
-    Ok(output)
+    surface_catalog::render_names(surface.code())
 }
 
 fn render_surface_name(surface: ReplSurface, requested: &str) -> Result<String, String> {
-    if surface != ReplSurface::Ukrainian {
-        return Ok(format!(
-            "Команда :ім'я зараз має машинний каталог лише для української поверхні. Поточна: {} ({}).",
-            surface.title(),
-            surface.code()
-        ));
-    }
+    surface_catalog::render_name(surface.code(), requested)
+}
 
-    let docs = ukrainian_api_docs()?;
-    let Some(doc) = docs
-        .iter()
-        .find(|doc| doc.name == requested || doc.canonical == requested)
-    else {
-        return Ok(format!(
-            "«{requested}» не входить до рекомендованого стабільного українського API.\n\
-             Воно може бути сумісним або внутрішнім зв'язуванням; перевірити сире лексичне середовище можна через (середовище)."
-        ));
-    };
-
-    Ok(format!(
-        "{}\n  статус: рекомендоване стабільне ім'я\n  категорія: {}\n  тип: {}\n  основа: {}\n  виклик: {}\n  {}",
-        doc.name,
-        category_title(&doc.category),
-        kind_title(&doc.kind),
-        doc.canonical,
-        doc.call,
-        doc.description
-    ))
+fn render_surface_status() -> Result<String, String> {
+    surface_catalog::render_status()
 }
 
 fn build_surface_layer(base: &Environment, surface: ReplSurface) -> Result<Environment, String> {
@@ -348,8 +157,11 @@ pub(crate) fn history_path() -> Option<PathBuf> {
 fn print_surface_help() {
     println!("Поверхні: :мова ук | en | sa | core");
     println!("Технічний alias: :surface uk | en | sa | core");
-    println!("Публічний словник поточної поверхні: :імена; одна назва: :ім'я <назва>");
+    println!("Каталог поточної людської поверхні: :імена / :names");
+    println!("Одна semantic identity у всіх трьох мовах: :ім'я <назва> / :name <name>");
+    println!("Стан триєдиної поверхні: :поверхні / :surfaces");
     println!("Сире лексичне середовище без фільтрації поверхнею: (середовище) / (env)");
+    println!("core — канонічний машинний шар, не четверта людська мова.");
     println!("Перемикання змінює лише surface-frame; ваші define/closures лишаються живими.");
 }
 
@@ -409,6 +221,17 @@ fn handle_meta_command(line: &str, state: &mut ReplState) -> bool {
             match render_surface_name(state.surface, requested) {
                 Ok(output) => println!("{output}"),
                 Err(error) => eprintln!("Помилка каталогу поверхні: {error}"),
+            }
+            true
+        }
+        ":поверхні" | ":surfaces" => {
+            if parts.next().is_some() {
+                eprintln!("Команда :поверхні не приймає аргументів.");
+                return true;
+            }
+            match render_surface_status() {
+                Ok(output) => println!("{output}"),
+                Err(error) => eprintln!("Помилка стану поверхонь: {error}"),
             }
             true
         }
@@ -575,32 +398,31 @@ mod tests {
     }
 
     #[test]
-    fn ukrainian_catalog_is_read_from_machine_docs_and_uses_preferred_names() {
-        let docs = ukrainian_api_docs().expect("machine-readable UK docs");
-        let member = docs
-            .iter()
-            .find(|doc| doc.canonical == "member?")
-            .expect("member? public mapping");
-        assert_eq!(member.name, "значення-у-списку?");
-        assert!(docs.iter().all(|doc| doc.name != "містить?"));
-
-        let rendered = render_surface_names(ReplSurface::Ukrainian).expect("render UK catalog");
-        assert!(rendered.contains("значення-у-списку?"));
-        assert!(rendered.contains("Джерело: lib/surface/uk-docs.wsm"));
-        assert!(rendered.contains("рекомендованих стабільних імен"));
+    fn all_three_human_surfaces_have_catalogs() {
+        let en = render_surface_names(ReplSurface::English).expect("EN catalog");
+        let uk = render_surface_names(ReplSurface::Ukrainian).expect("UK catalog");
+        let sa = render_surface_names(ReplSurface::Sanskrit).expect("SA catalog");
+        assert!(en.contains("surface en: stable 140"));
+        assert!(uk.contains("surface ук: stable 140"));
+        assert!(sa.contains("surface sa: stable 36 · candidate 88 · missing 16"));
     }
 
     #[test]
-    fn surface_name_help_distinguishes_public_catalog_from_raw_bindings() {
-        let preferred = render_surface_name(ReplSurface::Ukrainian, "значення-у-списку?")
-            .expect("preferred name help");
-        assert!(preferred.contains("статус: рекомендоване стабільне ім'я"));
-        assert!(preferred.contains("основа: member?"));
+    fn one_name_help_resolves_across_en_uk_sa() {
+        for requested in ["map", "відобразити", "āvartana"] {
+            let help = render_surface_name(ReplSurface::Ukrainian, requested).expect("name help");
+            assert!(help.contains("identity: map"));
+            assert!(help.contains("EN: map [stable]"));
+            assert!(help.contains("UK: відобразити [stable]"));
+            assert!(help.contains("SA: āvartana [candidate]"));
+        }
+    }
 
-        let legacy = render_surface_name(ReplSurface::Ukrainian, "містить?")
-            .expect("legacy name result");
-        assert!(legacy.contains("не входить до рекомендованого стабільного українського API"));
-        assert!(legacy.contains("(середовище)"));
+    #[test]
+    fn trilingual_status_is_measured_not_claimed() {
+        let status = render_surface_status().expect("surface status");
+        assert!(status.contains("trilingual stable: 36/140"));
+        assert!(status.contains("release parity: OPEN"));
     }
 
     #[test]
