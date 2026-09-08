@@ -1,0 +1,69 @@
+name: Ukrainian semantic naming audit rerun
+
+on:
+  push:
+    branches: [agent/uk-semantic-name-audit]
+    paths:
+      - '.github/workflows/uk-semantic-name-audit-rerun.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit-and-apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/uk-semantic-name-audit
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Make overlapping replacements longest-first
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/.tmp-uk-semantic-name-audit.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'for _en, old, new, _reason in RENAMES:'
+          new = 'for _en, old, new, _reason in sorted(RENAMES, key=lambda item: len(item[1]), reverse=True):'
+          count = text.count(old)
+          assert count >= 3, count
+          text = text.replace(old, new)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Apply semantic and intuitive naming audit
+        run: python3 scripts/.tmp-uk-semantic-name-audit.py
+
+      - name: Verify preferred Ukrainian surface
+        run: |
+          cargo test -p my-lisp --test uk_surface_equivalence
+          cargo test -p my-lisp --test ukrainian_api_docs
+          cargo test -p my-lisp --test uk_sa_batch2
+          cargo test -p my-lisp --test documentation_contract
+          cargo test -p my-lisp --test guard
+
+      - name: Verify REPL and browser consumers
+        run: |
+          cargo test -p my-lisp-cli
+          cargo test -p my-lisp-wasm
+
+      - name: Zero-warning gate
+        run: cargo clippy -p my-lisp -p my-lisp-cli -p my-lisp-wasm --all-targets -- -D warnings
+
+      - name: Commit tested audit
+        run: |
+          rm scripts/.tmp-uk-semantic-name-audit.py
+          rm .github/workflows/uk-semantic-name-audit.yml
+          rm .github/workflows/uk-semantic-name-audit-rerun.yml
+          git add -A
+          git config user.name 'juv4uk'
+          git config user.email '85576956+juv4uk@users.noreply.github.com'
+          git commit -m 'feat(surface): make Ukrainian API names semantically natural'
+          git push origin HEAD:agent/uk-semantic-name-audit
