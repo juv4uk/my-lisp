@@ -198,14 +198,14 @@ fn novi_predykatni_nazvy_i_stari_aliasy_vykonuiutsia_odnakovo() {
 #[test]
 fn smyslovyi_audyt_pokryvaie_vsi_140_stable_nazv() {
     assert!(NAME_AUDIT.contains("(stable-reviewed 140)"));
-    assert!(NAME_AUDIT.contains("(renamed 32)"));
-    assert!(NAME_AUDIT.contains("(retained 108)"));
+    assert!(NAME_AUDIT.contains("(renamed 42)"));
+    assert!(NAME_AUDIT.contains("(retained 98)"));
 
     let rename_rows = NAME_AUDIT
         .lines()
         .filter(|line| line.trim_start().starts_with("(rename "))
         .count();
-    assert_eq!(rename_rows, 32, "журнал аудиту має містити рівно 32 перейменування");
+    assert_eq!(rename_rows, 42, "журнал аудиту має містити рівно 32 перейменування");
 }
 
 #[test]

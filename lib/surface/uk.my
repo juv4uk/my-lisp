@@ -103,8 +103,8 @@
 (define довжина length)
 (define приєднати append)
 (define зворот reverse)
-(define елемент-списку-за-номером nth)
-(define містить? member?)
+(define елемент-списку-за-індексом nth)
+(define значення-у-списку? member?)
 (define знайти-за-ключем assoc)
 (define пара pair)
 (define друге second)
@@ -129,15 +129,15 @@
 (define зчепити string-append)
 (define довжина-тексту string-length)
 (define текст-порожній? string-empty?)
-(define текст-починається? string-prefix?)
-(define містить-текст? string-contains?)
+(define префікс-тексту? string-prefix?)
+(define фрагмент-у-тексті? string-contains?)
 (define перший-символ-тексту string-first)
 (define решта-символів-тексту string-rest)
 (define відрізати string-slice)
 (define символ-у-текст symbol->string)
 (define текст-у-символ string->symbol)
-(define текст-у-код string->codepoint)
-(define код-у-текст codepoint->string)
+(define текст-у-кодову-точку string->codepoint)
+(define кодова-точка-у-текст codepoint->string)
 (define число-у-текст number->string)
 
 ;; ═══════════════════════════════════════════════════════════════
@@ -149,7 +149,7 @@
 (define показати princ)
 (define прочитати read)
 (define прочитати-усе read-all)
-(define у-текст write-to-string)
+(define значення-у-текст write-to-string)
 (define обчислити eval)
 (define середовище env)
 
@@ -172,7 +172,7 @@
 ;; ═══════════════════════════════════════════════════════════════
 
 (define монотонний-нс mono-ns)
-(define юнікс-час-зараз unix-time-now)
+(define поточний-юнікс-час unix-time-now)
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Batch 1 — Other (status: stable)
@@ -194,7 +194,7 @@
 (define порожня-карта map-empty)
 (define отримати-з-карти map-get)
 (define вставити-в-карту map-insert)
-(define карта-містить? map-contains?)
+(define ключ-у-карті? map-contains?)
 (define карта-у-список map->list)
 
 ;; ═══════════════════════════════════════════════════════════════
@@ -206,7 +206,7 @@
 (define порожній-вектор vec-empty)
 (define додати-до-вектора vec-conj)
 (define розмір-вектора vec-count)
-(define елемент-вектора-за-номером vec-nth)
+(define елемент-вектора-за-індексом vec-nth)
 (define вектор-у-список vec->list)
 (define вектор-із-списку vec-from-list)
 
@@ -227,7 +227,7 @@
 (define дедлайн-досягнуто-на-момент? deadline-reached-at?)
 (define минуло-нс elapsed-ns)
 (define дедлайн-від deadline-from)
-(define дедлайн-після-нс deadline-after-ns)
+(define дедлайн-через-нс deadline-after-ns)
 (define запитати-інтернет-час internet-time-sync)
 
 ;; ═══════════════════════════════════════════════════════════════
@@ -239,7 +239,7 @@
 (define факт? is-fact?)
 (define описати describe)
 (define зібрати-факти-про collect-facts-about)
-(define містить-атом? contains-atom?)
+(define атом-у-списку? contains-atom?)
 (define пряме-виведення forward-in)
 (define логічний-висновок reason-in)
 ; Публічний предикат читається як питання; стара дієслівна назва лишається
@@ -330,6 +330,17 @@
 (define спостереження-текст observation-statement)
 (define намір-мета intent-goal)
 (define підтримуючий-доказ supporting-evidence)
+
+(define містить? member?)
+(define текст-починається? string-prefix?)
+(define містить-текст? string-contains?)
+(define код-у-текст codepoint->string)
+(define текст-у-код string->codepoint)
+(define у-текст write-to-string)
+(define юнікс-час-зараз unix-time-now)
+(define дедлайн-після-нс deadline-after-ns)
+(define карта-містить? map-contains?)
+(define містить-атом? contains-atom?)
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Batch 2 — SA missing fill (Sanskrit surface for previously missing)

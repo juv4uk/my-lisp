@@ -43,7 +43,7 @@ fn uk_persistent_map_basic() {
     let r = eval_program("порожня-карта", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "()");
     let r2 = eval_program(
-        "(карта-містить? (як-є ключ) (вставити-в-карту (як-є ключ) 42 порожня-карта))",
+        "(ключ-у-карті? (як-є ключ) (вставити-в-карту (як-є ключ) 42 порожня-карта))",
         &mut s,
     )
     .expect("eval");
@@ -70,7 +70,7 @@ fn uk_persistent_vector_basic() {
     .expect("eval");
     assert_eq!(r2.value.to_string(), "2");
     let r3 = eval_program(
-        "(елемент-вектора-за-номером 0 (додати-до-вектора 99 порожній-вектор))",
+        "(елемент-вектора-за-індексом 0 (додати-до-вектора 99 порожній-вектор))",
         &mut s,
     )
     .expect("eval");

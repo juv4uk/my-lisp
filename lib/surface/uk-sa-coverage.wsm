@@ -78,8 +78,8 @@
   (entry (list length довжина pramāṇa stable stable "pramāṇa = measure/quantity"))
   (entry (list append приєднати saṅkalana stable stable "saṅkalana = collection; ≠ saṃyuj"))
   (entry (list reverse зворот viloma stable stable "viloma = reverse order"))
-  (entry (list nth елемент-списку-за-номером kramāṅka stable stable "kramāṅka = ordinal number"))
-  (entry (list member? містить? sambaddha? stable candidate "sam-badh = bind together"))
+  (entry (list nth елемент-списку-за-індексом kramāṅka stable stable "kramāṅka = ordinal number"))
+  (entry (list member? значення-у-списку? sambaddha? stable candidate "sam-badh = bind together"))
   (entry (list assoc знайти-за-ключем saṃbandha stable stable "lookup an association by key"))
   (entry (list pair пара dvandva stable stable "Pāṇini 2.2.29-34: dvandva samāsa"))
   (entry (list second друге dvitīya stable stable "ordinal; safe — returns element"))
@@ -100,15 +100,15 @@
   (entry (string string-append зчепити śabdasaṃyoga stable candidate "śabda + saṃyoga; ≠ saṃyuj"))
   (entry (string string-length довжина-тексту śabdapramāṇa stable candidate "śabda + pramāṇa"))
   (entry (string string-empty? текст-порожній? śūnya? stable stable "string-domain predicate"))
-  (entry (string string-prefix? текст-починається? pūrva? stable candidate "string-domain predicate; ≠ ādi (CAR)"))
-  (entry (string string-contains? містить-текст? śabdasambaddha? stable candidate "compound; may need shortening"))
+  (entry (string string-prefix? префікс-тексту? pūrva? stable candidate "string-domain predicate; ≠ ādi (CAR)"))
+  (entry (string string-contains? фрагмент-у-тексті? śabdasambaddha? stable candidate "compound; may need shortening"))
   (entry (string string-first перший-символ-тексту prathamavarṇa stable candidate "varṇa = letter; ≠ ādi (CAR)"))
   (entry (string string-rest решта-символів-тексту śeṣavarṇa stable candidate "varṇa suffix distinguishes from Canon śeṣa"))
   (entry (string string-slice відрізати cheda stable candidate "cheda = cut/slice"))
   (entry (string symbol->string символ-у-текст nāman-śabda stable candidate "conversion"))
   (entry (string string->symbol текст-у-символ śabda-nāman stable candidate "conversion"))
-  (entry (string codepoint->string код-у-текст varṇa-śabda stable candidate "conversion"))
-  (entry (string string->codepoint текст-у-код śabda-varṇa stable candidate "conversion"))
+  (entry (string codepoint->string кодова-точка-у-текст varṇa-śabda stable candidate "conversion"))
+  (entry (string string->codepoint текст-у-кодову-точку śabda-varṇa stable candidate "conversion"))
   (entry (string number->string число-у-текст saṅkhyā-śabda stable candidate "conversion"))
   (entry (string digit->string — — compatibility-only compatibility-only "superseded internal conversion helper"))
 
@@ -117,7 +117,7 @@
   (entry (io princ показати darśana stable candidate "darśana = showing/display"))
   (entry (io read прочитати pāṭhana stable candidate "pāṭhana = reading"))
   (entry (io read-all прочитати-усе pāṭhana-sarva stable candidate "pāṭhana + sarva = read all"))
-  (entry (io write-to-string у-текст likhana stable candidate "likhana = writing"))
+  (entry (io write-to-string значення-у-текст likhana stable candidate "likhana = writing"))
   (entry (io eval обчислити vicāraṇa stable candidate "vicāraṇa = deliberation/evaluation"))
   (entry (io env середовище āśraya stable candidate "āśraya = substrate/environment"))
 
@@ -138,7 +138,7 @@
 
   ;; ── Time ──────────────────────────────────────────────────
   (entry (time mono-ns монотонний-нс kāla-mono stable candidate "kāla = time; monotonic nanoseconds"))
-  (entry (time unix-time-now юнікс-час-зараз kāla-unix stable candidate "current Unix time; phonetic Ukrainian spelling"))
+  (entry (time unix-time-now поточний-юнікс-час kāla-unix stable candidate "current Unix time; phonetic Ukrainian spelling"))
   (entry (time ntp-query-raw — — compatibility-only compatibility-only "low-level NTP"))
   (entry (time timezone-declarations-raw — — compatibility-only compatibility-only "low-level"))
 
@@ -155,21 +155,21 @@
   (entry (time deadline-reached-at? дедлайн-досягнуто-на-момент? avadhi-gatā-kadā? stable candidate "kadā = when"))
   (entry (time elapsed-ns минуло-нс atīta-ns stable candidate "atīta = elapsed/past"))
   (entry (time deadline-from дедлайн-від avadhi-nirmāṇa stable candidate "avadhi-nirmāṇa = deadline creation"))
-  (entry (time deadline-after-ns дедлайн-після-нс avadhi-anantara-ns stable candidate "avadhi-anantara = deadline after"))
+  (entry (time deadline-after-ns дедлайн-через-нс avadhi-anantara-ns stable candidate "avadhi-anantara = deadline after"))
   (entry (time internet-time-sync запитати-інтернет-час — stable missing "internet time synchronization"))
 
   ;; ── Persistent map (Batch 2) ───────────────────────────────
   (entry (persistent-map map-empty порожня-карта kośa-śūnya stable candidate "kośa = repository/map; śūnya = empty"))
   (entry (persistent-map map-get отримати-з-карти kośa-grahaṇa stable candidate "grahaṇa = taking/getting"))
   (entry (persistent-map map-insert вставити-в-карту kośa-niveśana stable candidate "niveśana = placing in"))
-  (entry (persistent-map map-contains? карта-містить? kośa-sambaddha? stable candidate "sambaddha = contained"))
+  (entry (persistent-map map-contains? ключ-у-карті? kośa-sambaddha? stable candidate "sambaddha = contained"))
   (entry (persistent-map map->list карта-у-список kośa-śreṇī stable candidate "śreṇī = sequence/list"))
 
   ;; ── Persistent vector (Batch 2) ─────────────────────────────
   (entry (persistent-vector vec-empty порожній-вектор samūha-śūnya stable candidate "samūha = aggregate; śūnya = empty"))
   (entry (persistent-vector vec-conj додати-до-вектора samūha-yukti stable candidate "yukti = joining"))
   (entry (persistent-vector vec-count розмір-вектора samūha-gaṇana stable candidate "gaṇana = counting"))
-  (entry (persistent-vector vec-nth елемент-вектора-за-номером samūha-kramāṅka stable candidate "kramāṅka = ordinal"))
+  (entry (persistent-vector vec-nth елемент-вектора-за-індексом samūha-kramāṅka stable candidate "kramāṅka = ordinal"))
   (entry (persistent-vector vec->list вектор-у-список samūha-śreṇī stable candidate "śreṇī = sequence/list"))
   (entry (persistent-vector vec-from-list вектор-із-списку śreṇī-samūha stable candidate "śreṇī-samūha = list to aggregate"))
 
@@ -177,7 +177,7 @@
   (entry (knowledge is-fact? факт? jñāna-satya? stable candidate "jñāna = knowledge; satya = truth"))
   (entry (knowledge describe описати varṇana stable candidate "varṇana = description"))
   (entry (knowledge collect-facts-about зібрати-факти-про jñāna-saṅgraha stable candidate "saṅgraha = collection"))
-  (entry (knowledge contains-atom? містить-атом? aṇu-sambaddha? stable candidate "aṇu = atom; sambaddha = contained"))
+  (entry (knowledge contains-atom? атом-у-списку? aṇu-sambaddha? stable candidate "aṇu = atom; sambaddha = contained"))
   (entry (knowledge forward-in пряме-виведення abhimukha-anumāna stable candidate "abhimukha = forward; anumāna = inference"))
   (entry (knowledge reason-in логічний-висновок anumāna stable candidate "anumāna = inference"))
   (entry (knowledge check-conflict конфлікт? virodha-parīkṣā stable candidate "virodha = conflict; parīkṣā = check"))
