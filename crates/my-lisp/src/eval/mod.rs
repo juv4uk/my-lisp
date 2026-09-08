@@ -11,7 +11,7 @@ pub(crate) use special_forms::digest::sha256 as digest_sha256;
 
 mod arithmetic;
 pub(crate) mod builtins;
-mod canon;
+pub(crate) mod canon;
 mod capabilities;
 mod closures;
 mod macro_substrate;
@@ -140,17 +140,31 @@ pub(crate) fn evaluate_step(
         ExprKind::Rational(rational) => Ok(EvalStep::Value(Value::Rational(rational.clone()))),
         ExprKind::NumericBuffer(buffer) => Ok(EvalStep::Value(Value::NumericBuffer(buffer.clone()))),
         ExprKind::String(value) => Ok(EvalStep::Value(Value::String(value.clone()))),
-        ExprKind::Symbol(symbol) => environment
-            .get(symbol)
-            .or_else(|| canon::value_for_surface(symbol))
-            .map(EvalStep::Value)
-            .ok_or_else(|| {
-                LanguageError::new(
-                    ErrorKind::UnknownSymbol,
-                    format!("unknown symbol · nevidomyi symvol · unbekanntes Symbol: {symbol}"),
-                    expression.span,
-                )
-            }),
+        ExprKind::Symbol(symbol) => {
+            if let Some(identity) = canon::identity_for_surface(symbol) {
+                return canon::value(identity)
+                    .map(EvalStep::Value)
+                    .ok_or_else(|| {
+                        LanguageError::new(
+                            ErrorKind::InvalidForm,
+                            format!(
+                                "canonical special form is syntax-only · канонічна спеціальна форма є лише синтаксисом · kanonische Sonderform ist nur Syntax: {symbol}"
+                            ),
+                            expression.span,
+                        )
+                    });
+            }
+            environment
+                .get(symbol)
+                .map(EvalStep::Value)
+                .ok_or_else(|| {
+                    LanguageError::new(
+                        ErrorKind::UnknownSymbol,
+                        format!("unknown symbol · nevidomyi symvol · unbekanntes Symbol: {symbol}"),
+                        expression.span,
+                    )
+                })
+        }
         ExprKind::List(items) if items.is_empty() => Ok(EvalStep::Value(
             canon::ground_value(canon::CanonicalIdentity::EmptyList)
                 .expect("Canon 0 must always materialize"),
@@ -366,23 +380,56 @@ mod single_pass_eval_tests {
     }
 
     #[test]
-    fn canonical_builtin_spelling_remains_shadowable() {
-        let source = "(def перше (lambda (x) (як-є затінено))) (перше 42)";
-        let mut session = Session::default();
-        let result = eval_program(source, &mut session)
-            .expect("canonical builtin surface should preserve lexical shadowing");
-        assert_eq!(result.value.to_string(), "затінено");
+    fn canonical_names_cannot_be_redefined() {
+        for source in [
+            "(def car 42)",
+            "(def перше 42)",
+            "(def ādi 42)",
+            "(def quote 42)",
+            "(def за-умовою 42)",
+        ] {
+            let mut session = Session::default();
+            let error = eval_program(source, &mut session)
+                .expect_err("Canon spelling must reject redefinition");
+            assert_eq!(error.kind, ErrorKind::InvalidForm, "source: {source}");
+            assert!(error.message.contains("canonical name is immutable"));
+        }
     }
 
     #[test]
-    fn rebinding_historical_name_does_not_mutate_other_surfaces() {
-        let source = r#"
-            (def car (lambda (x) (як-є зламано)))
-            (перше (сполучити 1 2))
-        "#;
+    fn canonical_names_cannot_be_lambda_parameters() {
+        for source in [
+            "(lambda (car) car)",
+            "(lambda (перше) перше)",
+            "(lambda (ādi) ādi)",
+            "(lambda atom atom)",
+        ] {
+            let mut session = Session::default();
+            let error = eval_program(source, &mut session)
+                .expect_err("Canon spelling must reject parameter binding");
+            assert_eq!(error.kind, ErrorKind::InvalidForm, "source: {source}");
+            assert!(error.message.contains("canonical name is immutable"));
+        }
+    }
+
+    #[test]
+    fn noncanonical_builtins_remain_lexically_shadowable() {
+        let source = "(def + (lambda (a b) (quote shadowed))) (+ 1 2)";
         let mut session = Session::default();
         let result = eval_program(source, &mut session)
-            .expect("canonical identity must outlive historical shadowing");
+            .expect("non-Canon builtins remain ordinary lexical values");
+        assert_eq!(result.value.to_string(), "shadowed");
+    }
+
+    #[test]
+    fn canonical_resolution_ignores_even_preexisting_environment_shadow() {
+        let mut session = Session::default();
+        session.environment.define(
+            "car",
+            Value::Number(99.0, crate::Exactness::Exact),
+        );
+        let result = eval_program("(car (quote (1 2)))", &mut session)
+            .expect("Canon resolver must outrank Environment");
         assert_eq!(result.value.to_string(), "1");
     }
 }
