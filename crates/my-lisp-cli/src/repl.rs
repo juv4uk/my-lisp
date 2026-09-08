@@ -362,24 +362,32 @@ mod tests {
     }
 
     #[test]
-    fn ukrainian_surface_is_real_and_disappears_when_switching_back_to_core() {
+    fn ukrainian_surface_adds_derived_vocabulary_but_not_canon_bindings() {
         let mut state = core_state();
+        assert!(state.session.environment.get("атом?").is_none());
+
         state.switch_surface(ReplSurface::Ukrainian).expect("uk");
         assert_eq!(value(&mut state, "(атом? 'мама)"), "t");
         let truth = eval_program("(атом? 'мама)", &mut state.session)
-            .expect("uk predicate")
+            .expect("immutable Ukrainian Canon predicate")
             .value;
         assert_eq!(
             render_value_for_presentation(&truth, state.surface.presentation()),
             "істина"
         );
-        assert!(state.session.environment.get("атом?").is_some());
+        // Contract 6.0: canonical spelling is resolver-owned, never a mutable
+        // surface-frame alias. Derived Ukrainian vocabulary remains a binding.
+        assert!(state.session.environment.get("атом?").is_none());
+        assert!(state.session.environment.get("додати").is_some());
         assert_eq!(value(&mut state, "істина"), "t");
         assert_eq!(value(&mut state, "хиба"), "()");
 
         state.switch_surface(ReplSurface::Core).expect("core");
         assert!(state.session.environment.get("атом?").is_none());
         assert_eq!(value(&mut state, "(atom 'мама)"), "t");
+        // Canon is not a UI layer: registered spellings still denote Canon
+        // even when no human surface frame is loaded.
+        assert_eq!(value(&mut state, "(атом? 'мама)"), "t");
     }
 
     #[test]
@@ -426,11 +434,14 @@ mod tests {
     }
 
     #[test]
-    fn raw_environment_remains_truthful_under_ukrainian_surface() {
+    fn raw_environment_distinguishes_bootstrap_bindings_from_canon_resolution() {
         let mut state = core_state();
         state.switch_surface(ReplSurface::Ukrainian).expect("uk");
         let snapshot = state.session.environment.snapshot();
+        // Historical bootstrap spelling may still be visible in raw env;
+        // Ukrainian Canon spelling is never introduced as a mutable alias.
         assert!(snapshot.iter().any(|(name, _)| name.as_ref() == "atom"));
-        assert!(snapshot.iter().any(|(name, _)| name.as_ref() == "атом?"));
+        assert!(!snapshot.iter().any(|(name, _)| name.as_ref() == "атом?"));
+        assert_eq!(value(&mut state, "(атом? 'мама)"), "t");
     }
 }
