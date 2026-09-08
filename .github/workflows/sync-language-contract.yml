@@ -16,7 +16,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   sync:
@@ -27,12 +26,12 @@ jobs:
       UPSTREAM_PATH: language-contract.my
       TARGET_PATH: ${{ inputs.contract_path }}
       LOCK_PATH: ${{ inputs.lock_path }}
-      SYNC_BRANCH: bot/sync-my-lisp-contract
     steps:
-      - name: Check out consumer repository
+      - name: Check out consumer default branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Fetch exact upstream contract and write lock
         id: sync
@@ -41,7 +40,7 @@ jobs:
           set -euo pipefail
 
           # Pin the latest commit that actually changed the contract file.
-          # Unrelated my-lisp commits must not create downstream sync PRs.
+          # Unrelated my-lisp commits must not create downstream churn.
           contract_revision="$(
             curl -fsSL \
               "https://api.github.com/repos/${UPSTREAM_REPO}/commits?sha=${UPSTREAM_BRANCH}&path=${UPSTREAM_PATH}&per_page=1" \
@@ -69,6 +68,14 @@ jobs:
             (sha256 "${digest}"))
           EOF
 
+          # Fail closed before writing anything upstream.
+          actual_digest="$(sha256sum "$TARGET_PATH" | awk '{print $1}')"
+          test "$actual_digest" = "$digest"
+          curl -fsSL \
+            "https://raw.githubusercontent.com/${UPSTREAM_REPO}/${contract_revision}/${UPSTREAM_PATH}" \
+            -o /tmp/language-contract.my
+          cmp --silent "$TARGET_PATH" /tmp/language-contract.my
+
           if [ -n "$(git status --porcelain -- "$TARGET_PATH" "$LOCK_PATH")" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
@@ -76,45 +83,18 @@ jobs:
           fi
           echo "contract_revision=${contract_revision}" >> "$GITHUB_OUTPUT"
 
-      - name: Open or update sync PR
+      - name: Commit passive snapshot to consumer default branch
         if: steps.sync.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
           CONTRACT_REVISION: ${{ steps.sync.outputs.contract_revision }}
         shell: bash
         run: |
           set -euo pipefail
-
           base="${{ github.event.repository.default_branch }}"
-          if [ -z "$base" ]; then
-            base="$(gh repo view "$GITHUB_REPOSITORY" --json defaultBranchRef --jq '.defaultBranchRef.name')"
-          fi
+          test -n "$base"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -C "$SYNC_BRANCH"
           git add "$TARGET_PATH" "$LOCK_PATH"
-          git commit -m "chore(contract): sync my-lisp language contract"
-          git push --force origin "HEAD:refs/heads/${SYNC_BRANCH}"
-
-          body="$(cat <<EOF
-          Automated snapshot of \\`${UPSTREAM_REPO}/${UPSTREAM_PATH}\` at the latest revision that changed that contract:
-
-          \\`${CONTRACT_REVISION}\`
-
-          The vendored file is the observed semantic authority only. Updating it does **not** upgrade this repository's compatibility/conformance claim; that remains an explicit, separately tested decision.
-          EOF
-          )"
-
-          pr_number="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number // empty')"
-          if [ -n "$pr_number" ]; then
-            gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" \
-              --title "chore(contract): sync my-lisp language contract" \
-              --body "$body"
-          else
-            gh pr create --repo "$GITHUB_REPOSITORY" \
-              --base "$base" \
-              --head "$SYNC_BRANCH" \
-              --title "chore(contract): sync my-lisp language contract" \
-              --body "$body"
-          fi
+          git commit -m "chore(contract): observe my-lisp contract ${CONTRACT_REVISION}"
+          git push origin "HEAD:refs/heads/${base}"
