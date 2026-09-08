@@ -1,0 +1,29 @@
+name: Stage E v2 patch
+
+on:
+  push:
+    branches:
+      - feat/numeric-form-identity-expansion-v2
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/numeric-form-identity-expansion-v2
+          fetch-depth: 0
+      - name: Apply Stage E v2 patch
+        run: python3 scripts/stage_e_v2_patch.py
+      - name: Commit architectural patch and remove transport files
+        run: |
+          git rm scripts/stage_e_v2_patch.py .github/workflows/stage-e-v2-patch.yml
+          git add crates/my-lisp/src/eval/mod.rs crates/my-lisp/src/eval/necessary_forms.rs crates/my-lisp/tests/semantic_form_identity.rs lib/macro.my
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "refactor(macro): lower necessary forms through numeric identities"
+          git push origin HEAD:feat/numeric-form-identity-expansion-v2
