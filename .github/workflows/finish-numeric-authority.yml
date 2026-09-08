@@ -1,0 +1,165 @@
+name: Finish numeric surface authority migration
+
+on:
+  push:
+    branches: [feat/close-language-neutrality-debt]
+    paths:
+      - '.github/workflows/finish-numeric-authority.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/close-language-neutrality-debt
+          fetch-depth: 0
+
+      - name: Migrate remaining executable consumers and docs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Ukrainian API docs tests now join numeric ID <-> UK, never EN <-> UK.
+          path = Path('crates/my-lisp/tests/ukrainian_api_docs.rs')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'const COVERAGE: &str = include_str!("../../../lib/surface/uk-sa-coverage.wsm");',
+              'const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");'
+          )
+          old = re.compile(
+              r'fn stable_pairs\(\) -> BTreeSet<\(String, String\)> \{.*?\n\}',
+              re.S,
+          )
+          new = '''fn stable_pairs() -> BTreeSet<(String, String)> {
+    REGISTRY
+        .lines()
+        .filter_map(|line| {
+            let fields = line.split_whitespace().collect::<Vec<_>>();
+            let identity = fields.first()?.strip_prefix('(')?;
+            if identity.len() < 4 || !identity.chars().all(|ch| ch.is_ascii_digit()) {
+                return None;
+            }
+            let uk_index = fields.iter().position(|field| *field == "(uk")?;
+            let uk = fields.get(uk_index + 1)?;
+            let status = fields.get(uk_index + 2)?.trim_end_matches(')');
+            (status == "stable").then(|| (identity.to_string(), (*uk).to_string()))
+        })
+        .collect()
+}'''
+          text, count = old.subn(new, text, count=1)
+          if count != 1:
+              raise SystemExit('failed to replace stable_pairs')
+          text = text.replace(
+              'рядок документації має містити category EN UK kind',
+              'рядок документації має містити category numeric-ID UK kind'
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # REPL help: raw core runtime is not a human language and semantic introspection is numeric.
+          path = Path('crates/my-lisp-cli/src/repl.rs')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'Одна semantic identity у всіх трьох мовах: :ім\'я <назва> / :name <name>',
+              'Одна numeric semantic identity для мов і спільної символіки: :ім\'я <назва|ID> / :name <name|ID>'
+          )
+          text = text.replace(
+              'core — канонічний машинний шар, не четверта людська мова.',
+              'core — сирий bootstrap/runtime шар, не людська мова; semantic introspection використовує тільки numeric IDs.'
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # Surface Drift report: neutral registry is now authority, legacy is history only.
+          path = Path('.github/workflows/surface-drift-check.yml')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'The legacy trilingual gate remains authoritative until migration is complete.',
+              'semantic-registry.wsm is the sole numeric surface authority; the legacy EN-shaped table is historical audit only.'
+          )
+          path.write_text(text, encoding='utf-8')
+
+          # Current-facing docs: update machine source and introspection example.
+          path = Path('docs/repl-surfaces.md')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('identity: map', 'identity: 0101')
+          text = text.replace(
+              'На цьому етапі історична таблиця [`lib/surface/uk-sa-coverage.wsm`](../lib/surface/uk-sa-coverage.wsm) виконує роль триєдиного registry. ADR-005 явно інтерпретує її першу колонку ідентичності як одночасно canonical identity та поточне EN surface name; це тимчасова форма схеми, а не твердження, що English = core.',
+              'Єдина машинна authority поверхонь — [`lib/surface/semantic-registry.wsm`](../lib/surface/semantic-registry.wsm). Кожна semantic identity має непрозорий numeric ID; UK/EN/SA є peer human surfaces, а `sym` окремо містить спільну немовну нотацію. Історичний `uk-sa-coverage.wsm` лишився аудитом походження і більше не живить REPL або gates.'
+          )
+          text = text.replace(
+              '`uk` і `sa` не створюють паралельних реалізацій операцій. `lib/surface/uk.my` та `lib/surface/sa.my` прив\'язують людські імена до вже наявних визначень і канонічних тотожностей.',
+              '`uk` і `sa` не створюють паралельних семантичних identities. Реєстр описує peer spellings numeric identity; пряме runtime-binding рівноправ\'я доводиться окремими executable tests для кожного мігрованого значення.'
+          )
+          marker = '### `:ім\'я`'
+          if marker in text and '### Символічна поверхня `sym`' not in text:
+              insertion = '''### Символічна поверхня `sym`\n\n`+`, `-`, `*`, `/`, `<`, `>`, `=` та інші чисті знаки не належать EN, UK чи SA. Вони живуть у спільній немовній `sym`-поверхні. Тому `:ім\'я +` показує numeric identity, `EN: — [missing]` і `SYM: + [stable]`, доки для цієї identity не ратифіковане справжнє англійське людське ім\'я.\n\n'''
+              text = text.replace(marker, insertion + marker)
+          path.write_text(text, encoding='utf-8')
+
+          path = Path('docs/program-surface-translator.md')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '`lib/surface/uk-sa-coverage.wsm`',
+              '`lib/surface/semantic-registry.wsm`'
+          )
+          text = text.replace(
+              'машинну таблицю\n`lib/surface/semantic-registry.wsm`,',
+              'numeric semantic registry\n`lib/surface/semantic-registry.wsm`,'
+          )
+          if 'Спільна символіка' not in text:
+              text += '\n\n## Спільна символіка\n\n`+`, `-`, `<` та інші `sym`-назви не є англійськими словами й не перекладаються між людськими поверхнями: вони зберігаються дослівно.\n'
+          path.write_text(text, encoding='utf-8')
+
+          for filename in ['docs/ukrainian-api.md', 'docs/ukrainian-surface-inventory.md']:
+              path = Path(filename)
+              text = path.read_text(encoding='utf-8')
+              text = text.replace('lib/surface/uk-sa-coverage.wsm', 'lib/surface/semantic-registry.wsm')
+              path.write_text(text, encoding='utf-8')
+
+          # Plan: use a genuinely human-language example; symbols are separate.
+          path = Path('docs/PLAN-FULL-LANGUAGE-PARITY.md')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '''                         0104
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+             UK           EN           SA
+           додати          +           yoga''',
+              '''                         0101
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+             UK           EN           SA
+        відобразити       map       āvartana'''
+          )
+          if '### Етап A — нейтральна authority\n\n**Стан: ЗАВЕРШЕНО**' not in text:
+              text = text.replace(
+                  '### Етап A — нейтральна authority\n',
+                  '### Етап A — нейтральна authority\n\n**Стан: ЗАВЕРШЕНО.** `semantic-registry.wsm` є єдиною authority; legacy EN-shaped table виведена з executable path.\n'
+              )
+          text = text.replace(
+              '4. `0104` має один runtime builtin для `додати`, `+`, `yoga`;',
+              '4. `0104` має UK `додати`, SA `yoga`, shared `sym +`, а EN чесно `missing` до ратифікації людського імені;'
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Remove one-shot workflow and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/finish-numeric-authority.yml
+          git add crates/my-lisp/tests/ukrainian_api_docs.rs crates/my-lisp-cli/src/repl.rs \
+            .github/workflows/surface-drift-check.yml docs/repl-surfaces.md \
+            docs/program-surface-translator.md docs/ukrainian-api.md \
+            docs/ukrainian-surface-inventory.md docs/PLAN-FULL-LANGUAGE-PARITY.md
+          git commit -m "docs(surface): retire English-shaped authority paths"
+          git push origin HEAD:feat/close-language-neutrality-debt
