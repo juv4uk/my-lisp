@@ -7,13 +7,22 @@ on:
       - 'lib/surface/**'
       - 'crates/my-lisp/src/eval/builtins.rs'
       - 'crates/my-lisp/src/language_items.rs'
+      - 'crates/my-lisp-cli/src/repl.rs'
+      - 'crates/my-lisp-cli/src/repl/surface_catalog.rs'
       - 'scripts/check_surface_coverage.py'
+      - 'scripts/check_trilingual_surface.py'
+      - 'docs/adr/ADR-005-TRILINGUAL-SURFACE-PARITY.md'
   pull_request:
     paths:
       - 'lib/core.my'
       - 'lib/surface/**'
       - 'crates/my-lisp/src/eval/builtins.rs'
       - 'crates/my-lisp/src/language_items.rs'
+      - 'crates/my-lisp-cli/src/repl.rs'
+      - 'crates/my-lisp-cli/src/repl/surface_catalog.rs'
+      - 'scripts/check_surface_coverage.py'
+      - 'scripts/check_trilingual_surface.py'
+      - 'docs/adr/ADR-005-TRILINGUAL-SURFACE-PARITY.md'
 
 jobs:
   drift-check:
@@ -21,13 +30,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check surface coverage drift
+      - name: Check public-name inventory drift
         run: python3 scripts/check_surface_coverage.py
+
+      - name: Check EN / UK / SA structural parity
+        run: python3 scripts/check_trilingual_surface.py
 
       - name: Report
         if: always()
         run: |
           echo "Surface drift check complete."
-          echo "Every eligible public English name must be classified in"
-          echo "lib/surface/uk-sa-coverage.wsm"
-          echo "Run locally: python3 scripts/check_surface_coverage.py"
+          echo "Core is not English: EN, UK and SA are peer human surfaces."
+          echo "The structural gate classifies every selected public identity in all three surfaces."
+          echo "Full release parity remains a stronger gate:"
+          echo "python3 scripts/check_trilingual_surface.py --require-complete"
