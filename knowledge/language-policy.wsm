@@ -15,6 +15,9 @@
      (primary-language . ukrainian)
      (auxiliary-languages . (english german))
      (human-facing-order . (ukrainian english german))
+     (repository-scope . all-owner-authored-repositories)
+     (owner-phrase-all-my-repos . all-owner-authored-repositories)
+     (authorship-authority . ../ecosystem/docs/policy/REPOSITORIES-LICENSE-AUDIT.md)
      (code-comments . ukrainian-utf8)
      (transliteration-contract . uk-latynka/1)
      (transliterator . scripts/uk-latynka.py)
@@ -31,6 +34,11 @@
         (mass-comment-rewrite-without-task . ())
         (exact-upstream-spelling-preserved . t)
         (identifiers-and-protocol-literals-preserved . t)))
+     (repository-boundary .
+       ((include . owner-authored-repositories)
+        (include-authored-repository-with-third-party-notices . shiva-sutras)
+        (exclude . (forks mirrors vendored-dependencies third-party-upstreams))
+        (account-or-local-presence-proves-authorship . ())))
      (scope .
        (agent-instructions
         human-facing-documentation
@@ -51,6 +59,7 @@
         (bulk-rewrite . separate-reviewed-task)))
      (evidence .
        ((guard-topic . language-policy)
+        (guard-scope-topic . owner-authored-repository-scope)
         (guard-tool . uk-latynka)
         (encoding . utf-8)
         (round-trip-check . "python3 scripts/uk-latynka.py self-test")

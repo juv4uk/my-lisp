@@ -12,12 +12,21 @@
   (quote
     ((reference
        (topic language-policy)
-       (summary "Українська — первинна мова; кодові коментарі — українською кирилицею в UTF-8; англійська й німецька — допоміжні")
-       (authority (knowledge/language-policy.wsm AGENTS.md scripts/uk-latynka.py))
-       (how-to (write-ukrainian-first write-code-comments-in-ukrainian-utf8 use-english-or-german-as-auxiliary use-uk-latynka-only-at-explicit-ascii-boundary))
-       (verify (utf-8-primary ukrainian-comment-rule uk-latynka-round-trip))
+       (summary "Українська — первинна мова в усіх авторських репозиторіях власника; кодові коментарі — українською кирилицею в UTF-8; англійська й німецька — допоміжні")
+       (authority (knowledge/language-policy.wsm AGENTS.md ../ecosystem/docs/policy/BILINGUAL-DOCUMENTATION-POLICY.md ../ecosystem/docs/policy/REPOSITORIES-LICENSE-AUDIT.md scripts/uk-latynka.py))
+       (how-to (resolve-owner-authored-repository-scope write-ukrainian-first write-code-comments-in-ukrainian-utf8 use-english-or-german-as-auxiliary use-uk-latynka-only-at-explicit-ascii-boundary))
+       (verify (authorship-provenance-boundary utf-8-primary ukrainian-comment-rule uk-latynka-round-trip))
        (lifecycle current-contract)
-       (provenance "owner directive 2026-09-07; my-lisp e6bf9b6")
+       (provenance "owner directives 2026-09-07 and 2026-09-08; Ukrainian-first applies to all owner-authored repositories")
+       (unknown-route ask-owner))
+     (reference
+       (topic owner-authored-repository-scope)
+       (summary "Фраза власника «всі мої репо» означає всі авторські репозиторії; форки, дзеркала та сторонні upstream-репо виключені незалежно від акаунта чи локального розташування")
+       (authority (../ecosystem/memory/OWNER-PROFILE.md ../ecosystem/docs/policy/BILINGUAL-DOCUMENTATION-POLICY.md ../ecosystem/docs/policy/REPOSITORIES-LICENSE-AUDIT.md))
+       (how-to (read-current-provenance-audit include-all-owner-authored-repositories include-shiva-sutras-with-third-party-notice exclude-forks-mirrors-and-third-party-upstreams ask-owner-if-authorship-unclear))
+       (verify (repository-listed-in-current-authorship-register provenance-classification fork-boundary-preserved third-party-notice-preserved))
+       (lifecycle current-owner-language)
+       (provenance "direct owner clarification 2026-09-08: all my repos = all my authored repos")
        (unknown-route ask-owner))
      (reference
        (topic ukrainian-programming-surface)
