@@ -1,0 +1,186 @@
+name: Ukrainian semantic naming refinement
+
+on:
+  push:
+    branches: [agent/uk-semantic-name-audit]
+    paths:
+      - '.github/workflows/uk-semantic-name-refinement.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/uk-semantic-name-audit
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Apply second-pass call-site refinements
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Два already-audited bindings уточнюємо з «номера» до нуль-базованого індексу.
+          TARGET_REFINEMENTS = [
+              ("nth", "елемент-списку-за-номером", "елемент-списку-за-індексом"),
+              ("vec-nth", "елемент-вектора-за-номером", "елемент-вектора-за-індексом"),
+          ]
+
+          # Другий прохід: сильні випадки, де виклик без EN-підказки читався двозначно.
+          EXTRA = [
+              ("member?", "містить?", "значення-у-списку?", "У виклику прямо видно відношення: значення належить списку."),
+              ("string-prefix?", "текст-починається?", "префікс-тексту?", "Аргументи мають порядок префікс, текст; назва тепер читається як питання про це відношення."),
+              ("string-contains?", "містить-текст?", "фрагмент-у-тексті?", "Аргументи мають порядок фрагмент, текст; назва більше не приховує суб'єкт відношення."),
+              ("codepoint->string", "код-у-текст", "кодова-точка-у-текст", "«Кодова точка» точно називає Unicode code point, а не довільний код або кодування."),
+              ("string->codepoint", "текст-у-код", "текст-у-кодову-точку", "Результат точно названо Unicode кодовою точкою."),
+              ("write-to-string", "у-текст", "значення-у-текст", "Функція серіалізує довільне Lisp-значення; назва більше не виглядає як безконтекстна конверсія."),
+              ("unix-time-now", "юнікс-час-зараз", "поточний-юнікс-час", "Природний український порядок слів."),
+              ("deadline-after-ns", "дедлайн-після-нс", "дедлайн-через-нс", "«Через N наносекунд» природно описує дельту від поточного монотонного часу."),
+              ("map-contains?", "карта-містить?", "ключ-у-карті?", "У виклику прямо видно відношення ключа до карти й порядок аргументів."),
+              ("contains-atom?", "містить-атом?", "атом-у-списку?", "Helper перевіряє заданий атом у списку; назва читається природно в порядку аргументів."),
+          ]
+
+          def read(path):
+              return Path(path).read_text(encoding="utf-8")
+          def write(path, text):
+              Path(path).write_text(text, encoding="utf-8")
+
+          # 1. uk.my: уточнити два preferred; для 10 нових — preferred + compatibility alias.
+          path = "lib/surface/uk.my"
+          text = read(path)
+          for en, old, new in TARGET_REFINEMENTS:
+              needle = f"(define {old} {en})"
+              assert text.count(needle) == 1, (needle, text.count(needle))
+              text = text.replace(needle, f"(define {new} {en})", 1)
+          compat_anchor = ";; Сумісність назв після смислового аудиту 2026-09-08"
+          assert compat_anchor in text
+          for en, old, new, _reason in EXTRA:
+              needle = f"(define {old} {en})"
+              assert text.count(needle) == 1, (needle, text.count(needle))
+              text = text.replace(needle, f"(define {new} {en})", 1)
+          # Додаткові старі aliases вставляємо в наявний compatibility-блок.
+          insert_at = text.index(compat_anchor)
+          block_end = text.index(";; ═══════════════════════════════════════════════════════════════", insert_at + len(compat_anchor))
+          block_end = text.index("\n", block_end) + 1
+          aliases = "\n".join(f"(define {old} {en})" for en, old, _new, _reason in EXTRA) + "\n"
+          text = text[:block_end] + aliases + text[block_end:]
+          write(path, text)
+
+          # 2. Машинні preferred-реєстри та людські docs: одночасна заміна.
+          replacements = [(old, new) for _en, old, new in TARGET_REFINEMENTS] + [
+              (old, new) for _en, old, new, _reason in EXTRA
+          ]
+          def simultaneous(text):
+              ordered = sorted(replacements, key=lambda pair: len(pair[0]), reverse=True)
+              marks = []
+              for i, (old, new) in enumerate(ordered):
+                  mark = f"__UK_REFINE_{i}__"
+                  assert mark not in text
+                  text = text.replace(old, mark)
+                  marks.append((mark, new))
+              for mark, new in marks:
+                  text = text.replace(mark, new)
+              return text
+
+          for path in [
+              "lib/surface/uk-sa-coverage.wsm",
+              "lib/surface/uk-docs.wsm",
+              "docs/ukrainian-api.md",
+              "docs/ukrainian-surface-inventory.md",
+              "crates/my-lisp/tests/ukrainian_api_docs.rs",
+              "crates/my-lisp/tests/uk_sa_batch2.rs",
+          ]:
+              write(path, simultaneous(read(path)))
+
+          # 3. Machine audit: 42 renamed / 98 retained; refine 2 rows and append 10.
+          path = "lib/surface/uk-name-audit.wsm"
+          text = read(path)
+          text = text.replace("(renamed 32)", "(renamed 42)")
+          text = text.replace("(retained 108)", "(retained 98)")
+          for en, old, new in TARGET_REFINEMENTS:
+              # Existing rename row contains old-original -> intermediate. Change only target token.
+              text = text.replace(f" {old} ", f" {new} ")
+          close = "  ))\n"
+          assert text.endswith(close)
+          extra_rows = "".join(
+              f'    (rename {en} {old} {new} "{reason}")\n'
+              for en, old, new, reason in EXTRA
+          )
+          text = text[:-len(close)] + extra_rows + close
+          write(path, text)
+
+          # 4. Human audit: counts, two target refinements, 10 additional rows.
+          path = "docs/ukrainian-name-audit.md"
+          text = read(path)
+          text = text.replace("**32** preferred-назви уточнено, **108** залишено без зміни", "**42** preferred-назви уточнено, **98** залишено без зміни")
+          text = text.replace("старі 32 назви", "старі 42 назви")
+          for _en, old, new in TARGET_REFINEMENTS:
+              text = text.replace(f"**`{old}`**", f"**`{new}`**")
+          anchor = "\n## Що перевірено й свідомо залишено\n"
+          assert anchor in text
+          rows = "".join(
+              f"| `{en}` | `{old}` | **`{new}`** | {reason} |\n"
+              for en, old, new, reason in EXTRA
+          )
+          text = text.replace(anchor, rows + anchor, 1)
+          write(path, text)
+
+          # 5. API footer + Rust audit counts.
+          path = "docs/ukrainian-api.md"
+          text = read(path).replace("32 preferred-назви уточнено", "42 preferred-назви уточнено")
+          write(path, text)
+
+          path = "crates/my-lisp/tests/ukrainian_api_docs.rs"
+          text = read(path)
+          text = text.replace('(renamed 32)', '(renamed 42)').replace('(retained 108)', '(retained 98)')
+          text = text.replace('assert_eq!(rename_rows, 32,', 'assert_eq!(rename_rows, 42,')
+          write(path, text)
+
+          # 6. Остаточні exact invariants.
+          surface = read("lib/surface/uk.my")
+          coverage = read("lib/surface/uk-sa-coverage.wsm")
+          assert surface.count("(define середовище env)") == 1
+          for en, old, new, _reason in EXTRA:
+              assert f"(define {new} {en})" in surface
+              assert f"(define {old} {en})" in surface
+              assert f" {en} {new} " in coverage
+              assert f" {en} {old} " not in coverage
+          for en, _old, new in TARGET_REFINEMENTS:
+              assert f"(define {new} {en})" in surface
+              assert f" {en} {new} " in coverage
+          print("second-pass audit: 140 reviewed, 42 renamed, 98 retained")
+          PY
+
+      - name: Verify surface and documentation contracts
+        run: |
+          cargo test -p my-lisp --test uk_surface_equivalence
+          cargo test -p my-lisp --test ukrainian_api_docs
+          cargo test -p my-lisp --test uk_sa_batch2
+          cargo test -p my-lisp --test documentation_contract
+          cargo test -p my-lisp --test guard
+
+      - name: Verify consumers
+        run: |
+          cargo test -p my-lisp-cli
+          cargo test -p my-lisp-wasm
+
+      - name: Zero-warning gate
+        run: cargo clippy -p my-lisp -p my-lisp-cli -p my-lisp-wasm --all-targets -- -D warnings
+
+      - name: Commit tested refinement
+        run: |
+          rm .github/workflows/uk-semantic-name-refinement.yml
+          git add -A
+          git config user.name 'juv4uk'
+          git config user.email '85576956+juv4uk@users.noreply.github.com'
+          git commit -m 'refactor(surface): make Ukrainian calls self-explanatory'
+          git push origin HEAD:agent/uk-semantic-name-audit
