@@ -12,12 +12,12 @@
   (quote
     ((reference
        (topic language-policy)
-       (summary "Українська — первинна мова в усіх авторських репозиторіях власника; кодові коментарі — українською кирилицею в UTF-8; англійська й німецька — допоміжні. CORE-RULE tier (CRITICAL, ALL_AGENTS) з 2026-09-08: знання політики саме по собі не гарантує дотримання — перевіряти мову свідомо до першого речення нової прози, не покладатися на звичку (реальний зрив і виправлення задокументовані в ecosystem/memory/CORE-RULE-ukrainian-first.md)")
-       (authority (knowledge/language-policy.wsm AGENTS.md ../ecosystem/docs/policy/BILINGUAL-DOCUMENTATION-POLICY.md ../ecosystem/docs/policy/REPOSITORIES-LICENSE-AUDIT.md ../ecosystem/memory/CORE-RULE-ukrainian-first.md scripts/uk-latynka.py))
-       (how-to (resolve-owner-authored-repository-scope write-ukrainian-first write-code-comments-in-ukrainian-utf8 use-english-or-german-as-auxiliary use-uk-latynka-only-at-explicit-ascii-boundary check-language-before-first-sentence-not-from-habit))
+       (summary "Українська — первинна мова в усіх авторських репозиторіях власника; кодові коментарі — українською кирилицею в UTF-8; англійська й німецька — допоміжні. CORE-RULE tier (CRITICAL, ALL_AGENTS) з 2026-09-08: знання політики саме по собі не гарантує дотримання — перевіряти мову свідомо до першого речення нової прози, не покладатися на звичку (реальний зрив і виправлення задокументовані в ecosystem/memory/CORE-RULE-ukrainian-first.md). Ecosystem-wide audit 2026-09-08 знайшов борг у 12 з 19 перевірених репозиторіїв (ecosystem/memory/LANGUAGE-DEBT-REGISTRY-2026-09-08.md); за прямою настановою власника кожен із них тепер має задачу BILINGUAL-DOCUMENTATION-AUDIT (priority 9.0) у своєму tasks.my, з конкретним context, не generic-описом -- claim-able через звичайний swarm цикл, не масове автоматичне виправлення")
+       (authority (knowledge/language-policy.wsm AGENTS.md ../ecosystem/docs/policy/BILINGUAL-DOCUMENTATION-POLICY.md ../ecosystem/docs/policy/REPOSITORIES-LICENSE-AUDIT.md ../ecosystem/memory/CORE-RULE-ukrainian-first.md ../ecosystem/memory/LANGUAGE-DEBT-REGISTRY-2026-09-08.md scripts/uk-latynka.py))
+       (how-to (resolve-owner-authored-repository-scope write-ukrainian-first write-code-comments-in-ukrainian-utf8 use-english-or-german-as-auxiliary use-uk-latynka-only-at-explicit-ascii-boundary check-language-before-first-sentence-not-from-habit check-tasks-my-for-bilingual-documentation-audit-before-claiming-new-doc-work))
        (verify (authorship-provenance-boundary utf-8-primary ukrainian-comment-rule uk-latynka-round-trip))
        (lifecycle current-contract)
-       (provenance "owner directives 2026-09-07 and 2026-09-08; Ukrainian-first applies to all owner-authored repositories; elevated to CORE-RULE/CRITICAL tier 2026-09-08 after a real same-day violation in panca-vac, corrected on owner's direct question")
+       (provenance "owner directives 2026-09-07 and 2026-09-08; Ukrainian-first applies to all owner-authored repositories; elevated to CORE-RULE/CRITICAL tier 2026-09-08 after a real same-day violation in panca-vac, corrected on owner's direct question; ecosystem-wide debt audit and high-priority task rollout across 12 repos, same day, owner-directed")
        (unknown-route ask-owner))
      (reference
        (topic owner-authored-repository-scope)
