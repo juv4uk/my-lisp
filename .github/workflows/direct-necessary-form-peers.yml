@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - feat/direct-necessary-form-peers
-    paths:
-      - .github/workflows/direct-necessary-form-peers.yml
 
 permissions:
   contents: write
@@ -14,50 +12,34 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: feat/direct-necessary-form-peers
+          fetch-depth: 0
       - name: Remove Ukrainian EN-bridge wrappers
         shell: bash
         run: |
-          python3 <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
 
           path = Path("lib/surface/uk.my")
           text = path.read_text()
 
-          old_header = '''; Everything below Canon remains language-owned aliases/macros over the same
-; semantic environment, except identities migrated under ADR-007: those peer
-; spellings are installed directly by the runtime and are not defined here.
-'''
-          new_header = '''; Everything below Canon remains language-owned vocabulary over the same
-; semantic environment, except identities migrated under ADR-007/008. Necessary
-; forms 0010/0011 are resolved directly by evaluator identity; migrated ordinary
-; peer spellings are direct runtime bindings rather than cross-surface aliases.
-'''
-          if old_header not in text:
-              raise SystemExit("topology header not found")
-          text = text.replace(old_header, new_header, 1)
+          text = text.replace(
+              "; Everything below Canon remains language-owned aliases/macros over the same\n"
+              "; semantic environment, except identities migrated under ADR-007: those peer\n"
+              "; spellings are installed directly by the runtime and are not defined here.\n",
+              "; Everything below Canon remains language-owned vocabulary over the same\n"
+              "; semantic environment, except identities migrated under ADR-007/008. Necessary\n"
+              "; forms 0010/0011 are resolved directly by evaluator identity; migrated ordinary\n"
+              "; peer spellings are direct runtime bindings rather than cross-surface aliases.\n",
+              1,
+          )
 
-          old = ''';; ═══════════════════════════════════════════════════════════════
-;; Necessary evaluator forms — macros expanding to canonical surfaces
-;; Необхідні форми — макроси що розгортаються до канонічних поверхонь
-;; ═══════════════════════════════════════════════════════════════
-
-(defmacro функція args
-  (cons (quote lambda) args))
-
-(defmacro визначити (name value)
-  (cons (quote define)
-        (cons name
-              (cons value (quote ())))))
-
-; DEFMACRO is already a first-class macro value installed by macro.my.
-; This is another name for that same value, not a second macro mechanism.
-(define визначити-макрос defmacro)
-'''
-          new = ''';; ═══════════════════════════════════════════════════════════════
-;; Necessary evaluator forms — direct semantic peer spellings
+          start = text.index(";; Necessary evaluator forms — macros expanding to canonical surfaces")
+          marker = "; DEFMACRO is already a first-class macro value installed by macro.my."
+          end = text.index(marker, start)
+          replacement = """;; Necessary evaluator forms — direct semantic peer spellings
 ;; Необхідні форми — прямі назви одних семантичних тотожностей
 ;; ═══════════════════════════════════════════════════════════════
 
@@ -66,21 +48,13 @@ jobs:
 ; redefined here as macros and neither spelling expands through the other.
 ; Sanskrit rows remain explicitly missing until ratified.
 
-; 0012 is different: DEFMACRO is a language-owned first-class macro value from
-; macro.my, not an evaluator necessary form. Its direct peer binding is a
-; separate Stage-D migration; keep the current compatibility topology explicit.
-(define визначити-макрос defmacro)
-'''
-          if old not in text:
-              raise SystemExit("necessary-form wrapper block not found")
-          text = text.replace(old, new, 1)
+"""
+          text = text[:start] + replacement + text[end:]
           path.write_text(text)
-
-          Path(".github/workflows/direct-necessary-form-peers.yml").unlink()
           PY
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add lib/surface/uk.my
           git commit -m "refactor(surface): remove Ukrainian necessary-form bridges"
           git push origin HEAD:feat/direct-necessary-form-peers
