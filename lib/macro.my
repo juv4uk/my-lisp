@@ -15,19 +15,23 @@
 ; spelling). Thus no human surface is implemented as an alias of another.
 ;
 ; Necessary forms are selected by numeric semantic identity, not by an EN/UK
-; spelling. `#0010` is only an ordinary-symbol source transport for bootstrap
-; LAMBDA; `#` is not part of identity and requires no reader reservation.
-; Expansion data itself contains the pure symbols `0010` / `0011`, constructed
-; by the already-existing `string->symbol`. Sanskrit remains explicitly missing.
+; spelling. `string->symbol` constructs the pure Symbol("0010") bootstrap
+; LAMBDA datum and first-class `eval` evaluates that datum in the current
+; environment. The macro expansion likewise emits pure Symbol("0010") /
+; Symbol("0011") heads. No additional source spelling or reader syntax exists.
+; Sanskrit remains explicitly missing.
 
 (make-macro
-  (#0010 (name params . body)
-    (cons (string->symbol "0011")
-      (cons name
-        (cons
-          (cons (quote make-macro)
-            (cons
-              (cons (string->symbol "0010")
-                (cons params body))
-              (quote ())))
-          (quote ()))))))
+  (eval
+    (cons (string->symbol "0010")
+      (quote
+        ((name params . body)
+          (cons (string->symbol "0011")
+            (cons name
+              (cons
+                (cons (quote make-macro)
+                  (cons
+                    (cons (string->symbol "0010")
+                      (cons params body))
+                    (quote ())))
+                (quote ())))))))
