@@ -105,7 +105,7 @@ fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
         }
 
         let mut names = Vec::new();
-        for triple in fields[1..].chunks_exact(3) {
+        for triple in fields[1..].as_chunks::<3>().0 {
             let surface = triple[0].trim_start_matches('(').to_string();
             let raw_name = triple[1];
             let status = Status::parse(triple[2].trim_end_matches(')'))?;
