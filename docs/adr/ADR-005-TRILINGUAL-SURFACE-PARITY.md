@@ -1,7 +1,8 @@
 # ADR-005 — Trilingual Surface Parity
 
 **Status:** Accepted  
-**Date:** 2026-09-08
+**Date:** 2026-09-08  
+**Registry note:** the legacy `canonical/EN` registry interpretation below is a historical snapshot; ADR-008 supersedes it with numeric-only `semantic-registry.wsm` authority.
 
 ## Decision
 

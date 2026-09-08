@@ -1,41 +1,69 @@
 #!/usr/bin/env python3
-"""Translate my-lisp program surface names between English, Ukrainian, Sanskrit.
+"""Перекладає my-lisp між людськими поверхнями через numeric identities.
 
-Перекладає програмні імена поверхні my-lisp між англійською, українською та
-санскритом. Форматування, коментарі, рядки, числа й невідомі користувацькі
-символи зберігаються дослівно. Джерелом словника є
-lib/surface/uk-sa-coverage.wsm; окремого словника в цьому скрипті немає.
+Джерело словника — `lib/surface/semantic-registry.wsm`. Жодна людська мова не
+є мостом до іншої. `sym` — спільна немовна нотація: такі токени не
+"перекладаються з англійської", а зберігаються дослівно.
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-COVERAGE = REPO_ROOT / "lib" / "surface" / "uk-sa-coverage.wsm"
-LANGUAGE_COLUMN = {"en": 2, "uk": 3, "sa": 4}
+REGISTRY = REPO_ROOT / "lib" / "surface" / "semantic-registry.wsm"
+ENTRY = re.compile(r"^\s*\(([0-9]{4,})\s+(.*)\)\s*$")
+SURFACE = re.compile(
+    r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)\s+"
+    r"(stable|candidate|missing|compatibility-only)\)"
+)
+NON_HUMAN = {"sym"}
 
 
-def surface_rows(source: str) -> list[tuple[str, str, str]]:
+def registry_rows() -> list[dict[str, tuple[str, str]]]:
     rows = []
-    for line in source.splitlines():
-        fields = line.split()
-        if fields[:1] != ["(entry"] or len(fields) < 7:
+    for line in REGISTRY.read_text(encoding="utf-8").splitlines():
+        match = ENTRY.match(line)
+        if not match:
             continue
-        rows.append((fields[2], fields[3], fields[4]))
+        _identity, body = match.groups()
+        surfaces = {
+            language: (name, status)
+            for language, name, status in SURFACE.findall(body)
+        }
+        rows.append(surfaces)
+    if not rows:
+        raise ValueError("numeric semantic registry has no entries")
     return rows
 
 
+def human_languages(rows: list[dict[str, tuple[str, str]]]) -> set[str]:
+    return {
+        language
+        for row in rows
+        for language in row
+        if language not in NON_HUMAN
+    }
+
+
 def translation_map(source_language: str, target_language: str) -> dict[str, str]:
-    source_column = LANGUAGE_COLUMN[source_language] - 2
-    target_column = LANGUAGE_COLUMN[target_language] - 2
     translations: dict[str, str] = {}
-    for row in surface_rows(COVERAGE.read_text(encoding="utf-8")):
-        source_name = row[source_column]
-        target_name = row[target_column]
-        if source_name == "—" or target_name == "—":
+    for row in registry_rows():
+        source = row.get(source_language)
+        target = row.get(target_language)
+        if source is None or target is None:
+            continue
+        source_name, source_status = source
+        target_name, target_status = target
+        if (
+            source_name == "—"
+            or target_name == "—"
+            or source_status in {"missing", "compatibility-only"}
+            or target_status in {"missing", "compatibility-only"}
+        ):
             continue
         previous = translations.get(source_name)
         if previous is not None and previous != target_name:
@@ -48,7 +76,7 @@ def translation_map(source_language: str, target_language: str) -> dict[str, str
 
 
 def translate_program(source: str, translations: dict[str, str]) -> str:
-    """Rewrite symbols while preserving layout, comments, and string data."""
+    """Rewrite symbols while preserving layout, comments, strings and shared symbols."""
     output: list[str] = []
     index = 0
     length = len(source)
@@ -78,8 +106,6 @@ def translate_program(source: str, translations: dict[str, str]) -> str:
             output.append(character)
             index += 1
         elif character == "'":
-            # Initial apostrophe is reader syntax and not part of the symbol
-            # following it. An apostrophe inside об'єкт remains in that token.
             output.append(character)
             index += 1
         else:
@@ -96,31 +122,34 @@ def translate_program(source: str, translations: dict[str, str]) -> str:
 
 
 def arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Translate a my-lisp program between en, uk, and sa surfaces."
-    )
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path, help="source program, or - for stdin")
-    parser.add_argument("--from", dest="source_language", choices=LANGUAGE_COLUMN, required=True)
-    parser.add_argument("--to", dest="target_language", choices=LANGUAGE_COLUMN, required=True)
+    parser.add_argument("--from", dest="source_language", required=True)
+    parser.add_argument("--to", dest="target_language", required=True)
     parser.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
     return parser.parse_args()
 
 
 def main() -> int:
     args = arguments()
-    if args.source_language == args.target_language:
-        print("source and target surfaces must differ", file=sys.stderr)
+    try:
+        rows = registry_rows()
+        languages = human_languages(rows)
+        unknown = {args.source_language, args.target_language} - languages
+        if unknown:
+            raise ValueError("unknown human surface(s): " + ", ".join(sorted(unknown)))
+        if args.source_language == args.target_language:
+            raise ValueError("source and target surfaces must differ")
+        translations = translation_map(args.source_language, args.target_language)
+    except (OSError, ValueError) as error:
+        print(f"translation registry error: {error}", file=sys.stderr)
         return 2
+
     source = (
         sys.stdin.read()
         if str(args.input) == "-"
         else args.input.read_text(encoding="utf-8")
     )
-    try:
-        translations = translation_map(args.source_language, args.target_language)
-    except (OSError, ValueError) as error:
-        print(f"translation table error: {error}", file=sys.stderr)
-        return 2
     translated = translate_program(source, translations)
     if args.output:
         args.output.write_text(translated, encoding="utf-8")

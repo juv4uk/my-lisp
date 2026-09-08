@@ -1,15 +1,21 @@
-# ADR-007 — Meaning-first human surfaces
+# ADR-007 — Значення первинне: людські поверхні
 
-**Status:** Accepted  
-**Date:** 2026-09-08
+**Статус:** Accepted  
+**Дата:** 2026-09-08  
+**Міграція authority:** завершена ADR-008
 
-## Decision
+## Рішення
 
-`my-lisp` has no privileged human programming language.
+У **машинному семантичному шарі** `my-lisp` жодна людська мова не є мостом до
+значення для іншої людської мови.
 
-The semantic identity comes first. Human-language spellings are peer names of
-that identity. No human surface may be implemented by resolving through
-another human surface.
+Semantic identity первинна. Людські написання є surface names цієї identity.
+Жодна surface не може реалізовуватися через lookup іншої людської surface.
+
+Це не суперечить мовній політиці репозиторію, де українська є першою мовою
+проєкту. Українська може бути головною мовою документації, дизайну та розвитку,
+але machine semantic identity не повинна бути словом українською, англійською,
+санскритом чи будь-якою іншою людською мовою.
 
 ```text
                          meaning
@@ -19,16 +25,16 @@ another human surface.
              UK            EN            SA
 ```
 
-The same shape applies to Canon 0+7, ordinary builtins, Lisp-defined public
-functions, macros and future public semantic identities.
+Та сама топологія застосовується до Canon 0+7, ordinary builtins,
+Lisp-визначених public functions, macros і майбутніх public semantic identities.
 
-For Canon, the meaning is immutable. For ordinary public API, the meaning may
-evolve through the normal language-contract process, but the surface topology
-is the same.
+Для Canon значення незмінне. Для ordinary public API значення може еволюціонувати
+через звичайний language-contract process, але surface topology лишається тією
+самою.
 
-## Fundamental invariant
+## Фундаментальний інваріант
 
-Forbidden:
+Заборонено:
 
 ```text
 UK -> EN -> meaning
@@ -36,7 +42,7 @@ SA -> EN -> meaning
 EN -> UK -> meaning
 ```
 
-Required:
+Потрібно:
 
 ```text
 UK --\
@@ -44,19 +50,16 @@ EN ----> meaning
 SA --/
 ```
 
-A surface spelling is not an alias of another surface spelling. It is a direct
-name of the same semantic identity.
+Surface spelling не є alias іншого surface spelling. Це пряме ім'я тієї самої
+semantic identity.
 
-## Numeric semantic identities
+## Числові semantic identities
 
-Semantic identity handles contain digits only.
+Semantic identity handles містять лише цифри. Це правило нейтральності, а не
+форматування. Навіть нібито загальний буквений префікс може непомітно занести
+слово однієї людської мови в machine identity layer.
 
-This is a neutrality rule, not a formatting preference. Alphabetic prefixes are
-forbidden because even a seemingly generic prefix such as `m` silently imports
-a word from one human language (for example, "meaning") into the machine
-identity layer.
-
-Required examples:
+Допустимо:
 
 ```text
 0001
@@ -64,7 +67,7 @@ Required examples:
 0104
 ```
 
-Forbidden examples:
+Заборонено:
 
 ```text
 m0104
@@ -72,20 +75,17 @@ id0104
 meaning0104
 ```
 
-The digits are opaque handles. They do not name the operation and do not encode
-a human-language word. Their only job is to provide one stable, language-neutral
-reference to one semantic identity.
+Цифри є непрозорими handles. Вони не називають операцію.
 
-## Minimal registry form
-
-The migration uses a deliberately small Lisp-shaped data format:
+## Форма реєстру
 
 ```lisp
 (sr/1
   (0001
     (uk як-є stable)
     (en quote stable)
-    (sa svarūpa stable))
+    (sa svarūpa stable)
+    (sym ' stable))
 
   (0101
     (uk відобразити stable)
@@ -93,69 +93,49 @@ The migration uses a deliberately small Lisp-shaped data format:
     (sa āvartana candidate)))
 ```
 
-`0001`, `0101`, ... are opaque numeric machine identities. They are
-intentionally not words from UK, EN, SA, or any future human surface.
+Порядок surface rows не має семантичного значення. Майбутня мова додається ще
+одним peer row; redesign схеми не потрібний.
 
-The order of `(uk ...)`, `(en ...)`, `(sa ...)` has no semantic significance.
-A future language is added by adding another peer form, for example:
+`+`, `-`, `<` та інша пунктуація не є людськими мовними написаннями. ADR-008
+робить її явною спільною немовною surface `sym`.
 
-```lisp
-(0101
-  (uk відобразити stable)
-  (en map stable)
-  (sa āvartana candidate)
-  (pl odwzoruj stable))
-```
+## Завершена людська surface
 
-No schema redesign is required.
+Людську surface можна назвати complete лише коли для кожної вибраної public
+semantic identity вона має:
 
-## What this does not mean
-
-1. Human languages do not need equal completion status at every moment. A new
-   surface may be partial while it is being built.
-2. A partial surface must not be called complete.
-3. Adding a language must not create another implementation of the operation.
-4. Internal Rust names are implementation details; they are not human-surface
-   authority.
-5. Canon remains more strongly protected than ordinary API: peer naming does
-   not make every ordinary function immutable.
-
-## Complete human surface
-
-A human surface may be called complete only when it has, for every selected
-public semantic identity:
-
-- a stable spelling;
-- direct resolution to that identity, not through another human surface;
+- stable spelling;
+- direct resolution до identity, а не через іншу людську surface;
 - executable semantic-equivalence evidence;
-- an acceptance program using that surface;
-- human presentation and diagnostics appropriate to that surface.
+- acceptance program цією surface;
+- human presentation і diagnostics, придатні для цієї surface.
 
-## Migration rule
+Нова або неповна surface може чесно мати `candidate` чи `missing`; вона не має
+права мовчки fallback-итися через EN, UK, SA або іншу людську мову.
 
-The existing `lib/surface/uk-sa-coverage.wsm` remains authoritative during the
-migration so current proofs are not weakened. `lib/surface/semantic-registry.wsm`
-is the neutral successor schema and begins as a small executable-design seed.
-Rows move into it in proved slices.
+## Стан міграції
 
-A row is migrated only when all currently represented surface spellings can be
-shown to designate the same semantic identity directly. The legacy table is
-removed only after the neutral registry covers the full selected public
-surface and existing coverage/acceptance gates consume it.
+Перша редакція цього ADR тимчасово дозволяла
+`lib/surface/uk-sa-coverage.wsm` залишатися authority, доки numeric registry був
+лише seed. **Цей перехід завершено.** ADR-008 встановлює
+`lib/surface/semantic-registry.wsm` як єдину machine authority і переводить
+стару EN-shaped таблицю в історичний аудит.
 
-## Relationship to ADR-005
+Це закриває neutrality борг authority/schema. Це **не** означає, що кожне
+public runtime value уже має один shared `Rc`/closure для всіх людських
+spellings. Runtime peer-binding parity лишається окремою executable роботою.
 
-ADR-005 established that EN, UK and SA are peer human surfaces and that the core
-is not English. This ADR generalizes that decision:
+## Відношення до ADR-005
 
-- peer status applies to every present and future human surface;
-- no surface may be the implementation substrate of another;
-- the machine registry itself must not use a human-language spelling as the
-  semantic identity;
-- semantic identity handles themselves must be numeric-only.
+ADR-005 встановив, що core не є English і що людські surface names не повинні
+мати різної семантичної влади над одним meaning. Цей ADR узагальнює інваріант
+на всі теперішні та майбутні людські поверхні. ADR-008 supersede-ить тимчасову
+legacy-registry інтерпретацію ADR-005, але зберігає meaning-first topology.
 
-The short project law is:
+Короткий закон machine layer:
 
-> **Meaning first. Languages are peers.**
->
-> **Значення первинне. Мови рівноправні.**
+> **Значення первинне. Жодна людська мова не є мостом до значення для іншої.**
+
+Короткий закон project layer лишається окремим:
+
+> **Українська — перша мова проєкту.**

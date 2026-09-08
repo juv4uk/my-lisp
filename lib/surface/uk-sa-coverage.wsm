@@ -1,3 +1,5 @@
+; LEGACY AUDIT / ІСТОРИЧНИЙ АУДИТ — НЕ SEMANTIC AUTHORITY.
+; Authoritative machine identities live in semantic-registry.wsm and are numeric-only.
 ; Machine-readable English ↔ Ukrainian ↔ Sanskrit coverage table.
 ; Машинно-читана таблиця покриття EN ↔ UK ↔ SA.
 ;

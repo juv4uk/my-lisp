@@ -11,7 +11,7 @@ python3 scripts/translate-program.py --from sa --to en -
 ```
 
 Скрипт не має власного прихованого словника. Він читає машинну таблицю
-`lib/surface/uk-sa-coverage.wsm`, тому перекладає лише відомі публічні назви.
+`lib/surface/semantic-registry.wsm`, тому перекладає лише відомі публічні назви, зводячи source і target surface через numeric semantic identity.
 Користувацькі символи, числа, відступи й дужки зберігаються. Коментарі та
 текстові рядки не перекладаються, бо це дані програми.
 
@@ -32,6 +32,6 @@ python3 scripts/translate-program.py --from sa --to en -
 
 The translator rewrites registered program symbols and preserves formatting,
 comments, string data, numbers, and unknown user identifiers. Its vocabulary
-comes only from the machine-readable coverage table. Tests cover all six
+comes only from the numeric semantic registry. Tests cover all six
 directions, round trips, preservation boundaries, and equal execution results
 for translated English, Ukrainian, and Sanskrit programs.

@@ -1,161 +1,126 @@
 #!/usr/bin/env python3
-"""Validate and report EN/UK/SA public-surface parity.
+"""Перевіряє рівноправність UK/EN/SA від numeric semantic authority.
 
-The current machine registry still has the historical filename
-``lib/surface/uk-sa-coverage.wsm``.  ADR-005 defines how to read it as a
-trilingual registry: the canonical/EN column is both the semantic identity and
-the English human-surface name.  English is therefore not the core authority;
-it is one peer surface whose spelling currently coincides with canonical IDs.
-
-Default mode checks structural parity and prints the current matrix.
-``--require-complete`` is the release gate: it fails until every
-translation-eligible identity is stable in EN, UK and SA.
+Людські поверхні рахуються від semantic identities, а не від словника EN.
+`sym` є спільною немовною нотацією і не зараховується жодній людській мові.
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = REPO_ROOT / "lib" / "surface" / "uk-sa-coverage.wsm"
+REGISTRY = REPO_ROOT / "lib" / "surface" / "semantic-registry.wsm"
 ALLOWED_STATUSES = {"stable", "candidate", "missing", "compatibility-only"}
+HUMAN_SURFACES = ("uk", "en", "sa")
+ENTRY = re.compile(r"^\s*\(([0-9]{4,})\s+(.*)\)\s*$")
+SURFACE = re.compile(
+    r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)\s+"
+    r"(stable|candidate|missing|compatibility-only)\)"
+)
 
 
 @dataclass(frozen=True)
 class Entry:
-    category: str
-    canonical: str
-    en: str
-    uk: str
-    sa: str
-    en_status: str
-    uk_status: str
-    sa_status: str
+    identity: str
+    surfaces: dict[str, tuple[str, str]]
 
 
 def parse_entries(source: str) -> list[Entry]:
     entries: list[Entry] = []
+    seen: set[str] = set()
     for line_number, line in enumerate(source.splitlines(), start=1):
-        fields = line.split()
-        if fields[:1] != ["(entry"]:
+        match = ENTRY.match(line)
+        if not match:
             continue
-        if len(fields) < 7:
-            raise ValueError(f"line {line_number}: malformed registry entry")
+        identity, body = match.groups()
+        if identity in seen:
+            raise ValueError(f"line {line_number}: duplicate semantic ID {identity}")
+        seen.add(identity)
 
-        category = fields[1].removeprefix("(")
-        canonical, uk, sa = fields[2], fields[3], fields[4]
-        uk_status, sa_status = fields[5], fields[6]
-        for language, status in (("uk", uk_status), ("sa", sa_status)):
+        surfaces: dict[str, tuple[str, str]] = {}
+        matches = list(SURFACE.finditer(body))
+        residue = SURFACE.sub("", body).strip()
+        if not matches or residue:
+            raise ValueError(f"line {line_number}: malformed semantic entry {identity}")
+        for item in matches:
+            language, name, status = item.groups()
+            if language in surfaces:
+                raise ValueError(f"line {line_number}: duplicate {language} in {identity}")
             if status not in ALLOWED_STATUSES:
-                raise ValueError(
-                    f"line {line_number}: unknown {language} status {status!r}"
-                )
-
-        # The legacy table predates an explicit EN status column. ADR-005 makes
-        # the English surface explicit without pretending it is the core:
-        # translation-eligible canonical names are stable EN names; rows that
-        # were intentionally outside the denominator stay compatibility-only.
-        en_status = (
-            "compatibility-only"
-            if uk_status == "compatibility-only"
-            else "stable"
-        )
-
-        if uk_status in {"stable", "candidate"} and uk == "—":
-            raise ValueError(
-                f"line {line_number}: {uk_status} UK entry {canonical!r} has no name"
-            )
-        if uk_status == "missing" and uk != "—":
-            raise ValueError(
-                f"line {line_number}: missing UK entry {canonical!r} unexpectedly has {uk!r}"
-            )
-        if sa_status in {"stable", "candidate"} and sa == "—":
-            raise ValueError(
-                f"line {line_number}: {sa_status} SA entry {canonical!r} has no name"
-            )
-        if sa_status == "missing" and sa != "—":
-            raise ValueError(
-                f"line {line_number}: missing SA entry {canonical!r} unexpectedly has {sa!r}"
-            )
-
-        entries.append(
-            Entry(
-                category=category,
-                canonical=canonical,
-                en=canonical,
-                uk=uk,
-                sa=sa,
-                en_status=en_status,
-                uk_status=uk_status,
-                sa_status=sa_status,
-            )
-        )
+                raise ValueError(f"{identity}/{language}: unknown status {status}")
+            surfaces[language] = (name, status)
+        missing = set(HUMAN_SURFACES) - surfaces.keys()
+        if missing:
+            raise ValueError(f"{identity}: missing explicit human surfaces {sorted(missing)}")
+        entries.append(Entry(identity, surfaces))
 
     if not entries:
-        raise ValueError("surface registry contains no entries")
+        raise ValueError("numeric semantic registry contains no entries")
     return entries
 
 
+def status(entry: Entry, language: str) -> str:
+    return entry.surfaces[language][1]
+
+
+def is_public(entry: Entry) -> bool:
+    # Нейтральний знаменник: identity є compatibility-only лише тоді, коли
+    # ВСІ людські поверхні явно кажуть compatibility-only.
+    return not all(status(entry, language) == "compatibility-only" for language in HUMAN_SURFACES)
+
+
 def counts(entries: list[Entry], language: str) -> dict[str, int]:
-    status_field = f"{language}_status"
-    result = {status: 0 for status in ALLOWED_STATUSES}
+    result = {item: 0 for item in ALLOWED_STATUSES}
     for entry in entries:
-        result[getattr(entry, status_field)] += 1
+        result[status(entry, language)] += 1
     return result
 
 
-def public_denominator(entries: list[Entry]) -> int:
-    # A compatibility-only EN row is deliberately outside the selected public
-    # translation surface. All other rows are obligations for every language.
-    return sum(entry.en_status != "compatibility-only" for entry in entries)
-
-
-def stable_percent(language_counts: dict[str, int], denominator: int) -> float:
-    if denominator == 0:
-        return 100.0
-    return 100.0 * language_counts["stable"] / denominator
-
-
 def is_release_complete(entries: list[Entry]) -> bool:
-    public = [entry for entry in entries if entry.en_status != "compatibility-only"]
     return all(
-        entry.en_status == entry.uk_status == entry.sa_status == "stable"
-        for entry in public
+        all(status(entry, language) == "stable" for language in HUMAN_SURFACES)
+        for entry in entries
+        if is_public(entry)
     )
 
 
 def render_report(entries: list[Entry]) -> str:
-    denominator = public_denominator(entries)
-    by_language = {language: counts(entries, language) for language in ("en", "uk", "sa")}
+    public = [entry for entry in entries if is_public(entry)]
+    denominator = len(public)
+    by_language = {language: counts(entries, language) for language in HUMAN_SURFACES}
+    symbolic = sum("sym" in entry.surfaces for entry in entries)
 
     lines = [
-        "Trilingual surface parity",
+        "Рівноправність людських поверхонь від numeric semantic authority",
         f"public semantic identities: {denominator}",
+        f"shared symbolic identities: {symbolic}",
         "",
         "surface  stable  candidate  missing  compatibility  stable/public",
     ]
-    for language in ("en", "uk", "sa"):
+    for language in HUMAN_SURFACES:
         current = by_language[language]
+        percent = 100.0 if denominator == 0 else 100.0 * current["stable"] / denominator
         lines.append(
             f"{language.upper():<7}"
             f"{current['stable']:>7}"
             f"{current['candidate']:>11}"
             f"{current['missing']:>9}"
             f"{current['compatibility-only']:>15}"
-            f"{stable_percent(current, denominator):>13.1f}%"
+            f"{percent:>13.1f}%"
         )
 
-    trilingual_stable = sum(
-        entry.en_status == entry.uk_status == entry.sa_status == "stable"
-        for entry in entries
-        if entry.en_status != "compatibility-only"
+    common_stable = sum(
+        all(status(entry, language) == "stable" for language in HUMAN_SURFACES)
+        for entry in public
     )
     lines.extend(
         [
             "",
-            f"trilingual stable identities: {trilingual_stable}/{denominator}",
+            f"trilingual stable identities: {common_stable}/{denominator}",
             f"release parity: {'CONFIRMED' if is_release_complete(entries) else 'OPEN'}",
         ]
     )
@@ -167,7 +132,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--require-complete",
         action="store_true",
-        help="fail until EN, UK and SA are all stable for every public identity",
+        help="fail until UK, EN and SA are stable for every public numeric identity",
     )
     return parser.parse_args()
 

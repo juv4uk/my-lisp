@@ -12,8 +12,10 @@ on:
       - 'scripts/check_surface_coverage.py'
       - 'scripts/check_trilingual_surface.py'
       - 'scripts/check_semantic_registry.py'
+      - 'scripts/translate-program.py'
       - 'docs/adr/ADR-005-TRILINGUAL-SURFACE-PARITY.md'
       - 'docs/adr/ADR-007-MEANING-FIRST-SURFACES.md'
+      - 'docs/adr/ADR-008-NUMERIC-SURFACE-AUTHORITY.md'
   pull_request:
     paths:
       - 'lib/core.my'
@@ -25,8 +27,10 @@ on:
       - 'scripts/check_surface_coverage.py'
       - 'scripts/check_trilingual_surface.py'
       - 'scripts/check_semantic_registry.py'
+      - 'scripts/translate-program.py'
       - 'docs/adr/ADR-005-TRILINGUAL-SURFACE-PARITY.md'
       - 'docs/adr/ADR-007-MEANING-FIRST-SURFACES.md'
+      - 'docs/adr/ADR-008-NUMERIC-SURFACE-AUTHORITY.md'
 
 jobs:
   drift-check:
@@ -34,13 +38,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check public-name inventory drift
+      - name: Check runtime names against numeric authority
         run: python3 scripts/check_surface_coverage.py
 
-      - name: Check EN / UK / SA structural parity
+      - name: Check UK / EN / SA parity from numeric identities
         run: python3 scripts/check_trilingual_surface.py
 
-      - name: Check meaning-first registry shape
+      - name: Check numeric identity and symbolic separation
         run: python3 scripts/check_semantic_registry.py
 
       - name: Report
@@ -48,5 +52,6 @@ jobs:
         run: |
           echo "Surface drift check complete."
           echo "Meaning comes first; human-language surfaces are peers."
-          echo "The neutral registry may grow with new languages without changing its shape."
-          echo "The legacy trilingual gate remains authoritative until migration is complete."
+          echo "Shared punctuation belongs to sym, not to a human language."
+          echo "semantic-registry.wsm is the sole numeric surface authority."
+          echo "uk-sa-coverage.wsm is historical audit only."

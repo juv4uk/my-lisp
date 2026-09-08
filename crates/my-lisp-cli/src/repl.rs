@@ -410,8 +410,8 @@ mod tests {
         let en = render_surface_names(ReplSurface::English).expect("EN catalog");
         let uk = render_surface_names(ReplSurface::Ukrainian).expect("UK catalog");
         let sa = render_surface_names(ReplSurface::Sanskrit).expect("SA catalog");
-        assert!(en.contains("surface en: stable 140"));
-        assert!(uk.contains("surface ук: stable 140"));
+        assert!(en.contains("surface en: stable 131 · candidate 0 · missing 9"));
+        assert!(uk.contains("surface uk: stable 140"));
         assert!(sa.contains("surface sa: stable 36 · candidate 88 · missing 16"));
     }
 
@@ -419,7 +419,7 @@ mod tests {
     fn one_name_help_resolves_across_en_uk_sa() {
         for requested in ["map", "відобразити", "āvartana"] {
             let help = render_surface_name(ReplSurface::Ukrainian, requested).expect("name help");
-            assert!(help.contains("identity: map"));
+            assert!(help.contains("identity: 0101"));
             assert!(help.contains("EN: map [stable]"));
             assert!(help.contains("UK: відобразити [stable]"));
             assert!(help.contains("SA: āvartana [candidate]"));
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn trilingual_status_is_measured_not_claimed() {
         let status = render_surface_status().expect("surface status");
-        assert!(status.contains("trilingual stable: 36/140"));
+        assert!(status.contains("trilingual stable: 29/140"));
         assert!(status.contains("release parity: OPEN"));
     }
 

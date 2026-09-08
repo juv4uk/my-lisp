@@ -1,7 +1,7 @@
 # Український API `my-lisp`
 
 **Статус:** публічний довідник української програмної поверхні.  
-**Машинне джерело покриття:** [`lib/surface/uk-sa-coverage.wsm`](../lib/surface/uk-sa-coverage.wsm).  
+**Машинне джерело покриття:** [`lib/surface/semantic-registry.wsm`](../lib/surface/semantic-registry.wsm), де українські назви приєднані до numeric semantic identities.  
 **Машинні записи цього довідника:** [`lib/surface/uk-docs.wsm`](../lib/surface/uk-docs.wsm).
 
 Цей документ описує **всі 140 stable українських публічних назв** поточної перекладної поверхні. Він навмисно не маскує внутрішні helper-и та 21 `compatibility-only` ім'я під український API: технічний повний інвентар реалізації лишається у [`FUNCTIONS.md`](FUNCTIONS.md).

@@ -31,7 +31,7 @@
      (reference
        (topic ukrainian-programming-surface)
        (summary "Український публічний API: stable-імена, довідник, предикати з ? та мутації з !")
-       (authority (lib/surface/uk-sa-coverage.wsm lib/surface/uk-docs.wsm docs/ukrainian-api.md lib/surface/uk.my))
+       (authority (lib/surface/semantic-registry.wsm lib/surface/uk-docs.wsm docs/ukrainian-api.md lib/surface/uk.my))
        (how-to (choose-stable-ukrainian-name classify-as-form-macro-function-predicate-mutation-or-value suffix-predicate-with-question-mark suffix-mutation-with-exclamation-mark update-api-docs))
        (verify (uk_surface_equivalence ukrainian_api_docs stable-140-of-140 predicate-question-mark-bijection))
        (lifecycle current-surface)

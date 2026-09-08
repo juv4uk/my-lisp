@@ -17,24 +17,28 @@ fn names_after(source: &str, marker: &str) -> BTreeSet<String> {
 }
 
 fn semantic_registry_surface_names() -> BTreeSet<String> {
+    // `semantic-registry.wsm` deliberately keeps one numeric identity and all
+    // of its surface rows on the same physical line, for example:
+    //
+    // (0104 (en — missing) (uk додати stable) (sa yoga stable) (sym + stable))
+    //
+    // Do not parse it as the old one-row-per-line EN-shaped table.  Every
+    // nested `(surface name status)` tuple is independently authoritative.
     SEMANTIC_REGISTRY
-        .lines()
-        .filter_map(|line| {
-            let line = line.trim();
-            if !line.starts_with('(') || line.starts_with("(sr/") {
-                return None;
-            }
-            let fields = line
-                .trim_matches(|c| c == '(' || c == ')')
-                .split_whitespace()
-                .collect::<Vec<_>>();
+        .split('(')
+        .filter_map(|fragment| {
+            let tuple = fragment.split(')').next()?;
+            let fields = tuple.split_whitespace().collect::<Vec<_>>();
             if fields.len() != 3 {
                 return None;
             }
-            let language = fields[0];
+            let surface = fields[0];
             let name = fields[1];
             let status = fields[2];
-            if language.chars().all(char::is_alphabetic) && status != "missing" {
+            if matches!(surface, "uk" | "en" | "sa" | "sym")
+                && status != "missing"
+                && name != "—"
+            {
                 Some(name.to_owned())
             } else {
                 None

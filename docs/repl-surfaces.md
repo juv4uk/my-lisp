@@ -63,13 +63,13 @@ Native REPL розрізняє людський словник і реальне
 
 ### `:імена`
 
-Каталог читається з одного машинного реєстру поверхонь. Для санскриту він чесно показує не лише ратифіковані `stable` назви, а й `candidate` та `missing`: кандидат позначається `~`, а відсутня назва — `—{canonical-identity}`. Таким чином каталог не видає дослідницьку назву за завершений API.
+Каталог читається з одного машинного реєстру поверхонь. Для санскриту він чесно показує не лише ратифіковані `stable` назви, а й `candidate` та `missing`: кандидат позначається `~`, а відсутня назва — `—{numeric-identity}`. Таким чином каталог не видає дослідницьку назву за завершений API.
 
 Поточна виміряна картина:
 
 ```text
-EN  stable 140 · candidate 0  · missing 0
 UK  stable 140 · candidate 0  · missing 0
+EN  stable 131 · candidate 0  · missing 9
 SA  stable 36  · candidate 88 · missing 16
 ```
 
@@ -88,9 +88,9 @@ SA  stable 36  · candidate 88 · missing 16
 Результат показує три поверхні поруч:
 
 ```text
-identity: map
-  EN: map [stable]
+identity: 0101
   UK: відобразити [stable]
+  EN: map [stable]
   SA: āvartana [candidate]
 ```
 
@@ -101,11 +101,11 @@ identity: map
 Команда показує release-parity без прикрашання стану:
 
 ```text
-Триєдина поверхня · public identities: 140
-EN  stable 140 · candidate   0 · missing   0 · compatibility  21
+Рівноправність людських поверхонь · public identities: 140 · shared symbolic identities: 18
 UK  stable 140 · candidate   0 · missing   0 · compatibility  21
+EN  stable 131 · candidate   0 · missing   9 · compatibility  21
 SA  stable  36 · candidate  88 · missing  16 · compatibility  21
-trilingual stable: 36/140
+trilingual stable: 29/140
 release parity: OPEN
 ```
 
@@ -150,7 +150,7 @@ REPL тримає три шари середовища:
 
 ## Машинні джерела
 
-На цьому етапі історична таблиця [`lib/surface/uk-sa-coverage.wsm`](../lib/surface/uk-sa-coverage.wsm) виконує роль триєдиного registry. ADR-005 явно інтерпретує її першу колонку ідентичності як одночасно canonical identity та поточне EN surface name; це тимчасова форма схеми, а не твердження, що English = core.
+Єдина машинна authority для surface correspondence — [`lib/surface/semantic-registry.wsm`](../lib/surface/semantic-registry.wsm). Її semantic identities складаються тільки з цифр; UK/EN/SA є людськими surface rows, а спільна пунктуація живе окремо в `sym`. Історична [`lib/surface/uk-sa-coverage.wsm`](../lib/surface/uk-sa-coverage.wsm) лишається аудитом походження назв і не живить REPL introspection.
 
 Українська вже має окремий повний документаційний індекс [`lib/surface/uk-docs.wsm`](../lib/surface/uk-docs.wsm), тому `:ім'я` в режимі `ук` може додатково показати категорію, тип, форму виклику та український опис. Повноцінні EN/SA docs-index-и є окремою частиною майбутнього release-parity доказу.
 
