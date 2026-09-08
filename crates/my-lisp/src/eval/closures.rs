@@ -2,7 +2,7 @@
 //! Pobudova `lambda` ta zastosuvannia zamykan/makrosiv do arhumentiv.
 //! Bau von `lambda` und Anwendung von Closures/Makros auf Argumente.
 
-use super::{evaluate, special_forms::quoted, EvalStep};
+use super::{canon, evaluate, special_forms::quoted, EvalStep};
 use crate::{Closure, Environment, ErrorKind, Expr, ExprKind, LanguageError, Span, Value};
 use std::{collections::HashSet, rc::Rc};
 
@@ -31,7 +31,10 @@ type LambdaListResult = Result<LambdaList, LanguageError>;
 
 fn parse_lambda_list_inner(expr: &Expr) -> LambdaListResult {
     match &expr.kind {
-        ExprKind::Symbol(name) => Ok((Vec::new(), Some(name.clone()))),
+        ExprKind::Symbol(name) => {
+            canon::ensure_bindable(name, expr.span)?;
+            Ok((Vec::new(), Some(name.clone())))
+        }
         ExprKind::List(parameter_forms) => {
             let mut parameters = Vec::with_capacity(parameter_forms.len());
             let mut unique = HashSet::new();
@@ -43,6 +46,7 @@ fn parse_lambda_list_inner(expr: &Expr) -> LambdaListResult {
                         parameter.span,
                     ));
                 };
+                canon::ensure_bindable(name, parameter.span)?;
                 if !unique.insert(name.clone()) {
                     return Err(LanguageError::new(
                         ErrorKind::InvalidForm,
@@ -68,6 +72,7 @@ fn parse_lambda_list_inner(expr: &Expr) -> LambdaListResult {
                                 head.span,
                             ));
                         };
+                        canon::ensure_bindable(name, head.span)?;
                         if !unique.insert(name.clone()) {
                             return Err(LanguageError::new(
                                 ErrorKind::InvalidForm,
@@ -79,6 +84,7 @@ fn parse_lambda_list_inner(expr: &Expr) -> LambdaListResult {
                         current = tail;
                     }
                     ExprKind::Symbol(name) => {
+                        canon::ensure_bindable(name, current.span)?;
                         if !unique.insert(name.clone()) {
                             return Err(LanguageError::new(
                                 ErrorKind::InvalidForm,
@@ -200,7 +206,7 @@ pub(super) fn apply(
     let last = last_body_expression(&closure.body, &local_environment, span)?;
     // Tail positions become data for the evaluator loop instead of recursive Rust calls.
     // Khvostovi pozytsii staiut danymy dlia tsyklu evaluator, a ne rekursyvnymy vyklykamy Rust.
-    // Tail-Positionen werden zu Daten für die Evaluator-Schleife statt zu rekursiven Rust-Aufrufen.
+    // Tail-Positionen werden zu Daten für den Evaluator-Schleife statt zu rekursiven Rust-Aufrufen.
     Ok(EvalStep::TailCall {
         expression: last.clone(),
         environment: local_environment,
