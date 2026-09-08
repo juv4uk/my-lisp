@@ -34,6 +34,7 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
+          rm -f immutable-canon-clippy.log
           set -o pipefail
           cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee immutable-canon-clippy.log
       - name: Publish clippy diagnostic on failure
@@ -47,7 +48,23 @@ jobs:
           git push origin HEAD:feat/immutable-canon
           exit 1
       - name: Run workspace tests
-        run: cargo test --workspace
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          rm -f immutable-canon-tests.log
+          set -o pipefail
+          cargo test --workspace 2>&1 | tee immutable-canon-tests.log
+      - name: Publish test diagnostic on failure
+        if: steps.tests.outcome == 'failure'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add immutable-canon-tests.log
+          git commit -m "chore(canon): capture workspace test diagnostic"
+          git push origin HEAD:feat/immutable-canon
+          exit 1
       - name: Build workspace
         run: cargo build --workspace
       - name: Commit final evidence
@@ -55,7 +72,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          rm -f immutable-canon-clippy.log
+          rm -f immutable-canon-clippy.log immutable-canon-tests.log
           git add -A
           if ! git diff --cached --quiet; then
             git commit -m "chore(canon): ratify Contract 6 executable evidence"
