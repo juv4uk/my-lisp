@@ -41,7 +41,16 @@ jobs:
 
       - name: Check Ukrainian-first order for changed docs
         if: steps.changed.outputs.files != ''
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: |
           chmod +x scripts/check-bilingual-docs
-          # shellcheck disable=SC2086
-          ./scripts/check-bilingual-docs ${{ steps.changed.outputs.files }}
+          # CHANGED_FILES is newline-separated (multiple files). Passing it
+          # unquoted as ${{ ... }} interpolation (the old form) splices the
+          # raw multi-line text directly into this script, so the 2nd+
+          # filenames each become their OWN shell command instead of extra
+          # arguments -- confirmed live 2026-09-08 (run 34225535414): a real
+          # 3-file commit failed with "Permission denied" (exit 126) because
+          # bash tried to execute the second .md file as a program. env: +
+          # xargs -d '\n' passes the list safely regardless of file count.
+          printf '%s\n' "$CHANGED_FILES" | xargs -d '\n' -r ./scripts/check-bilingual-docs
