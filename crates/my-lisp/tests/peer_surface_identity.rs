@@ -16,9 +16,9 @@ fn assert_same_builtin(left: &Value, right: &Value) {
 fn add_peer_spellings_exist_before_any_human_surface_library_loads() {
     let mut session = Session::default();
 
-    let uk = eval_program("додати", &mut session).expect("UK ADD").value;
-    let en = eval_program("+", &mut session).expect("EN ADD").value;
-    let sa = eval_program("yoga", &mut session).expect("SA ADD").value;
+    let uk = eval_program("додати", &mut session).expect("UK 0104").value;
+    let en = eval_program("+", &mut session).expect("EN 0104").value;
+    let sa = eval_program("yoga", &mut session).expect("SA 0104").value;
 
     assert_same_builtin(&uk, &en);
     assert_same_builtin(&en, &sa);
@@ -87,7 +87,8 @@ fn shadowing_one_add_spelling_does_not_retarget_its_peers() {
 fn migrated_surface_files_no_longer_define_add_through_another_language() {
     assert!(!UK_SURFACE.contains("(define додати +)"));
     assert!(!SA_SURFACE.contains("(define yoga +)"));
-    assert!(REGISTRY.contains("(m0104"));
+    assert!(REGISTRY.contains("(0104"));
+    assert!(!REGISTRY.contains("(m0104"));
     assert!(REGISTRY.contains("(uk додати stable)"));
     assert!(REGISTRY.contains("(en + stable)"));
     assert!(REGISTRY.contains("(sa yoga stable)"));
