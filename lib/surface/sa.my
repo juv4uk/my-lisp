@@ -1,10 +1,12 @@
-; Sanskrit surface for canonical primitives and core vocabulary.
+; Sanskrit surface for canonical primitives and derived core vocabulary.
 ; संस्कृत-पृष्ठम् — Sanskrit surface layer.
 ;
-; This file binds Sanskrit (IAST) surface names to the same semantic
-; identities that the English names resolve to.  No duplicate semantics.
+; Canon 0+7 names are NOT defined here. The immutable Canon resolver owns the
+; ratified Sanskrit spellings directly, before ordinary lexical lookup.
+; Everything below Canon remains language-owned aliases over the same semantic
+; environment.
 ;
-; Principle: one semantic implementation, multiple surface names.
+; Principle: one semantic implementation, multiple human surfaces.
 ;
 ; Status legend:
 ;   stable    — ratified against primary sources (Canon 0+7 calibration doc)
@@ -15,16 +17,11 @@
 ; time.my → epistemic.my → sa.my (this file).
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Canon 0+7 — Sanskrit surface (status: stable)
+;; Canon 0+7 — owned by immutable resolver (status: stable)
 ;; ═══════════════════════════════════════════════════════════════
 
-; `svarūpa` and `krama` already belong to canonical syntax and are not
-; redefined here. The five callable primitives are ordinary value aliases.
-(define aṇu atom)
-(define abheda eq)
-(define saṃyuj cons)
-(define ādi car)
-(define śeṣa cdr)
+; svarūpa, aṇu, abheda, saṃyuj, ādi, śeṣa, anukrama
+; are reserved Canon spellings and are intentionally not ordinary bindings.
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Batch 1 — Arithmetic (status: candidate)
