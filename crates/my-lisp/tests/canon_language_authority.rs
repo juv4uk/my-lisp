@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, Session};
+use my_lisp::{eval_program, ErrorKind, Session};
 
 fn session_with_language_canon() -> Session {
     let mut session = Session::default();
@@ -16,25 +16,36 @@ fn language_level_canon_is_the_conformance_authority() {
 }
 
 #[test]
-fn surface_binding_captures_primitive_value_not_historical_name_lookup() {
+fn historical_canon_surface_cannot_be_rebound() {
     let mut session = session_with_language_canon();
-    let result = eval_program(
-        "(def car (lambda (x) (quote зламано))) (перше (сполучити 1 2))",
-        &mut session,
-    )
-    .expect("rebinding historical car must not mutate the captured canonical surface");
+    let error = eval_program("(def car (lambda (x) (quote зламано)))", &mut session)
+        .expect_err("Contract 6.0 must reject rebinding the historical Canon spelling");
+    assert_eq!(error.kind, ErrorKind::InvalidForm);
+
+    let result = eval_program("(перше (сполучити 1 2))", &mut session)
+        .expect("failed rebinding must leave the immutable Canon identity intact");
     assert_eq!(result.value.to_string(), "1");
 }
 
 #[test]
-fn ukrainian_and_sanskrit_surfaces_are_independent_bindings_to_one_semantics() {
+fn ukrainian_and_sanskrit_surfaces_are_reserved_spellings_of_one_semantics() {
     let mut session = session_with_language_canon();
-    let result = eval_program(
-        "(def перше (lambda (x) (quote локально))) (ādi (saṃyuj 1 2))",
-        &mut session,
-    )
-    .expect("shadowing one language surface must not mutate another surface binding");
-    assert_eq!(result.value.to_string(), "1");
+
+    for source in [
+        "(def перше (lambda (x) (quote локально)))",
+        "(def ādi (lambda (x) (quote sthānika)))",
+    ] {
+        let error = eval_program(source, &mut session)
+            .expect_err("every human Canon spelling must be reserved under Contract 6.0");
+        assert_eq!(error.kind, ErrorKind::InvalidForm, "source: {source}");
+    }
+
+    let ukrainian = eval_program("(перше (сполучити 1 2))", &mut session)
+        .expect("Ukrainian Canon surface must remain available");
+    let sanskrit = eval_program("(ādi (saṃyuj 1 2))", &mut session)
+        .expect("Sanskrit Canon surface must remain available");
+    assert_eq!(ukrainian.value.to_string(), "1");
+    assert_eq!(sanskrit.value.to_string(), "1");
 }
 
 #[test]
