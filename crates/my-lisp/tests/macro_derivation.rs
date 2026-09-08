@@ -10,14 +10,14 @@ fn eval_with_derived_macros(source: &str) -> String {
 }
 
 fn assert_same_macro_value(values: [Value; 3]) {
-    match values {
-        [Value::Macro(defmacro), Value::Macro(uk), Value::Macro(compat)] => {
+    match (&values[0], &values[1], &values[2]) {
+        (Value::Macro(defmacro), Value::Macro(uk), Value::Macro(compat)) => {
             assert!(
-                Rc::ptr_eq(&defmacro, &uk),
+                Rc::ptr_eq(defmacro, uk),
                 "defmacro and визначити-макрос must share one Macro value"
             );
             assert!(
-                Rc::ptr_eq(&defmacro, &compat),
+                Rc::ptr_eq(defmacro, compat),
                 "defmacro-derived must point to the same compatibility value"
             );
         }
@@ -53,7 +53,7 @@ fn bare_root_gains_peer_bindings_only_through_macro_loader() {
 
     let mut session = Session { environment };
     let loaded = load_macro_library(&mut session).expect("macro library should bootstrap");
-    let loaded_macro = match loaded.value {
+    let loaded_macro = match &loaded.value {
         Value::Macro(value) => value,
         other => panic!("macro library must return one Macro value, got {other:?}"),
     };
@@ -72,9 +72,9 @@ fn bare_root_gains_peer_bindings_only_through_macro_loader() {
         .expect("loader must bind defmacro-derived");
 
     assert_same_macro_value([defmacro.clone(), uk, compat]);
-    match defmacro {
+    match &defmacro {
         Value::Macro(bound) => assert!(
-            Rc::ptr_eq(&loaded_macro, &bound),
+            Rc::ptr_eq(loaded_macro, bound),
             "loader must bind the exact Macro value returned by lib/macro.my"
         ),
         other => panic!("defmacro binding must be a Macro value, got {other:?}"),
