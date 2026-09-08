@@ -1,0 +1,210 @@
+[1m[92m   Compiling[0m my-lisp v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp)
+[1m[92m   Compiling[0m unicode-ident v1.0.24
+[1m[92m   Compiling[0m unicode-width v0.2.2
+[1m[92m   Compiling[0m futures-task v0.3.33
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[92m   Compiling[0m wasm-bindgen-shared v0.2.126
+[1m[92m   Compiling[0m getopts v0.2.24
+[1m[92m   Compiling[0m once_cell v1.21.4
+[1m[92m   Compiling[0m pulldown-cmark-escape v0.11.0
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m   Compiling[0m futures-core v0.3.33
+[1m[92m   Compiling[0m syn v2.0.119
+[1m[92m   Compiling[0m syn v3.0.3
+[1m[92m   Compiling[0m slab v0.4.12
+[1m[92m   Compiling[0m pin-project-lite v0.2.17
+[1m[92m   Compiling[0m unicase v2.9.0
+[1m[92m   Compiling[0m my-lisp-host v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-host)
+[1m[92m   Compiling[0m my-lisp-lsp v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-lsp)
+[1m[92m   Compiling[0m wsm-guard-core v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-core)
+[1m[92m   Compiling[0m pulldown-cmark v0.12.2
+[1m[92m   Compiling[0m futures-util v0.3.33
+[1m[92m   Compiling[0m wasm-bindgen-macro-support v0.2.126
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m my-lisp-literate v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-literate)
+[1m[92m   Compiling[0m itoa v1.0.18
+[1m[92m   Compiling[0m serde_json v1.0.151
+[1m[92m   Compiling[0m num-traits v0.2.19
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m wasm-bindgen-test-macro v0.3.76
+[1m[92m   Compiling[0m async-trait v0.1.92
+[1m[92m   Compiling[0m nu-ansi-term v0.50.3
+[1m[92m   Compiling[0m wasm-bindgen-macro v0.2.126
+[1m[92m   Compiling[0m wasm-bindgen-test-shared v0.2.126
+[1m[92m   Compiling[0m wasm-bindgen v0.2.126
+[1m[92m   Compiling[0m oorandom v11.1.5
+[1m[92m   Compiling[0m cast v0.3.0
+[1m[92m   Compiling[0m my-lisp-semantic v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-semantic)
+[1m[92m   Compiling[0m my-lisp-cli v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-cli)
+[1m[92m   Compiling[0m js-sys v0.3.103
+[1m[92m   Compiling[0m wsm-guard-slice v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-slice)
+[1m[92m   Compiling[0m wsm-guard-facts v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-facts)
+[1m[92m   Compiling[0m wasm-bindgen-futures v0.4.76
+[1m[92m   Compiling[0m serde-wasm-bindgen v0.6.5
+[1m[92m   Compiling[0m wasm-bindgen-test v0.3.76
+[1m[92m   Compiling[0m my-lisp-wasm v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-wasm)
+[1m[92m   Compiling[0m swarm-node v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/swarm-node)
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 21.59s
+[1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/my_lisp-04e4fbf4affe3ac3)
+
+running 96 tests
+test bignum::tests::add_sub_mul_match_i64_for_small_values ... ok
+test bignum::tests::binary_gcd_handles_power_of_two_and_shared_factor_shapes ... ok
+test bignum::tests::division_by_zero_returns_none ... ok
+test bignum::tests::division_and_remainder_match_i64_semantics ... ok
+test bignum::tests::from_str_round_trips_through_display ... ok
+test bignum::tests::gcd_matches_known_values ... ok
+test bignum::tests::multiplication_exceeds_i64_without_overflowing ... ok
+test bignum::tests::karatsuba_matches_schoolbook_at_and_above_threshold ... ok
+test bignum::tests::ordering_accounts_for_sign_and_magnitude ... ok
+test bignum::tests::zero_is_never_represented_as_negative ... ok
+test environment::tests::child_binding_shadows_the_parent_without_mutating_it ... ok
+test environment::tests::child_definitions_do_not_leak_into_the_parent ... ok
+test environment::tests::child_reads_bindings_from_its_parent ... ok
+test environment::tests::define_then_get_returns_the_value ... ok
+test environment::tests::get_on_unknown_name_returns_none ... ok
+test environment::tests::host_policies_are_unrestricted_by_default_and_shared_with_children ... ok
+test environment::tests::redefining_in_the_same_frame_overwrites_the_previous_value ... ok
+test environment::tests::reparent_changes_only_inherited_bindings_and_keeps_local_bindings ... ok
+test environment::tests::reparent_rejects_a_cycle ... ok
+test environment::tests::root_predefines_t_as_the_self_evaluating_truth_symbol ... ok
+test error::tests::line_col_clamps_offsets_beyond_source_length ... ok
+test error::tests::line_col_counts_chars_not_bytes_across_newlines ... ok
+test error::tests::render_underlines_the_full_span_width ... ok
+test eval::canon::tests::canon_has_exactly_ground_plus_seven ... ok
+test eval::canon::tests::canonical_surface_names_are_reserved ... ok
+test eval::canon::tests::empty_list_is_a_value_not_a_primitive_operation ... ok
+test eval::canon::tests::three_callable_surfaces_share_one_stable_handle ... ok
+test eval::canon::tests::three_surfaces_resolve_to_one_identity ... ok
+test eval::necessary_forms::tests::compatibility_and_natural_language_names_are_not_kernel_surfaces ... ok
+test eval::necessary_forms::tests::necessary_forms_are_exactly_define_and_lambda ... ok
+test eval::single_pass_eval_tests::canon_zero_empty_list_evaluates_directly ... ok
+test eval::single_pass_eval_tests::canonical_define_and_lambda_support_recursion ... ok
+test eval::single_pass_eval_tests::canonical_define_introduces_a_binding ... ok
+test eval::single_pass_eval_tests::canonical_names_cannot_be_lambda_parameters ... ok
+test eval::single_pass_eval_tests::canonical_names_cannot_be_redefined ... ok
+test eval::single_pass_eval_tests::canonical_resolution_ignores_even_preexisting_environment_shadow ... ok
+test eval::single_pass_eval_tests::macro_expansion_preserves_exact_rationals ... ok
+test eval::single_pass_eval_tests::macros_expand_and_evaluate_correctly ... ok
+test eval::single_pass_eval_tests::make_macro_is_the_minimal_closure_to_macro_substrate ... ok
+test eval::single_pass_eval_tests::noncanonical_builtins_remain_lexically_shadowable ... ok
+test eval::single_pass_eval_tests::sanskrit_canonical_surface_executes_the_same_core ... ok
+test eval::single_pass_eval_tests::single_pass_eval_parsed_expressions_evaluates_preparsed_ast ... ok
+test eval::single_pass_eval_tests::ukrainian_canonical_surface_executes_the_core ... ok
+test eval::single_pass_eval_tests::ukrainian_double_projection_reads_the_tree ... ok
+test eval::single_pass_eval_tests::ukrainian_rest_obeys_proper_list_semantics ... ok
+test eval::special_forms::digest::tests::abc_sha256 ... ok
+test eval::special_forms::digest::tests::empty_sha256 ... ok
+test eval::special_forms::json::extraction_tests::parse_json_decodes_object_to_dotted_alist ... ok
+test eval::special_forms::json::extraction_tests::parse_json_rejects_trailing_garbage ... ok
+test language_items::tests::every_root_builtin_is_discoverable_exactly_once ... ok
+test parser::tests::a_dot_followed_by_more_than_one_tail_expression_is_a_parse_error ... ok
+test parser::tests::a_dot_with_nothing_after_it_is_a_parse_error ... ok
+test parser::tests::a_dot_with_nothing_before_it_is_a_parse_error ... ok
+test parser::tests::a_giant_decimal_literal_cannot_serve_as_an_identifier ... ok
+test parser::tests::a_lone_dot_outside_a_list_is_an_ordinary_symbol ... ok
+test parser::tests::apostrophe_desugars_to_canonical_quote_form ... ok
+test parser::tests::apostrophe_works_inside_ukrainian_identifiers ... ok
+test parser::tests::decimal_literal_edge_cases_parse_as_exact_numbers ... ok
+test parser::tests::decimal_literal_is_parsed_as_exact_rational_or_exact_integer ... ok
+test parser::tests::decimal_literals_past_the_resource_limit_fail_named_not_as_symbols ... ok
+test bignum::tests::karatsuba_schoolbook_same_build_ab_probe ... ok
+test parser::tests::dot_question_mark_is_a_symbol_not_a_dotted_pair_marker ... ok
+test parser::tests::empty_source_parses_to_no_expressions ... ok
+test parser::tests::large_integer_literal_uses_arbitrary_precision_without_rounding ... ok
+test parser::tests::malformed_decimal_literals_fall_back_to_plain_symbols ... ok
+test parser::tests::parses_a_dotted_pair ... ok
+test parser::tests::parses_a_multi_element_dotted_list_as_nested_pairs ... ok
+test parser::tests::parses_carriage_return_escape ... ok
+test parser::tests::parses_integers_as_exact_numbers ... ok
+test parser::tests::parses_multiple_top_level_expressions ... ok
+test parser::tests::parses_nested_lists ... ok
+test parser::tests::parses_slash_notation_as_exact_rational ... ok
+test parser::tests::parses_strings_with_escapes ... ok
+test parser::tests::parses_symbols ... ok
+test parser::tests::reader_at_reasonable_depth_still_parses ... ok
+test parser::tests::reader_depth_past_limit_fails_named_not_with_a_crash ... ok
+test parser::tests::semicolon_comments_are_skipped ... ok
+test parser::tests::decimal_literals_within_the_resource_limit_still_parse ... ok
+test parser::tests::unclosed_list_is_a_parse_error ... ok
+test parser::tests::unclosed_string_is_a_parse_error ... ok
+test parser::tests::unexpected_closing_paren_is_a_parse_error ... ok
+test parser::tests::unicode_symbols_and_comments_are_supported ... ok
+test parser::tests::zero_denominator_falls_back_to_a_plain_symbol ... ok
+test presentation::tests::raw_user_strings_and_symbols_are_not_translated ... ok
+test presentation::tests::ukrainian_error_presentation_has_no_mixed_line_label ... ok
+test presentation::tests::ukrainian_exact_arity_names_canonical_primitive_by_surface_name ... ok
+test presentation::tests::ukrainian_presentation_localizes_builtin_and_function_markers ... ok
+test presentation::tests::ukrainian_presentation_uses_decimal_comma_for_inexact_numbers ... ok
+test presentation::tests::ukrainian_unknown_symbol_and_parser_errors_are_human_facing ... ok
+test presentation::tests::ukrainian_value_presentation_changes_only_the_human_view ... ok
+test syntax::fasl_tests::fasl_rejects_garbage ... ok
+test syntax::fasl_tests::fasl_rejects_tampered_hash_so_callers_fall_back ... ok
+test syntax::fasl_tests::fasl_round_trip_is_byte_identical_and_hash_bound ... ok
+test environment::tests::dropping_a_very_deep_environment_chain_does_not_overflow_the_stack ... ok
+test bignum::tests::binary_gcd_matches_euclid_on_deterministic_corpus ... ok
+test parser::tests::the_exact_exponent_boundary_parses_at_10000_and_overflows_at_10001 ... ok
+
+test result: ok. 96 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.26s
+
+[1m[92m     Running[0m tests/advice.rs (target/debug/deps/advice-6c60e8943924fe5e)
+
+running 2 tests
+test rejected_translation_cannot_leak_into_the_knowledge_module ... ok
+test controlled_words_flow_through_advice_reason_and_narration ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+[1m[92m     Running[0m tests/advice_corpus.rs (target/debug/deps/advice_corpus-c29989ec174e8ec5)
+
+running 7 tests
+test known_module_unknown_query_stays_unknown_through_narration ... ok
+test direct_controlled_fact_reaches_proved_narration ... ok
+test explicit_conflict_is_rejected_and_cannot_replace_the_existing_fact ... ok
+test knowledge_package_round_trip_precedes_reasoning_without_eval_of_package_data ... ok
+test malformed_advice_is_rejected_and_does_not_become_unknown_knowledge ... ok
+test multistep_rules_survive_admission_reasoning_and_presentation ... ok
+test recursive_rule_survives_the_same_end_to_end_path ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+[1m[92m     Running[0m tests/bootstrap_order.rs (target/debug/deps/bootstrap_order-a837da0f11f2568a)
+
+running 2 tests
+test canonical_core_loader_installs_language_owned_defmacro_before_core ... ok
+test core_macros_work_after_canonical_macro_first_bootstrap ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+[1m[92m     Running[0m tests/canon_adversarial.rs (target/debug/deps/canon_adversarial-aca8e5b2c3c30efc)
+
+running 8 tests
+test canon_zero_is_atomic_but_not_a_pair ... ok
+test cond_surface_stops_at_the_first_true_clause ... ok
+test car_and_cdr_on_canon_zero_fail_named_not_panic ... ok
+test every_binder_shape_rejects_canon_names ... FAILED
+test ordinary_noncanon_values_remain_shadowable ... ok
+test quote_surface_suppresses_evaluation_of_unknown_code ... ok
+test rest_passes_the_triple_cons_structure_test ... ok
+test every_human_surface_rejects_canon_redefinition ... ok
+
+failures:
+
+---- every_binder_shape_rejects_canon_names stdout ----
+
+thread 'every_binder_shape_rejects_canon_names' (6608) panicked at crates/my-lisp/tests/canon_adversarial.rs:15:5:
+assertion `left == right` failed: source: (let ((car 42)) car)
+  left: UnknownSymbol
+ right: InvalidForm
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    every_binder_shape_rejects_canon_names
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+[1m[91merror[0m: test failed, to rerun pass `-p my-lisp --test canon_adversarial`
