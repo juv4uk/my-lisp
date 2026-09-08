@@ -42,25 +42,14 @@ fn existing_vertical_bar_atoms_remain_reader_compatible() {
 }
 
 #[test]
-fn source_transport_is_distinct_from_numeric_semantic_identity() {
+fn first_class_eval_can_bootstrap_lambda_from_pure_numeric_identity() {
     let mut session = Session::default();
     let result = eval_program(
-        "(eq (string->symbol \"0010\") (quote #0010))",
+        "((eval (cons (string->symbol \"0010\") (quote ((x) x)))) 41)",
         &mut session,
     )
-    .expect("transport and identity comparison should evaluate");
-    assert_eq!(result.value.to_string(), "()");
-}
-
-#[test]
-fn source_transport_executes_define_and_lambda_without_reader_changes() {
-    let mut session = Session::default();
-    let result = eval_program(
-        "(#0011 identity-by-transport (#0010 (x) x)) (identity-by-transport 42)",
-        &mut session,
-    )
-    .expect("#0011/#0010 must route to DEFINE/LAMBDA mechanisms");
-    assert_eq!(result.value.to_string(), "42");
+    .expect("eval must turn a pure 0010-headed datum into a closure");
+    assert_eq!(result.value.to_string(), "41");
 }
 
 #[test]
@@ -84,18 +73,19 @@ fn pure_numeric_symbols_execute_as_semantic_form_heads() {
 }
 
 #[test]
-fn macro_library_executable_ast_contains_no_human_define_or_lambda_tokens() {
+fn macro_library_selects_no_human_or_transport_spelling_for_necessary_forms() {
     let parsed = parse(MACRO_LIBRARY).expect("embedded macro library should parse");
     let mut symbols = Vec::new();
     for expression in &parsed {
         walk_symbols(expression, &mut symbols);
     }
 
-    assert!(symbols.iter().any(|symbol| symbol == "#0010"));
-    for forbidden in ["lambda", "функція", "define", "визначити"] {
+    assert!(MACRO_LIBRARY.contains("\"0010\""));
+    assert!(MACRO_LIBRARY.contains("\"0011\""));
+    for forbidden in ["lambda", "функція", "define", "визначити", "#0010", "#0011"] {
         assert!(
             !symbols.iter().any(|symbol| symbol == forbidden),
-            "macro.my must not select human necessary-form surface {forbidden}"
+            "macro.my must not select necessary-form spelling {forbidden}"
         );
     }
 }
