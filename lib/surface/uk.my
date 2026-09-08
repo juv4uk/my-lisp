@@ -4,7 +4,8 @@
 ; Canon 0+7 names are NOT defined here. The immutable Canon resolver owns the
 ; ratified Ukrainian spellings directly, before ordinary lexical lookup.
 ; Everything below Canon remains language-owned aliases/macros over the same
-; semantic environment.
+; semantic environment, except identities migrated under ADR-007: those peer
+; spellings are installed directly by the runtime and are not defined here.
 ;
 ; Principle: one semantic implementation, multiple human surfaces.
 ;           одна семантична реалізація, кілька людських поверхонь.
@@ -49,7 +50,8 @@
 ;; Арифметика
 ;; ═══════════════════════════════════════════════════════════════
 
-(define додати +)
+; ADR-007 / m0104: `додати`, `+`, `yoga` — прямі рівноправні bindings одного
+; callable value. `додати` навмисно НЕ визначається через іншу мовну поверхню.
 (define відняти -)
 (define помножити *)
 (define поділити /)
