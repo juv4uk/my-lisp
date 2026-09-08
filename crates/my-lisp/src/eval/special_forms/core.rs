@@ -2,6 +2,7 @@
 //! helper), plus the compatibility `def` surface. Language-owned `defmacro`
 //! is bootstrapped from `lib/macro.my`; the Rust kernel no longer implements it.
 
+use crate::eval::canon;
 use crate::eval::{evaluate, evaluate_step, EvalStep};
 use crate::{Environment, ErrorKind, Expr, ExprKind, LanguageError, Span, Value};
 use std::rc::Rc;
@@ -19,6 +20,7 @@ pub(crate) fn evaluate_definition(
             arguments[0].span,
         ));
     };
+    canon::ensure_bindable(name, arguments[0].span)?;
     let value = evaluate(&arguments[1], environment)?;
     // The shared lexical frame makes recursive definitions visible to their closure after binding.
     // Spilnyi leksychnyi freim robyt rekursyvne vyznachennia vydymym zamykanniu pislia zv’yazuvannia.
