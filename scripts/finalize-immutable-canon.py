@@ -134,3 +134,21 @@ new = '''        let (Value::Builtin(historical), Value::Builtin(ukrainian), Val
 if old not in text:
     raise SystemExit("canon.rs stable-handle test block not found")
 path.write_text(text.replace(old, new, 1))
+
+# 6. The `let` and `let*` adversaries are language-owned macros from core.my.
+# The test helper must bootstrap core before claiming their binding semantics;
+# otherwise it merely observes UnknownSymbol for an unloaded `let`.
+path = Path("crates/my-lisp/tests/canon_adversarial.rs")
+text = path.read_text()
+old = '''fn invalid_binding(source: &str) {
+    let mut session = Session::default();
+    let error = eval_program(source, &mut session)
+'''
+new = '''fn invalid_binding(source: &str) {
+    let mut session = Session::default();
+    my_lisp::load_core_library(&mut session).expect("core bootstrap for binder adversary");
+    let error = eval_program(source, &mut session)
+'''
+if old not in text:
+    raise SystemExit("canon_adversarial.rs invalid_binding helper not found")
+path.write_text(text.replace(old, new, 1))
