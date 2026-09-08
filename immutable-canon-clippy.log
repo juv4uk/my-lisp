@@ -1,0 +1,22 @@
+[1m[92m    Checking[0m my-lisp v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp)
+[1m[92m    Checking[0m bitflags v2.13.1
+[1m[92m    Checking[0m cfg-if v1.0.4
+[1m[92m    Checking[0m memchr v2.8.3
+[1m[92m    Checking[0m linux-raw-sys v0.12.1
+[1m[92m    Checking[0m smallvec v1.15.2
+[1m[92m    Checking[0m nibble_vec v0.1.0
+[1m[92m    Checking[0m libc v0.2.189
+[1m[92m    Checking[0m rustix v1.1.4
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[91merror[0m[1m: function `value_for_surface` is never used[0m
+   [1m[94m--> [0mcrates/my-lisp/src/eval/canon.rs:235:15
+    [1m[94m|[0m
+[1m[94m235[0m [1m[94m|[0m pub(crate) fn value_for_surface(name: &str) -> Option<Value> {
+    [1m[94m|[0m               [1m[91m^^^^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `-D dead-code` implied by `-D warnings`
+    [1m[94m= [0m[1mhelp[0m: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+[1m[92m   Compiling[0m unicode-ident v1.0.24
+[1m[91merror[0m: could not compile `my-lisp` (lib) due to 1 previous error
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
