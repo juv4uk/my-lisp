@@ -1,5 +1,7 @@
 # Ukrainian Surface Coverage Plan
 
+> Повний змістовний український відповідник: [`ukrainian-surface-plan.uk.md`](ukrainian-surface-plan.uk.md). Український текст є первинним відповідно до ратифікованої мовної політики репозиторію.
+
 Status: active implementation plan. This document does not redefine language semantics; it describes how the Ukrainian human-facing surface catches up with already existing public my-lisp functionality.
 
 ## Goal

@@ -54,4 +54,4 @@
         (guard-tool . uk-latynka)
         (encoding . utf-8)
         (round-trip-check . "python3 scripts/uk-latynka.py self-test")
-        (latynka-use . "auxiliary only when an explicit non-Unicode boundary requires ASCII")))))))
+        (latynka-use . "auxiliary only when an explicit non-Unicode boundary requires ASCII"))))))
