@@ -25,9 +25,10 @@
 ; redefined here as macros and neither spelling expands through the other.
 ; Sanskrit rows remain explicitly missing until ratified.
 
-; DEFMACRO is already a first-class macro value installed by macro.my.
-; This is another name for that same value, not a second macro mechanism.
-(define визначити-макрос defmacro)
+; 0012: `defmacro` / `визначити-макрос` is a language-owned first-class
+; Macro value derived by macro.my and bound directly to both public spellings by
+; the bootstrap loader. It is not redefined here through an English surface.
+; Sanskrit remains explicitly missing until ratified.
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Canon 0+7 — owned by immutable resolver (status: stable)
