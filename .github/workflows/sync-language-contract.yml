@@ -40,12 +40,18 @@ jobs:
         run: |
           set -euo pipefail
 
-          upstream_sha="$(git ls-remote "https://github.com/${UPSTREAM_REPO}.git" "refs/heads/${UPSTREAM_BRANCH}" | awk '{print $1}')"
-          test -n "$upstream_sha"
+          # Pin the latest commit that actually changed the contract file.
+          # Unrelated my-lisp commits must not create downstream sync PRs.
+          contract_revision="$(
+            curl -fsSL \
+              "https://api.github.com/repos/${UPSTREAM_REPO}/commits?sha=${UPSTREAM_BRANCH}&path=${UPSTREAM_PATH}&per_page=1" \
+              | jq -r '.[0].sha'
+          )"
+          [[ "$contract_revision" =~ ^[0-9a-f]{40}$ ]]
 
           mkdir -p "$(dirname "$TARGET_PATH")" "$(dirname "$LOCK_PATH")"
           curl -fsSL \
-            "https://raw.githubusercontent.com/${UPSTREAM_REPO}/${upstream_sha}/${UPSTREAM_PATH}" \
+            "https://raw.githubusercontent.com/${UPSTREAM_REPO}/${contract_revision}/${UPSTREAM_PATH}" \
             -o "$TARGET_PATH"
 
           digest="$(sha256sum "$TARGET_PATH" | awk '{print $1}')"
@@ -59,7 +65,7 @@ jobs:
               (repository ${UPSTREAM_REPO})
               (branch ${UPSTREAM_BRANCH})
               (path ${UPSTREAM_PATH}))
-            (revision "${upstream_sha}")
+            (revision "${contract_revision}")
             (sha256 "${digest}"))
           EOF
 
@@ -68,13 +74,13 @@ jobs:
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "upstream_sha=${upstream_sha}" >> "$GITHUB_OUTPUT"
+          echo "contract_revision=${contract_revision}" >> "$GITHUB_OUTPUT"
 
       - name: Open or update sync PR
         if: steps.sync.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          UPSTREAM_SHA: ${{ steps.sync.outputs.upstream_sha }}
+          CONTRACT_REVISION: ${{ steps.sync.outputs.contract_revision }}
         shell: bash
         run: |
           set -euo pipefail
@@ -92,9 +98,9 @@ jobs:
           git push --force origin "HEAD:refs/heads/${SYNC_BRANCH}"
 
           body="$(cat <<EOF
-          Automated snapshot of \\`${UPSTREAM_REPO}/${UPSTREAM_PATH}\` at:
+          Automated snapshot of \\`${UPSTREAM_REPO}/${UPSTREAM_PATH}\` at the latest revision that changed that contract:
 
-          \\`${UPSTREAM_SHA}\`
+          \\`${CONTRACT_REVISION}\`
 
           The vendored file is the observed semantic authority only. Updating it does **not** upgrade this repository's compatibility/conformance claim; that remains an explicit, separately tested decision.
           EOF
