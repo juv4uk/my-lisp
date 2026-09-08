@@ -1,0 +1,47 @@
+name: Bilingual Documentation Check
+
+on:
+  push:
+    paths:
+      - "**/*.md"
+      - "scripts/check-bilingual-docs"
+      - ".github/workflows/bilingual-docs-check.yml"
+  pull_request:
+    paths:
+      - "**/*.md"
+      - "scripts/check-bilingual-docs"
+      - ".github/workflows/bilingual-docs-check.yml"
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 50
+
+      - name: Determine changed markdown files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}" --depth=50
+            base="origin/${{ github.base_ref }}"
+          else
+            base="${{ github.event.before }}"
+            if [ -z "$base" ] || ! git cat-file -e "$base" 2>/dev/null; then
+              base="HEAD~1"
+            fi
+          fi
+          files=$(git diff --name-only "$base" HEAD -- '*.md' || true)
+          {
+            echo "files<<BILINGUAL_EOF"
+            echo "$files"
+            echo "BILINGUAL_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check Ukrainian-first order for changed docs
+        if: steps.changed.outputs.files != ''
+        run: |
+          chmod +x scripts/check-bilingual-docs
+          # shellcheck disable=SC2086
+          ./scripts/check-bilingual-docs ${{ steps.changed.outputs.files }}
