@@ -110,3 +110,27 @@ new = '''        ExprKind::Symbol(symbol) => {
 if old not in text:
     raise SystemExit("eval/mod.rs Canon symbol-resolution block not found")
 path.write_text(text.replace(old, new, 1))
+
+# 5. Value implements Drop, so the stable-handle test must borrow the Rc fields
+# instead of moving them out of Value. The proof remains pointer identity.
+path = Path("crates/my-lisp/src/eval/canon.rs")
+text = path.read_text()
+old = '''        let (Value::Builtin(historical), Value::Builtin(ukrainian), Value::Builtin(sanskrit)) =
+            (historical, ukrainian, sanskrit)
+        else {
+            panic!("PRIM_CAR must be a first-class builtin value");
+        };
+        assert!(Rc::ptr_eq(&historical, &ukrainian));
+        assert!(Rc::ptr_eq(&historical, &sanskrit));
+'''
+new = '''        let (Value::Builtin(historical), Value::Builtin(ukrainian), Value::Builtin(sanskrit)) =
+            (&historical, &ukrainian, &sanskrit)
+        else {
+            panic!("PRIM_CAR must be a first-class builtin value");
+        };
+        assert!(Rc::ptr_eq(historical, ukrainian));
+        assert!(Rc::ptr_eq(historical, sanskrit));
+'''
+if old not in text:
+    raise SystemExit("canon.rs stable-handle test block not found")
+path.write_text(text.replace(old, new, 1))
