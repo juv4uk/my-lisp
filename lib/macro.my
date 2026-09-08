@@ -14,18 +14,20 @@
 ; `визначити-макрос` (plus the historical `defmacro-derived` compatibility
 ; spelling). Thus no human surface is implemented as an alias of another.
 ;
-; The expansion body below still emits `define`/`lambda` source spellings.
-; Neutralizing expansion AST tokens is a separate form-identity migration and
-; is not silently claimed by this direct-binding step.
+; Necessary forms are selected by numeric semantic identity, not by an EN/UK
+; spelling. `#0010` is only an ordinary-symbol source transport for bootstrap
+; LAMBDA; `#` is not part of identity and requires no reader reservation.
+; Expansion data itself contains the pure symbols `0010` / `0011`, constructed
+; by the already-existing `string->symbol`. Sanskrit remains explicitly missing.
 
 (make-macro
-  (lambda (name params . body)
-    (cons (quote define)
+  (#0010 (name params . body)
+    (cons (string->symbol "0011")
       (cons name
         (cons
           (cons (quote make-macro)
             (cons
-              (cons (quote lambda)
+              (cons (string->symbol "0010")
                 (cons params body))
               (quote ())))
           (quote ()))))))
