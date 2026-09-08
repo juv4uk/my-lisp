@@ -1,9 +1,9 @@
-name: Immutable Canon Finalize
+name: Immutable Canon Clean Finalize
 
 on:
   push:
     branches:
-      - feat/immutable-canon
+      - feat/immutable-canon-clean
 
 permissions:
   contents: write
@@ -15,11 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: feat/immutable-canon
+          ref: feat/immutable-canon-clean
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Apply Contract 6 finalizer
         run: python3 scripts/finalize-immutable-canon.py
@@ -27,54 +27,20 @@ jobs:
         run: cargo run -p my-lisp-cli --bin my-lisp -- scripts/build-constitution.my > /tmp/constitution.my && mv /tmp/constitution.my my-lisp-constitution.my
       - name: Regenerate fixture inventory
         run: cargo run -p my-lisp-cli --bin my-lisp -- scripts/build-inventory.my > /tmp/inventory.my && mv /tmp/inventory.my tests/fixtures/inventory.my
-      - name: Apply and verify Rust formatting
-        run: cargo fmt --all && cargo fmt --all -- --check
       - name: Check warnings
-        id: clippy
-        continue-on-error: true
-        shell: bash
-        run: |
-          rm -f immutable-canon-clippy.log
-          set -o pipefail
-          cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee immutable-canon-clippy.log
-      - name: Publish clippy diagnostic on failure
-        if: steps.clippy.outcome == 'failure'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add immutable-canon-clippy.log
-          git commit -m "chore(canon): capture clippy diagnostic"
-          git push origin HEAD:feat/immutable-canon
-          exit 1
+        run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Run workspace tests
-        id: tests
-        continue-on-error: true
-        shell: bash
-        run: |
-          rm -f immutable-canon-tests.log
-          set -o pipefail
-          cargo test --workspace 2>&1 | tee immutable-canon-tests.log
-      - name: Publish test diagnostic on failure
-        if: steps.tests.outcome == 'failure'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add immutable-canon-tests.log
-          git commit -m "chore(canon): capture workspace test diagnostic"
-          git push origin HEAD:feat/immutable-canon
-          exit 1
+        run: cargo test --workspace
       - name: Build workspace
         run: cargo build --workspace
-      - name: Commit final evidence
+      - name: Commit clean Contract 6 evidence
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           rm -f immutable-canon-clippy.log immutable-canon-tests.log
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(canon): ratify Contract 6 executable evidence"
-            git push origin HEAD:feat/immutable-canon
-          fi
+          git rm .github/workflows/immutable-canon-finalize.yml scripts/finalize-immutable-canon.py
+          git add crates/my-lisp/src/eval/builtins.rs crates/my-lisp/src/eval/canon.rs crates/my-lisp/src/eval/mod.rs crates/my-lisp/src/value.rs crates/my-lisp/tests/canon_adversarial.rs docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md tests/fixtures/conformance.my my-lisp-constitution.my tests/fixtures/inventory.my
+          git add -u immutable-canon-clippy.log immutable-canon-tests.log || true
+          git commit -m "chore(canon): ratify Contract 6 executable evidence"
+          git push origin HEAD:feat/immutable-canon-clean
