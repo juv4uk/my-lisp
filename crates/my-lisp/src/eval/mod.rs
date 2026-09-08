@@ -192,13 +192,13 @@ fn evaluate_list(
             Ok(EvalStep::Value(value))
         }
         Some(name)
-            if necessary_forms::identity_for_surface(name)
+            if necessary_forms::identity_for_symbol(name)
                 == Some(necessary_forms::NecessaryFormIdentity::Lambda) =>
         {
             closures::create_lambda(arguments, environment, span).map(EvalStep::Value)
         }
         Some(name)
-            if necessary_forms::identity_for_surface(name)
+            if necessary_forms::identity_for_symbol(name)
                 == Some(necessary_forms::NecessaryFormIdentity::Define) =>
         {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
