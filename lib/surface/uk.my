@@ -3,9 +3,10 @@
 ;
 ; Canon 0+7 names are NOT defined here. The immutable Canon resolver owns the
 ; ratified Ukrainian spellings directly, before ordinary lexical lookup.
-; Everything below Canon remains language-owned aliases/macros over the same
-; semantic environment, except identities migrated under ADR-007: those peer
-; spellings are installed directly by the runtime and are not defined here.
+; Everything below Canon remains language-owned vocabulary over the same
+; semantic environment, except identities migrated under ADR-007/008. Necessary
+; forms 0010/0011 are resolved directly by evaluator identity; migrated ordinary
+; peer spellings are direct runtime bindings rather than cross-surface aliases.
 ;
 ; Principle: one semantic implementation, multiple human surfaces.
 ;           одна семантична реалізація, кілька людських поверхонь.
@@ -15,17 +16,14 @@
 ; time.my → epistemic.my → uk.my (this file).
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Necessary evaluator forms — macros expanding to canonical surfaces
-;; Необхідні форми — макроси що розгортаються до канонічних поверхонь
+;; Necessary evaluator forms — direct semantic peer spellings
+;; Необхідні форми — прямі назви одних семантичних тотожностей
 ;; ═══════════════════════════════════════════════════════════════
 
-(defmacro функція args
-  (cons (quote lambda) args))
-
-(defmacro визначити (name value)
-  (cons (quote define)
-        (cons name
-              (cons value (quote ())))))
+; 0010: `lambda` / `функція` and 0011: `define` / `визначити` are owned by
+; the evaluator's necessary-form identity resolver. They are intentionally NOT
+; redefined here as macros and neither spelling expands through the other.
+; Sanskrit rows remain explicitly missing until ratified.
 
 ; DEFMACRO is already a first-class macro value installed by macro.my.
 ; This is another name for that same value, not a second macro mechanism.
