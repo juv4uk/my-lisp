@@ -1,33 +1,33 @@
 [1m[92m   Compiling[0m my-lisp v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp)
 [1m[92m   Compiling[0m unicode-ident v1.0.24
 [1m[92m   Compiling[0m unicode-width v0.2.2
-[1m[92m   Compiling[0m futures-task v0.3.33
+[1m[92m   Compiling[0m once_cell v1.21.4
 [1m[92m   Compiling[0m proc-macro2 v1.0.107
 [1m[92m   Compiling[0m wasm-bindgen-shared v0.2.126
 [1m[92m   Compiling[0m getopts v0.2.24
-[1m[92m   Compiling[0m once_cell v1.21.4
-[1m[92m   Compiling[0m pulldown-cmark-escape v0.11.0
+[1m[92m   Compiling[0m futures-task v0.3.33
 [1m[92m   Compiling[0m quote v1.0.47
-[1m[92m   Compiling[0m futures-core v0.3.33
 [1m[92m   Compiling[0m syn v2.0.119
 [1m[92m   Compiling[0m syn v3.0.3
 [1m[92m   Compiling[0m slab v0.4.12
 [1m[92m   Compiling[0m pin-project-lite v0.2.17
-[1m[92m   Compiling[0m unicase v2.9.0
+[1m[92m   Compiling[0m pulldown-cmark-escape v0.11.0
 [1m[92m   Compiling[0m my-lisp-host v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-host)
 [1m[92m   Compiling[0m my-lisp-lsp v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-lsp)
 [1m[92m   Compiling[0m wsm-guard-core v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-core)
-[1m[92m   Compiling[0m pulldown-cmark v0.12.2
+[1m[92m   Compiling[0m futures-core v0.3.33
+[1m[92m   Compiling[0m unicase v2.9.0
 [1m[92m   Compiling[0m futures-util v0.3.33
+[1m[92m   Compiling[0m pulldown-cmark v0.12.2
 [1m[92m   Compiling[0m wasm-bindgen-macro-support v0.2.126
 [1m[92m   Compiling[0m serde_core v1.0.229
 [1m[92m   Compiling[0m serde_derive v1.0.229
-[1m[92m   Compiling[0m libm v0.2.16
 [1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m libm v0.2.16
 [1m[92m   Compiling[0m my-lisp-literate v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-literate)
 [1m[92m   Compiling[0m itoa v1.0.18
-[1m[92m   Compiling[0m serde_json v1.0.151
 [1m[92m   Compiling[0m num-traits v0.2.19
+[1m[92m   Compiling[0m serde_json v1.0.151
 [1m[92m   Compiling[0m serde v1.0.229
 [1m[92m   Compiling[0m wasm-bindgen-test-macro v0.3.76
 [1m[92m   Compiling[0m async-trait v0.1.92
@@ -38,26 +38,25 @@
 [1m[92m   Compiling[0m oorandom v11.1.5
 [1m[92m   Compiling[0m cast v0.3.0
 [1m[92m   Compiling[0m my-lisp-semantic v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-semantic)
-[1m[92m   Compiling[0m my-lisp-cli v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-cli)
 [1m[92m   Compiling[0m js-sys v0.3.103
-[1m[92m   Compiling[0m wsm-guard-slice v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-slice)
+[1m[92m   Compiling[0m my-lisp-cli v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-cli)
 [1m[92m   Compiling[0m wsm-guard-facts v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-facts)
 [1m[92m   Compiling[0m wasm-bindgen-futures v0.4.76
-[1m[92m   Compiling[0m serde-wasm-bindgen v0.6.5
 [1m[92m   Compiling[0m wasm-bindgen-test v0.3.76
+[1m[92m   Compiling[0m serde-wasm-bindgen v0.6.5
+[1m[92m   Compiling[0m wsm-guard-slice v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/wsm-guard-slice)
 [1m[92m   Compiling[0m my-lisp-wasm v0.37.0 (/home/runner/work/my-lisp/my-lisp/crates/my-lisp-wasm)
 [1m[92m   Compiling[0m swarm-node v0.1.0 (/home/runner/work/my-lisp/my-lisp/crates/swarm-node)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 21.59s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 15.81s
 [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/my_lisp-04e4fbf4affe3ac3)
 
 running 96 tests
-test bignum::tests::add_sub_mul_match_i64_for_small_values ... ok
-test bignum::tests::binary_gcd_handles_power_of_two_and_shared_factor_shapes ... ok
-test bignum::tests::division_by_zero_returns_none ... ok
 test bignum::tests::division_and_remainder_match_i64_semantics ... ok
+test bignum::tests::binary_gcd_handles_power_of_two_and_shared_factor_shapes ... ok
+test bignum::tests::add_sub_mul_match_i64_for_small_values ... ok
+test bignum::tests::division_by_zero_returns_none ... ok
 test bignum::tests::from_str_round_trips_through_display ... ok
 test bignum::tests::gcd_matches_known_values ... ok
-test bignum::tests::multiplication_exceeds_i64_without_overflowing ... ok
 test bignum::tests::karatsuba_matches_schoolbook_at_and_above_threshold ... ok
 test bignum::tests::ordering_accounts_for_sign_and_magnitude ... ok
 test bignum::tests::zero_is_never_represented_as_negative ... ok
@@ -65,6 +64,7 @@ test environment::tests::child_binding_shadows_the_parent_without_mutating_it ..
 test environment::tests::child_definitions_do_not_leak_into_the_parent ... ok
 test environment::tests::child_reads_bindings_from_its_parent ... ok
 test environment::tests::define_then_get_returns_the_value ... ok
+test bignum::tests::multiplication_exceeds_i64_without_overflowing ... ok
 test environment::tests::get_on_unknown_name_returns_none ... ok
 test environment::tests::host_policies_are_unrestricted_by_default_and_shared_with_children ... ok
 test environment::tests::redefining_in_the_same_frame_overwrites_the_previous_value ... ok
@@ -148,7 +148,7 @@ test environment::tests::dropping_a_very_deep_environment_chain_does_not_overflo
 test bignum::tests::binary_gcd_matches_euclid_on_deterministic_corpus ... ok
 test parser::tests::the_exact_exponent_boundary_parses_at_10000_and_overflows_at_10001 ... ok
 
-test result: ok. 96 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.26s
+test result: ok. 96 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.84s
 
 [1m[92m     Running[0m tests/advice.rs (target/debug/deps/advice-6c60e8943924fe5e)
 
@@ -156,7 +156,7 @@ running 2 tests
 test rejected_translation_cannot_leak_into_the_knowledge_module ... ok
 test controlled_words_flow_through_advice_reason_and_narration ... ok
 
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
 
 [1m[92m     Running[0m tests/advice_corpus.rs (target/debug/deps/advice_corpus-c29989ec174e8ec5)
 
@@ -169,7 +169,7 @@ test malformed_advice_is_rejected_and_does_not_become_unknown_knowledge ... ok
 test multistep_rules_survive_admission_reasoning_and_presentation ... ok
 test recursive_rule_survives_the_same_end_to_end_path ... ok
 
-test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
 
 [1m[92m     Running[0m tests/bootstrap_order.rs (target/debug/deps/bootstrap_order-a837da0f11f2568a)
 
@@ -182,29 +182,54 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 [1m[92m     Running[0m tests/canon_adversarial.rs (target/debug/deps/canon_adversarial-aca8e5b2c3c30efc)
 
 running 8 tests
-test canon_zero_is_atomic_but_not_a_pair ... ok
 test cond_surface_stops_at_the_first_true_clause ... ok
+test canon_zero_is_atomic_but_not_a_pair ... ok
 test car_and_cdr_on_canon_zero_fail_named_not_panic ... ok
-test every_binder_shape_rejects_canon_names ... FAILED
 test ordinary_noncanon_values_remain_shadowable ... ok
 test quote_surface_suppresses_evaluation_of_unknown_code ... ok
 test rest_passes_the_triple_cons_structure_test ... ok
+test every_binder_shape_rejects_canon_names ... ok
 test every_human_surface_rejects_canon_redefinition ... ok
 
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+[1m[92m     Running[0m tests/canon_immutability_meta.rs (target/debug/deps/canon_immutability_meta-8f169de00e43301e)
+
+running 4 tests
+test noncanon_shadowing_survives_in_meta_eval ... ok
+test hostile_meta_environment_cannot_retarget_canon_resolution ... ok
+test native_and_meta_reject_canon_lambda_binders ... ok
+test meta_top_level_def_cannot_create_canon_binding ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+[1m[92m     Running[0m tests/canon_language_authority.rs (target/debug/deps/canon_language_authority-212939aeeead5d26)
+
+running 5 tests
+test canon_zero_is_stated_by_the_language_as_the_empty_list_itself ... ok
+test surface_binding_captures_primitive_value_not_historical_name_lookup ... FAILED
+test ukrainian_and_sanskrit_surfaces_are_independent_bindings_to_one_semantics ... FAILED
+test language_level_canon_is_the_conformance_authority ... ok
+test ukrainian_keyboard_symbols_execute_the_same_canon ... ok
+
 failures:
 
----- every_binder_shape_rejects_canon_names stdout ----
+---- surface_binding_captures_primitive_value_not_historical_name_lookup stdout ----
 
-thread 'every_binder_shape_rejects_canon_names' (6608) panicked at crates/my-lisp/tests/canon_adversarial.rs:15:5:
-assertion `left == right` failed: source: (let ((car 42)) car)
-  left: UnknownSymbol
- right: InvalidForm
+thread 'surface_binding_captures_primitive_value_not_historical_name_lookup' (6433) panicked at crates/my-lisp/tests/canon_language_authority.rs:25:6:
+rebinding historical car must not mutate the captured canonical surface: LanguageError { kind: InvalidForm, message: "canonical name is immutable · канонічне ім'я незмінне · kanonischer Name ist unveränderlich: car -> Car", span: Span { start: 5, end: 8 } }
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
+---- ukrainian_and_sanskrit_surfaces_are_independent_bindings_to_one_semantics stdout ----
+
+thread 'ukrainian_and_sanskrit_surfaces_are_independent_bindings_to_one_semantics' (6434) panicked at crates/my-lisp/tests/canon_language_authority.rs:36:6:
+shadowing one language surface must not mutate another surface binding: LanguageError { kind: InvalidForm, message: "canonical name is immutable · канонічне ім'я незмінне · kanonischer Name ist unveränderlich: перше -> Car", span: Span { start: 5, end: 15 } }
+
 
 failures:
-    every_binder_shape_rejects_canon_names
+    surface_binding_captures_primitive_value_not_historical_name_lookup
+    ukrainian_and_sanskrit_surfaces_are_independent_bindings_to_one_semantics
 
-test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-[1m[91merror[0m: test failed, to rerun pass `-p my-lisp --test canon_adversarial`
+[1m[91merror[0m: test failed, to rerun pass `-p my-lisp --test canon_language_authority`
