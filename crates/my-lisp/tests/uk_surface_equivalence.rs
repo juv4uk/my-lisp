@@ -53,21 +53,19 @@ fn uk_session() -> Session {
 
 fn is_same_runtime_value(left: &Value, right: &Value) -> bool {
     match (left, right) {
-        // A builtin is an operation handle. The alias must retain the same
-        // allocation, not merely point at another builtin with a similar name.
-        // Builtin — це handle операції. Аліас має зберігати те саме виділення
-        // пам'яті, а не окремий builtin зі схожою назвою.
+        // A builtin is an operation handle. Canon EN/UK/SA spellings and
+        // ordinary aliases must retain one allocation, not merely similar code.
         (Value::Builtin(left), Value::Builtin(right)) => Rc::ptr_eq(left, right),
         _ => left == right,
     }
 }
 
 #[test]
-fn every_stable_uk_surface_entry_is_wired_to_its_declared_operation() {
+fn every_stable_uk_surface_entry_resolves_to_its_declared_operation() {
     let pairs = stable_uk_pairs();
     assert_eq!(pairs.len(), 140, "coverage summary and entries drifted");
 
-    let session = uk_session();
+    let mut session = uk_session();
     let syntax = [
         ("quote", "як-є"),
         ("cond", "за-умовою"),
@@ -80,23 +78,22 @@ fn every_stable_uk_surface_entry_is_wired_to_its_declared_operation() {
         if syntax.contains(&(english, ukrainian)) {
             continue;
         }
-        let english_value = session.environment.get(english).unwrap_or_else(|| {
-            panic!("stable English binding is missing: {category}/{english}")
-        });
-        let ukrainian_value = session.environment.get(ukrainian).unwrap_or_else(|| {
-            panic!("stable Ukrainian binding is missing: {category}/{ukrainian}")
-        });
+        let english_value = eval_program(english, &mut session)
+            .unwrap_or_else(|error| panic!("stable English value is missing: {category}/{english}: {error}"))
+            .value;
+        let ukrainian_value = eval_program(ukrainian, &mut session)
+            .unwrap_or_else(|error| panic!("stable Ukrainian value is missing: {category}/{ukrainian}: {error}"))
+            .value;
         assert!(
             is_same_runtime_value(&english_value, &ukrainian_value),
-            "stable alias changed identity: {category}/{english} -> {ukrainian}"
+            "stable surface changed runtime identity: {category}/{english} -> {ukrainian}"
         );
         checked_values += 1;
     }
 
     // Four evaluation-control/necessary forms are verified behaviorally in
-    // uk_surface.rs and uk_sa_surface.rs; all other stable rows are values.
-    // Чотири керівні/необхідні форми перевіряються поведінково; решта рядків
-    // мусять бути тими самими runtime-значеннями.
+    // uk_surface.rs and uk_sa_surface.rs; all other stable rows resolve to
+    // first-class values. Canon values are resolver-owned, not mutable aliases.
     assert_eq!(checked_values, 136);
 }
 
