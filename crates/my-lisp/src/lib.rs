@@ -117,6 +117,16 @@ pub fn load_tcp_library(session: &mut Session) -> Result<EvalResult, LanguageErr
     eval_program(TCP_LIBRARY_SOURCE, session)
 }
 
+/// Public Contract 6.0 classification hook for tooling and embedders.
+///
+/// This does not expose or mutate the Canon registry. It only answers whether
+/// a source spelling belongs to the finite reserved Canon 0+7 name set, so
+/// LSPs/linters can follow the same binder rule as the evaluator without
+/// duplicating EN/UK/SA tables.
+pub fn is_canonical_surface_name(name: &str) -> bool {
+    eval::canon::is_reserved_surface(name)
+}
+
 /// Convenience: FASL-encode already-parsed expressions bound to a source hash.
 pub fn fasl_encode(expressions: &[Expr], source_hash: &[u8; 32]) -> Vec<u8> {
     syntax::fasl::encode_program(expressions, source_hash)
