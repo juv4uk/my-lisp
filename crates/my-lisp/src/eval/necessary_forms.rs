@@ -22,14 +22,6 @@ pub(crate) struct NecessaryFormEntry {
 pub(crate) const LAMBDA_SEMANTIC_ID: &str = "0010";
 pub(crate) const DEFINE_SEMANTIC_ID: &str = "0011";
 
-/// `#0010` / `#0011` are source-transport atoms only. The `#` is deliberately
-/// not part of semantic identity: generated Lisp data uses the pure numeric
-/// symbols `0010` / `0011`, created with the already-existing `string->symbol`.
-/// Keeping transport in an ordinary atom avoids reserving new reader syntax.
-fn transported_semantic_id(name: &str) -> &str {
-    name.strip_prefix('#').unwrap_or(name)
-}
-
 /// Closed evaluator-routing cache. Numeric IDs are the machine handles; human
 /// spellings are direct peers. CI proves these rows equal the stable rows in
 /// the numeric registry, so this cache cannot silently become a second authority.
@@ -46,16 +38,12 @@ pub(crate) const NECESSARY_FORMS: [NecessaryFormEntry; 2] = [
     },
 ];
 
-/// Resolve an executable list-head symbol. A pure numeric semantic handle,
-/// its collision-free source transport `#<id>`, and every ratified stable
-/// human spelling enter the same evaluator mechanism directly.
+/// Resolve an executable list-head symbol. A pure numeric semantic handle and
+/// every ratified stable human spelling enter the same evaluator mechanism.
 pub(crate) fn identity_for_symbol(name: &str) -> Option<NecessaryFormIdentity> {
-    let semantic_candidate = transported_semantic_id(name);
     NECESSARY_FORMS
         .iter()
-        .find(|entry| {
-            entry.semantic_id == semantic_candidate || entry.surfaces.contains(&name)
-        })
+        .find(|entry| entry.semantic_id == name || entry.surfaces.contains(&name))
         .map(|entry| entry.identity)
 }
 
@@ -100,20 +88,6 @@ mod tests {
     }
 
     #[test]
-    fn source_transport_routes_without_becoming_semantic_authority() {
-        assert_eq!(
-            identity_for_symbol("#0011"),
-            Some(NecessaryFormIdentity::Define)
-        );
-        assert_eq!(
-            identity_for_symbol("#0010"),
-            Some(NecessaryFormIdentity::Lambda)
-        );
-        assert_eq!(identity_for_symbol("#define"), None);
-        assert_eq!(identity_for_symbol("#9999"), None);
-    }
-
-    #[test]
     fn ukrainian_and_english_names_are_direct_peer_spellings() {
         assert_eq!(
             identity_for_symbol("визначити"),
@@ -149,7 +123,9 @@ mod tests {
     }
 
     #[test]
-    fn compatibility_def_is_not_define_identity() {
+    fn non_numeric_compatibility_spellings_do_not_gain_identity() {
         assert_eq!(identity_for_symbol("def"), None);
+        assert_eq!(identity_for_symbol("#0010"), None);
+        assert_eq!(identity_for_symbol("id0010"), None);
     }
 }
