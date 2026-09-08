@@ -231,9 +231,9 @@ fn render_surface_names(surface: ReplSurface) -> Result<String, String> {
 
     let docs = ukrainian_api_docs()?;
     let mut output = format!(
-        "Публічна українська поверхня: {} preferred stable імен\n\
+        "Публічна українська поверхня: {} рекомендованих стабільних імен\n\
          Джерело: lib/surface/uk-docs.wsm\n\
-         (середовище) показує всі реально видимі bindings, включно з базовими, compatibility та internal.\n",
+         (середовище) показує всі реально видимі зв'язування, включно з базовими, сумісними та внутрішніми.\n",
         docs.len()
     );
 
@@ -267,13 +267,13 @@ fn render_surface_name(surface: ReplSurface, requested: &str) -> Result<String, 
         .find(|doc| doc.name == requested || doc.canonical == requested)
     else {
         return Ok(format!(
-            "«{requested}» не входить до preferred stable українського API.\n\
-             Воно може бути compatibility/internal binding; перевірити сире lexical середовище можна через (середовище)."
+            "«{requested}» не входить до рекомендованого стабільного українського API.\n\
+             Воно може бути сумісним або внутрішнім зв'язуванням; перевірити сире лексичне середовище можна через (середовище)."
         ));
     };
 
     Ok(format!(
-        "{}\n  статус: preferred stable\n  категорія: {}\n  тип: {}\n  основа: {}\n  виклик: {}\n  {}",
+        "{}\n  статус: рекомендоване стабільне ім'я\n  категорія: {}\n  тип: {}\n  основа: {}\n  виклик: {}\n  {}",
         doc.name,
         category_title(&doc.category),
         kind_title(&doc.kind),
@@ -349,7 +349,7 @@ fn print_surface_help() {
     println!("Поверхні: :мова ук | en | sa | core");
     println!("Технічний alias: :surface uk | en | sa | core");
     println!("Публічний словник поточної поверхні: :імена; одна назва: :ім'я <назва>");
-    println!("Сире lexical середовище без фільтрації поверхнею: (середовище) / (env)");
+    println!("Сире лексичне середовище без фільтрації поверхнею: (середовище) / (env)");
     println!("Перемикання змінює лише surface-frame; ваші define/closures лишаються живими.");
 }
 
@@ -587,18 +587,19 @@ mod tests {
         let rendered = render_surface_names(ReplSurface::Ukrainian).expect("render UK catalog");
         assert!(rendered.contains("значення-у-списку?"));
         assert!(rendered.contains("Джерело: lib/surface/uk-docs.wsm"));
+        assert!(rendered.contains("рекомендованих стабільних імен"));
     }
 
     #[test]
     fn surface_name_help_distinguishes_public_catalog_from_raw_bindings() {
         let preferred = render_surface_name(ReplSurface::Ukrainian, "значення-у-списку?")
             .expect("preferred name help");
-        assert!(preferred.contains("статус: preferred stable"));
+        assert!(preferred.contains("статус: рекомендоване стабільне ім'я"));
         assert!(preferred.contains("основа: member?"));
 
         let legacy = render_surface_name(ReplSurface::Ukrainian, "містить?")
             .expect("legacy name result");
-        assert!(legacy.contains("не входить до preferred stable українського API"));
+        assert!(legacy.contains("не входить до рекомендованого стабільного українського API"));
         assert!(legacy.contains("(середовище)"));
     }
 
