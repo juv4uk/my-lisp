@@ -1,9 +1,10 @@
-//! Contract 2.1 bootstrap: registers primitive operations into the root
-//! environment as first-class `Value::Builtin` values (docs/
-//! PROPOSAL-FIRST-CLASS-BUILTINS.md). After this runs, the evaluator's
-//! symbol match no longer owns these names -- the environment is the
-//! single runtime authority; the registry in this file is
-//! bootstrap-description only.
+//! Bootstrap registry for first-class `Value::Builtin` mechanisms. Contract
+//! 2.1 introduced ordinary callable builtin values; Contract 6.0 narrows the
+//! lookup rule for Canon 0+7 only. Non-Canon builtins remain ordinary lexical
+//! bindings. Historical Canon bootstrap entries may still exist in the root
+//! environment as implementation detail, but they are never semantic authority:
+//! the immutable Canon resolver wins before `Environment` lookup for every
+//! reserved Canon spelling.
 //!
 //! Batch 1 (2026-08-23): car cdr cons eq atom + - * / < > =.
 //! Batch 2 (2026-09-07): eager string/symbol, Unicode-codepoint, and digest

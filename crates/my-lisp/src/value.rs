@@ -397,16 +397,15 @@ pub struct Closure {
     pub(crate) environment: Environment,
 }
 
-/// A primitive operation as a first-class value (contract 2.1,
-/// docs/PROPOSAL-FIRST-CLASS-BUILTINS.md). Registered into the root
-/// environment at bootstrap; from then on it is an ordinary callable
-/// value indistinguishable -- by the language's own rules -- from a
-/// lambda. Arguments arrive pre-evaluated; special forms never become
-/// Builtins (they are syntax, not values).
-/// Prymityv iak pershoklasne znachennia (kontrakt 2.1). Reiestruietsia
-/// v kornevomu seredovyshchi na bootstrapi; pislia tsioho tse zvychaine
-/// zastosovne znachennia. Arhumenty nadkhodiat vzhie obchyslenymy;
-/// spetsialni formy nikoly ne staiutsia Builtinamy.
+/// A primitive operation as a first-class value. Contract 2.1 introduced
+/// callable builtin values; Contract 6.0 keeps that value-level property while
+/// reserving Canon 0+7 *names*. A Canon callable can still be passed as a value,
+/// but its registered EN/UK/SA/symbolic spellings cannot be rebound. Non-Canon
+/// builtins remain ordinary lexical values. Arguments arrive pre-evaluated;
+/// special forms never become Builtins (they are syntax, not values).
+/// Prymityv yak pershoklasne znachennia. Kontrakt 6.0 ne zaboraie peredavaty
+/// Canon-callable yak znachennia; vin rezervuie lyshe kanonichni imena vid
+/// perevyznachennia. Ne-Canon builtiny zalyshaiutsia zvychainymy lexical values.
 pub struct Builtin {
     pub name: &'static str,
     #[allow(clippy::type_complexity)]

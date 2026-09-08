@@ -141,18 +141,17 @@ pub(crate) fn evaluate_step(
         ExprKind::NumericBuffer(buffer) => Ok(EvalStep::Value(Value::NumericBuffer(buffer.clone()))),
         ExprKind::String(value) => Ok(EvalStep::Value(Value::String(value.clone()))),
         ExprKind::Symbol(symbol) => {
-            if let Some(identity) = canon::identity_for_surface(symbol) {
-                return canon::value(identity)
-                    .map(EvalStep::Value)
-                    .ok_or_else(|| {
-                        LanguageError::new(
-                            ErrorKind::InvalidForm,
-                            format!(
-                                "canonical special form is syntax-only · канонічна спеціальна форма є лише синтаксисом · kanonische Sonderform ist nur Syntax: {symbol}"
-                            ),
-                            expression.span,
-                        )
-                    });
+            if let Some(value) = canon::value_for_surface(symbol) {
+                return Ok(EvalStep::Value(value));
+            }
+            if canon::identity_for_surface(symbol).is_some() {
+                return Err(LanguageError::new(
+                    ErrorKind::InvalidForm,
+                    format!(
+                        "canonical special form is syntax-only · канонічна спеціальна форма є лише синтаксисом · kanonische Sonderform ist nur Syntax: {symbol}"
+                    ),
+                    expression.span,
+                ));
             }
             environment
                 .get(symbol)

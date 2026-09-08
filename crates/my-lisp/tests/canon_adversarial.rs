@@ -10,6 +10,7 @@ fn eval(source: &str) -> String {
 
 fn invalid_binding(source: &str) {
     let mut session = Session::default();
+    my_lisp::load_core_library(&mut session).expect("core bootstrap for binder adversary");
     let error = eval_program(source, &mut session)
         .expect_err("Contract 6.0 must reject Canon binding attempts");
     assert_eq!(error.kind, ErrorKind::InvalidForm, "source: {source}");

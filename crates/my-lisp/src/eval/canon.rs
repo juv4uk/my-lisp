@@ -261,12 +261,12 @@ mod tests {
         let ukrainian = value_for_surface("перше").expect("Ukrainian Canon value");
         let sanskrit = value_for_surface("ādi").expect("Sanskrit Canon value");
         let (Value::Builtin(historical), Value::Builtin(ukrainian), Value::Builtin(sanskrit)) =
-            (historical, ukrainian, sanskrit)
+            (&historical, &ukrainian, &sanskrit)
         else {
             panic!("PRIM_CAR must be a first-class builtin value");
         };
-        assert!(Rc::ptr_eq(&historical, &ukrainian));
-        assert!(Rc::ptr_eq(&historical, &sanskrit));
+        assert!(Rc::ptr_eq(historical, ukrainian));
+        assert!(Rc::ptr_eq(historical, sanskrit));
     }
 
     #[test]

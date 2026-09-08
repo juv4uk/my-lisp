@@ -306,6 +306,10 @@ An operation or syntactic form cannot be declared `L2 DERIVED` simply because it
 ## 8. Closed: Canon Access Architecture (2026-09-06)
 ## 8. Закрито: Архітектура доступу до канону (2026-09-06)
 
+> **Superseded for Canon 0+7 binding semantics by ADR-006 / Contract 6.0 (2026-09-08).** The text below is retained as historical evidence of the earlier Variant-A decision; it is no longer normative where it permits shadowing Canon spellings.
+>
+> **Замінено для семантики зв’язування Canon 0+7 рішенням ADR-006 / Contract 6.0 (2026-09-08).** Текст нижче збережено як історію попереднього Variant A; дозвіл затінювати канонічні написання більше не є нормативним.
+
 The question of canonical access semantics (initiated during the canon-namespace-shadowing research cycle, `docs/research/canon-namespace-shadowing.md`) is **closed with the following decision:**
 
 Питання семантики доступу до канону (досліджене в `docs/research/canon-namespace-shadowing.md`) **закрите з таким рішенням:**
