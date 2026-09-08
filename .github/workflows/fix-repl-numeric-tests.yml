@@ -1,0 +1,52 @@
+name: Fix stale REPL numeric authority tests
+
+on:
+  push:
+    branches: [feat/close-language-neutrality-debt]
+    paths:
+      - '.github/workflows/fix-repl-numeric-tests.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/close-language-neutrality-debt
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Update stale REPL evidence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('crates/my-lisp-cli/src/repl.rs')
+          text = p.read_text(encoding='utf-8')
+          replacements = {
+              'assert!(en.contains("surface en: stable 140"));':
+                  'assert!(en.contains("surface en: stable 131 · candidate 0 · missing 9"));',
+              'assert!(help.contains("identity: map"));':
+                  'assert!(help.contains("identity: 0101"));',
+              'assert!(status.contains("trilingual stable: 36/140"));':
+                  'assert!(status.contains("trilingual stable: 29/140"));',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected one match for {old!r}, found {text.count(old)}')
+              text = text.replace(old, new)
+          p.write_text(text, encoding='utf-8')
+          PY
+          cargo test -p my-lisp-cli --bin my-lisp
+      - name: Commit focused evidence update
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-repl-numeric-tests.yml
+          git add crates/my-lisp-cli/src/repl.rs
+          git commit -m "test(repl): expect numeric surface authority"
+          git push origin HEAD:feat/close-language-neutrality-debt
