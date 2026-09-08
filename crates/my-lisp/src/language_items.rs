@@ -4,6 +4,11 @@
 //! evaluator. Tooling therefore cannot silently retain a stale copy when a
 //! first-class builtin is added. Syntax-dispatched forms remain explicit
 //! because they are not ordinary environment bindings.
+//!
+//! ADR-007 peer spellings may bind the same `Value::Builtin` under several
+//! human names. Metadata follows the shared builtin value, not the spelling by
+//! which that value was found, so adding a peer name does not invent another
+//! operation signature.
 
 use crate::{Environment, Value};
 
@@ -330,17 +335,18 @@ pub fn language_items() -> Vec<LanguageItem> {
     let mut items = Environment::root()
         .snapshot()
         .into_iter()
-        .filter_map(|(name, value)| {
-            matches!(value, Value::Builtin(_)).then(|| {
-                let (signature, documentation, arity) = builtin_metadata(&name);
-                LanguageItem {
+        .filter_map(|(name, value)| match value {
+            Value::Builtin(builtin) => {
+                let (signature, documentation, arity) = builtin_metadata(builtin.name);
+                Some(LanguageItem {
                     name: name.to_string(),
                     signature,
                     documentation,
                     kind: LanguageItemKind::Builtin,
                     arity,
-                }
-            })
+                })
+            }
+            _ => None,
         })
         .collect::<Vec<_>>();
 
@@ -363,7 +369,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_root_builtin_is_discoverable_exactly_once() {
+    fn every_root_builtin_binding_is_discoverable_with_operation_metadata() {
         let items = language_items();
         for (name, value) in Environment::root().snapshot() {
             if matches!(value, Value::Builtin(_)) {
@@ -377,17 +383,38 @@ mod tests {
                 assert_eq!(
                     matches.len(),
                     1,
-                    "runtime builtin {name} must have exactly one tooling item"
+                    "runtime builtin binding {name} must have exactly one tooling item"
                 );
                 assert_ne!(
                     matches[0].signature, "(builtin ...)",
-                    "runtime builtin {name} needs an explicit signature"
+                    "runtime builtin binding {name} needs operation metadata"
                 );
                 assert_ne!(
                     matches[0].documentation, "First-class runtime builtin",
-                    "runtime builtin {name} needs explicit documentation"
+                    "runtime builtin binding {name} needs operation metadata"
                 );
             }
         }
+    }
+
+    #[test]
+    fn add_peer_spellings_share_one_metadata_source() {
+        let items = language_items();
+        let find = |name: &str| {
+            items
+                .iter()
+                .find(|item| item.kind == LanguageItemKind::Builtin && item.name == name)
+                .unwrap_or_else(|| panic!("missing tooling binding {name}"))
+        };
+
+        let uk = find("додати");
+        let en = find("+");
+        let sa = find("yoga");
+        assert_eq!(uk.signature, en.signature);
+        assert_eq!(en.signature, sa.signature);
+        assert_eq!(uk.documentation, en.documentation);
+        assert_eq!(en.documentation, sa.documentation);
+        assert_eq!(uk.arity, en.arity);
+        assert_eq!(en.arity, sa.arity);
     }
 }
