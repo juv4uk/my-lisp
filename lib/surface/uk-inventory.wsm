@@ -1,8 +1,6 @@
-; Machine-readable inventory of discoverable public runtime bindings.
-; Машинно-читаний інвентар доступних публічних runtime bindings.
-; This file classifies names; it does not choose one human language as the
-; implementation authority. ADR-007 peer spellings may therefore appear in the
-; same root-binding set when they directly name one shared semantic value.
+; Machine-readable inventory of the English-facing public surface.
+; Машинно-читаний інвентар англомовної публічної поверхні.
+; This file classifies names; it does not choose Ukrainian words.
 
 (uk-surface-inventory
   (schema uk-surface-inventory/1)
@@ -25,15 +23,15 @@
         read-all sha256-hex string->codepoint string->symbol string-append
         string-first string-rest string-slice string<? string? symbol->string
         timezone-declarations-raw unix-time-now vector vector-length vector-ref
-        vector-set! write-to-string codepoint->string додати yoga))
+        vector-set! write-to-string codepoint->string))
      (core-library
        (identity list not and or gensym pair second third fourth cadddr fifth
         caar cadr cddr length reverse append map filter reduce let equal? nth
         member? assoc let* string-empty? string-length string-prefix?
         string-contains? symbol? quotient mod <= >= number->string -> ->>
         isqrt sqrt))))
-  ; Mathematical marks remain optional compact notation over existing
-  ; operations; they are not semantic-identity handles.
+  ; Ukrainian words carry the readable surface. Mathematical marks remain
+  ; optional compact notation over the same existing operations.
   (symbolic-sugar (+ - * / < = > <= >=))
   (internal
     ((bootstrap (make-macro))
