@@ -110,6 +110,11 @@ python3 scripts/check_trilingual_surface.py
 status matrix обчислюється з тієї самої authority. Strict workspace CI окремо
 перевіряє Rust consumer-и, включно з REPL catalog.
 
+Фінальний REPL evidence також перевіряє саме поточну модель: numeric identity
+`0101`, UK `140/140`, EN `131/140` із 9 чесними `missing`, SA
+`36 stable + 88 candidate + 16 missing`, і `29/140` одночасно stable у всіх
+трьох людських поверхнях. Це вимірювання, а не release-claim.
+
 ## Межа цього ADR
 
 Цей ADR закриває **authority та introspection debt**. Він не стверджує, що всі
