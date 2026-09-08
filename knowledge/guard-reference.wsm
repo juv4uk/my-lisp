@@ -56,6 +56,15 @@
        (provenance "written 2026-08-28 in ecosystem/prototypes/ (session wsl-nidana-1); rediscovered and live re-verified 2026-09-08 after owner asked directly; wrong-arity crash fixed same day; extracted to its own public repo mccarthy-eval same day, commit 39dd5e5, per owner's explicit decision and naming choice")
        (unknown-route ask-owner))
      (reference
+       (topic mylisp-vs-lisp15-comparison)
+       (summary "External technical comparison (Manus AI, 2026-08-28) of my-lisp against McCarthy's 1960 paper -- 'my-lisp returns Lisp to the Advice Taker trajectory more practically than most modern Lisp projects, but does so incrementally with explicitly named boundaries'. Verified by this session same day: one report claim (CI red status) checked directly via gh run view, found accurate plus a more specific root cause the report itself flagged as unverified. Documents a real drift the report found (car/cdr/cons/eq/atom shadowable Value::Builtin vs language-core-axioms.md calling them unshadowable syntax) -- already resolved 2026-08-22 by Contract 2.1, re-confirmed empirically 2026-08-28. Moved here from private ecosystem docs/correspondence/ 2026-09-08 (was public-worthy content stuck in a private repo, same pattern as mccarthy-eval) -- NOT merged into mccarthy-eval, which compares a different codebase (hand-written asm, not my-lisp's Rust core) | Зовнішнє технічне порівняння (Manus AI, 2026-08-28) my-lisp з paper Маккарті 1960 р. Перевірено цією сесією того ж дня: одне твердження звіту звірено напряму через gh run view, підтверджено плюс конкретніша коренева причина. Задокументовано реальний drift (car/cdr/cons/eq/atom shadowable Value::Builtin проти language-core-axioms.md, що називав їх unshadowable syntax) -- вже вирішено 2026-08-22 Contract 2.1, повторно емпірично підтверджено 2026-08-28. Перенесено з приватного ecosystem 2026-09-08 -- НЕ злито з mccarthy-eval, який порівнює інший кодабазу")
+       (authority (docs/correspondence/manus-ai-mylisp-vs-lisp15-comparison-2026-08-28.md docs/correspondence/manus-ai-mylisp-vs-lisp15-primary-source-notes-2026-08-28.md docs/correspondence/manus-ai-mylisp-vs-lisp15-current-source-notes-2026-08-28.md docs/mccarthy-1960-eval-apply-walkthrough-2026-08-28.md docs/PROPOSAL-FIRST-CLASS-BUILTINS.md docs/language-core-axioms.md))
+       (how-to (read-comparison-doc-before-claiming-lisp-lineage cross-check-drift-findings-against-current-axioms-md))
+       (verify (ci-claim-independently-checked-via-gh-run-view shadowable-builtin-drift-resolution-confirmed))
+       (lifecycle current-contract)
+       (provenance "external report Manus AI 2026-08-28, verified same session (wsl-nidana-1); moved from private ecosystem to my-lisp 2026-09-08, commit 89d4846, per owner's request to gather on-topic docs after the mccarthy-eval extraction")
+       (unknown-route ask-owner))
+     (reference
        (topic semantic-oracle)
        (summary "Expected semantic truth from the reference implementation | Очікувана семантична істина від еталонної реалізації")
        (authority (language-contract.my crates/my-lisp-cli/src/swarm.rs docs/guard-oracle-node-plan.md))
