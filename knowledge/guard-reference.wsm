@@ -47,6 +47,15 @@
        (provenance "my-lisp commit 6584789+df28a21")
        (unknown-route ask-agent))
      (reference
+       (topic mccarthy-eval-x86-64-prototype)
+       (summary "Hand-written x86_64 assembly (GNU as, AT&T syntax, 1774 lines total) implementing McCarthy's real 1960 apply/eval/evcon/evlis M-expressions -- not a port, real machine code, live-reverified 2026-09-08: build-kernel.sh, factorial.lisp (FACT 0/1/5/10 = 1/1/120/3628800), listutils.lisp (real higher-order MYMAP), REPL with startup.lisp autoload all reproduce documented output exactly. Six real bugs found and fixed (uninitialized heap_ptr, T not self-evaluating, missing appq found via gdb before the paper connection registered, fflush stack-alignment crash, numeric-token parse bug, fixnums not self-evaluating); three REPL crashes deliberately left unfixed and documented (unbound-function call, unbalanced parens, wrong arity) per the session's own stop-and-understand rule | Рукописний x86_64 асемблер (1774 рядки), що реалізує реальні apply/eval/evcon/evlis paper Маккарті 1960 р. -- не порт, справжній машинний код, живо переперевірено 2026-09-08: build-kernel.sh, factorial.lisp, listutils.lisp (реальний MYMAP вищого порядку), REPL з автозавантаженим startup.lisp -- усе відтворює задокументований вивід точно. Шість реальних знайдених і виправлених багів; три краші REPL свідомо лишені невиправленими й задокументовані")
+       (authority (../ecosystem/prototypes/mccarthy_eval_x86_64/README.md ../ecosystem/prototypes/mccarthy_eval_x86_64/KERNEL-WALKTHROUGH.md ../ecosystem/prototypes/mccarthy_eval_x86_64/CODE-WALKTHROUGH.md ../ecosystem/docs/correspondence/mccarthy-1960-eval-apply-primary-source-2026-08-28.md ../ecosystem/docs/correspondence/mccarthy-1960-eval-apply-walkthrough-2026-08-28.md ../ecosystem/memory/mccarthy-eval-x86-64-prototype.md))
+       (how-to (build-kernel-sh run-factorial-lisp run-listutils-lisp run-repl-with-startup-lisp read-code-walkthrough-before-editing-asm))
+       (verify (build-kernel-sh-output-matches-readme factorial-values-correct listutils-mymap-higher-order-confirmed repl-startup-autoload-confirmed three-known-crashes-still-reproduce))
+       (lifecycle prototype-frozen)
+       (provenance "written 2026-08-28 (session wsl-nidana-1); rediscovered and live re-verified 2026-09-08 (same session identity) after owner asked directly, prior answer had undersold it as citation-checking only")
+       (unknown-route ask-owner))
+     (reference
        (topic semantic-oracle)
        (summary "Expected semantic truth from the reference implementation | Очікувана семантична істина від еталонної реалізації")
        (authority (language-contract.my crates/my-lisp-cli/src/swarm.rs docs/guard-oracle-node-plan.md))
