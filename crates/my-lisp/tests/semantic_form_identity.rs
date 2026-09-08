@@ -1,4 +1,6 @@
-use my_lisp::{eval_parsed_expressions, eval_program, parse, Expr, ExprKind, Session, Span};
+use my_lisp::{
+    eval_parsed_expressions, eval_program, parse, ErrorKind, Expr, ExprKind, Session, Span,
+};
 
 const MACRO_LIBRARY: &str = include_str!("../../../lib/macro.my");
 
@@ -87,6 +89,15 @@ fn macro_library_selects_no_human_or_transport_spelling_for_necessary_forms() {
             !symbols.iter().any(|symbol| symbol == forbidden),
             "macro.my must not select necessary-form spelling {forbidden}"
         );
+    }
+}
+
+#[test]
+fn defmacro_preserves_minimum_arity_failure_class() {
+    for source in ["(defmacro)", "(defmacro only-a-name)"] {
+        let error = eval_program(source, &mut Session::default())
+            .expect_err("defmacro below its two-argument minimum must fail named");
+        assert_eq!(error.kind, ErrorKind::Arity, "source: {source}");
     }
 }
 
