@@ -1,13 +1,13 @@
-; Ukrainian surface for necessary evaluator forms and core vocabulary.
-; Українська поверхня для необхідних форм та основного словника.
+; Ukrainian surface for necessary evaluator forms and derived vocabulary.
+; Українська поверхня для необхідних форм та похідного словника.
 ;
-; The Rust kernel does not know these Ukrainian words.  They are ordinary
-; my-lisp macros and aliases that expand to / bind to the canonical English
-; surfaces.  This keeps semantics in the canonical identities while allowing
-; the language itself to define its human-facing vocabulary.
+; Canon 0+7 names are NOT defined here. The immutable Canon resolver owns the
+; ratified Ukrainian spellings directly, before ordinary lexical lookup.
+; Everything below Canon remains language-owned aliases/macros over the same
+; semantic environment.
 ;
-; Principle: one semantic implementation, multiple surface names.
-;           одна семантична реалізація, багато поверхневих імен.
+; Principle: one semantic implementation, multiple human surfaces.
+;           одна семантична реалізація, кілька людських поверхонь.
 ;
 ; Full-profile loading order: macro.my → core.my → unify.my → reason.my →
 ; forward.my → knowledge.my → persistent-map.my → persistent-vector.my →
@@ -31,20 +31,12 @@
 (define визначити-макрос defmacro)
 
 ;; ═══════════════════════════════════════════════════════════════
-;; Canon 0+7 — Ukrainian surface aliases (status: stable)
-;; Канон 0+7 — українські поверхневі аліаси (статус: stable)
+;; Canon 0+7 — owned by immutable resolver (status: stable)
+;; Канон 0+7 — належить незмінному resolver-у (статус: stable)
 ;; ═══════════════════════════════════════════════════════════════
 
-; These seven names are the ratified Ukrainian surface for the McCarthy
-; primitives. `як-є` and `за-умовою` already belong to the canonical syntax;
-; this surface file must not redefine them. The five callable primitives below
-; bind to the same first-class values as their historical spellings.
-
-(define атом? atom)
-(define тотожне? eq)
-(define сполучити cons)
-(define перше car)
-(define решта cdr)
+; як-є, атом?, тотожне?, сполучити, перше, решта, за-умовою
+; не є звичайними bindings і навмисно не можуть бути перевизначені тут.
 
 ; Українські імена тих самих канонічних значень істини й хиби.
 ; Це не нові логічні об'єкти: істина є тим самим символом t, а хиба — тим
