@@ -1,0 +1,28 @@
+name: Fix Numeric Identity Comments
+
+on:
+  push:
+    branches:
+      - feat/peer-add-identity
+    paths:
+      - '.github/workflows/fix-numeric-id-comments.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/peer-add-identity
+      - name: Remove alphabetic semantic-ID prefix from active surface comments
+        run: |
+          sed -i 's/ADR-007 \/ m0104/ADR-007 \/ 0104/g' lib/surface/uk.my lib/surface/sa.my
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/surface/uk.my lib/surface/sa.my
+          git diff --cached --quiet && exit 0
+          git commit -m 'docs(surface): use numeric identity 0104 in comments'
+          git push origin HEAD:feat/peer-add-identity
