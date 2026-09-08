@@ -336,7 +336,7 @@ pub fn language_items() -> Vec<LanguageItem> {
         .snapshot()
         .into_iter()
         .filter_map(|(name, value)| match value {
-            Value::Builtin(builtin) => {
+            Value::Builtin(ref builtin) => {
                 let (signature, documentation, arity) = builtin_metadata(builtin.name);
                 Some(LanguageItem {
                     name: name.to_string(),
