@@ -1,15 +1,15 @@
 //! Immutable semantic registry for Canon 0 + McCarthy7.
 //!
-//! This module is deliberately *not* an `Environment`.  Environments bind
-//! names and remain shadowable; this table binds canonical identities to
-//! semantics and has no mutation API.  Surface names may be rebound without
-//! changing the canonical operation they originally denote.
+//! Canon is deliberately *not* an `Environment`. Environments bind ordinary
+//! names; this table binds a finite set of reserved surface spellings to
+//! canonical semantic identities. Canonical resolution therefore happens
+//! before lexical lookup and no language binder may reuse a Canon spelling.
 
 use super::special_forms::{car_value, cdr_value, cons_values, eq_values};
 use crate::{Environment, ErrorKind, LanguageError, Span, Value};
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum CanonicalIdentity {
     EmptyList,
     Quote,
@@ -38,7 +38,7 @@ pub(crate) struct CanonEntry {
     pub symbolic: &'static [&'static str],
 }
 
-/// The immutable 0 + 7 registry.  There is intentionally no setter, mutable
+/// The immutable 0 + 7 registry. There is intentionally no setter, mutable
 /// static, `Environment`, or user-visible `define` path here.
 pub(crate) const CANON: [CanonEntry; 8] = [
     CanonEntry {
@@ -119,6 +119,23 @@ pub(crate) fn identity_for_surface(name: &str) -> Option<CanonicalIdentity> {
         .map(|entry| entry.identity)
 }
 
+pub(crate) fn is_reserved_surface(name: &str) -> bool {
+    identity_for_surface(name).is_some()
+}
+
+pub(crate) fn ensure_bindable(name: &str, span: Span) -> Result<(), LanguageError> {
+    let Some(identity) = identity_for_surface(name) else {
+        return Ok(());
+    };
+    Err(LanguageError::new(
+        ErrorKind::InvalidForm,
+        format!(
+            "canonical name is immutable · канонічне ім'я незмінне · kanonischer Name ist unveränderlich: {name} -> {identity:?}"
+        ),
+        span,
+    ))
+}
+
 pub(crate) fn ground_value(identity: CanonicalIdentity) -> Option<Value> {
     match identity {
         CanonicalIdentity::EmptyList => Some(Value::Nil),
@@ -155,10 +172,7 @@ fn builtin(
     }))
 }
 
-/// Materialize the canonical first-class value for an identity.  Each call
-/// creates a callable handle backed by the same hard-coded semantic path; no
-/// environment lookup participates in choosing the implementation.
-pub(crate) fn value(identity: CanonicalIdentity) -> Option<Value> {
+fn materialize_value(identity: CanonicalIdentity) -> Option<Value> {
     match identity {
         CanonicalIdentity::EmptyList => ground_value(identity),
         CanonicalIdentity::Atom => Some(builtin("PRIM_ATOM", |args, _env, span| {
@@ -185,9 +199,39 @@ pub(crate) fn value(identity: CanonicalIdentity) -> Option<Value> {
     }
 }
 
-/// Resolve a *surface spelling* to a canonical first-class value.  The caller
-/// should consult the ordinary environment first so lexical shadowing remains
-/// intact; this function is the immutable fallback, never another name lookup.
+fn build_value_registry() -> HashMap<CanonicalIdentity, Value> {
+    [
+        CanonicalIdentity::Atom,
+        CanonicalIdentity::Eq,
+        CanonicalIdentity::Cons,
+        CanonicalIdentity::Car,
+        CanonicalIdentity::Cdr,
+    ]
+    .into_iter()
+    .map(|identity| {
+        (
+            identity,
+            materialize_value(identity).expect("callable Canon identity must materialize"),
+        )
+    })
+    .collect()
+}
+
+thread_local! {
+    /// One immutable callable handle per Canon identity per evaluator thread.
+    /// All EN/UK/SA spellings resolve to clones of these same `Rc` handles.
+    static CANON_VALUES: HashMap<CanonicalIdentity, Value> = build_value_registry();
+}
+
+/// Return the stable first-class value for a canonical identity. Special forms
+/// deliberately have no value representation; they remain syntax-only.
+pub(crate) fn value(identity: CanonicalIdentity) -> Option<Value> {
+    if identity == CanonicalIdentity::EmptyList {
+        return Some(Value::Nil);
+    }
+    CANON_VALUES.with(|values| values.get(&identity).cloned())
+}
+
 pub(crate) fn value_for_surface(name: &str) -> Option<Value> {
     identity_for_surface(name).and_then(value)
 }
@@ -209,6 +253,33 @@ mod tests {
         assert_eq!(identity_for_surface("перше"), Some(CanonicalIdentity::Car));
         assert_eq!(identity_for_surface("ādi"), Some(CanonicalIdentity::Car));
         assert_eq!(identity_for_surface(":п"), Some(CanonicalIdentity::Car));
+    }
+
+    #[test]
+    fn three_callable_surfaces_share_one_stable_handle() {
+        let historical = value_for_surface("car").expect("historical Canon value");
+        let ukrainian = value_for_surface("перше").expect("Ukrainian Canon value");
+        let sanskrit = value_for_surface("ādi").expect("Sanskrit Canon value");
+        let (Value::Builtin(historical), Value::Builtin(ukrainian), Value::Builtin(sanskrit)) =
+            (historical, ukrainian, sanskrit)
+        else {
+            panic!("PRIM_CAR must be a first-class builtin value");
+        };
+        assert!(Rc::ptr_eq(&historical, &ukrainian));
+        assert!(Rc::ptr_eq(&historical, &sanskrit));
+    }
+
+    #[test]
+    fn canonical_surface_names_are_reserved() {
+        for name in [
+            "quote", "як-є", "svarūpa", "atom", "атом?", "aṇu", "eq", "тотожне?",
+            "abheda", "cons", "сполучити", "saṃyuj", "car", "перше", "ādi", "cdr",
+            "решта", "śeṣa", "cond", "за-умовою", "anukrama",
+        ] {
+            assert!(is_reserved_surface(name), "Canon spelling must be reserved: {name}");
+        }
+        assert!(!is_reserved_surface("map"));
+        assert!(!is_reserved_surface("відобразити"));
     }
 
     #[test]
