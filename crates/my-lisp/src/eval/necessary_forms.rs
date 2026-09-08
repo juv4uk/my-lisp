@@ -2,14 +2,13 @@
 //! beyond Canon 0 + McCarthy7.
 //!
 //! This registry is deliberately separate from `canon.rs`: the 0+7 canon
-//! stays closed.  These entries describe evaluator forms that cannot be
+//! stays closed. These entries describe evaluator forms that cannot be
 //! ordinary first-class value primitives because they control binding or
 //! evaluation itself.
 //!
-//! Historical note: `DEFINE` is grounded in Lisp 1.5's defining mechanism,
-//! but my-lisp does not claim syntax-isomorphism with Lisp 1.5 `define[x]`.
-//! Here the canonical identity is the act of introducing a binding into the
-//! current lexical environment.
+//! Human spellings are peer surfaces of an identity. No spelling is the
+//! canonical machine key. A missing human surface stays explicit in the
+//! semantic registry instead of silently falling back through English.
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum NecessaryFormIdentity {
@@ -20,26 +19,30 @@ pub(crate) enum NecessaryFormIdentity {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct NecessaryFormEntry {
     pub identity: NecessaryFormIdentity,
-    pub canonical_surface: &'static str,
+    pub surfaces: &'static [&'static str],
 }
 
-/// Closed, immutable registry.  There is intentionally no Environment,
+/// Closed, immutable identity registry. There is intentionally no Environment,
 /// setter, `define`, mutable static, or mutation API here.
+///
+/// UK and EN are already admitted as direct peer spellings. SA remains absent
+/// here until its spelling is ratified; absence must never be filled by an EN
+/// fallback.
 pub(crate) const NECESSARY_FORMS: [NecessaryFormEntry; 2] = [
     NecessaryFormEntry {
         identity: NecessaryFormIdentity::Define,
-        canonical_surface: "define",
+        surfaces: &["define", "визначити"],
     },
     NecessaryFormEntry {
         identity: NecessaryFormIdentity::Lambda,
-        canonical_surface: "lambda",
+        surfaces: &["lambda", "функція"],
     },
 ];
 
 pub(crate) fn identity_for_surface(name: &str) -> Option<NecessaryFormIdentity> {
     NECESSARY_FORMS
         .iter()
-        .find(|entry| entry.canonical_surface == name)
+        .find(|entry| entry.surfaces.contains(&name))
         .map(|entry| entry.identity)
 }
 
@@ -48,7 +51,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn necessary_forms_are_exactly_define_and_lambda() {
+    fn необхідні_форми_мають_дві_семантичні_тотожності() {
         assert_eq!(NECESSARY_FORMS.len(), 2);
         assert_eq!(
             identity_for_surface("define"),
@@ -61,9 +64,27 @@ mod tests {
     }
 
     #[test]
-    fn compatibility_and_natural_language_names_are_not_kernel_surfaces() {
+    fn українські_й_англійські_назви_є_прямими_peer_spellings() {
+        assert_eq!(
+            identity_for_surface("визначити"),
+            Some(NecessaryFormIdentity::Define)
+        );
+        assert_eq!(
+            identity_for_surface("define"),
+            Some(NecessaryFormIdentity::Define)
+        );
+        assert_eq!(
+            identity_for_surface("функція"),
+            Some(NecessaryFormIdentity::Lambda)
+        );
+        assert_eq!(
+            identity_for_surface("lambda"),
+            Some(NecessaryFormIdentity::Lambda)
+        );
+    }
+
+    #[test]
+    fn сумісне_def_не_стає_семантичною_тотожністю_define() {
         assert_eq!(identity_for_surface("def"), None);
-        assert_eq!(identity_for_surface("визначити"), None);
-        assert_eq!(identity_for_surface("функція"), None);
     }
 }
