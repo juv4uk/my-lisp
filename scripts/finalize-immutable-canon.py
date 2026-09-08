@@ -70,3 +70,43 @@ new = """/// A primitive operation as a first-class value. Contract 2.1 introduc
 if old not in text:
     raise SystemExit("value.rs old Builtin comment not found")
 path.write_text(text.replace(old, new, 1))
+
+# 4. Use the Canon surface-value API in production, not only in tests. This
+# keeps the resolution boundary in one place and avoids a dead helper that
+# duplicates evaluator logic.
+path = Path("crates/my-lisp/src/eval/mod.rs")
+text = path.read_text()
+old = '''        ExprKind::Symbol(symbol) => {
+            if let Some(identity) = canon::identity_for_surface(symbol) {
+                return canon::value(identity)
+                    .map(EvalStep::Value)
+                    .ok_or_else(|| {
+                        LanguageError::new(
+                            ErrorKind::InvalidForm,
+                            format!(
+                                "canonical special form is syntax-only · канонічна спеціальна форма є лише синтаксисом · kanonische Sonderform ist nur Syntax: {symbol}"
+                            ),
+                            expression.span,
+                        )
+                    });
+            }
+            environment
+'''
+new = '''        ExprKind::Symbol(symbol) => {
+            if let Some(value) = canon::value_for_surface(symbol) {
+                return Ok(EvalStep::Value(value));
+            }
+            if canon::identity_for_surface(symbol).is_some() {
+                return Err(LanguageError::new(
+                    ErrorKind::InvalidForm,
+                    format!(
+                        "canonical special form is syntax-only · канонічна спеціальна форма є лише синтаксисом · kanonische Sonderform ist nur Syntax: {symbol}"
+                    ),
+                    expression.span,
+                ));
+            }
+            environment
+'''
+if old not in text:
+    raise SystemExit("eval/mod.rs Canon symbol-resolution block not found")
+path.write_text(text.replace(old, new, 1))
