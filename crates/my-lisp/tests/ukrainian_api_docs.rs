@@ -5,6 +5,7 @@ const COVERAGE: &str = include_str!("../../../lib/surface/uk-sa-coverage.wsm");
 const DOCS_INDEX: &str = include_str!("../../../lib/surface/uk-docs.wsm");
 const DOCS_MD: &str = include_str!("../../../docs/ukrainian-api.md");
 const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
+const NAME_AUDIT: &str = include_str!("../../../lib/surface/uk-name-audit.wsm");
 
 fn stable_pairs() -> BTreeSet<(String, String)> {
     COVERAGE
@@ -94,7 +95,7 @@ fn znak_oklyku_tochno_vidpovidaie_mutatsii() {
         );
         if mutation {
             mutations += 1;
-            assert_eq!(uk, "встановити-вектор!");
+            assert_eq!(uk, "встановити-елемент-вектора!");
         }
     }
 
@@ -118,7 +119,7 @@ fn stari_nazvy_dvokh_predykativ_lyshaiutsia_aliasamy_symisnosti() {
 
 #[test]
 fn dovidnyk_poiasniuie_ne_predykaty_shcho_mozhut_povernuty_pustyi_spysok() {
-    for name in ["карта-отримати", "підтримуючий-доказ", "та", "або"]
+    for name in ["отримати-з-карти", "підтримувальний-доказ", "та", "або"]
     {
         let kind = documented()
             .into_iter()
@@ -190,5 +191,51 @@ fn novi_predykatni_nazvy_i_stari_aliasy_vykonuiutsia_odnakovo() {
     ] {
         let result = eval_program(source, &mut session).expect("occurs-check має виконатися");
         assert_eq!(result.value.to_string(), "t");
+    }
+}
+
+
+#[test]
+fn smyslovyi_audyt_pokryvaie_vsi_140_stable_nazv() {
+    assert!(NAME_AUDIT.contains("(stable-reviewed 140)"));
+    assert!(NAME_AUDIT.contains("(renamed 32)"));
+    assert!(NAME_AUDIT.contains("(retained 108)"));
+
+    let rename_rows = NAME_AUDIT
+        .lines()
+        .filter(|line| line.trim_start().starts_with("(rename "))
+        .count();
+    assert_eq!(rename_rows, 32, "журнал аудиту має містити рівно 32 перейменування");
+}
+
+#[test]
+fn seredovyshche_ne_maie_povtornoho_surface_binding() {
+    let needle = "(define середовище env)";
+    assert_eq!(
+        UK_SURFACE.match_indices(needle).count(),
+        1,
+        "середовище має бути визначене в uk.my рівно один раз"
+    );
+}
+
+#[test]
+fn stari_nazvy_smystovoho_audytu_lyshaiutsia_aliasamy_sumisnosti() {
+    for line in NAME_AUDIT.lines() {
+        let fields = line.split_whitespace().collect::<Vec<_>>();
+        if fields.first() != Some(&"(rename") {
+            continue;
+        }
+        let en = fields[1];
+        let old = fields[2];
+        let new = fields[3];
+
+        assert!(
+            UK_SURFACE.contains(&format!("(define {old} {en})")),
+            "старий alias сумісності відсутній: {old} -> {en}"
+        );
+        assert!(
+            UK_SURFACE.contains(&format!("(define {new} {en})")),
+            "preferred alias відсутній: {new} -> {en}"
+        );
     }
 }
