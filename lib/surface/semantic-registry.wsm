@@ -1,0 +1,84 @@
+; Neutral semantic surface registry — schema 1.
+; Нейтральний реєстр мовних поверхонь — схема 1.
+;
+; This file does not define semantics and does not privilege a human language.
+; Each mNNNN atom is an opaque machine identity. Surface forms are peer names
+; of that identity. Order inside an entry has no semantic meaning.
+;
+; During migration, uk-sa-coverage.wsm remains the complete authority. This
+; file is the small successor-schema seed described by ADR-007.
+
+(sr/1
+
+  ; Canon 0+7
+  (m0001
+    (uk як-є stable)
+    (en quote stable)
+    (sa svarūpa stable))
+
+  (m0002
+    (uk атом? stable)
+    (en atom stable)
+    (sa aṇu stable))
+
+  (m0003
+    (uk тотожне? stable)
+    (en eq stable)
+    (sa abheda stable))
+
+  (m0004
+    (uk сполучити stable)
+    (en cons stable)
+    (sa saṃyuj stable))
+
+  (m0005
+    (uk перше stable)
+    (en car stable)
+    (sa ādi stable))
+
+  (m0006
+    (uk решта stable)
+    (en cdr stable)
+    (sa śeṣa stable))
+
+  (m0007
+    (uk за-умовою stable)
+    (en cond stable)
+    (sa krama stable))
+
+  ; Necessary forms. Sanskrit remains honestly incomplete.
+  (m0010
+    (uk функція stable)
+    (en lambda stable)
+    (sa — missing))
+
+  (m0011
+    (uk визначити stable)
+    (en define stable)
+    (sa — missing))
+
+  (m0012
+    (uk визначити-макрос stable)
+    (en defmacro stable)
+    (sa — missing))
+
+  ; Ordinary public API: same topology as Canon, different mutability policy.
+  (m0101
+    (uk відобразити stable)
+    (en map stable)
+    (sa āvartana candidate))
+
+  (m0102
+    (uk відсіяти stable)
+    (en filter stable)
+    (sa kalpana candidate))
+
+  (m0103
+    (uk згорнути stable)
+    (en reduce stable)
+    (sa saṅgraha candidate))
+
+  (m0104
+    (uk додати stable)
+    (en + stable)
+    (sa yoga stable)))
