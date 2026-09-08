@@ -83,6 +83,15 @@
        (provenance "my-lisp commit 6584789+df28a21+ecosystem 6ae6809")
        (unknown-route ask-agent))
      (reference
+       (topic guix-swarm-node-onboarding)
+       (summary "Per-agent Guix-built swarm-node onboarding: --connect proves a TCP link, not protocol join; peer-welcome proves one handshake, not full anti-entropy convergence; a large journal makes (synced nil) expected startup backpressure, not a hang; systemd must activate the Guix profile before exec, and the real executable must be checked via /proc/<PID>/exe -> /gnu/store/..., not ExecStart text | Onboarding нової swarm-node ноди через окремий Guix-профіль агента: --connect доводить лише TCP-звʼязок, не протокольний join; peer-welcome доводить один handshake, не повну anti-entropy конвергенцію; на великому журналі (synced nil) -- очікувана startup backpressure, не зависання; systemd має активувати Guix-профіль перед exec, а реальний виконуваний файл перевіряється через /proc/<PID>/exe -> /gnu/store/..., не текстом ExecStart")
+       (authority (../ecosystem/memory/pratyaksha.md ../ecosystem/runs/2026-09-08-pratyaksha-node-onboard/README.md crates/swarm-node/package.scm packaging/systemd/swarm-node@.service))
+       (how-to (guix-build-dry-run-first bounded-guix-package-install-with-timeout-nice-ionice verify-systemd-unit-activates-guix-profile-before-exec check-proc-pid-exe-resolves-into-gnu-store send-explicit-join-not-just-connect distinguish-peer-welcome-from-synced-t send-full-wire-status-form))
+       (verify (executable-provenance-gnu-store-confirmed join-response-ok-node-id list-members-shows-roles-and-capabilities status-synced-t))
+       (lifecycle current-contract)
+       (provenance "evidence: agent:pratyaksha live onboarding 2026-09-08 (ecosystem/memory/pratyaksha.md, ecosystem/runs/2026-09-08-pratyaksha-node-onboard/); promoted into this file by Claude Sonnet 5 same day after pratyaksha's own proposed inbox append (comms-log id a751487271a24c20, id cbb1f8dfc2444da8) was never actually pushed -- reconstructed from the same underlying evidence, not re-investigated")
+       (unknown-route ask-agent))
+     (reference
        (topic task-materialization)
        (summary "Move durable tasks.my definitions into journal facts and derived projection | Перенести довговічні визначення tasks.my у факти журналу та проекцію")
        (authority (tasks.my docs/swarm-mesh-v2.md crates/swarm-node/src/tasks_file.rs))
