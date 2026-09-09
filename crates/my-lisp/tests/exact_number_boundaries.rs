@@ -1,4 +1,7 @@
-use my_lisp::{eval_program, parse, parse_json, ErrorKind, Exactness, ExprKind, NumericBuffer, Rational, Session, Value};
+use my_lisp::{
+    eval_program, parse, parse_json, ErrorKind, Exactness, ExprKind, NumericBuffer, Rational,
+    Session, Value,
+};
 
 const TWO_POW_53: i64 = 9_007_199_254_740_992;
 const TWO_POW_53_PLUS_ONE: &str = "9007199254740993";
@@ -82,12 +85,30 @@ fn exact_decimal_and_exponent_literals_never_enter_binary_float_semantics() {
     for (source, expected) in cases {
         assert_eq!(eval(source).to_string(), expected, "literal: {source}");
     }
+
+    assert_eq!(eval("(* 1e-100 1e100)").to_string(), "1");
+    assert_eq!(eval("(/ 1e100 1e-100)").to_string().len(), 201);
+}
+
+#[test]
+fn exactness_is_observable_while_numeric_equality_compares_magnitude() {
+    let identity = eval(r#"(def x (json-parse "3.0")) (eq 3 x)"#);
+    let magnitude = eval(r#"(def x (json-parse "3.0")) (= 3 x)"#);
+
+    assert_eq!(identity, Value::Nil, "eq must preserve the exact/inexact distinction");
+    assert_eq!(magnitude, Value::Symbol("t".into()));
 }
 
 #[test]
 fn exact_division_reduces_without_losing_large_magnitude() {
-    assert_eq!(eval("(/ 9007199254740993 2)").to_string(), "9007199254740993/2");
-    assert_eq!(eval("(/ 9007199254740993 3)").to_string(), "3002399751580331");
+    assert_eq!(
+        eval("(/ 9007199254740993 2)").to_string(),
+        "9007199254740993/2"
+    );
+    assert_eq!(
+        eval("(/ 9007199254740993 3)").to_string(),
+        "3002399751580331"
+    );
     assert_eq!(eval("(/ 1 10)").to_string(), "1/10");
 }
 
