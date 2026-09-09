@@ -8,7 +8,8 @@
 //! - object  → alist of dotted pairs `("key" . value)`
 //! - array   → proper list
 //! - string  → `Value::String`
-//! - number  → `Value::Number` (exact when integral, inexact otherwise)
+//! - integer-token number → exact scalar (`Value::Number` or `Value::Rational`)
+//! - decimal/exponent number → `Value::Number(..., Exactness::Inexact)`
 //! - true/false → `Value::Bool`
 //! - null    → `Value::Nil`
 //!
@@ -303,9 +304,9 @@ impl<'a> JsonParser<'a> {
         let text = std::str::from_utf8(&self.bytes[start..self.pos])
             .map_err(|_| self.error("invalid number"))?;
         if integral {
-            if let Ok(n) = text.parse::<i64>() {
-                return Ok(Value::Number(n as f64, crate::Exactness::Exact));
-            }
+            let integer = crate::Rational::from_literal(text, "1")
+                .ok_or_else(|| self.error("invalid number"))?;
+            return Ok(super::super::arithmetic::exact_value(integer));
         }
         text.parse::<f64>()
             .map(|n| Value::Number(n, crate::Exactness::Inexact))
