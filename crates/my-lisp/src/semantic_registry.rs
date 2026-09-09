@@ -130,6 +130,20 @@ pub(crate) fn semantic_id_for_surface(name: &str) -> Option<&'static str> {
     surface_index().get(name).copied()
 }
 
+pub(crate) fn stable_surfaces_for_semantic_id_from_source(
+    source: &'static str,
+    semantic_id: &str,
+) -> Vec<&'static str> {
+    stable_surfaces_from_index(&build_surface_index(source), semantic_id)
+}
+
+pub(crate) fn admitted_surfaces_for_semantic_id_from_source(
+    source: &'static str,
+    semantic_id: &str,
+) -> Vec<&'static str> {
+    admitted_surfaces_from_rows(&parse_rows(source), semantic_id)
+}
+
 pub(crate) fn stable_surfaces_for_semantic_id(semantic_id: &str) -> Vec<&'static str> {
     stable_surfaces_from_index(surface_index(), semantic_id)
 }
@@ -137,7 +151,7 @@ pub(crate) fn stable_surfaces_for_semantic_id(semantic_id: &str) -> Vec<&'static
 /// Stable and compatibility-only spellings admitted for direct runtime binding.
 /// Candidate/missing surfaces and the opaque machine ID itself are excluded.
 pub(crate) fn admitted_surfaces_for_semantic_id(semantic_id: &str) -> Vec<&'static str> {
-    admitted_surfaces_from_rows(&parse_rows(SEMANTIC_REGISTRY), semantic_id)
+    admitted_surfaces_for_semantic_id_from_source(SEMANTIC_REGISTRY, semantic_id)
 }
 
 #[cfg(test)]
