@@ -435,7 +435,9 @@ mod incarnation_tests {
         let before = b"(node (id original-node) (epoch 7)";
         fs::write(&path, before).unwrap();
 
-        let err = load_or_init_identity(&dir, "replacement-node").unwrap_err();
+        let err = load_or_init_identity(&dir, "replacement-node")
+            .err()
+            .expect("corrupt identity must fail closed");
 
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
         assert_eq!(fs::read(&path).unwrap(), before);
@@ -455,7 +457,9 @@ mod incarnation_tests {
             let path = dir.join("node.my");
             fs::write(&path, text).unwrap();
 
-            let err = load_or_init_identity(&dir, "n").unwrap_err();
+            let err = load_or_init_identity(&dir, "n")
+                .err()
+                .expect("malformed identity fields must fail closed");
 
             assert_eq!(err.kind(), std::io::ErrorKind::InvalidData, "{text}");
             assert_eq!(fs::read_to_string(&path).unwrap(), text);
