@@ -105,13 +105,24 @@ fn generator_has_one_external_semantic_input_and_projection_stays_draft() {
     let constitution = fs::read_to_string(root.join("my-lisp-constitution.my"))
         .expect("checked-in constitution should be readable");
 
+    let executable = script
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with(';'))
+        .collect::<Vec<_>>();
+
     assert_eq!(
-        script.matches("(read-file ").count(),
+        executable
+            .iter()
+            .filter(|line| line.contains("(read-file "))
+            .count(),
         1,
-        "generator gained another external data authority; resolve ownership explicitly before accepting it"
+        "generator gained another executable external data authority; resolve ownership explicitly before accepting it"
     );
     assert!(
-        script.contains("(read-file \"tests/fixtures/conformance.my\")"),
+        executable
+            .iter()
+            .any(|line| line.contains("(read-file \"tests/fixtures/conformance.my\")")),
         "conformance.my must remain the generator's single external semantic data input"
     );
     assert!(
