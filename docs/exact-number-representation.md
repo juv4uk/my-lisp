@@ -80,6 +80,29 @@ source integer / decimal / exponent / n/d
 
 Якщо хоча б один арифметичний operand є свідомо inexact, арифметика переходить до f64 і повертає `Exactness::Inexact`. Це явний semantic transition, а не exact-value compression.
 
+### JSON numeric boundary
+
+Другий falsification sweep #28 знайшов той самий клас помилки у `json-parse`: integer token спочатку парсився як `i64`, а потім напряму будував `Value::Number(n as f64, Exactness::Exact)`. Отже JSON integer `9007199254740993` міг округлитися, але залишитися позначеним `Exact`.
+
+Виправлений шлях тепер такий:
+
+```text
+JSON integer token
+      |
+      v
+arbitrary-precision Rational::from_literal
+      |
+      v
+exact_value()
+   /      \
+<= 2^53   larger
+  |         |
+Number     Rational
+ Exact      Exact
+```
+
+Тому integral JSON numbers тепер мають ту саму losslessness boundary, що й source literals та arithmetic results, включно з integers більшими за i64. Decimal/exponent JSON tokens (`0.1`, `1e3`) лишаються **явно inexact wire-format boundary** у поточному JSON decoder і повертають `Value::Number(..., Exactness::Inexact)`; аудит не маскує цю відмінність.
+
 ### Порівняння та identity
 
 Magnitude comparisons `<`, `=`, `>` порівнюють усі exact inputs як Rational values. Якщо бере участь inexact operand, порівняння використовує f64 magnitudes.
@@ -115,10 +138,10 @@ Typed buffers — це явна межа narrowing, а не scalar exact arithme
 Поточний code search знаходить створення звичайного `Value::Number(..., Exactness::Inexact)` у вузько визначених місцях:
 
 1. арифметика, де input уже містить inexact value;
-2. JSON numeric parsing, де зовнішнє JSON number інтерпретується через f64;
+2. **decimal/exponent** JSON numeric tokens, які поточний wire-format decoder свідомо інтерпретує через f64; integral JSON tokens відтепер ідуть arbitrary-precision exact path;
 3. higher-order bridge для f32-buffer, де buffer elements свідомо подаються callback-у як inexact f64 values.
 
-Source-language decimal literals самі по собі точні: `0.1` означає `1/10`, а не binary64 approximation.
+Source-language decimal literals самі по собі точні: `0.1` означає `1/10`, а не binary64 approximation. JSON `0.1` є окремою boundary policy і наразі inexact.
 
 ## Executable evidence
 
@@ -130,9 +153,11 @@ Source-language decimal literals самі по собі точні: `0.1` озн
 - one-past-boundary values залишаються Rational;
 - fast-path multiplication не може назвати округлений f64 точним;
 - арифметика через Number/Rational representation boundary зберігає magnitude;
-- decimal/comma/exponent literals залишаються exact;
+- decimal/comma/exponent source literals залишаються exact;
 - exact division зберігає reduced fraction і великі integers;
 - write/read/eval round-trip зберігає велике exact integer;
+- integral JSON numbers використовують ту саму exact compression boundary, включно з arbitrary-precision integers;
+- decimal JSON number лишається explicit inexact boundary;
 - parser resource limits лишаються названим `NumericOverflow`;
 - i32/f32 buffers лишаються явними narrowing boundaries.
 
@@ -148,13 +173,14 @@ Source-language decimal literals самі по собі точні: `0.1` озн
 
 - «my-lisp має arbitrary-precision exact integers і rationals»;
 - «source decimal literals є точними»;
+- «integral JSON numbers зберігаються точно, незалежно від i64/f64 range»;
 - «inexact arithmetic стає явною після входження inexact value у computation».
 
 Не варто стверджувати без зміни implementation:
 
 - «усі числа — Rational»;
 - «my-lisp не використовує floats»;
-- «кожна numeric boundary є exact» — typed f32 buffers та зовнішні JSON numbers навмисно мають inexact boundaries.
+- «кожна numeric boundary є exact» — typed f32 buffers та decimal/exponent JSON numbers навмисно мають inexact boundaries.
 
 ## Stop condition
 
