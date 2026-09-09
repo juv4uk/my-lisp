@@ -51,7 +51,7 @@ fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
         .collect()
 }
 
-pub(super) fn build_surface_index(
+pub(in crate::eval) fn build_surface_index(
     source: &'static str,
 ) -> HashMap<&'static str, &'static str> {
     let mut index = HashMap::new();
@@ -73,7 +73,7 @@ fn surface_index() -> &'static HashMap<&'static str, &'static str> {
     INDEX.get_or_init(|| build_surface_index(SEMANTIC_REGISTRY))
 }
 
-pub(super) fn semantic_id_for_surface(name: &str) -> Option<&'static str> {
+pub(in crate::eval) fn semantic_id_for_surface(name: &str) -> Option<&'static str> {
     surface_index().get(name).copied()
 }
 
