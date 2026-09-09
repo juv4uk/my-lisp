@@ -9,9 +9,10 @@
 - Аудитованих ownership rows: **34**
 - Підтверджених ownership rows: **32**
 - Часткових ownership rows: **2**
-- Підтверджених записів migration ledger: **8**
+- Підтверджених host/Rust→Lisp semantic migrations: **2**
+- Підтверджених записів migration ledger загалом: **8**
 - Залишкових host semantic-policy candidates: **1**
-- Підтверджених незвідних host mechanism/observation/authorization rows: **6**
+- Підтверджених host mechanism/observation/authorization rows, не позначених policy candidate: **6**
 - Ownership rows зі статусом unknown: **0**
 
 ## Класи власності
