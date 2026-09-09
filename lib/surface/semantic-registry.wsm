@@ -16,7 +16,7 @@
   (0007 (en cond stable) (uk за-умовою stable) (sa anukrama stable) (sym ?: stable))
   (0010 (en lambda stable) (uk функція stable) (sa — missing))
   (0011 (en define stable) (uk визначити stable) (sa — missing))
-  (0012 (en defmacro stable) (uk визначити-макрос stable) (sa — missing))
+  (0012 (en defmacro stable) (uk визначити-макрос stable) (sa — missing) (compat defmacro-derived compatibility-only))
   (1000 (en def compatibility-only) (uk — compatibility-only) (sa — compatibility-only))
   (0104 (en — missing) (uk додати stable) (sa yoga stable) (sym + stable))
   (1001 (en — missing) (uk відняти stable) (sa viyoga stable) (sym - stable))
