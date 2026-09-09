@@ -189,7 +189,11 @@ pub(super) fn arithmetic_on_values(
         if let Some(result) = result {
             let exact = Rational::integer(result);
             check_numeric_limit(environment, &exact, span)?;
-            return Ok(Value::Number(result as f64, Exactness::Exact));
+            // `checked_*` proves only i64 range, not f64 exact-integer range.
+            // Route through the one compression gate that knows the ±2^53
+            // boundary so a fast-path result can never be silently rounded
+            // while still carrying `Exactness::Exact`.
+            return Ok(exact_value(exact));
         }
         // overflow: fall through to bignum path below
     }
