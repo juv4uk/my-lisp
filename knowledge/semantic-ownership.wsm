@@ -1,0 +1,59 @@
+; semantic-ownership.wsm — executable inventory for issue #25.
+; This is data, not a semantic contract. It measures audited ownership only.
+; One row = one behavior/responsibility. No LOC-derived claims, no "self-hosting %".
+(schema semantic-ownership/1)
+(as-of "2026-09-09")
+(scope audited-primary-behaviors)
+
+; ownership KEY SEMANTIC_ID CLASS LAYER STATUS POLICY_CANDIDATE
+;           "BEHAVIOR" "IMPLEMENTATION_PATHS" "EVIDENCE_PATHS" PREVIOUS_OWNER MIGRATION_REF
+(ownership canon-empty-list - canon-ground canon confirmed no "Canon 0 empty-list ground object" "crates/my-lisp/src/eval/canon.rs" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership canon-quote 0001 canon-operation canon confirmed no "QUOTE evaluator meaning and reserved surface resolution" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/src/eval/mod.rs" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership canon-atom 0002 canon-operation canon confirmed no "ATOM first-class canonical operation" "crates/my-lisp/src/eval/canon.rs" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership canon-eq 0003 canon-operation canon confirmed no "EQ first-class canonical identity operation" "crates/my-lisp/src/eval/canon.rs" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership canon-cons 0004 canon-operation canon confirmed no "CONS first-class canonical construction operation" "crates/my-lisp/src/eval/canon.rs" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership canon-car 0005 canon-operation canon confirmed no "CAR first-class canonical projection operation" "crates/my-lisp/src/eval/canon.rs" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership canon-cdr 0006 canon-operation canon confirmed no "CDR first-class canonical remainder operation" "crates/my-lisp/src/eval/canon.rs" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership canon-cond 0007 canon-operation canon confirmed no "COND canonical short-circuit syntax" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/src/eval/mod.rs" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/tests/mccarthy.rs" - -)
+
+(ownership necessary-lambda 0010 necessary-form bootstrap confirmed no "LAMBDA evaluator-controlled closure construction" "crates/my-lisp/src/eval/necessary_forms.rs;crates/my-lisp/src/eval/closures.rs" "crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership necessary-define 0011 necessary-form bootstrap confirmed no "DEFINE evaluator-controlled immutable binding form" "crates/my-lisp/src/eval/necessary_forms.rs;crates/my-lisp/src/eval/mod.rs" "crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership macro-definition 0012 lisp-owned bootstrap confirmed no "Macro-definition behavior derived in lib/macro.my over narrow make-macro substrate" "lib/macro.my;crates/my-lisp/src/eval/macro_substrate.rs;crates/my-lisp/src/lib.rs" "crates/my-lisp/tests/macro_derivation.rs" host-mechanism 3fff9e9fbb7171a81ba128baedd68f093fc0c65b)
+
+(ownership list-constructor - lisp-owned stdlib confirmed no "Variadic list constructor derived from language lambda/rest semantics" "lib/core.my" "crates/my-lisp/tests/mccarthy.rs" host-mechanism efdd9252fd4ca4af4503b219ab3ae79130ef0e64)
+(ownership gensym - lisp-owned stdlib confirmed no "Fresh-symbol policy composed in Lisp from string operations and monotonic observation" "lib/core.my" "tests/fixtures/conformance.my;crates/my-lisp/tests/mccarthy.rs" - -)
+(ownership meta-evaluator - lisp-owned self-hosting partial no "Lisp-owned evaluator witness with known parity gaps" "lib/meta-eval.my" "crates/my-lisp/tests/meta_eval.rs;crates/my-lisp/tests/meta_eval_parity.rs" - -)
+
+(ownership unification - lisp-owned reasoning confirmed no "Logic-variable unification and occurs-check" "lib/unify.my" "tests/fixtures/conformance.my" - -)
+(ownership backward-reasoning - lisp-owned reasoning confirmed no "Backward-chaining proof search and provenance construction" "lib/reason.my" "crates/my-lisp/tests/reason_stack.rs;crates/my-lisp/tests/reason_index.rs" - -)
+(ownership reason-index - lisp-owned reasoning confirmed no "Finite immutable predicate index with exact linear fallback" "lib/reason.my" "crates/my-lisp/tests/reason_index.rs;crates/my-lisp/tests/reason_advice_scale.rs" - -)
+(ownership reasoning-outcomes - lisp-owned reasoning confirmed no "Data-only proved/unknown/partial/blocked/disputed/invalid outcome algebra" "lib/result-status.my" "crates/my-lisp/tests/result_status.rs" - -)
+(ownership knowledge-journal - lisp-owned knowledge confirmed no "Append-only knowledge journal and guarded knowledge admission" "lib/knowledge.my" "crates/my-lisp/tests/knowledge.rs" - -)
+(ownership immutable-worlds - lisp-owned knowledge confirmed no "Immutable world snapshots and explicit world transitions" "lib/world.my" "crates/my-lisp/tests/world.rs" - -)
+(ownership translation-review - lisp-owned knowledge confirmed no "External translation candidate validation and admission review" "lib/translation.my" "crates/my-lisp/tests/translation_boundary.rs" - -)
+(ownership outcome-narration - lisp-owned reasoning confirmed no "Human-facing narration over structured reasoning outcomes" "lib/narrate.my" "crates/my-lisp/tests/narrate_outcomes.rs" - -)
+
+(ownership time-semantics - lisp-owned stdlib confirmed no "UTC/calendar/deadline meaning derived in Lisp from raw clock observations" "lib/time.my;crates/my-lisp/src/lib.rs" "crates/my-lisp/tests/time_host_surface.rs;crates/my-lisp/tests/clock.rs" - -)
+(ownership utf8-interpretation - lisp-owned stdlib confirmed no "UTF-8 byte-to-text validation and interpretation" "lib/utf8.my" "crates/my-lisp-host/tests/process_text.rs" - -)
+(ownership process-public-result - lisp-owned stdlib confirmed no "Public process-run result interpretation over process-run-raw" "lib/process.my;crates/my-lisp/src/lib.rs" "crates/my-lisp-host/tests/process_surface.rs;crates/my-lisp-host/tests/process_text.rs" - -)
+(ownership tcp-text-semantics - lisp-owned stdlib confirmed no "Public TCP text decoding over raw socket bytes" "lib/tcp.my;crates/my-lisp/src/lib.rs" "crates/my-lisp-host/tests/portable_substrate.rs" - -)
+
+(ownership monotonic-clock - host-observation host-capability confirmed no "Monotonic nanosecond observation exposed without calendar policy" "crates/my-lisp/src/eval/builtins.rs" "crates/my-lisp/tests/clock.rs" - -)
+(ownership process-run-raw - host-mechanism host-capability confirmed no "OS process execution and captured raw bytes" "crates/my-lisp-host/src/process_raw.rs;crates/my-lisp-host/src/lib.rs" "crates/my-lisp-host/tests/process_raw.rs;crates/my-lisp-host/tests/process_surface.rs" - -)
+(ownership filesystem-authorization - host-authorization host-capability confirmed no "Per-session filesystem read/write scope and host canonicalization enforcement" "crates/my-lisp/src/environment.rs;crates/my-lisp-host/src/lib.rs" "crates/my-lisp-host/tests/capability_scoping.rs" - -)
+(ownership process-authorization - host-authorization host-capability confirmed no "Per-session process allowlist that Lisp code cannot self-grant" "crates/my-lisp/src/environment.rs;crates/my-lisp-host/src/process_raw.rs" "crates/my-lisp-host/tests/process_raw.rs;crates/my-lisp-host/tests/capability_scoping.rs" - -)
+(ownership tcp-authorization - host-authorization host-capability confirmed no "Per-session connect/listen allowlists enforced before OS operations" "crates/my-lisp/src/environment.rs;crates/my-lisp-host/src/lib.rs" "crates/my-lisp-host/tests/capability_scoping.rs" - -)
+(ownership tcp-resource-representation - host-mechanism host-capability partial yes "Concrete TcpStream/TcpListener representation still appears in core Value; focused audit is issue 27" "crates/my-lisp/src/value.rs" "crates/my-lisp-host/tests/portable_substrate.rs" - -)
+
+(ownership surface-registry-projection - host-mechanism tooling confirmed no "Rust projection/index mechanism reads numeric semantic surface authority without owning spellings" "crates/my-lisp/src/semantic_registry.rs;lib/surface/semantic-registry.wsm" "crates/my-lisp/src/semantic_registry.rs;crates/my-lisp/tests/runtime_peer_operators.rs" host-mechanism 668794caf6f3e2e1d0d6c8e740f218cc6ef04db9)
+(ownership tooling-syntax-discovery - derived-tooling tooling confirmed no "Tooling metadata keys syntax by semantic identity and derives spellings from registry" "crates/my-lisp/src/language_items.rs;crates/my-lisp/src/semantic_registry.rs" "crates/my-lisp/src/language_items.rs;crates/my-lisp/tests/uk_surface_inventory.rs" derived-tooling e8f60f659199686205376ca4fd1c570034c05de6)
+
+; migration KEY FROM_OWNER TO_OWNER STATUS COMMIT "BEHAVIOR" "CURRENT_EVIDENCE_PATHS"
+(migration list-rust-to-lisp host-mechanism lisp-owned confirmed efdd9252fd4ca4af4503b219ab3ae79130ef0e64 "list special form removed from Rust and defined in lib/core.my" "lib/core.my;crates/my-lisp/tests/mccarthy.rs")
+(migration defmacro-fallback-to-lisp host-mechanism lisp-owned confirmed 3fff9e9fbb7171a81ba128baedd68f093fc0c65b "Rust defmacro evaluator fallback removed; language macro path owns behavior" "lib/macro.my;crates/my-lisp/tests/macro_derivation.rs")
+(migration necessary-form-surface-authority host-hardcoded registry-data confirmed 3fa2ae1f5e5786cd5c0b41489648a23bb1f405f5 "LAMBDA/DEFINE stable surface routing moved from Rust spelling tables to numeric registry projection" "crates/my-lisp/src/eval/necessary_forms.rs;crates/my-lisp/src/semantic_registry.rs")
+(migration canon-surface-authority host-hardcoded registry-data confirmed 668794caf6f3e2e1d0d6c8e740f218cc6ef04db9 "Canon stable surface routing moved to shared numeric semantic registry projection" "crates/my-lisp/src/eval/canon.rs;crates/my-lisp/src/semantic_registry.rs")
+(migration peer-builtin-surface-authority host-hardcoded registry-data confirmed dd4d9ae7d7bccbe465a0ae8ceb1b2f17f5f80f4e "Arithmetic/comparison peer names moved from Rust arrays to registry-derived bindings" "crates/my-lisp/src/eval/builtins.rs;crates/my-lisp/tests/runtime_peer_operators.rs")
+(migration macro-peer-surface-authority host-hardcoded registry-data confirmed baa03b7acf0793bec3184a48099c484231922bea "0012 stable and compatibility peer names moved from loader literals to registry admission" "crates/my-lisp/src/lib.rs;crates/my-lisp/tests/macro_derivation.rs")
+(migration tooling-human-key-to-semantic-id human-spelling-tooling semantic-id-tooling confirmed e8f60f659199686205376ca4fd1c570034c05de6 "Tooling syntax discovery moved from human spelling keys to semantic identities" "crates/my-lisp/src/language_items.rs;crates/my-lisp/tests/uk_surface_inventory.rs")
+(migration core-host-capability-split core-os-code host-adapter confirmed f565f6692c36a97f80afe0233f0bdb8dca506b81 "OS-touching filesystem/process/TCP operations moved from my-lisp core to my-lisp-host" "crates/my-lisp/src/eval/capabilities.rs;crates/my-lisp-host/src/lib.rs;crates/my-lisp-host/tests/portable_substrate.rs")
