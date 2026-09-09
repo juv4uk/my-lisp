@@ -1,0 +1,141 @@
+name: Apply claim-race repair
+
+on:
+  push:
+    branches:
+      - fix/swarm-claim-race
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply focused #35 repair
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          main = Path('crates/swarm-node/src/main.rs')
+          text = main.read_text()
+
+          anchor = '''/// A peer is asking us to vote on `(claim-proposal (task ..) (agent ..) (generation ..))`.
+'''
+          helper = '''/// Atomically reserves this voter's YES vote for one task generation.
+/// Local self-votes and remote proposal votes must pass through this exact
+/// gate; otherwise two simultaneous proposers can each count themselves
+/// while also voting YES for the competitor and both reach quorum.
+fn try_acquire_claim_promise(node: &Arc<Node>, task: &str, generation: u64) -> bool {
+    let mut promises = node
+        .promised
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let promise_free = match promises.get(task) {
+        Some((promised_gen, at)) => *promised_gen < generation || at.elapsed() > PROMISE_TTL,
+        None => true,
+    };
+    if promise_free {
+        promises.insert(task.to_string(), (generation, Instant::now()));
+    }
+    promise_free
+}
+
+'''
+          if text.count(anchor) != 1:
+              raise SystemExit(f'claim-proposal anchor count={text.count(anchor)}, expected 1')
+          text = text.replace(anchor, helper + anchor, 1)
+
+          old_remote = '''    let mut promises = node
+        .promised
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let promise_free = match promises.get(&task) {
+        Some((promised_gen, at)) => *promised_gen < generation || at.elapsed() > PROMISE_TTL,
+        None => true,
+    };
+    let vote = fencing_ok && promise_free;
+    if vote {
+        promises.insert(task.clone(), (generation, Instant::now()));
+    }
+    drop(promises);
+'''
+          new_remote = '''    let promise_free = if fencing_ok {
+        try_acquire_claim_promise(node, &task, generation)
+    } else {
+        false
+    };
+    let vote = fencing_ok && promise_free;
+'''
+          if text.count(old_remote) != 1:
+              raise SystemExit(f'remote promise block count={text.count(old_remote)}, expected 1')
+          text = text.replace(old_remote, new_remote, 1)
+
+          old_local = '''    let generation = current.generation + 1;
+    let key = format!("{task}:{generation}");
+'''
+          new_local = '''    let generation = current.generation + 1;
+
+    // Counting our own vote must acquire the same promise as a remote YES.
+    // If this node already promised the competing proposal, abort instead
+    // of self-voting (or trying to commit a conflicting local proposal).
+    if self_votes == 1 && !try_acquire_claim_promise(node, task, generation) {
+        send(
+            stream,
+            &Sexp::list(vec![
+                Sexp::atom("error"),
+                Sexp::string(format!(
+                    "claim conflict for `{task}` generation {generation}: local voter already promised a competing proposal"
+                )),
+            ]),
+        );
+        return;
+    }
+
+    let key = format!("{task}:{generation}");
+'''
+          if text.count(old_local) != 1:
+              raise SystemExit(f'local generation anchor count={text.count(old_local)}, expected 1')
+          text = text.replace(old_local, new_local, 1)
+          main.write_text(text)
+
+          race = Path('crates/swarm-node/tests/claim_race.rs')
+          r = race.read_text()
+          old_header = '''//! The invariant is currently broken: exact-head CI on 0438477ea2d5fffbd68f351cc93cd1b3e4be80aa
+//! observed both proposers commit `RACE-0` at generation 1 with 2/3 votes.
+//! Keep this witness executable but ignored until #35 repairs M0.6; do not
+//! weaken the expected result merely to make the audit green.
+'''
+          new_header = '''//! This witness originally falsified M0.6 on exact-head CI
+//! 0438477ea2d5fffbd68f351cc93cd1b3e4be80aa, where both proposers committed
+//! `RACE-0` at generation 1 with 2/3 votes. It is now an ordinary regression
+//! gate for #35 and must never be weakened to eventual last-writer convergence.
+'''
+          if r.count(old_header) != 1:
+              raise SystemExit(f'claim-race header count={r.count(old_header)}, expected 1')
+          r = r.replace(old_header, new_header, 1)
+          ignore = '#[ignore = "known M0.6 split-brain; see #35; exact failing CI: run 34383235478 job 102572976693"]\n'
+          if r.count(ignore) != 1:
+              raise SystemExit(f'ignore marker count={r.count(ignore)}, expected 1')
+          r = r.replace(ignore, '', 1)
+          race.write_text(r)
+          PY
+
+          cargo fmt --all
+          cargo test -p swarm-node --test claim_race -- --nocapture
+          cargo test --workspace
+          cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Commit verified repair and remove staging workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/swarm-node/src/main.rs crates/swarm-node/tests/claim_race.rs
+          git rm .github/workflows/apply-claim-fix.yml
+          git commit -m "fix(swarm): serialize local and remote claim promises"
+          git push origin HEAD
