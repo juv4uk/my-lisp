@@ -65,7 +65,7 @@ fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
 fn build_surface_index(source: &'static str) -> HashMap<&'static str, &'static str> {
     let mut index = HashMap::new();
     for row in parse_rows(source) {
-        for surface in std::iter::once(row.semantic_id).chain(row.stable_surfaces.into_iter()) {
+        for surface in std::iter::once(row.semantic_id).chain(row.stable_surfaces) {
             if let Some(previous) = index.insert(surface, row.semantic_id) {
                 panic!(
                     "semantic registry surface must be unique: {surface} maps to both {previous} and {}",
