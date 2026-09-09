@@ -193,17 +193,6 @@ mod tests {
     }
 
     #[test]
-    fn stage_f1_registry_cost_profile() {
-        let started = std::time::Instant::now();
-        let index = build_surface_index(SEMANTIC_REGISTRY);
-        let elapsed = started.elapsed();
-        eprintln!("STAGE_F1_REGISTRY_BYTES={}", SEMANTIC_REGISTRY.len());
-        eprintln!("STAGE_F1_INDEX_ENTRIES={}", index.len());
-        eprintln!("STAGE_F1_INDEX_CAPACITY={}", index.capacity());
-        eprintln!("STAGE_F1_INDEX_BUILD_NS={}", elapsed.as_nanos());
-    }
-
-    #[test]
     fn registry_projection_resolves_unrelated_stable_rows_without_routing_them() {
         assert_eq!(semantic_id_for_surface("+"), Some("0104"));
         assert_eq!(identity_for_symbol("+"), None);
