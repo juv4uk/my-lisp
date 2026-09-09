@@ -76,66 +76,34 @@ fn meta_error_kind(value: &str) -> Option<&str> {
 }
 
 #[test]
-fn named_error_pressure_records_exact_current_kind_matches_and_divergences() {
-    struct Case {
-        source: &'static str,
-        native: ErrorKind,
-        meta: &'static str,
-        kind_parity: bool,
-    }
-
+fn named_error_pressure_preserves_explicit_reference_to_meta_correspondence() {
+    // `meta_eval_errors.rs` already establishes these pairs deliberately:
+    // native ErrorKind remains asserted on the reference side, while the
+    // Lisp evaluator exposes a data-level named observation. The spellings
+    // need not be textually identical for the correspondence to be explicit.
     let cases = [
-        Case {
-            source: "(missing)",
-            native: ErrorKind::UnknownSymbol,
-            meta: "unbound-symbol",
-            kind_parity: false,
-        },
-        Case {
-            source: "((quote missing))",
-            native: ErrorKind::Type,
-            meta: "not-callable",
-            kind_parity: false,
-        },
-        Case {
-            source: "((lambda (x) x))",
-            native: ErrorKind::Arity,
-            meta: "arity",
-            kind_parity: true,
-        },
-        Case {
-            source: "(lambda (x x) x)",
-            native: ErrorKind::InvalidForm,
-            meta: "invalid-form",
-            kind_parity: true,
-        },
-        Case {
-            source: "(lambda (car) car)",
-            native: ErrorKind::InvalidForm,
-            meta: "invalid-form",
-            kind_parity: true,
-        },
+        ("(missing)", ErrorKind::UnknownSymbol, "unbound-symbol"),
+        ("((quote missing))", ErrorKind::Type, "not-callable"),
+        ("((lambda (x) x))", ErrorKind::Arity, "arity"),
+        ("(lambda (x x) x)", ErrorKind::InvalidForm, "invalid-form"),
+        ("(lambda (car) car)", ErrorKind::InvalidForm, "invalid-form"),
     ];
 
-    for case in cases {
-        assert_eq!(native_error_kind(case.source), case.native, "source: {}", case.source);
-        let meta = meta_eval(case.source);
-        assert_eq!(meta_error_kind(&meta), Some(case.meta), "source: {}", case.source);
-
-        let native_label = match case.native {
-            ErrorKind::UnknownSymbol => "unknown-symbol",
-            ErrorKind::Arity => "arity",
-            ErrorKind::Type => "type",
-            ErrorKind::InvalidForm => "invalid-form",
-            _ => panic!("case uses an error kind outside the self-hosting evidence vocabulary"),
-        };
-        assert_eq!(
-            native_label == case.meta,
-            case.kind_parity,
-            "matrix parity classification drifted for {}",
-            case.source
-        );
+    for (source, native_kind, meta_kind) in cases {
+        assert_eq!(native_error_kind(source), native_kind, "source: {source}");
+        let meta = meta_eval(source);
+        assert_eq!(meta_error_kind(&meta), Some(meta_kind), "source: {source}");
     }
+}
+
+#[test]
+fn bare_unresolved_symbol_remains_a_real_lookup_gap() {
+    assert_eq!(native_error_kind("missing"), ErrorKind::UnknownSymbol);
+    assert_eq!(
+        meta_eval("missing"),
+        "missing",
+        "meta atom lookup currently falls back to the symbol itself instead of a named unresolved observation"
+    );
 }
 
 #[test]
