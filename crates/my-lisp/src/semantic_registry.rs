@@ -130,6 +130,7 @@ pub(crate) fn semantic_id_for_surface(name: &str) -> Option<&'static str> {
     surface_index().get(name).copied()
 }
 
+#[cfg(test)]
 pub(crate) fn stable_surfaces_for_semantic_id_from_source(
     source: &'static str,
     semantic_id: &str,
