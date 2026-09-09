@@ -72,8 +72,26 @@ fn surface_index() -> &'static HashMap<&'static str, &'static str> {
     INDEX.get_or_init(|| build_surface_index(SEMANTIC_REGISTRY))
 }
 
+fn stable_surfaces_from_index(
+    index: &HashMap<&'static str, &'static str>,
+    semantic_id: &str,
+) -> Vec<&'static str> {
+    let mut surfaces = index
+        .iter()
+        .filter_map(|(surface, mapped_id)| {
+            (*mapped_id == semantic_id && *surface != semantic_id).then_some(*surface)
+        })
+        .collect::<Vec<_>>();
+    surfaces.sort_unstable();
+    surfaces
+}
+
 pub(crate) fn semantic_id_for_surface(name: &str) -> Option<&'static str> {
     surface_index().get(name).copied()
+}
+
+pub(crate) fn stable_surfaces_for_semantic_id(semantic_id: &str) -> Vec<&'static str> {
+    stable_surfaces_from_index(surface_index(), semantic_id)
 }
 
 #[cfg(test)]
@@ -99,6 +117,15 @@ mod tests {
         assert_eq!(index.get("comet"), Some(&"4242"));
         assert_eq!(index.get("asteroid"), None);
         assert_eq!(index.get("—"), None);
+    }
+
+    #[test]
+    fn stable_surfaces_are_constructively_selected_by_semantic_id() {
+        const SYNTHETIC: &str =
+            "(0104 (uk comet stable) (sa asteroid candidate) (sym + stable))";
+        let index = build_surface_index(SYNTHETIC);
+        assert_eq!(stable_surfaces_from_index(&index, "0104"), vec!["+", "comet"]);
+        assert!(stable_surfaces_from_index(&index, "9999").is_empty());
     }
 
     #[test]
