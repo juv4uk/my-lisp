@@ -5,8 +5,8 @@
 //! opaque numeric IDs by the shared registry module. This module owns only the
 //! finite mapping from those IDs to canonical evaluator meaning, plus Canon 0.
 
-use super::{necessary_forms::semantic_registry, special_forms::{car_value, cdr_value, cons_values, eq_values}};
-use crate::{Environment, ErrorKind, LanguageError, Span, Value};
+use super::special_forms::{car_value, cdr_value, cons_values, eq_values};
+use crate::{semantic_registry, Environment, ErrorKind, LanguageError, Span, Value};
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -230,8 +230,14 @@ mod tests {
 
     #[test]
     fn canon_meanings_are_selected_only_by_numeric_semantic_identity() {
-        assert_eq!(identity_for_semantic_id(QUOTE_SEMANTIC_ID), Some(CanonicalIdentity::Quote));
-        assert_eq!(identity_for_semantic_id(CAR_SEMANTIC_ID), Some(CanonicalIdentity::Car));
+        assert_eq!(
+            identity_for_semantic_id(QUOTE_SEMANTIC_ID),
+            Some(CanonicalIdentity::Quote)
+        );
+        assert_eq!(
+            identity_for_semantic_id(CAR_SEMANTIC_ID),
+            Some(CanonicalIdentity::Car)
+        );
         assert_eq!(identity_for_semantic_id("0104"), None);
     }
 
@@ -245,7 +251,10 @@ mod tests {
 
     #[test]
     fn numeric_canon_identity_uses_the_same_evaluator_meaning() {
-        assert_eq!(identity_for_surface(CAR_SEMANTIC_ID), Some(CanonicalIdentity::Car));
+        assert_eq!(
+            identity_for_surface(CAR_SEMANTIC_ID),
+            Some(CanonicalIdentity::Car)
+        );
         let numeric = value_for_surface(CAR_SEMANTIC_ID).expect("numeric Canon identity");
         let human = value_for_surface("car").expect("historical Canon surface");
         let (Value::Builtin(numeric), Value::Builtin(human)) = (&numeric, &human) else {
