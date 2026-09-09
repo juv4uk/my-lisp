@@ -122,10 +122,7 @@ tests = anchor + '''
         let err = journal
             .replace_all_with_before_publish(replacement, |temp_path| {
                 assert!(temp_path.exists());
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "injected failure before publish",
-                ))
+                Err(std::io::Error::other("injected failure before publish"))
             })
             .expect_err("injected pre-publish failure must abort replacement");
 
