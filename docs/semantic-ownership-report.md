@@ -7,12 +7,12 @@
 ## Підсумок
 
 - Аудитованих ownership rows: **34**
-- Підтверджених ownership rows: **32**
-- Часткових ownership rows: **2**
+- Підтверджених ownership rows: **33**
+- Часткових ownership rows: **1**
 - Підтверджених host/Rust→Lisp semantic migrations: **2**
 - Підтверджених записів migration ledger загалом: **8**
-- Залишкових host semantic-policy candidates: **1**
-- Підтверджених host mechanism/observation/authorization rows, не позначених policy candidate: **6**
+- Залишкових host semantic-policy candidates: **0**
+- Підтверджених host mechanism/observation/authorization rows, не позначених policy candidate: **7**
 - Ownership rows зі статусом unknown: **0**
 
 ## Класи власності
@@ -45,12 +45,12 @@
 
 | категорія | аудитовані рядки |
 |---|---:|
-| `confirmed` | 32 |
-| `partial` | 2 |
+| `confirmed` | 33 |
+| `partial` | 1 |
 
 ## Кандидати на перевірку host-policy ownership
 
-- `tcp-resource-representation` — Конкретні TcpStream/TcpListener досі присутні у core Value; focused audit — issue 27 (`partial`)
+- немає
 
 ## Підтверджений журнал міграцій
 
@@ -94,7 +94,7 @@
 | `reasoning-outcomes` | `—` | `lisp-owned` | `reasoning` | `confirmed` | Data-only outcome algebra: proved/unknown/partial/blocked/disputed/invalid |
 | `surface-registry-projection` | `—` | `host-mechanism` | `tooling` | `confirmed` | Rust projection/index mechanism читає numeric surface authority, не володіючи людськими spelling |
 | `tcp-authorization` | `—` | `host-authorization` | `host-capability` | `confirmed` | Per-session connect/listen allowlists, перевірені до OS-операції |
-| `tcp-resource-representation` | `—` | `host-mechanism` | `host-capability` | `partial` | Конкретні TcpStream/TcpListener досі присутні у core Value; focused audit — issue 27 |
+| `tcp-resource-representation` | `—` | `host-mechanism` | `host-capability` | `confirmed` | Concrete TcpStream/TcpListener storage is confined to core Value; semantics and OS operations remain host-only; opaque Rc<dyn Any> experiment proves representation can be erased when a real portability trigger appears |
 | `tcp-text-semantics` | `—` | `lisp-owned` | `stdlib` | `confirmed` | Публічне декодування TCP text поверх raw socket bytes |
 | `time-semantics` | `—` | `lisp-owned` | `stdlib` | `confirmed` | UTC/calendar/deadline meaning виводиться в Lisp із raw clock observations |
 | `tooling-syntax-discovery` | `—` | `derived-tooling` | `tooling` | `confirmed` | Tooling metadata ключується semantic identity, а spelling отримує з registry |
