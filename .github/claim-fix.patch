@@ -27,7 +27,7 @@ diff --git a/crates/swarm-node/src/main.rs b/crates/swarm-node/src/main.rs
  /// A peer is asking us to vote on `(claim-proposal (task ..) (agent ..) (generation ..))`.
  /// Two gates must both pass: the fencing check (proposed generation is
  /// exactly the next one after what we've derived locally, task not already
-@@ -1942,20 +1961,12 @@ fn handle_claim_proposal(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
+@@ -1942,19 +1961,12 @@ fn handle_claim_proposal(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
      let fencing_ok =
          !current.completed && current.holder.is_none() && generation == current.generation + 1;
  
@@ -78,7 +78,7 @@ diff --git a/crates/swarm-node/src/main.rs b/crates/swarm-node/src/main.rs
 diff --git a/crates/swarm-node/tests/claim_race.rs b/crates/swarm-node/tests/claim_race.rs
 --- a/crates/swarm-node/tests/claim_race.rs
 +++ b/crates/swarm-node/tests/claim_race.rs
-@@ -4,10 +4,10 @@
+@@ -4,6 +4,6 @@
  //! sequential duplicate-claim assertion in `integration.rs`.
  //!
 -//! The invariant is currently broken: exact-head CI on 0438477ea2d5fffbd68f351cc93cd1b3e4be80aa
