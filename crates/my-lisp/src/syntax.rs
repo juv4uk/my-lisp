@@ -245,6 +245,7 @@ pub(crate) mod fasl {
 #[cfg(test)]
 mod fasl_tests {
     use super::fasl::{decode_program, encode_program};
+    use super::ExprKind;
     use crate::parser::parse;
     use crate::sha256_source;
 
@@ -273,6 +274,25 @@ mod fasl_tests {
         // byte-identical to the original encoding.
         let re_encoded = encode_program(&decoded, &source_hash);
         assert_eq!(re_encoded, encoded);
+    }
+
+    #[test]
+    fn fasl_preserves_large_exact_integer_past_f64_boundary() {
+        const SOURCE: &str = "9007199254740993";
+        let source_hash = sha256_source(SOURCE.as_bytes());
+        let expressions = parse(SOURCE).expect("large exact integer parses");
+        assert!(matches!(expressions[0].kind, ExprKind::Rational(_)));
+
+        let encoded = encode_program(&expressions, &source_hash);
+        let (decoded, decoded_hash) =
+            decode_program(&encoded).expect("large exact integer FASL decodes");
+        assert_eq!(decoded_hash, source_hash);
+
+        let ExprKind::Rational(rational) = &decoded[0].kind else {
+            panic!("2^53 + 1 must remain Rational across FASL");
+        };
+        assert_eq!(rational.to_string(), SOURCE);
+        assert_eq!(encode_program(&decoded, &source_hash), encoded);
     }
 
     #[test]
