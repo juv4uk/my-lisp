@@ -4,8 +4,7 @@
 //! This module owns only the mapping from opaque numeric semantic IDs to the
 //! evaluator mechanisms for DEFINE and LAMBDA.
 
-#[path = "semantic_registry.rs"]
-pub(super) mod semantic_registry;
+use crate::semantic_registry;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum NecessaryFormIdentity {
