@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, parse, ErrorKind, Exactness, ExprKind, NumericBuffer, Rational, Session, Value};
+use my_lisp::{eval_program, parse, parse_json, ErrorKind, Exactness, ExprKind, NumericBuffer, Rational, Session, Value};
 
 const TWO_POW_53: i64 = 9_007_199_254_740_992;
 const TWO_POW_53_PLUS_ONE: &str = "9007199254740993";
@@ -97,6 +97,25 @@ fn print_read_eval_round_trip_preserves_large_exact_integer() {
     let value = eval(source);
     assert_eq!(value.to_string(), TWO_POW_53_PLUS_ONE);
     assert!(matches!(value, Value::Rational(_)));
+}
+
+#[test]
+fn json_integer_tokens_share_the_same_exact_compression_boundary() {
+    let compact = parse_json("9007199254740992").expect("JSON integer at 2^53");
+    assert!(matches!(compact, Value::Number(_, Exactness::Exact)));
+    assert_eq!(compact.to_string(), "9007199254740992");
+
+    let one_past = parse_json(TWO_POW_53_PLUS_ONE).expect("JSON integer above 2^53");
+    assert!(matches!(one_past, Value::Rational(_)));
+    assert_eq!(one_past.to_string(), TWO_POW_53_PLUS_ONE);
+
+    let arbitrary = parse_json("123456789012345678901234567890")
+        .expect("JSON integer should use arbitrary-precision exact path");
+    assert!(matches!(arbitrary, Value::Rational(_)));
+    assert_eq!(arbitrary.to_string(), "123456789012345678901234567890");
+
+    let decimal = parse_json("0.1").expect("JSON decimal stays the explicit inexact boundary");
+    assert!(matches!(decimal, Value::Number(_, Exactness::Inexact)));
 }
 
 #[test]
