@@ -19,6 +19,7 @@ REQUIRED_ROWS = {
     "quote",
     "cond-short-circuit",
     "symbol-lookup-unknown-symbol",
+    "noncallable-type-error",
     "lambda-construction",
     "fixed-arity",
     "variadic-bare-symbol-lambda",
