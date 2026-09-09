@@ -16,6 +16,7 @@ pub(crate) mod eval;
 mod language_items;
 mod parser;
 mod presentation;
+mod semantic_registry;
 pub mod syntax;
 mod value;
 
