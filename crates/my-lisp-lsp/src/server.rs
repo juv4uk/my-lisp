@@ -272,6 +272,7 @@ impl Server {
         {
             let kind = match item.kind {
                 LanguageItemKind::Builtin => "builtin",
+                LanguageItemKind::Macro => "macro",
                 LanguageItemKind::SyntaxForm => "syntax-dispatched form",
             };
             let value = format!(
@@ -439,6 +440,7 @@ impl Server {
         for item in my_lisp::language_items() {
             let kind = match item.kind {
                 LanguageItemKind::Builtin => "builtin",
+                LanguageItemKind::Macro => "macro",
                 LanguageItemKind::SyntaxForm => "syntax-dispatched form",
             };
             let detail = format!("{kind} · {}", item.signature);

@@ -139,7 +139,11 @@ fn collect_arity_diagnostics(
             });
             if let Some(name) = head_name {
                 if let Some((kind, arity)) = items.get(name) {
-                    let shadowed = *kind == LanguageItemKind::Builtin && local_defs.contains(name);
+                    let shadowable = matches!(
+                        kind,
+                        LanguageItemKind::Builtin | LanguageItemKind::Macro
+                    );
+                    let shadowed = shadowable && local_defs.contains(name);
                     let received = elements.len().saturating_sub(1);
                     if !shadowed && !arity.accepts(received) {
                         diagnostics.push(ArityDiagnostic {

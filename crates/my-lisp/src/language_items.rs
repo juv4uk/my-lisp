@@ -10,11 +10,12 @@
 //! which that value was found, so adding a peer name does not invent another
 //! operation signature.
 
-use crate::{Environment, Value};
+use crate::{semantic_registry, Environment, Value};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LanguageItemKind {
     Builtin,
+    Macro,
     SyntaxForm,
 }
 
@@ -46,44 +47,112 @@ impl Arity {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LanguageItem {
     pub name: String,
+    /// Numeric semantic identity when the item is governed by the surface registry.
+    /// Runtime-only host capabilities may legitimately have no registry identity yet.
+    pub semantic_id: Option<&'static str>,
     pub signature: &'static str,
     pub documentation: &'static str,
     pub kind: LanguageItemKind,
     pub arity: Arity,
 }
 
-const SYNTAX_FORMS: &[(&str, &str, &str, Arity)] = &[
-    (
-        "quote",
-        "(quote value)",
-        "Return value unevaluated",
-        Arity::Exact(1),
-    ),
-    (
-        "lambda",
-        "(lambda (params) body ...)",
-        "Create an anonymous function",
-        Arity::AtLeast(2),
-    ),
-    (
-        "def",
-        "(def name value)",
-        "Bind name in the current scope",
-        Arity::Exact(2),
-    ),
-    (
-        "defmacro",
-        "(defmacro name (params) body ...)",
-        "Bind a compile-time macro",
-        Arity::AtLeast(3),
-    ),
-    (
-        "cond",
-        "(cond (test result) ...)",
-        "Evaluate the first matching clause",
-        Arity::AtLeast(0),
-    ),
+#[derive(Clone, Copy)]
+enum SurfacePolicy {
+    Stable,
+    Admitted,
+}
+
+#[derive(Clone, Copy)]
+struct SemanticToolingMetadata {
+    semantic_id: &'static str,
+    signature: &'static str,
+    documentation: &'static str,
+    kind: LanguageItemKind,
+    arity: Arity,
+    surface_policy: SurfacePolicy,
+}
+
+// Tooling meaning is keyed only by opaque numeric semantic identity.
+// Human spellings are projected from semantic-registry.wsm at discovery time.
+const SEMANTIC_TOOLING: &[SemanticToolingMetadata] = &[
+    SemanticToolingMetadata {
+        semantic_id: "0001",
+        signature: "(quote value)",
+        documentation: "Return value unevaluated",
+        kind: LanguageItemKind::SyntaxForm,
+        arity: Arity::Exact(1),
+        surface_policy: SurfacePolicy::Stable,
+    },
+    SemanticToolingMetadata {
+        semantic_id: "0007",
+        signature: "(cond (test result) ...)",
+        documentation: "Evaluate the first matching clause",
+        kind: LanguageItemKind::SyntaxForm,
+        arity: Arity::AtLeast(0),
+        surface_policy: SurfacePolicy::Stable,
+    },
+    SemanticToolingMetadata {
+        semantic_id: "0010",
+        signature: "(lambda (params) body ...)",
+        documentation: "Create an anonymous function",
+        kind: LanguageItemKind::SyntaxForm,
+        arity: Arity::AtLeast(2),
+        surface_policy: SurfacePolicy::Stable,
+    },
+    SemanticToolingMetadata {
+        semantic_id: "0011",
+        signature: "(define name value)",
+        documentation: "Bind name in the current scope",
+        kind: LanguageItemKind::SyntaxForm,
+        arity: Arity::Exact(2),
+        surface_policy: SurfacePolicy::Stable,
+    },
+    SemanticToolingMetadata {
+        semantic_id: "0012",
+        signature: "(defmacro name (params) body ...)",
+        documentation: "Bind a language-owned macro",
+        kind: LanguageItemKind::Macro,
+        arity: Arity::AtLeast(3),
+        surface_policy: SurfacePolicy::Admitted,
+    },
+    SemanticToolingMetadata {
+        semantic_id: "1000",
+        signature: "(def name value)",
+        documentation: "Compatibility-only binding form",
+        kind: LanguageItemKind::SyntaxForm,
+        arity: Arity::Exact(2),
+        surface_policy: SurfacePolicy::Admitted,
+    },
 ];
+
+fn semantic_language_items_with(
+    stable_surfaces: impl Fn(&str) -> Vec<&'static str>,
+    admitted_surfaces: impl Fn(&str) -> Vec<&'static str>,
+) -> Vec<LanguageItem> {
+    let mut items = Vec::new();
+    for metadata in SEMANTIC_TOOLING {
+        let surfaces = match metadata.surface_policy {
+            SurfacePolicy::Stable => stable_surfaces(metadata.semantic_id),
+            SurfacePolicy::Admitted => admitted_surfaces(metadata.semantic_id),
+        };
+        items.extend(surfaces.into_iter().map(|name| LanguageItem {
+            name: name.to_string(),
+            semantic_id: Some(metadata.semantic_id),
+            signature: metadata.signature,
+            documentation: metadata.documentation,
+            kind: metadata.kind,
+            arity: metadata.arity,
+        }));
+    }
+    items
+}
+
+fn semantic_language_items() -> Vec<LanguageItem> {
+    semantic_language_items_with(
+        semantic_registry::stable_surfaces_for_semantic_id,
+        semantic_registry::admitted_surfaces_for_semantic_id,
+    )
+}
 
 fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
     match name {
@@ -339,6 +408,7 @@ pub fn language_items() -> Vec<LanguageItem> {
             Value::Builtin(ref builtin) => {
                 let (signature, documentation, arity) = builtin_metadata(builtin.name);
                 Some(LanguageItem {
+                    semantic_id: semantic_registry::semantic_id_for_surface(name.as_ref()),
                     name: name.to_string(),
                     signature,
                     documentation,
@@ -350,17 +420,7 @@ pub fn language_items() -> Vec<LanguageItem> {
         })
         .collect::<Vec<_>>();
 
-    items.extend(
-        SYNTAX_FORMS
-            .iter()
-            .map(|(name, signature, documentation, arity)| LanguageItem {
-                name: (*name).to_string(),
-                signature,
-                documentation,
-                kind: LanguageItemKind::SyntaxForm,
-                arity: *arity,
-            }),
-    );
+    items.extend(semantic_language_items());
     items
 }
 
@@ -417,4 +477,105 @@ mod tests {
         assert_eq!(uk.arity, en.arity);
         assert_eq!(en.arity, sa.arity);
     }
+
+    #[test]
+    fn semantic_tooling_keys_are_numeric_identities_only() {
+        assert!(SEMANTIC_TOOLING.iter().all(|metadata| {
+            !metadata.semantic_id.is_empty()
+                && metadata.semantic_id.bytes().all(|byte| byte.is_ascii_digit())
+        }));
+    }
+
+    #[test]
+    fn registry_mutation_changes_discovered_surface_without_changing_metadata_key() {
+        const BEFORE: &str = "(0010 (en comet stable))";
+        const AFTER: &str = "(0010 (en meteor stable))";
+        let discover = |source: &'static str| {
+            semantic_language_items_with(
+                |semantic_id| {
+                    semantic_registry::stable_surfaces_for_semantic_id_from_source(
+                        source,
+                        semantic_id,
+                    )
+                },
+                |semantic_id| {
+                    semantic_registry::admitted_surfaces_for_semantic_id_from_source(
+                        source,
+                        semantic_id,
+                    )
+                },
+            )
+        };
+        let before = discover(BEFORE);
+        let after = discover(AFTER);
+        assert!(before.iter().any(|item| {
+            item.name == "comet" && item.semantic_id == Some("0010")
+        }));
+        assert!(!before.iter().any(|item| item.name == "meteor"));
+        assert!(after.iter().any(|item| {
+            item.name == "meteor" && item.semantic_id == Some("0010")
+        }));
+        assert!(!after.iter().any(|item| item.name == "comet"));
+    }
+
+    #[test]
+    fn necessary_form_peers_share_numeric_tooling_identity() {
+        let items = language_items();
+        let find = |name: &str| {
+            items
+                .iter()
+                .find(|item| item.name == name)
+                .unwrap_or_else(|| panic!("missing tooling item {name}"))
+        };
+        for pair in [["lambda", "функція"], ["define", "визначити"]] {
+            let left = find(pair[0]);
+            let right = find(pair[1]);
+            assert_eq!(left.semantic_id, right.semantic_id);
+            assert_eq!(left.signature, right.signature);
+            assert_eq!(left.documentation, right.documentation);
+            assert_eq!(left.arity, right.arity);
+            assert_eq!(left.kind, LanguageItemKind::SyntaxForm);
+            assert_eq!(right.kind, LanguageItemKind::SyntaxForm);
+        }
+        assert_eq!(find("lambda").semantic_id, Some("0010"));
+        assert_eq!(find("define").semantic_id, Some("0011"));
+    }
+
+    #[test]
+    fn defmacro_tooling_matches_runtime_macro_identity() {
+        let items = language_items();
+        for name in ["defmacro", "визначити-макрос", "defmacro-derived"] {
+            let item = items
+                .iter()
+                .find(|item| item.name == name)
+                .unwrap_or_else(|| panic!("missing macro tooling item {name}"));
+            assert_eq!(item.semantic_id, Some("0012"));
+            assert_eq!(item.kind, LanguageItemKind::Macro);
+        }
+
+        let session = crate::Session::default();
+        for name in ["defmacro", "визначити-макрос", "defmacro-derived"] {
+            assert!(
+                matches!(session.environment.get(name), Some(Value::Macro(_))),
+                "runtime binding {name} must be Value::Macro"
+            );
+        }
+    }
+
+    #[test]
+    fn def_remains_compatibility_only_in_registry_driven_discovery() {
+        let items = language_items();
+        let def = items
+            .iter()
+            .find(|item| item.name == "def")
+            .expect("compatibility def tooling item");
+        assert_eq!(def.semantic_id, Some("1000"));
+        assert_eq!(def.kind, LanguageItemKind::SyntaxForm);
+        assert!(semantic_registry::stable_surfaces_for_semantic_id("1000").is_empty());
+        assert_eq!(
+            semantic_registry::admitted_surfaces_for_semantic_id("1000"),
+            vec!["def"]
+        );
+    }
+
 }
