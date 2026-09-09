@@ -1,24 +1,24 @@
-# Exact-number representation audit
+# Аудит представлення точних чисел
 
-Status: **audited on 2026-09-09 for issue #28**.
+Статус: **аудит виконано 2026-09-09 у межах issue #28**.
 
-This document describes representation, not a second numeric semantics. The semantic claim is deliberately narrower and stronger than “we do not use floats”:
+Цей документ описує представлення, а не створює другу числову семантику. Точне формулювання сильніше й чесніше за гасло «ми не використовуємо float»:
 
-> **Exact arithmetic never silently rounds.** The runtime may use `f64` as a compact representation only for mathematically exact integers in the IEEE-754 binary64 exact-integer range; larger or fractional exact values use arbitrary-precision `Rational`.
+> **Точна арифметика ніколи не округлює мовчки.** Runtime може використовувати `f64` як компактне представлення лише для математично точних цілих у діапазоні точного цілого IEEE-754 binary64; більші або дробові точні значення зберігаються як довільно-точний `Rational`.
 
-## Runtime representations
+## Представлення runtime
 
-| Representation | Meaning | Admission rule | Observable consequence |
+| Представлення | Значення | Правило допуску | Спостережуваний наслідок |
 |---|---|---|---|
-| `Value::Number(f64, Exactness::Exact)` | exact integer | denominator is 1 and integer is within `[-2^53, +2^53]` | may participate in exact arithmetic; exactness tag is semantic data |
-| `Value::Rational(Rational)` | arbitrary-precision exact integer/fraction | exact value cannot be losslessly compressed to the compact representation, or is fractional | no numeric ceiling except configured/resource limits and available memory |
-| `Value::Number(f64, Exactness::Inexact)` | deliberately inexact binary64 value | explicit inexact ingress or arithmetic involving an inexact operand | arithmetic/comparison follows inexact binary64 semantics |
-| `NumericBuffer::I32` | explicit fixed-width integer data | exact integer must fit signed 32 bits | narrowing failure is named `NumericOverflow` |
-| `NumericBuffer::F32` | explicit binary32 data | finite numeric input is intentionally narrowed | precision loss is part of the buffer conversion, not relabelled as exact scalar arithmetic |
+| `Value::Number(f64, Exactness::Exact)` | точне ціле | знаменник дорівнює 1 і число лежить у `[-2^53, +2^53]` | може брати участь у точній арифметиці; тег exactness є семантичними даними |
+| `Value::Rational(Rational)` | довільно-точне ціле або дріб | точне значення не можна без втрат стиснути до compact representation, або воно дробове | числова межа задається лише ресурсними обмеженнями/пам’яттю |
+| `Value::Number(f64, Exactness::Inexact)` | свідомо неточне binary64-значення | явний inexact ingress або арифметика з неточним операндом | арифметика/порівняння переходять до binary64 semantics |
+| `NumericBuffer::I32` | явні fixed-width цілі дані | точне ціле має вміститися у signed 32 bits | звуження поза діапазоном дає названий `NumericOverflow` |
+| `NumericBuffer::F32` | явні binary32-дані | finite numeric input навмисно звужується | втрата точності є частиною запитаного `f32` boundary, а не маскується як exact scalar arithmetic |
 
-`Rational::as_precise_i64()` is the single compactness predicate for ordinary exact scalar values. Despite the method name, it is stricter than “fits i64”: it returns `Some` only for an integer within the binary64 exact-integer range ±2^53.
+`Rational::as_precise_i64()` є єдиним правилом compactness для звичайних точних scalar values. Попри назву методу, умова сильніша за «поміщається в i64»: `Some` повертається лише для цілого в exact-integer range binary64 ±2^53.
 
-## Transition map
+## Карта переходів
 
 ```text
 source integer / decimal / exponent / n/d
@@ -48,9 +48,9 @@ source integer / decimal / exponent / n/d
 
 ### Parser
 
-`crates/my-lisp/src/parser.rs` first constructs exact numeric meaning. Integer, decimal and exponent spellings are never parsed through an intermediate binary floating-point approximation. Decimal/scientific text goes through `Rational::from_decimal_literal`; large integer text goes through arbitrary-precision `Rational::from_literal`.
+`crates/my-lisp/src/parser.rs` спочатку будує **точний числовий сенс**. Integer, decimal та exponent spellings не проходять через проміжне binary floating-point approximation. Decimal/scientific text йде через `Rational::from_decimal_literal`, а великі integer literals — через arbitrary-precision `Rational::from_literal`.
 
-After exact parsing, `as_precise_i64()` decides whether an integer may be stored compactly. Therefore:
+Після точного parse `as_precise_i64()` вирішує лише питання компактного зберігання:
 
 ```text
 9007199254740992   -> compact exact Number   (+2^53)
@@ -61,101 +61,101 @@ After exact parsing, `as_precise_i64()` decides whether an integer may be stored
 1,25               -> Rational 5/4
 ```
 
-A syntactically valid decimal/exponent literal that exceeds the reader resource cap fails as `NumericOverflow`; it must not fall back to a symbol.
+Синтаксично коректний decimal/exponent literal, який перевищує reader resource cap, завершується `NumericOverflow`; він не має мовчки перетворюватися на symbol.
 
-### Evaluator and arithmetic
+### Evaluator та арифметика
 
-`crates/my-lisp/src/eval/arithmetic.rs` normalizes every exact scalar operand to `Rational` before the general exact path. A compact exact `Number` is reconstructed as an exact integer Rational; a `Value::Rational` is already exact.
+`crates/my-lisp/src/eval/arithmetic.rs` перед загальним exact-path нормалізує кожен точний scalar operand до `Rational`. Compact exact `Number` відновлюється як точне ціле Rational; `Value::Rational` уже є exact.
 
-All-exact `+`, `-`, `*`, `/` use Rational operations. A result is compressed only through `exact_value()`, which delegates to the ±2^53 predicate above.
+Усі точні `+`, `-`, `*`, `/` працюють через Rational operations. Результат стискається лише через `exact_value()`, який використовує ту саму межу ±2^53.
 
-There is an i64 fast path for common exact integer `+`, `-`, `*`. The #28 audit found a real invariant violation there: after a successful checked-i64 operation the old code returned `Value::Number(result as f64, Exactness::Exact)` directly. `checked_*` proves i64 range, **not** binary64 exactness. For example:
+Для поширених exact integer `+`, `-`, `*` існує i64 fast-path. Саме тут аудит #28 знайшов реальне порушення інваріанта: після успішного checked-i64 обчислення старий код напряму повертав `Value::Number(result as f64, Exactness::Exact)`. `checked_*` доводить лише межі i64, **не** точність binary64. Мінімальний witness:
 
 ```text
 (* 3000000001 3000000001)
 = 9000000006000000001
 ```
 
-Both operands qualify for the fast path, the product fits i64, but the odd result is above 2^53 and cannot be represented exactly as f64. The audit fixes this by routing the fast-path result through `exact_value()` as well. `crates/my-lisp/tests/exact_number_boundaries.rs` is the falsification test that would fail if this silent-rounding path returned.
+Обидва операнди входять у fast-path, добуток ще поміщається в i64, але непарне значення вже більше за 2^53 і не може бути точно представлене як f64. Виправлення маршрутизує fast-path result через `exact_value()` так само, як загальний Rational-path. `crates/my-lisp/tests/exact_number_boundaries.rs` є falsification test, який зламається, якщо silent rounding повернеться.
 
-If any arithmetic operand is deliberately inexact, arithmetic converts the participating numeric values to f64 and returns `Exactness::Inexact`. This is an explicit semantic transition, not an exact-value compression.
+Якщо хоча б один арифметичний operand є свідомо inexact, арифметика переходить до f64 і повертає `Exactness::Inexact`. Це явний semantic transition, а не exact-value compression.
 
-### Comparison and identity
+### Порівняння та identity
 
-Magnitude comparisons `<`, `=`, `>` compare all-exact inputs as Rational values. If an inexact operand participates, the comparison uses inexact f64 magnitudes.
+Magnitude comparisons `<`, `=`, `>` порівнюють усі exact inputs як Rational values. Якщо бере участь inexact operand, порівняння використовує f64 magnitudes.
 
-`eq` remains value identity/equality and includes representation/exactness distinctions defined by `Value::PartialEq`; it is not a substitute for numeric magnitude `=`. Do not collapse these two relations merely to simplify numeric representation.
+`eq` лишається відношенням equality/identity, визначеним `Value::PartialEq`, і не є заміною numeric magnitude `=`. Не можна зливати ці дві операції лише для спрощення представлення.
 
-### Printing and read-back
+### Друк і read-back
 
-- compact exact Number prints as its integer;
-- an integer Rational prints its numerator without `/1`;
-- fractional Rational prints `numerator/denominator`;
-- an integral inexact Number prints with a decimal marker such as `3.0`, so read-back does not silently look exact.
+- compact exact Number друкується як ціле;
+- integer Rational друкує numerator без `/1`;
+- fractional Rational друкується як `numerator/denominator`;
+- integral inexact Number друкується з decimal marker, наприклад `3.0`, щоб read-back не маскував його як exact.
 
-The boundary corpus proves that a large exact integer can pass `write-to-string -> read -> eval` without magnitude loss.
+Boundary corpus доводить, що велике exact integer проходить `write-to-string -> read -> eval` без втрати magnitude.
 
 ### FASL
 
-`crates/my-lisp/src/syntax.rs` gives `ExprKind::Number` and `ExprKind::Rational` distinct FASL tags. Number snapshots store all f64 bits plus the `Exactness` tag; Rational snapshots store arbitrary-precision numerator and denominator limbs. The existing `fasl_round_trip_is_byte_identical_and_hash_bound` test structurally exercises both Number and Rational source forms and requires byte-identical re-encoding after decode.
+`crates/my-lisp/src/syntax.rs` має різні FASL tags для `ExprKind::Number` і `ExprKind::Rational`. Number snapshot зберігає всі f64 bits разом із `Exactness`; Rational snapshot зберігає arbitrary-precision numerator і denominator limbs. Чинний `fasl_round_trip_is_byte_identical_and_hash_bound` структурно перевіряє Number і Rational source forms та вимагає byte-identical re-encoding після decode.
 
-FASL therefore preserves the parser's numeric representation; it does not re-decide exactness through a float conversion.
+Отже FASL зберігає вже прийняте parser-ом числове представлення і не переобчислює exactness через float conversion.
 
 ### Typed numeric buffers
 
-Typed buffers are an explicit narrowing boundary, not the scalar exact arithmetic model:
+Typed buffers — це явна межа narrowing, а не scalar exact arithmetic model:
 
-- `#i32(...)` accepts exact integers and fails `NumericOverflow` outside signed 32-bit range.
-- `#f32(...)` intentionally narrows finite numeric values to IEEE-754 binary32. An exact `1/10` becoming the nearest f32 is allowed because the requested target representation is explicitly `f32`; it must never re-enter scalar arithmetic labelled `Exact` without an explicit semantic conversion.
+- `#i32(...)` приймає exact integers і дає `NumericOverflow` поза signed 32-bit range;
+- `#f32(...)` навмисно звужує finite numeric values до IEEE-754 binary32. Якщо exact `1/10` стає найближчим f32, це дозволено саме тому, що користувач явно попросив representation `f32`; таке значення не повинно повертатися у scalar arithmetic з тегом `Exact` без окремого semantic conversion.
 
-`crates/my-lisp/tests/exact_number_boundaries.rs` records both cases.
+`crates/my-lisp/tests/exact_number_boundaries.rs` фіксує обидві поведінки.
 
-## Known inexact ingress
+## Відомі inexact ingress
 
-Current code search finds ordinary `Value::Number(..., Exactness::Inexact)` creation in narrowly identified places:
+Поточний code search знаходить створення звичайного `Value::Number(..., Exactness::Inexact)` у вузько визначених місцях:
 
-1. arithmetic whose inputs already include an inexact value;
-2. JSON numeric parsing, where the external JSON number is interpreted through f64;
-3. f32-buffer higher-order mapping bridges, where buffer elements are deliberately surfaced to the callback as inexact f64 values.
+1. арифметика, де input уже містить inexact value;
+2. JSON numeric parsing, де зовнішнє JSON number інтерпретується через f64;
+3. higher-order bridge для f32-buffer, де buffer elements свідомо подаються callback-у як inexact f64 values.
 
-Source-language decimal literals themselves are exact; `0.1` is `1/10`, not a binary64 approximation.
+Source-language decimal literals самі по собі точні: `0.1` означає `1/10`, а не binary64 approximation.
 
 ## Executable evidence
 
-Primary #28 regression/boundary corpus: `crates/my-lisp/tests/exact_number_boundaries.rs`.
+Основний regression/boundary corpus #28: `crates/my-lisp/tests/exact_number_boundaries.rs`.
 
-It proves:
+Він доводить:
 
-- exact compact boundary at ±2^53;
-- one-past-boundary values stay Rational;
-- fast-path multiplication cannot relabel a rounded f64 as exact;
-- arithmetic crossing Number/Rational representation boundaries preserves magnitude;
-- decimal/comma/exponent literals stay exact;
-- exact division preserves reduced fractional and large-integer values;
-- write/read/eval round-trip preserves a large exact integer;
-- parser resource limits remain named `NumericOverflow`;
-- i32/f32 buffers remain explicit narrowing boundaries.
+- compact exact boundary точно на ±2^53;
+- one-past-boundary values залишаються Rational;
+- fast-path multiplication не може назвати округлений f64 точним;
+- арифметика через Number/Rational representation boundary зберігає magnitude;
+- decimal/comma/exponent literals залишаються exact;
+- exact division зберігає reduced fraction і великі integers;
+- write/read/eval round-trip зберігає велике exact integer;
+- parser resource limits лишаються названим `NumericOverflow`;
+- i32/f32 buffers лишаються явними narrowing boundaries.
 
-Existing supporting evidence includes parser decimal/resource-limit tests, arbitrary-precision arithmetic tests in `mccarthy.rs`, FASL structural round-trip tests in `syntax.rs`, and typed-buffer coverage in `numeric_buffers.rs` / `decimal_comma.rs`.
+Додаткове чинне evidence: parser decimal/resource-limit tests, arbitrary-precision arithmetic tests у `mccarthy.rs`, FASL structural round-trip tests у `syntax.rs`, typed-buffer coverage у `numeric_buffers.rs` та `decimal_comma.rs`.
 
-## Allowed claim vocabulary
+## Дозволена лексика claim-ів
 
-Preferred:
+Рекомендоване формулювання:
 
-> **Exact arithmetic never silently rounds. The runtime may use `f64` as a compact representation only for mathematically exact integers in its exact range; larger or fractional exact values use arbitrary-precision `Rational`.**
+> **Точна арифметика ніколи не округлює мовчки. Runtime може використовувати `f64` як компактне представлення лише для математично точних цілих у його exact range; більші або дробові exact values використовують arbitrary-precision `Rational`.**
 
-Also accurate:
+Також коректно:
 
-- “my-lisp has arbitrary-precision exact integers and rationals”;
-- “source decimal literals are exact”;
-- “inexact arithmetic is explicit once an inexact value enters the computation.”
+- «my-lisp має arbitrary-precision exact integers і rationals»;
+- «source decimal literals є точними»;
+- «inexact arithmetic стає явною після входження inexact value у computation».
 
-Avoid unless the implementation changes:
+Не варто стверджувати без зміни implementation:
 
-- “all numbers are Rational”;
-- “my-lisp does not use floats”;
-- “every numeric boundary is exact” (typed f32 buffers and external JSON numbers are deliberately inexact boundaries).
+- «усі числа — Rational»;
+- «my-lisp не використовує floats»;
+- «кожна numeric boundary є exact» — typed f32 buffers та зовнішні JSON numbers навмисно мають inexact boundaries.
 
 ## Stop condition
 
-Any future path that constructs `Value::Number(_, Exactness::Exact)` from an integer without proving it lies in the binary64 exact-integer range is a semantic regression, even if its Rust integer calculation did not overflow.
+Будь-який майбутній шлях, що створює `Value::Number(_, Exactness::Exact)` з integer без доказу належності до binary64 exact-integer range, є semantic regression навіть тоді, коли Rust integer calculation сам по собі не overflow-нув.
