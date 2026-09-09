@@ -48,6 +48,7 @@ pub use syntax::fasl::{
 /// no human surface name; `load_macro_library` installs peer spellings onto
 /// that same value after evaluation.
 pub const MACRO_LIBRARY_SOURCE: &str = include_str!("../../../lib/macro.my");
+const DEFMACRO_SEMANTIC_ID: &str = "0012";
 
 /// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
 pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.my");
@@ -72,12 +73,13 @@ pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
 
 /// Install the one primitive macro-construction mechanism required by the
 /// language-owned macro layer, evaluate the Lisp derivation exactly once, and
-/// bind every admitted public spelling directly to the resulting Macro value.
+/// bind every stable or compatibility-only spelling admitted for semantic
+/// identity 0012 directly to the resulting Macro value.
 ///
 /// The loader owns only binding mechanics. Macro-definition behavior remains
-/// in `lib/macro.my`; there is still no evaluator head-name fallback for
-/// `defmacro` or `визначити-макрос`. `defmacro-derived` is retained as a
-/// compatibility spelling and points to the same runtime value.
+/// in `lib/macro.my`; there is still no evaluator head-name fallback for any
+/// human macro-definition spelling. Surface admission belongs to the numeric
+/// semantic registry, not to this Rust loader.
 ///
 /// Embedders that deliberately construct a custom/bare `Environment` must use
 /// this function before evaluating source that depends on the macro-definition
@@ -94,7 +96,15 @@ pub fn load_macro_library(session: &mut Session) -> Result<EvalResult, LanguageE
         ));
     }
 
-    for name in ["defmacro", "визначити-макрос", "defmacro-derived"] {
+    let admitted = semantic_registry::admitted_surfaces_for_semantic_id(DEFMACRO_SEMANTIC_ID);
+    if admitted.is_empty() {
+        return Err(LanguageError::new(
+            ErrorKind::InvalidForm,
+            "semantic registry must admit at least one macro-definition surface for 0012",
+            Span { start: 0, end: 0 },
+        ));
+    }
+    for name in admitted {
         session.environment.define(name, result.value.clone());
     }
 
