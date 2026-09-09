@@ -2,10 +2,11 @@
 //!
 //! Machine semantic authority lives in `lib/surface/semantic-registry.wsm`.
 //! Rust owns only the mapping from numeric semantic IDs to evaluator mechanisms;
-//! stable human/symbolic spellings are projected from the authority file at
-//! runtime and are not duplicated in this module.
+//! stable human/symbolic spellings are projected from the authority file once
+//! and indexed for O(1) hot-path lookup. Human spellings are not duplicated in
+//! evaluator routing data.
 
-use std::sync::OnceLock;
+use std::{collections::HashMap, sync::OnceLock};
 
 const SEMANTIC_REGISTRY: &str =
     include_str!("../../../../lib/surface/semantic-registry.wsm");
@@ -61,23 +62,28 @@ fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
         .collect()
 }
 
-fn registry_rows() -> &'static [SemanticRow] {
-    static ROWS: OnceLock<Vec<SemanticRow>> = OnceLock::new();
-    ROWS.get_or_init(|| parse_rows(SEMANTIC_REGISTRY)).as_slice()
+fn build_surface_index(source: &'static str) -> HashMap<&'static str, &'static str> {
+    let mut index = HashMap::new();
+    for row in parse_rows(source) {
+        for surface in std::iter::once(row.semantic_id).chain(row.stable_surfaces.into_iter()) {
+            if let Some(previous) = index.insert(surface, row.semantic_id) {
+                panic!(
+                    "semantic registry surface must be unique: {surface} maps to both {previous} and {}",
+                    row.semantic_id
+                );
+            }
+        }
+    }
+    index
+}
+
+fn surface_index() -> &'static HashMap<&'static str, &'static str> {
+    static INDEX: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+    INDEX.get_or_init(|| build_surface_index(SEMANTIC_REGISTRY))
 }
 
 fn semantic_id_for_surface(name: &str) -> Option<&'static str> {
-    if !name.is_empty() && name.as_bytes().iter().all(|byte| byte.is_ascii_digit()) {
-        return registry_rows()
-            .iter()
-            .find(|row| row.semantic_id == name)
-            .map(|row| row.semantic_id);
-    }
-
-    registry_rows()
-        .iter()
-        .find(|row| row.stable_surfaces.contains(&name))
-        .map(|row| row.semantic_id)
+    surface_index().get(name).copied()
 }
 
 fn identity_for_semantic_id(semantic_id: &str) -> Option<NecessaryFormIdentity> {
@@ -89,8 +95,8 @@ fn identity_for_semantic_id(semantic_id: &str) -> Option<NecessaryFormIdentity> 
 }
 
 /// Resolve an executable list-head symbol through the authority registry first,
-/// then select the evaluator mechanism by numeric semantic ID. No human surface
-/// spelling is duplicated in Rust routing data.
+/// then select the evaluator mechanism by numeric semantic ID. Registry parsing
+/// and indexing happen once; every evaluator lookup after that is O(1).
 pub(crate) fn identity_for_symbol(name: &str) -> Option<NecessaryFormIdentity> {
     semantic_id_for_surface(name).and_then(identity_for_semantic_id)
 }
@@ -147,6 +153,17 @@ mod tests {
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].semantic_id, "4242");
         assert_eq!(parsed[0].stable_surfaces, vec!["comet"]);
+    }
+
+    #[test]
+    fn registry_index_contains_machine_ids_and_stable_surfaces_only() {
+        const SYNTHETIC: &str =
+            "(4242 (xx comet stable) (yy asteroid candidate) (zz — missing))";
+        let index = build_surface_index(SYNTHETIC);
+        assert_eq!(index.get("4242"), Some(&"4242"));
+        assert_eq!(index.get("comet"), Some(&"4242"));
+        assert_eq!(index.get("asteroid"), None);
+        assert_eq!(index.get("—"), None);
     }
 
     #[test]
