@@ -1249,12 +1249,7 @@ fn drain_retry_for_peer(node: &Arc<Node>, peer_id: &str, stream: &mut TcpStream)
         for (_p, event_id) in &taken {
             // Look up by id: matches on the full `node:incarnation:seq` (or
             // legacy `node:seq`) id that the queue recorded.
-            if let Some(ev) = journal
-                .events
-                .iter()
-                .find(|e| &e.id() == event_id)
-                .cloned()
-            {
+            if let Some(ev) = journal.events.iter().find(|e| &e.id() == event_id).cloned() {
                 events.push((event_id.clone(), ev));
             }
             // Missing -> compaction removed it; redelivery impossible, drop.
@@ -1796,7 +1791,9 @@ fn broadcast_to_peers(
         let _guard = lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let _ = stream.set_write_timeout(Some(PEER_WRITE_TIMEOUT));
         if stream.write_all(line.as_bytes()).is_err() {
-            warn!("swarm-node: write to peer {id} failed/errored -- dropping and queueing for retry");
+            warn!(
+                "swarm-node: write to peer {id} failed/errored -- dropping and queueing for retry"
+            );
             dead.push(id);
         } else {
             written_to.push(id);
@@ -1910,6 +1907,25 @@ fn append_task_fact(
     Ok(event)
 }
 
+/// Atomically reserves this voter's YES vote for one task generation.
+/// Local self-votes and remote proposal votes must pass through this exact
+/// gate; otherwise two simultaneous proposers can each count themselves
+/// while also voting YES for the competitor and both reach quorum.
+fn try_acquire_claim_promise(node: &Arc<Node>, task: &str, generation: u64) -> bool {
+    let mut promises = node
+        .promised
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let promise_free = match promises.get(task) {
+        Some((promised_gen, at)) => *promised_gen < generation || at.elapsed() > PROMISE_TTL,
+        None => true,
+    };
+    if promise_free {
+        promises.insert(task.to_string(), (generation, Instant::now()));
+    }
+    promise_free
+}
+
 /// A peer is asking us to vote on `(claim-proposal (task ..) (agent ..) (generation ..))`.
 /// Two gates must both pass: the fencing check (proposed generation is
 /// exactly the next one after what we've derived locally, task not already
@@ -1937,19 +1953,12 @@ fn handle_claim_proposal(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let fencing_ok =
         !current.completed && current.holder.is_none() && generation == current.generation + 1;
 
-    let mut promises = node
-        .promised
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let promise_free = match promises.get(&task) {
-        Some((promised_gen, at)) => *promised_gen < generation || at.elapsed() > PROMISE_TTL,
-        None => true,
+    let promise_free = if fencing_ok {
+        try_acquire_claim_promise(node, &task, generation)
+    } else {
+        false
     };
     let vote = fencing_ok && promise_free;
-    if vote {
-        promises.insert(task.clone(), (generation, Instant::now()));
-    }
-    drop(promises);
 
     info!(
         "swarm-node: vote {} on claim-proposal task={task} agent={agent} generation={generation} (local gen={}, holder={:?}, promise_free={promise_free})",
@@ -2087,6 +2096,23 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
     let quorum = total_nodes / 2 + 1;
 
     let generation = current.generation + 1;
+
+    // Counting our own vote must acquire the same promise as a remote YES.
+    // If this node already promised the competing proposal, abort instead
+    // of self-voting (or trying to commit a conflicting local proposal).
+    if self_votes == 1 && !try_acquire_claim_promise(node, task, generation) {
+        send(
+            stream,
+            &Sexp::list(vec![
+                Sexp::atom("error"),
+                Sexp::string(format!(
+                    "claim conflict for `{task}` generation {generation}: local voter already promised a competing proposal"
+                )),
+            ]),
+        );
+        return;
+    }
+
     let key = format!("{task}:{generation}");
     let (tx, rx) = mpsc::channel::<(String, bool)>();
     node.pending_votes
@@ -2777,7 +2803,11 @@ fn handle_list_work_state(node: &Arc<Node>, stream: &mut TcpStream) {
                 Sexp::atom("last-seen-lamport"),
                 Sexp::atom(ws.last_seen_lamport.to_string()),
             ]));
-            Sexp::list(std::iter::once(Sexp::atom("work-state")).chain(fields).collect())
+            Sexp::list(
+                std::iter::once(Sexp::atom("work-state"))
+                    .chain(fields)
+                    .collect(),
+            )
         })
         .collect();
     send(
@@ -2996,7 +3026,10 @@ fn handle_delivery_status(node: &Arc<Node>, stream: &mut TcpStream) {
             Sexp::list(vec![
                 Sexp::atom("queued-retries"),
                 Sexp::list(vec![
-                    Sexp::list(vec![Sexp::atom("count"), Sexp::atom(queued_len.to_string())]),
+                    Sexp::list(vec![
+                        Sexp::atom("count"),
+                        Sexp::atom(queued_len.to_string()),
+                    ]),
                     Sexp::list(vec![Sexp::atom("entries"), Sexp::list(queued)]),
                 ]),
             ]),
