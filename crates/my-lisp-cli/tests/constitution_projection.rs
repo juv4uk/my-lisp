@@ -66,6 +66,9 @@ fn changing_conformance_input_changes_the_generated_projection() {
     fs::write(fixture_dir.join("conformance.my"), conformance)
         .expect("mutated temporary conformance authority should be writable");
 
+    // The sandbox deliberately contains no repository data other than the
+    // authoritative conformance fixture. A second required relative data
+    // source would make the real generator fail here.
     let generated = run_generator(&temp, &root.join("scripts/build-constitution.my"));
     let checked_in = fs::read(root.join("my-lisp-constitution.my"))
         .expect("checked-in constitution should be readable");
@@ -98,32 +101,28 @@ fn hand_editing_only_the_projection_is_detected_by_the_same_byte_check() {
 }
 
 #[test]
-fn generator_has_one_external_semantic_input_and_projection_stays_draft() {
+fn authoritative_inputs_are_explicit_and_projection_stays_draft() {
     let root = repo_root();
     let script = fs::read_to_string(root.join("scripts/build-constitution.my"))
         .expect("constitution generator should be readable");
     let constitution = fs::read_to_string(root.join("my-lisp-constitution.my"))
         .expect("checked-in constitution should be readable");
 
-    let executable = script
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with(';'))
-        .collect::<Vec<_>>();
-
+    let fixture_binding =
+        "(def fixtures (read-all (read-file \"tests/fixtures/conformance.my\")))";
     assert_eq!(
-        executable
-            .iter()
-            .filter(|line| line.contains("(read-file "))
-            .count(),
+        script.matches(fixture_binding).count(),
         1,
-        "generator gained another executable external data authority; resolve ownership explicitly before accepting it"
+        "the generator must bind its fixture authority directly from tests/fixtures/conformance.my"
     );
     assert!(
-        executable
-            .iter()
-            .any(|line| line.contains("(read-file \"tests/fixtures/conformance.my\")")),
-        "conformance.my must remain the generator's single external semantic data input"
+        constitution.contains("projection over tests/fixtures/conformance.my")
+            && constitution.contains("this script's own principle/axiom text"),
+        "the generated artifact must state both authoritative inputs: conformance data and generator-owned canonical axiom text"
+    );
+    assert!(
+        constitution.contains("Edit tests/fixtures/conformance.my or scripts/build-constitution.my"),
+        "the generated artifact must preserve the source-authority -> regenerate mutation path"
     );
     assert!(
         constitution.contains("(status . \"draft — not yet ratified; will become read-only once ratified\")"),
