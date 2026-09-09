@@ -1,6 +1,8 @@
 use my_lisp::{eval_program, load_macro_library, Environment, Session, Value};
 use std::rc::Rc;
 
+const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
+
 fn eval_with_derived_macros(source: &str) -> String {
     let mut session = Session::default();
     eval_program(source, &mut session)
@@ -42,6 +44,18 @@ fn default_session_binds_all_defmacro_peers_to_one_value() {
             .get("defmacro-derived")
             .expect("default session must retain defmacro-derived"),
     ]);
+}
+
+#[test]
+fn macro_peer_admission_is_recorded_under_identity_0012_without_binding_the_machine_id() {
+    assert!(REGISTRY.contains(
+        "(0012 (en defmacro stable) (uk визначити-макрос stable) (sa — missing) (compat defmacro-derived compatibility-only))"
+    ));
+    let session = Session::default();
+    assert!(
+        session.environment.get("0012").is_none(),
+        "opaque semantic IDs must never become ordinary lexical bindings"
+    );
 }
 
 #[test]
