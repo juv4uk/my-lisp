@@ -1,11 +1,11 @@
-//! Immutable semantic registry for Canon 0 + McCarthy7.
+//! Immutable evaluator meaning for Canon 0 + McCarthy7.
 //!
-//! Canon is deliberately *not* an `Environment`. Environments bind ordinary
-//! names; this table binds a finite set of reserved surface spellings to
-//! canonical semantic identities. Canonical resolution therefore happens
-//! before lexical lookup and no language binder may reuse a Canon spelling.
+//! Canon is deliberately *not* an `Environment`. Stable human/symbolic
+//! spellings live in `lib/surface/semantic-registry.wsm` and are projected to
+//! opaque numeric IDs by the shared registry module. This module owns only the
+//! finite mapping from those IDs to canonical evaluator meaning, plus Canon 0.
 
-use super::special_forms::{car_value, cdr_value, cons_values, eq_values};
+use super::{necessary_forms::semantic_registry, special_forms::{car_value, cdr_value, cons_values, eq_values}};
 use crate::{Environment, ErrorKind, LanguageError, Span, Value};
 use std::{collections::HashMap, rc::Rc};
 
@@ -32,91 +32,71 @@ pub(crate) enum CanonicalKind {
 pub(crate) struct CanonEntry {
     pub identity: CanonicalIdentity,
     pub kind: CanonicalKind,
-    pub historical: &'static str,
-    pub ukrainian: &'static str,
-    pub sanskrit: &'static str,
-    pub symbolic: &'static [&'static str],
+    pub semantic_id: Option<&'static str>,
 }
 
-/// The immutable 0 + 7 registry. There is intentionally no setter, mutable
-/// static, `Environment`, or user-visible `define` path here.
+pub(crate) const QUOTE_SEMANTIC_ID: &str = "0001";
+pub(crate) const ATOM_SEMANTIC_ID: &str = "0002";
+pub(crate) const EQ_SEMANTIC_ID: &str = "0003";
+pub(crate) const CONS_SEMANTIC_ID: &str = "0004";
+pub(crate) const CAR_SEMANTIC_ID: &str = "0005";
+pub(crate) const CDR_SEMANTIC_ID: &str = "0006";
+pub(crate) const COND_SEMANTIC_ID: &str = "0007";
+
+/// Canon 0 has no surface row: the empty list is the ground object itself.
+/// McCarthy7 meanings are keyed only by opaque numeric semantic IDs here.
 pub(crate) const CANON: [CanonEntry; 8] = [
     CanonEntry {
         identity: CanonicalIdentity::EmptyList,
         kind: CanonicalKind::GroundValue,
-        historical: "()",
-        ukrainian: "()",
-        sanskrit: "()",
-        symbolic: &[],
+        semantic_id: None,
     },
     CanonEntry {
         identity: CanonicalIdentity::Quote,
         kind: CanonicalKind::SpecialForm,
-        historical: "quote",
-        ukrainian: "як-є",
-        sanskrit: "svarūpa",
-        symbolic: &["'"],
+        semantic_id: Some(QUOTE_SEMANTIC_ID),
     },
     CanonEntry {
         identity: CanonicalIdentity::Atom,
         kind: CanonicalKind::ValuePrimitive,
-        historical: "atom",
-        ukrainian: "атом?",
-        sanskrit: "aṇu",
-        symbolic: &[".?"],
+        semantic_id: Some(ATOM_SEMANTIC_ID),
     },
     CanonEntry {
         identity: CanonicalIdentity::Eq,
         kind: CanonicalKind::ValuePrimitive,
-        historical: "eq",
-        ukrainian: "тотожне?",
-        sanskrit: "abheda",
-        symbolic: &["=?"],
+        semantic_id: Some(EQ_SEMANTIC_ID),
     },
     CanonEntry {
         identity: CanonicalIdentity::Cons,
         kind: CanonicalKind::ValuePrimitive,
-        historical: "cons",
-        ukrainian: "сполучити",
-        sanskrit: "saṃyuj",
-        symbolic: &[":"],
+        semantic_id: Some(CONS_SEMANTIC_ID),
     },
     CanonEntry {
         identity: CanonicalIdentity::Car,
         kind: CanonicalKind::ValuePrimitive,
-        historical: "car",
-        ukrainian: "перше",
-        sanskrit: "ādi",
-        symbolic: &[":п"],
+        semantic_id: Some(CAR_SEMANTIC_ID),
     },
     CanonEntry {
         identity: CanonicalIdentity::Cdr,
         kind: CanonicalKind::ValuePrimitive,
-        historical: "cdr",
-        ukrainian: "решта",
-        sanskrit: "śeṣa",
-        symbolic: &[":р"],
+        semantic_id: Some(CDR_SEMANTIC_ID),
     },
     CanonEntry {
         identity: CanonicalIdentity::Cond,
         kind: CanonicalKind::SpecialForm,
-        historical: "cond",
-        ukrainian: "за-умовою",
-        sanskrit: "anukrama",
-        symbolic: &["?:"],
+        semantic_id: Some(COND_SEMANTIC_ID),
     },
 ];
 
-pub(crate) fn identity_for_surface(name: &str) -> Option<CanonicalIdentity> {
+fn identity_for_semantic_id(semantic_id: &str) -> Option<CanonicalIdentity> {
     CANON
         .iter()
-        .find(|entry| {
-            entry.historical == name
-                || entry.ukrainian == name
-                || entry.sanskrit == name
-                || entry.symbolic.contains(&name)
-        })
+        .find(|entry| entry.semantic_id == Some(semantic_id))
         .map(|entry| entry.identity)
+}
+
+pub(crate) fn identity_for_surface(name: &str) -> Option<CanonicalIdentity> {
+    semantic_registry::semantic_id_for_surface(name).and_then(identity_for_semantic_id)
 }
 
 pub(crate) fn is_reserved_surface(name: &str) -> bool {
@@ -219,7 +199,7 @@ fn build_value_registry() -> HashMap<CanonicalIdentity, Value> {
 
 thread_local! {
     /// One immutable callable handle per Canon identity per evaluator thread.
-    /// All EN/UK/SA spellings resolve to clones of these same `Rc` handles.
+    /// Every stable registry spelling resolves to clones of these same `Rc` handles.
     static CANON_VALUES: HashMap<CanonicalIdentity, Value> = build_value_registry();
 }
 
@@ -245,6 +225,14 @@ mod tests {
         assert_eq!(CANON.len(), 8);
         assert_eq!(CANON[0].identity, CanonicalIdentity::EmptyList);
         assert_eq!(CANON[0].kind, CanonicalKind::GroundValue);
+        assert_eq!(CANON[0].semantic_id, None);
+    }
+
+    #[test]
+    fn canon_meanings_are_selected_only_by_numeric_semantic_identity() {
+        assert_eq!(identity_for_semantic_id(QUOTE_SEMANTIC_ID), Some(CanonicalIdentity::Quote));
+        assert_eq!(identity_for_semantic_id(CAR_SEMANTIC_ID), Some(CanonicalIdentity::Car));
+        assert_eq!(identity_for_semantic_id("0104"), None);
     }
 
     #[test]
@@ -253,6 +241,17 @@ mod tests {
         assert_eq!(identity_for_surface("перше"), Some(CanonicalIdentity::Car));
         assert_eq!(identity_for_surface("ādi"), Some(CanonicalIdentity::Car));
         assert_eq!(identity_for_surface(":п"), Some(CanonicalIdentity::Car));
+    }
+
+    #[test]
+    fn numeric_canon_identity_uses_the_same_evaluator_meaning() {
+        assert_eq!(identity_for_surface(CAR_SEMANTIC_ID), Some(CanonicalIdentity::Car));
+        let numeric = value_for_surface(CAR_SEMANTIC_ID).expect("numeric Canon identity");
+        let human = value_for_surface("car").expect("historical Canon surface");
+        let (Value::Builtin(numeric), Value::Builtin(human)) = (&numeric, &human) else {
+            panic!("PRIM_CAR must be a first-class builtin value");
+        };
+        assert!(Rc::ptr_eq(numeric, human));
     }
 
     #[test]
@@ -267,6 +266,29 @@ mod tests {
         };
         assert!(Rc::ptr_eq(historical, ukrainian));
         assert!(Rc::ptr_eq(historical, sanskrit));
+    }
+
+    #[test]
+    fn synthetic_registry_constructively_controls_canon_routing() {
+        const SYNTHETIC: &str = "(0001 (xx comet stable))\n(0005 (xx asteroid stable))";
+        let index = semantic_registry::build_surface_index(SYNTHETIC);
+        let route = |surface: &str| {
+            index
+                .get(surface)
+                .copied()
+                .and_then(identity_for_semantic_id)
+        };
+
+        assert_eq!(route("comet"), Some(CanonicalIdentity::Quote));
+        assert_eq!(route("asteroid"), Some(CanonicalIdentity::Car));
+        assert_eq!(route("quote"), None);
+        assert_eq!(route("car"), None);
+    }
+
+    #[test]
+    fn registry_rows_without_canon_meaning_do_not_become_canon() {
+        assert_eq!(semantic_registry::semantic_id_for_surface("+"), Some("0104"));
+        assert_eq!(identity_for_surface("+"), None);
     }
 
     #[test]
