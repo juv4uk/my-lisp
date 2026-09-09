@@ -32,7 +32,7 @@ use crate::eval::special_forms::{
     string_rest_values, string_to_codepoint_values, string_to_symbol_values,
     symbol_to_string_values, write_to_string_values,
 };
-use crate::{Exactness, NumericBuffer, Rational, Span, Value};
+use crate::{semantic_registry, Exactness, NumericBuffer, Rational, Span, Value};
 
 type Native =
     std::rc::Rc<dyn Fn(&[Value], &Environment, Span) -> Result<Value, crate::LanguageError>>;
@@ -44,12 +44,17 @@ fn builtin(name: &'static str, func: Native) -> Value {
 fn define_peer_builtin(
     environment: &Environment,
     diagnostic_name: &'static str,
-    names: &[&'static str],
+    semantic_id: &str,
     func: Native,
 ) {
+    let names = semantic_registry::stable_surfaces_for_semantic_id(semantic_id);
+    assert!(
+        !names.is_empty(),
+        "peer builtin semantic identity must have at least one stable surface: {semantic_id}"
+    );
     let value = builtin(diagnostic_name, func);
     for name in names {
-        environment.define(*name, value.clone());
+        environment.define(name, value.clone());
     }
 }
 
@@ -480,13 +485,14 @@ pub(crate) fn install(environment: &Environment) {
     });
 
     // ADR-007/008 runtime peer slices: each identity below allocates one
-    // callable value, then binds every ratified stable spelling directly.
+    // callable value, then binds every ratified stable spelling projected from
+    // the numeric semantic registry. Human spellings are not duplicated here.
     // The builtin diagnostic token remains the historical symbolic spelling
     // for Contract 2.1 display compatibility; it is NOT semantic identity.
     define_peer_builtin(
         environment,
         "+",
-        &["додати", "+", "yoga"],
+        "0104",
         std::rc::Rc::new(|args: &[Value], env: &Environment, span: Span| {
             arithmetic_on_values("+", args, env, span)
         }),
@@ -494,7 +500,7 @@ pub(crate) fn install(environment: &Environment) {
     define_peer_builtin(
         environment,
         "-",
-        &["відняти", "-", "viyoga"],
+        "1001",
         std::rc::Rc::new(|args: &[Value], env: &Environment, span: Span| {
             arithmetic_on_values("-", args, env, span)
         }),
@@ -502,7 +508,7 @@ pub(crate) fn install(environment: &Environment) {
     define_peer_builtin(
         environment,
         "*",
-        &["помножити", "*", "guṇana"],
+        "1002",
         std::rc::Rc::new(|args: &[Value], env: &Environment, span: Span| {
             arithmetic_on_values("*", args, env, span)
         }),
@@ -510,7 +516,7 @@ pub(crate) fn install(environment: &Environment) {
     define_peer_builtin(
         environment,
         "/",
-        &["поділити", "/", "haraṇa"],
+        "1003",
         std::rc::Rc::new(|args: &[Value], env: &Environment, span: Span| {
             division_on_values(args, args.len(), env, span)
         }),
@@ -530,7 +536,7 @@ pub(crate) fn install(environment: &Environment) {
     define_peer_builtin(
         environment,
         "<",
-        &["менше?", "<", "hīna?"],
+        "1014",
         std::rc::Rc::new(|args: &[Value], _env: &Environment, span: Span| {
             comparison_on_values("<", args, span)
         }),
@@ -538,7 +544,7 @@ pub(crate) fn install(environment: &Environment) {
     define_peer_builtin(
         environment,
         ">",
-        &["більше?", ">", "adhika?"],
+        "1015",
         std::rc::Rc::new(|args: &[Value], _env: &Environment, span: Span| {
             comparison_on_values(">", args, span)
         }),
@@ -546,7 +552,7 @@ pub(crate) fn install(environment: &Environment) {
     define_peer_builtin(
         environment,
         "=",
-        &["рівне?", "=", "sama?"],
+        "1016",
         std::rc::Rc::new(|args: &[Value], _env: &Environment, span: Span| {
             comparison_on_values("=", args, span)
         }),
