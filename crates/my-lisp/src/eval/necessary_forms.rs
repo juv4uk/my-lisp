@@ -167,6 +167,32 @@ mod tests {
     }
 
     #[test]
+    fn synthetic_registry_constructively_controls_necessary_form_routing() {
+        const SYNTHETIC: &str = "(0010 (xx comet stable))\n(0011 (xx asteroid stable))";
+        let index = build_surface_index(SYNTHETIC);
+
+        let route = |surface: &str| {
+            index
+                .get(surface)
+                .copied()
+                .and_then(identity_for_semantic_id)
+        };
+
+        assert_eq!(route("comet"), Some(NecessaryFormIdentity::Lambda));
+        assert_eq!(route("asteroid"), Some(NecessaryFormIdentity::Define));
+        assert_eq!(route("lambda"), None);
+        assert_eq!(route("define"), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "semantic registry surface must be unique")]
+    fn duplicate_stable_surface_is_rejected_deterministically() {
+        const CONFLICTING: &str =
+            "(0010 (xx collision stable))\n(0011 (yy collision stable))";
+        let _ = build_surface_index(CONFLICTING);
+    }
+
+    #[test]
     fn registry_projection_resolves_unrelated_stable_rows_without_routing_them() {
         assert_eq!(semantic_id_for_surface("+"), Some("0104"));
         assert_eq!(identity_for_symbol("+"), None);
