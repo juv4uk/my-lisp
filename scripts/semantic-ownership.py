@@ -180,12 +180,17 @@ def table(rows: list[tuple[str, int]]) -> str:
 
 def render(ownership: list[Ownership], migrations: list[Migration]) -> str:
     confirmed_migrations = [row for row in migrations if row.status == "confirmed"]
+    host_to_lisp = [
+        row
+        for row in confirmed_migrations
+        if row.to_owner == "lisp-owned" and row.from_owner != "lisp-owned"
+    ]
     host_policy_candidates = [
         row
         for row in ownership
         if row.owner_class == "host-mechanism" and row.policy_candidate == "yes"
     ]
-    irreducible_host = [
+    legitimate_host = [
         row
         for row in ownership
         if row.status == "confirmed"
@@ -206,9 +211,10 @@ def render(ownership: list[Ownership], migrations: list[Migration]) -> str:
         f"- Аудитованих ownership rows: **{len(ownership)}**",
         f"- Підтверджених ownership rows: **{sum(row.status == 'confirmed' for row in ownership)}**",
         f"- Часткових ownership rows: **{sum(row.status == 'partial' for row in ownership)}**",
-        f"- Підтверджених записів migration ledger: **{len(confirmed_migrations)}**",
+        f"- Підтверджених host/Rust→Lisp semantic migrations: **{len(host_to_lisp)}**",
+        f"- Підтверджених записів migration ledger загалом: **{len(confirmed_migrations)}**",
         f"- Залишкових host semantic-policy candidates: **{len(host_policy_candidates)}**",
-        f"- Підтверджених незвідних host mechanism/observation/authorization rows: **{len(irreducible_host)}**",
+        f"- Підтверджених host mechanism/observation/authorization rows, не позначених policy candidate: **{len(legitimate_host)}**",
         f"- Ownership rows зі статусом unknown: **{len(unknown_rows)}**",
         "",
         "## Класи власності",
