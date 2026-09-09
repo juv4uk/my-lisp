@@ -15,7 +15,7 @@ fn escaped(source: &str) -> String {
 fn meta_eval(expr: &str) -> String {
     let mut session = meta_session();
     eval_program(
-        &format!(r#"(my-eval (read \"{}\") (quote ()))"#, escaped(expr)),
+        &format!(r#"(my-eval (read "{}") (quote ()))"#, escaped(expr)),
         &mut session,
     )
     .unwrap_or_else(|error| panic!("host failure while meta-evaluating {expr}: {error}"))
@@ -26,8 +26,8 @@ fn meta_eval(expr: &str) -> String {
 fn meta_eval_program(program: &str, probe: &str) -> String {
     let mut session = meta_session();
     let source = format!(
-        r#"(let ((loaded (my-eval-program (read-all \"{}\") (quote ()))))
-             (my-eval (read \"{}\") (car loaded)))"#,
+        r#"(let ((loaded (my-eval-program (read-all "{}") (quote ()))))
+             (my-eval (read "{}") (car loaded)))"#,
         escaped(program),
         escaped(probe),
     );
@@ -41,7 +41,7 @@ fn meta_program_result(program: &str) -> String {
     let mut session = meta_session();
     eval_program(
         &format!(
-            r#"(cdr (my-eval-program (read-all \"{}\") (quote ())))"#,
+            r#"(cdr (my-eval-program (read-all "{}") (quote ())))"#,
             escaped(program)
         ),
         &mut session,
