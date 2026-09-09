@@ -45,7 +45,7 @@ fn fast_path_product_past_f64_exact_range_never_silently_rounds() {
     let product = eval("(* 3000000001 3000000001)");
 
     assert_eq!(product.to_string(), EXPECTED);
-    let Value::Rational(rational) = product else {
+    let Value::Rational(rational) = &product else {
         panic!("an exact integer above the f64 exact range must stay Rational");
     };
     assert_eq!(rational.to_string(), EXPECTED);
