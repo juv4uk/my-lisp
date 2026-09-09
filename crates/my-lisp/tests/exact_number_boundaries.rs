@@ -87,7 +87,8 @@ fn exact_decimal_and_exponent_literals_never_enter_binary_float_semantics() {
     }
 
     assert_eq!(eval("(* 1e-100 1e100)").to_string(), "1");
-    assert_eq!(eval("(/ 1e100 1e-100)").to_string().len(), 201);
+    let ten_pow_200 = format!("1{}", "0".repeat(200));
+    assert_eq!(eval("(/ 1e100 1e-100)").to_string(), ten_pow_200);
 }
 
 #[test]
