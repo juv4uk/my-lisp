@@ -1,10 +1,15 @@
 //! Immutable routing for evaluator mechanisms necessary beyond Canon 0 + McCarthy7.
 //!
 //! Machine semantic authority lives in `lib/surface/semantic-registry.wsm`.
-//! The Rust enum below selects an evaluator mechanism; it is NOT a semantic
-//! identity registry. Each route is pinned to the numeric identity from the
-//! authority file, and a unit test proves the small runtime spelling cache has
-//! not drifted from that authority.
+//! Rust owns only the mapping from numeric semantic IDs to evaluator mechanisms;
+//! stable human/symbolic spellings are projected from the authority file once
+//! and indexed for O(1) hot-path lookup. Human spellings are not duplicated in
+//! evaluator routing data.
+
+use std::{collections::HashMap, sync::OnceLock};
+
+const SEMANTIC_REGISTRY: &str =
+    include_str!("../../../../lib/surface/semantic-registry.wsm");
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum NecessaryFormIdentity {
@@ -12,71 +17,96 @@ pub(crate) enum NecessaryFormIdentity {
     Lambda,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct NecessaryFormEntry {
-    pub identity: NecessaryFormIdentity,
-    pub semantic_id: &'static str,
-    pub surfaces: &'static [&'static str],
+#[derive(Debug)]
+struct SemanticRow {
+    semantic_id: &'static str,
+    stable_surfaces: Vec<&'static str>,
 }
 
 pub(crate) const LAMBDA_SEMANTIC_ID: &str = "0010";
 pub(crate) const DEFINE_SEMANTIC_ID: &str = "0011";
 
-/// Closed evaluator-routing cache. Numeric IDs are the machine handles; human
-/// spellings are direct peers. CI proves these rows equal the stable rows in
-/// the numeric registry, so this cache cannot silently become a second authority.
-pub(crate) const NECESSARY_FORMS: [NecessaryFormEntry; 2] = [
-    NecessaryFormEntry {
-        identity: NecessaryFormIdentity::Define,
-        semantic_id: DEFINE_SEMANTIC_ID,
-        surfaces: &["define", "визначити"],
-    },
-    NecessaryFormEntry {
-        identity: NecessaryFormIdentity::Lambda,
-        semantic_id: LAMBDA_SEMANTIC_ID,
-        surfaces: &["lambda", "функція"],
-    },
-];
+fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
+    source
+        .lines()
+        .filter_map(|line| {
+            let fields = line.split_whitespace().collect::<Vec<_>>();
+            let first = fields.first()?;
+            let semantic_id = first.strip_prefix('(')?;
+            if semantic_id.is_empty()
+                || !semantic_id
+                    .as_bytes()
+                    .iter()
+                    .all(|byte| byte.is_ascii_digit())
+            {
+                return None;
+            }
 
-/// Resolve an executable list-head symbol. A pure numeric semantic handle and
-/// every ratified stable human spelling enter the same evaluator mechanism.
+            let mut stable_surfaces = Vec::new();
+            for triple in fields[1..].chunks(3) {
+                if triple.len() != 3 {
+                    break;
+                }
+                let surface = triple[1];
+                let status = triple[2].trim_end_matches(')');
+                if status == "stable" && surface != "—" {
+                    stable_surfaces.push(surface);
+                }
+            }
+
+            Some(SemanticRow {
+                semantic_id,
+                stable_surfaces,
+            })
+        })
+        .collect()
+}
+
+fn build_surface_index(source: &'static str) -> HashMap<&'static str, &'static str> {
+    let mut index = HashMap::new();
+    for row in parse_rows(source) {
+        for surface in std::iter::once(row.semantic_id).chain(row.stable_surfaces) {
+            if let Some(previous) = index.insert(surface, row.semantic_id) {
+                panic!(
+                    "semantic registry surface must be unique: {surface} maps to both {previous} and {}",
+                    row.semantic_id
+                );
+            }
+        }
+    }
+    index
+}
+
+fn surface_index() -> &'static HashMap<&'static str, &'static str> {
+    static INDEX: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+    INDEX.get_or_init(|| build_surface_index(SEMANTIC_REGISTRY))
+}
+
+fn semantic_id_for_surface(name: &str) -> Option<&'static str> {
+    surface_index().get(name).copied()
+}
+
+fn identity_for_semantic_id(semantic_id: &str) -> Option<NecessaryFormIdentity> {
+    match semantic_id {
+        DEFINE_SEMANTIC_ID => Some(NecessaryFormIdentity::Define),
+        LAMBDA_SEMANTIC_ID => Some(NecessaryFormIdentity::Lambda),
+        _ => None,
+    }
+}
+
+/// Resolve an executable list-head symbol through the authority registry first,
+/// then select the evaluator mechanism by numeric semantic ID. Registry parsing
+/// and indexing happen once; every evaluator lookup after that is O(1).
 pub(crate) fn identity_for_symbol(name: &str) -> Option<NecessaryFormIdentity> {
-    NECESSARY_FORMS
-        .iter()
-        .find(|entry| entry.semantic_id == name || entry.surfaces.contains(&name))
-        .map(|entry| entry.identity)
+    semantic_id_for_surface(name).and_then(identity_for_semantic_id)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const SEMANTIC_REGISTRY: &str =
-        include_str!("../../../../lib/surface/semantic-registry.wsm");
-
-    fn stable_registry_names(identity: &str) -> Vec<&str> {
-        let prefix = format!("  ({identity} ");
-        let line = SEMANTIC_REGISTRY
-            .lines()
-            .find(|line| line.starts_with(&prefix))
-            .unwrap_or_else(|| panic!("semantic registry must contain identity {identity}"));
-        let fields = line.split_whitespace().collect::<Vec<_>>();
-        let (triples, remainder) = fields[1..].as_chunks::<3>();
-        assert!(remainder.is_empty(), "malformed registry row: {line}");
-
-        triples
-            .iter()
-            .filter_map(|triple| {
-                let name = triple[1];
-                let status = triple[2].trim_end_matches(')');
-                (status == "stable" && name != "—").then_some(name)
-            })
-            .collect()
-    }
-
     #[test]
-    fn necessary_forms_have_two_numeric_semantic_identities() {
-        assert_eq!(NECESSARY_FORMS.len(), 2);
+    fn necessary_forms_are_selected_by_numeric_semantic_identity() {
         assert_eq!(
             identity_for_symbol(DEFINE_SEMANTIC_ID),
             Some(NecessaryFormIdentity::Define)
@@ -88,7 +118,7 @@ mod tests {
     }
 
     #[test]
-    fn ukrainian_and_english_names_are_direct_peer_spellings() {
+    fn ukrainian_and_english_names_are_registry_driven_peer_spellings() {
         assert_eq!(
             identity_for_symbol("визначити"),
             Some(NecessaryFormIdentity::Define)
@@ -108,24 +138,37 @@ mod tests {
     }
 
     #[test]
-    fn runtime_routing_cache_matches_numeric_registry_authority() {
-        for entry in NECESSARY_FORMS {
-            let mut from_registry = stable_registry_names(entry.semantic_id);
-            let mut cached = entry.surfaces.to_vec();
-            from_registry.sort_unstable();
-            cached.sort_unstable();
-            assert_eq!(
-                cached, from_registry,
-                "necessary-form routing cache drifted from semantic identity {}",
-                entry.semantic_id
-            );
-        }
-    }
-
-    #[test]
-    fn non_numeric_compatibility_spellings_do_not_gain_identity() {
+    fn non_stable_or_unrelated_spellings_do_not_gain_necessary_form_identity() {
         assert_eq!(identity_for_symbol("def"), None);
         assert_eq!(identity_for_symbol("#0010"), None);
         assert_eq!(identity_for_symbol("id0010"), None);
+        assert_eq!(identity_for_symbol("quote"), None);
+    }
+
+    #[test]
+    fn registry_projection_accepts_only_stable_surface_status() {
+        const SYNTHETIC: &str =
+            "(4242 (xx comet stable) (yy asteroid candidate) (zz — missing))";
+        let parsed = parse_rows(SYNTHETIC);
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].semantic_id, "4242");
+        assert_eq!(parsed[0].stable_surfaces, vec!["comet"]);
+    }
+
+    #[test]
+    fn registry_index_contains_machine_ids_and_stable_surfaces_only() {
+        const SYNTHETIC: &str =
+            "(4242 (xx comet stable) (yy asteroid candidate) (zz — missing))";
+        let index = build_surface_index(SYNTHETIC);
+        assert_eq!(index.get("4242"), Some(&"4242"));
+        assert_eq!(index.get("comet"), Some(&"4242"));
+        assert_eq!(index.get("asteroid"), None);
+        assert_eq!(index.get("—"), None);
+    }
+
+    #[test]
+    fn registry_projection_resolves_unrelated_stable_rows_without_routing_them() {
+        assert_eq!(semantic_id_for_surface("+"), Some("0104"));
+        assert_eq!(identity_for_symbol("+"), None);
     }
 }
