@@ -1,0 +1,42 @@
+name: Confirm TASK-007 evidence
+
+on:
+  push:
+    branches:
+      - fix/meta-eval-argument-error-short-circuit
+
+permissions:
+  contents: write
+
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/meta-eval-argument-error-short-circuit
+          fetch-depth: 0
+      - name: Update one evidence row with exact guard
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('knowledge/meta-eval-evidence.wsm')
+          text = path.read_text()
+          old = '(row function-application-order yes unknown "crates/my-lisp/src/eval/mod.rs" "lib/meta-eval.my" "немає ізольованого differential proof порядку evaluation arguments/operator" "додати програму, де порядок є observable без нової мутації")'
+          new = '(row function-application-order yes confirmed "crates/my-lisp/src/eval/mod.rs;crates/my-lisp/tests/meta_eval_evidence.rs" "lib/meta-eval.my;crates/my-lisp/tests/meta_eval_evidence.rs;crates/my-lisp/tests/meta_eval_error_provenance.rs" "operator evaluation precedes arguments; ordinary arguments evaluate left-to-right and stop at the first failure; private outcome-token identity preserves failure provenance without misclassifying quoted error/fail-shaped user data" "немає")'
+          if text.count(old) != 1:
+              raise SystemExit('function-application-order row drifted or was already changed')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Validate machine evidence
+        run: python3 scripts/check-meta-eval-evidence.py
+      - name: Commit evidence and remove applicator
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add knowledge/meta-eval-evidence.wsm
+          git rm .github/workflows/task007-evidence.yml
+          git commit -m "docs(evidence): confirm meta application order"
+          git push origin HEAD:fix/meta-eval-argument-error-short-circuit
