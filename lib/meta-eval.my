@@ -10,10 +10,11 @@
 ; The actual primitive operation is still supplied by the native substrate;
 ; this evaluator owns name resolution, Canon-first lookup, ordinary lexical
 ; shadowing, application shape, macro expansion, closure environments, chained
-; comparison policy, self-recursive and finite mutually recursive top-level
-; function binding, variadic/dotted lambda parameter binding, and named failure
-; observations for unresolved names, non-callable values, lambda/macro arity
-; mismatch, invalid lambda-list structure, and reserved Canon binding attempts.
+; comparison policy, self-recursive and dependency-aware finite mutually
+; recursive top-level function binding, variadic/dotted lambda parameter
+; binding, and named failure observations for unresolved names, non-callable
+; values, lambda/macro arity mismatch, invalid lambda-list structure, and
+; reserved Canon binding attempts.
 ;
 ; This remains an explicit self-hosting witness, not the always-loaded runtime.
 ; Full named-error parity and arbitrary later-binding visibility are still known
@@ -444,9 +445,9 @@
             group
             captured-env))))
 
-; Build onto the captured environment so later definitions in a contiguous
-; top-level group appear earlier in the alist, matching same-frame overwrite
-; order without requiring mutable or cyclic host environment state.
+; Build onto the captured environment so later definitions in a recursive SCC
+; appear earlier in the alist, matching same-frame overwrite order inside that
+; component without requiring mutable or cyclic host environment state.
 (def my-build-group-env-onto
   (lambda (forms group captured-env out)
     (cond
@@ -606,9 +607,206 @@
             (cons (cons (cons (second form) macro-val) env) macro-val)))))
       (t (cons env (my-eval form env))))))
 
-; `my-eval-program` recognizes each contiguous top-level non-Canon
-; lambda-definition block as one finite recursive group, so its members can
-; refer to one another without a cyclic host Environment.
+; Dependency analysis for top-level lambda definitions stays in Lisp data.
+; A graph entry is `(name dependencies)`, where dependencies are only free
+; references to names from the same contiguous lambda-definition block.
+(def my-params-bind-name?
+  (lambda (name params)
+    (cond
+      ((atom params)
+       (cond
+         ((eq params (quote ())) (quote ()))
+         ((eq params name) t)
+         (t (quote ()))))
+      ((eq (car params) name) t)
+      (t (my-params-bind-name? name (cdr params))))))
+
+(def my-forms-reference-name?
+  (lambda (forms name)
+    (cond
+      ((atom forms) (quote ()))
+      ((my-form-references-name? (car forms) name) t)
+      (t (my-forms-reference-name? (cdr forms) name)))))
+
+(def my-form-references-name?
+  (lambda (form name)
+    (cond
+      ((atom form)
+       (cond
+         ((symbol? form) (eq form name))
+         (t (quote ()))))
+      ((atom (car form))
+       (cond
+         ; Quoted data is not a lexical dependency.
+         ((my-canon-quote-name? (car form)) (quote ()))
+         ; A nested lambda can shadow a candidate top-level name.
+         ((eq (car form) (quote lambda))
+          (cond
+            ((my-params-bind-name? name (second form)) (quote ()))
+            (t (my-forms-reference-name? (cdr (cdr form)) name))))
+         (t (my-forms-reference-name? form name))))
+      (t (my-forms-reference-name? form name)))))
+
+(def my-lambda-def-references-name?
+  (lambda (form name)
+    (let ((lambda-form (third form)))
+      (cond
+        ((my-params-bind-name? name (second lambda-form)) (quote ()))
+        (t (my-forms-reference-name? (cdr (cdr lambda-form)) name))))))
+
+(def my-lambda-def-names
+  (lambda (forms)
+    (cond
+      ((atom forms) (quote ()))
+      (t (cons (second (car forms))
+               (my-lambda-def-names (cdr forms)))))))
+
+(def my-def-dependencies
+  (lambda (form candidates)
+    (cond
+      ((atom candidates) (quote ()))
+      ((my-lambda-def-references-name? form (car candidates))
+       (cons (car candidates)
+             (my-def-dependencies form (cdr candidates))))
+      (t (my-def-dependencies form (cdr candidates))))))
+
+(def my-build-dependency-graph-with-names
+  (lambda (forms names)
+    (cond
+      ((atom forms) (quote ()))
+      (t
+       (cons
+         (list
+           (second (car forms))
+           (my-def-dependencies (car forms) names))
+         (my-build-dependency-graph-with-names (cdr forms) names))))))
+
+(def my-build-dependency-graph
+  (lambda (forms)
+    (let ((names (my-lambda-def-names forms)))
+      (my-build-dependency-graph-with-names forms names))))
+
+(def my-graph-dependencies
+  (lambda (name graph)
+    (cond
+      ((atom graph) (quote ()))
+      ((eq name (car (car graph))) (second (car graph)))
+      (t (my-graph-dependencies name (cdr graph))))))
+
+(def my-graph-dependencies-reach?
+  (lambda (dependencies target graph visited)
+    (cond
+      ((atom dependencies) (quote ()))
+      ((eq (car dependencies) target) t)
+      ((my-symbol-member? (car dependencies) visited)
+       (my-graph-dependencies-reach?
+         (cdr dependencies) target graph visited))
+      ((my-graph-reaches?
+         (car dependencies)
+         target
+         graph
+         (cons (car dependencies) visited))
+       t)
+      (t
+       (my-graph-dependencies-reach?
+         (cdr dependencies) target graph visited)))))
+
+(def my-graph-reaches?
+  (lambda (from target graph visited)
+    (my-graph-dependencies-reach?
+      (my-graph-dependencies from graph)
+      target
+      graph
+      (cons from visited))))
+
+; The SCC containing `name` is the set of block names mutually reachable
+; with it. `name` itself is always retained so an acyclic node is a singleton
+; component; only components with 2+ members use recursive-group-closure.
+(def my-scc-names
+  (lambda (name candidates graph)
+    (cond
+      ((atom candidates) (quote ()))
+      ((eq name (car candidates))
+       (cons (car candidates)
+             (my-scc-names name (cdr candidates) graph)))
+      ((my-graph-reaches? name (car candidates) graph (quote ()))
+       (cond
+         ((my-graph-reaches? (car candidates) name graph (quote ()))
+          (cons (car candidates)
+                (my-scc-names name (cdr candidates) graph)))
+         (t (my-scc-names name (cdr candidates) graph))))
+      (t (my-scc-names name (cdr candidates) graph)))))
+
+(def my-select-defs-by-names
+  (lambda (forms names)
+    (cond
+      ((atom forms) (quote ()))
+      ((my-symbol-member? (second (car forms)) names)
+       (cons (car forms)
+             (my-select-defs-by-names (cdr forms) names)))
+      (t (my-select-defs-by-names (cdr forms) names)))))
+
+(def my-remove-defs-by-names
+  (lambda (forms names)
+    (cond
+      ((atom forms) (quote ()))
+      ((my-symbol-member? (second (car forms)) names)
+       (my-remove-defs-by-names (cdr forms) names))
+      (t
+       (cons (car forms)
+             (my-remove-defs-by-names (cdr forms) names))))))
+
+(def my-last-lambda-def-name
+  (lambda (forms)
+    (cond
+      ((atom (cdr forms)) (second (car forms)))
+      (t (my-last-lambda-def-name (cdr forms))))))
+
+(def my-eval-lambda-components
+  (lambda (forms graph env final-name)
+    (cond
+      ((atom forms)
+       (cons env (env-lookup final-name env)))
+      (t
+       (let ((name (second (car forms))))
+         (let ((component-names
+                 (my-scc-names
+                   name
+                   (my-lambda-def-names forms)
+                   graph)))
+           (cond
+             ; A singleton stays on the ordinary top-level path. That path
+             ; already gives self-recursive definitions a finite
+             ; recursive-closure without falsely inventing a group.
+             ((atom (cdr component-names))
+              (let ((result (my-eval-top-form (car forms) env)))
+                (my-eval-lambda-components
+                  (cdr forms)
+                  graph
+                  (car result)
+                  final-name)))
+             (t
+              (let ((component
+                      (my-select-defs-by-names forms component-names)))
+                (let ((group-env (my-build-group-env component env)))
+                  (my-eval-lambda-components
+                    (my-remove-defs-by-names forms component-names)
+                    graph
+                    group-env
+                    final-name)))))))))))
+
+(def my-eval-lambda-block
+  (lambda (forms env)
+    (let ((graph (my-build-dependency-graph forms))
+          (final-name (my-last-lambda-def-name forms)))
+      (my-eval-lambda-components forms graph env final-name))))
+
+; `my-eval-program` validates each contiguous top-level non-Canon
+; lambda-definition block, builds its explicit dependency graph, and gives
+; recursive-group-closure only to real multi-member strongly-connected
+; components. Independent or one-way-dependent definitions stay on the
+; ordinary singleton path. This prevents adjacency itself from inventing
+; recursion while keeping finite Lisp data for genuine mutual recursion.
 ;
 ; An empty form list is a valid no-op program. It preserves the supplied
 ; environment exactly and returns Nil as the program result, using the same
@@ -618,16 +816,18 @@
     (cond
       ((atom forms) (cons env (quote ())))
       ((my-lambda-def-form? (car forms))
-       (let ((group (my-take-lambda-def-group forms)))
-         (let ((problem (my-lambda-def-group-error group)))
+       (let ((block (my-take-lambda-def-group forms)))
+         (let ((problem (my-lambda-def-group-error block)))
            (cond
              ((atom problem)
               (let ((rest (my-drop-lambda-def-group forms)))
-                (let ((group-env (my-build-group-env group env)))
+                (let ((block-result (my-eval-lambda-block block env)))
                   (cond
-                    ((atom rest)
-                     (cons group-env (cdr (car group-env))))
-                    (t (my-eval-program rest group-env))))))
+                    ((atom rest) block-result)
+                    (t
+                     (my-eval-program
+                       rest
+                       (car block-result)))))))
              (t (cons env (my-lambda-invalid-form problem)))))))
       (t
        (let ((result (my-eval-top-form (car forms) env)))
