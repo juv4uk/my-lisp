@@ -103,15 +103,15 @@ fn bare_unresolved_symbol_remains_a_real_lookup_gap() {
 }
 
 #[test]
-fn macro_arity_is_an_explicit_named_error_gap() {
+fn macro_arity_has_reference_meta_parity() {
     let program = "(defmacro one (x) x) (one)";
     assert_eq!(native_error_kind(program), ErrorKind::Arity);
 
     let meta = meta_program_result(program);
     assert_eq!(
         meta_error_kind(&meta),
-        Some("unbound-symbol"),
-        "the current meta evaluator re-evaluates its arity error as expansion data; if this changes, update the evidence matrix"
+        Some("arity"),
+        "macro application must preserve its arity failure instead of re-evaluating that error as expansion code"
     );
 }
 
