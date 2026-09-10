@@ -7,8 +7,8 @@
 ## Підсумок
 
 - Аудитованих ownership rows: **34**
-- Підтверджених ownership rows: **33**
-- Часткових ownership rows: **1**
+- Підтверджених ownership rows: **34**
+- Часткових ownership rows: **0**
 - Підтверджених host/Rust→Lisp semantic migrations: **2**
 - Підтверджених записів migration ledger загалом: **8**
 - Залишкових host semantic-policy candidates: **0**
@@ -45,8 +45,7 @@
 
 | категорія | аудитовані рядки |
 |---|---:|
-| `confirmed` | 33 |
-| `partial` | 1 |
+| `confirmed` | 34 |
 
 ## Кандидати на перевірку host-policy ownership
 
@@ -82,7 +81,7 @@
 | `knowledge-journal` | `—` | `lisp-owned` | `knowledge` | `confirmed` | Append-only журнал знань і guarded knowledge admission |
 | `list-constructor` | `—` | `lisp-owned` | `stdlib` | `confirmed` | Варіадичний list-конструктор виведений із lambda/rest семантики самої мови |
 | `macro-definition` | `0012` | `lisp-owned` | `bootstrap` | `confirmed` | Поведінка визначення макросів виведена у lib/macro.my поверх вузького make-macro substrate |
-| `meta-evaluator` | `—` | `lisp-owned` | `self-hosting` | `partial` | Lisp-owned evaluator witness із відомими parity gaps |
+| `meta-evaluator` | `—` | `lisp-owned` | `self-hosting` | `confirmed` | Lisp-owned metacircular evaluator witness; усі 34 required parity rows підтверджені machine evidence matrix |
 | `monotonic-clock` | `—` | `host-observation` | `host-capability` | `confirmed` | Monotonic nanosecond observation без calendar policy |
 | `necessary-define` | `0011` | `necessary-form` | `bootstrap` | `confirmed` | DEFINE: evaluator-controlled immutable binding form |
 | `necessary-lambda` | `0010` | `necessary-form` | `bootstrap` | `confirmed` | LAMBDA: evaluator-controlled побудова closure |
