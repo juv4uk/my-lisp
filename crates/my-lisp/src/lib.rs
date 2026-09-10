@@ -17,6 +17,28 @@ mod language_items;
 mod parser;
 mod presentation;
 mod semantic_registry;
+/// Deliberately thin, crate-external view onto `semantic_registry` — exposes
+/// exactly the (namespace, spelling) pairs a consumer like the CML semantic
+/// export needs, without making the internal parsing/index machinery public.
+/// See docs/cml-semantic-export-v1-design.md.
+pub mod semantic_registry_export {
+    /// One admitted (namespace, spelling) pair for a semantic ID — e.g.
+    /// `SurfaceRow { namespace: "uk", name: "як-є" }` for `quote`'s Ukrainian
+    /// surface.
+    pub struct SurfaceRow {
+        pub namespace: &'static str,
+        pub name: &'static str,
+    }
+
+    /// Stable and compatibility-only spellings admitted for `semantic_id`,
+    /// each tagged with which namespace (en/uk/sa/sym/...) it belongs to.
+    pub fn admitted_surfaces_for_semantic_id(semantic_id: &str) -> Vec<SurfaceRow> {
+        super::semantic_registry::admitted_surfaces_with_namespace_for_semantic_id(semantic_id)
+            .into_iter()
+            .map(|(namespace, name)| SurfaceRow { namespace, name })
+            .collect()
+    }
+}
 pub mod syntax;
 mod value;
 

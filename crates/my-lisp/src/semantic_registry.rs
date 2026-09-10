@@ -17,6 +17,7 @@ enum SurfaceAdmission {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct SemanticSurface {
+    namespace: &'static str,
     name: &'static str,
     admission: SurfaceAdmission,
 }
@@ -48,6 +49,7 @@ fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
                 if triple.len() != 3 {
                     break;
                 }
+                let namespace = triple[0].trim_start_matches('(');
                 let surface = triple[1];
                 if surface == "—" {
                     continue;
@@ -58,6 +60,7 @@ fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
                     _ => continue,
                 };
                 surfaces.push(SemanticSurface {
+                    namespace,
                     name: surface,
                     admission,
                 });
@@ -155,6 +158,25 @@ pub(crate) fn admitted_surfaces_for_semantic_id(semantic_id: &str) -> Vec<&'stat
     admitted_surfaces_for_semantic_id_from_source(SEMANTIC_REGISTRY, semantic_id)
 }
 
+/// Same admission filter as `admitted_surfaces_for_semantic_id`, but keeps
+/// each surface's namespace (en/uk/sa/sym/...) alongside its spelling —
+/// needed by consumers (e.g. the CML semantic export) that must know which
+/// human/symbolic language a spelling belongs to, not just that it's
+/// admitted. Sorted by (namespace, name) for deterministic output.
+pub(crate) fn admitted_surfaces_with_namespace_for_semantic_id(
+    semantic_id: &str,
+) -> Vec<(&'static str, &'static str)> {
+    let rows = parse_rows(SEMANTIC_REGISTRY);
+    let mut surfaces = rows
+        .iter()
+        .find(|row| row.semantic_id == semantic_id)
+        .into_iter()
+        .flat_map(|row| row.surfaces.iter().map(|s| (s.namespace, s.name)))
+        .collect::<Vec<_>>();
+    surfaces.sort_unstable();
+    surfaces
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,10 +191,12 @@ mod tests {
             parsed[0].surfaces,
             vec![
                 SemanticSurface {
+                    namespace: "xx",
                     name: "comet",
                     admission: SurfaceAdmission::Stable,
                 },
                 SemanticSurface {
+                    namespace: "yy",
                     name: "meteor",
                     admission: SurfaceAdmission::CompatibilityOnly,
                 },
@@ -224,5 +248,17 @@ mod tests {
     #[test]
     fn unrelated_stable_rows_are_projected_without_assigning_evaluator_meaning() {
         assert_eq!(semantic_id_for_surface("+"), Some("0104"));
+    }
+
+    #[test]
+    fn admitted_surfaces_with_namespace_matches_admitted_names_and_keeps_namespace() {
+        // Real registry row, not synthetic — 0001 is `quote`, checked
+        // against the live lib/surface/semantic-registry.wsm.
+        let with_namespace = admitted_surfaces_with_namespace_for_semantic_id("0001");
+        let names_only = admitted_surfaces_for_semantic_id("0001");
+        assert_eq!(with_namespace.len(), names_only.len());
+        assert!(with_namespace.contains(&("en", "quote")));
+        assert!(with_namespace.contains(&("uk", "як-є")));
+        assert!(with_namespace.contains(&("sym", "'")));
     }
 }
