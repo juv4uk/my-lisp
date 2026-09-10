@@ -28,6 +28,34 @@
   (lambda (kind detail)
     (list (quote error) kind detail)))
 
+; Internal evaluator outcomes carry provenance that interpreted Lisp data cannot
+; forge. The tag is a native closure identity, not a symbol or list shape that
+; a program could reproduce with quote/cons. Public my-eval/my-apply unwrap the
+; envelope, so the observable interface stays unchanged.
+(def my-result-ok-token
+  (lambda (value) value))
+
+(def my-result-fail-token
+  (lambda (value) value))
+
+(def my-result-ok
+  (lambda (value)
+    (cons my-result-ok-token value)))
+
+(def my-result-fail
+  (lambda (error)
+    (cons my-result-fail-token error)))
+
+(def my-result-fail?
+  (lambda (result)
+    (cond
+      ((atom result) (quote ()))
+      (t (eq (car result) my-result-fail-token)))))
+
+(def my-result-value
+  (lambda (result)
+    (cdr result)))
+
 ; Finite Contract-6 Canon-name classifier. The result is the semantic identity,
 ; not the spelling. All admitted EN/UK/SA/symbolic spellings converge here.
 (def my-canon-identity
@@ -495,28 +523,57 @@
       (t (cons (cons (car params) (car args))
                (bind-params (cdr params) (cdr args) env))))))
 
-(def my-eval-list
+(def my-eval-list-result
   (lambda (exprs env)
     (cond
-      ((atom exprs) (quote ()))
-      (t (cons (my-eval (car exprs) env)
-               (my-eval-list (cdr exprs) env))))))
+      ((atom exprs) (my-result-ok (quote ())))
+      (t
+       (let ((head-result (my-eval-result (car exprs) env)))
+         (cond
+           ((my-result-fail? head-result) head-result)
+           (t
+            (let ((tail-result (my-eval-list-result (cdr exprs) env)))
+              (cond
+                ((my-result-fail? tail-result) tail-result)
+                (t
+                 (my-result-ok
+                   (cons
+                     (my-result-value head-result)
+                     (my-result-value tail-result)))))))))))))
+
+(def my-eval-list
+  (lambda (exprs env)
+    (my-result-value (my-eval-list-result exprs env))))
+
+(def my-eval-body-result
+  (lambda (body env)
+    (cond
+      ((atom (cdr body)) (my-eval-result (car body) env))
+      (t
+       (let ((first-result (my-eval-result (car body) env)))
+         (cond
+           ((my-result-fail? first-result) first-result)
+           (t (my-eval-body-result (cdr body) env))))))))
 
 (def my-eval-body
   (lambda (body env)
+    (my-result-value (my-eval-body-result body env))))
+
+(def my-eval-cond-result
+  (lambda (clauses env)
     (cond
-      ((atom (cdr body)) (my-eval (car body) env))
-      (t ((lambda ()
-            (my-eval (car body) env)
-            (my-eval-body (cdr body) env)))))))
+      ((atom clauses) (my-result-ok (quote ())))
+      (t
+       (let ((test-result (my-eval-result (car (car clauses)) env)))
+         (cond
+           ((my-result-fail? test-result) test-result)
+           ((my-result-value test-result)
+            (my-eval-result (second (car clauses)) env))
+           (t (my-eval-cond-result (cdr clauses) env))))))))
 
 (def my-eval-cond
   (lambda (clauses env)
-    (cond
-      ((atom clauses) (quote ()))
-      ((my-eval (car (car clauses)) env)
-       (my-eval (second (car clauses)) env))
-      (t (my-eval-cond (cdr clauses) env)))))
+    (my-result-value (my-eval-cond-result clauses env))))
 
 (def my-take-lambda-def-group
   (lambda (forms)
@@ -591,128 +648,161 @@
 ; caller-env is optional only for compatibility with the old experimental
 ; meta-eval-mutual wrapper. Main my-eval always passes it. When present it is
 ; used solely to refresh the shared top-level marker in a captured environment.
+; Internal application returns an outcome envelope. This keeps evaluator
+; failures distinct from ordinary Lisp data whose printed shape happens to be
+; `(error ...)`.
+(def my-apply-result
+  (lambda (fn args caller-env)
+    (cond
+      ((atom fn)
+       (my-result-fail (my-error (quote not-callable) fn)))
+      ((my-primitive? fn)
+       (my-result-ok (my-apply-primitive (second fn) args)))
+      ((my-closure? fn)
+       (cond
+         ((my-arity-ok? (second fn) args)
+          (my-eval-body-result
+            (third fn)
+            (bind-params
+              (second fn)
+              args
+              (my-refresh-shared-frame
+                (my-fourth fn)
+                caller-env))))
+         (t
+          (my-result-fail (my-arity-error (second fn) args)))))
+      ((my-recursive-closure? fn)
+       (cond
+         ((my-arity-ok? (third fn) args)
+          (let ((captured
+                  (my-refresh-shared-frame
+                    (my-fifth fn)
+                    caller-env)))
+            (let ((self-env
+                    (cons (cons (second fn) fn)
+                          captured)))
+              (my-eval-body-result
+                (my-fourth fn)
+                (bind-params
+                  (third fn)
+                  args
+                  self-env)))))
+         (t
+          (my-result-fail (my-arity-error (third fn) args)))))
+      ((my-group-closure? fn)
+       (cond
+         ((my-arity-ok? (third fn) args)
+          (let ((captured
+                  (my-refresh-shared-frame
+                    (my-sixth fn)
+                    caller-env)))
+            (let ((group-env
+                    (my-build-group-env (my-fifth fn) captured)))
+              (my-eval-body-result
+                (my-fourth fn)
+                (bind-params
+                  (third fn)
+                  args
+                  group-env)))))
+         (t
+          (my-result-fail (my-arity-error (third fn) args)))))
+      ((my-macro? fn)
+       (cond
+         ((my-arity-ok? (second fn) args)
+          (my-eval-body-result
+            (third fn)
+            (bind-params
+              (second fn)
+              args
+              (my-refresh-shared-frame
+                (my-fourth fn)
+                caller-env))))
+         (t
+          (my-result-fail (my-arity-error (second fn) args)))))
+      (t
+       (my-result-fail (my-error (quote not-callable) fn))))))
+
 (def my-apply
   (lambda (fn args . caller-env-rest)
     (let ((caller-env
             (cond
               ((atom caller-env-rest) (quote ()))
               (t (car caller-env-rest)))))
-      (cond
-        ; Application owns only callability. UnknownSymbol has already been
-        ; decided by the operator-name resolution path in my-eval.
-        ((atom fn) (my-error (quote not-callable) fn))
-        ((my-primitive? fn)
-         (my-apply-primitive (second fn) args))
-        ((my-closure? fn)
-         (cond
-           ((my-arity-ok? (second fn) args)
-            (my-eval-body
-              (third fn)
-              (bind-params
-                (second fn)
-                args
-                (my-refresh-shared-frame
-                  (my-fourth fn)
-                  caller-env))))
-           (t (my-arity-error (second fn) args))))
-        ((my-recursive-closure? fn)
-         (cond
-           ((my-arity-ok? (third fn) args)
-            (let ((captured
-                    (my-refresh-shared-frame
-                      (my-fifth fn)
-                      caller-env)))
-              (let ((self-env
-                      (cons (cons (second fn) fn)
-                            captured)))
-                (my-eval-body
-                  (my-fourth fn)
-                  (bind-params
-                    (third fn)
-                    args
-                    self-env)))))
-           (t (my-arity-error (third fn) args))))
-        ((my-group-closure? fn)
-         (cond
-           ((my-arity-ok? (third fn) args)
-            (let ((captured
-                    (my-refresh-shared-frame
-                      (my-sixth fn)
-                      caller-env)))
-              (let ((group-env
-                      (my-build-group-env (my-fifth fn) captured)))
-                (my-eval-body
-                  (my-fourth fn)
-                  (bind-params
-                    (third fn)
-                    args
-                    group-env)))))
-           (t (my-arity-error (third fn) args))))
-        ((my-macro? fn)
-         (cond
-           ((my-arity-ok? (second fn) args)
-            (my-eval-body
-              (third fn)
-              (bind-params
-                (second fn)
-                args
-                (my-refresh-shared-frame
-                  (my-fourth fn)
-                  caller-env))))
-           (t (my-arity-error (second fn) args))))
-        (t (my-error (quote not-callable) fn))))))
+      (my-result-value (my-apply-result fn args caller-env)))))
 
-(def my-eval
+; Evaluate one ordinary application with explicit operator-first and
+; left-to-right argument sequencing. Recursive evaluation stays inside the
+; outcome channel until this application has produced a value or its first
+; failure.
+(def my-eval-application-result
+  (lambda (expr env)
+    (let ((fn-result (my-eval-result (car expr) env)))
+      (cond
+        ((my-result-fail? fn-result) fn-result)
+        (t
+         (let ((fn (my-result-value fn-result)))
+           (cond
+             ((my-macro? fn)
+              (cond
+                ((my-arity-ok? (second fn) (cdr expr))
+                 (let ((expansion-result
+                         (my-apply-result fn (cdr expr) env)))
+                   (cond
+                     ((my-result-fail? expansion-result) expansion-result)
+                     (t
+                      (my-eval-result
+                        (my-result-value expansion-result)
+                        env)))))
+                (t
+                 (my-result-fail
+                   (my-arity-error (second fn) (cdr expr))))))
+             (t
+              (let ((args-result
+                      (my-eval-list-result (cdr expr) env)))
+                (cond
+                  ((my-result-fail? args-result) args-result)
+                  (t
+                   (my-apply-result
+                     fn
+                     (my-result-value args-result)
+                     env))))))))))))
+
+(def my-eval-result
   (lambda (expr env)
     (cond
       ((atom expr)
        (cond
          ((my-unresolved-name? expr env)
-          (my-error (quote unbound-symbol) expr))
-         (t (env-lookup expr env))))
+          (my-result-fail
+            (my-error (quote unbound-symbol) expr)))
+         (t
+          (my-result-ok (env-lookup expr env)))))
       ((atom (car expr))
        (cond
-         ; Canon syntax-only spellings are recognized by semantic identity.
-         ((my-canon-quote-name? (car expr)) (second expr))
-         ((my-canon-cond-name? (car expr)) (my-eval-cond (cdr expr) env))
+         ((my-canon-quote-name? (car expr))
+          (my-result-ok (second expr)))
+         ((my-canon-cond-name? (car expr))
+          (my-eval-cond-result (cdr expr) env))
          ((eq (car expr) (quote lambda))
-          (my-make-closure (second expr) (cdr (cdr expr)) env))
-         ; UnknownSymbol is a lookup observation, not a property of the value
-         ; that eventually reaches apply. This preserves `(missing)` vs
-         ; `((quote missing))`.
-         ((my-unresolved-name? (car expr) env)
-          (my-error (quote unbound-symbol) (car expr)))
-         ; Every resolved ordinary/callable-Canon name uses one value-level path.
-         (t
-          (let ((fn (my-eval (car expr) env)))
+          (let ((problem (my-lambda-list-error (second expr))))
             (cond
-              ; Macro receives raw forms. Arity belongs to macro application,
-              ; so reject it before trying to evaluate any expansion value.
-              ((my-macro? fn)
-               (cond
-                 ((my-arity-ok? (second fn) (cdr expr))
-                  (my-eval (my-apply fn (cdr expr) env) env))
-                 (t (my-arity-error (second fn) (cdr expr)))))
+              ((atom problem)
+               (my-result-ok
+                 (my-make-closure
+                   (second expr)
+                   (cdr (cdr expr))
+                   env)))
               (t
-               (my-apply fn (my-eval-list (cdr expr) env) env)))))))
-      ; A syntactic lambda in computed operator position must be validated
-      ; before ordinary application so InvalidForm cannot degrade into
-      ; not-callable merely because errors are represented as Lisp data.
-      ((my-lambda-form? (car expr))
-       (let ((problem (my-lambda-list-error (second (car expr)))))
-         (cond
-           ((atom problem)
-            (my-apply
-              (my-eval (car expr) env)
-              (my-eval-list (cdr expr) env)
-              env))
-           (t (my-lambda-invalid-form problem)))))
-      ; Other computed operator positions use the ordinary value-level path.
+               (my-result-fail
+                 (my-lambda-invalid-form problem))))))
+         (t
+          (my-eval-application-result expr env))))
       (t
-       (my-apply
-         (my-eval (car expr) env)
-         (my-eval-list (cdr expr) env)
-         env)))))
+       (my-eval-application-result expr env)))))
+
+(def my-eval
+  (lambda (expr env)
+    (my-result-value (my-eval-result expr env))))
 
 ; Top-level sequencing. `def` and `defmacro` return `(new-env . value)` so
 ; the environment can be threaded explicitly to the next form. Under
