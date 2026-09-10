@@ -7,7 +7,7 @@ fn escape_lisp_string(source: &str) -> String {
 fn eval_meta(source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
+    my_lisp::load_meta_evaluator_library(&mut session).unwrap();
 
     let wrapper = format!(
         r#"(my-eval (read "{}") (quote ()))"#,

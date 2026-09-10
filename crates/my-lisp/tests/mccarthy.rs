@@ -1705,7 +1705,7 @@ fn meta_eval_lambda_witness_env_capture_and_application() {
     // Witness B: Operator-position application (my-apply unpacks closure, binds params, evaluates in frame)
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
+    my_lisp::load_meta_evaluator_library(&mut session).unwrap();
 
     // 1. Witness A: Explicit environment capture
     // Surface syntax (lambda (x) outer) does NOT mention witness-env.

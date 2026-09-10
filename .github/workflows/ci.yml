@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Check generated meta semantic registry
+        run: python3 scripts/generate-meta-semantic-registry.py --check
       - run: cargo test --workspace
       - name: B5 full-scan diagnostic profile
         run: cargo test -p my-lisp --test reason_scale reason_scale_profile_default_stack_100_500_1000 -- --nocapture

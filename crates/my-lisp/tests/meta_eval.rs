@@ -16,7 +16,7 @@ use my_lisp::{eval_program, Session};
 fn eval_meta(expr_source: &str, env_source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
+    my_lisp::load_meta_evaluator_library(&mut session).unwrap();
     let source = format!(
         r#"(my-eval (read "{}") {})"#,
         expr_source.replace('\\', "\\\\").replace('"', "\\\""),
@@ -31,7 +31,7 @@ fn eval_meta(expr_source: &str, env_source: &str) -> String {
 fn eval_meta_program(program_source: &str, probe_source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/meta-eval.my"), &mut session).unwrap();
+    my_lisp::load_meta_evaluator_library(&mut session).unwrap();
     let source = format!(
         r#"(let ((loaded (my-eval-program (read-all "{}") (quote ()))))
              (my-eval (read "{}") (car loaded)))"#,
