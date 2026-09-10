@@ -114,7 +114,7 @@
 (def science-add-dimension
   (lambda (dimension dimensions)
     (cond
-      ((eq dimensions (quote ()))
+      ((atom dimensions)
        (cond
          ((= (dimension-exponent dimension) 0) (quote ()))
          (t (list dimension))))
@@ -137,7 +137,7 @@
 (def science-merge-dimensions
   (lambda (from into)
     (cond
-      ((eq from (quote ())) into)
+      ((atom from) into)
       (t
        (science-merge-dimensions
          (cdr from)
@@ -146,7 +146,7 @@
 (def science-negate-dimensions
   (lambda (dimensions)
     (cond
-      ((eq dimensions (quote ())) (quote ()))
+      ((atom dimensions) (quote ()))
       (t
        (cons
          (make-dimension
