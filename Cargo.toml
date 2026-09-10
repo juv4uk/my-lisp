@@ -26,3 +26,12 @@ resolver = "2"
 [profile.release]
 opt-level = "z"
 lto = true
+
+# Fast native profile for expensive semantic witnesses in CI. Keep the normal
+# release profile size-oriented for WASM, while avoiding LTO and optimizing for
+# execution speed when the meta-evaluator itself is the workload.
+[profile.ci-meta]
+inherits = "release"
+opt-level = 3
+lto = false
+codegen-units = 16
