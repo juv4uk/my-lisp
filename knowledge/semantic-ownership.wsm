@@ -2,7 +2,7 @@
 ; Це дані, не семантичний контракт. Вони вимірюють лише вже аудитовану власність.
 ; Один рядок = одна поведінка/відповідальність. Без LOC-claim і без "self-hosting %".
 (schema semantic-ownership/1)
-(as-of "2026-09-09")
+(as-of "2026-09-10")
 (scope audited-primary-behaviors)
 
 ; ownership KEY SEMANTIC_ID CLASS LAYER STATUS POLICY_CANDIDATE
@@ -22,7 +22,7 @@
 
 (ownership list-constructor - lisp-owned stdlib confirmed no "Варіадичний list-конструктор виведений із lambda/rest семантики самої мови" "lib/core.my" "crates/my-lisp/tests/mccarthy.rs" host-mechanism efdd9252fd4ca4af4503b219ab3ae79130ef0e64)
 (ownership gensym - lisp-owned stdlib confirmed no "Політика свіжого символу складена в Lisp зі string-операцій і monotonic observation" "lib/core.my" "tests/fixtures/conformance.my;crates/my-lisp/tests/mccarthy.rs" - -)
-(ownership meta-evaluator - lisp-owned self-hosting partial no "Lisp-owned evaluator witness із відомими parity gaps" "lib/meta-eval.my" "crates/my-lisp/tests/meta_eval.rs;crates/my-lisp/tests/meta_eval_parity.rs" - -)
+(ownership meta-evaluator - lisp-owned self-hosting confirmed no "Lisp-owned metacircular evaluator witness; усі 34 required parity rows підтверджені machine evidence matrix" "lib/meta-eval.my;knowledge/meta-eval-evidence.wsm" "crates/my-lisp/tests/meta_eval_evidence_matrix.rs;crates/my-lisp/tests/meta_eval_parity.rs;crates/my-lisp/tests/meta_eval_error_kind_parity.rs;crates/my-lisp/tests/meta_eval_error_detail_boundary.rs" - -)
 
 (ownership unification - lisp-owned reasoning confirmed no "Уніфікація логічних змінних з occurs-check" "lib/unify.my" "tests/fixtures/conformance.my" - -)
 (ownership backward-reasoning - lisp-owned reasoning confirmed no "Backward-chaining пошук доказу й побудова provenance" "lib/reason.my" "crates/my-lisp/tests/reason_stack.rs;crates/my-lisp/tests/reason_index.rs" - -)
