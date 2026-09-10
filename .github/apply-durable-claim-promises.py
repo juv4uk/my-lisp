@@ -220,7 +220,7 @@ replacements.append((
 ''',
 '''        match rx.recv_timeout(remaining) {
             Ok((voter, vote))
-                if voting_peers.contains(&voter) && responded_voters.insert(voter) =>
+                if voting_peers.contains(&voter) && responded_voters.insert(voter.clone()) =>
             {
                 counted_responses += 1;
                 if vote {
