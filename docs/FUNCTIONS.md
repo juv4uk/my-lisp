@@ -2,7 +2,7 @@
 
 **Live builtin section refreshed:** 2026-09-06 · base `e58209f`
 **Library inventory base:** 2026-09-02 · `8b4529f`
-**Incremental library refresh:** 2026-09-07 · `narrate.my` + `result-status.my` + `translation.my` + `quantity.my` + `si.my`
+**Incremental library refresh:** 2026-09-10 · `narrate.my` + `result-status.my` + `translation.my` + `quantity.my` + `si.my`
 **Source:** root `(env)` / `language_items.rs` for builtins; static `lib/*.my` scan for the library sections below.
 **Builtin count:** 35 root builtins. `mono-ms`, `utc-now`, `internet-time-sync`, and `timezone-detect` are language-owned in `lib/time.my`. `mono-ns`, `unix-time-now`, `ntp-query-raw`, and `timezone-declarations-raw` are the retained raw host observations/mechanisms.
 
@@ -62,9 +62,9 @@
 
 `vbalance`, `vbalance-factor`, `vec->list`, `vec-conj`, `vec-count`, `vec-empty`, `vec-from-list`, `vec-from-list-onto`, `vec-nth`, `vec-tree`, `vheight-of`, `vmake-balanced-node`, `vmax2`, `vnode-height`, `vnode-index`, `vnode-left`, `vnode-right`, `vnode-value`, `vrotate-left`, `vrotate-right`, `vtree->list`, `vtree-get`, `vtree-insert`
 
-### quantity.my (35)
+### quantity.my (42)
 
-`*dimension-schema*`, `*unit-schema*`, `*quantity-schema*`, `*science-source-schema*`, `*scientific-constant-schema*`, `science-proper-list?`, `science-sixth`, `science-seventh`, `make-dimension`, `dimension?`, `dimension-base`, `dimension-exponent`, `science-dimensions-valid?`, `make-unit`, `unit?`, `unit-dimensions`, `make-quantity`, `quantity?`, `quantity-value`, `quantity-unit`, `make-science-source`, `science-source?`, `scientific-constant-status-valid?`, `scientific-constant-kind-valid?`, `make-scientific-constant`, `scientific-constant?`, `scientific-constant-name`, `scientific-constant-quantity`, `scientific-constant-value`, `scientific-constant-unit`, `scientific-constant-status`, `scientific-constant-kind`, `scientific-constant-system`, `scientific-constant-source`, `scientific-constant->clauses`
+`*dimension-schema*`, `*unit-schema*`, `*quantity-schema*`, `*science-source-schema*`, `*scientific-constant-schema*`, `science-proper-list?`, `science-sixth`, `science-seventh`, `make-dimension`, `dimension?`, `dimension-base`, `dimension-exponent`, `science-dimensions-valid?`, `make-unit`, `unit?`, `unit-dimensions`, `make-quantity`, `quantity?`, `quantity-value`, `quantity-unit`, `science-add-dimension`, `science-merge-dimensions`, `science-negate-dimensions`, `unit-product`, `unit-quotient`, `quantity-product`, `quantity-quotient`, `make-science-source`, `science-source?`, `scientific-constant-status-valid?`, `scientific-constant-kind-valid?`, `make-scientific-constant`, `scientific-constant?`, `scientific-constant-name`, `scientific-constant-quantity`, `scientific-constant-value`, `scientific-constant-unit`, `scientific-constant-status`, `scientific-constant-kind`, `scientific-constant-system`, `scientific-constant-source`, `scientific-constant->clauses`
 
 ### reason.my (20)
 
