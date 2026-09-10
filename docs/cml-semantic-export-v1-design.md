@@ -125,17 +125,31 @@ slice adds more forms only once this one is proven end-to-end, per
 - `role`/`callable` for each form matches `language-contract.my`'s
   `special-forms-boundary` clause verbatim.
 
-## Questions for the owner (per instruction, asked after building, not before)
+## Resolved (cml's own answer, 2026-09-10 — not the owner, but the actual consumer)
 
-1. Is `.wsm` the right home for this, or should a *contract-adjacent*
-   export like this live next to `language-contract.my` instead (both
-   are `my-lisp`-owned machine contracts, just different scopes)?
-2. Should `mylisp-cml-export.wsm` be committed to this repo (so `cml`
-   pulls it as a file), or served over the existing swarm-node/oracle
-   TCP protocol as a query (so it's always live, never stale-by-commit-
-   lag)? The design above assumes committed-file for v1 simplicity, but
-   the "always in sync" instruction may want the live-query answer
-   instead.
-3. Once this vertical slice is proven, should slice 2 be chosen by
-   `cml`'s own next real need, or should I propose the next
-   conformance-fixture-shaped slice from this side?
+Questions 2 and 3 below are **resolved by cml directly**, and adopted here
+without waiting for the owner to arbitrate a question the consumer is
+better placed to answer:
+
+2. **Committed file, not live query.** cml's own reproducibility
+   discipline (`compatibility.my`, `revision_contract_test.rs`) is
+   built entirely on pinned/versioned artifacts with a tested SHA —
+   no compilation step depends on a live TCP call to my-lisp during a
+   build today, and that is a deliberate invariant, not an oversight.
+   A live-query design would make `cargo build`/CI nondeterministic and
+   dependent on an external server's availability — a direct regression
+   of exactly what `revision_contract_test.rs` protects. cml vendors the
+   export's SHA into its own `compatibility.my` next to the language
+   contract's tested SHA — one more pinned artifact, same existing
+   pattern.
+3. **cml picks the next slice, by real need, not my-lisp
+   speculatively.** Matches how `tasks.my` has actually grown the whole
+   time — tasks arise from concrete gaps found doing real compiler
+   work, not proposed ahead of a consumer. My-lisp may *suggest*
+   candidate forms (useful, since I see the contract from the inside),
+   but the choice of what to export next is cml's, made when it hits a
+   real need to compile something not yet covered.
+
+Question 1 (file location: `.wsm` vs. next to `language-contract.my`)
+remains open for the owner — cosmetic/organizational, not a design
+fork either consumer needs resolved to proceed.
