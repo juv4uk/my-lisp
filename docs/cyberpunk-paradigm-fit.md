@@ -45,14 +45,19 @@ reciting it.
 
 The String-representation semantic fact (String is a distinct,
 non-interned, structurally-compared value — raised below under
-"oracle-parity") is settled and stable. Its machine tag value is not:
-wsm-my-lisp implemented `TAG_STRING=7`, then, after this repo flagged a
-tag-space-exhaustion risk and cml gave an engineering review, superseded
-it with `TAG_BOXED=7` (commit `09d7c20`, 36/36 tests) — a proposal, not
-a ratified constant; see [GitHub issue juv4uk/my-lisp#51](https://github.com/juv4uk/my-lisp/issues/51)
-for the explicit correction against an earlier draft of this document
-that overstated it as "final." Full details:
-`docs/cyberpunk-host-dispatch-fixtures.md`. wsm-my-lisp is now moving
+"oracle-parity") is settled and stable, and was always my-lisp's to
+settle. Its machine tag value went through the ecosystem's own
+authority-boundary discipline working as designed: wsm-my-lisp
+implemented `TAG_STRING=7`, then, after this repo flagged a
+tag-space-exhaustion risk and cml gave an engineering review,
+superseded it with `TAG_BOXED=7`; an earlier draft of this document
+then overstated that as "final" before [GitHub issue juv4uk/my-lisp#51](https://github.com/juv4uk/my-lisp/issues/51)
+corrected it to "proposed, pending `wsm-target-contract` ratification."
+That ratification has since landed — `wsm-target-contract` commit
+`bb6e119`, contract v3, [wsm-target-contract#1](https://github.com/juv4uk/wsm-target-contract/issues/1)
+closed — so `Tag::Boxed = 7` is now a settled fact by the authority
+that actually owns machine ABI, not merely a working proposal. Full
+details: `docs/cyberpunk-host-dispatch-fixtures.md`. wsm-my-lisp is now moving
 to a real RED4ext skeleton — the project's first actual touch of the
 game engine, not just a standalone asm nucleus. The tensions below are
 therefore no longer hypothetical concerns about a future step; they

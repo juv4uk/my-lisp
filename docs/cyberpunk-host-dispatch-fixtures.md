@@ -84,26 +84,29 @@ more practical for a minimal implementation). Verified directly: the
 error text embeds the offending Cyrillic identifier unchanged, no
 transliteration or mangling.
 
-## String representation — semantic fact settled; machine tag value proposed, not final (2026-09-10)
+## String representation — semantic fact and machine tag both now settled (2026-09-10, ratified)
 
-Correction per GitHub issue [juv4uk/my-lisp#51](https://github.com/juv4uk/my-lisp/issues/51):
-an earlier version of this section called `TAG_BOXED=7` "final." That
-overstated my-lisp's authority — the numeric tag value is a
-`wsm-target-contract` decision, not mine to declare final from this
-repo, even after wsm-my-lisp has implemented and tested it. Keeping
-two things separate going forward:
+Earlier drafts of this section went through two states worth keeping
+on record, since the correction itself is part of how this ecosystem
+is supposed to work: first an overreach ("`TAG_BOXED=7` is final" —
+not my-lisp's call to make), then a correction per GitHub issue
+[juv4uk/my-lisp#51](https://github.com/juv4uk/my-lisp/issues/51)
+("proposed/tentative pending `wsm-target-contract` ratification"). As
+of `wsm-target-contract` commit `bb6e119` (contract v3,
+[wsm-target-contract#1](https://github.com/juv4uk/wsm-target-contract/issues/1)
+closed), that ratification has happened — both facts below are now
+settled, each by the authority that actually owns it:
 
-- **Semantic fact (my-lisp's authority, settled):** String is a
-  distinct immutable UTF-8 value, structurally comparable via
-  `equal?`, never identity-comparable via `eq?`, and never the same
-  type as Symbol. This does not change regardless of what tag number
-  ends up representing it.
-- **Machine representation (`wsm-target-contract`'s authority,
-  proposed/tentative pending that repo's own ratification):**
-  `TAG_BOXED=7`, implemented and tested in wsm-my-lisp, is a strong,
-  working proposal — not yet an authority-ratified constant. Treat it
-  as "current best implementation, pending contract ratification," not
-  as closed.
+- **Semantic fact (my-lisp's authority, settled, unchanged throughout
+  this whole thread):** String is a distinct immutable UTF-8 value,
+  structurally comparable via `equal?`, never identity-comparable via
+  `eq?`, and never the same type as Symbol.
+- **Machine representation (`wsm-target-contract`'s authority, now
+  ratified, not merely proposed):** `Tag::Boxed = 7`, contract v3. See
+  that repo's own `docs/migration-2026-09-10-boxed-tag.md` for the full
+  payload semantics (ownership, handle scope, discriminant placement,
+  Win64/SysV value-ABI equivalence) — those details belong to that
+  repo's documentation, not duplicated here.
 
 History, briefly, showing how the proposal reached its current shape:
 
@@ -138,9 +141,9 @@ History, briefly, showing how the proposal reached its current shape:
 
 The tag-space-exhaustion risk that motivated the change is closed by
 design (one boxed tag absorbs future variants via discriminant byte,
-not by consuming additional primary tag bits) — but the numeric value
-`7` itself is not this repo's to finalize. Formal closure of this
-thread waits on `wsm-target-contract`'s own ratification, per issue #51.
+not by consuming additional primary tag bits), and the numeric value
+itself is now closed by the authority that owns it. This thread is
+fully resolved on both sides.
 
 ## Also-valid English forms (equivalent, not preferred)
 
