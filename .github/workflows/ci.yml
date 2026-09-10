@@ -20,6 +20,7 @@ jobs:
   test:
     name: cargo test --workspace
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
@@ -30,7 +31,7 @@ jobs:
       - run: cargo build --workspace
 
   meta-advice-release:
-    name: full Advice Taker native/meta parity (release)
+    name: full Advice Taker native/meta parity (optimized)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -38,9 +39,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: meta-advice-release
-      - name: Run full vertical witness with optimized execution
-        run: cargo test --release -p my-lisp --test meta_eval_advice_taker real_advice_taker_stack_has_exact_native_meta_parity -- --ignored --nocapture
+          shared-key: meta-advice-ci-meta
+      - name: Run full vertical witness with speed-oriented native profile
+        run: cargo test --profile ci-meta -p my-lisp --test meta_eval_advice_taker real_advice_taker_stack_has_exact_native_meta_parity -- --ignored --nocapture
 
   web-repl:
     name: portable web REPL build
