@@ -1,0 +1,17 @@
+name: TASK-008 render evidence projection
+
+on:
+  push:
+    branches: [refactor/meta-eval-evidence-projection]
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Render generated human projection
+        run: |
+          python3 scripts/generate-meta-eval-evidence.py
+          echo '---BEGIN-META-EVIDENCE-MD---'
+          cat docs/meta-eval-evidence.md
+          echo '---END-META-EVIDENCE-MD---'
