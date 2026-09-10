@@ -1,0 +1,243 @@
+name: Apply TASK-002 semantic registry migration
+
+on:
+  push:
+    branches: [refactor/meta-eval-semantic-registry]
+    paths:
+      - scripts/generate-meta-semantic-registry.py
+      - crates/my-lisp/tests/meta_eval_semantic_registry.rs
+      - .github/workflows/task002-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/meta-eval-semantic-registry
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Lisp semantic projection
+        run: python3 scripts/generate-meta-semantic-registry.py
+
+      - name: Route meta evaluator by semantic identity
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('lib/meta-eval.my')
+          text = path.read_text(encoding='utf-8')
+
+          pattern = re.compile(
+              r'; Finite Contract-6 Canon-name classifier\..*?'
+              r'\(def my-canon-identity\n'
+              r'  \(lambda \(name\)\n'
+              r'    \(cond\n.*?'
+              r'      \(t \(quote \(\)\)\)\)\)\)\n',
+              re.S,
+          )
+          matches = list(pattern.finditer(text))
+          if len(matches) != 1:
+              raise SystemExit(f'expected one Canon classifier block, found {len(matches)}')
+
+          replacement = '''; Surface spellings are not owned here. The generated projection loaded before
+          ; this evaluator maps every admitted runtime spelling to the numeric semantic ID
+          ; from lib/surface/semantic-registry.wsm. This file owns only the mapping from
+          ; those opaque IDs to evaluator mechanisms.
+          (def my-semantic-id?
+            (lambda (name semantic-id)
+              (equal? (my-semantic-id-for-surface name) semantic-id)))
+
+          (def my-canon-identity
+            (lambda (name)
+              (let ((semantic-id (my-semantic-id-for-surface name)))
+                (cond
+                  ((equal? semantic-id "0001") (quote quote))
+                  ((equal? semantic-id "0002") (quote atom))
+                  ((equal? semantic-id "0003") (quote eq))
+                  ((equal? semantic-id "0004") (quote cons))
+                  ((equal? semantic-id "0005") (quote car))
+                  ((equal? semantic-id "0006") (quote cdr))
+                  ((equal? semantic-id "0007") (quote cond))
+                  (t (quote ()))))))
+
+          (def my-lambda-name?
+            (lambda (name)
+              (my-semantic-id? name "0010")))
+
+          (def my-define-name?
+            (lambda (name)
+              (my-semantic-id? name "0011")))
+
+          (def my-defmacro-name?
+            (lambda (name)
+              (my-semantic-id? name "0012")))
+
+          (def my-def-compat-name?
+            (lambda (name)
+              (my-semantic-id? name "1000")))
+
+          (def my-definition-name?
+            (lambda (name)
+              (cond
+                ((my-define-name? name) t)
+                ((my-def-compat-name? name) t)
+                (t (quote ())))))
+          '''
+          text = pattern.sub(replacement, text, count=1)
+
+          replacements = [
+              ('((atom (car form)) (eq (car form) (quote lambda)))',
+               '((atom (car form)) (my-lambda-name? (car form)))', 1),
+              ('((eq (car form) (quote def))',
+               '((my-definition-name? (car form))', 2),
+              ('((eq (car form) (quote defmacro))',
+               '((my-defmacro-name? (car form))', 1),
+              ('((eq (car form) (quote lambda))',
+               '((my-lambda-name? (car form))', 1),
+              ('((eq (car expr) (quote lambda))',
+               '((my-lambda-name? (car expr))', 1),
+          ]
+          for old, new, expected in replacements:
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'guard failed for {old!r}: expected {expected}, found {count}')
+              text = text.replace(old, new)
+
+          if '((eq (car form) (quote def))' in text or '((eq (car expr) (quote lambda))' in text:
+              raise SystemExit('literal special-form routing remains after migration')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Add canonical meta evaluator loader
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('crates/my-lisp/src/lib.rs')
+          text = path.read_text(encoding='utf-8')
+
+          anchor = 'pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.my");\n'
+          if text.count(anchor) != 1:
+              raise SystemExit('CORE_LIBRARY_SOURCE anchor changed')
+          addition = anchor + '''
+
+          /// Generated runtime projection of admitted surface spellings to opaque numeric
+          /// semantic IDs. The source authority remains semantic-registry.wsm; CI rejects
+          /// any stale committed projection.
+          pub const META_SEMANTIC_REGISTRY_SOURCE: &str =
+              include_str!("../../../lib/generated/meta-semantic-registry.my");
+
+          /// Metacircular evaluator source. It deliberately consumes the generated semantic
+          /// projection instead of carrying a private surface-name table.
+          pub const META_EVAL_LIBRARY_SOURCE: &str = include_str!("../../../lib/meta-eval.my");
+          '''
+          text = text.replace(anchor, addition)
+
+          core_loader = '''pub fn load_core_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
+              load_macro_library(session)?;
+              eval_program(CORE_LIBRARY_SOURCE, session)
+          }
+          '''
+          if text.count(core_loader) != 1:
+              raise SystemExit('load_core_library anchor changed')
+          meta_loader = core_loader + '''
+
+          /// Load the explicit metacircular self-hosting witness into a session whose core
+          /// library is already present. Bootstrap mechanics stay in Rust; surface meaning
+          /// comes only from the generated projection of semantic-registry.wsm.
+          pub fn load_meta_evaluator_library(
+              session: &mut Session,
+          ) -> Result<EvalResult, LanguageError> {
+              eval_program(META_SEMANTIC_REGISTRY_SOURCE, session)?;
+              eval_program(META_EVAL_LIBRARY_SOURCE, session)
+          }
+          '''
+          text = text.replace(core_loader, meta_loader)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Move meta tests onto the canonical loader
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('crates/my-lisp/tests')
+          pattern = re.compile(
+              r'(?:my_lisp::)?eval_program\(\s*'
+              r'include_str!\("\.\./\.\./\.\./lib/meta-eval\.my"\),\s*'
+              r'&mut\s+([A-Za-z_][A-Za-z0-9_]*)\s*\)'
+          )
+          changed = 0
+          replaced = 0
+          for path in root.glob('*.rs'):
+              text = path.read_text(encoding='utf-8')
+              new, count = pattern.subn(
+                  lambda m: f'my_lisp::load_meta_evaluator_library(&mut {m.group(1)})',
+                  text,
+              )
+              if count:
+                  path.write_text(new, encoding='utf-8')
+                  changed += 1
+                  replaced += count
+
+          leftovers = []
+          for path in root.glob('*.rs'):
+              if 'lib/meta-eval.my' in path.read_text(encoding='utf-8'):
+                  leftovers.append(str(path))
+          if leftovers:
+              raise SystemExit('direct meta-eval include remains in: ' + ', '.join(leftovers))
+          if replaced < 8:
+              raise SystemExit(f'expected broad bootstrap migration, replaced only {replaced}')
+          print(f'migrated {replaced} bootstrap calls across {changed} test files')
+          PY
+
+      - name: Add projection drift gate to CI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/ci.yml')
+          text = path.read_text(encoding='utf-8')
+          anchor = '      - uses: Swatinem/rust-cache@v2\n      - run: cargo test --workspace\n'
+          if text.count(anchor) != 1:
+              raise SystemExit('CI test-job anchor changed')
+          replacement = '''      - uses: Swatinem/rust-cache@v2
+              - name: Check generated meta semantic registry
+                run: python3 scripts/generate-meta-semantic-registry.py --check
+              - run: cargo test --workspace
+          '''
+          text = text.replace(anchor, replacement)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Format and verify generated projection
+        run: |
+          python3 scripts/generate-meta-semantic-registry.py --check
+          cargo fmt --all -- --check
+
+      - name: Focused semantic registry witness
+        run: cargo test -p my-lisp --test meta_eval_semantic_registry -- --nocapture
+
+      - name: Meta evaluator regression suite
+        run: cargo test -p my-lisp --test 'meta_eval*' -- --nocapture
+
+      - name: Commit migration and remove applicator
+        shell: bash
+        run: |
+          rm .github/workflows/task002-apply.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor(meta-eval): consume semantic registry projection"
+          git push origin HEAD:refactor/meta-eval-semantic-registry
