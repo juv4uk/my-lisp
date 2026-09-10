@@ -18,8 +18,13 @@ jobs:
       - name: Apply guarded roadmap refresh
         run: python3 scripts/refresh-meta-roadmap-once.py
       - name: Validate patch
+        shell: bash
         run: |
-          git diff --check
+          test -n "$(git diff -- PLAN.md)"
+          grep -F '**34/34 required rows confirmed**' PLAN.md
+          grep -F '## C2. Meta-evaluator claim discipline' PLAN.md
+          ! grep -F 'arbitrary later-binding visibility не доведена як загальна властивість' PLAN.md
+          ! grep -F 'повна parity усіх native error classes не заявляється' PLAN.md
           git diff -- PLAN.md
       - name: Commit roadmap refresh
         run: |
