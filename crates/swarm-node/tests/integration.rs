@@ -556,7 +556,7 @@ fn metrics_reports_event_count_peer_count_and_synced() {
         "metrics should report the caller's own node-id: {metrics}"
     );
     let dir_a_str = dir_a.to_string_lossy().replace('\\', "/");
-    let metrics_normalized = metrics.replace('\\', "/");
+    let metrics_normalized = metrics.replace("\\\\", "/").replace('\\', "/");
     assert!(
         metrics_normalized.contains(&*dir_a_str),
         "metrics should report the node's own --data-dir ({dir_a_str}), got: {metrics}"
