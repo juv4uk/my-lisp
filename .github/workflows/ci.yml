@@ -27,6 +27,8 @@ jobs:
       - name: Check generated meta semantic registry
         run: python3 scripts/generate-meta-semantic-registry.py --check
       - run: cargo test --workspace
+      - name: Meta Advice Taker vertical parity (release)
+        run: cargo test --release -p my-lisp --test meta_eval_advice_taker real_advice_taker_stack_has_exact_native_meta_parity -- --ignored --nocapture
       - name: B5 full-scan diagnostic profile
         run: cargo test -p my-lisp --test reason_scale reason_scale_profile_default_stack_100_500_1000 -- --nocapture
       - name: B5 Advice Taker diagnostic profile
