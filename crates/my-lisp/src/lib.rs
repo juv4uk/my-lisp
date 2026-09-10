@@ -75,6 +75,16 @@ const DEFMACRO_SEMANTIC_ID: &str = "0012";
 /// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
 pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.my");
 
+
+/// Generated runtime projection of admitted surface spellings to opaque numeric
+/// semantic IDs. semantic-registry.wsm remains the only spelling authority.
+pub const META_SEMANTIC_REGISTRY_SOURCE: &str =
+    include_str!("../../../lib/generated/meta-semantic-registry.my");
+
+/// Metacircular evaluator source. Surface names are supplied by the generated
+/// semantic registry projection rather than duplicated in this file.
+pub const META_EVAL_LIBRARY_SOURCE: &str = include_str!("../../../lib/meta-eval.my");
+
 /// Language-owned time semantics. Host clocks expose raw observations such as
 /// `mono-ns` and `unix-time-now`; this library derives coarser clocks,
 /// calendar interpretation, UTC structure, and deadline arithmetic.
@@ -142,6 +152,16 @@ pub fn load_macro_library(session: &mut Session) -> Result<EvalResult, LanguageE
 pub fn load_core_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     load_macro_library(session)?;
     eval_program(CORE_LIBRARY_SOURCE, session)
+}
+
+
+/// Load the explicit metacircular self-hosting witness after the ordinary core.
+/// Rust owns bootstrap mechanics; surface admission stays registry-owned.
+pub fn load_meta_evaluator_library(
+    session: &mut Session,
+) -> Result<EvalResult, LanguageError> {
+    eval_program(META_SEMANTIC_REGISTRY_SOURCE, session)?;
+    eval_program(META_EVAL_LIBRARY_SOURCE, session)
 }
 
 /// Load language-owned time semantics into a session that already has the

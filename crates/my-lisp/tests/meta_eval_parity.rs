@@ -37,7 +37,7 @@ fn eval_via_meta_eval(expr: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session)
         .expect("lib/core.my should load (meta-eval.my needs core helpers)");
-    eval_program(include_str!("../../../lib/meta-eval.my"), &mut session)
+    my_lisp::load_meta_evaluator_library(&mut session)
         .expect("lib/meta-eval.my should load");
     let source = format!(
         r#"(my-eval (read "{}") (quote ()))"#,

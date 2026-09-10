@@ -56,44 +56,48 @@
   (lambda (result)
     (cdr result)))
 
-; Finite Contract-6 Canon-name classifier. The result is the semantic identity,
-; not the spelling. All admitted EN/UK/SA/symbolic spellings converge here.
+; Surface spellings are not owned here. The generated projection loaded before
+; this evaluator maps every admitted runtime spelling to the numeric semantic ID
+; from lib/surface/semantic-registry.wsm. This file owns only the mapping from
+; those opaque IDs to evaluator mechanisms.
+(def my-semantic-id?
+  (lambda (name semantic-id)
+    (equal? (my-semantic-id-for-surface name) semantic-id)))
+
 (def my-canon-identity
   (lambda (name)
+    (let ((semantic-id (my-semantic-id-for-surface name)))
+      (cond
+        ((equal? semantic-id "0001") (quote quote))
+        ((equal? semantic-id "0002") (quote atom))
+        ((equal? semantic-id "0003") (quote eq))
+        ((equal? semantic-id "0004") (quote cons))
+        ((equal? semantic-id "0005") (quote car))
+        ((equal? semantic-id "0006") (quote cdr))
+        ((equal? semantic-id "0007") (quote cond))
+        (t (quote ()))))))
+
+(def my-lambda-name?
+  (lambda (name)
+    (my-semantic-id? name "0010")))
+
+(def my-define-name?
+  (lambda (name)
+    (my-semantic-id? name "0011")))
+
+(def my-defmacro-name?
+  (lambda (name)
+    (my-semantic-id? name "0012")))
+
+(def my-def-compat-name?
+  (lambda (name)
+    (my-semantic-id? name "1000")))
+
+(def my-definition-name?
+  (lambda (name)
     (cond
-      ((eq name (quote quote)) (quote quote))
-      ((eq name (quote як-є)) (quote quote))
-      ((eq name (quote svarūpa)) (quote quote))
-
-      ((eq name (quote atom)) (quote atom))
-      ((eq name (quote атом?)) (quote atom))
-      ((eq name (quote aṇu)) (quote atom))
-      ((eq name (quote .?)) (quote atom))
-
-      ((eq name (quote eq)) (quote eq))
-      ((eq name (quote тотожне?)) (quote eq))
-      ((eq name (quote abheda)) (quote eq))
-      ((eq name (quote =?)) (quote eq))
-
-      ((eq name (quote cons)) (quote cons))
-      ((eq name (quote сполучити)) (quote cons))
-      ((eq name (quote saṃyuj)) (quote cons))
-      ((eq name (quote :)) (quote cons))
-
-      ((eq name (quote car)) (quote car))
-      ((eq name (quote перше)) (quote car))
-      ((eq name (quote ādi)) (quote car))
-      ((eq name (quote :п)) (quote car))
-
-      ((eq name (quote cdr)) (quote cdr))
-      ((eq name (quote решта)) (quote cdr))
-      ((eq name (quote śeṣa)) (quote cdr))
-      ((eq name (quote :р)) (quote cdr))
-
-      ((eq name (quote cond)) (quote cond))
-      ((eq name (quote за-умовою)) (quote cond))
-      ((eq name (quote anukrama)) (quote cond))
-      ((eq name (quote ?:)) (quote cond))
+      ((my-define-name? name) t)
+      ((my-def-compat-name? name) t)
       (t (quote ())))))
 
 (def my-canon-name?
@@ -326,14 +330,14 @@
   (lambda (form)
     (cond
       ((atom form) (quote ()))
-      ((atom (car form)) (eq (car form) (quote lambda)))
+      ((atom (car form)) (my-lambda-name? (car form)))
       (t (quote ())))))
 
 (def my-lambda-def-form?
   (lambda (form)
     (cond
       ((atom form) (quote ()))
-      ((eq (car form) (quote def))
+      ((my-definition-name? (car form))
        (cond
          ((my-canon-name? (second form)) (quote ()))
          (t (my-lambda-form? (third form)))))
@@ -783,7 +787,7 @@
           (my-result-ok (second expr)))
          ((my-canon-cond-name? (car expr))
           (my-eval-cond-result (cdr expr) env))
-         ((eq (car expr) (quote lambda))
+         ((my-lambda-name? (car expr))
           (let ((problem (my-lambda-list-error (second expr))))
             (cond
               ((atom problem)
@@ -814,7 +818,7 @@
   (lambda (form env)
     (cond
       ((atom form) (cons env (my-eval form env)))
-      ((eq (car form) (quote def))
+      ((my-definition-name? (car form))
        (cond
          ((my-canon-name? (second form))
           (cons env (my-canon-binding-error (second form))))
@@ -840,7 +844,7 @@
                  (cons
                    (my-env-define (second form) value env)
                    value))))))))
-      ((eq (car form) (quote defmacro))
+      ((my-defmacro-name? (car form))
        (cond
          ((my-canon-name? (second form))
           (cons env (my-canon-binding-error (second form))))
@@ -888,7 +892,7 @@
          ; Quoted data is not a lexical dependency.
          ((my-canon-quote-name? (car form)) (quote ()))
          ; A nested lambda can shadow a candidate top-level name.
-         ((eq (car form) (quote lambda))
+         ((my-lambda-name? (car form))
           (cond
             ((my-params-bind-name? name (second form)) (quote ()))
             (t (my-forms-reference-name? (cdr (cdr form)) name))))
