@@ -15,7 +15,7 @@ fn escaped(source: &str) -> String {
 fn meta_eval(expr: &str) -> String {
     let mut session = meta_session();
     eval_program(
-        &format!(r#"(my-eval (read "{}") (quote ()))"#, escaped(expr)),
+        &format!(r#"(my-eval (read \"{}\") (quote ()))"#, escaped(expr)),
         &mut session,
     )
     .unwrap_or_else(|error| panic!("host failure while meta-evaluating {expr}: {error}"))
@@ -26,8 +26,8 @@ fn meta_eval(expr: &str) -> String {
 fn meta_eval_program(program: &str, probe: &str) -> String {
     let mut session = meta_session();
     let source = format!(
-        r#"(let ((loaded (my-eval-program (read-all "{}") (quote ()))))
-             (my-eval (read "{}") (car loaded)))"#,
+        r#"(let ((loaded (my-eval-program (read-all \"{}\") (quote ()))))
+             (my-eval (read \"{}\") (car loaded)))"#,
         escaped(program),
         escaped(probe),
     );
@@ -41,7 +41,7 @@ fn meta_program_result(program: &str) -> String {
     let mut session = meta_session();
     eval_program(
         &format!(
-            r#"(cdr (my-eval-program (read-all "{}") (quote ())))"#,
+            r#"(cdr (my-eval-program (read-all \"{}\") (quote ())))"#,
             escaped(program)
         ),
         &mut session,
@@ -177,19 +177,79 @@ fn ordinary_parameter_shadowing_beats_recursive_group_bindings() {
     let probe = "(call-local (lambda (x) (* x 2)))";
     assert_eq!(meta_eval_program(program, probe), "10");
     assert_eq!(meta_eval_program(program, probe), native_value(&format!("{program} {probe}")));
+
+    assert!(
+        meta_eval_program(program, "call-local").starts_with("(recursive-closure call-local "),
+        "a parameter named peer must shadow the top-level peer during dependency analysis"
+    );
 }
 
 #[test]
-fn adjacent_non_recursive_lambda_defs_are_currently_false_grouped() {
+fn adjacent_non_recursive_lambda_defs_are_not_false_grouped() {
     let program = r#"
 (def inc (lambda (x) (+ x 1)))
 (def double (lambda (x) (* x 2)))
 "#;
     let result = meta_program_result(program);
     assert!(
-        result.starts_with("(recursive-group-closure double "),
-        "current recognizer groups every contiguous lambda-def block; this is a deliberate broken-row witness, got {result}"
+        result.starts_with("(recursive-closure double "),
+        "independent definitions must remain singleton closures, got {result}"
     );
+    assert!(
+        !result.starts_with("(recursive-group-closure"),
+        "independent definitions must not be represented as a recursive group"
+    );
+    for probe in ["(inc 4)", "(double 4)"] {
+        assert_eq!(meta_eval_program(program, probe), native_value(&format!("{program} {probe}")));
+    }
+}
+
+#[test]
+fn quoted_group_member_name_is_data_not_a_dependency() {
+    let program = r#"
+(def mention-peer (lambda () (quote peer)))
+(def peer (lambda () 42))
+"#;
+
+    assert!(
+        meta_eval_program(program, "mention-peer").starts_with("(recursive-closure mention-peer "),
+        "a quoted peer symbol must not create a dependency edge"
+    );
+    assert_eq!(meta_eval_program(program, "(mention-peer)"), "peer");
+}
+
+#[test]
+fn a_real_recursive_scc_can_skip_an_independent_interleaved_definition() {
+    let program = r#"
+(def left
+  (lambda (n)
+    (cond
+      ((eq n 0) t)
+      (t (right (- n 1))))))
+(def helper (lambda (x) (+ x 100)))
+(def right
+  (lambda (n)
+    (cond
+      ((eq n 0) (quote ()))
+      (t (left (- n 1))))))
+"#;
+
+    assert!(
+        meta_eval_program(program, "left").starts_with("(recursive-group-closure left "),
+        "left and right form the recursive SCC"
+    );
+    assert!(
+        meta_eval_program(program, "right").starts_with("(recursive-group-closure right "),
+        "left and right form the recursive SCC"
+    );
+    assert!(
+        meta_eval_program(program, "helper").starts_with("(recursive-closure helper "),
+        "helper is not in the left/right SCC"
+    );
+
+    for probe in ["(left 8)", "(right 9)", "(helper 5)"] {
+        assert_eq!(meta_eval_program(program, probe), native_value(&format!("{program} {probe}")));
+    }
 }
 
 #[test]
