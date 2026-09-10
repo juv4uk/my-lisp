@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MAP_PATH = ROOT / "knowledge" / "semantic-ownership.wsm"
 REPORT_PATH = ROOT / "docs" / "semantic-ownership-report.md"
+META_EVIDENCE_PATH = ROOT / "knowledge" / "meta-eval-evidence.wsm"
 
 CLASSES = {
     "canon-ground",
@@ -95,6 +96,37 @@ def require_paths(paths: list[str], context: str) -> None:
             raise ValueError(f"{context}: referenced path не існує: {relative}")
 
 
+def unresolved_required_meta_rows() -> list[tuple[str, str]]:
+    unresolved: list[tuple[str, str]] = []
+    for tokens in forms(META_EVIDENCE_PATH):
+        if tokens[0] != "row":
+            continue
+        if len(tokens) != 8:
+            raise ValueError(
+                f"{META_EVIDENCE_PATH}: meta-eval row має неочікувану форму: {tokens}"
+            )
+        _, key, required, status, *_ = tokens
+        if required == "yes" and status != "confirmed":
+            unresolved.append((key, status))
+    return unresolved
+
+
+def require_cross_evidence_gates(ownership: list[Ownership]) -> None:
+    meta = next((row for row in ownership if row.key == "meta-evaluator"), None)
+    if meta is None:
+        return
+    if meta.status != "confirmed":
+        return
+
+    unresolved = unresolved_required_meta_rows()
+    if unresolved:
+        detail = ", ".join(f"{key}={status}" for key, status in unresolved)
+        raise ValueError(
+            "meta-evaluator ownership не може бути confirmed, поки required "
+            f"meta-eval evidence має unresolved rows: {detail}"
+        )
+
+
 def load() -> tuple[list[Ownership], list[Migration]]:
     ownership: list[Ownership] = []
     migrations: list[Migration] = []
@@ -165,6 +197,7 @@ def load() -> tuple[list[Ownership], list[Migration]]:
 
     if not ownership:
         raise ValueError("ownership inventory порожній")
+    require_cross_evidence_gates(ownership)
     return ownership, migrations
 
 
