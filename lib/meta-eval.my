@@ -609,9 +609,14 @@
 ; `my-eval-program` recognizes each contiguous top-level non-Canon
 ; lambda-definition block as one finite recursive group, so its members can
 ; refer to one another without a cyclic host Environment.
+;
+; An empty form list is a valid no-op program. It preserves the supplied
+; environment exactly and returns Nil as the program result, using the same
+; `(new-env . value)` representation as every non-empty program path.
 (def my-eval-program
   (lambda (forms env)
     (cond
+      ((atom forms) (cons env (quote ())))
       ((my-lambda-def-form? (car forms))
        (let ((group (my-take-lambda-def-group forms)))
          (let ((problem (my-lambda-def-group-error group)))
