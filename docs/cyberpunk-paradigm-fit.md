@@ -41,6 +41,20 @@ would have encoded an architecture decision (CET vs RED4ext, what
 first. That restraint is the axiom working as designed, not me
 reciting it.
 
+## Status update (2026-09-10)
+
+The String-representation question (raised below under "oracle-parity")
+is now resolved on the wsm-my-lisp side: `TAG_STRING` shipped
+(commit `8d6f642`, 36/36 tests, tentative tag value pending
+`wsm-target-contract` ratification), not interned, matching
+`equal?`-not-`eq?` string semantics exactly. wsm-my-lisp is now moving
+to a real RED4ext skeleton — the project's first actual touch of the
+game engine, not just a standalone asm nucleus. The tensions below are
+therefore no longer hypothetical concerns about a future step; they
+become live questions the moment host capabilities are wired to a real
+RED4ext call surface, and are worth re-checking as that skeleton
+takes shape rather than assuming they resolve themselves.
+
 ## Where there is real tension, not yet resolved
 
 **A single evaluator answering to three different hosts.** my-lisp's

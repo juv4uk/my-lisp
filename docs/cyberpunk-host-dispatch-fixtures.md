@@ -84,6 +84,30 @@ more practical for a minimal implementation). Verified directly: the
 error text embeds the offending Cyrillic identifier unchanged, no
 transliteration or mangling.
 
+## String representation — resolved (2026-09-10)
+
+The open question from earlier ("wsm-my-lisp's tagged-word ABI has no
+String type yet") is resolved and shipped, not merely proposed:
+wsm-my-lisp implemented `TAG_STRING` (tentative value `7` — the last
+free slot in the 3-bit Tag; formal ratification in
+`wsm-target-contract` still pending) backed by a non-interning
+append-only `StringTable` (offset+length into a UTF-8 arena), mirroring
+the existing `SymbolTable` pattern but without deduplication — matching
+my-lisp's own semantics exactly: strings compare structurally
+(`equal?`), not by identity (`eq?`), so two identical literals are
+legitimately independent allocations, unlike interned symbols. Commit
+`8d6f642`, 36/36 tests passing. `(дай-зброю "пістолет" 5)` from §2 now
+round-trips end-to-end through the real asm nucleus, not just the
+Rust reference.
+
+Open follow-up (not blocking, flagged proactively): `TAG_STRING=7`
+consumes the last free 3-bit tag value. Before this becomes official
+in `wsm-target-contract`, worth checking whether any other `Value`
+variant in `crates/my-lisp/src/value.rs` (`Vector`, `NumericBuffer`,
+the TCP-handle type) will eventually need its own tagged-word
+representation — better to plan for that now than discover the tag
+space is exhausted later.
+
 ## Also-valid English forms (equivalent, not preferred)
 
 The English-named forms (`teleport`, `give-weapon`, `save-game`) work
