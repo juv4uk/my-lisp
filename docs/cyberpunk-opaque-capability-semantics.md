@@ -6,6 +6,19 @@ Prep work, not implementation, per my-lisp-cyberpunk's own framing:
 — this documents an existing precedent so the answer is ready when a
 concrete `game-version`/`player-position/read` proposal arrives.
 
+## Update (2026-09-10): machine-ABI question ratified
+
+[wsm-target-contract#2](https://github.com/juv4uk/wsm-target-contract/issues/2)
+is closed: a future session-local game handle extends `Tag::Boxed`
+(commit `5768f35`, contract v4) rather than getting a new
+`Tag::Capability` variant — the deciding factor was `Tag::Capability`'s
+existing `u8` instance-field limit, plus the conceptual distinction
+argued below (capability = the named operation/verb, e.g.
+`player-position/read`; the value it might return = an ordinary opaque
+reference, the same category as `TcpConnection`, not itself a
+"capability"). The semantic model in this document is unchanged by
+that ratification — it never depended on which machine tag won.
+
 ## The precedent already exists: TCP handles
 
 my-lisp already has exactly this shape of problem, solved, in
