@@ -84,29 +84,46 @@ more practical for a minimal implementation). Verified directly: the
 error text embeds the offending Cyrillic identifier unchanged, no
 transliteration or mangling.
 
-## String representation — resolved (2026-09-10)
+## String representation — resolved (2026-09-10, superseded once, now final)
 
 The open question from earlier ("wsm-my-lisp's tagged-word ABI has no
-String type yet") is resolved and shipped, not merely proposed:
-wsm-my-lisp implemented `TAG_STRING` (tentative value `7` — the last
-free slot in the 3-bit Tag; formal ratification in
-`wsm-target-contract` still pending) backed by a non-interning
-append-only `StringTable` (offset+length into a UTF-8 arena), mirroring
-the existing `SymbolTable` pattern but without deduplication — matching
-my-lisp's own semantics exactly: strings compare structurally
-(`equal?`), not by identity (`eq?`), so two identical literals are
-legitimately independent allocations, unlike interned symbols. Commit
-`8d6f642`, 36/36 tests passing. `(дай-зброю "пістолет" 5)` from §2 now
-round-trips end-to-end through the real asm nucleus, not just the
-Rust reference.
+String type yet") is resolved and shipped, not merely proposed.
+History, briefly, because the final tag value changed once for a good
+reason:
 
-Open follow-up (not blocking, flagged proactively): `TAG_STRING=7`
-consumes the last free 3-bit tag value. Before this becomes official
-in `wsm-target-contract`, worth checking whether any other `Value`
-variant in `crates/my-lisp/src/value.rs` (`Vector`, `NumericBuffer`,
-the TCP-handle type) will eventually need its own tagged-word
-representation — better to plan for that now than discover the tag
-space is exhausted later.
+1. First cut: `TAG_STRING` at tentative value `7` (the last free slot
+   in the 3-bit Tag), backed by a non-interning append-only
+   `StringTable` (offset+length into a UTF-8 arena) — mirroring the
+   existing `SymbolTable` pattern but without deduplication, matching
+   my-lisp's own semantics exactly (strings compare structurally via
+   `equal?`, not identity via `eq?`, so identical literals are
+   legitimately independent allocations, unlike interned symbols).
+2. Before that tag value was ratified in `wsm-target-contract`, this
+   doc flagged a real risk: `TAG_STRING=7` would consume the last free
+   3-bit tag slot, and my-lisp's own `Value` enum
+   (`crates/my-lisp/src/value.rs`) still has `Vector`, `NumericBuffer`,
+   and TCP-handle variants with no tagged-word representation at all —
+   spending the last slot on one of several future needs risked an
+   ABI migration later.
+3. cml's engineering review (asked because cml generates code against
+   this exact ABI) recommended against widening `TAG_BITS` 3→4 (an
+   expensive, one-way change without proven need) and proposed
+   `TAG_BOXED=7` instead — one generic tag for String/Vector/
+   NumericBuffer/TCP-handles together, with an internal discriminant
+   byte inside the boxed object itself. `Rational`/`Macro`/`Bool` need
+   no primary tag (already covered by other patterns); `Builtin`/
+   `Closure` are correctly absent from this list — first-class
+   callables are out of scope for the current Cyberpunk MVP
+   (host-primitive dispatch by symbol, no closures).
+4. wsm-my-lisp implemented `TAG_BOXED=7` per that recommendation.
+   Commit `09d7c20`, 36/36 tests passing. `(дай-зброю "пістолет" 5)`
+   from §2 round-trips end-to-end through the real asm nucleus with
+   this final representation, not just the Rust reference.
+
+No further action needed on this thread — the tag-space-exhaustion
+risk that motivated the change is now closed by construction (one
+boxed tag absorbs future variants via discriminant byte, not by
+consuming additional primary tag bits).
 
 ## Also-valid English forms (equivalent, not preferred)
 
