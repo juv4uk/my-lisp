@@ -10,15 +10,15 @@
 ; The actual primitive operation is still supplied by the native substrate;
 ; this evaluator owns name resolution, Canon-first lookup, ordinary lexical
 ; shadowing, application shape, macro expansion, closure environments, chained
-; comparison policy, self-recursive and dependency-aware finite mutually
-; recursive top-level function binding, variadic/dotted lambda parameter
-; binding, and named failure observations for unresolved names, non-callable
-; values, lambda/macro arity mismatch, invalid lambda-list structure, and
-; reserved Canon binding attempts.
+; comparison policy, shared top-level definition-frame visibility, self-recursive
+; and dependency-aware finite mutually recursive top-level function binding,
+; variadic/dotted lambda parameter binding, and named failure observations for
+; unresolved names, non-callable values, lambda/macro arity mismatch, invalid
+; lambda-list structure, and reserved Canon binding attempts.
 ;
 ; This remains an explicit self-hosting witness, not the always-loaded runtime.
-; Full named-error parity and arbitrary later-binding visibility are still known
-; gaps and must not be claimed as complete self-hosting.
+; Full named-error parity is still a known gap and must not be claimed as
+; complete self-hosting.
 
 (def my-primitive
   (lambda (name)
@@ -114,6 +114,97 @@
         ((eq name (quote >))    (my-primitive (quote >)))
         (t name)))))
 
+; ADR-009 shared definition frame.
+;
+; The metacircular environment remains finite Lisp data. A binding whose key is
+; the non-symbol internal sentinel 0 stores the mutable-in-the-language-model
+; top-level frame as an ordinary alist:
+;
+;   ((0 . ((latest . value) ...)) . lexical-outer-env)
+;
+; User binders are symbols, so the sentinel cannot collide with a legal source
+; binding. Local lexical bindings are consed before this marker. At closure call
+; time only the marker payload is refreshed from the caller; local captured
+; bindings before it are preserved. This models shared frame identity without
+; dynamic scope and without a cyclic host object.
+(def my-shared-frame-binding?
+  (lambda (binding)
+    (cond
+      ((atom binding) (quote ()))
+      (t (eq (car binding) 0)))))
+
+(def my-frame-bound?
+  (lambda (name frame)
+    (cond
+      ((atom frame) (quote ()))
+      ((eq (car (car frame)) name) t)
+      (t (my-frame-bound? name (cdr frame))))))
+
+(def my-frame-lookup
+  (lambda (name frame)
+    (cond
+      ((eq (car (car frame)) name) (cdr (car frame)))
+      (t (my-frame-lookup name (cdr frame))))))
+
+(def my-env-has-shared-frame?
+  (lambda (env)
+    (cond
+      ((atom env) (quote ()))
+      ((my-shared-frame-binding? (car env)) t)
+      (t (my-env-has-shared-frame? (cdr env))))))
+
+(def my-shared-frame-value
+  (lambda (env)
+    (cond
+      ((atom env) (quote ()))
+      ((my-shared-frame-binding? (car env)) (cdr (car env)))
+      (t (my-shared-frame-value (cdr env))))))
+
+(def my-ensure-shared-frame
+  (lambda (env)
+    (cond
+      ((my-env-has-shared-frame? env) env)
+      (t (cons (cons 0 (quote ())) env)))))
+
+(def my-replace-shared-frame
+  (lambda (env frame)
+    (cond
+      ((atom env) env)
+      ((my-shared-frame-binding? (car env))
+       (cons (cons 0 frame) (cdr env)))
+      (t
+       (cons (car env)
+             (my-replace-shared-frame (cdr env) frame))))))
+
+(def my-refresh-shared-frame
+  (lambda (captured-env caller-env)
+    (cond
+      ((my-env-has-shared-frame? captured-env)
+       (cond
+         ((my-env-has-shared-frame? caller-env)
+          (my-replace-shared-frame
+            captured-env
+            (my-shared-frame-value caller-env)))
+         (t captured-env)))
+      (t captured-env))))
+
+; Definitions update the shared marker when one is active. Outside
+; my-eval-program this falls back to the historical plain-alist extension, so
+; direct my-eval-top-form use remains compatible.
+(def my-env-define
+  (lambda (name value env)
+    (cond
+      ((atom env) (cons (cons name value) env))
+      ((my-shared-frame-binding? (car env))
+       (cons
+         (cons 0
+               (cons (cons name value)
+                     (cdr (car env))))
+         (cdr env)))
+      (t
+       (cons (car env)
+             (my-env-define name value (cdr env)))))))
+
 ; Contract 6.0: Canon outranks the lexical alist even if a hostile/pre-existing
 ; environment contains the same text. Non-Canon names retain ordinary lookup.
 (def env-lookup
@@ -123,6 +214,11 @@
         ((my-canon-callable-identity? identity) (my-primitive identity))
         ((my-canon-name? name) (my-canon-binding-error name))
         ((atom env) (my-default-binding name))
+        ((my-shared-frame-binding? (car env))
+         (cond
+           ((my-frame-bound? name (cdr (car env)))
+            (my-frame-lookup name (cdr (car env))))
+           (t (env-lookup name (cdr env)))))
         ((eq (car (car env)) name) (cdr (car env)))
         (t (env-lookup name (cdr env)))))))
 
@@ -131,6 +227,10 @@
     (cond
       ((my-canon-name? name) t)
       ((atom env) (quote ()))
+      ((my-shared-frame-binding? (car env))
+       (cond
+         ((my-frame-bound? name (cdr (car env))) t)
+         (t (env-bound? name (cdr env)))))
       ((eq (car (car env)) name) t)
       (t (env-bound? name (cdr env))))))
 
@@ -445,9 +545,8 @@
             group
             captured-env))))
 
-; Build onto the captured environment so later definitions in a recursive SCC
-; appear earlier in the alist, matching same-frame overwrite order inside that
-; component without requiring mutable or cyclic host environment state.
+; Application-time reconstruction keeps SCC members as lexical bindings around
+; the refreshed shared frame. This retains finite group recursion.
 (def my-build-group-env-onto
   (lambda (forms group captured-env out)
     (cond
@@ -467,60 +566,101 @@
   (lambda (group captured-env)
     (my-build-group-env-onto group group captured-env captured-env)))
 
-(def my-apply
-  (lambda (fn args)
+; Program-time installation is different: SCC members are top-level definitions
+; and therefore belong to the shared definition frame rather than to a lexical
+; prefix that could become a stale snapshot for later closures.
+(def my-install-group-env-onto
+  (lambda (forms group captured-env out)
     (cond
-      ; Application owns only callability. UnknownSymbol has already been
-      ; decided by the operator-name resolution path in my-eval.
-      ((atom fn) (my-error (quote not-callable) fn))
-      ((my-primitive? fn)
-       (my-apply-primitive (second fn) args))
-      ((my-closure? fn)
-       (cond
-         ((my-arity-ok? (second fn) args)
-          (my-eval-body
-            (third fn)
-            (bind-params
-              (second fn)
-              args
-              (my-fourth fn))))
-         (t (my-arity-error (second fn) args))))
-      ((my-recursive-closure? fn)
-       (cond
-         ((my-arity-ok? (third fn) args)
-          (let ((self-env
-                  (cons (cons (second fn) fn)
-                        (my-fifth fn))))
+      ((atom forms) out)
+      (t
+       (let ((form (car forms)))
+         (my-install-group-env-onto
+           (cdr forms)
+           group
+           captured-env
+           (my-env-define
+             (second form)
+             (my-group-closure-from-def form group captured-env)
+             out)))))))
+
+(def my-install-group-env
+  (lambda (group captured-env)
+    (my-install-group-env-onto group group captured-env captured-env)))
+
+; caller-env is optional only for compatibility with the old experimental
+; meta-eval-mutual wrapper. Main my-eval always passes it. When present it is
+; used solely to refresh the shared top-level marker in a captured environment.
+(def my-apply
+  (lambda (fn args . caller-env-rest)
+    (let ((caller-env
+            (cond
+              ((atom caller-env-rest) (quote ()))
+              (t (car caller-env-rest)))))
+      (cond
+        ; Application owns only callability. UnknownSymbol has already been
+        ; decided by the operator-name resolution path in my-eval.
+        ((atom fn) (my-error (quote not-callable) fn))
+        ((my-primitive? fn)
+         (my-apply-primitive (second fn) args))
+        ((my-closure? fn)
+         (cond
+           ((my-arity-ok? (second fn) args)
             (my-eval-body
-              (my-fourth fn)
+              (third fn)
               (bind-params
-                (third fn)
+                (second fn)
                 args
-                self-env))))
-         (t (my-arity-error (third fn) args))))
-      ((my-group-closure? fn)
-       (cond
-         ((my-arity-ok? (third fn) args)
-          (let ((group-env
-                  (my-build-group-env (my-fifth fn) (my-sixth fn))))
+                (my-refresh-shared-frame
+                  (my-fourth fn)
+                  caller-env))))
+           (t (my-arity-error (second fn) args))))
+        ((my-recursive-closure? fn)
+         (cond
+           ((my-arity-ok? (third fn) args)
+            (let ((captured
+                    (my-refresh-shared-frame
+                      (my-fifth fn)
+                      caller-env)))
+              (let ((self-env
+                      (cons (cons (second fn) fn)
+                            captured)))
+                (my-eval-body
+                  (my-fourth fn)
+                  (bind-params
+                    (third fn)
+                    args
+                    self-env)))))
+           (t (my-arity-error (third fn) args))))
+        ((my-group-closure? fn)
+         (cond
+           ((my-arity-ok? (third fn) args)
+            (let ((captured
+                    (my-refresh-shared-frame
+                      (my-sixth fn)
+                      caller-env)))
+              (let ((group-env
+                      (my-build-group-env (my-fifth fn) captured)))
+                (my-eval-body
+                  (my-fourth fn)
+                  (bind-params
+                    (third fn)
+                    args
+                    group-env)))))
+           (t (my-arity-error (third fn) args))))
+        ((my-macro? fn)
+         (cond
+           ((my-arity-ok? (second fn) args)
             (my-eval-body
-              (my-fourth fn)
+              (third fn)
               (bind-params
-                (third fn)
+                (second fn)
                 args
-                group-env))))
-         (t (my-arity-error (third fn) args))))
-      ((my-macro? fn)
-       (cond
-         ((my-arity-ok? (second fn) args)
-          (my-eval-body
-            (third fn)
-            (bind-params
-              (second fn)
-              args
-              (my-fourth fn))))
-         (t (my-arity-error (second fn) args))))
-      (t (my-error (quote not-callable) fn)))))
+                (my-refresh-shared-frame
+                  (my-fourth fn)
+                  caller-env))))
+           (t (my-arity-error (second fn) args))))
+        (t (my-error (quote not-callable) fn))))))
 
 (def my-eval
   (lambda (expr env)
@@ -544,9 +684,9 @@
             (cond
               ; Macro receives raw forms, then its expansion is evaluated.
               ((my-macro? fn)
-               (my-eval (my-apply fn (cdr expr)) env))
+               (my-eval (my-apply fn (cdr expr) env) env))
               (t
-               (my-apply fn (my-eval-list (cdr expr) env))))))))
+               (my-apply fn (my-eval-list (cdr expr) env) env)))))))
       ; A syntactic lambda in computed operator position must be validated
       ; before ordinary application so InvalidForm cannot degrade into
       ; not-callable merely because errors are represented as Lisp data.
@@ -556,16 +696,20 @@
            ((atom problem)
             (my-apply
               (my-eval (car expr) env)
-              (my-eval-list (cdr expr) env)))
+              (my-eval-list (cdr expr) env)
+              env))
            (t (my-lambda-invalid-form problem)))))
       ; Other computed operator positions use the ordinary value-level path.
       (t
        (my-apply
          (my-eval (car expr) env)
-         (my-eval-list (cdr expr) env))))))
+         (my-eval-list (cdr expr) env)
+         env)))))
 
 ; Top-level sequencing. `def` and `defmacro` return `(new-env . value)` so
-; the immutable alist environment can be threaded explicitly to the next form.
+; the environment can be threaded explicitly to the next form. Under
+; my-eval-program, my-env-define updates the ADR-009 shared definition frame;
+; direct calls without a marker retain the historical plain-alist behavior.
 ;
 ; Contract 6 rejects Canon definition names before value construction.
 (def my-eval-top-form
@@ -589,11 +733,15 @@
                                   (second value-form)
                                   (cdr (cdr value-form))
                                   env)))
-                      (cons (cons (cons (second form) value) env) value)))
+                      (cons
+                        (my-env-define (second form) value env)
+                        value)))
                    (t (cons env (my-lambda-invalid-form problem))))))
               (t
                (let ((value (my-eval value-form env)))
-                 (cons (cons (cons (second form) value) env) value))))))))
+                 (cons
+                   (my-env-define (second form) value env)
+                   value))))))))
       ((eq (car form) (quote defmacro))
        (cond
          ((my-canon-name? (second form))
@@ -604,7 +752,9 @@
                         (third form)
                         (cdr (cdr (cdr form)))
                         env)))
-            (cons (cons (cons (second form) macro-val) env) macro-val)))))
+            (cons
+              (my-env-define (second form) macro-val env)
+              macro-val)))))
       (t (cons env (my-eval form env))))))
 
 ; Dependency analysis for top-level lambda definitions stays in Lisp data.
@@ -788,7 +938,7 @@
              (t
               (let ((component
                       (my-select-defs-by-names forms component-names)))
-                (let ((group-env (my-build-group-env component env)))
+                (let ((group-env (my-install-group-env component env)))
                   (my-eval-lambda-components
                     (my-remove-defs-by-names forms component-names)
                     graph
@@ -808,29 +958,40 @@
 ; ordinary singleton path. This prevents adjacency itself from inventing
 ; recursion while keeping finite Lisp data for genuine mutual recursion.
 ;
-; An empty form list is a valid no-op program. It preserves the supplied
-; environment exactly and returns Nil as the program result, using the same
-; `(new-env . value)` representation as every non-empty program path.
+; For every non-empty program ADR-009 installs one finite shared-frame marker.
+; Recursive calls reuse that same marker. An empty form list remains a valid
+; no-op program and preserves the supplied environment exactly, so TASK-001's
+; empty-program witness is unchanged.
 (def my-eval-program
   (lambda (forms env)
     (cond
       ((atom forms) (cons env (quote ())))
-      ((my-lambda-def-form? (car forms))
-       (let ((block (my-take-lambda-def-group forms)))
-         (let ((problem (my-lambda-def-group-error block)))
-           (cond
-             ((atom problem)
-              (let ((rest (my-drop-lambda-def-group forms)))
-                (let ((block-result (my-eval-lambda-block block env)))
-                  (cond
-                    ((atom rest) block-result)
-                    (t
-                     (my-eval-program
-                       rest
-                       (car block-result)))))))
-             (t (cons env (my-lambda-invalid-form problem)))))))
       (t
-       (let ((result (my-eval-top-form (car forms) env)))
+       (let ((program-env (my-ensure-shared-frame env)))
          (cond
-           ((atom (cdr forms)) result)
-           (t (my-eval-program (cdr forms) (car result)))))))))
+           ((my-lambda-def-form? (car forms))
+            (let ((block (my-take-lambda-def-group forms)))
+              (let ((problem (my-lambda-def-group-error block)))
+                (cond
+                  ((atom problem)
+                   (let ((rest (my-drop-lambda-def-group forms)))
+                     (let ((block-result
+                             (my-eval-lambda-block block program-env)))
+                       (cond
+                         ((atom rest) block-result)
+                         (t
+                          (my-eval-program
+                            rest
+                            (car block-result)))))))
+                  (t
+                   (cons
+                     program-env
+                     (my-lambda-invalid-form problem)))))))
+           (t
+            (let ((result (my-eval-top-form (car forms) program-env)))
+              (cond
+                ((atom (cdr forms)) result)
+                (t
+                 (my-eval-program
+                   (cdr forms)
+                   (car result))))))))))))
