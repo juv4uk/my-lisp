@@ -682,9 +682,13 @@
          (t
           (let ((fn (my-eval (car expr) env)))
             (cond
-              ; Macro receives raw forms, then its expansion is evaluated.
+              ; Macro receives raw forms. Arity belongs to macro application,
+              ; so reject it before trying to evaluate any expansion value.
               ((my-macro? fn)
-               (my-eval (my-apply fn (cdr expr) env) env))
+               (cond
+                 ((my-arity-ok? (second fn) (cdr expr))
+                  (my-eval (my-apply fn (cdr expr) env) env))
+                 (t (my-arity-error (second fn) (cdr expr)))))
               (t
                (my-apply fn (my-eval-list (cdr expr) env) env)))))))
       ; A syntactic lambda in computed operator position must be validated
