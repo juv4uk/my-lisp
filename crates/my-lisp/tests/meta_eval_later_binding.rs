@@ -15,8 +15,8 @@ fn meta_session() -> Session {
 fn meta_eval_program(program: &str, probe: &str) -> String {
     let mut session = meta_session();
     let source = format!(
-        r#"(let ((loaded (my-eval-program (read-all \"{}\") (quote ()))))
-             (my-eval (read \"{}\") (car loaded)))"#,
+        r#"(let ((loaded (my-eval-program (read-all "{}") (quote ()))))
+             (my-eval (read "{}") (car loaded)))"#,
         escaped(program),
         escaped(probe),
     );
