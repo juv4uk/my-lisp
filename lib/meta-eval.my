@@ -144,6 +144,10 @@
         ((eq name (quote <))    (my-primitive (quote <)))
         ((eq name (quote =))    (my-primitive (quote =)))
         ((eq name (quote >))    (my-primitive (quote >)))
+        ((eq name (quote write-to-string))
+         (my-primitive (quote write-to-string)))
+        ((eq name (quote string->symbol))
+         (my-primitive (quote string->symbol)))
         (t name)))))
 
 ; ADR-009 shared definition frame.
@@ -390,6 +394,10 @@
       ((eq name (quote <))    (my-compare-chain (quote <) args))
       ((eq name (quote =))    (my-compare-chain (quote =) args))
       ((eq name (quote >))    (my-compare-chain (quote >) args))
+      ((eq name (quote write-to-string))
+       (write-to-string (car args)))
+      ((eq name (quote string->symbol))
+       (string->symbol (car args)))
       (t (list (quote unknown-primitive) name)))))
 
 ; Lambda-list arity is derivable from Lisp list structure itself:
