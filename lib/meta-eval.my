@@ -665,7 +665,11 @@
 (def my-eval
   (lambda (expr env)
     (cond
-      ((atom expr) (env-lookup expr env))
+      ((atom expr)
+       (cond
+         ((my-unresolved-name? expr env)
+          (my-error (quote unbound-symbol) expr))
+         (t (env-lookup expr env))))
       ((atom (car expr))
        (cond
          ; Canon syntax-only spellings are recognized by semantic identity.
