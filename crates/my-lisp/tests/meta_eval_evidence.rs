@@ -103,6 +103,29 @@ fn bare_unresolved_symbol_has_reference_meta_parity() {
 }
 
 #[test]
+fn application_evaluation_order_preserves_the_first_error() {
+    let operator_first = "(missing-operator ((lambda (z) z)))";
+    assert_eq!(native_error_kind(operator_first), ErrorKind::UnknownSymbol);
+    assert_eq!(
+        meta_error_kind(&meta_eval(operator_first)),
+        Some("unbound-symbol"),
+        "operator resolution must fail before any argument is evaluated"
+    );
+
+    let first_argument_first = "((lambda (x y) y) missing-first ((lambda (z) z)))";
+    assert_eq!(
+        native_error_kind(first_argument_first),
+        ErrorKind::UnknownSymbol,
+        "reference evaluation must stop at the first argument before reaching the later arity error"
+    );
+    assert_eq!(
+        meta_error_kind(&meta_eval(first_argument_first)),
+        Some("unbound-symbol"),
+        "meta evaluation must stop at the first argument error instead of evaluating later arguments"
+    );
+}
+
+#[test]
 fn macro_arity_has_reference_meta_parity() {
     let program = "(defmacro one (x) x) (one)";
     assert_eq!(native_error_kind(program), ErrorKind::Arity);
