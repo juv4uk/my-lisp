@@ -99,6 +99,22 @@ fn warm(name: &str, source: &str, iterations: usize) {
 }
 
 fn main() {
+    // `warm/vector-fill-500` (below) recurses deep enough to overflow a
+    // 1 MiB thread stack (Windows' default main-thread size) even though
+    // it comfortably fits an 8 MiB stack (a typical Linux default) --
+    // confirmed directly: docs/benchmarks.md §5. Running the whole
+    // benchmark on an explicit larger-stack worker thread makes this
+    // dev tool's results reproducible across platforms without changing
+    // eval_program's own non-tail-recursive call path (a separate,
+    // larger fix tracked as a real finding, not applied here).
+    let handle = std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(run_benchmarks)
+        .expect("spawn benchmark worker thread");
+    handle.join().expect("benchmark worker thread panicked");
+}
+
+fn run_benchmarks() {
     let iterations = std::env::var("MY_LISP_BENCH_ITERATIONS")
         .ok()
         .and_then(|value| value.parse().ok())

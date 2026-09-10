@@ -165,9 +165,23 @@ runs are shown to demonstrate the ratios hold up under real variance.
   earlier in this document (Windows' default main-thread stack is
   1 MiB vs a typical Linux 8 MiB), surfacing a real non-tail-recursive
   Rust call path in `eval_program`'s handling of that program shape.
-  Not investigated further here — flagged as a genuine finding, not
-  fixed, since diagnosing and fixing a stack-depth issue in the
-  evaluator itself is a larger task than this benchmarking pass.
+  **Update, same day**: confirmed the hypothesis directly (a disposable
+  worker-thread experiment with `thread::Builder::stack_size`) — 1 MiB
+  overflows on the very first iteration, 2 MiB already suffices, 8 MiB
+  runs 200 iterations cleanly. Mitigated *in this benchmark tool*
+  (`examples/benchmark.rs` now runs its whole suite on an explicit
+  8 MiB worker thread) — this is a workaround for the dev tool, not a
+  fix to `eval_program`'s underlying non-tail-recursive call path,
+  which remains a real, larger, un-investigated issue: **the production
+  `my-lisp-cli` binary (`main.rs`) still runs on the platform-default
+  main thread and would hit the same overflow on Windows for a
+  sufficiently deep non-tail call shape** (e.g. a user program doing
+  the equivalent of 500 sequential `cons`-around-`vector-set!` calls
+  without a tail-recursive rewrite). Whether to apply the same
+  larger-stack-worker-thread pattern to the production CLI binary is a
+  decision affecting every Windows invocation of the language, not
+  made here without the owner's sign-off — flagged as an actionable
+  recommendation, not applied.
 
 ## Українська (§5)
 
