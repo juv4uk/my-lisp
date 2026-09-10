@@ -6,6 +6,10 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
+fn invalid_data(message: impl Into<String>) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::InvalidData, message.into())
+}
+
 #[derive(Debug, Clone)]
 pub struct Event {
     pub node: String,
@@ -53,6 +57,9 @@ impl Event {
     }
 
     pub fn from_sexp(s: &Sexp) -> Result<Event, String> {
+        if s.head() != Some("event") {
+            return Err("expected event form".to_string());
+        }
         let node = s
             .field_atom("node")
             .ok_or("event missing node")?
@@ -141,29 +148,71 @@ pub fn load_or_init_identity(data_dir: &Path, node_id: &str) -> std::io::Result<
     let path = data_dir.join("node.my");
     let (epoch, stored_incarnation) = if path.exists() {
         let text = fs::read_to_string(&path)?;
-        let parsed = parse(&text).unwrap_or(Sexp::List(vec![]));
-        if let Some(stored_id) = parsed.field_atom("id") {
-            if stored_id != node_id {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    format!(
-                        "data-dir identity mismatch: stored node-id `{stored_id}`, requested `{node_id}`"
-                    ),
-                ));
-            }
+        let parsed = parse(&text).map_err(|e| {
+            invalid_data(format!(
+                "invalid node identity {}: {e}",
+                path.display()
+            ))
+        })?;
+        if parsed.head() != Some("node") {
+            return Err(invalid_data(format!(
+                "invalid node identity {}: expected node form",
+                path.display()
+            )));
         }
-        let e = parsed
-            .field_atom("epoch")
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0)
-            + 1;
+        let stored_id = parsed.field_atom("id").ok_or_else(|| {
+            invalid_data(format!(
+                "invalid node identity {}: missing id",
+                path.display()
+            ))
+        })?;
+        if stored_id != node_id {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!(
+                    "data-dir identity mismatch: stored node-id `{stored_id}`, requested `{node_id}`"
+                ),
+            ));
+        }
+        let stored_epoch = parsed.field_atom("epoch").ok_or_else(|| {
+            invalid_data(format!(
+                "invalid node identity {}: missing epoch",
+                path.display()
+            ))
+        })?;
+        let epoch = stored_epoch.parse::<u64>().map_err(|_| {
+            invalid_data(format!(
+                "invalid node identity {}: epoch is not a number",
+                path.display()
+            ))
+        })?;
+        let e = epoch.checked_add(1).ok_or_else(|| {
+            invalid_data(format!(
+                "invalid node identity {}: epoch overflow",
+                path.display()
+            ))
+        })?;
         // A pre-M1.1a node.my has no incarnation: generate one now and
         // persist it — this upgrade keeps the journal's legacy events
         // (incarnation-less) distinct from everything this process will
-        // emit from here on.
-        let inc = match parsed.field_atom("incarnation") {
-            Some(s) => s.to_string(),
-            None => fresh_incarnation(),
+        // emit from here on. If an incarnation field is present, however,
+        // it must be a real atom/string rather than malformed data.
+        let inc = if parsed.field("incarnation").is_some() {
+            let value = parsed.field_atom("incarnation").ok_or_else(|| {
+                invalid_data(format!(
+                    "invalid node identity {}: malformed incarnation",
+                    path.display()
+                ))
+            })?;
+            if value.is_empty() || value == "-" {
+                return Err(invalid_data(format!(
+                    "invalid node identity {}: invalid incarnation `{value}`",
+                    path.display()
+                )));
+            }
+            value.to_string()
+        } else {
+            fresh_incarnation()
         };
         (e, inc)
     } else {
@@ -200,16 +249,25 @@ impl Journal {
         let mut events = Vec::new();
         if path.exists() {
             let reader = BufReader::new(File::open(&path)?);
-            for line in reader.lines() {
+            for (index, line) in reader.lines().enumerate() {
                 let line = line?;
                 if line.trim().is_empty() {
                     continue;
                 }
-                if let Ok(sexp) = parse(&line) {
-                    if let Ok(ev) = Event::from_sexp(&sexp) {
-                        events.push(ev);
-                    }
-                }
+                let line_number = index + 1;
+                let sexp = parse(&line).map_err(|e| {
+                    invalid_data(format!(
+                        "invalid journal {} line {line_number}: {e}",
+                        path.display()
+                    ))
+                })?;
+                let ev = Event::from_sexp(&sexp).map_err(|e| {
+                    invalid_data(format!(
+                        "invalid journal {} line {line_number}: {e}",
+                        path.display()
+                    ))
+                })?;
+                events.push(ev);
             }
         }
         let file = OpenOptions::new().create(true).append(true).open(&path)?;
@@ -300,6 +358,29 @@ impl Journal {
 #[cfg(test)]
 mod incarnation_tests {
     use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn test_dir(label: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be after Unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "swarm-journal-{label}-{}-{nonce}",
+            std::process::id()
+        ))
+    }
+
+    fn event(node: &str, incarnation: Option<&str>, seq: u64) -> Event {
+        Event {
+            node: node.to_string(),
+            incarnation: incarnation.map(str::to_string),
+            seq,
+            lamport: seq,
+            typ: "x".into(),
+            payload: Sexp::List(vec![]),
+        }
+    }
 
     #[test]
     fn roundtrips_incarnation_through_sexp() {
@@ -331,25 +412,110 @@ mod incarnation_tests {
 
     #[test]
     fn has_distinguishes_incarnations() {
-        let dir = std::env::temp_dir().join(format!("inc-test-{}", std::process::id()));
+        let dir = test_dir("incarnations");
         let mut j = Journal::open(&dir).unwrap();
-        let mk = |inc: Option<&str>, seq: u64| Event {
-            node: "n".to_string(),
-            incarnation: inc.map(|s| s.to_string()),
-            seq,
-            lamport: seq,
-            typ: "x".into(),
-            payload: Sexp::List(vec![]),
-        };
-        j.append(mk(Some("AAA"), 1)).unwrap();
+        j.append(event("n", Some("AAA"), 1)).unwrap();
         assert!(j.has("n", Some("AAA"), 1));
         assert!(
             !j.has("n", Some("BBB"), 1),
             "different incarnation must not dedup-hit"
         );
-        j.append(mk(Some("BBB"), 1)).unwrap();
+        j.append(event("n", Some("BBB"), 1)).unwrap();
         assert_eq!(j.next_seq("n", Some("AAA")), 2);
         assert_eq!(j.next_seq("n", Some("BBB")), 2);
         assert_eq!(j.all_origins().len(), 2);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn corrupt_identity_is_rejected_without_rewriting_it() {
+        let dir = test_dir("corrupt-identity");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("node.my");
+        let before = b"(node (id original-node) (epoch 7)";
+        fs::write(&path, before).unwrap();
+
+        let err = load_or_init_identity(&dir, "replacement-node")
+            .err()
+            .expect("corrupt identity must fail closed");
+
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert_eq!(fs::read(&path).unwrap(), before);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn malformed_identity_fields_are_rejected_without_rewriting_them() {
+        let cases = [
+            "(node (epoch 7) (incarnation abc))",
+            "(node (id n) (epoch nope) (incarnation abc))",
+            "(node (id n) (epoch 7) (incarnation (nested)))",
+        ];
+        for (index, text) in cases.into_iter().enumerate() {
+            let dir = test_dir(&format!("bad-identity-{index}"));
+            fs::create_dir_all(&dir).unwrap();
+            let path = dir.join("node.my");
+            fs::write(&path, text).unwrap();
+
+            let err = load_or_init_identity(&dir, "n")
+                .err()
+                .expect("malformed identity fields must fail closed");
+
+            assert_eq!(err.kind(), std::io::ErrorKind::InvalidData, "{text}");
+            assert_eq!(fs::read_to_string(&path).unwrap(), text);
+            let _ = fs::remove_dir_all(dir);
+        }
+    }
+
+    #[test]
+    fn legacy_identity_without_incarnation_upgrades_but_keeps_identity() {
+        let dir = test_dir("legacy-identity");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("node.my");
+        fs::write(&path, "(node (id legacy) (epoch 7))").unwrap();
+
+        let identity = load_or_init_identity(&dir, "legacy").unwrap();
+
+        assert_eq!(identity.node_id, "legacy");
+        assert_eq!(identity.epoch, 8);
+        assert!(!identity.incarnation.is_empty());
+        let upgraded = fs::read_to_string(&path).unwrap();
+        assert!(upgraded.contains("(id legacy)"));
+        assert!(upgraded.contains("(epoch 8)"));
+        assert!(upgraded.contains("(incarnation "));
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn journal_open_rejects_corrupt_line_without_truncating_history() {
+        let dir = test_dir("corrupt-journal");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("events.log");
+        let first = event("n", Some("AAA"), 1).to_sexp().to_text();
+        let before = format!("{first}\n(event (node n)\n");
+        fs::write(&path, &before).unwrap();
+
+        let err = Journal::open(&dir).err().expect("corrupt journal must fail closed");
+
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("line 2"));
+        assert_eq!(fs::read_to_string(&path).unwrap(), before);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn journal_open_rejects_structurally_invalid_event_without_skipping_it() {
+        let dir = test_dir("invalid-event");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("events.log");
+        let before = "(event (node n) (seq 1) (type x))\n";
+        fs::write(&path, before).unwrap();
+
+        let err = Journal::open(&dir).err().expect("invalid event must fail closed");
+
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("event missing lamport"));
+        assert_eq!(fs::read_to_string(&path).unwrap(), before);
+        let _ = fs::remove_dir_all(dir);
     }
 }
