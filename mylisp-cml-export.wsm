@@ -1,0 +1,10 @@
+(cml-export/1
+  (contract (major 6) (minor 0))
+  (digest "dfc880e5e5ae80f9")
+  (forms
+    (0001 (surfaces (en quote) (sa svarūpa) (sym ') (uk як-є)) (role syntax) (callable nil))
+    (0007 (surfaces (en cond) (sa anukrama) (sym ?:) (uk за-умовою)) (role syntax) (callable nil))
+    (0010 (surfaces (en lambda) (uk функція)) (role syntax) (callable nil))
+    (0011 (surfaces (en define) (uk визначити)) (role syntax) (callable nil))
+    (0003 (surfaces (en eq) (sa abheda) (sym =?) (uk тотожне?)) (role primitive) (callable t))
+    (1001 (surfaces (sa viyoga) (sym -) (uk відняти)) (role library) (callable t))))

@@ -153,3 +153,16 @@ better placed to answer:
 Question 1 (file location: `.wsm` vs. next to `language-contract.my`)
 remains open for the owner — cosmetic/organizational, not a design
 fork either consumer needs resolved to proceed.
+
+## Real artifact committed (2026-09-10, per issue #51)
+
+`mylisp-cml-export.wsm` is now committed at the repo root (not a
+placeholder — real producer output, real FNV digest, not
+`pending-producer-byte-pin`). Two guarding unit tests live in
+`crates/my-lisp-cli/src/bin/cml-export.rs`:
+`repeated_export_is_byte_identical` (two in-process runs produce
+identical bytes) and `committed_artifact_matches_producer_output` (the
+committed file on disk matches what the producer emits right now, so
+drift between the artifact and its producer fails CI instead of going
+unnoticed). cml can now hard-pin this file's real digest instead of a
+placeholder.

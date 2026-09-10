@@ -73,13 +73,42 @@ fn render_forms_block() -> String {
     lines.join("\n")
 }
 
-fn main() {
+fn render_export() -> String {
     let forms_block = render_forms_block();
     let digest = fnv1a_hex(forms_block.as_bytes());
 
-    let output = format!(
+    format!(
         "(cml-export/1\n  (contract (major 6) (minor 0))\n  (digest \"{digest}\")\n  (forms\n{forms_block}))\n"
-    );
+    )
+}
 
-    print!("{output}");
+fn main() {
+    print!("{}", render_export());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Issue juv4uk/my-lisp#51, acceptance criterion "repeat export gives
+    /// byte-identical output": guards this in CI, not just by manual `diff`
+    /// between two ad hoc runs.
+    #[test]
+    fn repeated_export_is_byte_identical() {
+        assert_eq!(render_export(), render_export());
+    }
+
+    /// The committed `mylisp-cml-export.wsm` at the repo root must be
+    /// exactly what this producer emits right now -- if this fails, the
+    /// committed artifact has drifted from the producer and needs
+    /// regenerating (`cargo run --bin cml-export > mylisp-cml-export.wsm`),
+    /// not hand-editing.
+    #[test]
+    fn committed_artifact_matches_producer_output() {
+        let committed = std::fs::read_to_string(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../mylisp-cml-export.wsm"),
+        )
+        .expect("mylisp-cml-export.wsm must exist at the repo root");
+        assert_eq!(committed, render_export());
+    }
 }

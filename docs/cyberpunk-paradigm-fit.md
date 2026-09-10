@@ -43,11 +43,16 @@ reciting it.
 
 ## Status update (2026-09-10)
 
-The String-representation question (raised below under "oracle-parity")
-is now resolved on the wsm-my-lisp side: `TAG_STRING` shipped
-(commit `8d6f642`, 36/36 tests, tentative tag value pending
-`wsm-target-contract` ratification), not interned, matching
-`equal?`-not-`eq?` string semantics exactly. wsm-my-lisp is now moving
+The String-representation semantic fact (String is a distinct,
+non-interned, structurally-compared value — raised below under
+"oracle-parity") is settled and stable. Its machine tag value is not:
+wsm-my-lisp implemented `TAG_STRING=7`, then, after this repo flagged a
+tag-space-exhaustion risk and cml gave an engineering review, superseded
+it with `TAG_BOXED=7` (commit `09d7c20`, 36/36 tests) — a proposal, not
+a ratified constant; see [GitHub issue juv4uk/my-lisp#51](https://github.com/juv4uk/my-lisp/issues/51)
+for the explicit correction against an earlier draft of this document
+that overstated it as "final." Full details:
+`docs/cyberpunk-host-dispatch-fixtures.md`. wsm-my-lisp is now moving
 to a real RED4ext skeleton — the project's first actual touch of the
 game engine, not just a standalone asm nucleus. The tensions below are
 therefore no longer hypothetical concerns about a future step; they

@@ -84,12 +84,28 @@ more practical for a minimal implementation). Verified directly: the
 error text embeds the offending Cyrillic identifier unchanged, no
 transliteration or mangling.
 
-## String representation — resolved (2026-09-10, superseded once, now final)
+## String representation — semantic fact settled; machine tag value proposed, not final (2026-09-10)
 
-The open question from earlier ("wsm-my-lisp's tagged-word ABI has no
-String type yet") is resolved and shipped, not merely proposed.
-History, briefly, because the final tag value changed once for a good
-reason:
+Correction per GitHub issue [juv4uk/my-lisp#51](https://github.com/juv4uk/my-lisp/issues/51):
+an earlier version of this section called `TAG_BOXED=7` "final." That
+overstated my-lisp's authority — the numeric tag value is a
+`wsm-target-contract` decision, not mine to declare final from this
+repo, even after wsm-my-lisp has implemented and tested it. Keeping
+two things separate going forward:
+
+- **Semantic fact (my-lisp's authority, settled):** String is a
+  distinct immutable UTF-8 value, structurally comparable via
+  `equal?`, never identity-comparable via `eq?`, and never the same
+  type as Symbol. This does not change regardless of what tag number
+  ends up representing it.
+- **Machine representation (`wsm-target-contract`'s authority,
+  proposed/tentative pending that repo's own ratification):**
+  `TAG_BOXED=7`, implemented and tested in wsm-my-lisp, is a strong,
+  working proposal — not yet an authority-ratified constant. Treat it
+  as "current best implementation, pending contract ratification," not
+  as closed.
+
+History, briefly, showing how the proposal reached its current shape:
 
 1. First cut: `TAG_STRING` at tentative value `7` (the last free slot
    in the 3-bit Tag), backed by a non-interning append-only
@@ -118,12 +134,13 @@ reason:
 4. wsm-my-lisp implemented `TAG_BOXED=7` per that recommendation.
    Commit `09d7c20`, 36/36 tests passing. `(дай-зброю "пістолет" 5)`
    from §2 round-trips end-to-end through the real asm nucleus with
-   this final representation, not just the Rust reference.
+   this proposed representation, not just the Rust reference.
 
-No further action needed on this thread — the tag-space-exhaustion
-risk that motivated the change is now closed by construction (one
-boxed tag absorbs future variants via discriminant byte, not by
-consuming additional primary tag bits).
+The tag-space-exhaustion risk that motivated the change is closed by
+design (one boxed tag absorbs future variants via discriminant byte,
+not by consuming additional primary tag bits) — but the numeric value
+`7` itself is not this repo's to finalize. Formal closure of this
+thread waits on `wsm-target-contract`'s own ratification, per issue #51.
 
 ## Also-valid English forms (equivalent, not preferred)
 
