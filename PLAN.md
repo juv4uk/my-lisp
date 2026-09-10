@@ -1,7 +1,7 @@
 # Активний план my-lisp
 
 > **Статус:** активний roadmap.  
-> **Оновлено:** 2026-09-07.  
+> **Оновлено:** 2026-09-10.  
 > **Головна мета:** Advice Taker. `my-lisp` — мова й execution substrate, що служить цій меті.
 
 Цей файл містить актуальний порядок пріоритетів і коротку карту вже
@@ -41,28 +41,34 @@ conformance-тестах та evidence-документах, а не повер�
 
 ## A2. Meta-evaluator ownership
 
-Підтверджені main-path slices:
+Machine-readable evidence matrix `knowledge/meta-eval-evidence.wsm` є
+авторитетом для parity-статусів; людська проєкція генерується з неї. На
+2026-09-10 усі **34/34 required rows confirmed**.
 
-- ✅ lexical closures;
-- ✅ first-class builtins і lexical shadowing;
-- ✅ macros;
-- ✅ top-level `def`;
-- ✅ self recursion;
+Підтверджені main-path slices включають:
+
+- ✅ lexical closures, nested capture і lexical shadowing;
+- ✅ first-class builtins;
+- ✅ macros і macro arity/error propagation;
+- ✅ `def` / `define` top-level semantics;
+- ✅ self recursion і dependency-aware finite mutual-recursion SCC;
 - ✅ variadic і dotted lambda;
-- ✅ finite mutual-recursion groups без cyclic host environment;
-- ✅ unresolved callable `UnknownSymbol`;
-- ✅ unresolved name vs non-callable `Type`;
-- ✅ fixed/rest lambda `Arity`;
-- ✅ malformed lambda-list `InvalidForm`.
+- ✅ shared top-level definition frame без dynamic scope;
+- ✅ empty-program no-op semantics;
+- ✅ application order і first-failure short-circuit;
+- ✅ named error-kind correspondence та ратифікована diagnostic-detail boundary;
+- ✅ registry-derived Canon / necessary-form surface identity у meta bootstrap.
 
-Відомі межі:
+Межі claim-а лишаються навмисно вужчими за список зелених тестів:
 
-- arbitrary later-binding visibility не доведена як загальна властивість;
-- повна parity усіх native error classes не заявляється;
-- `meta-eval` — explicit self-hosting witness, не always-loaded runtime.
+- `meta-eval` — explicit Lisp-owned self-hosting witness, не always-loaded runtime;
+- 34/34 означає повноту **поточного required evidence scope**, а не доказ усіх
+  можливих програм чи всіх майбутніх semantic extensions;
+- `complete-self-hosting` не проголошується автоматично: силу такого claim-а
+  окремо визначає claim vocabulary у machine evidence matrix.
 
-Не виправляти later-binding через dynamic-scope shortcut. Сильніший proof має
-лишатися lexical і finite-data.
+Не повертати later-binding через dynamic-scope shortcut: чинний proof лишається
+lexical і finite-data.
 
 ## A3. Advice Taker reasoning stability — B0/B1
 
@@ -268,16 +274,19 @@ CI #1151 + WASM #88; commits `0493beb`, `70269c3`, `c5605f7`, `9f1b6f1`,
 лише якщо він потрібен Advice Taker, знаходить реальну native/meta divergence
 або є conformance requirement.
 
-## C2. Arbitrary later-binding visibility
+## C2. Meta-evaluator claim discipline
 
-Explicit self-hosting proof gap. Не автоматичний bugfix backlog.
+Arbitrary later-binding visibility більше не є відкритим gap: shared definition
+frame підтверджений paired evidence без dynamic scope і без cyclic mutable host
+environment.
 
-Потрібний proof має одночасно:
+Наступну self-hosting роботу відкривати лише якщо вона:
 
-- бачити потрібні later top-level bindings;
-- зберігати lexical scope;
-- лишатися finite-data;
-- не повертати cyclic mutable host environment.
+- знаходить нову executable native/meta divergence поза чинними 34 required rows;
+- потрібна Advice Taker або новому ратифікованому semantic extension;
+- або формально змінює scope/силу self-hosting claim-а окремим рішенням.
+
+Не розширювати matrix лише заради більшого числа тестів.
 
 ## C3. Shrink Rust, grow Lisp
 
