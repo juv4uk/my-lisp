@@ -81,6 +81,7 @@ fn meta_result(program: &str) -> String {
 }
 
 #[test]
+#[ignore = "deep meta-eval witness: release CI + debug nightly"]
 fn real_advice_taker_stack_has_exact_native_meta_parity() {
     let program = advice_program();
     let native = native_result(&program);
