@@ -83,8 +83,10 @@ fn one_way_later_lambda_binding_is_visible_without_inventing_an_scc() {
 
 #[test]
 fn call_before_the_later_binding_remains_unresolved() {
+    // Use operator-position lookup so this witness stays isolated from the
+    // separately documented bare-atom UnknownSymbol gap.
     let program = r#"
-(def f (lambda () g))
+(def f (lambda () (g)))
 "#;
 
     assert_eq!(native_error_kind(program, "(f)"), ErrorKind::UnknownSymbol);
