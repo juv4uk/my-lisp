@@ -56,8 +56,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: deep-b5
+          shared-key: deep-b5-ci-meta
       - name: Run 5k/10k full-scan profile
-        run: cargo test --release -p my-lisp --test reason_scale reason_scale_profile_extended_5000_10000 -- --ignored --nocapture
+        run: cargo test --profile ci-meta -p my-lisp --test reason_scale reason_scale_profile_extended_5000_10000 -- --ignored --nocapture
       - name: Run 5k/10k Advice Taker profile
-        run: cargo test --release -p my-lisp --test reason_advice_scale advice_taker_profile_5000_10000_distractors -- --ignored --nocapture
+        run: cargo test --profile ci-meta -p my-lisp --test reason_advice_scale advice_taker_profile_5000_10000_distractors -- --ignored --nocapture
