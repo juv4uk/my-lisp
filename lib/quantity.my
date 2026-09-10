@@ -14,7 +14,6 @@
 ;
 ; A dimension is a named Lisp term rather than an anonymous pair so the same
 ; finite data can pass through Advice Taker's existing knowledge grammar.
-; This first slice stores dimensions; it does not yet claim unit algebra.
 
 (def *dimension-schema* (quote dimension/1))
 (def *unit-schema* (quote unit/1))
@@ -108,6 +107,78 @@
 
 (def quantity-unit
   (lambda (quantity) (third quantity)))
+
+; Мінімальна точна алгебра одиниць. Вона не вводить нових примітивів:
+; показники вимірностей додаються/віднімаються звичайною точною арифметикою
+; my-lisp, а нульовий показник видаляє вимірність з результату.
+(def science-add-dimension
+  (lambda (dimension dimensions)
+    (cond
+      ((eq dimensions (quote ()))
+       (cond
+         ((= (dimension-exponent dimension) 0) (quote ()))
+         (t (list dimension))))
+      ((eq (dimension-base dimension)
+           (dimension-base (car dimensions)))
+       (let ((sum
+               (+ (dimension-exponent dimension)
+                  (dimension-exponent (car dimensions)))))
+         (cond
+           ((= sum 0) (cdr dimensions))
+           (t
+            (cons
+              (make-dimension (dimension-base dimension) sum)
+              (cdr dimensions))))))
+      (t
+       (cons
+         (car dimensions)
+         (science-add-dimension dimension (cdr dimensions)))))))
+
+(def science-merge-dimensions
+  (lambda (from into)
+    (cond
+      ((eq from (quote ())) into)
+      (t
+       (science-merge-dimensions
+         (cdr from)
+         (science-add-dimension (car from) into))))))
+
+(def science-negate-dimensions
+  (lambda (dimensions)
+    (cond
+      ((eq dimensions (quote ())) (quote ()))
+      (t
+       (cons
+         (make-dimension
+           (dimension-base (car dimensions))
+           (- 0 (dimension-exponent (car dimensions))))
+         (science-negate-dimensions (cdr dimensions)))))))
+
+(def unit-product
+  (lambda (left right)
+    (make-unit
+      (science-merge-dimensions
+        (unit-dimensions right)
+        (unit-dimensions left)))))
+
+(def unit-quotient
+  (lambda (left right)
+    (make-unit
+      (science-merge-dimensions
+        (science-negate-dimensions (unit-dimensions right))
+        (unit-dimensions left)))))
+
+(def quantity-product
+  (lambda (left right)
+    (make-quantity
+      (* (quantity-value left) (quantity-value right))
+      (unit-product (quantity-unit left) (quantity-unit right)))))
+
+(def quantity-quotient
+  (lambda (left right)
+    (make-quantity
+      (/ (quantity-value left) (quantity-value right))
+      (unit-quotient (quantity-unit left) (quantity-unit right)))))
 
 (def make-science-source
   (lambda (authority edition)
