@@ -116,16 +116,16 @@ fn macro_arity_is_an_explicit_named_error_gap() {
 }
 
 #[test]
-fn later_binding_visibility_is_recorded_as_a_real_reference_meta_divergence() {
+fn later_binding_visibility_has_reference_meta_parity() {
     let program = r#"
 (def f (lambda () (g)))
 (def separator 0)
 (def g (lambda () 42))
 "#;
 
-    assert_eq!(native_value(&format!("{program} (f)")), "42");
-    let via_meta = meta_eval_program(program, "(f)");
-    assert_eq!(meta_error_kind(&via_meta), Some("unbound-symbol"));
+    let native = native_value(&format!("{program} (f)"));
+    assert_eq!(native, "42");
+    assert_eq!(meta_eval_program(program, "(f)"), native);
 }
 
 #[test]
