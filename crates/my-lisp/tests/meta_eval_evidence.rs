@@ -93,12 +93,12 @@ fn named_error_pressure_preserves_explicit_reference_to_meta_correspondence() {
 }
 
 #[test]
-fn bare_unresolved_symbol_remains_a_real_lookup_gap() {
+fn bare_unresolved_symbol_has_reference_meta_parity() {
     assert_eq!(native_error_kind("missing"), ErrorKind::UnknownSymbol);
     assert_eq!(
-        meta_eval("missing"),
-        "missing",
-        "meta atom lookup currently falls back to the symbol itself instead of a named unresolved observation"
+        meta_error_kind(&meta_eval("missing")),
+        Some("unbound-symbol"),
+        "bare unresolved atom lookup must produce the same named unresolved observation as operator lookup"
     );
 }
 
