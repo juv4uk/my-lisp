@@ -14,6 +14,7 @@
 //!              --auto-sync /absolute/path/to/tasks.my
 //! No need to know every other member's address up front.
 
+mod claim_promise;
 mod compact;
 mod journal;
 mod log;
@@ -38,12 +39,6 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 const VOTE_TIMEOUT: Duration = Duration::from_millis(1500);
-/// How long a voter's "I promised generation N to someone" holds before it
-/// expires and can be re-promised. Must exceed `VOTE_TIMEOUT` with margin
-/// so a proposer that's still legitimately waiting on votes doesn't get
-/// undercut by its own promise expiring first; bounds how long a task can
-/// get stuck if a proposer dies mid-vote without completing or retrying.
-const PROMISE_TTL: Duration = Duration::from_secs(5);
 /// How often each node pings every currently-connected peer with a
 /// `heartbeat` message.
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -149,14 +144,10 @@ struct Node {
     /// Node ids we've received a definitive sync answer from (either
     /// `sync-events` or `sync-complete`) since startup — see `synced()`.
     caught_up_with: Mutex<HashSet<String>>,
-    /// Per-task voting promises: `task -> (generation we last voted yes
-    /// for, when)`. Closes the concurrent-proposal gap noted as deferred
-    /// in M0.2 — without this, two proposers racing for the same task
-    /// could each collect yes votes from disjoint voter sets (e.g. across
-    /// a network partition) and both reach quorum on the same generation.
-    /// A voter now refuses to vote yes again for a task/generation it's
-    /// already promised, until that promise expires (`PROMISE_TTL`).
-    promised: Mutex<HashMap<String, (u64, Instant)>>,
+    /// Durable per-task voting promises. A YES is published to
+    /// `<data-dir>/claim-promises.my` before it can leave this process, so
+    /// crash/restart cannot erase a same-generation single-vote fence.
+    claim_promises: Mutex<claim_promise::ClaimPromiseStore>,
     /// Last time we received *any* message (heartbeat or otherwise) from
     /// each connected peer — see `HEARTBEAT_INTERVAL`/`STALE_PEER_TIMEOUT`.
     last_seen: Mutex<HashMap<String, Instant>>,
@@ -531,6 +522,10 @@ fn main() -> std::io::Result<()> {
     let _state_lock = StateLock::acquire(&args.data_dir)?;
     let identity = journal::load_or_init_identity(&args.data_dir, &args.node_id)?;
     let journal = Journal::open(&args.data_dir)?;
+    // Safety-critical local vote state is recovered before the node can
+    // answer any claim proposal. Corruption fails startup closed instead of
+    // silently forgetting a prior YES.
+    let claim_promises = claim_promise::ClaimPromiseStore::open(&args.data_dir)?;
     let lamport_start = journal.max_lamport();
     info!(
         "swarm-node: node={} epoch={} project={} journal={} events={} listening on {}:{}, advertising {}:{}",
@@ -558,7 +553,7 @@ fn main() -> std::io::Result<()> {
         pending_votes: Mutex::new(HashMap::new()),
         bootstrap_expected: args.connect.len(),
         caught_up_with: Mutex::new(HashSet::new()),
-        promised: Mutex::new(HashMap::new()),
+        claim_promises: Mutex::new(claim_promises),
         last_seen: Mutex::new(HashMap::new()),
         sync_in_flight: Mutex::new(HashSet::new()),
         peer_write_locks: Mutex::new(HashMap::new()),
@@ -1249,12 +1244,7 @@ fn drain_retry_for_peer(node: &Arc<Node>, peer_id: &str, stream: &mut TcpStream)
         for (_p, event_id) in &taken {
             // Look up by id: matches on the full `node:incarnation:seq` (or
             // legacy `node:seq`) id that the queue recorded.
-            if let Some(ev) = journal
-                .events
-                .iter()
-                .find(|e| &e.id() == event_id)
-                .cloned()
-            {
+            if let Some(ev) = journal.events.iter().find(|e| &e.id() == event_id).cloned() {
                 events.push((event_id.clone(), ev));
             }
             // Missing -> compaction removed it; redelivery impossible, drop.
@@ -1796,7 +1786,9 @@ fn broadcast_to_peers(
         let _guard = lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let _ = stream.set_write_timeout(Some(PEER_WRITE_TIMEOUT));
         if stream.write_all(line.as_bytes()).is_err() {
-            warn!("swarm-node: write to peer {id} failed/errored -- dropping and queueing for retry");
+            warn!(
+                "swarm-node: write to peer {id} failed/errored -- dropping and queueing for retry"
+            );
             dead.push(id);
         } else {
             written_to.push(id);
@@ -1910,30 +1902,28 @@ fn append_task_fact(
     Ok(event)
 }
 
-/// Atomically reserves this voter's YES vote for one task generation.
-/// Local self-votes and remote proposal votes must pass through this exact
-/// gate; otherwise two simultaneous proposers can each count themselves
-/// while also voting YES for the competitor and both reach quorum.
-fn try_acquire_claim_promise(node: &Arc<Node>, task: &str, generation: u64) -> bool {
-    let mut promises = node
-        .promised
+/// Durably reserves this voter's YES vote for one proposal identity.
+/// Local self-votes and remote proposal votes pass through the same store.
+/// `Ok(true)` means the fence was already durable (same proposer retry) or
+/// has just been atomically published; an I/O error must therefore be
+/// treated as NO/fail-closed and can never leak a YES onto the network.
+fn try_acquire_claim_promise(
+    node: &Arc<Node>,
+    task: &str,
+    generation: u64,
+    proposer: &str,
+) -> std::io::Result<bool> {
+    node.claim_promises
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let promise_free = match promises.get(task) {
-        Some((promised_gen, at)) => *promised_gen < generation || at.elapsed() > PROMISE_TTL,
-        None => true,
-    };
-    if promise_free {
-        promises.insert(task.to_string(), (generation, Instant::now()));
-    }
-    promise_free
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .acquire(task, generation, proposer)
 }
 
 /// A peer is asking us to vote on `(claim-proposal (task ..) (agent ..) (generation ..))`.
 /// Two gates must both pass: the fencing check (proposed generation is
 /// exactly the next one after what we've derived locally, task not already
-/// held/completed) and the promise check (we haven't already voted yes for
-/// this task at this-or-higher generation within `PROMISE_TTL`). The promise
+/// held/completed) and the durable promise check (we haven't already voted
+/// yes for a competing proposer at this-or-higher generation). The promise
 /// is what actually excludes concurrent proposals — the fencing check alone
 /// only rejects proposals *after* a commit lands; two proposers racing
 /// before either commits would both pass fencing but only one can win the
@@ -1957,7 +1947,17 @@ fn handle_claim_proposal(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
         !current.completed && current.holder.is_none() && generation == current.generation + 1;
 
     let promise_free = if fencing_ok {
-        try_acquire_claim_promise(node, &task, generation)
+        match try_acquire_claim_promise(node, &task, generation, &agent) {
+            Ok(granted) => granted,
+            Err(error) => {
+                // The durability write happens before any YES.  Disk failure
+                // therefore degrades to NO, never to an unsafe ephemeral vote.
+                warn!(
+                    "swarm-node: refusing claim YES for task={task} agent={agent} generation={generation}: durable promise failed: {error}"
+                );
+                false
+            }
+        }
     } else {
         false
     };
@@ -2100,20 +2100,37 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 
     let generation = current.generation + 1;
 
-    // Counting our own vote must acquire the same promise as a remote YES.
-    // If this node already promised the competing proposal, abort instead
-    // of self-voting (or trying to commit a conflicting local proposal).
-    if self_votes == 1 && !try_acquire_claim_promise(node, task, generation) {
-        send(
-            stream,
-            &Sexp::list(vec![
-                Sexp::atom("error"),
-                Sexp::string(format!(
-                    "claim conflict for `{task}` generation {generation}: local voter already promised a competing proposal"
-                )),
-            ]),
-        );
-        return;
+    // Counting our own vote must acquire the same durable promise as a
+    // remote YES.  A failed persistence operation is a hard local NO: the
+    // vote cannot be counted before its restart-safe fence exists.
+    if self_votes == 1 {
+        match try_acquire_claim_promise(node, task, generation, &node.identity.node_id) {
+            Ok(true) => {}
+            Ok(false) => {
+                send(
+                    stream,
+                    &Sexp::list(vec![
+                        Sexp::atom("error"),
+                        Sexp::string(format!(
+                            "claim conflict for `{task}` generation {generation}: local voter already promised a competing proposal"
+                        )),
+                    ]),
+                );
+                return;
+            }
+            Err(error) => {
+                send(
+                    stream,
+                    &Sexp::list(vec![
+                        Sexp::atom("error"),
+                        Sexp::string(format!(
+                            "cannot durably reserve local claim vote for `{task}` generation {generation}: {error}"
+                        )),
+                    ]),
+                );
+                return;
+            }
+        }
     }
 
     let key = format!("{task}:{generation}");
@@ -2142,6 +2159,9 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
 
     let mut yes_votes = self_votes;
     let mut counted_responses = 0;
+    // Same-proposer retries are allowed to re-send the already-durable YES,
+    // so the proposer must count each voter identity at most once.
+    let mut responded_voters = HashSet::new();
     let deadline = Instant::now() + VOTE_TIMEOUT;
     while yes_votes < quorum && counted_responses < voting_peers.len() {
         let remaining = deadline.saturating_duration_since(Instant::now());
@@ -2149,7 +2169,9 @@ fn handle_claim_task(node: &Arc<Node>, msg: &Sexp, stream: &mut TcpStream) {
             break;
         }
         match rx.recv_timeout(remaining) {
-            Ok((voter, vote)) if voting_peers.contains(&voter) => {
+            Ok((voter, vote))
+                if voting_peers.contains(&voter) && responded_voters.insert(voter.clone()) =>
+            {
                 counted_responses += 1;
                 if vote {
                     yes_votes += 1;
@@ -2806,7 +2828,11 @@ fn handle_list_work_state(node: &Arc<Node>, stream: &mut TcpStream) {
                 Sexp::atom("last-seen-lamport"),
                 Sexp::atom(ws.last_seen_lamport.to_string()),
             ]));
-            Sexp::list(std::iter::once(Sexp::atom("work-state")).chain(fields).collect())
+            Sexp::list(
+                std::iter::once(Sexp::atom("work-state"))
+                    .chain(fields)
+                    .collect(),
+            )
         })
         .collect();
     send(
@@ -3025,7 +3051,10 @@ fn handle_delivery_status(node: &Arc<Node>, stream: &mut TcpStream) {
             Sexp::list(vec![
                 Sexp::atom("queued-retries"),
                 Sexp::list(vec![
-                    Sexp::list(vec![Sexp::atom("count"), Sexp::atom(queued_len.to_string())]),
+                    Sexp::list(vec![
+                        Sexp::atom("count"),
+                        Sexp::atom(queued_len.to_string()),
+                    ]),
                     Sexp::list(vec![Sexp::atom("entries"), Sexp::list(queued)]),
                 ]),
             ]),
