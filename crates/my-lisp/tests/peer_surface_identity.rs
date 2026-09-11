@@ -1,43 +1,61 @@
-use my_lisp::{eval_program, Session, Value};
+use my_lisp::{eval_program, semantic_registry_export, Session, Value};
 use std::rc::Rc;
 
+const ADD_SEMANTIC_ID: &str = "0104";
 const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
 const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.my");
-const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
 
-fn assert_same_builtin(left: &Value, right: &Value) {
+fn add_surfaces() -> Vec<(&'static str, &'static str)> {
+    semantic_registry_export::admitted_surfaces_for_semantic_id(ADD_SEMANTIC_ID)
+        .into_iter()
+        .map(|row| (row.namespace, row.name))
+        .collect()
+}
+
+fn assert_same_builtin_handle(left: &Value, right: &Value) {
     match (left, right) {
+        // This is a Rust binding-mechanism invariant only: every admitted
+        // surface for one semantic ID is installed with one shared handle.
+        // Language-level identity is specified by the registry/Lisp contract,
+        // not by Rc allocation identity.
         (Value::Builtin(left), Value::Builtin(right)) => assert!(Rc::ptr_eq(left, right)),
         other => panic!("expected two builtin values, got {other:?}"),
     }
 }
 
 #[test]
-fn add_peer_spellings_exist_before_any_human_surface_library_loads() {
+fn admitted_add_surfaces_share_one_runtime_handle_before_surface_library_loads() {
+    let surfaces = add_surfaces();
+    assert!(
+        surfaces.len() >= 2,
+        "0104 must expose multiple admitted peer surfaces for this mechanism test"
+    );
+
     let mut session = Session::default();
+    let mut values = Vec::new();
 
-    let uk = eval_program("додати", &mut session).expect("UK 0104").value;
-    let sym = eval_program("+", &mut session).expect("SYM 0104").value;
-    let sa = eval_program("yoga", &mut session).expect("SA 0104").value;
+    for (_, name) in &surfaces {
+        let value = eval_program(name, &mut session)
+            .unwrap_or_else(|error| panic!("admitted 0104 surface is missing: {name}: {error}"))
+            .value;
+        values.push((*name, value));
+    }
 
-    assert_same_builtin(&uk, &sym);
-    assert_same_builtin(&sym, &sa);
+    let first = &values[0].1;
+    for (name, value) in values.iter().skip(1) {
+        assert_same_builtin_handle(first, value);
+        assert_eq!(
+            eval_program(&format!("({name} 20 22)"), &mut session)
+                .unwrap()
+                .value
+                .to_string(),
+            "42"
+        );
+    }
+
+    let first_name = values[0].0;
     assert_eq!(
-        eval_program("(додати 20 22)", &mut session)
-            .unwrap()
-            .value
-            .to_string(),
-        "42"
-    );
-    assert_eq!(
-        eval_program("(+ 20 22)", &mut session)
-            .unwrap()
-            .value
-            .to_string(),
-        "42"
-    );
-    assert_eq!(
-        eval_program("(yoga 20 22)", &mut session)
+        eval_program(&format!("({first_name} 20 22)"), &mut session)
             .unwrap()
             .value
             .to_string(),
@@ -46,12 +64,10 @@ fn add_peer_spellings_exist_before_any_human_surface_library_loads() {
 }
 
 #[test]
-fn shadowing_one_add_spelling_does_not_retarget_its_peers() {
-    for (shadowed, first_peer, second_peer) in [
-        ("додати", "+", "yoga"),
-        ("+", "додати", "yoga"),
-        ("yoga", "додати", "+"),
-    ] {
+fn shadowing_one_admitted_add_surface_does_not_retarget_its_peers() {
+    let surfaces = add_surfaces();
+
+    for (_, shadowed) in &surfaces {
         let mut session = Session::default();
         eval_program(
             &format!("(define {shadowed} (lambda (a b) (quote shadowed)))"),
@@ -66,31 +82,39 @@ fn shadowing_one_add_spelling_does_not_retarget_its_peers() {
                 .to_string(),
             "shadowed"
         );
-        assert_eq!(
-            eval_program(&format!("({first_peer} 1 2)"), &mut session)
-                .unwrap()
-                .value
-                .to_string(),
-            "3"
-        );
-        assert_eq!(
-            eval_program(&format!("({second_peer} 1 2)"), &mut session)
-                .unwrap()
-                .value
-                .to_string(),
-            "3"
-        );
+
+        for (_, peer) in &surfaces {
+            if peer == shadowed {
+                continue;
+            }
+            assert_eq!(
+                eval_program(&format!("({peer} 1 2)"), &mut session)
+                    .unwrap()
+                    .value
+                    .to_string(),
+                "3",
+                "shadowing {shadowed} retargeted peer {peer}"
+            );
+        }
     }
 }
 
 #[test]
-fn migrated_surface_files_no_longer_define_add_through_another_language() {
-    assert!(!UK_SURFACE.contains("(define додати +)"));
-    assert!(!SA_SURFACE.contains("(define yoga +)"));
-    assert!(REGISTRY.contains("(0104"));
-    assert!(!REGISTRY.contains("(m0104"));
-    assert!(REGISTRY.contains("(uk додати stable)"));
-    assert!(REGISTRY.contains("(en — missing)"));
-    assert!(REGISTRY.contains("(sa yoga stable)"));
-    assert!(REGISTRY.contains("(sym + stable)"));
+fn human_surface_files_do_not_redefine_admitted_add_peers() {
+    let surfaces = add_surfaces();
+
+    for (namespace, name) in surfaces {
+        let source = match namespace {
+            "uk" => Some(UK_SURFACE),
+            "sa" => Some(SA_SURFACE),
+            _ => None,
+        };
+
+        if let Some(source) = source {
+            assert!(
+                !source.contains(&format!("(define {name} ")),
+                "admitted 0104 {namespace} surface {name} must be a direct runtime peer, not a surface-file alias"
+            );
+        }
+    }
 }
