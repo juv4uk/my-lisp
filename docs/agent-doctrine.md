@@ -19,7 +19,7 @@ in this commit), and (2) agents quietly absorb a neighbor's assumption
 as their own fact, so a hypothesis in one repo becomes an unquestioned
 premise three repos downstream with no traceable evidence chain.
 
-## The twelve rules
+## The thirteen rules
 
 1. **Read the map before the code.** Authoritative contract → current
    task/status → recent evidence → recent commits. Machine-readable
@@ -65,6 +65,31 @@ premise three repos downstream with no traceable evidence chain.
     experiment → result → tests → evidence → commit → durable status
     update → notify peers with a pointer to the evidence, not a
     conclusion.
+13. **"Tests pass" is not "done."** Owner review 2026-09-12, after
+    ~670 commits in 6 days: architecture/semantic-authority direction
+    scored ~9/10, but integration hygiene scored ~7-7.5/10 — three
+    separate CI breakages landed back-to-back (an English-only design
+    doc violating the Ukrainian-first bilingual-docs check; a
+    generated projection, `my-lisp-constitution.my`, left stale after
+    editing its source `conformance.my`; a clippy lint never checked
+    locally before pushing) because `cargo build`/`cargo test` passing
+    was treated as sufficient. A vertical slice that touches
+    `.my`/`.wsm` source, a generated projection, or public surface is
+    not finished until ALL of the following are checked, not just
+    build+test: `cargo clippy --workspace --all-targets -- -D
+    warnings` (the exact CI invocation — plain `cargo clippy
+    --workspace` misses `--all-targets` lints in test files);
+    `my-lisp --oracle-check` on every touched `.my`/`.wsm` file;
+    regenerating any generated projection whose source changed
+    (`my-lisp-constitution.my` from `conformance.my`,
+    `tests/fixtures/inventory.my` from the same, `lib/surface/
+    uk-inventory.wsm` classification for any newly public core
+    definition); `scripts/check-bilingual-docs` on any new/changed
+    human-facing doc; and, ideally, `gh run list`/`gh run watch` after
+    pushing — a green local run does not guarantee a green CI run
+    against a clean checkout. Cheaper to run this checklist once at
+    the end of a slice than to spend a separate follow-up commit per
+    missed check.
 
 ## Rule 0 for coordination specifically
 
