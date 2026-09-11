@@ -57,10 +57,12 @@ fn public_process_run_binding_is_already_a_lisp_closure() {
         Some(Value::Closure(_))
     ));
 
-    // Literal `(process-run ...)` still dispatches to the transitional host
-    // capability. Capture the environment binding under a capability-free
-    // spelling to prove the closure itself already implements the public
-    // compatibility result shape through process-run-raw.
+    // The host never registers a `process-run` capability (see
+    // `process_surface.rs`'s `host_installs_only_the_raw_process_capability`);
+    // `process-run` is only ever this Lisp closure. Capture the environment
+    // binding under a capability-free spelling to prove the closure itself
+    // already implements the public compatibility result shape through
+    // `process-run-raw`.
     let source = r#"
         (def language-process-run process-run)
         (language-process-run
