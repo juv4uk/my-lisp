@@ -156,7 +156,11 @@ fn collect_arity_diagnostics(
                     }
                 }
             }
-            let head_is_quote = head_name == Some("quote");
+            // Same bug class as `symbol_occurrences`' quote check, found in
+            // the same audit: this used to compare against the literal
+            // English string, so `(як-є ...)` never suppressed arity
+            // diagnostics for its own quoted data.
+            let head_is_quote = head_name.is_some_and(my_lisp::is_quote_surface_name);
             for (index, element) in elements.iter().enumerate() {
                 collect_arity_diagnostics(
                     element,
@@ -201,10 +205,18 @@ fn walk_symbols(expr: &Expr, in_quote: bool, out: &mut Vec<SymbolOccurrence>) {
         ExprKind::List(items) => {
             // `(quote data)` / `'data`: the whole subtree is data. The
             // reader-macro was removed in contract 2.0, so quote is the
-            // only form to guard here.
+            // only form to guard here. Checked via `is_quote_surface_name`
+            // (semantic ID 0001 across every admitted surface), not a
+            // hardcoded `"quote"` string comparison -- an earlier version
+            // of this function matched only the English spelling, so a
+            // program written `(як-є (a b c))` would have its quoted
+            // symbols wrongly treated as live code references by
+            // go-to-definition/rename. Found while auditing for exactly
+            // this class of bug after wsm-my-lisp caught the same mistake
+            // in their own FFI dispatcher.
             let head_is_quote = items
                 .first()
-                .map(|h| matches!(&h.kind, ExprKind::Symbol(n) if n.as_ref() == "quote"))
+                .map(|h| matches!(&h.kind, ExprKind::Symbol(n) if my_lisp::is_quote_surface_name(n)))
                 .unwrap_or(false);
             for (i, item) in items.iter().enumerate() {
                 walk_symbols(item, in_quote || (head_is_quote && i > 0), out);
@@ -342,3 +354,55 @@ pub fn span_text(source: &str, span: Span) -> &str {
 // `Rc` is used by ExprKind; keep the import honest even if unused today.
 #[allow(unused)]
 fn _rc_witness(_: Rc<str>) {}
+
+#[cfg(test)]
+mod quote_surface_tests {
+    //! Regression coverage for the real bug found while auditing this
+    //! repo after wsm-my-lisp caught the same class of mistake in their
+    //! own FFI dispatcher: quoted-data detection here used to match only
+    //! the literal ASCII string `"quote"`, so a program written through
+    //! the Ukrainian surface (`як-є`) had its quoted symbols wrongly
+    //! treated as live code references.
+    use super::*;
+
+    #[test]
+    fn english_quote_excludes_its_datum_from_code_references() {
+        // The head `quote` symbol itself is a real reference; only the
+        // datum it quotes (alpha/beta) must be excluded as data.
+        let occurrences = symbol_occurrences("(quote (alpha beta))").unwrap();
+        let names: Vec<&str> = occurrences.iter().map(|o| o.name.as_str()).collect();
+        assert_eq!(
+            names,
+            vec!["quote"],
+            "only the head `quote` symbol should be a code reference, got {names:?}"
+        );
+    }
+
+    #[test]
+    fn ukrainian_quote_excludes_its_datum_from_code_references_too() {
+        let occurrences = symbol_occurrences("(як-є (альфа бета))").unwrap();
+        let names: Vec<&str> = occurrences.iter().map(|o| o.name.as_str()).collect();
+        assert_eq!(
+            names,
+            vec!["як-є"],
+            "як-є (Ukrainian quote) must exclude its datum from code \
+             references exactly like the English spelling does -- got \
+             {names:?} (this is the exact bug: only \"quote\" was \
+             recognized before this fix, so альфа/бета would have leaked \
+             through as fake code references)"
+        );
+    }
+
+    #[test]
+    fn ukrainian_quote_also_suppresses_arity_diagnostics_for_its_datum() {
+        // `car` genuinely requires exactly 1 argument; quoted as data with
+        // zero, it must NOT trigger an arity diagnostic -- the same second
+        // instance of the ASCII-only "quote" bug lived in
+        // collect_arity_diagnostics, found in the same audit.
+        let diagnostics = arity_diagnostics("(як-є (car))").unwrap();
+        assert!(
+            diagnostics.is_empty(),
+            "quoted data must not be arity-checked, got {diagnostics:?}"
+        );
+    }
+}

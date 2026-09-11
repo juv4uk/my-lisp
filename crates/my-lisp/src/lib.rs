@@ -205,6 +205,21 @@ pub fn is_canonical_surface_name(name: &str) -> bool {
     eval::canon::is_reserved_surface(name)
 }
 
+/// Public hook for tooling that must recognize `quote`'s specific identity
+/// (semantic ID `0001`) across every admitted surface (`quote`/`як-є`/
+/// `svarūpa`/`'`), not just the English spelling. Added after a real bug
+/// was found in `crates/my-lisp-lsp/src/analysis.rs`'s own quoted-data
+/// detection: it matched only the literal ASCII string `"quote"`, so a
+/// program written `(як-є (a b c))` would have its quoted symbols
+/// mis-treated as live code references by go-to-definition/rename —
+/// silently breaking exactly the multilingual guarantee this ecosystem's
+/// Canon 0 routing exists to provide. Mirrors `is_canonical_surface_name`'s
+/// minimal-surface-area pattern rather than exposing the whole
+/// `CanonicalIdentity` enum.
+pub fn is_quote_surface_name(name: &str) -> bool {
+    eval::canon::is_quote_identity(name)
+}
+
 /// Convenience: FASL-encode already-parsed expressions bound to a source hash.
 pub fn fasl_encode(expressions: &[Expr], source_hash: &[u8; 32]) -> Vec<u8> {
     syntax::fasl::encode_program(expressions, source_hash)
