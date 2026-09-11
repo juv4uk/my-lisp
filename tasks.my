@@ -1,4 +1,64 @@
 ((tasks . (
+  ("FFI-001-C-ABI-DESIGN" . (
+    (priority . 8.7)
+    (capabilities . (my-lisp architecture ffi documentation))
+    (origin . owner)
+    (depends-on . ())
+    (description . "Create docs/FFI-FOREIGN-C-ABI-DESIGN-2026-09-12.md: owner research into Guile's C interop (dynamic FFI via load-foreign-library/pointer->procedure, generic type-descriptor vocabulary instead of per-library wrappers, foreign pointers as mechanical resources not semantic identity, procedure->pointer callbacks, and the separate SCM/scm_c_define_gsubr embedding API) distilled into a fixed-before-code design for native C-library access, explicitly kept as a SEPARATE track from the Python/subprocess polyglot design since C libraries are already in-process (no transport needed) while Python is a separate runtime.")
+    (acceptance . "Design document exists naming: why this is a separate track from POLYGLOT (no subprocess/transport for in-process C code); Rust-owned mechanism vs Lisp-owned semantics split (library-open/symbol-address/ffi-call raw primitives vs lib/ffi.my's foreign-library-open/foreign-symbol/foreign-call and every specific binding); at least two value-representation models for a foreign pointer/library handle, explicitly not pre-chosen; explicit non-goals (callbacks, struct marshaling, any specific library binding, NumericBuffer/native-memory bridge as a separate research track).")
+    (out-of-scope . "Any FFI-002+ implementation in the same commit as this plan.")
+    (evidence-expected . "docs/FFI-FOREIGN-C-ABI-DESIGN-2026-09-12.md committed; this task-DAG itself, added to tasks.my in the same pass.")
+    (done . "2026-09-12: docs/FFI-FOREIGN-C-ABI-DESIGN-2026-09-12.md written, covering the Guile-derived generic-substrate lesson, the separate-track rationale vs the Python design, the Rust/Lisp ownership split, two unratified value-representation models (opaque-capability-handle vs plain-data-with-substrate-side-forgery-prevention), and explicit non-goals (callbacks, struct marshaling, NumericBuffer bridge, any specific library binding). No implementation included in this commit, per instruction.")
+  ))
+
+  ("FFI-002-VALUE-MODEL-DECISION" . (
+    (priority . 8.6)
+    (capabilities . (my-lisp architecture value-representation ffi))
+    (origin . owner)
+    (depends-on . (FFI-001-C-ABI-DESIGN))
+    (description . "Decide between FFI-001's two foreign-pointer/library-handle representation models: Model 1 (reuse the existing opaque-capability-handle Value pattern already used for TcpConnection, extended to ForeignPointer/ForeignLibrary) vs Model 2 (plain serializable Lisp data, an integer address plus a library tag, mirroring the Python track's (foreign-ref N), with the raw substrate refusing to dereference an address it did not itself hand out). Compare against: GC/lifetime cleanup, forgery prevention, consistency with the Python track's already-chosen plain-data model, NaN-box/layout interaction if a new Value variant is chosen, and first-class-value status.")
+    (acceptance . "A written decision record naming the chosen model and the comparison that led to it, not a restated preference.")
+    (out-of-scope . "Implementing the chosen model.")
+    (evidence-expected . "Comparison covering every criterion listed, with a chosen model and rejected-alternatives rationale.")
+    (done . nil)
+  ))
+
+  ("FFI-003-RAW-SUBSTRATE" . (
+    (priority . 8.5)
+    (capabilities . (my-lisp-host rust ffi))
+    (origin . owner)
+    (depends-on . (FFI-002-VALUE-MODEL-DECISION))
+    (description . "Implement the minimal Rust raw substrate per FFI-001: opening a shared library by path, resolving a symbol's address, and invoking a C function pointer with a given calling convention/argument types/return type restricted to primitive scalars (int8..int64, uint8..uint64, float, double, pointer) plus reading/writing raw memory through a pointer for those same scalar types. A real ABI-call mechanism (e.g. a libffi binding) is expected to be necessary here, unlike every other capability this session has migrated, since Rust cannot construct an arbitrary C call at runtime without one -- this is genuinely irreducible mechanism, not a migration candidate.")
+    (acceptance . "No per-library Rust code (no fftw_call, no blas_call) -- only the generic library-open/symbol-address/ffi-call primitives exist in my-lisp-host, gated by the same allowlist discipline as process-run-raw/tcp-connect.")
+    (out-of-scope . "Any Lisp-visible foreign-library-open/foreign-call surface (FFI-004). Struct marshaling. Callbacks.")
+    (evidence-expected . "Rust integration test proving a real scalar call through the raw substrate against a real system library (e.g. libm's sqrt).")
+    (done . nil)
+  ))
+
+  ("FFI-004-LISP-OWNED-API" . (
+    (priority . 8.4)
+    (capabilities . (my-lisp lisp ffi api))
+    (origin . owner)
+    (depends-on . (FFI-003-RAW-SUBSTRATE))
+    (description . "Implement lib/ffi.my: foreign-library-open, foreign-symbol, foreign-signature, foreign-call, foreign-pointer?, foreign-library-close as ordinary Lisp functions built entirely on FFI-003's raw primitives. ABI type descriptors (int32, double, pointer, ...) are ordinary Lisp symbols/data, not a growing Rust enum surface beyond the fixed scalar vocabulary FFI-003 already committed to.")
+    (acceptance . "(define sqrt (foreign-call libm \"sqrt\" (list (quote double)) (quote double))) (sqrt 2.0) succeeds as an automated test, with zero Rust code added for sqrt specifically -- the same witness Guile's own manual uses for j0/libm.")
+    (out-of-scope . "Any specific library's full binding set (lib/blas.my, lib/fftw.my) beyond this one proof-of-concept call.")
+    (evidence-expected . "lib/ffi.my committed; passing automated test for the libm sqrt witness.")
+    (done . nil)
+  ))
+
+  ("FFI-005-NATIVE-MEMORY-BRIDGE-RESEARCH" . (
+    (priority . 8.0)
+    (capabilities . (my-lisp research performance ffi))
+    (origin . owner)
+    (depends-on . (FFI-004-LISP-OWNED-API))
+    (description . "Research track (explicitly separate from the base call mechanism, per FFI-001's own non-goal): whether NumericBuffer (i32-buffer/f32-buffer) can be exposed to a native C library as a zero-copy pointer view, unlike the Python track's subprocess-forced copy. Owner's own claim: this may matter more than the Python bridge, since C ABI has no transport boundary forcing a copy. Produce a benchmark/correctness prototype, not production code.")
+    (acceptance . "A written comparison with real benchmark numbers for a zero-copy NumericBuffer-to-C-pointer view against a plain-copy baseline.")
+    (out-of-scope . "Shipping a production bridge -- a follow-up task, gated on this research's outcome, same pattern as POLYGLOT-015/016.")
+    (evidence-expected . "Benchmark/correctness prototype code plus a written comparison.")
+    (done . nil)
+  ))
+
   ("TEST-SUITE-CORPUS-IS-ORACLE-NOT-RUST" . (
     (priority . 8.5)
     (capabilities . (my-lisp testing architecture semantic-registry))
