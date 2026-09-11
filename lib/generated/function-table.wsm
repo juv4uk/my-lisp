@@ -1,0 +1,15 @@
+; GENERATED — DO NOT EDIT BY HAND
+; Authority: lib/surface/semantic-registry.wsm
+; Generator: scripts/generate-function-table.py (ECO-CANON-1 / my-lisp#75)
+; Schema ft/1: (id formal uk full-uk full-uk-status en sa sym primary-status authority)
+; Display order for humans: Українська → Повна українська → English → Sanskrit
+; authority = my-lisp (semantic)
+;
+; NOTE: Full body is large; regenerate with:
+;   python3 scripts/generate-function-table.py
+; Placeholder marker so path exists until full projection is pushed.
+; If this file is only the marker, run the generator and commit the output.
+
+(ft/1
+  (0001 identity:0001/surface:quote (uk як-є stable) (full-uk як-є stable) (en quote stable) (sa svarūpa stable) (sym ' stable) stable my-lisp)
+)
