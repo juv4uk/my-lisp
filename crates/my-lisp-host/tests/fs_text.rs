@@ -3,7 +3,7 @@ use my_lisp::{
 };
 use std::{
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -15,7 +15,7 @@ fn unique_path(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!("my-lisp-{label}-{}-{nonce}", std::process::id()))
 }
 
-fn lisp_path(path: &PathBuf) -> String {
+fn lisp_path(path: &Path) -> String {
     path.to_str()
         .expect("test path must be utf-8")
         .replace('\\', "/")

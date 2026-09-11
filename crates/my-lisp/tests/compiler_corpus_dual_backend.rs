@@ -151,13 +151,13 @@ fn compiler_corpus_dual_backend_parity_report() {
     let mut meta_eval_excused_gaps = Vec::new();
 
     for fixture in &fixtures {
-        match check_backend(&fixture, &eval_native(&fixture.expr), false) {
+        match check_backend(fixture, &eval_native(&fixture.expr), false) {
             FixtureOutcome::Match => {}
             FixtureOutcome::ExcusedMiss => unreachable!("native is never excused"),
             FixtureOutcome::Mismatch(detail) => native_failures.push(detail),
         }
 
-        match check_backend(&fixture, &eval_via_meta_eval(&fixture.expr), fixture.meta_eval_gap) {
+        match check_backend(fixture, &eval_via_meta_eval(&fixture.expr), fixture.meta_eval_gap) {
             FixtureOutcome::Match => meta_eval_covered += 1,
             FixtureOutcome::ExcusedMiss => meta_eval_excused_gaps.push(fixture.expr.clone()),
             FixtureOutcome::Mismatch(detail) => meta_eval_failures.push(detail),
