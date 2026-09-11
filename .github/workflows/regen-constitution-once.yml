@@ -18,7 +18,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Regenerate canonical constitution projection
-        run: cargo run -p my-lisp-cli -- scripts/build-constitution.my > my-lisp-constitution.my
+        run: cargo run -p my-lisp-cli --bin my-lisp -- scripts/build-constitution.my > my-lisp-constitution.my
       - name: Commit generated projection
         run: |
           git diff -- my-lisp-constitution.my
