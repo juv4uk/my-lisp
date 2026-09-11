@@ -19,7 +19,7 @@ in this commit), and (2) agents quietly absorb a neighbor's assumption
 as their own fact, so a hypothesis in one repo becomes an unquestioned
 premise three repos downstream with no traceable evidence chain.
 
-## The thirteen rules
+## The fourteen rules
 
 1. **Read the map before the code.** Authoritative contract → current
    task/status → recent evidence → recent commits. Machine-readable
@@ -90,6 +90,36 @@ premise three repos downstream with no traceable evidence chain.
     against a clean checkout. Cheaper to run this checklist once at
     the end of a slice than to spend a separate follow-up commit per
     missed check.
+14. **New complexity must buy Lisp power, or it gets deleted.** Owner
+    principle 2026-09-12, distilled from this session's own strongest
+    changes (the `read-file`/`write-file` migration onto existing raw
+    bytes + `lib/utf8.my`; the polyglot plan's reuse-first collapse to
+    zero core changes; `compiler_corpus_dual_backend.rs`'s rewrite so
+    the corpus, not native Rust, is the oracle): a good change looks
+    like `idea -> semantic ID/Lisp form -> backend`, not
+    `idea -> adapter -> registry copy -> special case -> runtime
+    wrapper -> backend`. Before adding a layer, abstraction, type,
+    generator, or new runtime/protocol, ask: can this already be
+    expressed in Lisp itself (rule 8)? Does an existing mechanism
+    already compose into this, so the answer is composition, not a new
+    layer? Can something be deleted after this change — if not, the
+    growth needs an unusually good reason. Does the new abstraction add
+    real expressiveness, or does it just rename existing complexity
+    under a new name? Is the path from Canon to execution still
+    traceable without a five-page diagram? Reverse the usual planning
+    order: try expressing the need directly in Lisp first, then try
+    composing existing mechanism, then try whether something can be
+    deleted instead — only add a new primitive after those three fail,
+    and write down why. Unofficial quality signal, "Power / Complexity":
+    +500 lines of mechanism, +3 new types, +2 new formats, +1 new
+    generator, for a Lisp program only 5 lines shorter, is a bad trade;
+    -300 lines of Rust, -2 special cases, -1 duplicated table, with the
+    same semantics still expressible in Lisp, is close to an ideal one.
+    Review every change against three questions: are there fewer places
+    where truth lives; is the path from Canon to execution easier to
+    trace; can something be deleted after this change. This applies
+    across the whole swarm (`my-lisp`, `cml`, `wsm-my-lisp`,
+    `fpga-lisp`, `wsm-os-lisp`), not just this repo.
 
 ## Rule 0 for coordination specifically
 
