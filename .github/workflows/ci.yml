@@ -33,6 +33,8 @@ jobs:
         run: python3 scripts/generate-meta-semantic-registry.py --check
       - run: cargo test --workspace
       - run: cargo build --workspace
+      - name: Check Ukrainian full-word source profile with my-lisp
+        run: ./target/debug/my-lisp scripts/перевірити-український-профіль.всм
 
   meta-advice-release:
     name: full Advice Taker native/meta parity (optimized)
