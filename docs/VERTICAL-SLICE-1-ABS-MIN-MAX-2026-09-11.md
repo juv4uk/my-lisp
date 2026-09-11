@@ -1,5 +1,23 @@
 # First vertical slice: abs/min/max/min-list/max-list moved to Lisp
 
+**Update (same day): slice closure.** This document's own first pass
+was reviewed as directionally right but not fully closed — three real
+debts remained (stale `docs/FUNCTIONS.md`/`lib/surface/uk-inventory.wsm`
+classification, `crates/my-lisp/tests/builtin_to_lisp_migration.rs`
+duplicating semantic truth that should live with the language, and two
+`conformance.my` fixtures pinning `Value::Builtin`'s print format as
+contract). All three closed; see
+`docs/VERTICAL-SLICE-1-CLOSURE-2026-09-11.md`. In particular,
+`builtin_to_lisp_migration.rs` (referenced several times below) no
+longer exists — its behavioral assertions moved to
+`tests/fixtures/conformance.my` (tier 3) and
+`lib/surface/peer-identity-acceptance.my`, run by a generic
+knows-nothing-about-specific-functions Rust runner in
+`crates/my-lisp/tests/uk_sa_surface.rs`, mirroring the existing
+`uk-acceptance.my` pattern. Left as-written below for the historical
+record of what was verified and how, at the time this slice's
+implementation actually happened.
+
 Per owner directive 2026-09-11 following `docs/BUILTIN-IDENTITY-MIGRATION-MAP-2026-09-11.md`:
 "Lisp owns meaning, Rust owns only irreducible mechanism." Success
 criterion is not "`Builtin` disappeared from the enum" — it's that Rust

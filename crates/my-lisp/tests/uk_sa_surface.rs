@@ -442,3 +442,26 @@ fn uk_acceptance_program_passes() {
         "Ukrainian acceptance program must return 'успіх (success)"
     );
 }
+
+/// Generic runner for `lib/surface/peer-identity-acceptance.my`
+/// (2026-09-11, added alongside the abs/min/max/min-list/max-list
+/// migration to lib/core.my): this test knows nothing about which
+/// specific peer names are being checked or what their values should
+/// be -- that semantic truth lives entirely in the `.my` file itself,
+/// per the standing principle "semantic truth tests live with the
+/// language; Rust tests only mechanism." Mirrors
+/// `uk_acceptance_program_passes` immediately above.
+#[test]
+fn peer_identity_acceptance_program_passes() {
+    let mut s = uk_session();
+    let r = eval_program(
+        include_str!("../../../lib/surface/peer-identity-acceptance.my"),
+        &mut s,
+    )
+    .expect("peer-identity acceptance program should evaluate");
+    assert_eq!(
+        r.value.to_string(),
+        "успіх",
+        "Peer-identity acceptance program must return 'успіх (success)"
+    );
+}

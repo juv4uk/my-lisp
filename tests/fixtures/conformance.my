@@ -55,8 +55,17 @@
 ((expr . "(def 1e100001 5)") (error . "NumericOverflow") (tier . 2) (axioms . (S3)))
 ((expr . "1ee3") (error . "UnknownSymbol") (tier . 2) (axioms . (S2)))
 ((expr . "--0.5") (error . "UnknownSymbol") (tier . 2) (axioms . (S2)))
-((expr . "+") (expected . "#<builtin +>") (tier . 2) (since-contract . (2 1)) (requires . (first-class-builtins builtin-add)) (axioms . (S2)))
-((expr . "-") (expected . "#<builtin ->") (tier . 2) (since-contract . (2 1)) (requires . (first-class-builtins builtin-subtract)) (axioms . (S2)))
+; Reframed 2026-09-11: the original expected value here was the printed
+; representation string "#<builtin +>" -- that pinned display FORMAT as
+; contract, not the actual fact contract 2.1 needs (that a bare `+`/`-`
+; reference is first-class: passable as an ordinary value, callable when
+; applied). Display representation is free to vary (docs/COMPILER-AUTHORITY-BOUNDARY.md,
+; #66) -- callability is not. Passing the bare builtin into a lambda and
+; calling it there proves first-classness without coupling the fixture
+; to Value::Builtin's current print format, which a future
+; Lisp/CML/FPGA-backed `+` need not reproduce byte-for-byte.
+((expr . "((lambda (f) (f 3 4)) +)") (expected . "7") (tier . 2) (since-contract . (2 1)) (requires . (first-class-builtins builtin-add)) (axioms . (S2)) (note . "bare + passed as an ordinary value and called -- proves first-classness without pinning #<builtin +>'s print format as contract"))
+((expr . "((lambda (f) (f 10 4)) -)") (expected . "6") (tier . 2) (since-contract . (2 1)) (requires . (first-class-builtins builtin-subtract)) (axioms . (S2)) (note . "same reframing for -"))
 ((expr . ".5") (expected . "1/2") (tier . 2) (axioms . (S1)))
 ((expr . "-.5") (expected . "-1/2") (tier . 2) (axioms . (S1)))
 ((expr . "5.") (expected . "5") (tier . 2) (axioms . (S1)))
@@ -254,3 +263,24 @@
 ((expr . "(numeric-buffer-map (lambda (x) (+ x 1)) #i32(1 2 3))") (expected . "#i32(2 3 4)") (tier . 2) (since-contract . (2 3)) (requires . (typed-numeric-buffers numeric-buffer-map)) (axioms . (G6 G7 S1)))
 ((expr . "(numeric-buffer-map (lambda (x) (+ x 0.5)) #f32(1.0 2.0))") (expected . "#f32(1.5 2.5)") (tier . 2) (since-contract . (2 3)) (requires . (typed-numeric-buffers numeric-buffer-map)) (axioms . (G6 G7 S1)))
 ((expr . "(numeric-buffer-map (lambda (x) (+ x 1)) #i32(2147483647))") (error . "NumericOverflow") (tier . 2) (since-contract . (2 3)) (requires . (typed-numeric-buffers numeric-buffer-map)) (axioms . (S2 S3)))
+
+; abs/min/max/min-list/max-list — migrated from Rust builtins.rs to
+; lib/core.my 2026-09-11 (docs/VERTICAL-SLICE-1-ABS-MIN-MAX-2026-09-11.md).
+; Semantic truth for these now lives here, not in
+; crates/my-lisp/tests/builtin_to_lisp_migration.rs's Rust assertions --
+; per the standing principle "semantic truth tests live with the
+; language; Rust tests only mechanism." Tier 3 (library, derived from
+; Canon/necessary-form primitives, not itself constitutive).
+((expr . "(abs -5)") (expected . "5") (tier . 3) (axioms . (G5)))
+((expr . "(abs 5.5)") (expected . "11/2") (tier . 3) (axioms . (G5 S1)))
+((expr . "(abs (/ -3 4))") (expected . "3/4") (tier . 3) (axioms . (G5 S1)))
+((expr . "(abs 0)") (expected . "0") (tier . 3) (axioms . (G5)))
+((expr . "(min 3 1 2)") (expected . "1") (tier . 3) (axioms . (G5)))
+((expr . "(max 3 1 2)") (expected . "3") (tier . 3) (axioms . (G5)))
+((expr . "(min 5)") (expected . "5") (tier . 3) (axioms . (G5)) (note . "single argument is vacuously the minimum"))
+((expr . "(min)") (error . "Arity") (tier . 3) (axioms . (G5 S2)) (note . "required first parameter (dotted lambda-list) gives the Arity error structurally, not a hand-written check"))
+((expr . "(max)") (error . "Arity") (tier . 3) (axioms . (G5 S2)))
+((expr . "(min-list (quote (5 2 8 1)))") (expected . "1") (tier . 3) (axioms . (G5)))
+((expr . "(max-list (quote (5 2 8 1)))") (expected . "8") (tier . 3) (axioms . (G5)))
+((expr . "(min-list (quote ()))") (expected . "()") (tier . 3) (axioms . (G5 G8)) (note . "empty list argument is Nil, distinct from min/max's own zero-argument Arity error above"))
+((expr . "(max-list (quote ()))") (expected . "()") (tier . 3) (axioms . (G5 G8)))

@@ -1,10 +1,10 @@
 # FUNCTION REFERENCE — my-lisp
 
-**Live builtin section refreshed:** 2026-09-06 · base `e58209f`
+**Live builtin section refreshed:** 2026-09-11 · base `6c82490`
 **Library inventory base:** 2026-09-02 · `8b4529f`
-**Incremental library refresh:** 2026-09-10 · `narrate.my` + `result-status.my` + `translation.my` + `quantity.my` + `si.my`
+**Incremental library refresh:** 2026-09-11 · `abs`/`min`/`max`/`min-list`/`max-list` moved from root builtin to `core.my` (see `docs/VERTICAL-SLICE-1-ABS-MIN-MAX-2026-09-11.md`)
 **Source:** root `(env)` / `language_items.rs` for builtins; static `lib/*.my` scan for the library sections below.
-**Builtin count:** 35 root builtins. `mono-ms`, `utc-now`, `internet-time-sync`, and `timezone-detect` are language-owned in `lib/time.my`. `mono-ns`, `unix-time-now`, `ntp-query-raw`, and `timezone-declarations-raw` are the retained raw host observations/mechanisms.
+**Builtin count:** 30 root builtins (down from 35 — `abs`/`min`/`max`/`min-list`/`max-list` are now `core.my` closures, confirmed via `scripts/gen-functions.my`'s own `#<builtin ...>` print-shape filter no longer matching them). `mono-ms`, `utc-now`, `internet-time-sync`, and `timezone-detect` are language-owned in `lib/time.my`. `mono-ns`, `unix-time-now`, `ntp-query-raw`, and `timezone-declarations-raw` are the retained raw host observations/mechanisms.
 
 > Regeneration rule: use `scripts/gen-functions.my` for a full refresh. The library sections are a generated snapshot and do not define semantic authority; see [`semantic-authority-map.md`](semantic-authority-map.md).
 
@@ -12,7 +12,7 @@
 
 ## 1. Builtin'и ядра (live env)
 
-`*`, `+`, `-`, `/`, `<`, `=`, `>`, `abs`, `atom`, `car`, `cdr`, `cons`, `env`, `eq`, `f32-buffer`, `i32-buffer`, `make-vector`, `max`, `max-list`, `min`, `min-list`, `mono-ns`, `ntp-query-raw`, `numeric-buffer-length`, `numeric-buffer-map`, `numeric-buffer-ref`, `numeric-buffer-type`, `numeric-buffer?`, `string-slice`, `timezone-declarations-raw`, `unix-time-now`, `vector`, `vector-length`, `vector-ref`, `vector-set!`
+`*`, `+`, `-`, `/`, `<`, `=`, `>`, `atom`, `car`, `cdr`, `cons`, `env`, `eq`, `f32-buffer`, `i32-buffer`, `make-vector`, `mono-ns`, `ntp-query-raw`, `numeric-buffer-length`, `numeric-buffer-map`, `numeric-buffer-ref`, `numeric-buffer-type`, `numeric-buffer?`, `string-slice`, `timezone-declarations-raw`, `unix-time-now`, `vector`, `vector-length`, `vector-ref`, `vector-set!`
 
 > The public time meanings are language-owned. `utc-now` is a Lisp closure over `unix-time-now`; `internet-time-sync` interprets `ntp-query-raw`; and `timezone-detect` interprets `timezone-declarations-raw`. See [`host-semantic-surface.md`](host-semantic-surface.md).
 
@@ -24,9 +24,9 @@
 
 `content-store-contains?`, `content-store-get`, `content-store-put`, `content-store-put-world`, `content-store-size`, `empty-content-store`
 
-### core.my (52)
+### core.my (57)
 
-`->`, `->>`, `<=`, `>=`, `and`, `append`, `assoc`, `caar`, `cadddr`, `cadr`, `cddr`, `digit->string`, `equal?`, `fifth`, `filter`, `filter-onto`, `fourth`, `gensym`, `identity`, `isqrt`, `isqrt-step`, `largest-chunk`, `length`, `length-onto`, `let`, `let*`, `list`, `map`, `map-onto`, `member?`, `mod`, `nondecreasing-from?`, `nonincreasing-from?`, `not`, `nth`, `number->string`, `number->string-onto`, `or`, `pair`, `quotient`, `reduce`, `reverse`, `reverse-onto`, `second`, `sqrt`, `sqrt-iter`, `string-contains?`, `string-empty?`, `string-length`, `string-prefix?`, `symbol?`, `third`
+`->`, `->>`, `<=`, `>=`, `abs`, `and`, `append`, `assoc`, `caar`, `cadddr`, `cadr`, `cddr`, `digit->string`, `equal?`, `fifth`, `filter`, `filter-onto`, `fourth`, `gensym`, `identity`, `isqrt`, `isqrt-step`, `largest-chunk`, `length`, `length-onto`, `let`, `let*`, `list`, `map`, `map-onto`, `max`, `max-list`, `member?`, `min`, `min-list`, `mod`, `nondecreasing-from?`, `nonincreasing-from?`, `not`, `nth`, `number->string`, `number->string-onto`, `or`, `pair`, `quotient`, `reduce`, `reverse`, `reverse-onto`, `second`, `sqrt`, `sqrt-iter`, `string-contains?`, `string-empty?`, `string-length`, `string-prefix?`, `symbol?`, `third`
 
 ### epistemic.my (25)
 
