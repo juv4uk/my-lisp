@@ -11,7 +11,13 @@ bugs, not a hypothetical concern:
 1. `crates/my-lisp-lsp/src/analysis.rs` — `quote`/`cond` recognized by
    literal English string (fixed, commit `db825e7`).
 2. wsm-my-lisp's `dll/src/eval.rs` — same class, English-only
-   (fixed, commit `c3bf0f4`, then generator-ized in `55b3156`).
+   (fixed, commit `c3bf0f4`, then generator-ized in `55b3156`). Note,
+   added 2026-09-11 after wsm-my-lisp#15's Phase D migration: `dll/`
+   itself (including this file) has since been removed from wsm-my-lisp
+   entirely; the same generator design (IDs `0001`/`0007`) now lives in
+   `my-lisp-cyberpunk/host-runtime/build.rs` (commit `1e1549a`). The
+   history and precedent below are unchanged — only the file's current
+   address moved.
 3. cml's `src/lower.rs` / `src/semantic.rs` — English-only recognition
    plus a hand-transcribed duplicate of the registry's Canon 0+7 rows
    (`semantic.rs` partially fixed via generator in `26e20e7`; `lower.rs`
@@ -123,14 +129,19 @@ as opposed to symbol *names used as asm labels*) so `eq?` and printing
 still observe the original case. Already correctly opened as its own
 P0 issue; not blocked on, or blocking, Step 1.
 
-### Step 3 (wsm-my-lisp, optional extension) — widen scope if new forms are special-cased
+### Step 3 (my-lisp-cyberpunk/host-runtime, optional extension) — widen scope if new forms are special-cased
 
-wsm-my-lisp's generator currently covers only quote/cond because
-`eval.rs` only special-cases those two today. No action needed *unless*
-a future change makes `eval.rs` recognize a third form by name (e.g.
-if `lambda`/`define` ever need surface-spelling recognition outside
-their own dedicated dispatch) — at that point, extend the existing
-`TARGET_IDS`-style list by one entry, per the generator's own design
+Ownership note (2026-09-11): this generator originated in
+wsm-my-lisp's `dll/build.rs` but moved to
+`my-lisp-cyberpunk/host-runtime/build.rs` (commit `1e1549a`) when
+wsm-my-lisp#15's Phase D migration removed `dll/` entirely; the
+consumer is now my-lisp-cyberpunk, not wsm-my-lisp. The generator
+currently covers only quote/cond because the runtime only special-cases
+those two today. No action needed *unless* a future change makes it
+recognize a third form by name (e.g. if `lambda`/`define` ever need
+surface-spelling recognition outside their own dedicated dispatch) —
+at that point, extend the existing `TARGET_IDS`-style list by one
+entry, per the generator's own design
 (already generic over "which numeric id").
 
 ### Step 4 (fpga-lisp, not yet started) — adopt the pattern proactively
