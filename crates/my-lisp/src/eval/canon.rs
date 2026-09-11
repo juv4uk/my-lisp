@@ -252,11 +252,24 @@ mod tests {
     }
 
     #[test]
-    fn three_surfaces_resolve_to_one_identity() {
-        assert_eq!(identity_for_surface("car"), Some(CanonicalIdentity::Car));
-        assert_eq!(identity_for_surface("перше"), Some(CanonicalIdentity::Car));
-        assert_eq!(identity_for_surface("ādi"), Some(CanonicalIdentity::Car));
-        assert_eq!(identity_for_surface(":п"), Some(CanonicalIdentity::Car));
+    fn every_admitted_surface_for_one_semantic_id_resolves_to_one_identity() {
+        // Which spellings mean "car" is a registry FACT, not a Rust literal
+        // to enumerate here -- read them from the registry so this test
+        // keeps meaning "Canon routes every admitted surface for 0005 to
+        // the same identity" even if the admitted spellings change.
+        let surfaces = semantic_registry::admitted_surfaces_for_semantic_id(CAR_SEMANTIC_ID);
+        assert!(
+            surfaces.len() >= 2,
+            "0005 (car) should admit at least two surfaces for this invariant to be meaningful, \
+             got {surfaces:?}"
+        );
+        for surface in &surfaces {
+            assert_eq!(
+                identity_for_surface(surface),
+                Some(CanonicalIdentity::Car),
+                "registry-admitted surface {surface:?} did not route to CanonicalIdentity::Car"
+            );
+        }
     }
 
     #[test]
@@ -265,8 +278,12 @@ mod tests {
             identity_for_surface(CAR_SEMANTIC_ID),
             Some(CanonicalIdentity::Car)
         );
+        let human_surface = semantic_registry::admitted_surfaces_for_semantic_id(CAR_SEMANTIC_ID)
+            .into_iter()
+            .next()
+            .expect("0005 (car) should admit at least one human surface");
         let numeric = value_for_surface(CAR_SEMANTIC_ID).expect("numeric Canon identity");
-        let human = value_for_surface("car").expect("historical Canon surface");
+        let human = value_for_surface(human_surface).expect("registry-admitted Canon surface");
         let (Value::Builtin(numeric), Value::Builtin(human)) = (&numeric, &human) else {
             panic!("PRIM_CAR must be a first-class builtin value");
         };
@@ -274,17 +291,43 @@ mod tests {
     }
 
     #[test]
-    fn three_callable_surfaces_share_one_stable_handle() {
-        let historical = value_for_surface("car").expect("historical Canon value");
-        let ukrainian = value_for_surface("перше").expect("Ukrainian Canon value");
-        let sanskrit = value_for_surface("ādi").expect("Sanskrit Canon value");
-        let (Value::Builtin(historical), Value::Builtin(ukrainian), Value::Builtin(sanskrit)) =
-            (&historical, &ukrainian, &sanskrit)
-        else {
-            panic!("PRIM_CAR must be a first-class builtin value");
-        };
-        assert!(Rc::ptr_eq(historical, ukrainian));
-        assert!(Rc::ptr_eq(historical, sanskrit));
+    fn every_admitted_surface_for_one_semantic_id_shares_one_stable_handle() {
+        // Which spellings mean "car" (en/uk/sa/...) is a semantic-registry
+        // FACT, owned by the registry data, not Rust knowledge -- this test
+        // asserts only the Rust-implementation INVARIANT: whatever surfaces
+        // the registry admits for one semantic identity, Canon materializes
+        // exactly one shared callable handle for all of them. Read the real
+        // admitted surfaces from the registry itself instead of hardcoding
+        // "car"/"перше"/"ādi" as literals, so this test still passes
+        // unchanged if the registry's admitted spellings for 0005 ever
+        // change, and still fails if Canon ever gives two of them distinct
+        // handles.
+        let surfaces = semantic_registry::admitted_surfaces_for_semantic_id(CAR_SEMANTIC_ID);
+        assert!(
+            surfaces.len() >= 2,
+            "0005 (car) should admit at least two surfaces for this invariant to be meaningful, \
+             got {surfaces:?}"
+        );
+
+        let handles: Vec<Rc<crate::value::Builtin>> = surfaces
+            .iter()
+            .map(|surface| {
+                let value = value_for_surface(surface)
+                    .unwrap_or_else(|| panic!("registry-admitted surface {surface:?} should route through Canon"));
+                let Value::Builtin(ref handle) = value else {
+                    panic!("PRIM_CAR must be a first-class builtin value for surface {surface:?}");
+                };
+                handle.clone()
+            })
+            .collect();
+
+        let first = &handles[0];
+        for (surface, handle) in surfaces.iter().zip(handles.iter()) {
+            assert!(
+                Rc::ptr_eq(first, handle),
+                "surface {surface:?} did not share Canon's one stable handle for 0005"
+            );
+        }
     }
 
     #[test]

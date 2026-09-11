@@ -46,23 +46,32 @@ mod tests {
     }
 
     #[test]
-    fn ukrainian_and_english_names_are_registry_driven_peer_spellings() {
-        assert_eq!(
-            identity_for_symbol("визначити"),
-            Some(NecessaryFormIdentity::Define)
-        );
-        assert_eq!(
-            identity_for_symbol("define"),
-            Some(NecessaryFormIdentity::Define)
-        );
-        assert_eq!(
-            identity_for_symbol("функція"),
-            Some(NecessaryFormIdentity::Lambda)
-        );
-        assert_eq!(
-            identity_for_symbol("lambda"),
-            Some(NecessaryFormIdentity::Lambda)
-        );
+    fn every_admitted_surface_for_define_and_lambda_is_a_registry_driven_peer_spelling() {
+        // Which spellings mean "define"/"lambda" (визначити/define,
+        // функція/lambda, ...) is a semantic-registry FACT, not Rust
+        // knowledge to enumerate here -- this test asserts only the
+        // implementation invariant: whatever surfaces the registry admits
+        // for 0011/0010 all route through this same numeric-ID dispatch,
+        // regardless of which language they're spelled in.
+        for (semantic_id, identity) in [
+            (DEFINE_SEMANTIC_ID, NecessaryFormIdentity::Define),
+            (LAMBDA_SEMANTIC_ID, NecessaryFormIdentity::Lambda),
+        ] {
+            let surfaces = semantic_registry::admitted_surfaces_for_semantic_id(semantic_id);
+            assert!(
+                surfaces.len() >= 2,
+                "{semantic_id} should admit at least two surfaces for this invariant to be \
+                 meaningful, got {surfaces:?}"
+            );
+            for surface in &surfaces {
+                assert_eq!(
+                    identity_for_symbol(surface),
+                    Some(identity),
+                    "registry-admitted surface {surface:?} for {semantic_id} did not route to \
+                     {identity:?}"
+                );
+            }
+        }
     }
 
     #[test]
