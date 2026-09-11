@@ -32,7 +32,7 @@
      (core-library
        (abs identity list not and or gensym pair second third fourth cadddr fifth
         caar cadr cddr length reverse append map filter reduce let equal? max
-        max-list member? min min-list assoc let* string-empty? string-length
+        max-list member? min min-list assoc let* nth string-empty? string-length
         string-prefix? string-contains? symbol? quotient mod <= >= number->string
         -> ->> isqrt sqrt))))
   ; Ukrainian words carry the readable surface. Mathematical marks remain
