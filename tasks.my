@@ -12,6 +12,7 @@
   ))
 
   ("POLYGLOT-002-FOREIGN-VALUE-MODEL" . (
+    (status . "superseded-2026-09-11: reuse-first audit found this decision unnecessary -- see docs/POLYGLOT-SEMANTIC-ORCHESTRATOR-IMPLEMENTATION-PLAN.md revised architecture (zero core changes, foreign objects are plain serializable (foreign-ref N) data). Not deleted; do not execute mechanically. Superseded by POLYGLOT-SIMPLE-2.")
     (priority . 9.8)
     (capabilities . (my-lisp architecture value-representation))
     (origin . owner)
@@ -24,6 +25,7 @@
   ))
 
   ("POLYGLOT-003-RAW-FOREIGN-CAPABILITY-BOUNDARY" . (
+    (status . "superseded-2026-09-11: reuse-first audit found no new host primitives are needed at all -- tcp-connect/tcp-read/tcp-write/tcp-close already provide the raw boundary. Not deleted; do not execute mechanically. Superseded by POLYGLOT-SIMPLE-1/2.")
     (priority . 9.8)
     (capabilities . (my-lisp architecture host-capability rust))
     (origin . owner)
@@ -36,6 +38,7 @@
   ))
 
   ("POLYGLOT-004-VERSIONED-WIRE-PROTOCOL" . (
+    (status . "superseded-2026-09-11: reuse-first audit found the wire format already ratified -- write-to-string/read plus a versioned (foreign/1 ...) envelope, framed the way lib/knowledge.my's tcp-read-frame already frames. No JSON/binary comparison needed. Not deleted; do not execute mechanically. Superseded by the revised implementation plan's wire-protocol section.")
     (priority . 9.7)
     (capabilities . (my-lisp architecture protocol serialization))
     (origin . owner)
@@ -48,6 +51,7 @@
   ))
 
   ("POLYGLOT-005-FOREIGN-ERROR-MODEL" . (
+    (status . "superseded-2026-09-11: reuse-first audit found no new ErrorKind/LanguageError work is needed for v0 -- a foreign exception is reported as an ordinary (foreign/1 REQUEST-ID error \"ValueError\" \"...\") envelope value, handled by ordinary Lisp cond in lib/foreign.my, not a Rust-side error-kind mapping. Not deleted; do not execute mechanically. Revisit only if lib/foreign.my's callers need a distinct ErrorKind, not before.")
     (priority . 9.6)
     (capabilities . (my-lisp architecture error-handling protocol))
     (origin . owner)
@@ -60,6 +64,7 @@
   ))
 
   ("POLYGLOT-006-PYTHON-RUNTIME-LIFECYCLE" . (
+    (status . "superseded-2026-09-11: reuse-first audit found no new Rust capabilities are needed -- tcp-connect already provides runtime lifecycle (connect/close); python-bridge.py listens on a TCP port started manually for v0, per the revised plan's explicit non-goal on automatic process spawning. Not deleted; do not execute mechanically. Superseded by POLYGLOT-SIMPLE-1.")
     (priority . 9.5)
     (capabilities . (my-lisp-host rust foreign-runtime))
     (origin . owner)
@@ -72,6 +77,7 @@
   ))
 
   ("POLYGLOT-007-PYTHON-IMPORT-MEMBER-CALL" . (
+    (status . "superseded-2026-09-11: reuse-first audit found this is ordinary lib/foreign.my Lisp code over the existing TCP transport, no separate raw-boundary proof step needed. Not deleted; do not execute mechanically. Superseded by POLYGLOT-SIMPLE-2/3.")
     (priority . 9.4)
     (capabilities . (my-lisp lisp foreign-runtime))
     (origin . owner)
@@ -84,6 +90,7 @@
   ))
 
   ("POLYGLOT-008-VALUE-CONVERSION-SCALARS" . (
+    (status . "superseded-2026-09-11: reuse-first audit found value conversion is already solved by write-to-string/read's existing closed value-shape contract -- no separate conversion layer to design or test beyond what that contract already covers. Not deleted; do not execute mechanically. Folded into POLYGLOT-SIMPLE-3/4's acceptance tests.")
     (priority . 9.3)
     (capabilities . (my-lisp lisp foreign-runtime value-representation))
     (origin . owner)
@@ -96,6 +103,7 @@
   ))
 
   ("POLYGLOT-009-FOREIGN-REFERENCE-LIFETIME" . (
+    (status . "superseded-2026-09-11: reuse-first audit found lifetime is ordinary bridge-table bookkeeping in python-bridge.py (foreign-release removes a table entry; using a released (foreign-ref N) again is a bridge-side error, no core Value lifetime question). Not deleted; do not execute mechanically. Folded into POLYGLOT-SIMPLE-2.")
     (priority . 9.3)
     (capabilities . (my-lisp lisp foreign-runtime lifetime))
     (origin . owner)
@@ -108,6 +116,7 @@
   ))
 
   ("POLYGLOT-010-LISP-OWNED-FOREIGN-API" . (
+    (status . "superseded-2026-09-11: reuse-first audit keeps the goal (Lisp-owned foreign-import/member/call/release) but drops the load_foreign_library/raw-primitive dependency -- lib/foreign.my needs only tcp-connect/tcp-read/tcp-write/tcp-close plus write-to-string/read, already loadable like any other lib/*.my file. Not deleted; do not execute mechanically. Superseded by POLYGLOT-SIMPLE-2.")
     (priority . 9.3)
     (capabilities . (my-lisp lisp foreign-runtime api))
     (origin . owner)
@@ -120,6 +129,7 @@
   ))
 
   ("POLYGLOT-011-PYTHON-ACCEPTANCE-WITNESS" . (
+    (status . "superseded-2026-09-11: goal kept, mechanism simplified -- same two acceptance snippets (math.sqrt, numpy import) now run against POLYGLOT-SIMPLE-2's lib/foreign.my over plain TCP, not a Rust foreign-raw boundary. Not deleted; do not execute mechanically. Superseded by POLYGLOT-SIMPLE-3/4.")
     (priority . 9.2)
     (capabilities . (my-lisp foreign-runtime acceptance-testing))
     (origin . owner)
@@ -132,6 +142,7 @@
   ))
 
   ("POLYGLOT-012-FOREIGN-PROTOCOL-SECURITY" . (
+    (status . "superseded-2026-09-11: still a real concern but reframed -- since v0 uses plain tcp-connect with no new allowlist category, review whether the existing TCP-connect allowlist (already gating arbitrary host/port connections) is sufficient for a python-bridge connection, rather than designing a new foreign-specific allowlist. Not deleted; do not execute mechanically. Re-scope once POLYGLOT-SIMPLE-1 exists.")
     (priority . 9.1)
     (capabilities . (my-lisp security host-capability))
     (origin . owner)
@@ -168,10 +179,11 @@
   ))
 
   ("POLYGLOT-015-NUMPY-BUFFER-BRIDGE-RESEARCH" . (
+    (status . "still applicable as written, now gated on POLYGLOT-SIMPLE-4 instead of POLYGLOT-011 -- the data-plane-vs-control-plane split in the revised implementation plan is unaffected by the reuse-first audit.")
     (priority . 8.5)
     (capabilities . (my-lisp research performance foreign-runtime))
     (origin . owner)
-    (depends-on . (POLYGLOT-011-PYTHON-ACCEPTANCE-WITNESS))
+    (depends-on . (POLYGLOT-SIMPLE-4-NUMPY-WITNESS))
     (description . "Phase 6, research half. Investigate whether NumericBuffer (i32-buffer/f32-buffer) can bridge to Python's buffer protocol / NumPy's ndarray without a full copy for large arrays. Compare plain copy (works with the existing protocol, not zero-copy), shared memory/mmap (real zero-copy, but the subprocess transport model makes true cross-process shared memory nontrivial -- needs its own design), and in-process Python embedding via PyO3 (a genuinely different backend-adapter model than the subprocess approach, requiring its own Phase-0-style boundary re-examination, not a variant of the subprocess design). Produce a benchmark/correctness prototype comparing at least plain-copy vs one zero-copy candidate -- not production code.")
     (acceptance . "A written comparison with real benchmark numbers for at least two of the three candidates, informing (not yet making) a production decision.")
     (out-of-scope . "Shipping a production NumericBuffer<->NumPy bridge -- that is POLYGLOT-016, gated on this research's outcome.")
@@ -180,6 +192,7 @@
   ))
 
   ("POLYGLOT-016-NUMPY-BUFFER-BRIDGE" . (
+    (status . "still applicable as written, unaffected by the reuse-first audit -- gated on POLYGLOT-015's research outcome as before.")
     (priority . 8.0)
     (capabilities . (my-lisp foreign-runtime performance))
     (origin . owner)
@@ -204,14 +217,63 @@
   ))
 
   ("POLYGLOT-018-PYTHON-FIRST-RELEASE-GATE" . (
+    (status . "superseded-2026-09-11: goal kept (Python-first support is a real, tested, documented feature with one guard test per architectural guard), gate condition simplified to POLYGLOT-SIMPLE-1..4 passing together instead of Phase 1-5's Rust-side witnesses, since v0 adds no Rust code to gate on. Not deleted; do not execute mechanically.")
     (priority . 8.8)
     (capabilities . (my-lisp release-gate testing architecture))
     (origin . owner)
-    (depends-on . (POLYGLOT-011-PYTHON-ACCEPTANCE-WITNESS))
+    (depends-on . (POLYGLOT-SIMPLE-4-NUMPY-WITNESS))
     (description . "Phase 8. The point at which Python-first foreign runtime support is a real, documented, tested feature, not a research branch. All Phase 1-5 executable witnesses pass together in one CI-runnable suite. Each architectural guard from the implementation plan's guard list has a corresponding negative test (mirroring error_kind_vocabulary_is_closed.rs's exhaustive-match-as-gate pattern) proving a regression would actually be caught, not just that nobody happened to introduce one yet.")
     (acceptance . "One CI-runnable suite covering Phases 1-5; one negative test per named architectural guard.")
     (out-of-scope . "A second foreign-runtime adapter; NumPy buffer bridge production code (POLYGLOT-016 is independent of this gate).")
     (evidence-expected . "Passing CI suite; guard tests committed and demonstrably failing when the regression they guard against is deliberately, temporarily reintroduced (same verification discipline as #66's own error_kind_vocabulary_is_closed.rs).")
+    (done . nil)
+  ))
+
+  ("POLYGLOT-SIMPLE-1-PYTHON-BRIDGE-OVER-TCP" . (
+    (priority . 9.9)
+    (capabilities . (my-lisp foreign-runtime python tcp))
+    (origin . owner)
+    (depends-on . ())
+    (description . "Write python-bridge.py: a small, auditable Python TCP server (listens on 127.0.0.1:PORT, started manually per v0's explicit non-goal on auto-spawn) implementing the (foreign/1 REQUEST-ID ...) envelope over lib/knowledge.my-style newline-framed lines: import (importlib.import_module, stores object in a local id->object ref table, returns (foreign-ref N)), member (getattr, may itself return a (foreign-ref N) for non-scalar members), call (positional args, scalars decoded directly, (foreign-ref N) args resolved via the ref table), release (drops a ref-table entry). No Rust or crates/my-lisp change of any kind.")
+    (acceptance . "python-bridge.py accepts a raw TCP connection (tested with tcp-connect/tcp-write/tcp-read directly, before lib/foreign.my exists) and answers a hand-written (foreign/1 1 import \"math\") request with a well-formed (foreign/1 1 ok (foreign-ref N)) response.")
+    (out-of-scope . "Any lib/foreign.my Lisp API (POLYGLOT-SIMPLE-2); any core-crate change; automatic process spawning.")
+    (evidence-expected . "python-bridge.py committed; a manual or scripted TCP exchange transcript proving the envelope round-trips.")
+    (done . nil)
+  ))
+
+  ("POLYGLOT-SIMPLE-2-FOREIGN-MY-LISP-API" . (
+    (priority . 9.8)
+    (capabilities . (my-lisp lisp foreign-runtime api))
+    (origin . owner)
+    (depends-on . (POLYGLOT-SIMPLE-1-PYTHON-BRIDGE-OVER-TCP))
+    (description . "Write lib/foreign.my entirely in Lisp, built only on already-existing primitives (tcp-connect/tcp-read/tcp-write/tcp-close, write-to-string/read, lib/knowledge.my's tcp-read-frame framing pattern): foreign-connect, foreign-import, foreign-member, foreign-call, foreign-release. Foreign objects are represented as plain serializable (foreign-ref N) data, never a new Value variant. No new my-lisp-host capability, no evaluator change.")
+    (acceptance . "A test asserting no Rust-side string match on \"python\"/\"math\"/\"sqrt\"/\"numpy\" (or any other foreign-runtime/module/function name) exists anywhere in crates/my-lisp or crates/my-lisp-host -- the entire foreign surface is lib/foreign.my plus python-bridge.py, zero Rust lines added.")
+    (out-of-scope . "Value conversion beyond what write-to-string/read's existing closed value-shape contract already covers; NumericBuffer/large-array support.")
+    (evidence-expected . "lib/foreign.my committed; the no-hardcoded-names test passing; git diff of crates/my-lisp and crates/my-lisp-host showing zero lines changed.")
+    (done . nil)
+  ))
+
+  ("POLYGLOT-SIMPLE-3-MATH-SQRT-WITNESS" . (
+    (priority . 9.7)
+    (capabilities . (my-lisp foreign-runtime acceptance-testing))
+    (origin . owner)
+    (depends-on . (POLYGLOT-SIMPLE-2-FOREIGN-MY-LISP-API))
+    (description . "Automated end-to-end test proving `(define py (foreign-connect \"127.0.0.1\" PORT)) (define math (foreign-import py \"math\")) (foreign-call py math \"sqrt\" (list 9))` returns 3.0, driving a real python-bridge.py subprocess (started by the test, e.g. via process-run-raw for the test harness itself -- this is test infrastructure, not a new production capability) and a real my-lisp session, no mocking of either side.")
+    (acceptance . "Passing automated test producing the real Python-computed result through the unchanged lib/foreign.my API.")
+    (out-of-scope . "SciPy/Astropy/PyTorch; NumPy data operations (POLYGLOT-SIMPLE-4).")
+    (evidence-expected . "Passing test committed, runnable in CI.")
+    (done . nil)
+  ))
+
+  ("POLYGLOT-SIMPLE-4-NUMPY-WITNESS" . (
+    (priority . 9.6)
+    (capabilities . (my-lisp foreign-runtime acceptance-testing numpy))
+    (origin . owner)
+    (depends-on . (POLYGLOT-SIMPLE-3-MATH-SQRT-WITNESS))
+    (description . "Second acceptance witness: one real NumPy operation (e.g. numpy.mean over a small list) through the same unchanged lib/foreign.my API used for math.sqrt -- proving the architecture generalizes to a real scientific library, not just stdlib math, without any API change.")
+    (acceptance . "Passing automated test producing a real NumPy-computed result through the unchanged lib/foreign.my API; no lib/foreign.my change was needed to support NumPy versus math.")
+    (out-of-scope . "SciPy/Astropy/PyTorch; large-array/NumericBuffer performance work (POLYGLOT-015/016, gated on this task).")
+    (evidence-expected . "Passing test committed, runnable in CI.")
     (done . nil)
   ))
 
