@@ -16,3 +16,9 @@ vendor/** -text -diff
 *.wsm linguist-language=Common-Lisp linguist-detectable=true -linguist-vendored -linguist-generated -linguist-documentation
 *.my linguist-language=Common-Lisp linguist-detectable=true -linguist-vendored -linguist-generated -linguist-documentation
 *.lisp linguist-language=Common-Lisp linguist-detectable=true -linguist-vendored -linguist-generated -linguist-documentation
+# Equal-standing Ukrainian Cyrillic extension spellings (issue #62,
+# 2026-09-10 owner decision): .всм/.мій/.лісп mean exactly what
+# .wsm/.my/.lisp mean, same classification.
+*.всм linguist-language=Common-Lisp linguist-detectable=true -linguist-vendored -linguist-generated -linguist-documentation
+*.мій linguist-language=Common-Lisp linguist-detectable=true -linguist-vendored -linguist-generated -linguist-documentation
+*.лісп linguist-language=Common-Lisp linguist-detectable=true -linguist-vendored -linguist-generated -linguist-documentation

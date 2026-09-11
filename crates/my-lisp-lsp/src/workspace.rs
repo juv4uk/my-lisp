@@ -8,7 +8,11 @@
 //!
 //! Recognized extensions: `.wsm` (canonical, per
 //! ECO-DECISION-2026-08-27-MYLISP-WSM-RENAME), `.my` and `.lisp`
-//! (supported, not deprecated — the decision explicitly keeps both).
+//! (supported, not deprecated — the decision explicitly keeps both), plus
+//! the equal-standing Ukrainian Cyrillic spellings `.всм`/`.мій`/`.лісп`
+//! (issue #62, 2026-09-10 owner decision: file-naming surface policy, not
+//! a new semantic authority — a `.мій` file means exactly what a `.my`
+//! file means).
 //!
 //! Memory model: every scanned/opened file's full text is kept so spans
 //! can be rendered as LSP ranges without re-reading disk. Reasonable for
@@ -69,6 +73,7 @@ impl WorkspaceIndex {
                 let is_source = matches!(
                     path.extension().and_then(|e| e.to_str()),
                     Some("wsm") | Some("my") | Some("lisp")
+                        | Some("всм") | Some("мій") | Some("лісп")
                 );
                 if !is_source {
                     continue;
@@ -187,5 +192,57 @@ impl WorkspaceIndex {
     /// All definitions in the index, in insertion order.
     pub fn lookup_all(&self) -> Vec<WorkspaceDef> {
         self.by_name.values().flatten().cloned().collect()
+    }
+}
+
+#[cfg(test)]
+mod cyrillic_extension_tests {
+    //! Issue #62 (2026-09-10 owner decision): `.мій`/`.всм`/`.лісп` are
+    //! equal-standing Ukrainian spellings of `.my`/`.wsm`/`.lisp`. Proves
+    //! the workspace scanner recognizes them on a real temp directory, not
+    //! just via a `matches!` arm read in isolation.
+    use super::*;
+
+    #[test]
+    fn scan_root_recognizes_all_three_cyrillic_extensions() {
+        let dir = std::env::temp_dir().join(format!(
+            "my-lisp-lsp-cyrillic-ext-test-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).expect("create temp workspace dir");
+
+        std::fs::write(dir.join("визначення.мій"), "(def приклад 42)")
+            .expect("write .мій fixture");
+        std::fs::write(dir.join("контракт.всм"), "(def інший 7)").expect("write .всм fixture");
+        std::fs::write(dir.join("програма.лісп"), "(def третій 1)")
+            .expect("write .лісп fixture");
+        // A non-source extension must still be ignored, exactly as for the
+        // Latin extensions — this proves the addition didn't accidentally
+        // widen the filter to "everything."
+        std::fs::write(dir.join("нотатка.txt"), "(def четвертий 0)")
+            .expect("write non-source control file");
+
+        let mut index = WorkspaceIndex::new();
+        index.set_root(dir.clone());
+
+        assert!(
+            !index.lookup("приклад").is_empty(),
+            ".мій file was not scanned"
+        );
+        assert!(
+            !index.lookup("інший").is_empty(),
+            ".всм file was not scanned"
+        );
+        assert!(
+            !index.lookup("третій").is_empty(),
+            ".лісп file was not scanned"
+        );
+        assert!(
+            index.lookup("четвертий").is_empty(),
+            ".txt file must still be ignored — the Cyrillic extensions must \
+             not widen the filter beyond the intended six spellings"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
