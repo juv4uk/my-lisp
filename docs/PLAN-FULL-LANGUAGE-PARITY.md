@@ -49,9 +49,29 @@ SA --/
    операції.
 3. **UK, EN і SA — peer surfaces.** Порядок рядків `(uk ...)`, `(en ...)`,
    `(sa ...)` у реєстрі не має семантичного значення.
-4. **Одна тотожність — одна реалізація значення.** Для ordinary builtin це
-   означає один `Value::Builtin`; для Lisp-defined public value — один
-   створений closure/value, до якого прямо прив'язуються всі surface names.
+4. **Одна тотожність — один numeric semantic ID, не один Rust-об'єкт.**
+   Виправлено 2026-09-11: попередня редакція цього пункту вимагала "один
+   `Value::Builtin`", і Gate B (нижче) вимагав `Rc::ptr_eq` як доказ —
+   це саме той старий дизайн, від якого цей план мав відходити, а не
+   зміцнювати. `Rc::ptr_eq` робить Rust-runtime-об'єкт частиною мовної
+   тотожності; правильна залежність інша:
+
+   ```text
+   surface spelling (car / перше / ādi)
+        ↓
+   numeric semantic ID (0005)
+        ↓
+   semantic/callable value
+        ↓
+   implementation projection (Rust сьогодні; Lisp/CML/FPGA пізніше)
+   ```
+
+   `car`, `перше`, `ādi` та `0005` мають одну тотожність тому, що
+   резолвляться до того самого numeric ID, а не тому, що випадково
+   містять той самий `Rc<Builtin>`. `Value::Builtin`/`Rc<dyn Fn>` —
+   сьогоднішня реалізаційна проекція semantic ID, не сама тотожність;
+   план не повинен вимагати, щоб вона нею лишалась. Дослідницька карта
+   залежностей: `docs/BUILTIN-IDENTITY-MIGRATION-MAP-2026-09-11.md`.
 5. **Жодного cross-language alias як реалізації.** На кшталт
    `(define додати +)` або `(define yoga +)` не може бути способом побудови
    рівноправної поверхні.
@@ -114,8 +134,14 @@ semantic key.
 - видаляти surface definitions, які будують одну мову через іншу;
 - окремо перевіряти незалежне lexical shadowing ordinary names.
 
-**Gate B:** `Rc::ptr_eq` або еквівалентний identity proof для всіх builtin peer
-spellings.
+**Gate B (виправлено 2026-09-11):** усі builtin peer spellings резолвляться до
+того самого numeric semantic ID, і ця тотожність спостережувана мовою через
+семантику `eq` — **не** через `Rc::ptr_eq` чи інший Rust-рівневий identity
+proof як самоціль. `Rc::ptr_eq` може лишатись сьогоднішнім internal
+механізмом реалізації (доки `Value::Builtin` є єдиною runtime-проекцією), але
+gate перевіряє semantic-ID equality, а не pointer equality — щоб майбутня
+заміна реалізаційної проекції (CML/FPGA/чиста Lisp-машина) не ламала сам gate.
+Дослідницька знахідка й обґрунтування: `docs/BUILTIN-IDENTITY-MIGRATION-MAP-2026-09-11.md`.
 
 ### Етап C — syntax і necessary forms
 
