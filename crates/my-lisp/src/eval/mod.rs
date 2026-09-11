@@ -15,7 +15,7 @@ pub(crate) mod canon;
 mod capabilities;
 mod closures;
 mod macro_substrate;
-mod necessary_forms;
+pub(crate) mod necessary_forms;
 mod special_forms;
 
 pub use capabilities::{
