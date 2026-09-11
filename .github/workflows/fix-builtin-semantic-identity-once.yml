@@ -1,4 +1,4 @@
-name: Fix builtin semantic identity once
+name: Diagnose builtin semantic identity Clippy
 
 on:
   push:
@@ -9,9 +9,9 @@ permissions:
   contents: write
 
 jobs:
-  fix:
+  diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
         with:
@@ -20,20 +20,10 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - name: Apply builtin semantic identity patch
+      - name: Apply patch and capture Clippy diagnostic
         run: |
           python3 .github/scripts/fix-builtin-semantic-identity.py
           cargo fmt --all
-      - name: Focused builtin semantic identity tests
-        run: |
-          cargo test -p my-lisp builtin_semantic_identity -- --nocapture
-          cargo test -p my-lisp --test builtin_semantic_identity -- --nocapture
-          cargo test -p my-lisp --test peer_surface_identity -- --nocapture
-          cargo test -p my-lisp --test runtime_peer_operators -- --nocapture
-      - name: Full workspace regression
-        run: cargo test --workspace
-      - name: Zero-warning clippy
-        run: |
           set +e
           cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee .github/scripts/clippy-last.log
           status=${PIPESTATUS[0]}
@@ -43,17 +33,5 @@ jobs:
             git add .github/scripts/clippy-last.log
             git commit -m "ci: capture builtin identity clippy diagnostic"
             git push origin HEAD:fix/canon-builtin-semantic-identity
-            exit "$status"
           fi
-          rm -f .github/scripts/clippy-last.log
-      - name: Commit verified semantic identity fix
-        run: |
-          if git diff --quiet; then
-            echo "Semantic identity fix already present"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add crates/my-lisp/src/value.rs crates/my-lisp/src/eval/builtins.rs crates/my-lisp/src/eval/canon.rs crates/my-lisp/src/eval/macro_substrate.rs crates/my-lisp/tests/builtin_semantic_identity.rs crates/my-lisp/tests/peer_surface_identity.rs crates/my-lisp/tests/runtime_peer_operators.rs crates/my-lisp/tests/uk_surface_equivalence.rs docs/PLAN-FULL-LANGUAGE-PARITY.md
-          git commit -m "fix(canon): make semantic ID builtin identity"
-          git push origin HEAD:fix/canon-builtin-semantic-identity
+          exit "$status"
