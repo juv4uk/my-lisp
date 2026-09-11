@@ -11,6 +11,18 @@
     (done . "2026-09-11: docs/POLYGLOT-SEMANTIC-ORCHESTRATOR-IMPLEMENTATION-PLAN.md written, covering Phase 0 (re-examine Value::Foreign vs generic opaque resource vs Lisp-level reference; foreign-* layer split; eq identity scope) through Phase 8 (release gate), plus the parallel Phase 7 backend-neutral oracle track. No implementation included in this commit, per instruction.")
   ))
 
+  ("FS-CAPABILITY-UTF8-POLICY-MIGRATION" . (
+    (priority . 6.0)
+    (capabilities . (my-lisp-host rust filesystem architecture))
+    (origin . owner)
+    (depends-on . ())
+    (description . "Deletion/duplication audit follow-up (2026-09-11): `read-file`/`read-file-bytes`/`write-file`/`write-file-bytes` (crates/my-lisp-host/src/lib.rs, evaluate_read_file etc.) still mix raw filesystem mechanism with UTF-8 decode policy inside Rust -- evaluate_read_file calls std::fs::read_to_string directly, which on invalid UTF-8 surfaces a raw Rust IO error instead of a structured, language-observable rejection value. This is the same raw-mechanism/policy split that process-run and tcp-* already completed (process-run-raw -> lib/process.my's process-result->text; tcp-read-raw -> lib/tcp.my's tcp-read), but read-file/write-file never made that transition. Not currently a semantic duplicate (no Lisp implementation exists to make Rust's redundant) -- this is a migration candidate, not a deletion candidate.")
+    (acceptance . "read-file/read-file-bytes/write-file/write-file-bytes reduced to raw byte-boundary host capabilities (e.g. read-file-raw returning bytes, mirroring process-run-raw's shape); a new lib/fs.my (or extension of lib/lisp-fs.my) owns UTF-8 decode/encode policy and produces an explicit, structured rejection value on invalid UTF-8 instead of propagating a raw Rust IO error string.")
+    (out-of-scope . "Any change to read-dir's directory-listing semantics, which is not a text-decoding concern. Any change unrelated to the UTF-8 boundary.")
+    (evidence-expected . "A conformance-level Lisp test (not a Rust-only test) proving invalid UTF-8 in a file produces a structured rejection value, mirroring process_text.rs's existing process_result_text_rejects_invalid_utf8_without_lossy_replacement test for process-run.")
+    (done . nil)
+  ))
+
   ("POLYGLOT-002-FOREIGN-VALUE-MODEL" . (
     (status . "superseded-2026-09-11: reuse-first audit found this decision unnecessary -- see docs/POLYGLOT-SEMANTIC-ORCHESTRATOR-IMPLEMENTATION-PLAN.md revised architecture (zero core changes, foreign objects are plain serializable (foreign-ref N) data). Not deleted; do not execute mechanically. Superseded by POLYGLOT-SIMPLE-2.")
     (priority . 9.8)
