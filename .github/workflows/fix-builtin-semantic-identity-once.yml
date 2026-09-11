@@ -33,7 +33,19 @@ jobs:
       - name: Full workspace regression
         run: cargo test --workspace
       - name: Zero-warning clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: |
+          set +e
+          cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee .github/scripts/clippy-last.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/scripts/clippy-last.log
+            git commit -m "ci: capture builtin identity clippy diagnostic"
+            git push origin HEAD:fix/canon-builtin-semantic-identity
+            exit "$status"
+          fi
+          rm -f .github/scripts/clippy-last.log
       - name: Commit verified semantic identity fix
         run: |
           if git diff --quiet; then
