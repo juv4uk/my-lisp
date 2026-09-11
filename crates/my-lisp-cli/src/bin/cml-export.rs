@@ -9,16 +9,29 @@
 
 use my_lisp::semantic_registry_export::{admitted_surfaces_for_semantic_id, SurfaceRow};
 
-/// The first vertical slice's form allow-list: exactly the semantic IDs
+/// Slice 1 (2026-09-10, unchanged): exactly the semantic IDs
 /// `tests/fixtures/conformance.my`'s fixture #69 (named def + recursion,
-/// `count-down`) exercises. Extending this list is slice 2+, deliberately
-/// not done here (docs/agent-doctrine.md rule 7: minimize change surface).
-const SLICE_1_FORMS: &[(&str, Role, bool)] = &[
+/// `count-down`) exercises.
+///
+/// Slice 2 (2026-09-11, per cml's own real need, not speculative --
+/// cml#9 found `semantic.rs`'s `is_reserved_canon_surface` hand-transcribing
+/// the full Canon 0+7 surface list instead of reading it from this export,
+/// because slice 1 never covered atom/cons/car/cdr/defmacro in the first
+/// place): adds the remaining Canon 0 identities (atom/cons/car/cdr) and
+/// defmacro (0012), so a consumer's own "which surfaces are Canon-reserved"
+/// table can be derived entirely from this file instead of staying a
+/// second hand-typed list that silently drifts if the registry changes.
+const EXPORTED_FORMS: &[(&str, Role, bool)] = &[
     ("0001", Role::Syntax, false),    // quote
+    ("0002", Role::Primitive, true),  // atom
+    ("0003", Role::Primitive, true),  // eq
+    ("0004", Role::Primitive, true),  // cons
+    ("0005", Role::Primitive, true),  // car
+    ("0006", Role::Primitive, true),  // cdr
     ("0007", Role::Syntax, false),    // cond
     ("0010", Role::Syntax, false),    // lambda
     ("0011", Role::Syntax, false),    // define
-    ("0003", Role::Primitive, true),  // eq
+    ("0012", Role::Syntax, false),    // defmacro
     ("1001", Role::Library, true),    // subtraction
 ];
 
@@ -51,17 +64,30 @@ fn fnv1a_hex(bytes: &[u8]) -> String {
     format!("{hash:016x}")
 }
 
+/// Surface names are rendered as string literals, not bare symbols.
+/// Real bug found extending this export to slice 2 (cml#9): the bare
+/// symbol `'` (quote's own `sym` surface, semantic ID 0001) fails to
+/// parse when it is the last token before a closing paren -- verified
+/// directly with the real reader (`--oracle-check`): `(a ')` errors
+/// with `unexpected-closing-parenthesis`, even though the identical
+/// character parses fine inside `lib/surface/semantic-registry.wsm`
+/// itself, where it is always followed by more content (` stable)`)
+/// before any closing paren. Quote-sugar's removal (contract 2.0) left
+/// a bare `'` still requiring a following token in the reader. Rather
+/// than special-case this one surface, every surface name is quoted as
+/// a string here, which has no such reader ambiguity for any admitted
+/// spelling, present or future.
 fn render_surfaces(surfaces: &[SurfaceRow]) -> String {
     surfaces
         .iter()
-        .map(|s| format!("({} {})", s.namespace, s.name))
+        .map(|s| format!("({} \"{}\")", s.namespace, s.name))
         .collect::<Vec<_>>()
         .join(" ")
 }
 
 fn render_forms_block() -> String {
     let mut lines = Vec::new();
-    for &(id, role, callable) in SLICE_1_FORMS {
+    for &(id, role, callable) in EXPORTED_FORMS {
         let surfaces = admitted_surfaces_for_semantic_id(id);
         lines.push(format!(
             "    ({id} (surfaces {}) (role {}) (callable {}))",
