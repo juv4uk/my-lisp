@@ -201,27 +201,13 @@ fn builtin_metadata(name: &str) -> (&'static str, &'static str, Arity) {
             "Return visible bindings as an alist",
             Arity::Exact(0),
         ),
-        "abs" => ("(abs number)", "Return the absolute value", Arity::Exact(1)),
-        "min" => (
-            "(min number ...)",
-            "Return the smallest argument",
-            Arity::AtLeast(1),
-        ),
-        "max" => (
-            "(max number ...)",
-            "Return the largest argument",
-            Arity::AtLeast(1),
-        ),
-        "min-list" => (
-            "(min-list list)",
-            "Return the smallest list element",
-            Arity::Exact(1),
-        ),
-        "max-list" => (
-            "(max-list list)",
-            "Return the largest list element",
-            Arity::Exact(1),
-        ),
+        // abs/min/max/min-list/max-list removed 2026-09-11: migrated to
+        // lib/core.my (Value::Closure, not Value::Builtin), so this
+        // match arm was dead -- this function only ever matches
+        // Value::Builtin names (see language_items() below). Matches
+        // the same already-accepted gap "list"/"not" (migrated earlier)
+        // have always had: Lisp-defined library functions simply don't
+        // appear in this Rust-builtin-only tooling metadata table.
         "make-vector" => (
             "(make-vector length)",
             "Create a vector of nil slots",

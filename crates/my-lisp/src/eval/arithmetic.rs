@@ -335,12 +335,3 @@ pub(super) fn comparison_on_values(
     // Lisp-visible result of a comparison, not an internal detail.
     Ok(Value::truth(holds))
 }
-
-pub(super) fn order_pair(
-    operator: &str,
-    left: &Value,
-    right: &Value,
-    span: Span,
-) -> Result<bool, LanguageError> {
-    Ok(comparison_on_values(operator, &[left.clone(), right.clone()], span)?.is_truthy())
-}

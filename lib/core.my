@@ -685,3 +685,77 @@
       ;; Newton explodes bignum denominators; 8 iterations give a
       ;; usable approximation without the blow-up.
       (t (sqrt-iter (/ x 2.0) x 5)))))
+
+; abs/min/max/min-list/max-list — migrated from Rust builtins.rs to
+; lib/core.my (owner directive 2026-09-11: "Lisp owns meaning, Rust owns
+; only irreducible mechanism" — these five touch no OS/host capability,
+; just arithmetic comparison and cons-list traversal already expressible
+; in the language itself, so keeping them in Rust was Rust-authority
+; with no substrate reason, not a necessity). Real numeric semantic IDs
+; already existed for all five in lib/surface/semantic-registry.wsm
+; (abs=1004, min=1005, max=1006, min-list=1011, max-list=1012, some with
+; real Sanskrit spellings already ratified) — the Rust implementation
+; simply never consulted them (plain `define!`, not the registry-aware
+; `define_peer_builtin` path other builtins use), a second real gap this
+; migration closes alongside moving the implementation itself. First
+; nearly overwrote these real entries with a duplicate 1147-1151 block
+; before checking the registry directly — caught before committing, not
+; after.
+; Behavior verified identical to the removed Rust implementation via
+; crates/my-lisp/tests/builtin_to_lisp_migration.rs before deletion, not
+; assumed from reading the old Rust source.
+; abs/min/max/min-list/max-list — perenesheni z Rust builtins.rs u
+; lib/core.my (nastanova vlasnyka 2026-09-11: "Lisp volodiie sensom, Rust
+; volodiie lyshe nezvidnym mekhanizmom") — ni odyn iz piaty ne torkaietsia
+; OS/host-mozhlyvosti, lyshe aryfmetychne porivniannia ta obkhid cons-spysku,
+; vzhe vyrazhuvani samoiu movoiu.
+(def abs
+  (lambda (x)
+    (cond
+      ((< x 0) (- x))
+      (t x))))
+
+; Required first parameter (dotted lambda-list, same pattern as
+; `<=`/`>=` above) keeps zero arguments an Arity error via the
+; evaluator's own lambda-binding check -- matching the removed Rust
+; builtin's explicit "min/max expects at least one argument" error --
+; without this Lisp definition needing to raise a custom error itself.
+(def min
+  (lambda (first . rest)
+    (min-list (cons first rest))))
+
+(def max
+  (lambda (first . rest)
+    (max-list (cons first rest))))
+
+; Two real bugs found live via oracle testing before this landed, not
+; assumed from reading the removed Rust source:
+; 1. `eq`, not `equal?`, requires both operands to be atoms and errors
+;    on a non-empty list -- the first draft used `(eq items (quote ()))`
+;    and crashed on every non-base recursive call.
+; 2. `atom` is *not* a safe "is this the empty-list sentinel" check for
+;    the RECURSIVE RESULT specifically: numbers are atoms too, so
+;    `(atom rest-min)` was true both for the real empty-list case and
+;    for an ordinary numeric answer, collapsing them and always taking
+;    the base-case branch. `items` itself is safe to test with `atom`
+;    (it's always a list or (), never itself a bare number), but the
+;    accumulator must use structural `equal?` against `(quote ())`.
+(def min-list
+  (lambda (items)
+    (cond
+      ((atom items) (quote ()))
+      (t (let ((rest-min (min-list (cdr items))))
+           (cond
+             ((equal? rest-min (quote ())) (car items))
+             ((< (car items) rest-min) (car items))
+             (t rest-min)))))))
+
+(def max-list
+  (lambda (items)
+    (cond
+      ((atom items) (quote ()))
+      (t (let ((rest-max (max-list (cdr items))))
+           (cond
+             ((equal? rest-max (quote ())) (car items))
+             ((> (car items) rest-max) (car items))
+             (t rest-max)))))))

@@ -165,69 +165,14 @@ pub(crate) fn install(environment: &Environment) {
         Ok(Value::truth(args[0].is_atom()))
     });
 
-    define!(environment, "abs", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("abs", args, 1, span)?;
-        Ok(match &args[0] {
-            Value::Number(f, e) => Value::Number(if *f < 0.0 { -*f } else { *f }, *e),
-            Value::Rational(r) => {
-                if r.is_negative() { Value::Rational(-r.clone()) } else { Value::Rational(r.clone()) }
-            }
-            other => other.clone(),
-        })
-    });
-
-    define!(environment, "min-list", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("min-list", args, 1, span)?;
-        let mut items = Vec::new();
-        let mut cur = args[0].clone();
-        while let Value::Pair(h, t) = &cur {
-            items.push((**h).clone());
-            cur = (**t).clone();
-        }
-        if items.is_empty() { return Ok(Value::Nil); }
-        let mut best = items[0].clone();
-        for item in &items[1..] {
-            if super::arithmetic::order_pair("<", item, &best, span)? { best = item.clone(); }
-        }
-        Ok(best)
-    });
-    define!(environment, "max-list", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("max-list", args, 1, span)?;
-        let mut items = Vec::new();
-        let mut cur = args[0].clone();
-        while let Value::Pair(h, t) = &cur {
-            items.push((**h).clone());
-            cur = (**t).clone();
-        }
-        if items.is_empty() { return Ok(Value::Nil); }
-        let mut best = items[0].clone();
-        for item in &items[1..] {
-            if super::arithmetic::order_pair(">", item, &best, span)? { best = item.clone(); }
-        }
-        Ok(best)
-    });
-    define!(environment, "min", |args: &[Value], _env: &Environment, span: Span| {
-        if args.is_empty() {
-            return Err(crate::LanguageError::new(crate::ErrorKind::Arity,
-                "min expects at least one argument · min ochikuie shchonaimenshe odyn arhument · min erwartet mindestens ein Argument", span));
-        }
-        let mut best = args[0].clone();
-        for v in &args[1..] {
-            if super::arithmetic::order_pair("<", v, &best, span)? { best = v.clone(); }
-        }
-        Ok(best)
-    });
-    define!(environment, "max", |args: &[Value], _env: &Environment, span: Span| {
-        if args.is_empty() {
-            return Err(crate::LanguageError::new(crate::ErrorKind::Arity,
-                "max expects at least one argument · max ochikuie shchonaimenshe odyn arhument · max erwartet mindestens ein Argument", span));
-        }
-        let mut best = args[0].clone();
-        for v in &args[1..] {
-            if super::arithmetic::order_pair(">", v, &best, span)? { best = v.clone(); }
-        }
-        Ok(best)
-    });
+    // abs/min-list/max-list/min/max migrated to lib/core.my (owner
+    // directive 2026-09-11: "Lisp owns meaning, Rust owns only
+    // irreducible mechanism" -- none of the five touch OS/host
+    // capability). See lib/core.my's own comment at the definitions for
+    // the real bugs (eq-on-non-atom, atom-vs-equal? sentinel confusion)
+    // found and fixed during migration, and
+    // docs/BUILTIN-IDENTITY-MIGRATION-MAP-2026-09-11.md for the wider
+    // migration this is the first vertical slice of.
 
     define!(environment, "make-vector", |args: &[Value], _env: &Environment, span: Span| {
         exact_args("make-vector", args, 1, span)?;
