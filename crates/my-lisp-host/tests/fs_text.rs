@@ -3,7 +3,7 @@ use my_lisp::{
 };
 use std::{
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -15,7 +15,7 @@ fn unique_path(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!("my-lisp-{label}-{}-{nonce}", std::process::id()))
 }
 
-fn lisp_path(path: &PathBuf) -> String {
+fn lisp_path(path: &Path) -> String {
     path.to_str()
         .expect("test path must be utf-8")
         .replace('\\', "/")
@@ -100,7 +100,9 @@ fn read_file_rejects_invalid_utf8_without_lossy_replacement() {
     fs::write(&path, [0xFFu8]).unwrap();
 
     let source = format!(r#"(read-file "{}")"#, lisp_path(&path));
-    let result = eval_program(&source, &mut session).expect("invalid UTF-8 must be a language-level rejection value, not a Rust panic/error");
+    let result = eval_program(&source, &mut session).expect(
+        "invalid UTF-8 must be a language-level rejection value, not a Rust panic/error",
+    );
     assert_eq!(result.value.to_string(), "(rejected invalid-utf8)");
 
     fs::remove_file(&path).ok();
