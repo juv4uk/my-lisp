@@ -108,6 +108,11 @@ pub const PROCESS_LIBRARY_SOURCE: &str = include_str!("../../../lib/process.my")
 /// `tcp-read` by applying the shared UTF-8 semantics.
 pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
 
+/// File text interpretation owned by Lisp. The host contributes only raw
+/// bytes through `read-file-bytes`/`write-file-bytes`; this layer defines
+/// public `read-file`/`write-file` by applying the shared UTF-8 semantics.
+pub const FS_LIBRARY_SOURCE: &str = include_str!("../../../lib/fs.my");
+
 /// Install the one primitive macro-construction mechanism required by the
 /// language-owned macro layer, evaluate the Lisp derivation exactly once, and
 /// bind every stable or compatibility-only spelling admitted for semantic
@@ -193,6 +198,15 @@ pub fn load_process_library(session: &mut Session) -> Result<EvalResult, Languag
 pub fn load_tcp_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     eval_program(UTF8_LIBRARY_SOURCE, session)?;
     eval_program(TCP_LIBRARY_SOURCE, session)
+}
+
+/// Load language-owned file text semantics: public `read-file`/`write-file`
+/// composed entirely on the existing `read-file-bytes`/`write-file-bytes` raw
+/// host capabilities plus the shared UTF-8 layer. No new host capability is
+/// introduced for this migration.
+pub fn load_fs_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
+    eval_program(UTF8_LIBRARY_SOURCE, session)?;
+    eval_program(FS_LIBRARY_SOURCE, session)
 }
 
 /// Public Contract 6.0 classification hook for tooling and embedders.

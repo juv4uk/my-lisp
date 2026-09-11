@@ -1,7 +1,8 @@
 use my_lisp::{eval_program, Session};
 use std::fs;
 
-/// `read-file` is a host capability; installed here via the dev-dependency.
+/// `read-file` is language-owned (lib/fs.my) over the host's
+/// `read-file-bytes`; installed here via the dev-dependency plus fs.my.
 fn install_read_capability() {
     my_lisp_host::install();
 }
@@ -14,6 +15,10 @@ fn linter_gate() {
     // Evaluate the libraries directly to load them into the environment
     let core_src = fs::read_to_string("../../lib/core.my").unwrap();
     eval_program(&core_src, &mut session).unwrap();
+    let utf8_src = fs::read_to_string("../../lib/utf8.my").unwrap();
+    eval_program(&utf8_src, &mut session).unwrap();
+    let fs_src = fs::read_to_string("../../lib/fs.my").unwrap();
+    eval_program(&fs_src, &mut session).unwrap();
     let linter_src = fs::read_to_string("../../lib/linter.my").unwrap();
     eval_program(&linter_src, &mut session).unwrap();
 

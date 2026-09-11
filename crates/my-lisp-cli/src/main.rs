@@ -190,6 +190,17 @@ fn main() {
         process::exit(1);
     }
 
+    // File text policy is language-owned the same way: the host now exposes
+    // only `read-file-bytes`/`write-file-bytes`, deletion-audit follow-up
+    // 2026-09-12 (FS-CAPABILITY-UTF8-POLICY-MIGRATION).
+    if let Err(e) = my_lisp::load_fs_library(&mut session) {
+        eprintln!(
+            "Error loading fs.my: {}",
+            e.render(my_lisp::FS_LIBRARY_SOURCE)
+        );
+        process::exit(1);
+    }
+
     // Text form stays in scope for downstream consumers (tcp repl seed,
     // --lint path) without re-reading the file.
     #[allow(unused_variables)]
@@ -203,11 +214,12 @@ fn main() {
     let sexpr_bootstrap_lib: &'static str = SEXPR_BOOTSTRAP
         .get_or_init(|| {
             format!(
-                "{}\n{}\n{}\n{}",
+                "{}\n{}\n{}\n{}\n{}",
                 CORE_SRC,
                 my_lisp::TIME_LIBRARY_SOURCE,
                 my_lisp::UTF8_LIBRARY_SOURCE,
-                my_lisp::PROCESS_LIBRARY_SOURCE
+                my_lisp::PROCESS_LIBRARY_SOURCE,
+                my_lisp::FS_LIBRARY_SOURCE
             )
         })
         .as_str();

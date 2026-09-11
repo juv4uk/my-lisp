@@ -1,9 +1,11 @@
 use my_lisp::{eval_program, Session};
 
-/// `load`/`read-file`/`write-file` are host capabilities; this suite
-/// installs them (via the dev-dependency on my-lisp-host) because
-/// load-knowledge / import-knowledge-file / write-knowledge-package use
-/// them, while what the suite itself tests is knowledge semantics.
+/// `load` is a host capability; `read-file`/`write-file` are language-owned
+/// (lib/fs.my) over the host's `read-file-bytes`/`write-file-bytes`. This
+/// suite installs the host (via the dev-dependency on my-lisp-host) and
+/// loads fs.my because load-knowledge / import-knowledge-file /
+/// write-knowledge-package use them, while what the suite itself tests is
+/// knowledge semantics.
 fn install_file_capabilities() {
     my_lisp_host::install();
 }
@@ -12,6 +14,8 @@ fn eval_knowledge(source: &str) -> String {
     install_file_capabilities();
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/utf8.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/fs.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();

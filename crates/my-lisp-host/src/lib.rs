@@ -87,25 +87,6 @@ fn ensure_fs_write_allowed(
     Ok(())
 }
 
-fn evaluate_read_file(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("read-file", arguments, 1, span)?;
-    let evaluated = eval_expr(&arguments[0], environment)?;
-    let Value::String(ref path) = evaluated else {
-        return Err(LanguageError::new(
-            ErrorKind::Type,
-            "read-file expects a string path · read-file ochikuie riadok-shliakh · read-file erwartet einen String-Pfad",
-            span,
-        ));
-    };
-    ensure_fs_read_allowed(environment, "read-file", path, span)?;
-    let contents = read_file(path, span)?;
-    Ok(Value::String(Rc::from(contents.as_str())))
-}
-
 fn evaluate_read_dir(
     arguments: &[Expr],
     environment: &Environment,
@@ -127,33 +108,6 @@ fn evaluate_read_dir(
             .into_iter()
             .map(|name| Value::String(Rc::from(name))),
     ))
-}
-
-fn evaluate_write_file(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    exact_arity("write-file", arguments, 2, span)?;
-    let path_value = eval_expr(&arguments[0], environment)?;
-    let Value::String(ref path) = path_value else {
-        return Err(LanguageError::new(
-            ErrorKind::Type,
-            "write-file expects a string path · write-file ochikuie riadok-shliakh · write-file erwartet einen String-Pfad",
-            span,
-        ));
-    };
-    let content_value = eval_expr(&arguments[1], environment)?;
-    let Value::String(ref content) = content_value else {
-        return Err(LanguageError::new(
-            ErrorKind::Type,
-            "write-file expects a string as its second argument · write-file ochikuie riadok druhym arhumentom · write-file erwartet eine Zeichenkette als zweites Argument",
-            span,
-        ));
-    };
-    ensure_fs_write_allowed(environment, "write-file", path, span)?;
-    write_file(path, content, span)?;
-    Ok(content_value)
 }
 
 fn evaluate_write_file_bytes(
@@ -271,26 +225,6 @@ fn expect_tcp_byte_list(value: &Value, span: Span) -> Result<Vec<u8>, LanguageEr
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn read_file(path: &str, span: Span) -> Result<String, LanguageError> {
-    std::fs::read_to_string(path).map_err(|error| {
-        LanguageError::new(
-            ErrorKind::InvalidForm,
-            format!("read-file: failed to read file {path}: {error}"),
-            span,
-        )
-    })
-}
-
-#[cfg(target_arch = "wasm32")]
-pub(crate) fn read_file(_path: &str, span: Span) -> Result<String, LanguageError> {
-    Err(LanguageError::new(
-        ErrorKind::InvalidForm,
-        "read-file: file system access is not available in this build",
-        span,
-    ))
-}
-
-#[cfg(not(target_arch = "wasm32"))]
 fn read_dir(path: &str, span: Span) -> Result<Vec<String>, LanguageError> {
     let reader = std::fs::read_dir(path).map_err(|error| {
         LanguageError::new(
@@ -320,26 +254,6 @@ fn read_dir(_path: &str, span: Span) -> Result<Vec<String>, LanguageError> {
     Err(LanguageError::new(
         ErrorKind::InvalidForm,
         "read-dir: file system access is not available in this build",
-        span,
-    ))
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn write_file(path: &str, content: &str, span: Span) -> Result<(), LanguageError> {
-    std::fs::write(path, content).map_err(|error| {
-        LanguageError::new(
-            ErrorKind::InvalidForm,
-            format!("write-file: failed to write file {path}: {error}"),
-            span,
-        )
-    })
-}
-
-#[cfg(target_arch = "wasm32")]
-fn write_file(_path: &str, _content: &str, span: Span) -> Result<(), LanguageError> {
-    Err(LanguageError::new(
-        ErrorKind::InvalidForm,
-        "write-file: file system access is not available in this build",
         span,
     ))
 }
@@ -668,10 +582,8 @@ fn evaluate_load(
 }
 
 pub fn install() {
-    register_capability("read-file", evaluate_read_file);
     register_capability("read-dir", evaluate_read_dir);
     register_capability("read-file-bytes", evaluate_read_file_bytes);
-    register_capability("write-file", evaluate_write_file);
     register_capability("write-file-bytes", evaluate_write_file_bytes);
     register_capability("process-run-raw", process_raw::evaluate_process_run_raw);
     register_capability("load", evaluate_load);
@@ -690,10 +602,8 @@ mod install_tests {
         super::install();
         let installed = my_lisp::installed_capabilities();
         for name in [
-            "read-file",
             "read-dir",
             "read-file-bytes",
-            "write-file",
             "write-file-bytes",
             "process-run-raw",
             "load",

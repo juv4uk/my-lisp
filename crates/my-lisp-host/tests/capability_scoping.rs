@@ -1,4 +1,4 @@
-use my_lisp::{eval_program, Environment, ErrorKind, Session};
+use my_lisp::{eval_program, load_core_library, load_fs_library, Environment, ErrorKind, Session};
 use my_lisp_host::install;
 use std::{
     fs,
@@ -25,7 +25,14 @@ fn lisp_path(path: &Path) -> String {
 
 fn session(environment: Environment) -> Session {
     install();
-    Session { environment }
+    let mut session = Session { environment };
+    // `read-file`/`write-file` are now language-owned (lib/fs.my) over the
+    // raw `read-file-bytes`/`write-file-bytes` host capabilities; every test
+    // in this file needs them resolvable, mirroring load_process_library's
+    // use in the process/tcp scoping tests.
+    load_core_library(&mut session).expect("core library must load for scoping tests");
+    load_fs_library(&mut session).expect("fs library must load for scoping tests");
+    session
 }
 
 fn assert_scope_denied(error: my_lisp::LanguageError, operation: &str) {
