@@ -21,7 +21,9 @@
 //! runner needs the same two facts (`expected`, and its own
 //! `<backend>-gap` tag if it wants one) and nothing else from this file.
 
-use my_lisp::{eval_program, load_core_library, load_meta_evaluator_library, parse, Expr, ExprKind, Session};
+use my_lisp::{
+    eval_program, load_core_library, load_meta_evaluator_library, parse, Expr, ExprKind, Session,
+};
 
 struct CompilerCorpusFixture {
     expr: String,
@@ -117,7 +119,11 @@ enum FixtureOutcome {
     Mismatch(String),
 }
 
-fn check_backend(fixture: &CompilerCorpusFixture, result: &Result<String, String>, gap_excused: bool) -> FixtureOutcome {
+fn check_backend(
+    fixture: &CompilerCorpusFixture,
+    result: &Result<String, String>,
+    gap_excused: bool,
+) -> FixtureOutcome {
     match result {
         Ok(value) if *value == fixture.expected => FixtureOutcome::Match,
         _ if gap_excused => FixtureOutcome::ExcusedMiss,
@@ -151,13 +157,17 @@ fn compiler_corpus_dual_backend_parity_report() {
     let mut meta_eval_excused_gaps = Vec::new();
 
     for fixture in &fixtures {
-        match check_backend(&fixture, &eval_native(&fixture.expr), false) {
+        match check_backend(fixture, &eval_native(&fixture.expr), false) {
             FixtureOutcome::Match => {}
             FixtureOutcome::ExcusedMiss => unreachable!("native is never excused"),
             FixtureOutcome::Mismatch(detail) => native_failures.push(detail),
         }
 
-        match check_backend(&fixture, &eval_via_meta_eval(&fixture.expr), fixture.meta_eval_gap) {
+        match check_backend(
+            fixture,
+            &eval_via_meta_eval(&fixture.expr),
+            fixture.meta_eval_gap,
+        ) {
             FixtureOutcome::Match => meta_eval_covered += 1,
             FixtureOutcome::ExcusedMiss => meta_eval_excused_gaps.push(fixture.expr.clone()),
             FixtureOutcome::Mismatch(detail) => meta_eval_failures.push(detail),
