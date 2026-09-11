@@ -4,14 +4,21 @@
 //! registry. Public `process-run` is now a Lisp wrapper over `process-run-raw`.
 
 use my_lisp::{
-    eval_program, load_core_library, load_process_library, Environment, ErrorKind, Exactness,
-    Session, Value,
+    eval_program, load_core_library, load_fs_library, load_process_library, Environment,
+    ErrorKind, Exactness, Session, Value,
 };
 use my_lisp_host::install;
 
 fn capability_session() -> Session {
     install();
-    Session::default()
+    let mut session = Session::default();
+    // `read-file`/`write-file` are language-owned (lib/fs.my) over the
+    // host's `read-file-bytes`/`write-file-bytes`; load core (for the
+    // macro substrate lib/fs.my's `let`/`cond` need) and fs.my so the two
+    // public names resolve instead of raising UnknownSymbol.
+    load_core_library(&mut session).unwrap();
+    load_fs_library(&mut session).unwrap();
+    session
 }
 
 fn process_session(environment: Environment) -> Session {
@@ -87,7 +94,7 @@ fn write_file_overwrites_rather_than_appends() {
 
 #[test]
 fn write_file_rejects_a_non_string_path() {
-    let error = eval_program(r#"(write-file 42 "x")"#, &mut Session::default())
+    let error = eval_program(r#"(write-file 42 "x")"#, &mut capability_session())
         .expect_err("a non-string path must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
 }
@@ -96,7 +103,7 @@ fn write_file_rejects_a_non_string_path() {
 fn write_file_rejects_a_non_string_content_argument() {
     let error = eval_program(
         r#"(write-file "path-does-not-matter-here.txt" 42)"#,
-        &mut Session::default(),
+        &mut capability_session(),
     )
     .expect_err("a non-string content argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Type);
@@ -104,7 +111,7 @@ fn write_file_rejects_a_non_string_content_argument() {
 
 #[test]
 fn write_file_wrong_arity_is_an_arity_error() {
-    let error = eval_program(r#"(write-file "only-a-path.txt")"#, &mut Session::default())
+    let error = eval_program(r#"(write-file "only-a-path.txt")"#, &mut capability_session())
         .expect_err("write-file with one argument must fail named, not panic");
     assert_eq!(error.kind, ErrorKind::Arity);
 }
