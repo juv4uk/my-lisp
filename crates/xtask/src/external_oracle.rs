@@ -31,7 +31,7 @@ fn translate_source(source: &str) -> Result<String, Unsupported> {
 
 fn translate_expr(expr: &Expr) -> Result<String, Unsupported> {
     match &expr.kind {
-        ExprKind::Number(number, Exactness::Inexact) => {
+        ExprKind::Number(_number, Exactness::Inexact) => {
             Err(Unsupported::new("external-oracle/inexact-number"))
         }
         ExprKind::Number(number, Exactness::Exact) => {
