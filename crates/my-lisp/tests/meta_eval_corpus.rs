@@ -106,13 +106,55 @@ fn eval_via_meta(session: &mut Session, expr: &str) -> Result<String, String> {
         .map_err(|e| format!("{:?}", e.kind))
 }
 
+/// A crude but honest classifier: does this fixture's `expr` invoke `head`
+/// as its outermost form? Good enough to prove semantic-class coverage
+/// without needing a real parser here (`meta_eval_tagged_fixtures` already
+/// used `parse` to extract these as plain strings; re-parsing each one's
+/// head symbol would just reimplement this check less directly).
+fn expr_head_is(expr: &str, head: &str) -> bool {
+    expr.trim_start()
+        .strip_prefix('(')
+        .and_then(|rest| rest.split(|c: char| c.is_whitespace() || c == ')').next())
+        == Some(head)
+}
+
+/// Replaces a bare `fixtures.len() >= 25` floor (TEST-ARCHITECTURE-1
+/// follow-up, 2026-09-12): a count catches no real mutation -- ten
+/// important fixtures could lose their tag while ten trivial ones gain it,
+/// and this would stay green. Instead this asserts the tagged set actually
+/// covers every McCarthy-7/Canon-0 semantic class (the classes
+/// `docs/COMPILER-ORACLE-CORPUS.md` and this file's own doc comment name as
+/// the self-hosting migration's baseline scope) plus at least one
+/// lambda-application/compound case, so losing coverage of any of those
+/// classes fails this test regardless of how many other fixtures remain
+/// tagged.
 #[test]
-fn at_least_the_original_twenty_five_hand_picked_expressions_are_tagged() {
+fn meta_eval_tagged_set_covers_every_mccarthy_seven_class_plus_application() {
     let fixtures = meta_eval_tagged_fixtures();
     assert!(
-        fixtures.len() >= 25,
-        "expected at least 25 (meta-eval . t)-tagged fixtures in conformance.my, found {}",
-        fixtures.len()
+        !fixtures.is_empty(),
+        "no (meta-eval . t)-tagged fixtures found in conformance.my"
+    );
+
+    let required_heads = [
+        "quote", "atom", "eq", "car", "cdr", "cons", "cond",
+    ];
+    for head in required_heads {
+        assert!(
+            fixtures.iter().any(|(expr, _, _)| expr_head_is(expr, head)),
+            "no (meta-eval . t)-tagged fixture exercises the McCarthy-7/Canon-0 \
+             `{head}` form -- self-hosting coverage regressed for this semantic class"
+        );
+    }
+
+    assert!(
+        fixtures
+            .iter()
+            .any(|(expr, _, _)| expr.trim_start().starts_with("((lambda")),
+        "no (meta-eval . t)-tagged fixture applies a lambda (an expression \
+         shaped like `((lambda ...) ...)`) -- the tagged set only proves \
+         primitive-form coverage, not compound evaluation (application, \
+         parameter binding)"
     );
 }
 
@@ -165,8 +207,8 @@ fn my_eval_matches_corpus_expected_on_every_meta_eval_tagged_fixture() {
     for (expr, expected, error) in meta_eval_tagged_fixtures() {
         if error.is_some() {
             // my-eval does not yet reproduce native named failures for the
-            // currently-tagged fixtures (none of the 25 original in-scope
-            // expressions are error fixtures) — nothing to assert here yet.
+            // currently-tagged fixtures (none of them are error fixtures
+            // today) — nothing to assert here yet.
             // If an error fixture is ever tagged, this branch must be
             // implemented against my-eval's own structured error shape
             // (see meta_eval_errors.rs) rather than skipped silently.
