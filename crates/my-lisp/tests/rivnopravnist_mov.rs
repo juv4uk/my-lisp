@@ -3,8 +3,6 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 const РЕЄСТР: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
-const УКРАЇНСЬКА_ПОВЕРХНЯ: &str = include_str!("../../../lib/surface/uk.my");
-const САНСКРИТСЬКА_ПОВЕРХНЯ: &str = include_str!("../../../lib/surface/sa.my");
 const REPL_КАТАЛОГ: &str = include_str!("../../my-lisp-cli/src/repl/surface_catalog.rs");
 const ПЕРЕВІРКА_ПОКРИТТЯ: &str = include_str!("../../../scripts/check_surface_coverage.py");
 const ПЕРЕВІРКА_РІВНОПРАВЯ: &str = include_str!("../../../scripts/check_trilingual_surface.py");
@@ -145,6 +143,9 @@ fn семантичні_ідентифікатори_складаються_ті
         );
         assert!(побачені.insert(ідентифікатор), "дубль ID {ідентифікатор}");
     }
+    // Intentional floor, not a restated fact: the registry only grows, so an
+    // exact count would silently rot. 140 is the stable-UK-surface size at
+    // the time this floor was written (TEST-ARCHITECTURE-1 step 2).
     assert!(побачені.len() >= 140, "numeric authority має покривати весь public surface");
 }
 
@@ -205,43 +206,18 @@ fn додавання_відділяє_людські_мови_від_спіль
     }
 }
 
-#[test]
-fn затінення_ordinary_peer_name_не_переналаштовує_інші() {
-    for (затінена, перша, друга) in [
-        ("додати", "+", "yoga"),
-        ("+", "додати", "yoga"),
-        ("yoga", "додати", "+"),
-    ] {
-        let mut сесія = Session::default();
-        eval_program(
-            &format!("(define {затінена} (lambda (a b) (quote затінено)))"),
-            &mut сесія,
-        )
-        .expect("ordinary spelling має лишатися shadowable");
-        assert_eq!(
-            eval_program(&format!("({затінена} 1 2)"), &mut сесія)
-                .unwrap()
-                .value
-                .to_string(),
-            "затінено"
-        );
-        for сусід in [перша, друга] {
-            assert_eq!(
-                eval_program(&format!("({сусід} 1 2)"), &mut сесія)
-                    .unwrap()
-                    .value
-                    .to_string(),
-                "3"
-            );
-        }
-    }
-}
-
-#[test]
-fn surface_files_не_будують_peer_names_через_англійську() {
-    assert!(!УКРАЇНСЬКА_ПОВЕРХНЯ.contains("(define додати +)"));
-    assert!(!САНСКРИТСЬКА_ПОВЕРХНЯ.contains("(define yoga +)"));
-}
+// `затінення_ordinary_peer_name_не_переналаштовує_інші` (shadowing одного
+// admitted 0104 peer не має зачіпати інші) та
+// `surface_files_не_будують_peer_names_через_англійську` (surface-файли не
+// повинні будувати peer через `(define додати +)`/`(define yoga +)`) were
+// removed here (TEST-ARCHITECTURE-1 step 2, triplicated-shadow-isolation
+// consolidation): both mutations are already killed by
+// `peer_surface_identity.rs`'s registry-driven
+// `shadowing_one_admitted_add_surface_does_not_retarget_its_peers` and
+// `human_surface_files_do_not_redefine_admitted_add_peers`, which cover the
+// same semantic ID (0104) generically over every admitted surface instead
+// of a hardcoded three-name list, and the second is strictly stronger
+// (rejects `(define додати <anything>)`, not just the `+`-specific alias).
 
 #[test]
 fn executable_authority_більше_не_читає_legacy_en_shaped_таблицю() {

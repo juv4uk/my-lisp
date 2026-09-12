@@ -49,8 +49,16 @@ fn vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku() {
     let coverage = stable_pairs();
     let docs = documented();
 
-    assert_eq!(coverage.len(), 140, "stable UK-покриття змінилося");
-    assert_eq!(docs.len(), 140, "довідник мусить мати рівно 140 записів");
+    // Floor, not exact count: the registry only grows, so restating an exact
+    // literal here would silently rot. The real invariant is the set-equality
+    // check below (registry stable-UK rows == documented rows); this floor
+    // only guards against both sides degenerating to (an agreeing) near-empty
+    // set.
+    assert!(
+        coverage.len() > 50,
+        "expected a substantial number of stable UK-covered names, found {}",
+        coverage.len()
+    );
     assert_eq!(
         coverage,
         docs.keys().cloned().collect::<BTreeSet<_>>(),
@@ -88,7 +96,9 @@ fn znak_pytannia_tochno_vidpovidaie_predykatam() {
         );
         predicates += usize::from(predicate);
     }
-    assert_eq!(predicates, 30, "змінився каталог публічних предикатів");
+    // Floor, not exact count: derived only as an anti-vacuousness guard so
+    // this loop can't silently pass by iterating zero predicates.
+    assert!(predicates > 10, "публічний каталог предикатів схлопнувся: {predicates}");
 }
 
 #[test]
@@ -103,7 +113,10 @@ fn znak_oklyku_tochno_vidpovidaie_mutatsii() {
             assert_eq!(uk, "встановити-елемент-вектора!");
         }
     }
-    assert_eq!(mutations, 1, "публічний каталог мутацій змінився");
+    // Floor, not exact count: today's single known mutation name is checked
+    // above by exact value; this only guards against the mutation-kind loop
+    // being silently skipped entirely.
+    assert!(mutations >= 1, "публічний каталог мутацій схлопнувся");
 }
 
 #[test]
@@ -173,17 +186,45 @@ fn novi_predykatni_nazvy_i_stari_aliasy_vykonuiutsia_odnakovo() {
     }
 }
 
+/// Parse `(tag N)` out of NAME_AUDIT's summary header, e.g.
+/// `(stable-reviewed 140)` -> `("stable-reviewed", 140)`.
+fn name_audit_summary_count(tag: &str) -> usize {
+    NAME_AUDIT
+        .lines()
+        .find_map(|line| {
+            let line = line.trim();
+            let rest = line.strip_prefix(&format!("({tag} "))?;
+            rest.trim_end_matches(')').parse::<usize>().ok()
+        })
+        .unwrap_or_else(|| panic!("NAME_AUDIT missing ({tag} N) summary line"))
+}
+
 #[test]
-fn smyslovyi_audyt_pokryvaie_vsi_140_stable_nazv() {
-    assert!(NAME_AUDIT.contains("(stable-reviewed 140)"));
-    assert!(NAME_AUDIT.contains("(renamed 42)"));
-    assert!(NAME_AUDIT.contains("(retained 98)"));
+fn smyslovyi_audyt_summary_zbihaietsia_z_faktychnymy_danymy() {
+    let reviewed = name_audit_summary_count("stable-reviewed");
+    let renamed = name_audit_summary_count("renamed");
+    let retained = name_audit_summary_count("retained");
+    let actual_rename_lines = NAME_AUDIT
+        .lines()
+        .filter(|line| line.trim_start().starts_with("(rename "))
+        .count();
+
+    // Derived, not restated: the summary header must agree with the actual
+    // data below it, and with the registry's own stable-UK count -- this
+    // catches drift between the two without hardcoding either number twice.
     assert_eq!(
-        NAME_AUDIT
-            .lines()
-            .filter(|line| line.trim_start().starts_with("(rename "))
-            .count(),
-        42
+        reviewed,
+        renamed + retained,
+        "stable-reviewed мусить дорівнювати renamed+retained"
+    );
+    assert_eq!(
+        renamed, actual_rename_lines,
+        "(renamed N) розійшовся з фактичною кількістю (rename ...) рядків"
+    );
+    assert_eq!(
+        reviewed,
+        stable_pairs().len(),
+        "smyslovyi audit мусить покривати рівно stable UK-покриття реєстру"
     );
 }
 

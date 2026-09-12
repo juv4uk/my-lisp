@@ -11,6 +11,8 @@ fn виконуваний_код(джерело: &str) -> String {
         .join("\n")
 }
 
+// TODO(TEST-ARCHITECTURE-1 step 4): relocate to policy/lint tool once xtask
+// exists -- this is a keyboard/text-policy lint, not a semantic mutation test.
 #[test]
 fn україномовна_програма_приймання_не_потребує_латинської_розкладки() {
     let код = виконуваний_код(УКРАЇНСЬКА_ПРОГРАМА);
