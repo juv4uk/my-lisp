@@ -1,3 +1,36 @@
+//! Surviving, non-redundant UK/SA surface tests.
+//!
+//! TEST-ARCHITECTURE-1 step 3 removed most of this file's per-operator
+//! tests: each was a single hardcoded example of "does this UK/SA name
+//! resolve to the same runtime value as its EN counterpart", a mutation
+//! `uk_surface_equivalence.rs`'s registry-driven sweep already kills
+//! generically for every stable EN/UK pair. What remains here either (a)
+//! exercises syntax forms the identity-based sweep can't check (quote/cond
+//! aren't first-class values), (b) exercises names/mechanisms the sweep
+//! does not cover (aliases absent from the registry, or SA identity, which
+//! has no EN-comparison sweep), or (c) is the acceptance-program runner
+//! pattern the owner explicitly wants kept.
+//!
+//! Removed and why (surviving test that kills the same mutation):
+//! - uk_atom_predicates_correctly, uk_eq_compares_identity,
+//!   uk_cons_car_cdr_roundtrip, uk_abs_works, uk_min_max_work,
+//!   uk_mod_quotient_work, uk_not_works, uk_equal_works,
+//!   uk_symbol_predicate_works, uk_string_predicate_works,
+//!   uk_list_length_append_reverse, uk_ordinals_work, uk_map_works,
+//!   uk_filter_works, uk_reduce_works, uk_string_operations,
+//!   uk_and_en_produce_same_result -> all stable EN/UK pairs, killed by
+//!   `uk_surface_equivalence.rs::every_stable_uk_surface_entry_resolves_to_its_declared_operation`.
+//! - uk_subtraction_works, uk_multiplication_works, uk_division_works,
+//!   3 of 5 assertions in uk_comparisons_work (менше?/більше?/рівне?)
+//!   -> `runtime_peer_operators.rs::stable_operator_peers_exist_before_human_surface_libraries_load`
+//!   (same IDs 1001/1002/1003/1014/1015/1016, behaviorally checked there).
+//! - uk_addition_works, uk_and_sa_produce_same_result (додати/+/yoga, ID
+//!   0104) -> `rivnopravnist_mov.rs::додавання_відділяє_людські_мови_від_спільного_символу`.
+//! - sa_arithmetic_works, sa_comparisons_work, sa_and_en_produce_same_result
+//!   -> `runtime_peer_operators.rs` CASES already behaviorally check every
+//!   one of those SA spellings (viyoga/guṇana/haraṇa/hīna?/adhika?/sama?)
+//!   against their UK/symbolic peers.
+
 use my_lisp::{eval_program, load_core_library, Session};
 
 fn load_surface_prerequisites(session: &mut Session) {
@@ -35,38 +68,14 @@ fn sa_session() -> Session {
     session
 }
 
-// ── Canon 0+7: Ukrainian surface ──────────────────────────────
+// ── Syntax forms: not first-class values, so the identity-based
+//    registry sweep in uk_surface_equivalence.rs can't check them. ──
 
 #[test]
 fn uk_quote_returns_form_unevaluated() {
     let mut s = uk_session();
     let r = eval_program("(як-є (+ 1 2))", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "(+ 1 2)");
-}
-
-#[test]
-fn uk_atom_predicates_correctly() {
-    let mut s = uk_session();
-    let r = eval_program("(атом? 42)", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "t");
-    let r2 = eval_program("(атом? (сполучити 1 2))", &mut s).expect("eval");
-    assert_eq!(r2.value.to_string(), "()");
-}
-
-#[test]
-fn uk_eq_compares_identity() {
-    let mut s = uk_session();
-    let r = eval_program("(тотожне? (як-є а) (як-є а))", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "t");
-}
-
-#[test]
-fn uk_cons_car_cdr_roundtrip() {
-    let mut s = uk_session();
-    let r = eval_program("(перше (сполучити 10 20))", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "10");
-    let r2 = eval_program("(решта (сполучити 10 20))", &mut s).expect("eval");
-    assert_eq!(r2.value.to_string(), "20");
 }
 
 #[test]
@@ -82,87 +91,15 @@ fn uk_cond_branches_correctly() {
     assert_eq!(r.value.to_string(), "так");
 }
 
-// ── Arithmetic: Ukrainian surface ──────────────────────────────
+// ── Comparison aliases not covered elsewhere: не-більше?/не-менше? have
+//    no spelled-out EN name in the registry (EN column is "missing"), so
+//    they fall outside both the equivalence sweep and runtime_peer_operators'
+//    CASES table. менше?/більше?/рівне? are covered by
+//    runtime_peer_operators.rs and were dropped from this test. ──
 
 #[test]
-fn uk_addition_works() {
+fn uk_le_ge_comparisons_work() {
     let mut s = uk_session();
-    let r = eval_program("(додати 1 2 3)", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "6");
-}
-
-#[test]
-fn uk_subtraction_works() {
-    let mut s = uk_session();
-    let r = eval_program("(відняти 10 3)", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "7");
-}
-
-#[test]
-fn uk_multiplication_works() {
-    let mut s = uk_session();
-    let r = eval_program("(помножити 2 3 4)", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "24");
-}
-
-#[test]
-fn uk_division_works() {
-    let mut s = uk_session();
-    let r = eval_program("(поділити 6 2)", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "3");
-}
-
-#[test]
-fn uk_abs_works() {
-    let mut s = uk_session();
-    let r = eval_program("(модуль -5)", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "5");
-}
-
-#[test]
-fn uk_min_max_work() {
-    let mut s = uk_session();
-    let r = eval_program("(найменше 3 1 2)", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "1");
-    let r2 = eval_program("(найбільше 3 1 2)", &mut s).expect("eval");
-    assert_eq!(r2.value.to_string(), "3");
-}
-
-#[test]
-fn uk_mod_quotient_work() {
-    let mut s = uk_session();
-    let r = eval_program("(остача 7 3)", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "1");
-    let r2 = eval_program("(частка 7 3)", &mut s).expect("eval");
-    assert_eq!(r2.value.to_string(), "2");
-}
-
-// ── Comparisons: Ukrainian surface ─────────────────────────────
-
-#[test]
-fn uk_comparisons_work() {
-    let mut s = uk_session();
-    assert_eq!(
-        eval_program("(менше? 1 2)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "t"
-    );
-    assert_eq!(
-        eval_program("(більше? 2 1)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "t"
-    );
-    assert_eq!(
-        eval_program("(рівне? 3 3)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "t"
-    );
     assert_eq!(
         eval_program("(не-більше? 2 3)", &mut s)
             .unwrap()
@@ -179,65 +116,12 @@ fn uk_comparisons_work() {
     );
 }
 
-// ── Predicates: Ukrainian surface ──────────────────────────────
+// ── Aliases absent from semantic-registry.wsm (за-номером/містить? are
+//    plain `(define ... )` aliases in uk.my, not registry-tracked rows),
+//    so no registry-driven sweep sees them. ──
 
 #[test]
-fn uk_not_works() {
-    let mut s = uk_session();
-    assert_eq!(
-        eval_program("(хибне? (як-є t))", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "()"
-    );
-    assert_eq!(
-        eval_program("(хибне? (як-є ()))", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "t"
-    );
-}
-
-#[test]
-fn uk_equal_works() {
-    let mut s = uk_session();
-    let r = eval_program("(однакові? (список 1 2) (список 1 2))", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "t");
-}
-
-#[test]
-fn uk_symbol_predicate_works() {
-    let mut s = uk_session();
-    let r = eval_program("(символ? (як-є кіт))", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "t");
-}
-
-#[test]
-fn uk_string_predicate_works() {
-    let mut s = uk_session();
-    let r = eval_program(r#"(текст? "привіт")"#, &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "t");
-}
-
-// ── Lists: Ukrainian surface ───────────────────────────────────
-
-#[test]
-fn uk_list_length_append_reverse() {
-    let mut s = uk_session();
-    let r = eval_program("(список 1 2 3)", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "(1 2 3)");
-    let r2 = eval_program("(довжина (список 1 2 3))", &mut s).expect("eval");
-    assert_eq!(r2.value.to_string(), "3");
-    let r3 = eval_program("(приєднати (список 1 2) (список 3 4))", &mut s).expect("eval");
-    assert_eq!(r3.value.to_string(), "(1 2 3 4)");
-    let r4 = eval_program("(зворот (список 1 2 3))", &mut s).expect("eval");
-    assert_eq!(r4.value.to_string(), "(3 2 1)");
-}
-
-#[test]
-fn uk_nth_member_assoc() {
+fn uk_legacy_nth_member_aliases_work() {
     let mut s = uk_session();
     let r = eval_program("(за-номером 1 (список 10 20 30))", &mut s).expect("eval");
     assert_eq!(r.value.to_string(), "20");
@@ -245,73 +129,11 @@ fn uk_nth_member_assoc() {
     assert_eq!(r2.value.to_string(), "t");
 }
 
-#[test]
-fn uk_ordinals_work() {
-    let mut s = uk_session();
-    let r = eval_program("(друге (список 1 2 3 4 5))", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "2");
-    let r2 = eval_program("(третє (список 1 2 3 4 5))", &mut s).expect("eval");
-    assert_eq!(r2.value.to_string(), "3");
-    let r3 = eval_program("(п'яте (список 1 2 3 4 5))", &mut s).expect("eval");
-    assert_eq!(r3.value.to_string(), "5");
-}
-
-// ── Higher-order: Ukrainian surface ────────────────────────────
-
-#[test]
-fn uk_map_works() {
-    let mut s = uk_session();
-    let r = eval_program(
-        "(відобразити (функція (x) (помножити x 2)) (список 1 2 3))",
-        &mut s,
-    )
-    .expect("eval");
-    assert_eq!(r.value.to_string(), "(2 4 6)");
-}
-
-#[test]
-fn uk_filter_works() {
-    let mut s = uk_session();
-    let r = eval_program(
-        "(відсіяти (функція (x) (менше? x 3)) (список 1 2 3 4))",
-        &mut s,
-    )
-    .expect("eval");
-    assert_eq!(r.value.to_string(), "(1 2)");
-}
-
-#[test]
-fn uk_reduce_works() {
-    let mut s = uk_session();
-    let r = eval_program("(згорнути додати 0 (список 1 2 3 4))", &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "10");
-}
-
-// ── Strings: Ukrainian surface ─────────────────────────────────
-
-#[test]
-fn uk_string_operations() {
-    let mut s = uk_session();
-    let r = eval_program(r#"(довжина-тексту "привіт")"#, &mut s).expect("eval");
-    assert_eq!(r.value.to_string(), "6");
-    let r2 = eval_program(r#"(текст-порожній? "")"#, &mut s).expect("eval");
-    assert_eq!(r2.value.to_string(), "t");
-    let r3 = eval_program(r#"(зчепити "abc" "def")"#, &mut s).expect("eval");
-    assert_eq!(r3.value.to_string(), "\"abcdef\"");
-}
-
-// ── Ukrainian + English coexistence ────────────────────────────
-
-#[test]
-fn uk_and_en_produce_same_result() {
-    let mut s = uk_session();
-    let uk_r = eval_program("(додати (помножити 3 4) (відняти 10 3))", &mut s).expect("eval");
-    let en_r = eval_program("(+ (* 3 4) (- 10 3))", &mut s).expect("eval");
-    assert_eq!(uk_r.value.to_string(), en_r.value.to_string());
-    assert_eq!(uk_r.value.to_string(), "19");
-}
-
-// ── Sanskrit surface tests ─────────────────────────────────────
+// ── Sanskrit surface: no SA/EN registry-driven equivalence sweep exists
+//    yet (uk_surface_equivalence.rs only compares EN/UK); these svarūpa
+//    (quote)/ādi (car)/śeṣa (cdr) and list/higher-order checks are the
+//    only coverage for SA identity outside the specific IDs
+//    runtime_peer_operators.rs's CASES table already hardcodes. ──
 
 #[test]
 fn sa_canon_works() {
@@ -322,65 +144,6 @@ fn sa_canon_works() {
     assert_eq!(r2.value.to_string(), "10");
     let r3 = eval_program("(śeṣa (saṃyuj 10 20))", &mut s).expect("eval");
     assert_eq!(r3.value.to_string(), "20");
-}
-
-#[test]
-fn sa_arithmetic_works() {
-    let mut s = sa_session();
-    assert_eq!(
-        eval_program("(yoga 1 2 3)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "6"
-    );
-    assert_eq!(
-        eval_program("(viyoga 10 3)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "7"
-    );
-    assert_eq!(
-        eval_program("(guṇana 2 3 4)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "24"
-    );
-    assert_eq!(
-        eval_program("(haraṇa 6 2)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "3"
-    );
-}
-
-#[test]
-fn sa_comparisons_work() {
-    let mut s = sa_session();
-    assert_eq!(
-        eval_program("(hīna? 1 2)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "t"
-    );
-    assert_eq!(
-        eval_program("(adhika? 2 1)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "t"
-    );
-    assert_eq!(
-        eval_program("(sama? 3 3)", &mut s)
-            .unwrap()
-            .value
-            .to_string(),
-        "t"
-    );
 }
 
 #[test]
@@ -398,35 +161,9 @@ fn sa_lists_higher_order_work() {
     assert_eq!(r4.value.to_string(), "(1 2)");
 }
 
-#[test]
-fn sa_and_en_produce_same_result() {
-    let mut s = sa_session();
-    let sa_r = eval_program("(yoga (guṇana 3 4) (viyoga 10 3))", &mut s).expect("eval");
-    let en_r = eval_program("(+ (* 3 4) (- 10 3))", &mut s).expect("eval");
-    assert_eq!(sa_r.value.to_string(), en_r.value.to_string());
-    assert_eq!(sa_r.value.to_string(), "19");
-}
-
-// ── Cross-surface equivalence ──────────────────────────────────
-
-#[test]
-fn uk_and_sa_produce_same_result() {
-    // Load both surfaces
-    let mut s = Session::default();
-    load_core_library(&mut s).expect("core");
-    load_surface_prerequisites(&mut s);
-    eval_program(include_str!("../../../lib/surface/uk.my"), &mut s).expect("uk");
-    eval_program(include_str!("../../../lib/surface/sa.my"), &mut s).expect("sa");
-
-    let uk_r = eval_program("(додати 1 2)", &mut s).expect("eval");
-    let sa_r = eval_program("(yoga 1 2)", &mut s).expect("eval");
-    let en_r = eval_program("(+ 1 2)", &mut s).expect("eval");
-    assert_eq!(uk_r.value.to_string(), sa_r.value.to_string());
-    assert_eq!(uk_r.value.to_string(), en_r.value.to_string());
-    assert_eq!(uk_r.value.to_string(), "3");
-}
-
-// ── Ukrainian acceptance program ───────────────────────────────
+// ── Ukrainian acceptance program: semantic truth lives in the `.my`
+//    fixture, Rust just runs it -- a good pattern, not a duplication
+//    target. Explicitly kept per the owner's guidance. ──
 
 #[test]
 fn uk_acceptance_program_passes() {
