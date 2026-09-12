@@ -1,5 +1,14 @@
 # Foreign Runtime Protocol — design (fixed before code)
 
+**ARCHIVED — Superseded-by: [`docs/POLYGLOT-SEMANTIC-ORCHESTRATOR-IMPLEMENTATION-PLAN.md`](../../POLYGLOT-SEMANTIC-ORCHESTRATOR-IMPLEMENTATION-PLAN.md).**
+This document's three key decisions (`Value::Foreign`, `foreign-import`/
+`foreign-call` as Rust host capabilities, `(runtime,handle)` as `eq`
+identity) were explicitly un-ratified by the owner and re-examined from
+scratch in the plan above, which found a zero-core-change architecture
+via reuse of existing TCP/`write-to-string` mechanism. Kept here as the
+historical record of the first design pass and the Python transport
+PoC's own rationale — not as a current specification.
+
 Owner directive 2026-09-11: my-lisp should become not just a
 semantic authority over its own implementation backends (Rust/CML/
 WASM/FPGA), but a polyglot semantic orchestrator able to drive foreign

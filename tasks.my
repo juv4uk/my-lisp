@@ -1,4 +1,28 @@
 ((tasks . (
+  ("DOC-AUTHORITY-ARCHIVE" . (
+    (priority . 7.0)
+    (capabilities . (documentation architecture cross-repo))
+    (origin . owner)
+    (depends-on . ())
+    (description . "GitHub issue #80 (parent policy juv4uk/ecosystem#5): prevent agents from treating stale architecture/design documents as current specification. Requires: a root CURRENT.md pointing only to current semantic authority/contracts/active ADRs/active plans/current test evidence; docs/archive/{superseded,completed-plans,experiments,historical} with a README stating archived material is non-normative; an audit of all docs/dated reports/migration plans/PoCs/old architecture notes, moved with history-preserving git mv and Superseded-by/Supersedes provenance links; agent guidance that docs/archive/ is historical-only and never overrides Canon/semantic-registry/current contracts/active ADRs/CURRENT.md; no runtime semantics changes.")
+    (acceptance . "A new agent can find current truth from one entry point (CURRENT.md); superseded docs cannot be mistaken for active requirements; historical evidence remains available (git mv, not delete); active docs have no unresolved contradictions with archived predecessors; CI/docs checks remain green.")
+    (out-of-scope . "Changing runtime semantics. Root-level active docs already confirmed current (PLAN.md, STATUS.md, ecosystem-status.md, CLEAN_CODE_PLAN.md, AGENTS.md) -- left alone. A CI/policy check enforcing that active docs never depend on docs/archive/ as specification (the issue's own \"if practical\" caveat) -- not attempted in this first pass.")
+    (evidence-expected . "CURRENT.md and docs/archive/ committed; a bounded first batch of docs moved (31 files: FOREIGN-RUNTIME-PROTOCOL-DESIGN-2026-09-11 pair as superseded with Superseded-by, VERTICAL-SLICE-1-* pair as completed-plans, 27 dated reviewer/audit/reaction reports as historical); cargo build --workspace and scripts/check-bilingual-docs still pass.")
+    (done . "2026-09-12: first slice complete -- CURRENT.md created at repo root with the full authority order (contracts/Canon/registry > active ADRs > active plans/tasks.my > doctrine > tests/evidence, explicitly excluding docs/archive/**); docs/archive/{superseded,completed-plans,experiments,historical}/README.md written; 31 docs moved via git mv (FOREIGN-RUNTIME-PROTOCOL-DESIGN-2026-09-11.md/.uk.md to superseded/ with a Superseded-by header added pointing to POLYGLOT-SEMANTIC-ORCHESTRATOR-IMPLEMENTATION-PLAN.md; VERTICAL-SLICE-1-ABS-MIN-MAX-2026-09-11.md and VERTICAL-SLICE-1-CLOSURE-2026-09-11.md to completed-plans/; 27 dated reviewer/audit/reaction reports -- ARCHITECTURE_RECOVERY_REPORT, CHATGPT-ARCHITECTURE-NOTES, CODE-SURVEY-2026-09-01, CONSOLIDATED_CRITIQUE_AND_REACTIONS, DOC-SURVEY-2026-09-01, McCARTHY-VISION-VYASA, OPTIMIZATION-ANALYSIS-VYASA, REPOSITORY-AUDIT-RESOLUTION-2026-09-07, VIVEKA-FINDINGS-2026-08-24, VIVEKA-MY-LISP-CML-ANALYSIS-2026-08-24, chatgpt-review-2026-08-26, codebase-simplification-audit-2026-08-27, external-architectural-review-2026-08-21, gc-analysis-vyasa, gc-sakshi-analysis, grok-review-2026-08-26, manus-ai-review-2026-08-26(-evidence-notes), mccarthy-sakshi-review, my-idea-architecture-review, my-lisp-1-review-of-external-analyses, my-lisp-1-thorough-audit-2026-08-19, my-lisp-ecosystem-review, my-lisp-opencode-review, sarvam-review-2026-08-26, vyasa-reaction-2026-08-26, wsl-viveka-1-reaction-2026-08-26, audyt-ostannikh-komitiv-2026-08-18-uk, docs-drift-sweep-2026-08-25 -- to historical/. cargo build --workspace and scripts/check-bilingual-docs on all staged .md changes both pass. Deliberately NOT a full 178-file audit of docs/ -- remaining files (SELF_HOSTING_BOUNDARY_AUDIT.md vs SELF_HOSTING_MILESTONE.md overlap, GOLD_SPIKE_01.md, DIALECT-COMPARISON.md, and ~110 other docs) still need classification; tracked as DOC-AUTHORITY-ARCHIVE-PHASE-2. Cross-repo coordination (fpga-lisp, cml, my-idea, wsm-os) not started -- separate agents' own repos, per doctrine rule 4.")
+  ))
+
+  ("DOC-AUTHORITY-ARCHIVE-PHASE-2" . (
+    (priority . 6.5)
+    (capabilities . (documentation architecture))
+    (origin . owner)
+    (depends-on . (DOC-AUTHORITY-ARCHIVE))
+    (description . "Continue the docs/ audit DOC-AUTHORITY-ARCHIVE's first slice left unclassified (~110 remaining files in docs/, plus root-level dated one-off notes: NOTE-FOR-CODEX.md, NOTE-FOR-SAKSHI.md, NOTE-FOR-SWARM-NODE-AGENT.md, NOTE-FROM-OPENCODE.md -- all dated 2026-08-11..08-23 point-in-time messages to specific past agents, high-confidence historical candidates not moved yet). Specifically needs a real read (not filename-pattern guessing) of ambiguous pairs like SELF_HOSTING_BOUNDARY_AUDIT.md vs SELF_HOSTING_MILESTONE.md (is the audit superseded by the milestone doc or still the active boundary definition?), GOLD_SPIKE_01.md and DIALECT-COMPARISON.md (marked PROPOSED -- active proposal or abandoned experiment?), and every other docs/*.md not yet touched.")
+    (acceptance . "Every file under docs/ (and root-level dated notes) classified as active/superseded/completed/experimental/historical, per the ecosystem issue's own five-way classification; docs/archive/ fully reflects the true current/historical split, not just the high-confidence first batch.")
+    (out-of-scope . "Cross-repo coordination with fpga-lisp/cml/my-idea/wsm-os -- each repo's own agent does its own migration per doctrine rule 4.")
+    (evidence-expected . "A follow-up commit listing every remaining doc's classification and any further git mv operations.")
+    (done . nil)
+  ))
+
   ("WIN-PYTHON-SUBPROCESS-UTF8-ENCODING" . (
     (priority . 5.0)
     (capabilities . (testing portability windows))
