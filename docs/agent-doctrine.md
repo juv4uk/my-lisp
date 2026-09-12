@@ -80,11 +80,13 @@ premise three repos downstream with no traceable evidence chain.
     warnings` (the exact CI invocation — plain `cargo clippy
     --workspace` misses `--all-targets` lints in test files);
     `my-lisp --oracle-check` on every touched `.my`/`.wsm` file;
-    regenerating any generated projection whose source changed
-    (`my-lisp-constitution.my` from `conformance.my`,
-    `tests/fixtures/inventory.my` from the same, `lib/surface/
-    uk-inventory.wsm` classification for any newly public core
-    definition); `scripts/check-bilingual-docs` on any new/changed
+    `cargo xtask verify` (the docs/governance/policy checks TEST-
+    ARCHITECTURE-1 moved out of `cargo test`, since `cargo test` now
+    verifies executable behavior only); regenerating any generated
+    projection whose source changed (`my-lisp-constitution.my` from
+    `conformance.my`, `tests/fixtures/inventory.my` from the same,
+    `lib/surface/uk-inventory.wsm` classification for any newly public
+    core definition); `scripts/check-bilingual-docs` on any new/changed
     human-facing doc; and, ideally, `gh run list`/`gh run watch` after
     pushing — a green local run does not guarantee a green CI run
     against a clean checkout. Cheaper to run this checklist once at

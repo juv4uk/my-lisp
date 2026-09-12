@@ -17,20 +17,9 @@ fn meta_eval(source: &str) -> String {
     .to_string()
 }
 
-#[test]
-fn s2_explicitly_contracts_category_not_error_wording() {
-    let axioms = include_str!("../../../docs/language-core-axioms.md");
-    assert!(
-        axioms.contains("The wording may differ; the *category* is the contract."),
-        "S2 must state the error-detail boundary explicitly"
-    );
-
-    let error_source = include_str!("../src/error.rs");
-    assert!(
-        error_source.contains("non-contractual: `kind` is what S2 ratifies"),
-        "the reference error type must keep the contractual axis explicit"
-    );
-}
+// s2_explicitly_contracts_category_not_error_wording was a pure
+// doc/source-text check, relocated to `cargo xtask verify` per
+// TEST-ARCHITECTURE-1 step 4 — see crates/xtask/src/checks.rs.
 
 #[test]
 fn equivalent_surface_failures_need_not_have_identical_source_spans() {
