@@ -8,7 +8,7 @@ This document is the compact human explanation of the current core architecture.
 
 The language/project name is **`my-lisp`**.
 
-The current canonical source extension is **`.wsm`**. **`.my`** and **`.lisp`** remain fully supported aliases. The separate repository named `wsm` is not this language project.
+The current canonical source extension is **`.lisp`** (per [my-lisp#81](https://github.com/juv4uk/my-lisp/issues/81) — extension is never semantics). **`.wsm`** and **`.my`** remain fully supported legacy aliases. The separate repository named `wsm` is not this language project.
 
 `crates/my-lisp` is the **reference Rust implementation**. It is the mature software oracle used to check behavior, but it does not gain semantic authority merely by being the reference implementation.
 

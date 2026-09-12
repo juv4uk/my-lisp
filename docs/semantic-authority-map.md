@@ -51,7 +51,7 @@ The current implementation is actively reducing host-owned bootstrap behavior. `
 
 The project/repository name is **`my-lisp`**.
 
-The current canonical source extension is **`.wsm`**. **`.my`** and **`.lisp`** remain fully supported aliases. The separate repository named `wsm` is unrelated foundational research; the shared letters do not rename this language project.
+The current canonical source extension is **`.lisp`** (per [my-lisp#81](https://github.com/juv4uk/my-lisp/issues/81) — extension is never semantics). **`.wsm`** and **`.my`** remain fully supported legacy aliases. The separate repository named `wsm` is unrelated foundational research; the shared letters do not rename this language project.
 
 ## Reference implementation terminology
 

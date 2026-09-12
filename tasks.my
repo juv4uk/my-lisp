@@ -1,4 +1,16 @@
 ((tasks . (
+  ("WIN-BILINGUAL-CHECK-GREP-FALSE-POSITIVE-ON-MULTIBYTE-UTF8" . (
+    (priority . 3.5)
+    (capabilities . (testing portability windows documentation))
+    (origin . owner)
+    (depends-on . ())
+    (description . "Discovered 2026-09-12 while adding a .uk.md sibling for docs/semantic-authority-map.md: on this Windows Git-Bash (MSYS2) machine, `rg` resolves inconsistently depending on invocation context -- a plain `rg --version` in an ad-hoc shell call succeeds, but `command -v rg` inside scripts/check-bilingual-docs's own subprocess execution (confirmed via `bash -x`) reports rg as NOT found, causing the script to fall back to its `grep -qP` path. That grep -qP path then produces a FALSE POSITIVE: it reported Cyrillic present in docs/semantic-authority-map.md, which Python's authoritative \\u0400-\\u04FF regex check proved has ZERO real Cyrillic characters. Root cause traced to a specific byte: the file's em-dash (U+2014, UTF-8 bytes E2 80 94) gets matched by the grep -P Cyrillic character class on this MSYS2 build/locale combination -- i.e. the bug is not specific to Cyrillic, it's grep -P mis-scoping its own Unicode character class for at least one other multi-byte UTF-8 codepoint too. Not fixed here: no evidence this reproduces on the actual Linux CI runner (which has correctly caught every real English-only doc found this session), so changing the shared, policy-relevant check-bilingual-docs script based on an unconfirmed Windows-only quirk was judged too risky to do speculatively.")
+    (acceptance . "Either: (a) confirm this bug does NOT reproduce on the ubuntu-latest CI runner (rg present and correctly resolved there, or GNU grep -P under CI's actual locale correctly scopes the Cyrillic class), closing this as Windows-local-only with no action needed; or (b) if it does reproduce on CI, harden has_cyrillic in scripts/check-bilingual-docs to be locale/environment-independent (e.g. explicit UTF-8 byte-range matching, or a verified-portable alternative), with a regression test proving the em-dash (or another known-bad multi-byte codepoint) is never mistaken for Cyrillic.")
+    (out-of-scope . "Any change to scripts/check-bilingual-docs without first confirming whether the bug is Windows-local or also affects CI -- do not guess a fix for a script every doc-touching commit depends on.")
+    (evidence-expected . "A note (or a fixed+tested script) settling whether this is CI-relevant, based on direct evidence (a CI run reproducing or failing to reproduce it), not assumption.")
+    (done . nil)
+  ))
+
   ("ECO-CANON-1-REGISTER-LANGUAGE-OWNED-FS-PROCESS-TCP-OPERATIONS" . (
     (priority . 6.8)
     (capabilities . (semantic-registry documentation))
