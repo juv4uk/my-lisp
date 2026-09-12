@@ -26,7 +26,7 @@ fn lisp_path(path: &Path) -> String {
 fn session(environment: Environment) -> Session {
     install();
     let mut session = Session { environment };
-    // `read-file`/`write-file` are now language-owned (lib/fs.my) over the
+    // `read-file`/`write-file` are now language-owned (lib/fs.lisp) over the
     // raw `read-file-bytes`/`write-file-bytes` host capabilities; every test
     // in this file needs them resolvable, mirroring load_process_library's
     // use in the process/tcp scoping tests.

@@ -12,9 +12,9 @@ use my_lisp_host::install;
 fn capability_session() -> Session {
     install();
     let mut session = Session::default();
-    // `read-file`/`write-file` are language-owned (lib/fs.my) over the
+    // `read-file`/`write-file` are language-owned (lib/fs.lisp) over the
     // host's `read-file-bytes`/`write-file-bytes`; load core (for the
-    // macro substrate lib/fs.my's `let`/`cond` need) and fs.my so the two
+    // macro substrate lib/fs.lisp's `let`/`cond` need) and fs.lisp so the two
     // public names resolve instead of raising UnknownSymbol.
     load_core_library(&mut session).unwrap();
     load_fs_library(&mut session).unwrap();

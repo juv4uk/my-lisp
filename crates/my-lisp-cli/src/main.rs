@@ -195,7 +195,7 @@ fn main() {
     // 2026-09-12 (FS-CAPABILITY-UTF8-POLICY-MIGRATION).
     if let Err(e) = my_lisp::load_fs_library(&mut session) {
         eprintln!(
-            "Error loading fs.my: {}",
+            "Error loading fs.lisp: {}",
             e.render(my_lisp::FS_LIBRARY_SOURCE)
         );
         process::exit(1);

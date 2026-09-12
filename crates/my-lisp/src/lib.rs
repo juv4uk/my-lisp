@@ -111,7 +111,7 @@ pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
 /// File text interpretation owned by Lisp. The host contributes only raw
 /// bytes through `read-file-bytes`/`write-file-bytes`; this layer defines
 /// public `read-file`/`write-file` by applying the shared UTF-8 semantics.
-pub const FS_LIBRARY_SOURCE: &str = include_str!("../../../lib/fs.my");
+pub const FS_LIBRARY_SOURCE: &str = include_str!("../../../lib/fs.lisp");
 
 /// Install the one primitive macro-construction mechanism required by the
 /// language-owned macro layer, evaluate the Lisp derivation exactly once, and

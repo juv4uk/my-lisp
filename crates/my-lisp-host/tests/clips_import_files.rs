@@ -1,7 +1,7 @@
 //! File-based clips-import tests. Moved from crates/my-lisp/tests/
 //! clips_import.rs during the core/host split: they read real .clp files
 //! through `read-file` (via lib/clips-import.my), which is now
-//! language-owned (lib/fs.my) over this crate's `read-file-bytes` raw
+//! language-owned (lib/fs.lisp) over this crate's `read-file-bytes` raw
 //! capability.
 
 use my_lisp::{eval_program, Session};
@@ -12,7 +12,7 @@ fn eval_import(source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/utf8.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/fs.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/fs.lisp"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
