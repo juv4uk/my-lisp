@@ -1,4 +1,16 @@
 ((tasks . (
+  ("WIN-PYTHON-SUBPROCESS-UTF8-ENCODING" . (
+    (priority . 5.0)
+    (capabilities . (testing portability windows))
+    (origin . owner)
+    (depends-on . ())
+    (description . "Discovered 2026-09-12 while diagnosing an unrelated FS-migration CI failure: on this Windows dev machine, `python3` resolved to the broken Microsoft Store app-execution-alias stub (prints an install prompt instead of running), masking the real state of every Rust test that shells out to python3 (meta_eval_evidence_matrix, semantic_ownership, program_surface_translation, process_raw/process_text). Worked around locally by copying python.exe to python3.exe inside the real Python312 install directory, which is earlier on PATH than WindowsApps -- this is a LOCAL workaround, not a project requirement; Windows environment setup must never become part of language semantics. After that fix, meta_eval_evidence_matrix and semantic_ownership pass, confirming they were never broken. program_surface_translation now genuinely runs python3 but fails differently: the subprocess's stdout is decoded as the Windows console codepage (cp1251) instead of UTF-8, corrupting Ukrainian surface names in the translated output (FromUtf8Error). This is a Windows-only portability gap, unrelated to any FS migration or other work landing alongside this task -- explicitly not fixed in that changeset, per the same discipline that keeps unrelated debt out of a vertical slice.")
+    (acceptance . "program_surface_translation.rs's python3 subprocess call forces UTF-8 I/O regardless of the host console codepage -- likely via PYTHONUTF8=1/PYTHONIOENCODING=utf-8 set on the Command's env, or python3 -X utf8, or explicit UTF-8 decoding on the Rust side of the pipe. Passes on Windows without requiring any user-level Windows configuration change (no relying on chcp 65001 or system locale settings).")
+    (out-of-scope . "Any change to python3 PATH resolution itself (already a known, accepted local dev-environment quirk, not a project concern). Any other python3-invoking test not exhibiting this specific encoding failure.")
+    (evidence-expected . "program_surface_translation.rs passing on a Windows machine with a non-UTF-8 console codepage, without a manual chcp/locale change.")
+    (done . nil)
+  ))
+
   ("FFI-001-C-ABI-DESIGN" . (
     (priority . 8.7)
     (capabilities . (my-lisp architecture ffi documentation))
