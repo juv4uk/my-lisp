@@ -78,6 +78,18 @@ pub fn all() -> Vec<Check> {
             name: "stari-nazvy-smystovoho-audytu-lyshaiutsia-aliasamy-sumisnosti",
             run: stari_nazvy_smystovoho_audytu_lyshaiutsia_aliasamy_sumisnosti,
         },
+        Check {
+            name: "every-stable-ukrainian-name-is-typeable-on-the-ukrainian-layout",
+            run: every_stable_ukrainian_name_is_typeable_on_the_ukrainian_layout,
+        },
+        Check {
+            name: "ukrainian-acceptance-program-code-never-requires-latin-layout",
+            run: ukrainian_acceptance_program_code_never_requires_latin_layout,
+        },
+        Check {
+            name: "ukrainska-prohrama-pryinnyattia-ne-potrebuie-latynskoi-rozkladky",
+            run: ukrainska_prohrama_pryinnyattia_ne_potrebuie_latynskoi_rozkladky,
+        },
     ]
 }
 
@@ -538,6 +550,150 @@ fn stari_nazvy_smystovoho_audytu_lyshaiutsia_aliasamy_sumisnosti() -> Result<(),
         if !UK_SURFACE.contains(&format!("(define {new} {en})")) {
             return Err(format!("missing alias (define {new} {en})"));
         }
+    }
+    Ok(())
+}
+
+// --- ported from crates/my-lisp/tests/uk_surface_equivalence.rs and
+// crates/my-lisp/tests/ukrainska_programa_pryimannya.rs: keyboard/text-policy
+// lints, not semantic mutation tests (TEST-ARCHITECTURE-1 step 4). ---
+
+const UK_ACCEPTANCE: &str = include_str!("../../../lib/surface/uk-acceptance.my");
+const RIVNOPRAVNIST_UK: &str = include_str!("../../../tests/fixtures/rivnopravnist-uk.my");
+
+#[derive(PartialEq, Eq)]
+enum SurfaceAdmission {
+    Stable,
+    Other,
+}
+
+/// Every semantic ID whose EN spelling AND UK spelling are both `stable` --
+/// mirrors `uk_surface_equivalence.rs::stable_en_uk_pairs` (crate-integration
+/// test, not reachable from here), kept in sync by hand since this and that
+/// file read the same `semantic-registry.wsm` but serve different purposes
+/// (behavior vs. keyboard-layout lint).
+fn stable_en_uk_names_needing_uk_layout_check() -> Vec<String> {
+    REGISTRY
+        .lines()
+        .filter_map(|line| {
+            let fields = line.split_whitespace().collect::<Vec<_>>();
+            let semantic_id = fields.first()?.strip_prefix('(')?;
+            if semantic_id.is_empty() || !semantic_id.bytes().all(|b| b.is_ascii_digit()) {
+                return None;
+            }
+            let mut en = None;
+            let mut uk = None;
+            for triple in fields[1..].chunks(3) {
+                if triple.len() != 3 {
+                    break;
+                }
+                let namespace = triple[0].trim_start_matches('(');
+                let name = triple[1];
+                let admission = if triple[2].trim_end_matches(')') == "stable" {
+                    SurfaceAdmission::Stable
+                } else {
+                    SurfaceAdmission::Other
+                };
+                if admission == SurfaceAdmission::Stable {
+                    match namespace {
+                        "en" => en = Some(name.to_string()),
+                        "uk" => uk = Some(name.to_string()),
+                        _ => {}
+                    }
+                }
+            }
+            match (en, uk) {
+                (Some(_en), Some(uk)) => Some(uk),
+                _ => None,
+            }
+        })
+        .collect()
+}
+
+fn is_ukrainian_layout_identifier_char(character: char) -> bool {
+    "абвгґдеєжзиіїйклмнопрстуфхцчшщьюяАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0123456789-?!'*"
+        .contains(character)
+}
+
+fn every_stable_ukrainian_name_is_typeable_on_the_ukrainian_layout() -> Result<(), String> {
+    for ukrainian in stable_en_uk_names_needing_uk_layout_check() {
+        if !ukrainian.chars().all(is_ukrainian_layout_identifier_char) {
+            return Err(format!(
+                "stable Ukrainian name needs another keyboard layout: {ukrainian}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn executable_characters(source: &str) -> String {
+    let mut output = String::new();
+    let mut characters = source.chars().peekable();
+    let mut in_string = false;
+
+    while let Some(character) = characters.next() {
+        if in_string {
+            match character {
+                '\\' => {
+                    characters.next();
+                }
+                '"' => in_string = false,
+                _ => {}
+            }
+        } else {
+            match character {
+                ';' => {
+                    for comment_character in characters.by_ref() {
+                        if comment_character == '\n' {
+                            output.push('\n');
+                            break;
+                        }
+                    }
+                }
+                '"' => in_string = true,
+                _ => output.push(character),
+            }
+        }
+    }
+    output
+}
+
+fn ukrainian_acceptance_program_code_never_requires_latin_layout() -> Result<(), String> {
+    let code = executable_characters(UK_ACCEPTANCE);
+    let latin = code
+        .chars()
+        .filter(|character| character.is_ascii_alphabetic())
+        .collect::<String>();
+    if !latin.is_empty() {
+        return Err(format!(
+            "executable Ukrainian program still contains Latin letters: {latin}"
+        ));
+    }
+    Ok(())
+}
+
+/// Strips `;`-to-end-of-line comments from each line (a simpler pass than
+/// `executable_characters` above since this fixture has no string literals
+/// containing `;`), mirroring
+/// `ukrainska_programa_pryimannya.rs`'s `виконуваний_код`.
+fn rivnopravnist_uk_executable_code() -> String {
+    RIVNOPRAVNIST_UK
+        .lines()
+        .map(|line| line.split(';').next().unwrap_or_default())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn ukrainska_prohrama_pryinnyattia_ne_potrebuie_latynskoi_rozkladky() -> Result<(), String> {
+    let code = rivnopravnist_uk_executable_code();
+    let latin = code
+        .chars()
+        .filter(|character| character.is_ascii_alphabetic())
+        .collect::<String>();
+    if !latin.is_empty() {
+        return Err(format!(
+            "у виконуваному українському коді знайдено латинські літери: {latin:?}"
+        ));
     }
     Ok(())
 }

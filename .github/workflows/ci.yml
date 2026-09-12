@@ -39,7 +39,7 @@ jobs:
         run: ./target/debug/my-lisp scripts/перевірити-український-профіль.всм
 
   meta-advice-release:
-    name: full Advice Taker native/meta parity (optimized)
+    name: full Advice Taker native/meta outcome-class check (optimized)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -49,7 +49,7 @@ jobs:
         with:
           shared-key: meta-advice-ci-meta
       - name: Run full vertical witness with speed-oriented native profile
-        run: cargo test --profile ci-meta -p my-lisp --test meta_eval_advice_taker real_advice_taker_stack_has_exact_native_meta_parity -- --ignored --nocapture
+        run: cargo test --profile ci-meta -p my-lisp --test meta_eval_advice_taker advice_taker_native_and_meta_preserve_expected_outcome_classes -- --ignored --nocapture
 
   web-repl:
     name: portable web REPL build

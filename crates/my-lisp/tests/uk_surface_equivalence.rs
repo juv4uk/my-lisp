@@ -12,7 +12,6 @@ use my_lisp::{eval_program, load_core_library, Session, Value};
 use std::rc::Rc;
 
 const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
-const UK_ACCEPTANCE: &str = include_str!("../../../lib/surface/uk-acceptance.my");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Admission {
@@ -213,66 +212,7 @@ fn ukrainian_surface_status_counts_are_internally_consistent() {
     // of tracking them.
 }
 
-fn is_ukrainian_layout_identifier_char(character: char) -> bool {
-    "абвгґдеєжзиіїйклмнопрстуфхцчшщьюяАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0123456789-?!'*"
-        .contains(character)
-}
-
-// TODO(TEST-ARCHITECTURE-1 step 4): relocate to policy/lint tool once xtask
-// exists -- this is a keyboard/text-policy lint, not a semantic mutation test.
-#[test]
-fn every_stable_ukrainian_name_is_typeable_on_the_ukrainian_layout() {
-    for (semantic_id, _english, ukrainian) in stable_en_uk_pairs() {
-        assert!(
-            ukrainian.chars().all(is_ukrainian_layout_identifier_char),
-            "stable Ukrainian name needs another keyboard layout: {semantic_id}/{ukrainian}"
-        );
-    }
-}
-
-fn executable_characters(source: &str) -> String {
-    let mut output = String::new();
-    let mut characters = source.chars().peekable();
-    let mut in_string = false;
-
-    while let Some(character) = characters.next() {
-        if in_string {
-            match character {
-                '\\' => {
-                    characters.next();
-                }
-                '"' => in_string = false,
-                _ => {}
-            }
-        } else {
-            match character {
-                ';' => {
-                    for comment_character in characters.by_ref() {
-                        if comment_character == '\n' {
-                            output.push('\n');
-                            break;
-                        }
-                    }
-                }
-                '"' => in_string = true,
-                _ => output.push(character),
-            }
-        }
-    }
-    output
-}
-
-// TODO(TEST-ARCHITECTURE-1 step 4): relocate to policy/lint tool once xtask
-// exists -- this is a keyboard/text-policy lint, not a semantic mutation test.
-#[test]
-fn ukrainian_acceptance_program_code_never_requires_latin_layout() {
-    let code = executable_characters(UK_ACCEPTANCE);
-    let latin = code
-        .chars()
-        .filter(|character| character.is_ascii_alphabetic())
-        .collect::<String>();
-    assert!(
-        latin.is_empty(),
-        "executable Ukrainian program still contains Latin letters: {latin}"
-    );
-}
+// every_stable_ukrainian_name_is_typeable_on_the_ukrainian_layout and
+// ukrainian_acceptance_program_code_never_requires_latin_layout were
+// keyboard/text-policy lints, relocated to `cargo xtask verify` per
+// TEST-ARCHITECTURE-1 step 4 -- see crates/xtask/src/checks.rs.

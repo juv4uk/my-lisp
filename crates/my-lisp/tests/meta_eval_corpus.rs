@@ -76,12 +76,32 @@ fn meta_eval_tagged_fixtures() -> Vec<(String, Option<String>, Option<String>)> 
         .collect()
 }
 
+/// Evaluates `expr` through the metacircular evaluator using the session's
+/// running `--meta-env--` binding as the environment, then threads the
+/// updated environment `my-eval-program` returns back into that same
+/// binding — giving the meta side the same one-shared-session-in-corpus-order
+/// semantics `tests/fixtures/README.md` specifies, matching how the native
+/// runner reuses one `Session` across all tagged fixtures. `my-eval-program`
+/// (not a bare `my-eval` call against a throwaway `'()` environment) is what
+/// makes this threading possible: for a single-form list it returns exactly
+/// `(updated-env . value)`, the same shape `my-eval-top-form` produces.
 fn eval_via_meta(session: &mut Session, expr: &str) -> Result<String, String> {
-    let source = format!(
-        r#"(my-eval (read "{}") (quote ()))"#,
-        expr.replace('\\', "\\\\").replace('"', "\\\"")
-    );
-    eval_program(&source, session)
+    // Three sequential top-level forms, not one `let` with a multi-form
+    // body: this codebase's `let` macro takes exactly one body expression
+    // (`(defmacro let (bindings body) ...)` in lib/core.my), so threading
+    // `--meta-env--` forward needs its own top-level `def` step.
+    let escaped = expr.replace('\\', "\\\\").replace('"', "\\\"");
+    eval_program(
+        &format!(r#"(def --meta-eval-step-- (my-eval-program (list (read "{escaped}")) --meta-env--))"#),
+        session,
+    )
+    .map_err(|e| format!("{:?}", e.kind))?;
+    eval_program(
+        "(def --meta-env-- (car --meta-eval-step--))",
+        session,
+    )
+    .map_err(|e| format!("{:?}", e.kind))?;
+    eval_program("(cdr --meta-eval-step--)", session)
         .map(|r| r.value.to_string())
         .map_err(|e| format!("{:?}", e.kind))
 }
@@ -126,19 +146,23 @@ fn native_evaluator_matches_corpus_expected_on_every_meta_eval_tagged_fixture() 
 }
 
 /// `my-eval`, checked against each fixture's own `expected`/`error` — never
-/// against native's output. A fresh `my-eval` environment is used per
-/// fixture (matching `meta_eval_parity.rs`'s prior behavior): the tagged
-/// fixtures deliberately don't yet rely on cross-fixture top-level state
-/// inside the metacircular evaluator.
+/// against native's output. One shared meta-evaluator environment
+/// (`--meta-env--`) is threaded across all tagged fixtures in corpus order,
+/// matching the native runner's one-shared-session rule from
+/// `tests/fixtures/README.md`: a later fixture is free to reference a `def`
+/// an earlier tagged fixture introduced, exactly as it could against the
+/// native evaluator's shared session.
 #[test]
 fn my_eval_matches_corpus_expected_on_every_meta_eval_tagged_fixture() {
-    for (expr, expected, error) in meta_eval_tagged_fixtures() {
-        let mut session = Session::default();
-        eval_program(include_str!("../../../lib/core.my"), &mut session)
-            .expect("lib/core.my should load (meta-eval.my needs core helpers)");
-        my_lisp::load_meta_evaluator_library(&mut session)
-            .expect("lib/meta-eval.my should load");
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.my"), &mut session)
+        .expect("lib/core.my should load (meta-eval.my needs core helpers)");
+    my_lisp::load_meta_evaluator_library(&mut session)
+        .expect("lib/meta-eval.my should load");
+    eval_program("(def --meta-env-- (quote ()))", &mut session)
+        .expect("--meta-env-- should initialize to the empty environment");
 
+    for (expr, expected, error) in meta_eval_tagged_fixtures() {
         if error.is_some() {
             // my-eval does not yet reproduce native named failures for the
             // currently-tagged fixtures (none of the 25 original in-scope

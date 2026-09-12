@@ -1,6 +1,16 @@
 //! Vertical self-hosting witness: run the real Advice Taker reasoning stack
-//! through the Lisp-owned meta-evaluator and require exact native/meta output
-//! parity, including proof/provenance and epistemic outcome structure.
+//! through the Lisp-owned meta-evaluator and check that both native and meta
+//! independently reproduce all five epistemic outcome classes (proved,
+//! proof-provenance, disputed, unknown, invalid). This does NOT assert exact
+//! structural equality against a frozen expected value: the full native
+//! output includes unification's internal variable-renumbering counters
+//! (e.g. `(y . 1)`), which are an implementation detail of the unifier, not
+//! part of the Advice Taker's semantic contract -- freezing them byte-for-byte
+//! would make this test brittle to unrelated unifier refactors while adding
+//! no real coverage of the outcome-class guarantee this file actually cares
+//! about. TEST-ARCHITECTURE-1 (2026-09-12) renamed this from
+//! `real_advice_taker_stack_has_exact_native_meta_parity`, which oversold
+//! what the substring checks below actually establish.
 
 use my_lisp::{eval_program, Session};
 
@@ -82,7 +92,7 @@ fn meta_result(program: &str) -> String {
 
 #[test]
 #[ignore = "deep meta-eval witness: release CI + debug nightly"]
-fn real_advice_taker_stack_has_exact_native_meta_parity() {
+fn advice_taker_native_and_meta_preserve_expected_outcome_classes() {
     // Native and meta are each checked independently against the same
     // authored set of expected substrings — a known-correct shape of the
     // Advice Taker's epistemic outcome structure — never against each
