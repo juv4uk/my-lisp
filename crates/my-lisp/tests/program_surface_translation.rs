@@ -6,6 +6,15 @@ fn translate(source: &str, from: &str, to: &str) -> String {
     let script = concat!(env!("CARGO_MANIFEST_DIR"), "/../../scripts/translate-program.py");
     let mut child = Command::new("python3")
         .args([script, "--from", from, "--to", to, "-"])
+        // Force UTF-8 I/O regardless of the host console codepage (e.g.
+        // cp1251 on a Ukrainian-locale Windows machine) -- WIN-PYTHON-
+        // SUBPROCESS-UTF8-ENCODING (2026-09-12). Without this, Python's
+        // stdout encoding follows the OS console codepage on Windows,
+        // corrupting non-ASCII (Ukrainian/Sanskrit) surface names in the
+        // translated output. A no-op on Linux, which already defaults to
+        // UTF-8.
+        .env("PYTHONIOENCODING", "utf-8")
+        .env("PYTHONUTF8", "1")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
