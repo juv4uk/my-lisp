@@ -11,3 +11,6 @@ name = "xtask"
 path = "src/main.rs"
 
 [dependencies]
+
+[dev-dependencies]
+my-lisp = { path = "../my-lisp" }
