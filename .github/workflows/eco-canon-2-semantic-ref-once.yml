@@ -1,0 +1,62 @@
+name: ECO-CANON-2 semantic-ref vertical slice
+
+on:
+  push:
+    branches:
+      - feat/eco-canon-2-semantic-identity-red
+    paths:
+      - .github/patches/eco-canon-2-semantic-ref.patch
+      - .github/workflows/eco-canon-2-semantic-ref-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/eco-canon-2-semantic-identity-red
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Apply semantic-ref slice
+        run: |
+          git apply --check .github/patches/eco-canon-2-semantic-ref.patch
+          git apply .github/patches/eco-canon-2-semantic-ref.patch
+          cargo fmt --all
+          git diff --check
+      - name: Focused language-power witnesses
+        run: |
+          cargo test -p my-lisp --test first_class_builtins -- --nocapture
+          cargo test -p my-lisp eval::canon::tests:: -- --nocapture
+          cargo test -p my-lisp presentation::tests::ukrainian_presentation_localizes_builtin_and_function_markers -- --nocapture
+      - name: Full workspace regression
+        run: cargo test --workspace
+      - name: Workspace build
+        run: cargo build --workspace
+      - name: Zero-warning Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Repository policy and projection checks
+        run: cargo run -p xtask -- verify
+      - name: Commit verified vertical slice
+        run: |
+          rm .github/patches/eco-canon-2-semantic-ref.patch
+          rm .github/workflows/eco-canon-2-semantic-ref-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/my-lisp/src/value.rs \
+                  crates/my-lisp/src/eval/canon.rs \
+                  crates/my-lisp/src/eval/mod.rs \
+                  crates/my-lisp/src/eval/closures.rs \
+                  crates/my-lisp/src/layout.rs \
+                  crates/my-lisp/src/presentation.rs \
+                  .github/patches/eco-canon-2-semantic-ref.patch \
+                  .github/workflows/eco-canon-2-semantic-ref-once.yml
+          git diff --cached --check
+          git commit -m "feat(canon): make semantic refs language values"
+          git push origin HEAD:feat/eco-canon-2-semantic-identity-red
