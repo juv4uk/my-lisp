@@ -284,10 +284,6 @@ mod tests {
 
     #[test]
     fn every_admitted_surface_for_one_semantic_id_resolves_to_one_identity() {
-        // Which spellings mean "car" is a registry FACT, not a Rust literal
-        // to enumerate here -- read them from the registry so this test
-        // keeps meaning "Canon routes every admitted surface for 0005 to
-        // the same identity" even if the admitted spellings change.
         let surfaces = semantic_registry::admitted_surfaces_for_semantic_id(CAR_SEMANTIC_ID);
         assert!(
             surfaces.len() >= 2,
@@ -313,9 +309,14 @@ mod tests {
             .into_iter()
             .next()
             .expect("0005 (car) should admit at least one human surface");
-        let numeric = value_for_surface(CAR_SEMANTIC_ID).expect("numeric Canon identity");
-        let human = value_for_surface(human_surface).expect("registry-admitted Canon surface");
-        let (Value::Builtin(numeric), Value::Builtin(human)) = (&numeric, &human) else {
+        let numeric_value = value_for_surface(CAR_SEMANTIC_ID).expect("numeric Canon identity");
+        let human_value =
+            value_for_surface(human_surface).expect("registry-admitted Canon surface");
+        assert_eq!(
+            same_semantic_callable_identity(&numeric_value, &human_value),
+            Some(true)
+        );
+        let (Value::Builtin(numeric), Value::Builtin(human)) = (&numeric_value, &human_value) else {
             panic!("0005 must materialize as a first-class host projection");
         };
         assert_eq!(numeric.name, CAR_SEMANTIC_ID);
@@ -324,7 +325,6 @@ mod tests {
             !Rc::ptr_eq(numeric, human),
             "semantic identity witness must not depend on sharing one Rust allocation"
         );
-        assert_eq!(same_semantic_callable_identity(&numeric.into(), &human.into()), Some(true));
     }
 
     #[test]
