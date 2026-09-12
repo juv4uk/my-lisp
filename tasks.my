@@ -1,4 +1,16 @@
 ((tasks . (
+  ("ECO-CANON-1-FUNCTION-TABLE-REAL-GENERATION" . (
+    (priority . 6.5)
+    (capabilities . (documentation semantic-registry tooling))
+    (origin . owner)
+    (depends-on . ())
+    (description . "Owner readiness check 2026-09-12 (issue #75, ECO-CANON-1): asked how ready the function table is for other repos to switch onto Canon. Verified by reading the committed files directly, not the status doc's own claims: docs/ECO-CANON-1-STATUS-2026-09-11.md claimed 161 identities generated, but lib/generated/function-table.wsm was a 1-row placeholder and docs/generated/function-table.md only a 10-row sample. Additionally, the generator (scripts/generate-function-table.py) was Python, directly conflicting with active issue #76 (ECO-LISP-SCRIPTS-1: no new Python tooling).")
+    (acceptance . "The generator is rewritten in my-lisp (no new Python surface); the committed function-table.wsm/function-table.md actually contain all 161 identities, not a placeholder/sample; the status doc reflects verified reality, not aspirational claims.")
+    (out-of-scope . "Formal semantic-action prose per ID, executable witness column, CI --check freshness job, and full-uk ratification -- all explicitly still open, tracked as ECO-CANON-1's own remaining scope, not attempted here.")
+    (evidence-expected . "scripts/generate-function-table.my committed and runnable; lib/generated/function-table.wsm and docs/generated/function-table.md both containing 161 rows; scripts/generate-function-table.py removed; docs/ECO-CANON-1-STATUS-2026-09-11.md corrected.")
+    (done . "2026-09-12: scripts/generate-function-table.my written -- reads lib/surface/semantic-registry.wsm as ordinary my-lisp data (read-file/read-all, no regex/text parsing), reconstructs the one real edge case the port surfaced (identity 0001's `sym` surface is the literal apostrophe, which the reader's own quote-shorthand macro mis-parses as (quote stable) instead of a 3-element (lang word status) row -- fixed by normalizing on read and re-emitting it as a quoted string literal in the generated .wsm so it round-trips cleanly), and writes both lib/generated/function-table.wsm and docs/generated/function-table.md directly via write-file. Regenerated: both files now contain all 161 identities (verified by direct inspection and a round-trip read-all test, not assumed). scripts/generate-function-table.py deleted -- no remaining CI/doc references. docs/ECO-CANON-1-STATUS-2026-09-11.md corrected to state the real prior state (1-row/10-row placeholders, not 161) and the current real state, plus an explicit readiness verdict: registry itself is a safe dependency, but this specific function-table artifact still lacks formal-action prose, executable witnesses, and a CI freshness check, so other repos should not treat it as stable yet.")
+  ))
+
   ("CLI-DRAIN-TRANSCRIPT-ON-ERROR" . (
     (priority . 4.0)
     (capabilities . (my-lisp-cli usability))

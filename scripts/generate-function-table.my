@@ -1,0 +1,252 @@
+; scripts/generate-function-table.my — regenerate the ECO-CANON-1 function
+; table (my-lisp#75) from its real source of truth, written in my-lisp
+; itself (2026-09-12), replacing the retired scripts/generate-function-table.py
+; per issue #76 (ECO-LISP-SCRIPTS-1): repo-owned tooling must not add new
+; Python scripting surface, and tooling should be written directly in
+; my-lisp/wsm rather than migrated later.
+;
+; Authority remains lib/surface/semantic-registry.wsm — this script only
+; projects it, the same "projection, not a second source of truth"
+; discipline scripts/build-constitution.my already uses for
+; my-lisp-constitution.my. Reads the registry as ordinary my-lisp data
+; (read-file/read-all), not text/regex — the registry is already valid
+; my-lisp source, so no foreign parser is needed.
+;
+; Writes two generated views directly (write-file is language-owned,
+; lib/fs.my, over the host's read-file-bytes/write-file-bytes):
+;   lib/generated/function-table.wsm  (schema ft/1, machine-readable)
+;   docs/generated/function-table.md  (human table, column order
+;     Українська -> Повна українська -> English -> Sanskrit, per
+;     my-lisp#75's own requirement)
+;
+; Usage (from the repo root):
+;   cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.my
+;
+; `full-uk` (Повна українська) is a SEPARATE projection column of the
+; same semantic identity, not a second identity and not invented here:
+; until a dedicated ratification pass gives it its own name, it mirrors
+; the current `uk` surface and is tagged `needs-review`/`missing` where
+; `uk` itself is not a ratified stable/candidate spelling -- exactly the
+; column policy my-lisp#75's own status note already committed to.
+
+; The registry spells identity 0001's `sym` surface as the literal
+; apostrophe character. The ordinary Lisp reader treats a bare `'` as
+; its own quote-shorthand macro (reads the NEXT datum), not a plain
+; 3-token symbol, so the source line "(sym ' stable)" parses as
+; "(sym (quote stable))" -- a 2-element list whose second element is
+; itself (quote stable), not the intended 3-element (lang word status)
+; shape every other row has. Reconstruct it, representing the
+; apostrophe word as the string "'" since it cannot round-trip as a
+; bare reader token in this position.
+(def normalize-surface
+  (lambda (raw)
+    (cond
+      ((eq (length raw) 3) raw)
+      ((and (eq (length raw) 2) (not (atom (car (cdr raw))))
+            (eq (car (car (cdr raw))) (quote quote)))
+       (list (car raw) "'" (car (cdr (car (cdr raw))))))
+      (t raw))))
+
+(def normalize-entry
+  (lambda (entry) (cons (car entry) (map normalize-surface (cdr entry)))))
+
+(def registry-form (car (read-all (read-file "lib/surface/semantic-registry.wsm"))))
+(def entries (map normalize-entry (cdr registry-form)))
+
+; A surface word is usually a symbol (write-to-string strips the
+; Lisp-level Symbol wrapping down to bare text); the reconstructed
+; apostrophe case above is already a plain string. For prose contexts
+; (the human .md table) the bare apostrophe is fine either way.
+(def surface-word-text
+  (lambda (word)
+    (cond
+      ((string? word) word)
+      (t (write-to-string word)))))
+
+; For the machine-readable .wsm output specifically, a bare apostrophe
+; word must NOT be re-embedded unquoted: a future reader of this
+; generated file would hit the exact same "'" quote-shorthand collision
+; this script itself just worked around on the way in. write-to-string
+; already does exactly the right thing per Value type -- a String gets
+; quoted/escaped (read-back-safe), a Symbol stays bare -- so this is
+; just write-to-string directly, named for what it's used for here.
+(def surface-word-wsm-text write-to-string)
+
+; --- string-append is exactly binary; this repo's scripts routinely need
+; more pieces joined than that, so a small variadic wrapper over reduce.
+(def str+
+  (lambda args (reduce (lambda (acc s) (string-append acc s)) "" args)))
+
+; --- zero-padded 4+ digit semantic ID text, since the my-lisp reader
+; parses "0001" as the plain number 1 and would otherwise lose the
+; leading zeros this table's own IDs are conventionally written with.
+(def pad4
+  (lambda (n)
+    (let ((s (number->string n)))
+      (cond
+        ((eq (string-length s) 1) (string-append "000" s))
+        ((eq (string-length s) 2) (string-append "00" s))
+        ((eq (string-length s) 3) (string-append "0" s))
+        (t s)))))
+
+; --- one entry's surfaces are a list of (lang word status) triples ---
+(def find-surface
+  (lambda (lang surfaces)
+    (cond
+      ((atom surfaces) (quote ()))
+      ((eq (car (car surfaces)) lang) (car surfaces))
+      (t (find-surface lang (cdr surfaces))))))
+
+(def surface-word (lambda (surface-entry) (car (cdr surface-entry))))
+(def surface-status (lambda (surface-entry) (car (cdr (cdr surface-entry)))))
+
+; --- (word status) for a language, defaulting to (— missing) when the
+; registry row has no row for that language at all ---
+(def get-surface
+  (lambda (lang surfaces)
+    (let ((found (find-surface lang surfaces)))
+      (cond
+        ((atom found) (list (quote —) (quote missing)))
+        (t (list (surface-word found) (surface-status found)))))))
+
+; --- full-uk column policy: mirror uk, never invent a name ---
+(def full-uk-projection
+  (lambda (uk-word uk-status)
+    (cond
+      ((or (eq uk-status (quote missing))
+           (or (eq uk-status (quote compatibility-only)) (eq uk-word (quote —))))
+       (list (quote —)
+             (cond ((eq uk-status (quote compatibility-only)) (quote needs-review))
+                   (t (quote missing)))))
+      ((eq uk-status (quote candidate)) (list uk-word (quote candidate)))
+      (t (list uk-word (quote stable))))))
+
+(def surface-usable?
+  (lambda (word-status-pair)
+    (and (not (eq (car (cdr word-status-pair)) (quote missing)))
+         (not (eq (car word-status-pair) (quote —))))))
+
+; --- formal identity stub: first usable name among en/uk/sa, else bare id ---
+(def formal-stub
+  (lambda (sid surfaces)
+    (let* ((en (get-surface (quote en) surfaces))
+           (uk (get-surface (quote uk) surfaces))
+           (sa (get-surface (quote sa) surfaces)))
+      (cond
+        ((surface-usable? en)
+         (str+ "identity:" (pad4 sid) "/surface:" (surface-word-text (car en))))
+        ((surface-usable? uk)
+         (str+ "identity:" (pad4 sid) "/surface:" (surface-word-text (car uk))))
+        ((surface-usable? sa)
+         (str+ "identity:" (pad4 sid) "/surface:" (surface-word-text (car sa))))
+        (t (string-append "identity:" (pad4 sid)))))))
+
+; --- primary row status: best of the statuses the row actually carries,
+; ignoring languages the row has no entry for at all ---
+(def any-status?
+  (lambda (status statuses)
+    (cond
+      ((atom statuses) (quote ()))
+      ((eq (car statuses) status) t)
+      (t (any-status? status (cdr statuses))))))
+
+(def primary-status
+  (lambda (statuses)
+    (cond
+      ((any-status? (quote stable) statuses) (quote stable))
+      ((any-status? (quote candidate) statuses) (quote candidate))
+      ((any-status? (quote compatibility-only) statuses) (quote compatibility-only))
+      (t (quote missing)))))
+
+(def raw-statuses
+  (lambda (surfaces)
+    (map (lambda (surface-entry) (surface-status surface-entry)) surfaces)))
+
+; --- string-join with newline, since core.my has none yet. Accumulator-
+; based (not "car + recurse-in-argument-position"), matching core.my's own
+; map-onto/reverse-onto/length-onto pattern -- a naive recursive version
+; is not tail-recursive (the recursive call sits inside str+'s argument
+; list, not in tail position) and overflows the host stack well before
+; this registry's 161 rows.
+(def join-newline-onto
+  (lambda (strings acc)
+    (cond
+      ((atom strings) acc)
+      ((eq acc "") (join-newline-onto (cdr strings) (car strings)))
+      (t (join-newline-onto (cdr strings) (str+ acc "
+" (car strings)))))))
+
+(def join-newline (lambda (strings) (join-newline-onto strings "")))
+
+(def render-wsm-row
+  (lambda (entry)
+    (let* ((sid (car entry))
+           (surfaces (cdr entry))
+           (uk (get-surface (quote uk) surfaces))
+           (en (get-surface (quote en) surfaces))
+           (sa (get-surface (quote sa) surfaces))
+           (sym (get-surface (quote sym) surfaces))
+           (full (full-uk-projection (car uk) (car (cdr uk))))
+           (formal (formal-stub sid surfaces))
+           (primary (primary-status (raw-statuses surfaces))))
+      (str+
+        "  (" (pad4 sid) " " formal
+        " (uk " (surface-word-wsm-text (car uk)) " " (write-to-string (car (cdr uk))) ")"
+        " (full-uk " (surface-word-wsm-text (car full)) " " (write-to-string (car (cdr full))) ")"
+        " (en " (surface-word-wsm-text (car en)) " " (write-to-string (car (cdr en))) ")"
+        " (sa " (surface-word-wsm-text (car sa)) " " (write-to-string (car (cdr sa))) ")"
+        " (sym " (surface-word-wsm-text (car sym)) " " (write-to-string (car (cdr sym))) ")"
+        " " (write-to-string primary) " my-lisp)"))))
+
+(def render-md-row
+  (lambda (entry)
+    (let* ((sid (car entry))
+           (surfaces (cdr entry))
+           (uk (get-surface (quote uk) surfaces))
+           (en (get-surface (quote en) surfaces))
+           (sa (get-surface (quote sa) surfaces))
+           (full (full-uk-projection (car uk) (car (cdr uk))))
+           (primary (primary-status (raw-statuses surfaces))))
+      (str+
+        "| `" (pad4 sid) "` | " (surface-word-text (car uk))
+        " | " (surface-word-text (car full))
+        " | " (write-to-string (car (cdr full)))
+        " | " (surface-word-text (car en))
+        " | " (surface-word-text (car sa))
+        " | " (write-to-string primary) " |"))))
+
+(def wsm-header
+  (list
+    "; GENERATED — DO NOT EDIT BY HAND"
+    "; Authority: lib/surface/semantic-registry.wsm"
+    "; Generator: scripts/generate-function-table.my (ECO-CANON-1 / my-lisp#75)"
+    "; Schema ft/1: (id formal uk full-uk full-uk-status en sa sym primary-status authority)"
+    "; Display order for humans: Українська → Повна українська → English → Sanskrit"
+    "; authority = my-lisp (semantic)"
+    ""
+    "(ft/1"))
+
+(def wsm-body (join-newline (append wsm-header (map render-wsm-row entries))))
+(def wsm-output (string-append wsm-body "
+)
+"))
+
+(def md-header
+  (list
+    "# Function table (generated projection)"
+    ""
+    "**Authority:** `lib/surface/semantic-registry.wsm` — projection only, not a second source of truth."
+    ""
+    "Regenerate: `cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.my`"
+    ""
+    "| ID | Українська | Повна українська | full-uk status | English | Sanskrit | primary |"
+    "|----|------------|------------------|----------------|---------|----------|---------|"))
+
+(def md-body (join-newline (append md-header (map render-md-row entries))))
+(def md-output (string-append md-body "
+"))
+
+(write-file "lib/generated/function-table.wsm" wsm-output)
+(write-file "docs/generated/function-table.md" md-output)
+
+(print (str+ "function-table: " (number->string (length entries)) " identities written"))
