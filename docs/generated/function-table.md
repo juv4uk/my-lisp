@@ -167,3 +167,9 @@ Regenerate: `cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function
 | `1144` | — | — | needs-review | — | — | compatibility-only |
 | `1145` | — | — | needs-review | json-parse | — | compatibility-only |
 | `1146` | — | — | needs-review | sha256-hex | — | compatibility-only |
+| `1147` | — | — | missing | process-run | — | stable |
+| `1148` | — | — | missing | tcp-read | — | stable |
+| `1149` | — | — | missing | tcp-write | — | stable |
+| `1150` | — | — | missing | tcp-listen | — | stable |
+| `1151` | — | — | missing | read-file | — | stable |
+| `1152` | — | — | missing | write-file | — | stable |

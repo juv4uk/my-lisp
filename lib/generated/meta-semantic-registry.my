@@ -349,6 +349,12 @@
     (->> "1144") ; sym
     (json-parse "1145") ; en
     (sha256-hex "1146") ; en
+    (process-run "1147") ; en
+    (tcp-read "1148") ; en
+    (tcp-write "1149") ; en
+    (tcp-listen "1150") ; en
+    (read-file "1151") ; en
+    (write-file "1152") ; en
   )))
 
 (def my-semantic-id-for-surface
