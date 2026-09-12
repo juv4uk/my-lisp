@@ -4,7 +4,7 @@
 //! observed failing for the intended reason. The two translation functions are
 //! wished-for API stubs, not an implementation.
 
-use my_lisp::{Expr, ExprKind};
+use my_lisp::Expr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Unsupported {
