@@ -146,9 +146,9 @@ fn later_binding_visibility_has_reference_meta_parity() {
 (def g (lambda () 42))
 "#;
 
-    let native = native_value(&format!("{program} (f)"));
-    assert_eq!(native, "42");
-    assert_eq!(meta_eval_program(program, "(f)"), native);
+    let expected = "42";
+    assert_eq!(native_value(&format!("{program} (f)")), expected);
+    assert_eq!(meta_eval_program(program, "(f)"), expected);
 }
 
 #[test]
@@ -166,8 +166,13 @@ fn recursive_group_captures_outer_lexical_environment() {
       ((eq n 0) offset)
       (t (left (- n 1))))))
 "#;
+    // offset=7, and left/right alternate purely on parity of n down to 0,
+    // where both return offset — both probes land on offset regardless of
+    // which function is entered first.
+    let expected = "7";
     for probe in ["(left 5)", "(right 6)"] {
-        assert_eq!(meta_eval_program(program, probe), native_value(&format!("{program} {probe}")));
+        assert_eq!(native_value(&format!("{program} {probe}")), expected, "probe: {probe}");
+        assert_eq!(meta_eval_program(program, probe), expected, "probe: {probe}");
     }
 }
 
@@ -183,8 +188,9 @@ fn recursive_group_members_can_create_nested_closures_with_capture() {
 (def bounce (lambda (n) (make-step n)))
 "#;
     let probe = "((make-step 3) 5)";
-    assert_eq!(meta_eval_program(program, probe), "15");
-    assert_eq!(meta_eval_program(program, probe), native_value(&format!("{program} {probe}")));
+    let expected = "15";
+    assert_eq!(native_value(&format!("{program} {probe}")), expected);
+    assert_eq!(meta_eval_program(program, probe), expected);
 }
 
 #[test]
@@ -194,8 +200,9 @@ fn ordinary_parameter_shadowing_beats_recursive_group_bindings() {
 (def peer (lambda (x) (+ x 1)))
 "#;
     let probe = "(call-local (lambda (x) (* x 2)))";
-    assert_eq!(meta_eval_program(program, probe), "10");
-    assert_eq!(meta_eval_program(program, probe), native_value(&format!("{program} {probe}")));
+    let expected = "10";
+    assert_eq!(native_value(&format!("{program} {probe}")), expected);
+    assert_eq!(meta_eval_program(program, probe), expected);
 
     assert!(
         meta_eval_program(program, "call-local").starts_with("(recursive-closure call-local "),
@@ -218,8 +225,9 @@ fn adjacent_non_recursive_lambda_defs_are_not_false_grouped() {
         !result.starts_with("(recursive-group-closure"),
         "independent definitions must not be represented as a recursive group"
     );
-    for probe in ["(inc 4)", "(double 4)"] {
-        assert_eq!(meta_eval_program(program, probe), native_value(&format!("{program} {probe}")));
+    for (probe, expected) in [("(inc 4)", "5"), ("(double 4)", "8")] {
+        assert_eq!(native_value(&format!("{program} {probe}")), expected, "probe: {probe}");
+        assert_eq!(meta_eval_program(program, probe), expected, "probe: {probe}");
     }
 }
 
@@ -266,8 +274,11 @@ fn a_real_recursive_scc_can_skip_an_independent_interleaved_definition() {
         "helper is not in the left/right SCC"
     );
 
-    for probe in ["(left 8)", "(right 9)", "(helper 5)"] {
-        assert_eq!(meta_eval_program(program, probe), native_value(&format!("{program} {probe}")));
+    // left(8)/right(9) both bottom out at left(0)=t along the SCC's shared
+    // countdown; helper is a plain +100 outside the SCC.
+    for (probe, expected) in [("(left 8)", "t"), ("(right 9)", "t"), ("(helper 5)", "105")] {
+        assert_eq!(native_value(&format!("{program} {probe}")), expected, "probe: {probe}");
+        assert_eq!(meta_eval_program(program, probe), expected, "probe: {probe}");
     }
 }
 
