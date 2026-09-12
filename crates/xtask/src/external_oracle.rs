@@ -1,22 +1,97 @@
-//! RED-only specification tests for WSM-5 Task 2.
+//! Exact arithmetic AST projection for WSM-5's independent external oracle.
 //!
-//! This module is compiled only under `cfg(test)` until the tests have been
-//! observed failing for the intended reason. The two translation functions are
-//! wished-for API stubs, not an implementation.
+//! This layer does not interpret arithmetic by spelling and does not evaluate
+//! my-lisp. It parses one source expression, resolves the operator through the
+//! authoritative semantic registry, and projects the exact AST shape into a
+//! Wolfram Language expression. Unsupported input fails closed with stable
+//! codes instead of being approximated.
 
-use my_lisp::Expr;
+use my_lisp::semantic_registry_export::semantic_id_for_admitted_surface;
+use my_lisp::{Exactness, Expr, ExprKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Unsupported {
     code: &'static str,
 }
 
-fn translate_source(_source: &str) -> Result<String, Unsupported> {
-    unimplemented!("exact AST to Wolfram translation")
+impl Unsupported {
+    const fn new(code: &'static str) -> Self {
+        Self { code }
+    }
 }
 
-fn translate_expr(_expr: &Expr) -> Result<String, Unsupported> {
-    unimplemented!("exact AST to Wolfram translation")
+fn translate_source(source: &str) -> Result<String, Unsupported> {
+    let expressions = my_lisp::parse(source)
+        .map_err(|_| Unsupported::new("external-oracle/parse"))?;
+    if expressions.len() != 1 {
+        return Err(Unsupported::new("external-oracle/top-level-arity"));
+    }
+    translate_expr(&expressions[0])
+}
+
+fn translate_expr(expr: &Expr) -> Result<String, Unsupported> {
+    match &expr.kind {
+        ExprKind::Number(number, Exactness::Inexact) => {
+            Err(Unsupported::new("external-oracle/inexact-number"))
+        }
+        ExprKind::Number(number, Exactness::Exact) => {
+            // Reader-produced exact Number values are compact exact integers
+            // in binary64's lossless integer range. Refuse any hand-built AST
+            // that violates that representation invariant rather than printing
+            // an approximate decimal.
+            if number.is_finite()
+                && number.fract() == 0.0
+                && number.abs() <= 9_007_199_254_740_992.0
+            {
+                Ok(format!("{}", *number as i64))
+            } else {
+                Err(Unsupported::new(
+                    "external-oracle/exact-number-representation",
+                ))
+            }
+        }
+        ExprKind::Rational(rational) => Ok(rational.to_string()),
+        ExprKind::String(_) => Err(Unsupported::new("external-oracle/string")),
+        ExprKind::Pair(_, _) => Err(Unsupported::new("external-oracle/pair")),
+        ExprKind::NumericBuffer(_) => {
+            Err(Unsupported::new("external-oracle/numeric-buffer"))
+        }
+        ExprKind::Symbol(_) => Err(Unsupported::new("external-oracle/bare-symbol")),
+        ExprKind::List(items) => translate_call(items),
+    }
+}
+
+fn translate_call(items: &[Expr]) -> Result<String, Unsupported> {
+    let Some((head, arguments)) = items.split_first() else {
+        return Err(Unsupported::new("external-oracle/empty-list"));
+    };
+    let ExprKind::Symbol(surface) = &head.kind else {
+        return Err(Unsupported::new("external-oracle/non-symbol-head"));
+    };
+
+    let semantic_id = semantic_id_for_admitted_surface(surface)
+        .ok_or_else(|| Unsupported::new("external-oracle/unknown-semantic-id"))?;
+
+    let translated = arguments
+        .iter()
+        .map(translate_expr)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    match semantic_id {
+        "0104" => Ok(format!("Total[{{{}}}]", translated.join(", "))),
+        "1001" => match translated.as_slice() {
+            [] => Err(Unsupported::new("external-oracle/arity")),
+            [only] => Ok(format!("Minus[{only}]")),
+            _ => Ok(format!("Fold[Subtract, {{{}}}]", translated.join(", "))),
+        },
+        "1002" => Ok(format!("Times[{}]", translated.join(", "))),
+        "1003" => match translated.as_slice() {
+            [] => Err(Unsupported::new("external-oracle/arity")),
+            [only] => Ok(format!("Divide[1, {only}]")),
+            _ => Ok(format!("Fold[Divide, {{{}}}]", translated.join(", "))),
+        },
+        _ => Err(Unsupported::new("external-oracle/unknown-semantic-id")),
+    }
 }
 
 #[cfg(test)]
