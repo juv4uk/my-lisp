@@ -26,8 +26,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Apply semantic-ref slice
         run: |
-          git apply --check .github/patches/eco-canon-2-semantic-ref.patch
-          git apply .github/patches/eco-canon-2-semantic-ref.patch
+          git apply --recount --check .github/patches/eco-canon-2-semantic-ref.patch
+          git apply --recount .github/patches/eco-canon-2-semantic-ref.patch
           cargo fmt --all
           git diff --check
       - name: Focused language-power witnesses
