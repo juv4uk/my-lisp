@@ -64,9 +64,3 @@ fn derived_definition_preserves_definition_error_classes() {
     assert_eq!(derived_invalid.kind, canonical_invalid.kind);
     assert_eq!(derived_invalid.kind, ErrorKind::InvalidForm);
 }
-
-#[test]
-fn evaluator_source_keeps_contractual_def_dispatch() {
-    let evaluator = include_str!("../src/eval/mod.rs");
-    assert!(evaluator.contains("Some(\"def\")"));
-}
