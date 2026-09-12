@@ -8,7 +8,7 @@
     (acceptance . "program_surface_translation.rs's python3 subprocess call forces UTF-8 I/O regardless of the host console codepage -- likely via PYTHONUTF8=1/PYTHONIOENCODING=utf-8 set on the Command's env, or python3 -X utf8, or explicit UTF-8 decoding on the Rust side of the pipe. Passes on Windows without requiring any user-level Windows configuration change (no relying on chcp 65001 or system locale settings).")
     (out-of-scope . "Any change to python3 PATH resolution itself (already a known, accepted local dev-environment quirk, not a project concern). Any other python3-invoking test not exhibiting this specific encoding failure.")
     (evidence-expected . "program_surface_translation.rs passing on a Windows machine with a non-UTF-8 console codepage, without a manual chcp/locale change.")
-    (done . nil)
+    (done . "2026-09-12: set PYTHONIOENCODING=utf-8 and PYTHONUTF8=1 on the spawned python3 Command in crates/my-lisp/tests/program_surface_translation.rs -- forces UTF-8 I/O regardless of host console codepage, no-op on Linux. cargo test -p my-lisp --test program_surface_translation passes on this Windows machine (cp1251 console) without any chcp/locale change.")
   ))
 
   ("FFI-001-C-ABI-DESIGN" . (
