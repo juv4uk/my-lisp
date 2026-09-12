@@ -1,4 +1,16 @@
 ((tasks . (
+  ("CLI-DRAIN-TRANSCRIPT-ON-ERROR" . (
+    (priority . 4.0)
+    (capabilities . (my-lisp-cli usability))
+    (origin . owner)
+    (depends-on . ())
+    (description . "Cross-session finding 2026-09-12 (fpga-lisp-c1, porting fpga/canon/gen-primitive-table.my from Python): princ/print (crates/my-lisp/src/eval/special_forms/io.rs) only push into the in-memory Transcript buffer (Environment::print, environment.rs:212) -- there is no direct real-stdout write at the language-core level. Whether that buffer is drained to the terminal depends entirely on the embedder. Suspected (not fully traced within this session's budget) that my-lisp-cli's file-execution path does not drain/print the transcript on the error branch of eval_parsed_expressions, so a diagnostic princ/print call made just before a deliberate fail-closed abort (an unbound-symbol error, a Type error, etc.) never reaches the screen -- confirmed as a plausible root cause for a real debugging friction fpga-lisp-c1 hit and worked around via encoding the message into an intentional unbound-symbol error instead.")
+    (acceptance . "my-lisp-cli's file-execution path (and any other embedder path that currently only drains the transcript on success) prints accumulated princ/print output up through the point of failure when eval_parsed_expressions returns Err, not just on Ok.")
+    (out-of-scope . "Any change to the language-core Transcript/Environment::print mechanism itself, which is working as designed (buffer, not direct I/O) -- this is purely about the CLI embedder's own drain timing.")
+    (evidence-expected . "A test proving a princ call before a deliberate error in a .my file appears in the CLI's output/stderr even though the file's overall evaluation failed.")
+    (done . nil)
+  ))
+
   ("DOC-AUTHORITY-ARCHIVE" . (
     (priority . 7.0)
     (capabilities . (documentation architecture cross-repo))
