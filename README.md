@@ -284,7 +284,7 @@ cargo build --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-Канонічне розширення вихідного коду — **`.wsm`**. **`.my`** і **`.lisp`** лишаються підтримуваними aliases.
+Канонічне розширення вихідного коду — **`.lisp`** (згідно з [my-lisp#81](https://github.com/juv4uk/my-lisp/issues/81)). **`.wsm`** і **`.my`** лишаються повністю підтримуваними legacy aliases.
 
 ---
 
