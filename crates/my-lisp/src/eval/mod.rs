@@ -203,9 +203,6 @@ fn evaluate_list(
         {
             special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
         }
-        Some("def") => {
-            special_forms::evaluate_definition(arguments, environment, span).map(EvalStep::Value)
-        }
         Some(name) if canon::identity_for_surface(name) == Some(canon::CanonicalIdentity::Cond) => {
             special_forms::evaluate_cond(arguments, environment, span)
         }

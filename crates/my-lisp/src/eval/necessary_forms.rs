@@ -14,19 +14,29 @@ pub(crate) enum NecessaryFormIdentity {
 
 pub(crate) const LAMBDA_SEMANTIC_ID: &str = "0010";
 pub(crate) const DEFINE_SEMANTIC_ID: &str = "0011";
+/// `def` -- a compatibility-only spelling for the same Define meaning as
+/// `define`/`визначити`, under its own semantic ID in
+/// `lib/surface/semantic-registry.wsm` rather than sharing 0011's row.
+pub(crate) const DEF_COMPATIBILITY_SEMANTIC_ID: &str = "1000";
 
 fn identity_for_semantic_id(semantic_id: &str) -> Option<NecessaryFormIdentity> {
     match semantic_id {
-        DEFINE_SEMANTIC_ID => Some(NecessaryFormIdentity::Define),
+        DEFINE_SEMANTIC_ID | DEF_COMPATIBILITY_SEMANTIC_ID => Some(NecessaryFormIdentity::Define),
         LAMBDA_SEMANTIC_ID => Some(NecessaryFormIdentity::Lambda),
         _ => None,
     }
 }
 
-/// Resolve an executable list-head symbol through the shared authority registry,
-/// then select the evaluator mechanism by numeric semantic ID.
+/// Resolve an executable list-head symbol through the shared authority
+/// registry, then select the evaluator mechanism by numeric semantic ID.
+/// Uses the admitted (stable OR compatibility-only) surface index, not the
+/// stable-only one `canon.rs`/tooling use elsewhere: `def`'s row is
+/// compatibility-only, and dispatch must still see it as Define through
+/// the registry rather than through a hardcoded `"def"` literal
+/// (previously duplicated in both `eval/mod.rs` and `ir.rs` for exactly
+/// this reason -- both removed once this function could see it).
 pub(crate) fn identity_for_symbol(name: &str) -> Option<NecessaryFormIdentity> {
-    semantic_registry::semantic_id_for_surface(name).and_then(identity_for_semantic_id)
+    semantic_registry::admitted_semantic_id_for_surface(name).and_then(identity_for_semantic_id)
 }
 
 #[cfg(test)]
@@ -75,8 +85,27 @@ mod tests {
     }
 
     #[test]
+    fn compatibility_only_def_still_resolves_to_define_through_the_registry() {
+        // `def`'s row (1000) is compatibility-only, not stable -- this is
+        // the fact that used to make dispatch fall back to a hardcoded
+        // `"def"` literal in eval/mod.rs and a matching one in ir.rs,
+        // because the stable-only surface index cannot see it. Both were
+        // removed once identity_for_symbol started using the admitted
+        // (stable-or-compatibility-only) index instead.
+        assert_eq!(
+            semantic_registry::semantic_id_for_surface("def"),
+            None,
+            "def's row is deliberately compatibility-only, not stable"
+        );
+        assert_eq!(
+            semantic_registry::admitted_semantic_id_for_surface("def"),
+            Some(DEF_COMPATIBILITY_SEMANTIC_ID)
+        );
+        assert_eq!(identity_for_symbol("def"), Some(NecessaryFormIdentity::Define));
+    }
+
+    #[test]
     fn non_stable_or_unrelated_spellings_do_not_gain_necessary_form_identity() {
-        assert_eq!(identity_for_symbol("def"), None);
         assert_eq!(identity_for_symbol("#0010"), None);
         assert_eq!(identity_for_symbol("id0010"), None);
         assert_eq!(identity_for_symbol("quote"), None);

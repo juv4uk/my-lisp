@@ -96,6 +96,44 @@ pub(crate) fn build_surface_index(
     index
 }
 
+/// Same shape as `build_surface_index`, but also indexes
+/// `compatibility-only` surfaces (still excludes `candidate`/`missing`,
+/// which never become `SemanticSurface` rows at parse time at all). Only
+/// `stable` names get automatic priority elsewhere (tooling, display,
+/// canon shadowing protection); a `compatibility-only` name is still a
+/// real, admitted spelling for its identity, and evaluator dispatch (or
+/// any other consumer that needs "does this spelling mean anything at
+/// all") should not need a second hardcoded lookup path just because the
+/// spelling happens to be legacy rather than current.
+pub(crate) fn build_admitted_surface_index(
+    source: &'static str,
+) -> HashMap<&'static str, &'static str> {
+    let mut index = HashMap::new();
+    for row in parse_rows(source) {
+        let admitted_surfaces = row.surfaces.iter().map(|surface| surface.name);
+        for surface in std::iter::once(row.semantic_id).chain(admitted_surfaces) {
+            if let Some(previous) = index.insert(surface, row.semantic_id) {
+                panic!(
+                    "semantic registry surface must be unique: {surface} maps to both {previous} and {}",
+                    row.semantic_id
+                );
+            }
+        }
+    }
+    index
+}
+
+fn admitted_surface_index() -> &'static HashMap<&'static str, &'static str> {
+    static INDEX: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+    INDEX.get_or_init(|| build_admitted_surface_index(SEMANTIC_REGISTRY))
+}
+
+/// Semantic ID for any admitted (stable OR compatibility-only) surface --
+/// unlike `semantic_id_for_surface`, which only resolves `stable` names.
+pub(crate) fn admitted_semantic_id_for_surface(name: &str) -> Option<&'static str> {
+    admitted_surface_index().get(name).copied()
+}
+
 fn surface_index() -> &'static HashMap<&'static str, &'static str> {
     static INDEX: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
     INDEX.get_or_init(|| build_surface_index(SEMANTIC_REGISTRY))

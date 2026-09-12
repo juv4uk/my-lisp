@@ -33,21 +33,15 @@ const DEFMACRO_SEMANTIC_ID: &str = "0012";
 
 /// `def` is a compatibility-only spelling for the same Define meaning as
 /// `define`/`визначити` (0011), under its own semantic ID `1000` in
-/// `lib/surface/semantic-registry.wsm`. Two real facts, both verified
-/// directly rather than assumed, explain why it needs its own check here:
-/// `necessary_forms::identity_for_symbol("def")` returns `None` (that
-/// module's own tests assert this), AND
-/// `semantic_registry::semantic_id_for_surface("def")` ALSO returns `None`
-/// — `build_surface_index` deliberately indexes only `Stable`-admission
-/// surfaces for reverse lookup, excluding `compatibility-only` ones like
-/// `def`'s row-1000 entry. The real evaluator (`eval/mod.rs`) dispatches
-/// `"def"` as its own hardcoded literal string match for exactly this
-/// reason, bypassing the registry entirely — mirrored here the same way,
-/// not routed through a registry lookup that structurally cannot see it.
-/// Found via this module's own test: an earlier draft treated `(def x 1)`
-/// as an ordinary, unrecognized application instead of a Define.
+/// `lib/surface/semantic-registry.wsm`. `necessary_forms::identity_for_symbol`
+/// resolves it directly (via the admitted stable-or-compatibility-only
+/// surface index) as of 2026-09-12 -- this used to need its own `name ==
+/// "def"` special case here, mirroring an equivalent hardcoded literal in
+/// `eval/mod.rs`'s real dispatch, because the registry lookup those two
+/// call sites used could not see a compatibility-only row at all. Both
+/// hardcoded literals are gone now that the lookup itself can see it.
 fn is_define_spelling(name: &str) -> bool {
-    name == "def" || necessary_forms::identity_for_symbol(name) == Some(NecessaryFormIdentity::Define)
+    necessary_forms::identity_for_symbol(name) == Some(NecessaryFormIdentity::Define)
 }
 
 /// How a lowered node's meaning is justified — the "provenance" #68

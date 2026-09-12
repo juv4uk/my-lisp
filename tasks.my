@@ -1,4 +1,28 @@
 ((tasks . (
+  ("ECO-CANON-1-P1-REMOVE-DEF-LITERAL-DISPATCH" . (
+    (priority . 7.0)
+    (capabilities . (my-lisp semantic-registry evaluator))
+    (origin . owner)
+    (depends-on . ())
+    (description . "Owner strategic review 2026-09-12 named this the first concrete item in the ECO-CANON-1 (issue #75) follow-through: crates/my-lisp/src/eval/mod.rs's evaluate_list had a literal `Some(\"def\") => ...` branch, and crates/my-lisp/src/ir.rs's is_define_spelling had a matching `name == \"def\" ||` special case, both because def's semantic ID (1000, compatibility-only) could not be seen by the stable-only surface index semantic_registry::semantic_id_for_surface uses, so necessary_forms::identity_for_symbol(\"def\") returned None and dispatch fell back to hardcoded spelling.")
+    (acceptance . "No hardcoded \"def\" literal remains in evaluator dispatch or IR lowering; def routes through the same numeric-semantic-ID path as define/lambda/визначити/функція; existing tests (including the ones asserting def's registry status) still pass.")
+    (out-of-scope . "Any other compatibility-only spelling that might have the same gap (audited: only def/1000 exists in the registry today). LSP's own separate hardcoded \"def\"/\"defmacro\" checks (crates/my-lisp-lsp/src/analysis.rs:57, guard_knowledge.rs:202,308) -- same architectural smell, different crate, tracked separately below rather than expanding this change's surface.")
+    (evidence-expected . "Passing necessary_forms/canon/ir unit tests; a real (def x 5) program still evaluating correctly end to end.")
+    (done . "2026-09-12: added semantic_registry::build_admitted_surface_index/admitted_semantic_id_for_surface (stable OR compatibility-only, mirroring build_surface_index's shape but not filtering out compatibility-only rows). necessary_forms::identity_for_symbol now uses this admitted index instead of the stable-only one, and identity_for_semantic_id maps the new DEF_COMPATIBILITY_SEMANTIC_ID (\"1000\") to NecessaryFormIdentity::Define alongside \"0011\". Removed the Some(\"def\") branch from eval/mod.rs's evaluate_list (the earlier Define match arm now catches it via necessary_forms) and simplified ir.rs's is_define_spelling to a plain necessary_forms::identity_for_symbol call. Test non_stable_or_unrelated_spellings_do_not_gain_necessary_form_identity's old assert_eq!(identity_for_symbol(\"def\"), None) replaced with a new positive test, compatibility_only_def_still_resolves_to_define_through_the_registry, proving both facts explicitly (still not in the stable index, but resolves via the admitted one). Verified: cargo test -p my-lisp --lib (127 passed), cargo build --workspace, cargo clippy --workspace --all-targets -- -D warnings all clean; a real (def x 5) (print (+ x 1)) program still evaluates to 6 end to end via the CLI.")
+  ))
+
+  ("LSP-HARDCODED-DEF-DEFMACRO-SPELLING" . (
+    (priority . 4.5)
+    (capabilities . (my-lisp-lsp semantic-registry))
+    (origin . owner)
+    (depends-on . (ECO-CANON-1-P1-REMOVE-DEF-LITERAL-DISPATCH))
+    (description . "Found while removing the evaluator's own hardcoded \"def\" literal (2026-09-12): crates/my-lisp-lsp/src/analysis.rs:57 checks `head_name != \"def\" && head_name != \"defmacro\"` and crates/my-lisp-lsp/src/guard_knowledge.rs:202,308 check `as_symbol(...) != Some(\"def\")` -- the same spelling-as-identity smell the evaluator/ir.rs literals had, in the LSP crate instead. Same root cause class as db825e7's earlier quote-detection LSP fix this session's own history already established a pattern for.")
+    (acceptance . "LSP code recognizes def/defmacro (and their peer spellings, e.g. визначити-макрос) by semantic identity (necessary_forms::identity_for_symbol / semantic_registry lookups), not literal English spelling comparisons.")
+    (out-of-scope . "Any other LSP feature not touching def/defmacro recognition specifically.")
+    (evidence-expected . "A test proving a non-English defmacro spelling is recognized by the same LSP code path as the English one, mirroring db825e7's quote-detection fix test.")
+    (done . nil)
+  ))
+
   ("ECO-CANON-1-FUNCTION-TABLE-REAL-GENERATION" . (
     (priority . 6.5)
     (capabilities . (documentation semantic-registry tooling))
