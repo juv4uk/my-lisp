@@ -3,8 +3,6 @@ use my_lisp::{eval_program, Session};
 const DEPRECATION: &str = include_str!("../../../knowledge/swarm-legacy-deprecation.wsm");
 const NO_LIVE_CALLERS_AUDIT: &str =
     include_str!("../../../knowledge/swarm-no-live-callers-audit.wsm");
-const MESH_DOC: &str = include_str!("../../../docs/swarm-mesh-v2.md");
-const AGENT_GUIDE: &str = include_str!("../../../AGENTS.md");
 
 const RETIRED_COORDINATION_OPS: &[&str] = &[
     "hello",
@@ -99,20 +97,7 @@ fn no_live_callers_audit_records_physical_removal() {
     assert!(NO_LIVE_CALLERS_AUDIT.contains("semantic_oracle_preservation.rs"));
 }
 
-#[test]
-fn current_agent_authority_records_removed_legacy_coordination() {
-    assert!(AGENT_GUIDE.contains("Current coordination authority:"));
-    assert!(AGENT_GUIDE.contains("`swarm-node`"));
-    assert!(AGENT_GUIDE.contains("Стара coordination surface на `:9999` фізично видалена"));
-    assert!(AGENT_GUIDE.contains("мають повертати `unknown op`"));
-    assert!(AGENT_GUIDE.contains("my-lisp :9999"));
-    assert!(AGENT_GUIDE.contains("swarm-node :910x"));
-}
-
-#[test]
-fn human_migration_doc_keeps_semantic_and_coordination_planes_separate() {
-    assert!(MESH_DOC.contains("my-lisp :9999"));
-    assert!(MESH_DOC.contains("swarm-node :910x"));
-    assert!(MESH_DOC.contains("no longer the\ncoordination path going forward"));
-    assert!(MESH_DOC.contains("semantic oracle"));
-}
+// current_agent_authority_records_removed_legacy_coordination and
+// human_migration_doc_keeps_semantic_and_coordination_planes_separate were
+// pure markdown/doc-text checks, relocated to `cargo xtask verify` per
+// TEST-ARCHITECTURE-1 step 4 — see crates/xtask/src/checks.rs.

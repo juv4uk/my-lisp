@@ -52,7 +52,7 @@
 
 ### narrate.my (12)
 
-`narrate-answer`, `narrate-derivation`, `narrate-fact`, `narrate-invalid-outcome-shape`, `narrate-outcome`, `narrate-outcome-arity?`, `narrate-provenance`, `narrate-proved-outcome`, `provenance-derived-from`, `provenance-goal`, `provenance-rule`, `provenance-source`
+`narrate-fact`, `provenance-goal`, `provenance-source`, `provenance-rule`, `provenance-derived-from`, `narrate-derivation`, `narrate-provenance`, `narrate-answer`, `narrate-proved-outcome`, `narrate-invalid-outcome-shape`, `narrate-outcome-arity?`, `narrate-outcome`
 
 ### persistent-map.my (17)
 
@@ -72,7 +72,7 @@
 
 ### result-status.my (15)
 
-`make-blocked`, `make-disputed`, `make-invalid`, `make-partial`, `make-proved`, `make-unknown`, `reason-in-observe`, `reason-observe`, `result-goal?`, `result-negated-goal?`, `result-opposite-goal`, `result-payload`, `result-proper-list?`, `result-status`, `result-tagged?`
+`make-proved`, `make-unknown`, `make-partial`, `make-blocked`, `make-disputed`, `make-invalid`, `result-tagged?`, `result-status`, `result-payload`, `result-proper-list?`, `result-goal?`, `result-negated-goal?`, `result-opposite-goal`, `reason-observe`, `reason-in-observe`
 
 ### si.my (29)
 

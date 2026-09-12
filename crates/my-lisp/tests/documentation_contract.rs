@@ -22,63 +22,13 @@ fn function_reference_section<'a>(reference: &'a str, file: &str) -> &'a str {
     &tail[..end]
 }
 
-#[test]
-fn public_docs_share_current_project_identity_and_extension() {
-    let readme = include_str!("../../../README.md");
-    let core = include_str!("../../../docs/language-core.md");
-
-    for doc in [readme, core] {
-        assert!(
-            doc.contains("reference implementation") || doc.contains("референсна реалізація"),
-            "public architecture prose must describe Rust as a reference implementation"
-        );
-        assert!(
-            doc.contains("`.wsm`") && doc.contains("`.my`") && doc.contains("`.lisp`"),
-            "public architecture prose must state the current extension family"
-        );
-        assert!(
-            !doc.contains("canonical Rust implementation")
-                && !doc.contains("канонічна реалізація на Rust")
-                && !doc.contains("kanonische Rust-Implementierung"),
-            "implementation wording must not imply that Rust itself owns semantics"
-        );
-    }
-}
-
-#[test]
-fn public_docs_point_to_semantic_authority_instead_of_inventing_one() {
-    let readme = include_str!("../../../README.md");
-    let core = include_str!("../../../docs/language-core.md");
-    let authority = include_str!("../../../docs/semantic-authority-map.md");
-    let authority_lower = authority.to_lowercase();
-
-    assert!(readme.contains("docs/semantic-authority-map.md"));
-    assert!(core.contains("semantic-authority-map.md"));
-    assert!(authority.contains("language-contract.my"));
-    assert!(authority_lower.contains("ratified adr"));
-    assert!(authority_lower.contains("executable conformance"));
-}
-
-#[test]
-fn host_semantic_surface_documentation_tracks_time_ownership() {
-    let hss = include_str!("../../../docs/host-semantic-surface.md");
-    let time = include_str!("../../../lib/time.my");
-    let builtins = include_str!("../src/eval/builtins.rs");
-
-    assert!(hss.contains("mono-ns"));
-    assert!(hss.contains("unix-time-now"));
-    assert!(hss.contains("`utc-now` | `lib/time.my` | derived public clock meaning | HOST REMOVED"));
-    assert!(time.contains("(def mono-ms"));
-    assert!(time.contains("(def utc-now"));
-
-    assert!(
-        !builtins.contains("fn civil_from_days")
-            && !builtins.contains("fn utc_now_value")
-            && !builtins.contains("\"utc-now\","),
-        "Rust must not regain Gregorian utc-now semantics after the completed migration"
-    );
-    assert!(builtins.contains("\"unix-time-now\","));
-}
+// public_docs_share_current_project_identity_and_extension,
+// public_docs_point_to_semantic_authority_instead_of_inventing_one, and
+// host_semantic_surface_documentation_tracks_time_ownership were pure
+// markdown/doc-text checks (no executable my-lisp behavior involved) and
+// were relocated to `cargo xtask verify` per TEST-ARCHITECTURE-1 step 4 —
+// see crates/xtask/src/checks.rs. The extension check was also fixed
+// there to assert `.lisp` is stated as canonical (not merely mentioned).
 
 #[test]
 fn tracked_function_reference_tracks_live_library_definitions() {
@@ -108,22 +58,6 @@ fn tracked_function_reference_tracks_live_library_definitions() {
     }
 }
 
-#[test]
-fn agent_onboarding_records_removed_coordination_surface() {
-    let agents = include_str!("../../../AGENTS.md");
-    let deprecation = include_str!("../../../knowledge/swarm-legacy-deprecation.wsm");
-
-    assert!(agents.contains("my-lisp :9999"));
-    assert!(agents.contains("swarm-node :910x"));
-    assert!(agents.contains("Стара coordination surface на `:9999` фізично видалена"));
-    assert!(agents.contains("мають повертати `unknown op`"));
-    assert!(agents.contains("knowledge/swarm-legacy-deprecation.wsm"));
-    assert!(
-        !agents.contains("This is a\n  first-class pattern, not a fallback"),
-        "legacy :9999 mailbox instructions must not return as current onboarding"
-    );
-    assert!(deprecation.contains("(status . deprecated)"));
-    assert!(deprecation.contains("(physical-status . removed)"));
-    assert!(deprecation.contains("(runtime-rejection . confirmed)"));
-    assert!(deprecation.contains("(coordination-authority . swarm-node)"));
-}
+// agent_onboarding_records_removed_coordination_surface was a pure
+// markdown/doc-text check, relocated to `cargo xtask verify` per
+// TEST-ARCHITECTURE-1 step 4 — see crates/xtask/src/checks.rs.
