@@ -7,7 +7,7 @@
 
 use super::special_forms::{car_value, cdr_value, cons_values, eq_values};
 use crate::{semantic_registry, Environment, ErrorKind, LanguageError, Span, Value};
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum CanonicalIdentity {
@@ -95,6 +95,13 @@ fn identity_for_semantic_id(semantic_id: &str) -> Option<CanonicalIdentity> {
         .map(|entry| entry.identity)
 }
 
+fn semantic_id_for_identity(identity: CanonicalIdentity) -> Option<&'static str> {
+    CANON
+        .iter()
+        .find(|entry| entry.identity == identity)
+        .and_then(|entry| entry.semantic_id)
+}
+
 pub(crate) fn identity_for_surface(name: &str) -> Option<CanonicalIdentity> {
     semantic_registry::semantic_id_for_surface(name).and_then(identity_for_semantic_id)
 }
@@ -152,74 +159,98 @@ fn exact_args(
     ))
 }
 
-fn builtin(
-    identity: &'static str,
-    func: impl Fn(&[Value], &Environment, Span) -> Result<Value, LanguageError> + 'static,
-) -> Value {
+/// Resolve an opaque Canon semantic ID to its current host implementation.
+/// The ID is the call-target identity; the Rust closure is only a projection.
+fn invoke_semantic_callable(
+    semantic_id: &'static str,
+    args: &[Value],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    match identity_for_semantic_id(semantic_id) {
+        Some(CanonicalIdentity::Atom) => {
+            exact_args("PRIM_ATOM", args, 1, span)?;
+            Ok(Value::truth(args[0].is_atom()))
+        }
+        Some(CanonicalIdentity::Eq) => {
+            exact_args("PRIM_EQ", args, 2, span)?;
+            eq_values(args[0].clone(), args[1].clone(), span)
+        }
+        Some(CanonicalIdentity::Cons) => {
+            exact_args("PRIM_CONS", args, 2, span)?;
+            cons_values(args[0].clone(), args[1].clone(), environment, span)
+        }
+        Some(CanonicalIdentity::Car) => {
+            exact_args("PRIM_CAR", args, 1, span)?;
+            car_value(&args[0], span)
+        }
+        Some(CanonicalIdentity::Cdr) => {
+            exact_args("PRIM_CDR", args, 1, span)?;
+            cdr_value(&args[0], span)
+        }
+        Some(CanonicalIdentity::EmptyList | CanonicalIdentity::Quote | CanonicalIdentity::Cond)
+        | None => Err(LanguageError::new(
+            ErrorKind::Type,
+            format!(
+                "semantic identity is not a callable Canon value · семантична тотожність не є викличним значенням Канону · semantische Identität ist kein aufrufbarer Kanon-Wert: {semantic_id}"
+            ),
+            span,
+        )),
+    }
+}
+
+/// Materialize a host implementation projection for a semantic call target.
+/// A fresh Rc is intentional: allocation identity must not define language
+/// identity. `eq` observes only the opaque semantic ID carried in `name`.
+fn semantic_callable(semantic_id: &'static str) -> Value {
     Value::Builtin(Rc::new(crate::value::Builtin {
-        name: identity,
-        func: Rc::new(func),
+        name: semantic_id,
+        func: Rc::new(move |args, environment, span| {
+            invoke_semantic_callable(semantic_id, args, environment, span)
+        }),
     }))
 }
 
-fn materialize_value(identity: CanonicalIdentity) -> Option<Value> {
-    match identity {
-        CanonicalIdentity::EmptyList => ground_value(identity),
-        CanonicalIdentity::Atom => Some(builtin("PRIM_ATOM", |args, _env, span| {
-            exact_args("PRIM_ATOM", args, 1, span)?;
-            Ok(Value::truth(args[0].is_atom()))
-        })),
-        CanonicalIdentity::Eq => Some(builtin("PRIM_EQ", |args, _env, span| {
-            exact_args("PRIM_EQ", args, 2, span)?;
-            eq_values(args[0].clone(), args[1].clone(), span)
-        })),
-        CanonicalIdentity::Cons => Some(builtin("PRIM_CONS", |args, env, span| {
-            exact_args("PRIM_CONS", args, 2, span)?;
-            cons_values(args[0].clone(), args[1].clone(), env, span)
-        })),
-        CanonicalIdentity::Car => Some(builtin("PRIM_CAR", |args, _env, span| {
-            exact_args("PRIM_CAR", args, 1, span)?;
-            car_value(&args[0], span)
-        })),
-        CanonicalIdentity::Cdr => Some(builtin("PRIM_CDR", |args, _env, span| {
-            exact_args("PRIM_CDR", args, 1, span)?;
-            cdr_value(&args[0], span)
-        })),
-        CanonicalIdentity::Quote | CanonicalIdentity::Cond => None,
+fn semantic_callable_id(value: &Value) -> Option<&'static str> {
+    let Value::Builtin(builtin) = value else {
+        return None;
+    };
+    let semantic_id = builtin.name;
+    let identity = identity_for_semantic_id(semantic_id)?;
+    matches!(
+        identity,
+        CanonicalIdentity::Atom
+            | CanonicalIdentity::Eq
+            | CanonicalIdentity::Cons
+            | CanonicalIdentity::Car
+            | CanonicalIdentity::Cdr
+    )
+    .then_some(semantic_id)
+}
+
+/// When at least one side is a Canon semantic callable, answer equality using
+/// only the opaque semantic ID. `None` delegates ordinary non-Canon values to
+/// their existing equality semantics.
+pub(crate) fn same_semantic_callable_identity(left: &Value, right: &Value) -> Option<bool> {
+    match (semantic_callable_id(left), semantic_callable_id(right)) {
+        (Some(left), Some(right)) => Some(left == right),
+        (Some(_), None) | (None, Some(_)) => Some(false),
+        (None, None) => None,
     }
 }
 
-fn build_value_registry() -> HashMap<CanonicalIdentity, Value> {
-    [
-        CanonicalIdentity::Atom,
-        CanonicalIdentity::Eq,
-        CanonicalIdentity::Cons,
-        CanonicalIdentity::Car,
-        CanonicalIdentity::Cdr,
-    ]
-    .into_iter()
-    .map(|identity| {
-        (
-            identity,
-            materialize_value(identity).expect("callable Canon identity must materialize"),
-        )
-    })
-    .collect()
-}
-
-thread_local! {
-    /// One immutable callable handle per Canon identity per evaluator thread.
-    /// Every stable registry spelling resolves to clones of these same `Rc` handles.
-    static CANON_VALUES: HashMap<CanonicalIdentity, Value> = build_value_registry();
-}
-
-/// Return the stable first-class value for a canonical identity. Special forms
+/// Return a first-class host projection for a canonical identity. Special forms
 /// deliberately have no value representation; they remain syntax-only.
 pub(crate) fn value(identity: CanonicalIdentity) -> Option<Value> {
-    if identity == CanonicalIdentity::EmptyList {
-        return Some(Value::Nil);
+    match identity {
+        CanonicalIdentity::EmptyList => Some(Value::Nil),
+        CanonicalIdentity::Quote | CanonicalIdentity::Cond => None,
+        CanonicalIdentity::Atom
+        | CanonicalIdentity::Eq
+        | CanonicalIdentity::Cons
+        | CanonicalIdentity::Car
+        | CanonicalIdentity::Cdr => semantic_id_for_identity(identity).map(semantic_callable),
     }
-    CANON_VALUES.with(|values| values.get(&identity).cloned())
 }
 
 pub(crate) fn value_for_surface(name: &str) -> Option<Value> {
@@ -273,7 +304,7 @@ mod tests {
     }
 
     #[test]
-    fn numeric_canon_identity_uses_the_same_evaluator_meaning() {
+    fn numeric_canon_identity_uses_the_same_semantic_call_target() {
         assert_eq!(
             identity_for_surface(CAR_SEMANTIC_ID),
             Some(CanonicalIdentity::Car)
@@ -285,23 +316,19 @@ mod tests {
         let numeric = value_for_surface(CAR_SEMANTIC_ID).expect("numeric Canon identity");
         let human = value_for_surface(human_surface).expect("registry-admitted Canon surface");
         let (Value::Builtin(numeric), Value::Builtin(human)) = (&numeric, &human) else {
-            panic!("PRIM_CAR must be a first-class builtin value");
+            panic!("0005 must materialize as a first-class host projection");
         };
-        assert!(Rc::ptr_eq(numeric, human));
+        assert_eq!(numeric.name, CAR_SEMANTIC_ID);
+        assert_eq!(human.name, CAR_SEMANTIC_ID);
+        assert!(
+            !Rc::ptr_eq(numeric, human),
+            "semantic identity witness must not depend on sharing one Rust allocation"
+        );
+        assert_eq!(same_semantic_callable_identity(&numeric.into(), &human.into()), Some(true));
     }
 
     #[test]
-    fn every_admitted_surface_for_one_semantic_id_shares_one_stable_handle() {
-        // Which spellings mean "car" (en/uk/sa/...) is a semantic-registry
-        // FACT, owned by the registry data, not Rust knowledge -- this test
-        // asserts only the Rust-implementation INVARIANT: whatever surfaces
-        // the registry admits for one semantic identity, Canon materializes
-        // exactly one shared callable handle for all of them. Read the real
-        // admitted surfaces from the registry itself instead of hardcoding
-        // "car"/"перше"/"ādi" as literals, so this test still passes
-        // unchanged if the registry's admitted spellings for 0005 ever
-        // change, and still fails if Canon ever gives two of them distinct
-        // handles.
+    fn every_admitted_surface_shares_identity_without_sharing_handle() {
         let surfaces = semantic_registry::admitted_surfaces_for_semantic_id(CAR_SEMANTIC_ID);
         assert!(
             surfaces.len() >= 2,
@@ -309,25 +336,35 @@ mod tests {
              got {surfaces:?}"
         );
 
-        let handles: Vec<Rc<crate::value::Builtin>> = surfaces
+        let values = surfaces
             .iter()
             .map(|surface| {
-                let value = value_for_surface(surface)
-                    .unwrap_or_else(|| panic!("registry-admitted surface {surface:?} should route through Canon"));
-                let Value::Builtin(ref handle) = value else {
-                    panic!("PRIM_CAR must be a first-class builtin value for surface {surface:?}");
-                };
-                handle.clone()
+                value_for_surface(surface).unwrap_or_else(|| {
+                    panic!("registry-admitted surface {surface:?} should route through Canon")
+                })
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        let first = &handles[0];
-        for (surface, handle) in surfaces.iter().zip(handles.iter()) {
-            assert!(
-                Rc::ptr_eq(first, handle),
-                "surface {surface:?} did not share Canon's one stable handle for 0005"
+        for (surface, value) in surfaces.iter().zip(values.iter()) {
+            assert_eq!(
+                semantic_callable_id(value),
+                Some(CAR_SEMANTIC_ID),
+                "surface {surface:?} did not carry Canon semantic identity 0005"
+            );
+            assert_eq!(
+                same_semantic_callable_identity(&values[0], value),
+                Some(true),
+                "surface {surface:?} did not share semantic callable identity 0005"
             );
         }
+
+        let (Value::Builtin(first), Value::Builtin(second)) = (&values[0], &values[1]) else {
+            panic!("0005 surfaces must materialize as first-class host projections");
+        };
+        assert!(
+            !Rc::ptr_eq(first, second),
+            "the witness must prove semantic identity survives distinct Rust allocations"
+        );
     }
 
     #[test]
