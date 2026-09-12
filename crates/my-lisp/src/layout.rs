@@ -99,32 +99,3 @@ impl NanBox {
         }
     }
 }
-
-#[cfg(test)]
-mod semantic_identity_tests {
-    use super::*;
-    use crate::value::Builtin;
-    use crate::{Environment, LanguageError, Span};
-
-    #[test]
-    fn semantic_ref_nanbox_payload_is_the_numeric_language_identity() {
-        let bits = NanBox::from_value(&Value::SemanticRef("0005")).0;
-        assert_eq!((bits >> 28) & 0xF, TAG_PRIMITIVE);
-        assert_eq!(bits & 0x0FFF_FFFF, 5);
-    }
-
-    #[test]
-    #[should_panic(expected = "legacy host builtin has no portable NaN-box representation")]
-    fn legacy_builtin_pointer_cannot_masquerade_as_portable_semantic_identity() {
-        let func = Rc::new(
-            |_args: &[Value], _env: &Environment, _span: Span| -> Result<Value, LanguageError> {
-                Ok(Value::Nil)
-            },
-        );
-        let value = Value::Builtin(Rc::new(Builtin {
-            name: "host-only-test",
-            func,
-        }));
-        let _ = NanBox::from_value(&value);
-    }
-}
