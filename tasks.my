@@ -8,7 +8,7 @@
     (acceptance . "Either: (a) confirm these 4 targets pass cleanly on the actual Linux CI runner (closing this as Windows-local-only, no action needed), or (b) if any reproduce on CI, root-cause and fix the specific timing/line-ending assumption rather than adding a blanket retry/ignore.")
     (out-of-scope . "Marking these #[ignore] or adding sleep-based retries without first confirming CI status -- do not guess a fix for tests that may already be fine under Linux's actual line-ending/timing behavior.")
     (evidence-expected . "A CI run's actual pass/fail status for these 4 targets, not a Windows-local assumption.")
-    (done . nil)
+    (done . "Closed 2026-09-12 as Windows-local-only, confirmed by direct CI log evidence, not assumption. GitHub Actions run 34713892538 (ubuntu-latest, commit d1d9f2ca) log shows all 4 targets passing cleanly: `duplicate_port_fails_before_mutating_identity ... ok`, `task_origin_provenance_flows_through ... ok`, `initiator_redials_when_welcome_never_arrives ... ok` (swarm-node integration), `policy_reload_changes_classification_without_recompiling_rust ... ok` (wsm-guard-facts), and `public_process_run_binding_is_already_a_lisp_closure ... ok` (my-lisp-host process_text); my-lisp-lsp's e2e.rs binary also ran without a failure line appearing in the log. No fix needed -- this machine's CRLF-vs-LF line-ending behavior and networking/timing characteristics simply differ from the Linux CI runner's, and the actual gate (CI) is unaffected.")
   ))
   ("WIN-BILINGUAL-CHECK-GREP-FALSE-POSITIVE-ON-MULTIBYTE-UTF8" . (
     (priority . 3.5)
