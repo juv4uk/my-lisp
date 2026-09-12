@@ -65,30 +65,39 @@ fn generated_projection_exposes_only_admitted_runtime_surfaces() {
 
 #[test]
 fn canonical_surface_parity_survives_registry_indirection() {
+    // Every surface spelling below names the same semantic identity, so
+    // every one of them must evaluate to the same authored expected value —
+    // checked independently for native and meta, never against each other.
+    let expected = "t";
     for source in [
         "(atom (quote x))",
         "(атом? (як-є x))",
         "(aṇu (svarūpa x))",
         "(.? (quote x))",
     ] {
-        assert_eq!(meta_value(source), native_value(source), "source: {source}");
+        assert_eq!(native_value(source), expected, "source: {source}");
+        assert_eq!(meta_value(source), expected, "source: {source}");
     }
 }
 
 #[test]
 fn necessary_form_surfaces_route_by_semantic_identity() {
+    let lambda_expected = "42";
     for source in [
         "((lambda (x) x) 42)",
         "((функція (x) x) 42)",
     ] {
-        assert_eq!(meta_value(source), native_value(source), "source: {source}");
+        assert_eq!(native_value(source), lambda_expected, "source: {source}");
+        assert_eq!(meta_value(source), lambda_expected, "source: {source}");
     }
 
+    let define_expected = "42";
     for source in [
         "(define answer 42)",
         "(визначити answer 42)",
         "(def answer 42)",
     ] {
-        assert_eq!(meta_program_result(source), native_value(source), "source: {source}");
+        assert_eq!(native_value(source), define_expected, "source: {source}");
+        assert_eq!(meta_program_result(source), define_expected, "source: {source}");
     }
 }

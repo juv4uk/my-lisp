@@ -124,7 +124,7 @@ fn bare_symbol_lambda_list_binds_all_arguments() {
         .to_string();
 
     assert_eq!(via_meta, "(1 2 3 4)");
-    assert_eq!(via_meta, via_native);
+    assert_eq!(via_native, "(1 2 3 4)");
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn dotted_lambda_list_binds_remaining_arguments_as_rest_list() {
         .to_string();
 
     assert_eq!(via_meta, "(30 40)");
-    assert_eq!(via_meta, via_native);
+    assert_eq!(via_native, "(30 40)");
 }
 
 #[test]
@@ -216,5 +216,5 @@ fn recursive_factorial_matches_native_language_meaning() {
         .to_string();
 
     assert_eq!(via_meta, "720");
-    assert_eq!(via_meta, via_native);
+    assert_eq!(via_native, "720");
 }

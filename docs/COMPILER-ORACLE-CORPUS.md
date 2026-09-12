@@ -85,7 +85,7 @@ they are not literally rows in `conformance.my`.
 
 Meta-evaluator parity (whether `lib/meta-eval.my` also reproduces these
 same 17 fixtures) is intentionally out of scope for *this* corpus —
-that is what `crates/my-lisp/tests/meta_eval_parity.rs` and
+that is what `crates/my-lisp/tests/meta_eval_corpus.rs` and
 `docs/meta-eval-evidence.md` already do, for the self-hosting question.
 This corpus answers a different question: what must a *compiled*
 execution path match, once one exists. The two efforts should stay

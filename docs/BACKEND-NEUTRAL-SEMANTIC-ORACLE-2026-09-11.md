@@ -20,12 +20,14 @@ architectural intention.
 ## What this adds
 
 `crates/my-lisp/tests/compiler_corpus_dual_backend.rs` — not a new
-mechanism. Reuses `crates/my-lisp/tests/meta_eval_parity.rs`'s own
-`eval_native`/`eval_via_meta_eval` pattern (native Rust evaluator vs.
-`lib/meta-eval.my`'s Lisp-owned meta-evaluator), applied specifically
-to #67's frozen compiler-corpus (`tests/fixtures/conformance.my`'s
-`(compiler-corpus . t)` fixtures) rather than the separate,
-broader self-hosting-tracking corpus those two files already cover.
+mechanism. Applies the same native-Rust-evaluator-vs-`lib/meta-eval.my`
+comparison shape used elsewhere in this test suite (see
+`crates/my-lisp/tests/meta_eval_corpus.rs`, which drives the same
+comparison off a `meta-eval` corpus tag rather than a hand-copied
+expression list) specifically to #67's frozen compiler-corpus
+(`tests/fixtures/conformance.my`'s `(compiler-corpus . t)` fixtures)
+rather than the separate, broader self-hosting-tracking corpus that
+file already covers.
 
 ## The current, honest, verified fact
 
@@ -34,8 +36,8 @@ the native Rust evaluator and `lib/meta-eval.my`'s Lisp-owned
 meta-evaluator, with byte-identical results, right now:
 
 - All 7 McCarthy-7/Canon 0 fixtures (`quote`/`atom`/`eq`/`car`/`cdr`/
-  `cons`/`cond`) that overlap with `meta_eval_parity.rs`'s own
-  independently-authored `IN_SCOPE_EXPRS`.
+  `cons`/`cond`) that overlap with the fixtures tagged `meta-eval` for
+  `meta_eval_corpus.rs`'s self-hosting sweep.
 - 2 more from the closure-identity and dotted-lambda-list categories
   (verified live, not assumed from either file's prior scope).
 

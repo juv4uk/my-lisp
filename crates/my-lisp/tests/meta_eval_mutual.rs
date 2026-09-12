@@ -42,10 +42,25 @@ fn consecutive_top_level_functions_can_refer_to_each_other_in_main_meta_eval() {
       (t (even? (- n 1))))))
 "#;
 
-    for probe in ["(even? 20)", "(odd? 21)", "(even? 19)", "(odd? 20)"] {
-        let via_meta = eval_meta_program(program, probe);
-        let via_native = eval_native(program, probe);
-        assert_eq!(via_meta, via_native, "mutual-recursion parity failed for {probe}");
+    // Authored independently of either evaluator: even?/odd? alternate on
+    // parity, so each probe's expected value follows directly from n's
+    // parity, not from running either evaluator.
+    for (probe, expected) in [
+        ("(even? 20)", "t"),
+        ("(odd? 21)", "t"),
+        ("(even? 19)", "()"),
+        ("(odd? 20)", "()"),
+    ] {
+        assert_eq!(
+            eval_native(program, probe),
+            expected,
+            "native mutual-recursion result failed for {probe}"
+        );
+        assert_eq!(
+            eval_meta_program(program, probe),
+            expected,
+            "meta mutual-recursion result failed for {probe}"
+        );
     }
 }
 
@@ -69,9 +84,23 @@ fn three_member_recursive_group_is_finite_lisp_data_in_main_meta_eval() {
       (t (mod0? (- n 1))))))
 "#;
 
-    for probe in ["(mod0? 30)", "(mod1? 31)", "(mod2? 32)"] {
-        let via_meta = eval_meta_program(program, probe);
-        let via_native = eval_native(program, probe);
-        assert_eq!(via_meta, via_native, "three-member group parity failed for {probe}");
+    // mod0?/mod1?/mod2? cycle through each other on a period of 3; each
+    // is true for exactly one residue class mod 3 (0, 2, and 1
+    // respectively), which is where these expected values come from.
+    for (probe, expected) in [
+        ("(mod0? 30)", "t"),
+        ("(mod1? 31)", "()"),
+        ("(mod2? 32)", "()"),
+    ] {
+        assert_eq!(
+            eval_native(program, probe),
+            expected,
+            "native three-member group result failed for {probe}"
+        );
+        assert_eq!(
+            eval_meta_program(program, probe),
+            expected,
+            "meta three-member group result failed for {probe}"
+        );
     }
 }

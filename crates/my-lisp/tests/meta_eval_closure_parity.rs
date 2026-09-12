@@ -28,6 +28,11 @@ fn meta(expr: &str) -> String {
 
 #[test]
 fn closure_capture_has_native_parity() {
+    // Both sides are checked independently against an authored expected
+    // value, never against each other — a bug shared by both evaluators
+    // must not hide behind a native-vs-meta parity check that stays green.
     let expr = "((lambda (x) ((lambda (y) (+ x y)) 2)) 40)";
-    assert_eq!(meta(expr), native(expr));
+    let expected = "42";
+    assert_eq!(native(expr), expected);
+    assert_eq!(meta(expr), expected);
 }
