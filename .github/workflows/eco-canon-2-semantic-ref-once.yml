@@ -26,8 +26,19 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Apply semantic-ref slice
         run: |
-          git apply --recount --check .github/patches/eco-canon-2-semantic-ref.patch
-          git apply --recount .github/patches/eco-canon-2-semantic-ref.patch
+          awk '
+            /^diff --git a\/crates\/my-lisp\/src\/layout.rs / { skip=1; next }
+            /^diff --git / && skip { skip=0 }
+            !skip { print }
+          ' .github/patches/eco-canon-2-semantic-ref.patch > /tmp/eco-canon-2-semantic-ref.patch
+          git apply --recount --check /tmp/eco-canon-2-semantic-ref.patch
+          git apply --recount /tmp/eco-canon-2-semantic-ref.patch
+
+          perl -0pi -e 's/pub const TAG_NUMERIC_BUFFER: u64 = 13;\n/pub const TAG_NUMERIC_BUFFER: u64 = 13;\n\/\/\/ Process-local implementation pointer; never portable language identity.\npub const TAG_HOST_BUILTIN: u64 = 14;\n/' crates/my-lisp/src/layout.rs
+          perl -0pi -e 's!            // TAG_PRIMITIVE was reserved in the memory-layout contract\n            // from day one -- contract 2\.1 finally fills it\.\n            Value::Builtin\(b\) => \{\n                let ptr = Rc::as_ptr\(b\) as u64;\n                NanBox\(Self::pack_ptr\(TAG_PRIMITIVE, ptr\)\)\n            \}!            // Portable primitive identity: numeric semantic ID, not an address\n            // inside this Rust process.\n            Value::SemanticRef(semantic_id) => {\n                let payload = semantic_id\n                    .parse::<u64>()\n                    .expect("semantic registry IDs must be numeric");\n                assert!(payload <= 0x0FFF_FFFF, "semantic ID exceeds NaN-box payload");\n                NanBox(MASK_QNAN | (TAG_PRIMITIVE << 28) | payload)\n            }\n            // Legacy host implementation projection. It gets a distinct tag\n            // so an Rc address can never masquerade as semantic identity.\n            Value::Builtin(b) => {\n                let ptr = Rc::as_ptr(b) as u64;\n                NanBox(Self::pack_ptr(TAG_HOST_BUILTIN, ptr))\n            }!s' crates/my-lisp/src/layout.rs
+
+          grep -q 'Value::SemanticRef(semantic_id)' crates/my-lisp/src/layout.rs
+          grep -q 'TAG_HOST_BUILTIN' crates/my-lisp/src/layout.rs
           cargo fmt --all
           git diff --check
       - name: Focused language-power witnesses
