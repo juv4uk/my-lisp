@@ -410,9 +410,9 @@ mod tests {
         let en = render_surface_names(ReplSurface::English).expect("EN catalog");
         let uk = render_surface_names(ReplSurface::Ukrainian).expect("UK catalog");
         let sa = render_surface_names(ReplSurface::Sanskrit).expect("SA catalog");
-        assert!(en.contains("surface en: stable 131 · candidate 0 · missing 9"));
+        assert!(en.contains("surface en: stable 137 · candidate 0 · missing 9"));
         assert!(uk.contains("surface uk: stable 140"));
-        assert!(sa.contains("surface sa: stable 36 · candidate 88 · missing 16"));
+        assert!(sa.contains("surface sa: stable 36 · candidate 88 · missing 22"));
     }
 
     #[test]
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn trilingual_status_is_measured_not_claimed() {
         let status = render_surface_status().expect("surface status");
-        assert!(status.contains("trilingual stable: 29/140"));
+        assert!(status.contains("trilingual stable: 29/146"));
         assert!(status.contains("release parity: OPEN"));
     }
 
