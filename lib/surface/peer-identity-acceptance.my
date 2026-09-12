@@ -2,14 +2,17 @@
 ;; Приймальна програма тотожності мовних поверхонь.
 ;;
 ;; Proves that a Ukrainian peer spelling and its English counterpart
-;; share exact identity (Rc::ptr_eq for closures/builtins under `eq`),
-;; not merely equal behavior through a re-implementation or translation
-;; shim -- the distinction docs/PLAN-FULL-LANGUAGE-PARITY.md's invariant
-;; 5 draws ("Жодного cross-language alias як реалізації"). This is a
-;; different concern from tests/fixtures/conformance.my's single-session
-;; semantic facts: it inherently compares bindings across two loaded
-;; surface files, which conformance.my's uniform core.my-only execution
-;; model does not accommodate.
+;; share exact language-level identity under `eq`, not merely equal
+;; behavior through a re-implementation or translation shim -- the
+;; distinction docs/PLAN-FULL-LANGUAGE-PARITY.md's invariant 5 draws
+;; ("Жодного cross-language alias як реалізації"). The runtime
+;; representation used to realize that identity is deliberately not part
+;; of this language contract.
+;;
+;; This is a different concern from tests/fixtures/conformance.my's
+;; single-session semantic facts: it inherently compares bindings across
+;; two loaded surface files, which conformance.my's uniform core.my-only
+;; execution model does not accommodate.
 ;;
 ;; Required: core.my, then uk.my loaded on top (same as the CLI's own
 ;; --surface=uk prerequisite chain).
