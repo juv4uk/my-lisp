@@ -161,5 +161,8 @@ pub(crate) fn eq_values(left: Value, right: Value, span: Span) -> Result<Value, 
             span,
         ));
     }
+    if let Some(same) = canon::same_semantic_callable_identity(&left, &right) {
+        return Ok(Value::truth(same));
+    }
     Ok(Value::truth(left == right))
 }
