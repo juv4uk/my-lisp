@@ -13,7 +13,7 @@ fn my_lisp(cwd: &Path) -> Command {
     command
 }
 
-fn numeric_row_ids(source: &str) -> BTreeSet<u32> {
+fn numeric_row_id_list(source: &str) -> Vec<u32> {
     source
         .lines()
         .filter_map(|line| {
@@ -23,6 +23,10 @@ fn numeric_row_ids(source: &str) -> BTreeSet<u32> {
             token.parse::<u32>().ok()
         })
         .collect()
+}
+
+fn numeric_row_ids(source: &str) -> BTreeSet<u32> {
+    numeric_row_id_list(source).into_iter().collect()
 }
 
 #[test]
@@ -50,10 +54,31 @@ fn ukrainian_staging_profile_covers_every_function_table_identity() {
     let profile = fs::read_to_string(root.join("lib/surface/український-профіль-джерела.всм"))
         .expect("Ukrainian staging profile must be readable");
 
+    let expected_rows = numeric_row_id_list(&function_table);
+    let actual_rows = numeric_row_id_list(&profile);
     let expected = numeric_row_ids(&function_table);
     let actual = numeric_row_ids(&profile);
 
-    assert_eq!(expected.len(), 161, "function table inventory changed; review UK coverage gate");
+    assert_eq!(
+        expected_rows.len(),
+        expected.len(),
+        "function table must not contain duplicate semantic identity rows"
+    );
+    assert_eq!(
+        actual_rows.len(),
+        actual.len(),
+        "Ukrainian staging must contain exactly one row per semantic identity"
+    );
+    assert_eq!(
+        expected_rows.len(),
+        161,
+        "function table inventory changed; review UK coverage gate"
+    );
+    assert_eq!(
+        actual_rows.len(),
+        161,
+        "Ukrainian staging row count must stay exactly aligned with the 161-row function table"
+    );
     assert_eq!(
         actual, expected,
         "Ukrainian staging must explicitly cover every semantic identity, including compatibility-only rows"
