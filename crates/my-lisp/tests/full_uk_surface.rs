@@ -70,3 +70,21 @@ fn admitted_full_uk_registry_spellings_never_require_latin_layout() {
         "registry must contain at least one admitted full-uk spelling"
     );
 }
+
+#[test]
+fn generated_function_table_projects_authoritative_full_uk_name() {
+    let table = include_str!("../../../lib/generated/function-table.wsm");
+    let row = table
+        .lines()
+        .find(|line| line.trim_start().starts_with("(1045 "))
+        .expect("generated function table must contain semantic ID 1045");
+
+    assert!(
+        row.contains("(uk текст-порожній? stable)"),
+        "generated row must preserve current uk spelling: {row}"
+    );
+    assert!(
+        row.contains("(full-uk порожній-текст? stable)"),
+        "generated row must project the registry full-uk spelling instead of mirroring uk: {row}"
+    );
+}
