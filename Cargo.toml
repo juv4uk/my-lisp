@@ -4,6 +4,7 @@
 # Mitglieder des Cargo-Workspace.
 members = [
     "crates/my-lisp", "crates/my-lisp-cli",
+    "crates/my-lisp-embed",
     "crates/my-lisp-literate",
     "crates/my-lisp-wasm",
     "crates/swarm-node",

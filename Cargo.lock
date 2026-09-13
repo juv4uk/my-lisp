@@ -225,6 +225,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "my-lisp-embed"
+version = "0.1.0"
+dependencies = [
+ "my-lisp",
+]
+
+[[package]]
 name = "my-lisp-host"
 version = "0.39.0"
 dependencies = [

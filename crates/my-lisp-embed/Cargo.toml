@@ -1,0 +1,12 @@
+[package]
+name = "my-lisp-embed"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Canonical stateful my-lisp C ABI embedding boundary"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+my-lisp = { path = "../my-lisp" }
