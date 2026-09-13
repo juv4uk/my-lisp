@@ -1,0 +1,36 @@
+name: Full Ukrainian Surface Gate
+
+on:
+  pull_request:
+    paths:
+      - 'lib/surface/semantic-registry.wsm'
+      - 'lib/surface/український-профіль-джерела.всм'
+      - 'scripts/generate-function-table.my'
+      - 'crates/my-lisp-cli/tests/uk_surface_audit_projection.rs'
+      - '.github/workflows/full-uk-surface-check.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'lib/surface/semantic-registry.wsm'
+      - 'lib/surface/український-профіль-джерела.всм'
+      - 'scripts/generate-function-table.my'
+      - 'crates/my-lisp-cli/tests/uk_surface_audit_projection.rs'
+      - '.github/workflows/full-uk-surface-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-uk-surface-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Check full Ukrainian staging invariants
+        run: cargo test -p my-lisp-cli --test uk_surface_audit_projection -- --nocapture
