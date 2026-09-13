@@ -9,8 +9,9 @@
 ;
 ; Candidate evidence path:
 ;   lib/surface/український-профіль-джерела.всм
-; Candidate spellings remain proposals. This generator MUST NOT promote them
-; into the authoritative `full-uk` column by itself.
+; Candidate spellings remain proposals. `lib/generated/function-table.wsm`
+; is a checked projection, not a second semantic authority. This generator
+; MUST NOT promote staging candidates into that current `full-uk` projection.
 ;
 ; Output:
 ;   lib/generated/uk-surface-audit.wsm
