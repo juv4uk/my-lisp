@@ -33,7 +33,7 @@ on:
       - '.github/workflows/full-uk-surface-check.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ukr-surface-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -44,72 +44,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: One-time migrate full Ukrainian namespace to ukr
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          exact = {
-              "lib/surface/semantic-registry.wsm": [("full-uk", "ukr")],
-              "crates/my-lisp/src/semantic_registry.rs": [("full-uk", "ukr")],
-              "crates/my-lisp-cli/tests/uk_surface_audit_projection.rs": [
-                  ("full_uk", "ukr"),
-                  ("full-UK", "ukr"),
-                  ("full UK", "ukr"),
-              ],
-              "docs/superpowers/specs/2026-09-13-full-uk-cyrillic-surface-design.md": [
-                  ("full-uk", "ukr"),
-                  ("full-UK", "ukr"),
-                  ("full UK", "ukr"),
-              ],
-              "docs/superpowers/plans/2026-09-13-full-uk-cyrillic-surface.md": [
-                  ("full-uk", "ukr"),
-                  ("full-UK", "ukr"),
-                  ("full UK", "ukr"),
-              ],
-          }
-
-          for name, replacements in exact.items():
-              path = Path(name)
-              text = path.read_text(encoding="utf-8")
-              updated = text
-              for old, new in replacements:
-                  updated = updated.replace(old, new)
-              if updated != text:
-                  path.write_text(updated, encoding="utf-8")
-          PY
       - name: Regenerate function-table projections
         run: cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.my
       - name: Regenerate meta semantic registry projection
         run: python3 scripts/generate-meta-semantic-registry.py
-      - name: Commit one-time migration and generated projections
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/surface/semantic-registry.wsm \
-                  crates/my-lisp/src/semantic_registry.rs \
-                  crates/my-lisp-cli/tests/uk_surface_audit_projection.rs \
-                  docs/superpowers/specs/2026-09-13-full-uk-cyrillic-surface-design.md \
-                  docs/superpowers/plans/2026-09-13-full-uk-cyrillic-surface.md \
-                  lib/generated/function-table.wsm \
-                  lib/generated/meta-semantic-registry.my \
-                  docs/generated/function-table.md
-          if ! git diff --cached --quiet; then
-            git commit -m "refactor(ukr): make ukr the full Ukrainian namespace"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
       - name: Require committed projections to match generators
         run: git diff --exit-code -- lib/generated/function-table.wsm lib/generated/meta-semantic-registry.my docs/generated/function-table.md
-      - name: Reject Latin letters in full Ukrainian candidates first
+      - name: Reject Latin letters in ukr candidates first
         run: cargo test -p my-lisp-cli --test uk_surface_audit_projection ukr_candidates_need_no_latin_keyboard_layout -- --nocapture
       - name: Verify authoritative uk/ukr peer identity
         run: cargo test -p my-lisp --test full_uk_surface -- --nocapture
