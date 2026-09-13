@@ -1,0 +1,2 @@
+RED gate branch marker for the Ukrainian surface coherence slice.
+Authoritative behavior is in crates/my-lisp-cli/tests/uk_surface_audit_projection.rs.
