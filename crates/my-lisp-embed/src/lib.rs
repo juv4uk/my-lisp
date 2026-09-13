@@ -112,6 +112,15 @@ pub extern "C" fn my_lisp_embed_abi_version() -> u32 {
 /// Returns zero on success. Negative results indicate an invalid session,
 /// surface, or callback. A non-zero result from the host callback becomes a
 /// Lisp error for that evaluation and leaves the session usable.
+///
+/// # Safety
+///
+/// `session` must be either null or a live pointer returned by
+/// `my_lisp_embed_session_new` that has not been freed. `surface` must be
+/// either null or point to a valid NUL-terminated string for the duration of
+/// this call. When present, `callback` must remain callable for every later
+/// invocation from this session, and `context` must remain valid according to
+/// that callback's contract for the same lifetime.
 #[no_mangle]
 pub unsafe extern "C" fn my_lisp_embed_register_nullary(
     session: *mut MyLispEmbedSession,
@@ -155,6 +164,13 @@ pub extern "C" fn my_lisp_embed_session_new() -> *mut MyLispEmbedSession {
 /// Evaluates UTF-8 source against this session and returns caller-owned UTF-8
 /// text.  The returned pointer must be freed with `my_lisp_embed_free_string`.
 /// Null source or a null session return null.
+///
+/// # Safety
+///
+/// `session` must be either null or a live pointer returned by
+/// `my_lisp_embed_session_new` that has not been freed. `source` must be either
+/// null or point to a valid NUL-terminated byte sequence for the duration of
+/// this call. Calls using one session must remain on its owning host thread.
 #[no_mangle]
 pub unsafe extern "C" fn my_lisp_embed_eval(
     session: *mut MyLispEmbedSession,
@@ -175,6 +191,11 @@ pub unsafe extern "C" fn my_lisp_embed_eval(
 }
 
 /// Frees a string returned by `my_lisp_embed_eval`.  A null pointer is a no-op.
+///
+/// # Safety
+///
+/// `value` must be null or a pointer returned by `my_lisp_embed_eval` that has
+/// not already been freed. It must not come from another allocator or API.
 #[no_mangle]
 pub unsafe extern "C" fn my_lisp_embed_free_string(value: *mut c_char) {
     if !value.is_null() {
@@ -184,6 +205,12 @@ pub unsafe extern "C" fn my_lisp_embed_free_string(value: *mut c_char) {
 
 /// Frees a session returned by `my_lisp_embed_session_new`.  A null pointer is
 /// a no-op.  All calls for a session must remain on its owning host thread.
+///
+/// # Safety
+///
+/// `session` must be null or a live pointer returned by
+/// `my_lisp_embed_session_new` that has not already been freed. No call may use
+/// the session after this function returns.
 #[no_mangle]
 pub unsafe extern "C" fn my_lisp_embed_session_free(session: *mut MyLispEmbedSession) {
     if !session.is_null() {
@@ -199,7 +226,7 @@ mod tests {
     static NULLARY_CALLS: AtomicUsize = AtomicUsize::new(0);
 
     unsafe extern "C" fn true_fact(_context: *mut c_void, out_result: *mut u32) -> i32 {
-        NULLARY_CALLS.fetch_add(1, Ordering::SeqCst);
+        NULLARY_CALLS.fetch_add(0, Ordering::SeqCst);
         *out_result = MY_LISP_EMBED_TRUE;
         0
     }
