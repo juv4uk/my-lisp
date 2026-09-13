@@ -89,6 +89,9 @@ python3 scripts/generate-meta-semantic-registry.py
 cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.lisp
 python3 scripts/generate-ukrainian-api.py
 
+# Old Markdown source used hard-break trailing spaces; normalize the replayed doc.
+sed -i 's/[[:space:]]\+$//' docs/ukrainian-api.md
+
 # Focused proof before producing a merge candidate.
 python3 scripts/generate-meta-semantic-registry.py --check
 python3 scripts/generate-ukrainian-api.py --check
