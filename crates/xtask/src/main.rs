@@ -14,8 +14,7 @@
 //! виконувану поведінку; цей інструмент перевіряє все інше.
 
 mod checks;
-#[cfg(test)]
-mod external_oracle;
+pub mod external_oracle;
 mod gen_functions_md;
 
 use std::process::ExitCode;
@@ -31,6 +30,7 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
+        Some("external-oracle") => run_external_oracle(args),
         Some(other) => {
             eprintln!("unknown xtask subcommand: {other}");
             print_usage();
@@ -44,7 +44,9 @@ fn main() -> ExitCode {
 }
 
 fn print_usage() {
-    eprintln!("usage: cargo xtask <verify|gen-functions-md>");
+    eprintln!(
+        "usage: cargo xtask <verify|gen-functions-md|external-oracle <export|render> [--fixture F-...]>"
+    );
 }
 
 fn run_verify() -> ExitCode {
@@ -63,10 +65,7 @@ fn run_verify() -> ExitCode {
     }
 
     if failures.is_empty() {
-        println!(
-            "[xtask verify] all {} checks passed",
-            all_checks.len()
-        );
+        println!("[xtask verify] all {} checks passed", all_checks.len());
         ExitCode::SUCCESS
     } else {
         eprintln!(
@@ -79,4 +78,101 @@ fn run_verify() -> ExitCode {
         }
         ExitCode::FAILURE
     }
+}
+
+/// Handle `cargo xtask external-oracle <subcommand> [args]`
+///
+/// Subcommands:
+///   export  [--fixture F-<id>]  — print request s-expression(s)
+///   render  [--fixture F-<id>]  — alias for export (human-readable label)
+fn run_external_oracle(mut args: impl Iterator<Item = String>) -> ExitCode {
+    // Locate repo root: CARGO_MANIFEST_DIR is crates/xtask, go up two levels.
+    // At runtime we use the binary's own manifest path via environment.
+    let repo_root = locate_repo_root();
+
+    let subcmd = match args.next().as_deref() {
+        Some("export") | Some("render") => "export",
+        Some(other) => {
+            eprintln!("unknown external-oracle subcommand: {other}");
+            eprintln!("  available: export, render");
+            return ExitCode::FAILURE;
+        }
+        None => {
+            eprintln!("external-oracle requires a subcommand: export");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // Parse --fixture F-... option
+    let mut fixture_filter: Option<String> = None;
+    let remaining: Vec<String> = args.collect();
+    let mut i = 0;
+    while i < remaining.len() {
+        if remaining[i] == "--fixture" {
+            if let Some(id) = remaining.get(i + 1) {
+                fixture_filter = Some(id.clone());
+                i += 2;
+            } else {
+                eprintln!("--fixture requires an argument (F-<id>)");
+                return ExitCode::FAILURE;
+            }
+        } else {
+            eprintln!("unknown option: {}", remaining[i]);
+            return ExitCode::FAILURE;
+        }
+    }
+
+    let _ = subcmd; // "export" is the only one; future subcommands extend here
+
+    let corpus = match external_oracle::load_corpus(&repo_root) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("corpus load failed: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // Filter to requested fixture(s)
+    let ids_to_export: Vec<String> = if let Some(ref fid) = fixture_filter {
+        vec![fid.clone()]
+    } else {
+        // All S1 fixtures with expected values
+        corpus
+            .iter()
+            .filter(|f| f.is_s1 && f.expected.is_some())
+            .map(|f| f.id.clone())
+            .collect()
+    };
+
+    let mut any_failed = false;
+    for id in &ids_to_export {
+        let outcome = external_oracle::export_fixture(&corpus, id);
+        let rendered = external_oracle::render_request(&outcome, (6, 0));
+        println!("{rendered}");
+        println!();
+        if matches!(outcome, external_oracle::ExportOutcome::Unsupported { .. }) {
+            any_failed = true;
+        }
+    }
+
+    if any_failed {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn locate_repo_root() -> String {
+    // Try CARGO_MANIFEST_DIR from env (set when running via `cargo xtask`)
+    if let Ok(manifest) = std::env::var("CARGO_MANIFEST_DIR") {
+        // crates/xtask → go up two levels
+        let path = std::path::Path::new(&manifest);
+        if let Some(repo) = path.parent().and_then(|p| p.parent()) {
+            return repo.to_string_lossy().into_owned();
+        }
+    }
+    // Fallback: current working directory (useful when binary is run directly)
+    std::env::current_dir()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| ".".into())
 }
