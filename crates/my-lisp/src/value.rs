@@ -643,22 +643,6 @@ impl Value {
     }
 }
 
-#[cfg(test)]
-mod host_handle_tests {
-    use super::Value;
-
-    #[test]
-    fn host_handle_hides_its_token_when_rendered() {
-        let handle = Value::host_handle("cyberpunk.IScriptable", 0x1234_5678);
-        assert_eq!(
-            handle.as_host_handle(),
-            Some(("cyberpunk.IScriptable", 0x1234_5678))
-        );
-        assert_eq!(handle.to_string(), "#<host-handle cyberpunk.IScriptable>");
-        assert_ne!(handle.to_string(), "#<host-handle 305419896>");
-    }
-}
-
 impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{}", render(self, true))
@@ -837,5 +821,21 @@ impl Drop for Value {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod host_handle_tests {
+    use super::Value;
+
+    #[test]
+    fn host_handle_hides_its_token_when_rendered() {
+        let handle = Value::host_handle("cyberpunk.IScriptable", 0x1234_5678);
+        assert_eq!(
+            handle.as_host_handle(),
+            Some(("cyberpunk.IScriptable", 0x1234_5678))
+        );
+        assert_eq!(handle.to_string(), "#<host-handle cyberpunk.IScriptable>");
+        assert_ne!(handle.to_string(), "#<host-handle 305419896>");
     }
 }
