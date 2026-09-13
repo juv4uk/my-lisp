@@ -55,7 +55,7 @@
     (acceptance . "LSP code recognizes def/defmacro (and their peer spellings, e.g. визначити-макрос) by semantic identity (necessary_forms::identity_for_symbol / semantic_registry lookups), not literal English spelling comparisons.")
     (out-of-scope . "Any other LSP feature not touching def/defmacro recognition specifically.")
     (evidence-expected . "A test proving a non-English defmacro spelling is recognized by the same LSP code path as the English one, mirroring db825e7's quote-detection fix test.")
-    (done . nil)
+    (done . "2026-09-13: commit 7ea9e95 — analysis.rs collect_defs() now uses my_lisp::is_define_surface_name()/is_defmacro_surface_name() instead of literal \"def\"/\"defmacro\" comparisons. guard_knowledge.rs parse_topics() and parse_functions() likewise use registry helpers for def and lambda. lib.rs: added is_define_surface_name(), is_defmacro_surface_name(), is_lambda_surface_name() public helpers (alongside existing is_quote_surface_name()). 6 new unit tests in define_surface_tests prove English (def, defmacro, define), Ukrainian (визначити, визначити-макрос) and negative (cons) cases. All 36 LSP tests pass (16 unit + 18 e2e + 1 release_parity + 1 stdio).")
   ))
 
   ("ECO-CANON-1-FUNCTION-TABLE-REAL-GENERATION" . (
