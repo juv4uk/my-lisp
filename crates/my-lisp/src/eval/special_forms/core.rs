@@ -161,5 +161,13 @@ pub(crate) fn eq_values(left: Value, right: Value, span: Span) -> Result<Value, 
             span,
         ));
     }
-    Ok(Value::truth(left == right))
+
+    // Callable identity is observed through the stable handle selected by the
+    // registry-owned Canon mapping. `Rc::ptr_eq` is only the runtime mechanism:
+    // which surfaces share that handle is decided upstream by semantic ID.
+    let same_identity = match (&left, &right) {
+        (Value::Builtin(left), Value::Builtin(right)) => Rc::ptr_eq(left, right),
+        _ => left == right,
+    };
+    Ok(Value::truth(same_identity))
 }
