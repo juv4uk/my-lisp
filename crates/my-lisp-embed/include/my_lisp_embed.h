@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define MY_LISP_EMBED_ABI_VERSION 2u
+#define MY_LISP_EMBED_ABI_VERSION 3u
 
 typedef struct MyLispEmbedSession MyLispEmbedSession;
 typedef int32_t (*MyLispEmbedNullaryFn)(void *context, uint32_t *out_result);
@@ -19,6 +19,11 @@ enum {
 
 uint32_t my_lisp_embed_abi_version(void);
 MyLispEmbedSession *my_lisp_embed_session_new(void);
+int32_t my_lisp_embed_bind_host_handle(
+    MyLispEmbedSession *session,
+    const char *utf8_surface,
+    const char *utf8_kind,
+    uint64_t token);
 int32_t my_lisp_embed_register_nullary(
     MyLispEmbedSession *session,
     const char *utf8_surface,

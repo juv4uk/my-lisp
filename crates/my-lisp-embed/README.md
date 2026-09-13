@@ -15,7 +15,7 @@ void my_lisp_embed_free_string(char *);
 void my_lisp_embed_session_free(MyLispEmbedSession *);
 ```
 
-The current ABI version is `2`.  A native host must verify it before using
+The current ABI version is `3`.  A native host must verify it before using
 the other exports.
 
 `my_lisp_embed_eval` evaluates a complete UTF-8 source fragment against the
@@ -46,3 +46,7 @@ The callback is invoked only because Lisp evaluated the bound function.  It
 cannot parse source, select a scenario, or run an evaluator.  This covers the
 first Cyberpunk mechanisms `запиши-лог` and `гравець-присутній?`; typed
 arguments and opaque handles require a later contract.
+
+ABI v3 adds `my_lisp_embed_bind_host_handle`: the host may bind an opaque
+value such as `гравець` without exposing its numeric token to Lisp source or
+REPL output.

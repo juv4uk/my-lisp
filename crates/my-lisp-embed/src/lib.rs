@@ -17,7 +17,7 @@ use std::{
 /// C ABI contract version.  Hosts must compare this value before using the
 /// session exports, rather than treating matching symbol names as proof of
 /// compatibility.
-pub const MY_LISP_EMBED_ABI_VERSION: u32 = 2;
+pub const MY_LISP_EMBED_ABI_VERSION: u32 = 3;
 
 /// Result tags that a nullary host mechanism may return through the C ABI.
 pub const MY_LISP_EMBED_NIL: u32 = 0;
@@ -105,6 +105,35 @@ fn invoke_nullary(
 #[no_mangle]
 pub extern "C" fn my_lisp_embed_abi_version() -> u32 {
     MY_LISP_EMBED_ABI_VERSION
+}
+
+/// Binds an embedding-owned opaque handle. Lisp may pass this value to a host
+/// mechanism, but source syntax cannot construct or inspect its token.
+#[no_mangle]
+pub unsafe extern "C" fn my_lisp_embed_bind_host_handle(
+    session: *mut MyLispEmbedSession,
+    surface: *const c_char,
+    kind: *const c_char,
+    token: u64,
+) -> i32 {
+    if session.is_null() || surface.is_null() || kind.is_null() {
+        return -1;
+    }
+    let decode = |text: *const c_char| {
+        CStr::from_ptr(text)
+            .to_str()
+            .ok()
+            .filter(|text| !text.is_empty())
+            .map(str::to_owned)
+    };
+    let (Some(surface), Some(kind)) = (decode(surface), decode(kind)) else {
+        return -2;
+    };
+    (&mut *session)
+        .session
+        .environment
+        .define(surface, my_lisp::Value::host_handle(kind, token));
+    0
 }
 
 /// Binds a zero-argument host mechanism into one canonical session.
@@ -243,6 +272,28 @@ mod tests {
         assert_eq!(eval(session, "(гравець-присутній?)"), "t");
         assert_eq!(NULLARY_CALLS.load(Ordering::SeqCst), 2);
 
+        unsafe { my_lisp_embed_session_free(session) };
+    }
+
+    #[test]
+    fn host_handle_binding_is_opaque_to_lisp_source() {
+        let session = my_lisp_embed_session_new();
+        assert_eq!(
+            unsafe {
+                my_lisp_embed_bind_host_handle(
+                    session,
+                    CString::new("гравець").unwrap().as_ptr(),
+                    CString::new("cyberpunk.IScriptable").unwrap().as_ptr(),
+                    42,
+                )
+            },
+            0
+        );
+        assert_eq!(
+            eval(session, "гравець"),
+            "#<host-handle cyberpunk.IScriptable>"
+        );
+        assert!(!eval(session, "гравець").contains("42"));
         unsafe { my_lisp_embed_session_free(session) };
     }
 
