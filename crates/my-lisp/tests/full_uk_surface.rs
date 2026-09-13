@@ -81,6 +81,62 @@ fn admitted_ukr_registry_spellings_never_require_latin_layout() {
 }
 
 #[test]
+fn full_ukr_names_preserve_action_protocol_and_representation_semantics() {
+    let source = include_str!("../../../lib/surface/semantic-registry.lisp");
+    let expected = [
+        ("0104", "(ukr додати stable)"),
+        ("1001", "(ukr відняти stable)"),
+        ("1069", "(ukr буфер-32-бітних-цілих-зі-знаком candidate)"),
+        ("1145", "(ukr розібрати-текст-формату-джейсон candidate)"),
+        (
+            "1146",
+            "(ukr обчислити-хеш-ша-256-тексту-у-шістнадцятковому-записі candidate)",
+        ),
+        (
+            "1148",
+            "(ukr прочитати-текст-з-з'єднання-протоколу-керування-передаванням candidate)",
+        ),
+        (
+            "1149",
+            "(ukr записати-текст-у-з'єднання-протоколу-керування-передаванням candidate)",
+        ),
+        (
+            "1150",
+            "(ukr слухати-порт-протоколу-керування-передаванням candidate)",
+        ),
+    ];
+
+    for (semantic_id, expected_surface) in expected {
+        let prefix = format!("({semantic_id} ");
+        let row = source
+            .lines()
+            .map(str::trim_start)
+            .find(|line| line.starts_with(&prefix))
+            .unwrap_or_else(|| panic!("semantic registry is missing ID {semantic_id}"));
+        assert!(
+            row.contains(expected_surface),
+            "semantic ID {semantic_id} must keep the explicit ukr meaning {expected_surface:?}; row: {row}"
+        );
+    }
+
+    for rejected in [
+        "(ukr плюс candidate)",
+        "(ukr мінус candidate)",
+        "(ukr буфер-32-бітних-цілих candidate)",
+        "(ukr розібрати-джейсон candidate)",
+        "(ukr геш-ша-256-у-шістнадцятковий-текст candidate)",
+        "(ukr прочитати-з-мережевого-з'єднання candidate)",
+        "(ukr записати-у-мережеве-з'єднання candidate)",
+        "(ukr слухати-мережеві-з'єднання candidate)",
+    ] {
+        assert!(
+            !source.contains(rejected),
+            "lossy or rejected ukr wording must not return: {rejected}"
+        );
+    }
+}
+
+#[test]
 fn generated_function_table_uses_uk_then_ukr_without_duplicate_full_uk_column() {
     let table = include_str!("../../../lib/generated/function-table.lisp");
     let row = table
