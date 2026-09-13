@@ -97,6 +97,9 @@ pub(crate) fn invoke_value(
     span: Span,
 ) -> Result<Value, LanguageError> {
     match function {
+        Value::SemanticRef(semantic_id) => {
+            canon::invoke_semantic_ref(semantic_id, arguments, environment, span)
+        }
         Value::Builtin(builtin) => (builtin.func)(arguments, environment, span),
         Value::Closure(closure) => closures::apply_values(closure.clone(), arguments, span),
         _ => Err(LanguageError::new(
@@ -216,6 +219,14 @@ fn evaluate_list(
             }
             let function = evaluate(&items[0], environment)?;
             match &function {
+                Value::SemanticRef(semantic_id) => {
+                    let mut values = Vec::with_capacity(arguments.len());
+                    for argument in arguments {
+                        values.push(evaluate(argument, environment)?);
+                    }
+                    canon::invoke_semantic_ref(semantic_id, &values, environment, span)
+                        .map(EvalStep::Value)
+                }
                 Value::Builtin(builtin) => {
                     let mut values = Vec::with_capacity(arguments.len());
                     for argument in arguments {
