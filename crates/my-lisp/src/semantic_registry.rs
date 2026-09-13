@@ -1,6 +1,6 @@
 //! Shared projection from the language surface authority to numeric semantic IDs.
 //!
-//! `lib/surface/semantic-registry.wsm` owns human/symbolic spellings and their
+//! `lib/surface/semantic-registry.lisp` owns human/symbolic spellings and their
 //! admission status. This module owns only the mechanical projection of those
 //! spellings to opaque numeric IDs. Evaluator meaning remains in the modules
 //! that interpret each ID.
@@ -74,6 +74,20 @@ fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
         .collect()
 }
 
+fn insert_surface_mapping(
+    index: &mut HashMap<&'static str, &'static str>,
+    surface: &'static str,
+    semantic_id: &'static str,
+) {
+    if let Some(previous) = index.insert(surface, semantic_id) {
+        if previous != semantic_id {
+            panic!(
+                "semantic registry surface must be unique: {surface} maps to both {previous} and {semantic_id}"
+            );
+        }
+    }
+}
+
 pub(crate) fn build_surface_index(
     source: &'static str,
 ) -> HashMap<&'static str, &'static str> {
@@ -85,12 +99,7 @@ pub(crate) fn build_surface_index(
             .filter(|surface| surface.admission == SurfaceAdmission::Stable)
             .map(|surface| surface.name);
         for surface in std::iter::once(row.semantic_id).chain(stable_surfaces) {
-            if let Some(previous) = index.insert(surface, row.semantic_id) {
-                panic!(
-                    "semantic registry surface must be unique: {surface} maps to both {previous} and {}",
-                    row.semantic_id
-                );
-            }
+            insert_surface_mapping(&mut index, surface, row.semantic_id);
         }
     }
     index
@@ -112,12 +121,7 @@ pub(crate) fn build_admitted_surface_index(
     for row in parse_rows(source) {
         let admitted_surfaces = row.surfaces.iter().map(|surface| surface.name);
         for surface in std::iter::once(row.semantic_id).chain(admitted_surfaces) {
-            if let Some(previous) = index.insert(surface, row.semantic_id) {
-                panic!(
-                    "semantic registry surface must be unique: {surface} maps to both {previous} and {}",
-                    row.semantic_id
-                );
-            }
+            insert_surface_mapping(&mut index, surface, row.semantic_id);
         }
     }
     index
@@ -254,6 +258,16 @@ mod tests {
     }
 
     #[test]
+    fn peer_namespaces_may_repeat_one_spelling_for_the_same_identity() {
+        const SYNTHETIC: &str =
+            "(4242 (uk comet stable) (ukr comet stable) (compat comet compatibility-only))";
+        let stable = build_surface_index(SYNTHETIC);
+        let admitted = build_admitted_surface_index(SYNTHETIC);
+        assert_eq!(stable.get("comet"), Some(&"4242"));
+        assert_eq!(admitted.get("comet"), Some(&"4242"));
+    }
+
+    #[test]
     fn stable_surfaces_are_constructively_selected_by_semantic_id() {
         const SYNTHETIC: &str =
             "(0104 (uk comet stable) (sa asteroid candidate) (sym + stable))";
@@ -305,7 +319,7 @@ mod tests {
     #[test]
     fn admitted_surfaces_with_namespace_matches_admitted_names_and_keeps_namespace() {
         // Real registry row, not synthetic — 0001 is `quote`, checked
-        // against the live lib/surface/semantic-registry.wsm.
+        // against the live lib/surface/semantic-registry.lisp.
         let with_namespace = admitted_surfaces_with_namespace_for_semantic_id("0001");
         let names_only = admitted_surfaces_for_semantic_id("0001");
         assert_eq!(with_namespace.len(), names_only.len());
