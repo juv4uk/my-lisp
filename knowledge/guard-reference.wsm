@@ -109,6 +109,16 @@
        (lifecycle current-contract)
        (provenance "evidence: agent:pratyaksha live onboarding 2026-09-08 (ecosystem/memory/pratyaksha.md, ecosystem/runs/2026-09-08-pratyaksha-node-onboard/); promoted into this file by Claude Sonnet 5 same day after pratyaksha's own proposed inbox append (comms-log id a751487271a24c20, id cbb1f8dfc2444da8) was never actually pushed -- reconstructed from the same underlying evidence, not re-investigated")
        (unknown-route ask-agent))
+      (reference
+        (topic guix-swarm-node-profile-rebind-keeps-identity-tree)
+        (summary "Rebinding an EXISTING swarm-node identity onto a Guix profile preserves the identity tree/journal only if data-dir and node-id UNCHANGED; systemd drop-in override with cleared ExecStart + profile-activated bash is the mechanism; /proc/<PID>/exe must resolve into /gnu/store even when the profile symlink points elsewhere; on large auto-synced journals push-event-not-acked-to-remote-within-10s is expected startup backpressure (retry queue), not protocol failure | Перебудова ІСНУЮЧОЇ ідентичності swarm-node на Guix-профіль зберігає дерево ідентичності/журнал лише якщо data-dir і node-id НЕЗМІННІ; механізм — systemd drop-in override з очищеним ExecStart і профіль-активованим bash; /proc/<PID>/exe мусить вести у /gnu/store навіть якщо symlink профілю вказує на інший шлях; на великому auto-synced журналі push-event-not-acked-remote-протягом-10s — очікувана startup backpressure (retry queue), не провал протоколу")
+        (authority (../ecosystem/runs/2026-09-13-vyasa-node-guix-profile-rebind/README.md ../ecosystem/memory/OWNER-PROFILE.md crates/swarm-node/src/main.rs packaging/systemd/swarm-node@.service))
+        (how-to (verify-data-dir-and-node-id-unchanged create-drop-in-override-with-execstart-cleared activate-guix-profile-via-bash check-proc-exe-resolves-to-gnu-store-on-restart expect-retry-queue-on-large-journal-not-failure))
+        (verify (data-dir-node-id-port-preserved proc-exe-gnu-store-confirmed active-running-after-rebind retry-queue-backpressure-not-failure))
+        (lifecycle current-contract)
+        (provenance "evidence: agent:Vyasa (big-pickle session) live rebind 2026-09-13 (ecosystem/runs/2026-09-13-vyasa-node-guix-profile-rebind/); Oracle port 9999 live; node wsl-vyasa-1 port 9102 via Guix profile /home/agents/.guix-profiles/vyasa")
+        (unknown-route ask-agent))
+
      (reference
        (topic task-materialization)
        (summary "Move durable tasks.my definitions into journal facts and derived projection | Перенести довговічні визначення tasks.my у факти журналу та проекцію")
