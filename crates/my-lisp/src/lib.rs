@@ -43,6 +43,12 @@ pub mod semantic_registry_export {
             .map(|(namespace, name)| SurfaceRow { namespace, name })
             .collect()
     }
+
+    /// Повертає opaque semantic ID для stable або compatibility-only surface.
+    /// Значення операції лишається у мовному контракті, не в цій проєкції.
+    pub fn semantic_id_for_admitted_surface(name: &str) -> Option<&'static str> {
+        super::semantic_registry::admitted_semantic_id_for_surface(name)
+    }
 }
 pub mod syntax;
 mod value;

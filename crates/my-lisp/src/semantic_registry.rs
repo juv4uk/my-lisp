@@ -276,6 +276,20 @@ mod tests {
     }
 
     #[test]
+    fn public_reverse_projection_preserves_identity_across_admitted_surfaces() {
+        for surface in admitted_surfaces_for_semantic_id("1003") {
+            assert_eq!(
+                crate::semantic_registry_export::semantic_id_for_admitted_surface(surface),
+                Some("1003")
+            );
+        }
+        assert_eq!(
+            crate::semantic_registry_export::semantic_id_for_admitted_surface("not-a-surface"),
+            None
+        );
+    }
+
+    #[test]
     #[should_panic(expected = "semantic registry surface must be unique")]
     fn duplicate_stable_surface_is_rejected_deterministically() {
         const CONFLICTING: &str =

@@ -14,6 +14,8 @@
 //! виконувану поведінку; цей інструмент перевіряє все інше.
 
 mod checks;
+#[cfg(test)]
+mod external_oracle;
 mod gen_functions_md;
 
 use std::process::ExitCode;
