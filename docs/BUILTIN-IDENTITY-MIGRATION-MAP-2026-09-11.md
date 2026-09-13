@@ -1,23 +1,23 @@
-# `Value::Builtin` identity migration map — superseded status
+# Карта міграції identity `Value::Builtin` — актуальний статус
 
-This path is retained as a stable pointer because active plans and code comments reference it.
+Цей шлях збережено як стабільний покажчик, бо на нього посилаються чинні плани й коментарі в коді.
 
-The original 2026-09-11 document described the **pre-implementation research baseline** in which Canon callables were still represented by Rust `Value::Builtin` objects and `Value::SemanticRef` had not yet been implemented. That historical text is now archived at:
+Оригінальний документ від 2026-09-11 описував **дослідницький стан до реалізації PR #95**, коли канонічні callable-значення ще були представлені Rust-об’єктами `Value::Builtin`, а `Value::SemanticRef` ще не існував. Повний історичний текст тепер збережено тут:
 
 `docs/archive/historical/BUILTIN-IDENTITY-MIGRATION-MAP-2026-09-11.md`
 
-## Current state — 2026-09-13
+## Поточний стан — 2026-09-13
 
-PR #95 (`Canon SemanticRef: RED witness for semantic callable identity`) superseded the implementation-state claims in the original document.
+PR #95 (`Canon SemanticRef: RED witness for semantic callable identity`) зробив реалізаційні твердження старого документа неактуальними.
 
-Current observable/architectural facts:
+Чинні спостережувані й архітектурні факти:
 
-- Canon callable identity is the numeric semantic ID from the language registry, not a Rust allocation/pointer.
-- Canon callable values materialize as `Value::SemanticRef(id)`.
-- admitted peer surfaces of one Canon semantic ID are `eq`; different semantic IDs remain distinct.
-- evaluator application resolves a `SemanticRef` into the current implementation projection.
-- `TAG_PRIMITIVE` carries the numeric semantic ID; host-only builtin pointers use a distinct host tag.
-- unknown semantic callable IDs fail closed.
-- legacy non-Canon `Value::Builtin` values may remain as host mechanisms; their Rust identity is not Canon semantic identity.
+- identity канонічного callable — це числовий semantic ID з мовного реєстру, а не Rust allocation/pointer;
+- канонічні callable-значення матеріалізуються як `Value::SemanticRef(id)`;
+- admitted peer surfaces одного Canon semantic ID є `eq`, а різні semantic IDs залишаються різними;
+- evaluator під час application розв’язує `SemanticRef` у поточну implementation projection;
+- `TAG_PRIMITIVE` несе числовий semantic ID, а host-only builtin pointers мають окремий host tag;
+- невідомий semantic callable ID завершується fail-closed;
+- legacy non-Canon `Value::Builtin` може лишатися host-механізмом, але Rust identity такого об’єкта не є Canon semantic identity.
 
-The archived research map remains useful as provenance for **why** pointer identity was rejected and which migration seams were originally identified. It is non-normative and must not override current Canon, `semantic-registry.wsm`, language contracts, or executable tests.
+Архівна research map лишається корисною як provenance того, **чому pointer identity було відкинуто** і які migration seams були знайдені до реалізації. Вона не є нормативною й не може перекривати чинні Canon, `semantic-registry.wsm`, language contracts або executable tests.
