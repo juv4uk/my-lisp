@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -27,6 +27,60 @@ fn numeric_row_id_list(source: &str) -> Vec<u32> {
 
 fn numeric_row_ids(source: &str) -> BTreeSet<u32> {
     numeric_row_id_list(source).into_iter().collect()
+}
+
+#[derive(Debug)]
+struct FullUkCandidateRow {
+    id: u32,
+    full_uk: String,
+}
+
+fn full_uk_candidate_rows(source: &str) -> Vec<FullUkCandidateRow> {
+    source
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim_start();
+            let rest = line.strip_prefix('(')?;
+            let token = rest.split_whitespace().next()?;
+            let id = token.parse::<u32>().ok()?;
+
+            let mut quoted = line.split('"');
+            quoted.next()?;
+            quoted.next()?; // current UK surface, or —
+            quoted.next()?;
+            let full_uk = quoted.next()?.to_string();
+
+            Some(FullUkCandidateRow { id, full_uk })
+        })
+        .collect()
+}
+
+fn full_uk_aliases(source: &str) -> BTreeMap<u32, u32> {
+    let mut aliases = BTreeMap::new();
+    for line in source.lines() {
+        let line = line.trim_start();
+        let Some(rest) = line.strip_prefix("(аліас ") else {
+            continue;
+        };
+        let mut fields = rest.trim_end_matches(')').split_whitespace();
+        let from = fields
+            .next()
+            .and_then(|field| field.parse::<u32>().ok())
+            .expect("full-UK alias source must be a numeric semantic ID");
+        let to = fields
+            .next()
+            .and_then(|field| field.parse::<u32>().ok())
+            .expect("full-UK alias target must be a numeric semantic ID");
+        assert!(
+            fields.next().is_none(),
+            "full-UK alias rows must have exactly source and target IDs"
+        );
+        assert!(
+            aliases.insert(from, to).is_none(),
+            "full-UK alias source {from} must be declared only once"
+        );
+    }
+    aliases
 }
 
 #[test]
@@ -83,4 +137,77 @@ fn ukrainian_staging_profile_covers_every_function_table_identity() {
         actual, expected,
         "Ukrainian staging must explicitly cover every semantic identity, including compatibility-only rows"
     );
+}
+
+#[test]
+fn full_uk_candidate_collisions_require_explicit_alias_targets() {
+    let root = repo_root();
+    let profile = fs::read_to_string(root.join("lib/surface/український-профіль-джерела.всм"))
+        .expect("Ukrainian staging profile must be readable");
+
+    let rows = full_uk_candidate_rows(&profile);
+    assert_eq!(
+        rows.len(),
+        167,
+        "coherence audit must inspect every Ukrainian staging candidate"
+    );
+
+    let by_id: BTreeMap<u32, &FullUkCandidateRow> =
+        rows.iter().map(|row| (row.id, row)).collect();
+    let aliases = full_uk_aliases(&profile);
+
+    for (&source_id, &target_id) in &aliases {
+        let source = by_id.get(&source_id).copied().unwrap_or_else(|| {
+            panic!("full-UK alias source {source_id} is not a staging identity")
+        });
+        let target = by_id.get(&target_id).copied().unwrap_or_else(|| {
+            panic!("full-UK alias target {target_id} is not a staging identity")
+        });
+        assert!(
+            !aliases.contains_key(&target_id),
+            "full-UK alias {source_id} -> {target_id} must point directly to a canonical owner"
+        );
+        assert_eq!(
+            source.full_uk.as_str(),
+            target.full_uk.as_str(),
+            "full-UK alias {source_id} -> {target_id} must preserve the owner's candidate spelling"
+        );
+    }
+
+    let mut owners: BTreeMap<&str, Vec<&FullUkCandidateRow>> = BTreeMap::new();
+    for row in &rows {
+        owners.entry(row.full_uk.as_str()).or_default().push(row);
+    }
+
+    for (name, group) in owners {
+        if name == "—" || group.len() == 1 {
+            continue;
+        }
+
+        let canonical: Vec<_> = group
+            .iter()
+            .copied()
+            .filter(|row| !aliases.contains_key(&row.id))
+            .collect();
+        assert_eq!(
+            canonical.len(),
+            1,
+            "duplicate full-UK candidate {name:?} must have exactly one canonical owner; rows: {:?}",
+            group.iter().map(|row| row.id).collect::<Vec<_>>()
+        );
+
+        let owner_id = canonical[0].id;
+        for row in group {
+            if row.id == owner_id {
+                continue;
+            }
+            assert_eq!(
+                aliases.get(&row.id).copied(),
+                Some(owner_id),
+                "duplicate full-UK candidate {name:?} on row {} must explicitly alias canonical owner {}",
+                row.id,
+                owner_id
+            );
+        }
+    }
 }
