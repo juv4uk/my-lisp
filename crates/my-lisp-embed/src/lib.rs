@@ -14,6 +14,11 @@ use std::{
     ptr,
 };
 
+/// C ABI contract version.  Hosts must compare this value before using the
+/// session exports, rather than treating matching symbol names as proof of
+/// compatibility.
+pub const MY_LISP_EMBED_ABI_VERSION: u32 = 1;
+
 /// Opaque owner of one canonical, persistent my-lisp session.
 pub struct MyLispEmbedSession {
     session: Session,
@@ -52,6 +57,12 @@ fn into_c_string(response: String) -> *mut c_char {
             CString::new("error: result contains a NUL byte").expect("static C string")
         })
         .into_raw()
+}
+
+/// Returns the version of the C embedding contract implemented by this DLL.
+#[no_mangle]
+pub extern "C" fn my_lisp_embed_abi_version() -> u32 {
+    MY_LISP_EMBED_ABI_VERSION
 }
 
 /// Creates a persistent canonical my-lisp session with the ordinary core
@@ -119,6 +130,11 @@ mod tests {
             .to_owned();
         unsafe { my_lisp_embed_free_string(raw_result) };
         result
+    }
+
+    #[test]
+    fn reports_the_documented_abi_version() {
+        assert_eq!(my_lisp_embed_abi_version(), MY_LISP_EMBED_ABI_VERSION);
     }
 
     #[test]

@@ -8,11 +8,15 @@ printing, errors, definitions, macros, and closures to the canonical
 The ABI is intentionally small:
 
 ```c
+uint32_t my_lisp_embed_abi_version(void);
 MyLispEmbedSession *my_lisp_embed_session_new(void);
 char *my_lisp_embed_eval(MyLispEmbedSession *, const char *utf8_source);
 void my_lisp_embed_free_string(char *);
 void my_lisp_embed_session_free(MyLispEmbedSession *);
 ```
+
+The current ABI version is `1`.  A native host must verify it before using
+the other exports.
 
 `my_lisp_embed_eval` evaluates a complete UTF-8 source fragment against the
 same session on every call.  The caller owns a non-null returned string and
