@@ -85,6 +85,9 @@ fn uk_decimal(text: String) -> String {
 
 fn render_uk(value: &Value) -> String {
     match value {
+        Value::SemanticRef(semantic_id) => {
+            format!("#<вбудована {}>", uk_operation_name(semantic_id))
+        }
         Value::Builtin(builtin) => {
             format!("#<вбудована {}>", uk_operation_name(builtin.name))
         }
