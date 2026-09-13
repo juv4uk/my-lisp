@@ -211,3 +211,23 @@ fn full_uk_candidate_collisions_require_explicit_alias_targets() {
         }
     }
 }
+
+#[test]
+fn full_uk_candidates_need_no_latin_keyboard_layout() {
+    let root = repo_root();
+    let profile = fs::read_to_string(root.join("lib/surface/український-профіль-джерела.всм"))
+        .expect("Ukrainian staging profile must be readable");
+
+    let offenders = full_uk_candidate_rows(&profile)
+        .into_iter()
+        .filter(|row| row.full_uk != "—")
+        .filter(|row| row.full_uk.chars().any(|character| character.is_ascii_alphabetic()))
+        .map(|row| format!("{}:{}", row.id, row.full_uk))
+        .collect::<Vec<_>>();
+
+    assert!(
+        offenders.is_empty(),
+        "full-UK candidates must be typeable without switching to a Latin keyboard layout; offenders: {}",
+        offenders.join(", ")
+    );
+}
