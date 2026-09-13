@@ -97,9 +97,30 @@ Lisp-визначення / виконуваний доказ
 
 ## Українською можна програмувати
 
-Українська — не лише мова README. У репозиторії є виконувана українська програмна поверхня [`lib/surface/uk.my`](lib/surface/uk.my).
+Українська — не лише мова README. Українські імена є peer-проєкціями тих самих numeric semantic IDs у [`lib/surface/semantic-registry.wsm`](lib/surface/semantic-registry.wsm); вони не створюють окремої реалізації функцій.
 
-Наприклад, після її завантаження код може виглядати так:
+У проєкті тепер розрізняються **дві українські поверхні**:
+
+- `uk` — коротка, інтуїтивно зрозуміла українська поверхня для щоденного програмування;
+- `ukr` — повна українська поверхня, де ім'я максимально явно описує операцію.
+
+Обидві належать **тому самому semantic ID**. Якщо чинне `uk`-ім'я вже коротке й ясне, `uk` і `ukr` можуть бути однаковими. Якщо повна назва краща для пояснення, `ukr` може бути довшою:
+
+| semantic ID | `uk` | `ukr` | статус `ukr` |
+|---:|---|---|---|
+| `0002` | `атом?` | `атом?` | stable |
+| `0011` | `визначити` | `визначити` | stable |
+| `1045` | `текст-порожній?` | `порожній-текст?` | stable |
+| `1075` | `монотонний-нс` | `монотонний-час-у-наносекундах` | candidate |
+| `1079` | `поточний-всч` | `поточний-всесвітній-координований-час` | candidate |
+
+`stable` означає admitted/executable spelling. `candidate` означає, що назва вже записана для огляду, але **ще не обіцяється як виконуваний API**. README не підвищує `candidate` до `stable` — це право має тільки registry.
+
+Повна жива таблиця `uk | ukr | English | Sanskrit` генерується з authority: [`docs/generated/function-table.md`](docs/generated/function-table.md). Детальні пояснення поведінки публічних українських функцій: [`docs/ukrainian-api.md`](docs/ukrainian-api.md).
+
+Для `ukr` діє практичний критерій: публічні українські ідентифікатори не потребують латинської розкладки. Репрезентативний виконуваний witness — [`lib/surface/ukr-acceptance.lisp`](lib/surface/ukr-acceptance.lisp).
+
+Поточний код через stable `uk` може виглядати так:
 
 ```lisp
 (визначити квадрат
@@ -114,8 +135,6 @@ Lisp-визначення / виконуваний доказ
                     (факторіал (відняти число 1)))))))
 ```
 
-Повний україномовний довідник публічного API: [`docs/ukrainian-api.md`](docs/ukrainian-api.md). Він покриває всі 140 stable українських назв, пояснює сигнатури, повернені значення, предикати `?` та мутацію `!`.
-
 ### Предикати читаються як питання
 
 Українська назва предиката закінчується `?`. На своїй припустимій області предикат повертає тільки канонічне `t` або `()`:
@@ -123,14 +142,12 @@ Lisp-визначення / виконуваний доказ
 ```lisp
 (атом? 'кіт)                         ; t
 (менше? 2 5)                         ; t
-(містить? 'пес (список 'кіт 'пес))   ; t
+(значення-у-списку? 'пес (список 'кіт 'пес))   ; t
 ```
 
-`?` — частина ідентифікатора, а не окремий оператор. Функції, що можуть повернути дані або `()` (наприклад `карта-отримати`), предикатами не є й `?` не мають.
+`?` — частина ідентифікатора, а не окремий оператор. Функції, що можуть повернути дані або `()` (наприклад `отримати-з-карти`), предикатами не є й `?` не мають.
 
-Повна самоперевірна українська програма є в [`lib/surface/uk-acceptance.my`](lib/surface/uk-acceptance.my).
-
-Українська, англійська та санскритська **програмні поверхні не розмножують семантику**. Вони відображають різні імена на ті самі визначення й канонічні тотожності. Єдина машинна таблиця відповідності лежить у [`lib/surface/semantic-registry.wsm`](lib/surface/semantic-registry.wsm): semantic identity там numeric-only, а спільна пунктуація винесена в окрему `sym`-поверхню.
+`uk`, `ukr`, English, Sanskrit і `sym` **не розмножують семантику**. Єдина машинна authority написань — [`lib/surface/semantic-registry.wsm`](lib/surface/semantic-registry.wsm); semantic identity там numeric-only.
 
 Є й програмний перекладач поверхонь:
 
@@ -139,7 +156,7 @@ python3 scripts/translate-program.py --from en --to uk input.wsm
 python3 scripts/translate-program.py --from uk --to sa input.wsm
 ```
 
-Він підтримує всі шість напрямків між `en`, `uk` і `sa`, зберігаючи форматування, коментарі, рядки та невідомі користувацькі символи. Деталі: [`docs/program-surface-translator.md`](docs/program-surface-translator.md).
+Поточний translator підтримує `en`, `uk` і `sa`, зберігаючи форматування, коментарі, рядки та невідомі користувацькі символи. Деталі: [`docs/program-surface-translator.md`](docs/program-surface-translator.md).
 
 ---
 
@@ -296,10 +313,11 @@ cargo clippy --workspace --all-targets -- -D warnings
 2. [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md) — хто має право визначати істину;
 3. [`lib/canon.my`](lib/canon.my) — виконуваний Canon 0+7;
 4. [`docs/language-core.md`](docs/language-core.md) — компактна архітектура ядра;
-5. [`lib/surface/uk-acceptance.my`](lib/surface/uk-acceptance.my) — українська мова як виконуваний програмний інтерфейс;
-6. [`lib/meta-eval.my`](lib/meta-eval.my) — як мова починає обчислювати саму себе;
-7. [`lib/reason.my`](lib/reason.my) — reasoning-напрям;
-8. [`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) — спостережувані факти, які мають пережити зміну реалізації.
+5. [`docs/ukrainian-api.md`](docs/ukrainian-api.md) — як читати `uk` і `ukr` та що роблять українські публічні функції;
+6. [`lib/surface/ukr-acceptance.lisp`](lib/surface/ukr-acceptance.lisp) — повна українська surface як виконуваний witness;
+7. [`lib/meta-eval.my`](lib/meta-eval.my) — як мова починає обчислювати саму себе;
+8. [`lib/reason.my`](lib/reason.my) — reasoning-напрям;
+9. [`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) — спостережувані факти, які мають пережити зміну реалізації.
 
 Додатково:
 
