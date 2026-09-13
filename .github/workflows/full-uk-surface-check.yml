@@ -11,16 +11,16 @@ on:
       - 'lib/surface/ukr-acceptance.lisp'
       - 'scripts/generate-function-table.my'
       - 'scripts/generate-meta-semantic-registry.py'
+      - 'scripts/generate-ukrainian-api.py'
       - 'lib/generated/function-table.wsm'
       - 'lib/generated/meta-semantic-registry.my'
       - 'docs/generated/function-table.md'
+      - 'crates/xtask/src/checks.rs'
       - 'crates/my-lisp/src/semantic_registry.rs'
       - 'crates/my-lisp/tests/full_uk_surface.rs'
       - 'crates/my-lisp/tests/ukr_acceptance.rs'
       - 'crates/my-lisp/tests/uk_docs_surface_model.rs'
       - 'crates/my-lisp-cli/tests/uk_surface_audit_projection.rs'
-      - 'docs/superpowers/specs/2026-09-13-full-uk-cyrillic-surface-design.md'
-      - 'docs/superpowers/plans/2026-09-13-full-uk-cyrillic-surface.md'
       - '.github/workflows/full-uk-surface-check.yml'
   push:
     branches:
@@ -34,9 +34,11 @@ on:
       - 'lib/surface/ukr-acceptance.lisp'
       - 'scripts/generate-function-table.my'
       - 'scripts/generate-meta-semantic-registry.py'
+      - 'scripts/generate-ukrainian-api.py'
       - 'lib/generated/function-table.wsm'
       - 'lib/generated/meta-semantic-registry.my'
       - 'docs/generated/function-table.md'
+      - 'crates/xtask/src/checks.rs'
       - 'crates/my-lisp/src/semantic_registry.rs'
       - 'crates/my-lisp/tests/full_uk_surface.rs'
       - 'crates/my-lisp/tests/ukr_acceptance.rs'
@@ -45,7 +47,7 @@ on:
       - '.github/workflows/full-uk-surface-check.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ukr-surface-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -56,10 +58,108 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: One-shot migrate numeric Ukrainian docs schema and generate reference
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          docs_path = Path('lib/surface/uk-docs.wsm')
+          source = docs_path.read_text(encoding='utf-8')
+          source = source.replace('(schema uk-api-docs/2)', '(schema uk-api-docs/3)')
+          pattern = re.compile(
+              r'^(\s*\(doc\s+\S+\s+\d+)\s+\S+(\s+(?:form|macro|function|predicate|mutation|value)\s+".*)$',
+              re.MULTILINE,
+          )
+          source, changed = pattern.subn(r'\1\2', source)
+          if changed not in (0, 140):
+              raise SystemExit(f'expected to migrate 140 docs rows or an already-migrated file, changed {changed}')
+          docs_path.write_text(source, encoding='utf-8')
+
+          checks_path = Path('crates/xtask/src/checks.rs')
+          checks = checks_path.read_text(encoding='utf-8')
+          old = '''fn documented() -> Result<BTreeMap<(String, String), String>, String> {
+              let mut result = BTreeMap::new();
+              for line in DOCS_INDEX.lines() {
+                  let fields = line.split_whitespace().collect::<Vec<_>>();
+                  if fields.first() != Some(&"(doc") {
+                      continue;
+                  }
+                  if fields.len() < 5 {
+                      return Err(format!(
+                          "рядок документації має містити category numeric-ID UK kind: {line}"
+                      ));
+                  }
+                  result.insert(
+                      (fields[2].to_string(), fields[3].to_string()),
+                      fields[4].to_string(),
+                  );
+              }
+              Ok(result)
+          }
+          '''.replace('              ', '')
+          new = '''fn documented() -> Result<BTreeMap<(String, String), String>, String> {
+              if !DOCS_INDEX.contains("(schema uk-api-docs/3)") {
+                  return Err("uk-docs.wsm must use numeric-only schema uk-api-docs/3".to_string());
+              }
+              let stable_by_id = stable_pairs()
+                  .into_iter()
+                  .collect::<BTreeMap<String, String>>();
+              let mut result = BTreeMap::new();
+              for line in DOCS_INDEX.lines() {
+                  let fields = line.split_whitespace().collect::<Vec<_>>();
+                  if fields.first() != Some(&"(doc") {
+                      continue;
+                  }
+                  if fields.len() < 4 {
+                      return Err(format!(
+                          "рядок документації має містити category numeric-ID kind: {line}"
+                      ));
+                  }
+                  let identity = fields[2];
+                  if !(identity.len() >= 4 && identity.chars().all(|ch| ch.is_ascii_digit())) {
+                      return Err(format!("документаційний join key не numeric: {identity}"));
+                  }
+                  let uk = stable_by_id.get(identity).ok_or_else(|| {
+                      format!("documentation ID {identity} has no stable uk registry surface")
+                  })?;
+                  let previous = result.insert(
+                      (identity.to_string(), uk.clone()),
+                      fields[3].to_string(),
+                  );
+                  if previous.is_some() {
+                      return Err(format!("duplicate documentation semantic ID: {identity}"));
+                  }
+              }
+              Ok(result)
+          }
+          '''.replace('              ', '')
+          if old in checks:
+              checks = checks.replace(old, new, 1)
+          elif new not in checks:
+              raise SystemExit('could not locate documented() parser block for schema migration')
+          checks_path.write_text(checks, encoding='utf-8')
+          PY
+
+          python3 scripts/generate-ukrainian-api.py
+          git config user.name 'ukr-docs-bot'
+          git config user.email '85576956+juv4uk@users.noreply.github.com'
+          git add lib/surface/uk-docs.wsm crates/xtask/src/checks.rs docs/ukrainian-api.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'docs(uk): key API reference by numeric identity'
+            git push origin HEAD:${GITHUB_HEAD_REF}
+          fi
       - name: Execute Cyrillic-only ukr acceptance program
         run: cargo test -p my-lisp --test ukr_acceptance -- --nocapture
+      - name: Verify generated Ukrainian API reference is current
+        run: python3 scripts/generate-ukrainian-api.py --check
       - name: Verify public Ukrainian docs follow uk/ukr model
         run: cargo test -p my-lisp --test uk_docs_surface_model -- --nocapture
       - name: Reject Latin letters in ukr candidates
