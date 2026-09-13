@@ -74,6 +74,20 @@ fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
         .collect()
 }
 
+fn insert_surface_mapping(
+    index: &mut HashMap<&'static str, &'static str>,
+    surface: &'static str,
+    semantic_id: &'static str,
+) {
+    if let Some(previous) = index.insert(surface, semantic_id) {
+        if previous != semantic_id {
+            panic!(
+                "semantic registry surface must be unique: {surface} maps to both {previous} and {semantic_id}"
+            );
+        }
+    }
+}
+
 pub(crate) fn build_surface_index(
     source: &'static str,
 ) -> HashMap<&'static str, &'static str> {
@@ -85,12 +99,7 @@ pub(crate) fn build_surface_index(
             .filter(|surface| surface.admission == SurfaceAdmission::Stable)
             .map(|surface| surface.name);
         for surface in std::iter::once(row.semantic_id).chain(stable_surfaces) {
-            if let Some(previous) = index.insert(surface, row.semantic_id) {
-                panic!(
-                    "semantic registry surface must be unique: {surface} maps to both {previous} and {}",
-                    row.semantic_id
-                );
-            }
+            insert_surface_mapping(&mut index, surface, row.semantic_id);
         }
     }
     index
@@ -112,12 +121,7 @@ pub(crate) fn build_admitted_surface_index(
     for row in parse_rows(source) {
         let admitted_surfaces = row.surfaces.iter().map(|surface| surface.name);
         for surface in std::iter::once(row.semantic_id).chain(admitted_surfaces) {
-            if let Some(previous) = index.insert(surface, row.semantic_id) {
-                panic!(
-                    "semantic registry surface must be unique: {surface} maps to both {previous} and {}",
-                    row.semantic_id
-                );
-            }
+            insert_surface_mapping(&mut index, surface, row.semantic_id);
         }
     }
     index
@@ -251,6 +255,16 @@ mod tests {
         assert_eq!(index.get("meteor"), None);
         assert_eq!(index.get("asteroid"), None);
         assert_eq!(index.get("—"), None);
+    }
+
+    #[test]
+    fn peer_namespaces_may_repeat_one_spelling_for_the_same_identity() {
+        const SYNTHETIC: &str =
+            "(4242 (uk comet stable) (full-uk comet stable) (compat comet compatibility-only))";
+        let stable = build_surface_index(SYNTHETIC);
+        let admitted = build_admitted_surface_index(SYNTHETIC);
+        assert_eq!(stable.get("comet"), Some(&"4242"));
+        assert_eq!(admitted.get("comet"), Some(&"4242"));
     }
 
     #[test]
