@@ -406,7 +406,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
         // samoi prychyny: quote/rozhortannia makrosa na tsomu znachenni
         // oznachalo b vyhadaty kod, shcho vidtvoryv by konkretnyi vidkrytyi
         // TCP-resurs, — tse ne te, shcho tsia mova mozhe vyrazyty.
-        Value::TcpConnection(_) | Value::TcpListener(_) => {
+        Value::HostHandle { .. } | Value::TcpConnection(_) | Value::TcpListener(_) => {
             return Err(LanguageError::new(
                 ErrorKind::InvalidForm,
                 "macros cannot return TCP connections or listeners · makrosy ne mozhut povertaty TCP-ziednannia chy listener · Makros dürfen keine TCP-Verbindungen oder Listener zurückgeben",

@@ -463,6 +463,13 @@ pub enum Value {
     /// Legacy host implementation closure as a first-class value. This is an
     /// implementation projection, never the language identity key.
     Builtin(std::rc::Rc<Builtin>),
+    /// Opaque value supplied by an embedding host. Source syntax cannot
+    /// construct this variant, so a Lisp program may retain and pass a handle
+    /// but cannot forge a host token.
+    HostHandle {
+        kind: Rc<str>,
+        token: u64,
+    },
     /// Persistent vector: O(1) indexed access for numeric workloads
     Vector(std::rc::Rc<std::cell::RefCell<Vec<Value>>>),
     /// Fixed-width immutable numeric data. Unlike `Vector`, this is
@@ -536,6 +543,16 @@ impl PartialEq for Value {
             // Semantic references compare by language-owned numeric identity,
             // never by an implementation allocation or diagnostic spelling.
             (Value::SemanticRef(left), Value::SemanticRef(right)) => left == right,
+            (
+                Value::HostHandle {
+                    kind: left_kind,
+                    token: left_token,
+                },
+                Value::HostHandle {
+                    kind: right_kind,
+                    token: right_token,
+                },
+            ) => left_kind == right_kind && left_token == right_token,
             // Functions have identity: two separately created closures are not equal.
             // Funktsii maiut identychnist: dva okremo stvoreni zamykannia ne ye rivnymy.
             // Funktionen besitzen Identität: Zwei getrennt erzeugte Closures sind nicht gleich.
@@ -553,6 +570,23 @@ impl PartialEq for Value {
 }
 
 impl Value {
+    /// Creates an embedding-owned opaque handle. Only a host integration can
+    /// construct it; the reader deliberately has no corresponding syntax.
+    pub fn host_handle(kind: impl Into<Rc<str>>, token: u64) -> Self {
+        Self::HostHandle {
+            kind: kind.into(),
+            token,
+        }
+    }
+
+    /// Returns the embedding-owned identity of an opaque handle.
+    pub fn as_host_handle(&self) -> Option<(&str, u64)> {
+        match self {
+            Self::HostHandle { kind, token } => Some((kind, *token)),
+            _ => None,
+        }
+    }
+
     /// Builds one host-provided callable value without adding a new evaluator
     /// form.  The host chooses only the mechanism behind a binding; Lisp still
     /// decides whether and when to call the value through ordinary evaluation.
@@ -617,6 +651,22 @@ impl Value {
     }
 }
 
+#[cfg(test)]
+mod host_handle_tests {
+    use super::Value;
+
+    #[test]
+    fn host_handle_hides_its_token_when_rendered() {
+        let handle = Value::host_handle("cyberpunk.IScriptable", 0x1234_5678);
+        assert_eq!(
+            handle.as_host_handle(),
+            Some(("cyberpunk.IScriptable", 0x1234_5678))
+        );
+        assert_eq!(handle.to_string(), "#<host-handle cyberpunk.IScriptable>");
+        assert_ne!(handle.to_string(), "#<host-handle 305419896>");
+    }
+}
+
 impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{}", render(self, true))
@@ -661,6 +711,7 @@ fn render(value: &Value, quote_strings: bool) -> String {
     match value {
         Value::SemanticRef(semantic_id) => format!("#<semantic {semantic_id}>"),
         Value::Builtin(builtin) => format!("#<builtin {}>", builtin.name),
+        Value::HostHandle { kind, .. } => format!("#<host-handle {kind}>"),
         Value::Vector(v) => {
             let items: Vec<String> = v
                 .borrow()

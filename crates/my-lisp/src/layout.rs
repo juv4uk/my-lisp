@@ -23,6 +23,7 @@ pub const TAG_NUMERIC_BUFFER: u64 = 13;
 /// Host-only implementation projection. Unlike TAG_PRIMITIVE this payload is
 /// an address and therefore is not portable semantic identity.
 pub const TAG_HOST_BUILTIN: u64 = 14;
+pub const TAG_HOST_HANDLE: u64 = 15;
 
 #[derive(Debug, Copy, Clone)]
 pub struct NanBox(pub u64);
@@ -92,6 +93,9 @@ impl NanBox {
             Value::Builtin(b) => {
                 let ptr = Rc::as_ptr(b) as u64;
                 NanBox(Self::pack_ptr(TAG_HOST_BUILTIN, ptr))
+            }
+            Value::HostHandle { token, .. } => {
+                NanBox(MASK_QNAN | (TAG_HOST_HANDLE << 28) | (token & 0x0FFF_FFFF))
             }
             Value::Vector(v) => {
                 let ptr = Rc::as_ptr(v) as *const u8 as u64;

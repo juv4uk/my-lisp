@@ -91,6 +91,7 @@ fn render_uk(value: &Value) -> String {
         Value::Builtin(builtin) => {
             format!("#<вбудована {}>", uk_operation_name(builtin.name))
         }
+        Value::HostHandle { kind, .. } => format!("#<host-об'єкт {kind}>"),
         Value::Vector(vector) => {
             let items = vector.borrow().iter().map(render_uk).collect::<Vec<_>>();
             format!("#({})", items.join(" "))
