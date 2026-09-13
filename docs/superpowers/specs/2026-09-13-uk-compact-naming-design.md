@@ -73,17 +73,17 @@ A compact lexical segment must preserve a recognizable prefix/root from the full
 Preferred:
 
 ```text
-помножити  -> множ
-обчислити  -> обчис
-підставити -> підст
+помножити   -> множ
+обчислити   -> обчис
+підставити  -> підст
 уніфікувати -> уніф
 ```
 
 Rejected:
 
 ```text
-помножити -> пмж
-обчислити -> бчс
+помножити  -> пмж
+обчислити  -> бчс
 підставити -> пдст
 ```
 
@@ -102,10 +102,10 @@ Preferred pattern for object operations:
 Examples:
 
 ```text
-довжина-тексту       -> текст-довж
-довжина-вектора      -> вектор-довж
-отримати-з-карти     -> карта-отрим
-вставити-в-карту     -> карта-встав
+довжина-тексту   -> текст-довж
+довжина-вектора  -> вектор-довж
+отримати-з-карти -> карта-отрим
+вставити-в-карту -> карта-встав
 ```
 
 Words such as `у`, `із`, `за`, `для`, `від`, `до` are removed when their relation is recoverable from the compact pattern. They remain when removing them changes or obscures meaning.
@@ -237,7 +237,7 @@ The audit generator joins the candidate to `ukr` through the numeric ID from `se
 
 ## Reviewed example set
 
-The following are **examples/candidates for blind testing, not production names**. They are deliberately drawn from different registry classes.
+The table contains **45 real registry examples**, inside the 30–50 range required by #86. They are **examples/candidates for blind testing, not production names**. Some are intentionally risky: #89 is expected to reject or revise part of the set.
 
 | ID | Full `ukr` wording | Compact candidate | Rule | Initial review |
 |---:|---|---|---|---|
@@ -257,15 +257,14 @@ The following are **examples/candidates for blind testing, not production names*
 | 1029 | `приєднати` | `приєд` | root | strong candidate |
 | 1031 | `елемент-списку-за-індексом` | `список-елем` | object-root | strong semantic recovery candidate |
 | 1032 | `значення-у-списку?` | `список-має?` | object-property | semantic recovery test required |
-| 1033 | `знайти-за-ключем` | `за-ключем` | structural | clear meaning, exact wording recovery uncertain |
+| 1033 | `знайти-за-ключем` | `за-ключем` | structural | clear meaning; exact wording recovery uncertain |
 | 0101 | `відобразити` | `відобр` | root | check confusion with noun `відображення` |
-| 0102 | `відсіяти` | `відсів` | root | readable, grammatical-class shift acceptable only if test is clear |
+| 0102 | `відсіяти` | `відсів` | root | grammatical-class shift; requires test |
 | 0103 | `згорнути` | `згорт` | root | strong candidate |
 | 1043 | `зчепити` | `зчеп` | root | strong candidate |
 | 1044 | `довжина-тексту` | `текст-довж` | object-root | strong candidate |
 | 1045 | `порожній-текст?` | `текст-порож?` | object-root | test clipped adjective readability |
-| 1047 | `фрагмент-у-тексті?` | `текст-фрагм?` | object-root | test semantic direction |
-| 1048 | `перший-символ-тексту` | `текст-перш` | object-root | test whether “first” implies character |
+| 1048 | `перший-символ-тексту` | `текст-перш` | object-root | test whether `first` implies character |
 | 1049 | `решта-символів-тексту` | `текст-решта` | object-keep | strong candidate |
 | 1051 | `символ-у-текст` | `симв-текст` | root-structural | test conversion direction |
 | 1052 | `текст-у-символ` | `текст-симв` | structural-root | paired with 1051 |
@@ -273,41 +272,20 @@ The following are **examples/candidates for blind testing, not production names*
 | 1057 | `друкувати` | `друк` | root | strong candidate |
 | 1059 | `прочитати` | `прочит` | root | strong candidate |
 | 1060 | `прочитати-усе` | `прочит-усе` | root+keep | paired with 1059 |
-| 1061 | `значення-у-текст` | `знач-текст` | root-structural | test `знач` readability |
 | 1062 | `обчислити` | `обчис` | root | strong candidate |
 | 1065 | `створити-вектор` | `вектор-нов` | object-root | semantic synonym/root mix; needs test |
 | 1066 | `довжина-вектора` | `вектор-довж` | object-root | strong candidate |
-| 1067 | `елемент-вектора` | `вектор-елем` | object-root | collision review with 1101 required |
-| 1068 | `встановити-елемент-вектора!` | `вектор-встан!` | object-root | strong candidate if mutation meaning recovered |
+| 1067 | `елемент-вектора` | `вектор-елем` | object-root | collision review with ID 1101 required |
+| 1068 | `встановити-елемент-вектора!` | `вектор-встан!` | object-root | test mutation meaning recovery |
 | 1075 | `монотонний-час-у-наносекундах` | `моно-нано` | technical-root | high-risk; blind test mandatory |
 | 1076 | `поточний-юнікс-час` | `час-юнікс` | structural | likely clear to technical users |
 | 1084 | `назва-часового-поясу` | `пояс-назва` | object-keep | strong candidate |
-| 1085 | `визначити-часовий-пояс` | `пояс-визн` | object-root | check ambiguity of `визн` |
-| 1086 | `зміщення-часового-поясу-в-секундах` | `пояс-зсув` | object-synonym | strong semantic candidate, exact recovery lower |
+| 1086 | `зміщення-часового-поясу-в-секундах` | `пояс-зсув` | object-synonym | semantic recovery likely higher than exact wording recovery |
 | 1094 | `отримати-з-карти` | `карта-отрим` | object-root | strong candidate |
 | 1095 | `вставити-в-карту` | `карта-встав` | object-root | strong candidate |
-| 1096 | `ключ-у-карті?` | `карта-ключ?` | object-keep | strong candidate |
-| 1108 | `пряме-виведення` | `прям-вивід` | root-root | test readability |
-| 1115 | `пояснити-доведення` | `доказ-поясн` | object-root | terminology review needed |
 | 1120 | `уніфікувати` | `уніф` | root | common technical root |
-| 1121 | `логічна-змінна` | `лог-змінна` | root-keep | test whether `лог` is too broad |
-| 1123 | `підставити` | `підст` | root | strong candidate |
-| 1126 | `твердження?` | `тверд?` | root | test adjective confusion |
-| 1127 | `зміст-твердження` | `тверд-зміст` | root-structural | paired with 1126 |
-| 1128 | `стан-розгляду-твердження` | `тверд-стан` | root-structural | strong candidate if domain context is clear |
-| 1132 | `спостереження?` | `спост?` | root | strong candidate |
-| 1133 | `зміст-спостереження` | `спост-зміст` | root-structural | paired with 1132 |
-| 1135 | `мета-наміру` | `намір-мета` | structural | strong candidate |
-| 1138 | `створити-унікальний-символ` | `унік-симв` | root-root | test technical readability |
-| 1142 | `нехай-послідовно` | `нехай*` | conventional syntax | already-established Lisp convention; still verify Ukrainian discoverability |
-| 1147 | `запустити-процес` | `процес-запуск` | structural | strong candidate |
 | 1148 | `прочитати-з-мережевого-з'єднання` | `мережа-прочит` | object-root | strong candidate |
-| 1149 | `записати-у-мережеве-з'єднання` | `мережа-запис` | object-keep | strong candidate |
-| 1150 | `слухати-мережеві-з'єднання` | `мережа-слух` | object-root | test server/listen meaning |
 | 1151 | `прочитати-файл` | `файл-прочит` | object-root | strong candidate |
-| 1152 | `записати-файл` | `файл-запис` | object-keep | strong candidate |
-
-This set intentionally contains more than the required 30 examples and includes both likely successes and risky candidates. The blind test is supposed to reject some of them.
 
 ## Negative examples
 
@@ -371,6 +349,6 @@ This design is ready for implementation when:
 - `uk` and `ukr` roles above are accepted;
 - compact candidates are evidence, not authority;
 - candidate generation/audit uses semantic IDs to join to registry truth;
-- at least 30 candidates cover the classes required by #89;
+- the 45-example set covers the classes required by #89;
 - no production `uk` rename happens before at least one blind-test pilot;
 - after promotion, old `uk` source remains executable through compatibility-only aliases.
