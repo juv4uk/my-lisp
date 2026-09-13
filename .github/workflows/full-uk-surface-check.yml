@@ -50,17 +50,17 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Execute Cyrillic-only ukr acceptance program
+        run: cargo test -p my-lisp --test ukr_acceptance -- --nocapture
+      - name: Reject Latin letters in ukr candidates
+        run: cargo test -p my-lisp-cli --test uk_surface_audit_projection ukr_candidates_need_no_latin_keyboard_layout -- --nocapture
+      - name: Verify authoritative uk/ukr peer identity
+        run: cargo test -p my-lisp --test full_uk_surface -- --nocapture
       - name: Regenerate function-table projections
         run: cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.my
       - name: Regenerate meta semantic registry projection
         run: python3 scripts/generate-meta-semantic-registry.py
       - name: Require committed projections to match generators
         run: git diff --exit-code -- lib/generated/function-table.wsm lib/generated/meta-semantic-registry.my docs/generated/function-table.md
-      - name: Reject Latin letters in ukr candidates first
-        run: cargo test -p my-lisp-cli --test uk_surface_audit_projection ukr_candidates_need_no_latin_keyboard_layout -- --nocapture
-      - name: Verify authoritative uk/ukr peer identity
-        run: cargo test -p my-lisp --test full_uk_surface -- --nocapture
-      - name: Execute Cyrillic-only ukr acceptance program
-        run: cargo test -p my-lisp --test ukr_acceptance -- --nocapture
       - name: Check all Ukrainian staging invariants
         run: cargo test -p my-lisp-cli --test uk_surface_audit_projection -- --nocapture
