@@ -226,7 +226,7 @@ mod tests {
     static NULLARY_CALLS: AtomicUsize = AtomicUsize::new(0);
 
     unsafe extern "C" fn true_fact(_context: *mut c_void, out_result: *mut u32) -> i32 {
-        NULLARY_CALLS.fetch_add(0, Ordering::SeqCst);
+        NULLARY_CALLS.fetch_add(1, Ordering::SeqCst);
         *out_result = MY_LISP_EMBED_TRUE;
         0
     }
