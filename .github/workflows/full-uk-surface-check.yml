@@ -47,7 +47,7 @@ on:
       - '.github/workflows/full-uk-surface-check.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ukr-surface-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -58,89 +58,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: One-shot migrate numeric Ukrainian docs schema and generate reference
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          docs_path = Path('lib/surface/uk-docs.wsm')
-          source = docs_path.read_text(encoding='utf-8')
-          source = source.replace('(schema uk-api-docs/2)', '(schema uk-api-docs/3)')
-          row_pattern = re.compile(
-              r'^(\s*\(doc\s+\S+\s+\d+)\s+\S+(\s+(?:form|macro|function|predicate|mutation|value)\s+".*)$',
-              re.MULTILINE,
-          )
-          source, changed = row_pattern.subn(r'\1\2', source)
-          if changed not in (0, 140):
-              raise SystemExit(f'expected to migrate 140 docs rows or an already-migrated file, changed {changed}')
-          docs_path.write_text(source, encoding='utf-8')
-
-          checks_path = Path('crates/xtask/src/checks.rs')
-          checks = checks_path.read_text(encoding='utf-8')
-          new = '''fn documented() -> Result<BTreeMap<(String, String), String>, String> {
-              if !DOCS_INDEX.contains("(schema uk-api-docs/3)") {
-                  return Err("uk-docs.wsm must use numeric-only schema uk-api-docs/3".to_string());
-              }
-              let stable_by_id = stable_pairs()
-                  .into_iter()
-                  .collect::<BTreeMap<String, String>>();
-              let mut result = BTreeMap::new();
-              for line in DOCS_INDEX.lines() {
-                  let fields = line.split_whitespace().collect::<Vec<_>>();
-                  if fields.first() != Some(&"(doc") {
-                      continue;
-                  }
-                  if fields.len() < 4 {
-                      return Err(format!(
-                          "рядок документації має містити category numeric-ID kind: {line}"
-                      ));
-                  }
-                  let identity = fields[2];
-                  if !(identity.len() >= 4 && identity.chars().all(|ch| ch.is_ascii_digit())) {
-                      return Err(format!("документаційний join key не numeric: {identity}"));
-                  }
-                  let uk = stable_by_id.get(identity).ok_or_else(|| {
-                      format!("documentation ID {identity} has no stable uk registry surface")
-                  })?;
-                  let previous = result.insert(
-                      (identity.to_string(), uk.clone()),
-                      fields[3].to_string(),
-                  );
-                  if previous.is_some() {
-                      return Err(format!("duplicate documentation semantic ID: {identity}"));
-                  }
-              }
-              Ok(result)
-          }
-          '''
-          block = re.compile(
-              r'fn documented\(\) -> Result<BTreeMap<\(String, String\), String>, String> \{.*?\n\}\n\n(?=fn vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku)',
-              re.DOTALL,
-          )
-          checks, changed_parser = block.subn(new + '\n', checks, count=1)
-          if changed_parser not in (0, 1):
-              raise SystemExit(f'unexpected documented() parser replacement count: {changed_parser}')
-          if changed_parser == 0 and 'uk-docs.wsm must use numeric-only schema uk-api-docs/3' not in checks:
-              raise SystemExit('could not locate documented() parser block for schema migration')
-          checks_path.write_text(checks, encoding='utf-8')
-          PY
-
-          python3 scripts/generate-ukrainian-api.py
-          git config user.name 'ukr-docs-bot'
-          git config user.email '85576956+juv4uk@users.noreply.github.com'
-          git add lib/surface/uk-docs.wsm crates/xtask/src/checks.rs docs/ukrainian-api.md
-          if ! git diff --cached --quiet; then
-            git commit -m 'docs(uk): key API reference by numeric identity'
-            git push origin HEAD:${GITHUB_HEAD_REF}
-          fi
       - name: Execute Cyrillic-only ukr acceptance program
         run: cargo test -p my-lisp --test ukr_acceptance -- --nocapture
       - name: Verify generated Ukrainian API reference is current
