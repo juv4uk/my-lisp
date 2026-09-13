@@ -16,18 +16,15 @@
 ; lib/fs.lisp, over the host's read-file-bytes/write-file-bytes):
 ;   lib/generated/function-table.lisp  (schema ft/1, machine-readable)
 ;   docs/generated/function-table.md  (human table, column order
-;     Українська -> Повна українська -> English -> Sanskrit, per
-;     my-lisp#75's own requirement)
+;     uk -> ukr -> English -> Sanskrit)
 ;
 ; Usage (from the repo root):
 ;   cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.lisp
 ;
-; `full-uk` (Повна українська) is a SEPARATE projection column of the
-; same semantic identity, not a second identity and not invented here:
-; until a dedicated ratification pass gives it its own name, it mirrors
-; the current `uk` surface and is tagged `needs-review`/`missing` where
-; `uk` itself is not a ratified stable/candidate spelling -- exactly the
-; column policy my-lisp#75's own status note already committed to.
+; `uk` is the current/compact Ukrainian surface.
+; `ukr` is the full Ukrainian peer surface of the SAME semantic identity.
+; Both are read directly from semantic-registry.lisp; this generator never
+; invents names and never duplicates `ukr` under another full-UK column.
 
 ; The registry spells identity 0001's `sym` surface as the literal
 ; apostrophe character. The ordinary Lisp reader treats a bare `'` as
@@ -109,18 +106,6 @@
         ((atom found) (list (quote —) (quote missing)))
         (t (list (surface-word found) (surface-status found)))))))
 
-; --- full-uk column policy: mirror uk, never invent a name ---
-(def full-uk-projection
-  (lambda (uk-word uk-status)
-    (cond
-      ((or (eq uk-status (quote missing))
-           (or (eq uk-status (quote compatibility-only)) (eq uk-word (quote —))))
-       (list (quote —)
-             (cond ((eq uk-status (quote compatibility-only)) (quote needs-review))
-                   (t (quote missing)))))
-      ((eq uk-status (quote candidate)) (list uk-word (quote candidate)))
-      (t (list uk-word (quote stable))))))
-
 (def surface-usable?
   (lambda (word-status-pair)
     (and (not (eq (car (cdr word-status-pair)) (quote missing)))
@@ -167,7 +152,7 @@
 ; map-onto/reverse-onto/length-onto pattern -- a naive recursive version
 ; is not tail-recursive (the recursive call sits inside str+'s argument
 ; list, not in tail position) and overflows the host stack well before
-; this registry's 161 rows.
+; this registry's complete row set.
 (def join-newline-onto
   (lambda (strings acc)
     (cond
@@ -183,16 +168,16 @@
     (let* ((sid (car entry))
            (surfaces (cdr entry))
            (uk (get-surface (quote uk) surfaces))
+           (ukr (get-surface (quote ukr) surfaces))
            (en (get-surface (quote en) surfaces))
            (sa (get-surface (quote sa) surfaces))
            (sym (get-surface (quote sym) surfaces))
-           (full (full-uk-projection (car uk) (car (cdr uk))))
            (formal (formal-stub sid surfaces))
            (primary (primary-status (raw-statuses surfaces))))
       (str+
         "  (" (pad4 sid) " " formal
         " (uk " (surface-word-wsm-text (car uk)) " " (write-to-string (car (cdr uk))) ")"
-        " (full-uk " (surface-word-wsm-text (car full)) " " (write-to-string (car (cdr full))) ")"
+        " (ukr " (surface-word-wsm-text (car ukr)) " " (write-to-string (car (cdr ukr))) ")"
         " (en " (surface-word-wsm-text (car en)) " " (write-to-string (car (cdr en))) ")"
         " (sa " (surface-word-wsm-text (car sa)) " " (write-to-string (car (cdr sa))) ")"
         " (sym " (surface-word-wsm-text (car sym)) " " (write-to-string (car (cdr sym))) ")"
@@ -203,14 +188,14 @@
     (let* ((sid (car entry))
            (surfaces (cdr entry))
            (uk (get-surface (quote uk) surfaces))
+           (ukr (get-surface (quote ukr) surfaces))
            (en (get-surface (quote en) surfaces))
            (sa (get-surface (quote sa) surfaces))
-           (full (full-uk-projection (car uk) (car (cdr uk))))
            (primary (primary-status (raw-statuses surfaces))))
       (str+
         "| `" (pad4 sid) "` | " (surface-word-text (car uk))
-        " | " (surface-word-text (car full))
-        " | " (write-to-string (car (cdr full)))
+        " | " (surface-word-text (car ukr))
+        " | " (write-to-string (car (cdr ukr)))
         " | " (surface-word-text (car en))
         " | " (surface-word-text (car sa))
         " | " (write-to-string primary) " |"))))
@@ -220,8 +205,9 @@
     "; GENERATED — DO NOT EDIT BY HAND"
     "; Authority: lib/surface/semantic-registry.lisp"
     "; Generator: scripts/generate-function-table.lisp (ECO-CANON-1 / my-lisp#75)"
-    "; Schema ft/1: (id formal uk full-uk full-uk-status en sa sym primary-status authority)"
-    "; Display order for humans: Українська → Повна українська → English → Sanskrit"
+    "; Schema ft/1: (id formal uk ukr ukr-status en sa sym primary-status authority)"
+    "; uk = current Ukrainian; ukr = full Ukrainian peer surface"
+    "; Display order for humans: uk → ukr → English → Sanskrit"
     "; authority = my-lisp (semantic)"
     ""
     "(ft/1"))
@@ -239,8 +225,8 @@
     ""
     "Regenerate: `cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.lisp`"
     ""
-    "| ID | Українська | Повна українська | full-uk status | English | Sanskrit | primary |"
-    "|----|------------|------------------|----------------|---------|----------|---------|"))
+    "| ID | uk | ukr | ukr status | English | Sanskrit | primary |"
+    "|----|----|-----|------------|---------|----------|---------|"))
 
 (def md-body (join-newline (append md-header (map render-md-row entries))))
 (def md-output (string-append md-body "
