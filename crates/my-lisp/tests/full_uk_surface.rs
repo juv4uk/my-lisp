@@ -6,6 +6,77 @@ const STRING_EMPTY_ID: &str = "1045";
 const CURRENT_UK_STRING_EMPTY: &str = "текст-порожній?";
 const UKR_STRING_EMPTY: &str = "порожній-текст?";
 
+const CONCISE_UK_CASES: &[(&str, &str, &str)] = &[
+    ("1031", "за-номером", "елемент-списку-за-індексом"),
+    ("1032", "у-списку?", "значення-у-списку?"),
+    ("1033", "за-ключем", "знайти-за-ключем"),
+    ("1048", "текст-перший", "перший-символ-тексту"),
+    ("1049", "текст-решта", "решта-символів-тексту"),
+    ("1065", "новий-вектор", "створити-вектор"),
+    ("1068", "вектор-встановити!", "встановити-елемент-вектора!"),
+    ("1101", "вектор-за-номером", "елемент-вектора-за-індексом"),
+];
+
+const LEGACY_UK_CASES: &[(&str, &str)] = &[
+    ("1031", "елемент-списку-за-індексом"),
+    ("1032", "значення-у-списку?"),
+    ("1033", "знайти-за-ключем"),
+    ("1048", "перший-символ-тексту"),
+    ("1049", "решта-символів-тексту"),
+    ("1065", "створити-вектор"),
+    ("1068", "встановити-елемент-вектора!"),
+    ("1101", "елемент-вектора-за-індексом"),
+];
+
+#[test]
+fn uk_is_concise_and_intuitive_while_ukr_keeps_the_full_wording() {
+    for &(semantic_id, uk, ukr) in CONCISE_UK_CASES {
+        assert_eq!(
+            semantic_id_for_admitted_surface(uk),
+            Some(semantic_id),
+            "concise uk spelling must resolve through the same semantic identity: {uk}"
+        );
+        assert_eq!(
+            semantic_id_for_admitted_surface(ukr),
+            Some(semantic_id),
+            "full ukr spelling must resolve through the same semantic identity: {ukr}"
+        );
+
+        let surfaces = admitted_surfaces_for_semantic_id(semantic_id);
+        assert!(
+            surfaces
+                .iter()
+                .any(|row| row.namespace == "uk" && row.name == uk),
+            "semantic ID {semantic_id} must expose concise uk spelling {uk}"
+        );
+        assert!(
+            surfaces
+                .iter()
+                .any(|row| row.namespace == "ukr" && row.name == ukr),
+            "semantic ID {semantic_id} must expose full ukr spelling {ukr}"
+        );
+        assert!(
+            uk.chars().count() < ukr.chars().count(),
+            "reviewed concise uk spelling must actually be shorter than ukr: {uk} vs {ukr}"
+        );
+        assert!(
+            !uk.chars().any(|character| character.is_ascii_alphabetic()),
+            "concise uk spelling must stay on the Ukrainian keyboard layout: {uk}"
+        );
+    }
+}
+
+#[test]
+fn replacing_a_verbose_uk_spelling_keeps_the_old_name_as_compatibility_surface() {
+    for &(semantic_id, old_name) in LEGACY_UK_CASES {
+        assert_eq!(
+            semantic_id_for_admitted_surface(old_name),
+            Some(semantic_id),
+            "old stable uk spelling must remain admitted as compatibility alias: {old_name}"
+        );
+    }
+}
+
 #[test]
 fn ratified_ukr_name_resolves_to_same_identity_as_current_uk() {
     assert_eq!(
