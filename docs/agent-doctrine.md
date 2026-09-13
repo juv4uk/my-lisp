@@ -2,6 +2,8 @@
 
 Status: proposed 2026-08-18 (owner strategy session), written by
 `my-lisp-1`, broadcast to all sibling swarm agents for adoption/critique.
+Amended by explicit owner decision 2026-09-13: every task now requires a
+live Current Technology Preflight before claim/design/implementation.
 Applies to `my-lisp`, `cml`, `fpga-lisp`, `my-idea`, `my-lisp-panini`,
 `shiva-sutras`, and any future sibling. Each repo's own `AGENTS.md` stays
 authoritative for repo-specific detail; this file is the cross-cutting
@@ -19,7 +21,7 @@ in this commit), and (2) agents quietly absorb a neighbor's assumption
 as their own fact, so a hypothesis in one repo becomes an unquestioned
 premise three repos downstream with no traceable evidence chain.
 
-## The fourteen rules
+## The fifteen rules
 
 1. **Read the map before the code.** Authoritative contract → current
    task/status → recent evidence → recent commits. Machine-readable
@@ -122,6 +124,35 @@ premise three repos downstream with no traceable evidence chain.
     trace; can something be deleted after this change. This applies
     across the whole swarm (`my-lisp`, `cml`, `wsm-my-lisp`,
     `fpga-lisp`, `wsm-os-lisp`), not just this repo.
+15. **Перед будь-якою задачею — живий Current Technology Preflight
+    (`TECH-SCAN`).** Після локального `WAKE`/`RECONCILE`, але **до**
+    `CLAIM`, проєктування рішення, вибору бібліотеки/протоколу/архітектури,
+    написання коду чи оптимізації агент зобов'язаний зробити реальний
+    пошук в Інтернеті саме по темі задачі: що з'явилося нового, які
+    актуальні releases/стандарти/інструменти/prior art існують, що
+    змінилося останнім часом і чи не розв'язана вже проблема краще.
+    Пам'ять моделі, cached knowledge і лише локальна документація **не
+    рахуються** як `TECH-SCAN`. Для технічної теми віддавати перевагу
+    первинним джерелам: official docs, release notes/changelogs,
+    standards, upstream repositories, papers; щонайменше одне джерело
+    має бути датованим і актуальним, якщо таке існує. Для великої
+    архітектурної/AI/compiler/GPU/FPGA/performance задачі потрібен
+    глибший огляд; для механічної дрібниці scan може бути коротким, але
+    не нульовим. Відсутність релевантних новинок теж є результатом і
+    записується явно. Мінімальний evidence: `date`, `task/topic`,
+    `queries/scope`, `sources`, `new/relevant`, `decision` (`adopt` /
+    `adapt` / `reject` / `no-change`). Якщо живого доступу до Інтернету
+    немає, агент ставить стан `blocked-current-tech` і не переходить до
+    дизайну/реалізації, доки власник явно не дозволить пропустити scan.
+
+    **English auxiliary:** Every task requires a live web-based Current
+    Technology Preflight after local context reconciliation but before
+    claiming, designing, choosing dependencies/architecture, coding, or
+    optimizing. Model memory and cached knowledge do not count. Scale
+    depth to task size, prefer current primary sources, record dated
+    evidence and the resulting decision, and fail closed as
+    `blocked-current-tech` when live web access is unavailable unless
+    the owner explicitly waives the scan.
 
 ## Rule 0 for coordination specifically
 
@@ -133,19 +164,38 @@ call) before acting on it. This is exactly the drift rule 1 warns about,
 applied to the one piece of infrastructure every agent depends on
 immediately at session start.
 
-## Wake-up sequence (recommended, not mandatory)
+## Wake-up sequence (mandatory before task work)
 
 ```
 PHASE 0 — WAKE       read AGENTS.md, machine contracts, tasks, evidence
 PHASE 1 — RECONCILE  prose vs machine state; sibling contract versions;
                       stale claims (this is where rule 1 gets applied)
-PHASE 2 — CLAIM      pick one bounded task, claim it in the registry
-PHASE 3 — ATTACK     try to falsify the assumption the task rests on
-PHASE 4 — IMPLEMENT  minimum change
-PHASE 5 — VERIFY     local + conformance + relevant sibling check
-PHASE 6 — RECORD     evidence + commit + durable status update
-PHASE 7 — HANDOFF    notify with a pointer to evidence, not an opinion
+PHASE 2 — TECH-SCAN  live Internet scan for current/new work on the task;
+                      record sources + new/relevant + decision (rule 15)
+PHASE 3 — CLAIM      pick one bounded task, claim it in the registry
+PHASE 4 — ATTACK     try to falsify the assumption the task rests on
+PHASE 5 — IMPLEMENT  minimum change
+PHASE 6 — VERIFY     local + conformance + relevant sibling check
+PHASE 7 — RECORD     evidence + commit + durable status update
+PHASE 8 — HANDOFF    notify with a pointer to evidence, not an opinion
 ```
+
+A minimal durable preflight record is intentionally small:
+
+```text
+TECH-SCAN
+  date: YYYY-MM-DD
+  task/topic: ...
+  queries/scope: ...
+  sources: ...
+  new/relevant: ...
+  decision: adopt | adapt | reject | no-change
+```
+
+The point is not browsing for its own sake. The point is to prevent the
+swarm from solving a 2026 problem using only the model's remembered
+state of 2024/2025 technology, or from re-inventing something upstream
+has already shipped. Search first, then decide.
 
 ## Subagents: use them as independent sensors, not extra hands
 
