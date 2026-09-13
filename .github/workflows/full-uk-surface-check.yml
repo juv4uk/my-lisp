@@ -74,37 +74,17 @@ jobs:
           docs_path = Path('lib/surface/uk-docs.wsm')
           source = docs_path.read_text(encoding='utf-8')
           source = source.replace('(schema uk-api-docs/2)', '(schema uk-api-docs/3)')
-          pattern = re.compile(
+          row_pattern = re.compile(
               r'^(\s*\(doc\s+\S+\s+\d+)\s+\S+(\s+(?:form|macro|function|predicate|mutation|value)\s+".*)$',
               re.MULTILINE,
           )
-          source, changed = pattern.subn(r'\1\2', source)
+          source, changed = row_pattern.subn(r'\1\2', source)
           if changed not in (0, 140):
               raise SystemExit(f'expected to migrate 140 docs rows or an already-migrated file, changed {changed}')
           docs_path.write_text(source, encoding='utf-8')
 
           checks_path = Path('crates/xtask/src/checks.rs')
           checks = checks_path.read_text(encoding='utf-8')
-          old = '''fn documented() -> Result<BTreeMap<(String, String), String>, String> {
-              let mut result = BTreeMap::new();
-              for line in DOCS_INDEX.lines() {
-                  let fields = line.split_whitespace().collect::<Vec<_>>();
-                  if fields.first() != Some(&"(doc") {
-                      continue;
-                  }
-                  if fields.len() < 5 {
-                      return Err(format!(
-                          "рядок документації має містити category numeric-ID UK kind: {line}"
-                      ));
-                  }
-                  result.insert(
-                      (fields[2].to_string(), fields[3].to_string()),
-                      fields[4].to_string(),
-                  );
-              }
-              Ok(result)
-          }
-          '''.replace('              ', '')
           new = '''fn documented() -> Result<BTreeMap<(String, String), String>, String> {
               if !DOCS_INDEX.contains("(schema uk-api-docs/3)") {
                   return Err("uk-docs.wsm must use numeric-only schema uk-api-docs/3".to_string());
@@ -140,10 +120,15 @@ jobs:
               }
               Ok(result)
           }
-          '''.replace('              ', '')
-          if old in checks:
-              checks = checks.replace(old, new, 1)
-          elif new not in checks:
+          '''
+          block = re.compile(
+              r'fn documented\(\) -> Result<BTreeMap<\(String, String\), String>, String> \{.*?\n\}\n\n(?=fn vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku)',
+              re.DOTALL,
+          )
+          checks, changed_parser = block.subn(new + '\n', checks, count=1)
+          if changed_parser not in (0, 1):
+              raise SystemExit(f'unexpected documented() parser replacement count: {changed_parser}')
+          if changed_parser == 0 and 'uk-docs.wsm must use numeric-only schema uk-api-docs/3' not in checks:
               raise SystemExit('could not locate documented() parser block for schema migration')
           checks_path.write_text(checks, encoding='utf-8')
           PY
