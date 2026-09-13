@@ -19,5 +19,6 @@ jobs:
           ref: prep/ukr-surface-current-main
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Replay proven UKR state
         run: bash .github/scripts/ukr-replay-bootstrap.sh
