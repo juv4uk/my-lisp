@@ -3,6 +3,9 @@ name: Ukrainian uk/ukr Surface Gate
 on:
   pull_request:
     paths:
+      - 'README.md'
+      - 'docs/ukrainian-api.md'
+      - 'lib/surface/uk-docs.wsm'
       - 'lib/surface/semantic-registry.wsm'
       - 'lib/surface/український-профіль-джерела.всм'
       - 'lib/surface/ukr-acceptance.lisp'
@@ -14,6 +17,7 @@ on:
       - 'crates/my-lisp/src/semantic_registry.rs'
       - 'crates/my-lisp/tests/full_uk_surface.rs'
       - 'crates/my-lisp/tests/ukr_acceptance.rs'
+      - 'crates/my-lisp/tests/uk_docs_surface_model.rs'
       - 'crates/my-lisp-cli/tests/uk_surface_audit_projection.rs'
       - 'docs/superpowers/specs/2026-09-13-full-uk-cyrillic-surface-design.md'
       - 'docs/superpowers/plans/2026-09-13-full-uk-cyrillic-surface.md'
@@ -22,6 +26,9 @@ on:
     branches:
       - main
     paths:
+      - 'README.md'
+      - 'docs/ukrainian-api.md'
+      - 'lib/surface/uk-docs.wsm'
       - 'lib/surface/semantic-registry.wsm'
       - 'lib/surface/український-профіль-джерела.всм'
       - 'lib/surface/ukr-acceptance.lisp'
@@ -33,6 +40,7 @@ on:
       - 'crates/my-lisp/src/semantic_registry.rs'
       - 'crates/my-lisp/tests/full_uk_surface.rs'
       - 'crates/my-lisp/tests/ukr_acceptance.rs'
+      - 'crates/my-lisp/tests/uk_docs_surface_model.rs'
       - 'crates/my-lisp-cli/tests/uk_surface_audit_projection.rs'
       - '.github/workflows/full-uk-surface-check.yml'
 
@@ -52,6 +60,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Execute Cyrillic-only ukr acceptance program
         run: cargo test -p my-lisp --test ukr_acceptance -- --nocapture
+      - name: Verify public Ukrainian docs follow uk/ukr model
+        run: cargo test -p my-lisp --test uk_docs_surface_model -- --nocapture
       - name: Reject Latin letters in ukr candidates
         run: cargo test -p my-lisp-cli --test uk_surface_audit_projection ukr_candidates_need_no_latin_keyboard_layout -- --nocapture
       - name: Verify authoritative uk/ukr peer identity
