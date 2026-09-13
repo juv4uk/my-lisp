@@ -16,21 +16,15 @@
 ; lib/fs.my, over the host's read-file-bytes/write-file-bytes):
 ;   lib/generated/function-table.wsm  (schema ft/1, machine-readable)
 ;   docs/generated/function-table.md  (human table, column order
-;     Українська -> Повна українська -> ukr -> English -> Sanskrit,
-;     per my-lisp#75 and the explicit table-view request)
+;     uk -> ukr -> English -> Sanskrit, per the owner decision 2026-09-13)
 ;
 ; Usage (from the repo root):
 ;   cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.my
 ;
-; `full-uk` (Повна українська) is a SEPARATE projection column of the
-; same semantic identity. It is read directly from semantic-registry.wsm;
-; this generator never invents a full Ukrainian name. Missing or candidate
-; values remain explicit authority facts.
-;
-; `ukr` is intentionally NOT another runtime namespace. It is an additional
-; table-view column that repeats the resolved `full-uk` word/status, so tools
-; and readers can consume a short conventional label without creating another
-; semantic surface or another source of truth.
+; `uk` is the current/compatibility Ukrainian surface.
+; `ukr` is the full Ukrainian peer surface of the SAME semantic identity.
+; Both are read directly from semantic-registry.wsm; this generator never
+; invents names and never duplicates `ukr` under another full-UK column.
 
 ; The registry spells identity 0001's `sym` surface as the literal
 ; apostrophe character. The ordinary Lisp reader treats a bare `'` as
@@ -174,8 +168,7 @@
     (let* ((sid (car entry))
            (surfaces (cdr entry))
            (uk (get-surface (quote uk) surfaces))
-           (full (get-surface (quote full-uk) surfaces))
-           (ukr full)
+           (ukr (get-surface (quote ukr) surfaces))
            (en (get-surface (quote en) surfaces))
            (sa (get-surface (quote sa) surfaces))
            (sym (get-surface (quote sym) surfaces))
@@ -184,7 +177,6 @@
       (str+
         "  (" (pad4 sid) " " formal
         " (uk " (surface-word-wsm-text (car uk)) " " (write-to-string (car (cdr uk))) ")"
-        " (full-uk " (surface-word-wsm-text (car full)) " " (write-to-string (car (cdr full))) ")"
         " (ukr " (surface-word-wsm-text (car ukr)) " " (write-to-string (car (cdr ukr))) ")"
         " (en " (surface-word-wsm-text (car en)) " " (write-to-string (car (cdr en))) ")"
         " (sa " (surface-word-wsm-text (car sa)) " " (write-to-string (car (cdr sa))) ")"
@@ -196,16 +188,14 @@
     (let* ((sid (car entry))
            (surfaces (cdr entry))
            (uk (get-surface (quote uk) surfaces))
-           (full (get-surface (quote full-uk) surfaces))
-           (ukr full)
+           (ukr (get-surface (quote ukr) surfaces))
            (en (get-surface (quote en) surfaces))
            (sa (get-surface (quote sa) surfaces))
            (primary (primary-status (raw-statuses surfaces))))
       (str+
         "| `" (pad4 sid) "` | " (surface-word-text (car uk))
-        " | " (surface-word-text (car full))
         " | " (surface-word-text (car ukr))
-        " | " (write-to-string (car (cdr full)))
+        " | " (write-to-string (car (cdr ukr)))
         " | " (surface-word-text (car en))
         " | " (surface-word-text (car sa))
         " | " (write-to-string primary) " |"))))
@@ -215,9 +205,9 @@
     "; GENERATED — DO NOT EDIT BY HAND"
     "; Authority: lib/surface/semantic-registry.wsm"
     "; Generator: scripts/generate-function-table.my (ECO-CANON-1 / my-lisp#75)"
-    "; Schema ft/1: (id formal uk full-uk ukr full-uk-status en sa sym primary-status authority)"
-    "; `ukr` is a table projection of full-uk, not a runtime namespace"
-    "; Display order for humans: Українська → Повна українська → ukr → English → Sanskrit"
+    "; Schema ft/1: (id formal uk ukr ukr-status en sa sym primary-status authority)"
+    "; uk = current Ukrainian; ukr = full Ukrainian peer surface"
+    "; Display order for humans: uk → ukr → English → Sanskrit"
     "; authority = my-lisp (semantic)"
     ""
     "(ft/1"))
@@ -235,8 +225,8 @@
     ""
     "Regenerate: `cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.my`"
     ""
-    "| ID | Українська | Повна українська | ukr | full-uk status | English | Sanskrit | primary |"
-    "|----|------------|------------------|-----|----------------|---------|----------|---------|"))
+    "| ID | uk | ukr | ukr status | English | Sanskrit | primary |"
+    "|----|----|-----|------------|---------|----------|---------|"))
 
 (def md-body (join-newline (append md-header (map render-md-row entries))))
 (def md-output (string-append md-body "
