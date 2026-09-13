@@ -1,5 +1,8 @@
 ; Машинно-читані метадані українського публічного API.
 ; Це документаційний індекс, а не семантична влада.
+; Ключ кожного запису — numeric semantic ID; uk/ukr написання та їхні статуси
+; належать lib/surface/semantic-registry.wsm і звіряються через generated table.
+; Тут опис функції не дублюється між uk/ukr: один semantic ID має один опис поведінки.
 ; Numeric ID↔UK мусить точно збігатися зі stable UK-рядками semantic-registry.wsm.
 
 (uk-api-docs
