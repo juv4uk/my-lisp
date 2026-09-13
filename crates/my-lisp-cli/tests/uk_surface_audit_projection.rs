@@ -71,13 +71,13 @@ fn ukrainian_staging_profile_covers_every_function_table_identity() {
     );
     assert_eq!(
         expected_rows.len(),
-        161,
+        167,
         "function table inventory changed; review UK coverage gate"
     );
     assert_eq!(
         actual_rows.len(),
-        161,
-        "Ukrainian staging row count must stay exactly aligned with the 161-row function table"
+        167,
+        "Ukrainian staging row count must stay exactly aligned with the 167-row function table"
     );
     assert_eq!(
         actual, expected,
