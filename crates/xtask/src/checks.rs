@@ -378,21 +378,37 @@ fn stable_pairs() -> BTreeSet<(String, String)> {
 }
 
 fn documented() -> Result<BTreeMap<(String, String), String>, String> {
+    if !DOCS_INDEX.contains("(schema uk-api-docs/3)") {
+        return Err("uk-docs.wsm must use numeric-only schema uk-api-docs/3".to_string());
+    }
+    let stable_by_id = stable_pairs()
+        .into_iter()
+        .collect::<BTreeMap<String, String>>();
     let mut result = BTreeMap::new();
     for line in DOCS_INDEX.lines() {
         let fields = line.split_whitespace().collect::<Vec<_>>();
         if fields.first() != Some(&"(doc") {
             continue;
         }
-        if fields.len() < 5 {
+        if fields.len() < 4 {
             return Err(format!(
-                "рядок документації має містити category numeric-ID UK kind: {line}"
+                "рядок документації має містити category numeric-ID kind: {line}"
             ));
         }
-        result.insert(
-            (fields[2].to_string(), fields[3].to_string()),
-            fields[4].to_string(),
+        let identity = fields[2];
+        if !(identity.len() >= 4 && identity.chars().all(|ch| ch.is_ascii_digit())) {
+            return Err(format!("документаційний join key не numeric: {identity}"));
+        }
+        let uk = stable_by_id.get(identity).ok_or_else(|| {
+            format!("documentation ID {identity} has no stable uk registry surface")
+        })?;
+        let previous = result.insert(
+            (identity.to_string(), uk.clone()),
+            fields[3].to_string(),
         );
+        if previous.is_some() {
+            return Err(format!("duplicate documentation semantic ID: {identity}"));
+        }
     }
     Ok(result)
 }
