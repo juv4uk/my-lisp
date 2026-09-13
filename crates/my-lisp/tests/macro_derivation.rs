@@ -48,9 +48,15 @@ fn default_session_binds_all_defmacro_peers_to_one_value() {
 
 #[test]
 fn macro_peer_admission_is_recorded_under_identity_0012_without_binding_the_machine_id() {
-    assert!(REGISTRY.contains(
-        "(0012 (en defmacro stable) (uk визначити-макрос stable) (sa — missing) (compat defmacro-derived compatibility-only))"
-    ));
+    let row = REGISTRY
+        .lines()
+        .find(|line| line.trim_start().starts_with("(0012 "))
+        .expect("semantic registry must contain identity 0012");
+    assert!(row.contains("(en defmacro stable)"));
+    assert!(row.contains("(uk визначити-макрос stable)"));
+    assert!(row.contains("(ukr визначити-макрос stable)"));
+    assert!(row.contains("(compat defmacro-derived compatibility-only)"));
+
     let session = Session::default();
     assert!(
         session.environment.get("0012").is_none(),
