@@ -4,53 +4,62 @@ use my_lisp::semantic_registry_export::{
 
 const STRING_EMPTY_ID: &str = "1045";
 const CURRENT_UK_STRING_EMPTY: &str = "текст-порожній?";
-const FULL_UK_STRING_EMPTY: &str = "порожній-текст?";
+const UKR_STRING_EMPTY: &str = "порожній-текст?";
 
 #[test]
-fn ratified_full_uk_name_resolves_to_same_identity_as_current_uk() {
+fn ratified_ukr_name_resolves_to_same_identity_as_current_uk() {
     assert_eq!(
         semantic_id_for_admitted_surface(CURRENT_UK_STRING_EMPTY),
         Some(STRING_EMPTY_ID),
         "existing stable uk spelling must remain admitted"
     );
     assert_eq!(
-        semantic_id_for_admitted_surface(FULL_UK_STRING_EMPTY),
+        semantic_id_for_admitted_surface(UKR_STRING_EMPTY),
         Some(STRING_EMPTY_ID),
-        "ratified full-uk spelling must resolve to the same semantic identity"
+        "ratified ukr spelling must resolve to the same semantic identity"
     );
 
     let surfaces = admitted_surfaces_for_semantic_id(STRING_EMPTY_ID);
     assert!(
-        surfaces.iter().any(|row| {
-            row.namespace == "uk" && row.name == CURRENT_UK_STRING_EMPTY
-        }),
+        surfaces
+            .iter()
+            .any(|row| row.namespace == "uk" && row.name == CURRENT_UK_STRING_EMPTY),
         "current uk surface must remain present"
     );
     assert!(
         surfaces
             .iter()
-            .any(|row| row.namespace == "full-uk" && row.name == FULL_UK_STRING_EMPTY),
-        "full-uk must be represented as its own peer namespace"
+            .any(|row| row.namespace == "ukr" && row.name == UKR_STRING_EMPTY),
+        "ukr must be the authoritative full Ukrainian peer namespace"
+    );
+    assert!(
+        surfaces.iter().all(|row| row.namespace != "full-uk"),
+        "full-uk is not a separate namespace; ukr is the full Ukrainian surface"
     );
 }
 
 #[test]
-fn admitted_full_uk_registry_spellings_never_require_latin_layout() {
+fn admitted_ukr_registry_spellings_never_require_latin_layout() {
     let source = include_str!("../../../lib/surface/semantic-registry.wsm");
     let mut admitted = 0usize;
 
+    assert!(
+        !source.contains("(full-uk "),
+        "registry must use ukr, not a duplicate full-uk namespace"
+    );
+
     for line in source.lines() {
         let mut rest = line;
-        while let Some(offset) = rest.find("(full-uk ") {
-            rest = &rest[offset + "(full-uk ".len()..];
+        while let Some(offset) = rest.find("(ukr ") {
+            rest = &rest[offset + "(ukr ".len()..];
             let Some(end) = rest.find(')') else {
-                panic!("unterminated full-uk surface entry: {line}");
+                panic!("unterminated ukr surface entry: {line}");
             };
             let fields = rest[..end].split_whitespace().collect::<Vec<_>>();
             assert_eq!(
                 fields.len(),
                 2,
-                "full-uk surface entry must have spelling and status: {line}"
+                "ukr surface entry must have spelling and status: {line}"
             );
             let name = fields[0];
             let status = fields[1];
@@ -58,7 +67,7 @@ fn admitted_full_uk_registry_spellings_never_require_latin_layout() {
                 admitted += 1;
                 assert!(
                     !name.chars().any(|character| character.is_ascii_alphabetic()),
-                    "admitted full-uk spelling requires Latin layout: {name}"
+                    "admitted ukr spelling requires Latin layout: {name}"
                 );
             }
             rest = &rest[end + 1..];
@@ -67,30 +76,12 @@ fn admitted_full_uk_registry_spellings_never_require_latin_layout() {
 
     assert!(
         admitted > 0,
-        "registry must contain at least one admitted full-uk spelling"
+        "registry must contain at least one admitted ukr spelling"
     );
 }
 
 #[test]
-fn generated_function_table_projects_authoritative_full_uk_name() {
-    let table = include_str!("../../../lib/generated/function-table.wsm");
-    let row = table
-        .lines()
-        .find(|line| line.trim_start().starts_with("(1045 "))
-        .expect("generated function table must contain semantic ID 1045");
-
-    assert!(
-        row.contains("(uk текст-порожній? stable)"),
-        "generated row must preserve current uk spelling: {row}"
-    );
-    assert!(
-        row.contains("(full-uk порожній-текст? stable)"),
-        "generated row must project the registry full-uk spelling instead of mirroring uk: {row}"
-    );
-}
-
-#[test]
-fn generated_function_table_exposes_ukr_as_an_additional_projection_column() {
+fn generated_function_table_uses_uk_then_ukr_without_duplicate_full_uk_column() {
     let table = include_str!("../../../lib/generated/function-table.wsm");
     let row = table
         .lines()
@@ -100,28 +91,33 @@ fn generated_function_table_exposes_ukr_as_an_additional_projection_column() {
     let uk = row
         .find("(uk текст-порожній? stable)")
         .expect("row must contain current uk column");
-    let full_uk = row
-        .find("(full-uk порожній-текст? stable)")
-        .expect("row must contain full-uk column");
     let ukr = row
         .find("(ukr порожній-текст? stable)")
-        .expect("row must contain additional ukr projection column");
+        .expect("row must contain authoritative full Ukrainian ukr column");
     let en = row
         .find("(en string-empty? stable)")
         .expect("row must contain English column");
 
     assert!(
-        uk < full_uk && full_uk < ukr && ukr < en,
-        "generated machine table column order must be uk -> full-uk -> ukr -> en: {row}"
+        uk < ukr && ukr < en,
+        "generated machine table column order must be uk -> ukr -> en: {row}"
+    );
+    assert!(
+        !row.contains("(full-uk "),
+        "generated machine table must not duplicate ukr as full-uk: {row}"
     );
 
     let markdown = include_str!("../../../docs/generated/function-table.md");
     assert!(
-        markdown.contains("| ID | Українська | Повна українська | ukr | full-uk status | English | Sanskrit | primary |"),
-        "human function table must expose ukr as an additional column"
+        markdown.contains("| ID | uk | ukr | ukr status | English | Sanskrit | primary |"),
+        "human function table must expose exactly uk and ukr Ukrainian columns"
     );
     assert!(
-        markdown.contains("| `1045` | текст-порожній? | порожній-текст? | порожній-текст? | stable | string-empty? |"),
-        "human row 1045 must repeat the full Ukrainian name in the ukr projection"
+        markdown.contains("| `1045` | текст-порожній? | порожній-текст? | stable | string-empty? |"),
+        "human row 1045 must show uk followed by full Ukrainian ukr"
+    );
+    assert!(
+        !markdown.contains("Повна українська"),
+        "human table must not duplicate ukr under a second full-Ukrainian column"
     );
 }
