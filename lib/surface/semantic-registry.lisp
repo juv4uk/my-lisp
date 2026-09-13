@@ -106,7 +106,7 @@
   (1082 (en milliseconds-from-nanoseconds stable) (uk мілісекунди-із-наносекунд stable) (ukr мілісекунди-із-наносекунд stable) (sa kāla-millisecondāni candidate))
   (1083 (en mono-ms stable) (uk монотонний-мс stable) (ukr монотонний-час-у-мілісекундах candidate) (sa kāla-mono-ms candidate))
   (1084 (en timezone-name stable) (uk назва-часового-поясу stable) (ukr назва-часового-поясу stable) (sa deśa-kāla-nāma candidate))
-  (1085 (en timezone-detect stable) (uk визначити-часовий-пояс stable) (ukr визначити-часовий-поясу stable) (sa deśa-kāla-jñāna candidate))
+  (1085 (en timezone-detect stable) (uk визначити-часовий-пояс stable) (ukr визначити-часовий-пояс stable) (sa deśa-kāla-jñāna candidate))
   (1086 (en timezone-offset-seconds stable) (uk зміщення-часового-поясу-в-секундах stable) (ukr зміщення-часового-поясу-в-секундах stable) (sa deśa-kāla-śeṣa candidate))
   (1087 (en deadline-reached? stable) (uk дедлайн-досягнуто? stable) (ukr граничний-час-досягнуто? candidate) (sa avadhi-gatā? candidate))
   (1088 (en deadline-reached-at? stable) (uk дедлайн-досягнуто-на-момент? stable) (ukr граничний-час-досягнуто-на-момент? candidate) (sa avadhi-gatā-kadā? candidate))
