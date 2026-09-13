@@ -82,6 +82,7 @@ pub use syntax::fasl::{
 /// that same value after evaluation.
 pub const MACRO_LIBRARY_SOURCE: &str = include_str!("../../../lib/macro.lisp");
 const DEFMACRO_SEMANTIC_ID: &str = "0012";
+const LAMBDA_SEMANTIC_ID: &str = "0010";
 
 /// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
 pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.lisp");
@@ -238,6 +239,24 @@ pub fn is_canonical_surface_name(name: &str) -> bool {
 /// `CanonicalIdentity` enum.
 pub fn is_quote_surface_name(name: &str) -> bool {
     eval::canon::is_quote_identity(name)
+}
+
+/// True for any admitted surface of `define`/`def` (semantic IDs `0011` and `1000`).
+pub fn is_define_surface_name(name: &str) -> bool {
+    matches!(
+        semantic_registry::admitted_semantic_id_for_surface(name),
+        Some("0011" | "1000")
+    )
+}
+
+/// True for any admitted surface of `defmacro` (semantic ID `0012`).
+pub fn is_defmacro_surface_name(name: &str) -> bool {
+    semantic_registry::admitted_semantic_id_for_surface(name) == Some(DEFMACRO_SEMANTIC_ID)
+}
+
+/// True for any admitted surface of `lambda` (semantic ID `0010`).
+pub fn is_lambda_surface_name(name: &str) -> bool {
+    semantic_registry::admitted_semantic_id_for_surface(name) == Some(LAMBDA_SEMANTIC_ID)
 }
 
 /// Convenience: FASL-encode already-parsed expressions bound to a source hash.

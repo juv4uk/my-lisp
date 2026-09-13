@@ -54,7 +54,7 @@ fn collect_defs(expressions: &[Expr]) -> Vec<DefInfo> {
         let ExprKind::Symbol(head_name) = &head.kind else {
             continue;
         };
-        if head_name.as_ref() != "def" && head_name.as_ref() != "defmacro" {
+        if !my_lisp::is_define_surface_name(head_name) && !my_lisp::is_defmacro_surface_name(head_name) {
             continue;
         }
         // Structural proof requires the second element to be a symbol;
@@ -404,5 +404,63 @@ mod quote_surface_tests {
             diagnostics.is_empty(),
             "quoted data must not be arity-checked, got {diagnostics:?}"
         );
+    }
+}
+
+#[cfg(test)]
+mod define_surface_tests {
+    //! Regression: `collect_defs` used to compare literally against `"def"`
+    //! and `"defmacro"`.  After the registry-driven fix, any admitted
+    //! surface spelling (визначити, визначити-макрос, …) must be recognised.
+    use super::*;
+
+    #[test]
+    fn english_def_is_recognised() {
+        let a = analyze("(def x 1)").unwrap();
+        assert_eq!(a.defs.len(), 1);
+        assert_eq!(a.defs[0].name, "x");
+    }
+
+    #[test]
+    fn english_defmacro_is_recognised() {
+        let a = analyze("(defmacro m (x) x)").unwrap();
+        assert_eq!(a.defs.len(), 1);
+        assert_eq!(a.defs[0].name, "m");
+    }
+
+    #[test]
+    fn ukrainian_define_is_recognised() {
+        let a = analyze("(визначити y 42)").unwrap();
+        assert_eq!(
+            a.defs.len(),
+            1,
+            "визначити must be recognised as a define form"
+        );
+        assert_eq!(a.defs[0].name, "y");
+    }
+
+    #[test]
+    fn ukrainian_defmacro_is_recognised() {
+        let a = analyze("(визначити-макрос mm (a) a)").unwrap();
+        assert_eq!(
+            a.defs.len(),
+            1,
+            "визначити-макрос must be recognised as a defmacro form"
+        );
+        assert_eq!(a.defs[0].name, "mm");
+    }
+
+    #[test]
+    fn define_is_recognised() {
+        // `define` is semantic ID 0011 (the primary English surface)
+        let a = analyze("(define z 99)").unwrap();
+        assert_eq!(a.defs.len(), 1);
+        assert_eq!(a.defs[0].name, "z");
+    }
+
+    #[test]
+    fn non_definition_form_is_ignored() {
+        let a = analyze("(cons 1 2)").unwrap();
+        assert!(a.defs.is_empty());
     }
 }
