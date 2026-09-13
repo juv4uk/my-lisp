@@ -11,7 +11,7 @@ Owner intent: повний переклад публічної програмн�
 - Canon і необхідні форми;
 - root/runtime builtins;
 - публічні функції й макроси з усіх `lib/*.lisp`;
-- підтримувані host-facing API, які є частиною програмної поверхні;
+- підтримувані host-facing Lisp API, які є частиною програмної поверхні;
 - compatibility spellings, якщо вони все ще підтримуються.
 
 Старе число `140` є історичним зрізом попереднього `uk-docs`/core inventory і **не є Definition of Done для повного перекладу**.
@@ -62,6 +62,18 @@ numeric semantic ID
 
 ID не кодує назву файлу, мову або категорію. Це непрозора числова тотожність.
 
+### 3.2 Allocation numeric IDs
+
+Нові semantic IDs є append-only governance:
+
+- чинні ID ніколи не перенумеровуються заради красивого порядку;
+- вилучений/застарілий ID не перевикористовується для іншого значення;
+- нова public identity отримує наступний вільний numeric ID, вищий за поточний maximum registry на момент ратифікації;
+- aliases/peer spellings тієї самої операції не отримують нового ID;
+- якщо дві наявні public definitions доведено мають одну семантику, вони консолідуються під однією identity, а не отримують два ID.
+
+Послідовність чисел є лише механізмом allocation; значення не виводиться з номера.
+
 ## 4. Public vs internal — окрема вісь, не другий словник
 
 Потрібен живий inventory усіх top-level `def`/`defmacro` у `lib/*.lisp` плюс підтримуваних runtime/host exports.
@@ -95,6 +107,16 @@ CI має вимагати одну з трьох класифікацій:
 
 `unclassified` = RED.
 
+### 4.2 Межа host/embedding API
+
+Не кожен exported Rust/C symbol є частиною мовної surface.
+
+- C ABI / embedding functions на кшталт session lifecycle, allocation/free, raw host callbacks лишаються host ABI й не отримують `uk/ukr` лише через факт експорту.
+- Якщо host mechanism експонується **всередині my-lisp як callable user operation**, саме ця Lisp-visible semantic identity входить до public inventory і отримує `uk/ukr`.
+- Внутрішній bridge name може бути provenance implementation, але не user spelling.
+
+Отже перекладається програмна поверхня мови, а не назви символів C/Rust ABI.
+
 ## 5. Повний inventory
 
 Старий `lib/surface/uk-inventory.lisp` був вузьким inventory Canon/forms/root/core. Його цифри не можна використовувати як total coverage.
@@ -103,7 +125,7 @@ CI має вимагати одну з трьох класифікацій:
 
 - усі `lib/*.lisp`;
 - root/runtime public builtins;
-- host-facing functions, які документовані або реально використовуються як user API;
+- host-facing Lisp functions, які документовані або реально використовуються як user API;
 - macros;
 - compatibility spellings.
 
@@ -121,9 +143,9 @@ CI має вимагати одну з трьох класифікацій:
 
 Число total coverage не хардкодиться в prose. Воно генерується з живого inventory.
 
-## 6. Приклади очікуваного переходу
+## 6. Naming і ратифікація
 
-Це приклади форми, а не автоматична ратифікація конкретних слів:
+Приклади форми нижче **не є автоматичною ратифікацією конкретних слів**:
 
 ```text
 semantic ID | uk               | ukr                          | en
@@ -134,7 +156,26 @@ semantic ID | uk               | ukr                          | en
 ...         | рішення-захисту? | рішення-механізму-захисту?   | guard-decision?
 ```
 
-Остаточні `uk` compact names проходять naming review/blind-decoding. `ukr` оптимізується на ясність і однозначність, не на мінімальну довжину.
+`ukr` оптимізується на ясність і однозначність, не на мінімальну довжину. `uk` compact names проходять правила інтуїтивної читабельності.
+
+### 6.1 Candidate → stable
+
+Нове українське spelling починається як `candidate`, якщо немає достатнього доказу стабільності.
+
+`ukr` може стати `stable`, коли одночасно:
+
+1. ім'я однозначно описує operation у своєму domain;
+2. identifier не містить ASCII Latin letters;
+3. немає collision з іншою semantic identity;
+4. executable witness доводить реальний виклик цієї identity;
+5. docs/reference відображають назву й status без drift.
+
+`uk` compact може стати `stable`, коли додатково:
+
+6. проходить compact naming rules;
+7. blind-decoding/review показує, що людина може інтуїтивно відновити зміст без таблиці скорочень.
+
+Відсутність цього доказу не блокує inventory: spelling залишається `candidate`, а docs чесно показують status.
 
 ## 7. Runtime semantics
 
@@ -260,9 +301,9 @@ Discover all top-level library/runtime candidates і fail, якщо definition �
 1. inventory infrastructure та fail-closed classification;
 2. core/collections/text/vector;
 3. time;
-4. filesystem/process/host;
+4. filesystem/process/host-visible Lisp operations;
 5. TCP/network/serialization;
-6. UTF-8/text internals, якщо public;
+6. UTF-8/text operations, якщо public;
 7. logic/unification/reasoning/knowledge/guard;
 8. SI/quantity/units;
 9. решта public libraries, виявлених inventory.
@@ -291,6 +332,7 @@ TECH-SCAN
 - переклад кожного локального variable name;
 - переклад internal helpers;
 - додавання semantic ID кожній приватній implementation detail;
+- переклад C/Rust embedding ABI symbol names;
 - автоматичний машинний переклад без naming review;
 - перетворення `ukr` на третю незалежну runtime-мову;
 - зміну семантики функції заради красивішої української назви.
