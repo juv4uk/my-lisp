@@ -20,6 +20,9 @@ pub const TAG_MACRO: u64 = 9;
 pub const TAG_TCP_CONN: u64 = 10;
 pub const TAG_TCP_LIST: u64 = 11;
 pub const TAG_NUMERIC_BUFFER: u64 = 13;
+/// Host-only implementation projection. Unlike TAG_PRIMITIVE this payload is
+/// an address and therefore is not portable semantic identity.
+pub const TAG_HOST_BUILTIN: u64 = 14;
 
 #[derive(Debug, Copy, Clone)]
 pub struct NanBox(pub u64);
@@ -72,11 +75,23 @@ impl NanBox {
                 let ptr = Rc::as_ptr(m) as u64;
                 NanBox(Self::pack_ptr(TAG_MACRO, ptr))
             }
-            // TAG_PRIMITIVE was reserved in the memory-layout contract
-            // from day one -- contract 2.1 finally fills it.
+            // Portable primitive identity is the numeric semantic ID itself,
+            // not an address of whichever host implementation happens to run it.
+            Value::SemanticRef(semantic_id) => {
+                let payload = semantic_id
+                    .parse::<u64>()
+                    .expect("semantic IDs admitted by Canon must be numeric");
+                assert!(
+                    payload <= 0x0FFF_FFFF,
+                    "semantic ID must fit the portable primitive payload"
+                );
+                NanBox(MASK_QNAN | (TAG_PRIMITIVE << 28) | payload)
+            }
+            // Legacy non-Canon host builtins remain representable, but their
+            // address is explicitly tagged as host mechanism, never primitive identity.
             Value::Builtin(b) => {
                 let ptr = Rc::as_ptr(b) as u64;
-                NanBox(Self::pack_ptr(TAG_PRIMITIVE, ptr))
+                NanBox(Self::pack_ptr(TAG_HOST_BUILTIN, ptr))
             }
             Value::Vector(v) => {
                 let ptr = Rc::as_ptr(v) as *const u8 as u64;
@@ -97,5 +112,17 @@ impl NanBox {
                 NanBox(Self::pack_ptr(TAG_TCP_LIST, ptr))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn semantic_ref_nanbox_payload_is_the_numeric_identity() {
+        let NanBox(bits) = NanBox::from_value(&Value::SemanticRef("0005"));
+        assert_eq!((bits >> 28) & 0xF, TAG_PRIMITIVE);
+        assert_eq!(bits & 0x0FFF_FFFF, 5);
     }
 }

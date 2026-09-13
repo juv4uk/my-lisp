@@ -343,8 +343,16 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
         Value::Rational(rational) => ExprKind::Rational(rational.clone()),
         Value::NumericBuffer(buffer) => ExprKind::NumericBuffer(buffer.clone()),
         Value::String(val) => ExprKind::String(val.clone()),
-        // A builtin is callable but not syntax: it cannot round-trip
-        // through eval/macro-expansion as code (contract 2.1 decision).
+        // A semantic callable is a runtime identity, not source syntax. It
+        // cannot round-trip through eval/macro expansion by inventing a spelling.
+        Value::SemanticRef(semantic_id) => {
+            return Err(LanguageError::new(
+                ErrorKind::Type,
+                format!("a semantic callable ({semantic_id}) is not executable code"),
+                span,
+            ));
+        }
+        // A legacy host builtin is callable but not syntax either.
         Value::Builtin(builtin) => {
             return Err(LanguageError::new(
                 ErrorKind::Type,

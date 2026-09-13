@@ -87,3 +87,40 @@ fn lexical_shadowing_of_builtin_name() {
         "6"
     );
 }
+
+#[test]
+fn canon_peer_surfaces_observe_one_semantic_callable_identity() {
+    use my_lisp::semantic_registry_export::admitted_surfaces_for_semantic_id;
+
+    let car_surfaces = admitted_surfaces_for_semantic_id("0005");
+    assert!(
+        car_surfaces.len() >= 2,
+        "0005 must admit multiple surfaces for the identity witness"
+    );
+
+    for left in &car_surfaces {
+        for right in &car_surfaces {
+            let source = format!("(eq {} {})", left.name, right.name);
+            assert_eq!(
+                eval_source(&source),
+                "t",
+                "peer surfaces {}:{} and {}:{} share semantic ID 0005 and must be eq by semantic identity",
+                left.namespace,
+                left.name,
+                right.namespace,
+                right.name
+            );
+        }
+    }
+
+    let cdr_surface = admitted_surfaces_for_semantic_id("0006")
+        .into_iter()
+        .next()
+        .expect("0006 must admit at least one surface");
+    let source = format!("(eq {} {})", car_surfaces[0].name, cdr_surface.name);
+    assert_eq!(
+        eval_source(&source),
+        "()",
+        "different semantic IDs 0005 and 0006 must remain observably distinct"
+    );
+}

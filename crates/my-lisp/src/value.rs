@@ -457,7 +457,11 @@ pub enum Value {
     Pair(Rc<Value>, Rc<Value>),
     Closure(Rc<Closure>),
     Macro(Rc<Closure>),
-    /// Primitive operation as a first-class value (contract 2.1).
+    /// Opaque numeric semantic identity as a first-class callable value.
+    /// The identity belongs to the language registry, not to a Rust object.
+    SemanticRef(&'static str),
+    /// Legacy host implementation closure as a first-class value. This is an
+    /// implementation projection, never the language identity key.
     Builtin(std::rc::Rc<Builtin>),
     /// Persistent vector: O(1) indexed access for numeric workloads
     Vector(std::rc::Rc<std::cell::RefCell<Vec<Value>>>),
@@ -529,6 +533,9 @@ impl PartialEq for Value {
                 left.len() == right.len() && left.iter().zip(right.iter()).all(|(l, r)| l == r)
             }
             (Value::NumericBuffer(left), Value::NumericBuffer(right)) => left == right,
+            // Semantic references compare by language-owned numeric identity,
+            // never by an implementation allocation or diagnostic spelling.
+            (Value::SemanticRef(left), Value::SemanticRef(right)) => left == right,
             // Functions have identity: two separately created closures are not equal.
             // Funktsii maiut identychnist: dva okremo stvoreni zamykannia ne ye rivnymy.
             // Funktionen besitzen Identität: Zwei getrennt erzeugte Closures sind nicht gleich.
@@ -630,6 +637,7 @@ impl Value {
 /// u chomus, krim obrobky riadkiv.
 fn render(value: &Value, quote_strings: bool) -> String {
     match value {
+        Value::SemanticRef(semantic_id) => format!("#<semantic {semantic_id}>"),
         Value::Builtin(builtin) => format!("#<builtin {}>", builtin.name),
         Value::Vector(v) => {
             let items: Vec<String> = v
