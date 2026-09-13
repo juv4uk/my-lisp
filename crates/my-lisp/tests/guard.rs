@@ -77,11 +77,11 @@ fn disagreement_warns_and_preserves_both_values() {
 fn reference_bureau_points_to_authority_workflow_and_evidence() {
     assert_eq!(
         eval_guard(r#"(guard-authority (quote semantic-oracle))"#),
-        "(language-contract.my crates/my-lisp-cli/src/swarm.rs docs/guard-oracle-node-plan.md)"
+        "(language-contract.lisp crates/my-lisp-cli/src/swarm.rs docs/guard-oracle-node-plan.md)"
     );
     assert_eq!(
         eval_guard(r#"(guard-how-to (quote task-materialization))"#),
-        "(edit-tasks.my auto-sync-or-sync-tasks verify-projection verify-peer-convergence)"
+        "(edit-tasks.lisp auto-sync-or-sync-tasks verify-projection verify-peer-convergence)"
     );
     assert_eq!(
         eval_guard(r#"(guard-verify (quote agent-messaging))"#),

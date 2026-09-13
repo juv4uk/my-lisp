@@ -36,7 +36,7 @@ jobs:
       - name: cargo xtask verify (docs/governance/policy checks)
         run: cargo run -p xtask -- verify
       - name: Check Ukrainian full-word source profile with my-lisp
-        run: ./target/debug/my-lisp scripts/перевірити-український-профіль.всм
+        run: ./target/debug/my-lisp scripts/перевірити-український-профіль.lisp
 
   meta-advice-release:
     name: full Advice Taker native/meta outcome-class check (optimized)

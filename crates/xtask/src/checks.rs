@@ -224,7 +224,9 @@ fn host_semantic_surface_documentation_tracks_time_ownership() -> Result<(), Str
     if !hss.contains("unix-time-now") {
         problems.push("host-semantic-surface.md missing unix-time-now".to_string());
     }
-    if !hss.contains("`utc-now` | `lib/time.my` | derived public clock meaning | HOST REMOVED") {
+    if !hss.contains("`utc-now` | `lib/time.lisp` | derived public clock meaning | HOST REMOVED")
+        && !hss.contains("`utc-now` | `lib/time.my` | derived public clock meaning | HOST REMOVED")
+    {
         problems.push("host-semantic-surface.md missing utc-now HOST REMOVED row".to_string());
     }
     if !time.contains("(def mono-ms") {

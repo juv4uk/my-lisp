@@ -8,7 +8,7 @@ fn repo_root() -> PathBuf {
 #[test]
 fn ukrainian_staging_profile_does_not_claim_a_legacy_extension_as_canonical() {
     let profile = fs::read_to_string(
-        repo_root().join("lib/surface/український-профіль-джерела.всм"),
+        repo_root().join("lib/surface/український-профіль-джерела.lisp"),
     )
     .expect("Ukrainian staging profile must be readable");
 

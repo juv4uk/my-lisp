@@ -199,7 +199,7 @@ fn parse_topics(source: &str) -> HashMap<String, GuardReference> {
             Some(list) => list,
             None => continue,
         };
-        if !as_symbol(&list[0]).map_or(false, my_lisp::is_define_surface_name) {
+        if !as_symbol(&list[0]).is_some_and(my_lisp::is_define_surface_name) {
             continue;
         }
         if as_symbol(&list[1]) != Some("*guard-reference-directory*") {
@@ -305,7 +305,7 @@ fn parse_functions(source: &str) -> HashMap<String, GuardFunction> {
             ExprKind::List(items) => items,
             _ => continue,
         };
-        if !as_symbol(&head[0]).map_or(false, my_lisp::is_define_surface_name) {
+        if !as_symbol(&head[0]).is_some_and(my_lisp::is_define_surface_name) {
             continue;
         }
         let ExprKind::Symbol(name) = &head[1].kind else {
@@ -314,7 +314,7 @@ fn parse_functions(source: &str) -> HashMap<String, GuardFunction> {
         let Some(lambda) = head.get(2).and_then(as_list) else {
             continue;
         };
-        if !as_symbol(&lambda[0]).map_or(false, my_lisp::is_lambda_surface_name) {
+        if !as_symbol(&lambda[0]).is_some_and(my_lisp::is_lambda_surface_name) {
             continue;
         }
         let Some(params) = lambda.get(1).and_then(as_list) else {

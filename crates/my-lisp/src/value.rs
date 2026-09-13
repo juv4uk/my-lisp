@@ -594,6 +594,7 @@ impl Value {
     /// The diagnostic name is intentionally generic.  The environment binding
     /// owns the user-visible surface spelling, whose authority stays with the
     /// embedding contract rather than with this core representation.
+    #[allow(clippy::type_complexity)]
     pub fn host_function(
         function: std::rc::Rc<
             dyn Fn(
@@ -648,22 +649,6 @@ impl Value {
         } else {
             Value::Nil
         }
-    }
-}
-
-#[cfg(test)]
-mod host_handle_tests {
-    use super::Value;
-
-    #[test]
-    fn host_handle_hides_its_token_when_rendered() {
-        let handle = Value::host_handle("cyberpunk.IScriptable", 0x1234_5678);
-        assert_eq!(
-            handle.as_host_handle(),
-            Some(("cyberpunk.IScriptable", 0x1234_5678))
-        );
-        assert_eq!(handle.to_string(), "#<host-handle cyberpunk.IScriptable>");
-        assert_ne!(handle.to_string(), "#<host-handle 305419896>");
     }
 }
 
@@ -847,3 +832,20 @@ impl Drop for Value {
         }
     }
 }
+
+#[cfg(test)]
+mod host_handle_tests {
+    use super::Value;
+
+    #[test]
+    fn host_handle_hides_its_token_when_rendered() {
+        let handle = Value::host_handle("cyberpunk.IScriptable", 0x1234_5678);
+        assert_eq!(
+            handle.as_host_handle(),
+            Some(("cyberpunk.IScriptable", 0x1234_5678))
+        );
+        assert_eq!(handle.to_string(), "#<host-handle cyberpunk.IScriptable>");
+        assert_ne!(handle.to_string(), "#<host-handle 305419896>");
+    }
+}
+
