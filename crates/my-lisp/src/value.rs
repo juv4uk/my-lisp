@@ -553,6 +553,28 @@ impl PartialEq for Value {
 }
 
 impl Value {
+    /// Builds one host-provided callable value without adding a new evaluator
+    /// form.  The host chooses only the mechanism behind a binding; Lisp still
+    /// decides whether and when to call the value through ordinary evaluation.
+    ///
+    /// The diagnostic name is intentionally generic.  The environment binding
+    /// owns the user-visible surface spelling, whose authority stays with the
+    /// embedding contract rather than with this core representation.
+    pub fn host_function(
+        function: std::rc::Rc<
+            dyn Fn(
+                &[Value],
+                &crate::Environment,
+                crate::Span,
+            ) -> Result<Value, crate::LanguageError>,
+        >,
+    ) -> Self {
+        Self::Builtin(std::rc::Rc::new(Builtin {
+            name: "host-capability",
+            func: function,
+        }))
+    }
+
     pub fn vector(values: impl IntoIterator<Item = Value>) -> Self {
         Self::Vector(std::rc::Rc::new(std::cell::RefCell::new(
             values.into_iter().collect(),
