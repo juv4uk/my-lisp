@@ -260,7 +260,7 @@ mod tests {
     #[test]
     fn peer_namespaces_may_repeat_one_spelling_for_the_same_identity() {
         const SYNTHETIC: &str =
-            "(4242 (uk comet stable) (full-uk comet stable) (compat comet compatibility-only))";
+            "(4242 (uk comet stable) (ukr comet stable) (compat comet compatibility-only))";
         let stable = build_surface_index(SYNTHETIC);
         let admitted = build_admitted_surface_index(SYNTHETIC);
         assert_eq!(stable.get("comet"), Some(&"4242"));

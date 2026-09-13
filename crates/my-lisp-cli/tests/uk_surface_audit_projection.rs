@@ -32,10 +32,10 @@ fn numeric_row_ids(source: &str) -> BTreeSet<u32> {
 #[derive(Debug)]
 struct FullUkCandidateRow {
     id: u32,
-    full_uk: String,
+    ukr: String,
 }
 
-fn full_uk_candidate_rows(source: &str) -> Vec<FullUkCandidateRow> {
+fn ukr_candidate_rows(source: &str) -> Vec<FullUkCandidateRow> {
     source
         .lines()
         .filter_map(|line| {
@@ -48,14 +48,14 @@ fn full_uk_candidate_rows(source: &str) -> Vec<FullUkCandidateRow> {
             quoted.next()?;
             quoted.next()?; // current UK surface, or —
             quoted.next()?;
-            let full_uk = quoted.next()?.to_string();
+            let ukr = quoted.next()?.to_string();
 
-            Some(FullUkCandidateRow { id, full_uk })
+            Some(FullUkCandidateRow { id, ukr })
         })
         .collect()
 }
 
-fn full_uk_aliases(source: &str) -> BTreeMap<u32, u32> {
+fn ukr_aliases(source: &str) -> BTreeMap<u32, u32> {
     let mut aliases = BTreeMap::new();
     for line in source.lines() {
         let line = line.trim_start();
@@ -66,18 +66,18 @@ fn full_uk_aliases(source: &str) -> BTreeMap<u32, u32> {
         let from = fields
             .next()
             .and_then(|field| field.parse::<u32>().ok())
-            .expect("full-UK alias source must be a numeric semantic ID");
+            .expect("ukr alias source must be a numeric semantic ID");
         let to = fields
             .next()
             .and_then(|field| field.parse::<u32>().ok())
-            .expect("full-UK alias target must be a numeric semantic ID");
+            .expect("ukr alias target must be a numeric semantic ID");
         assert!(
             fields.next().is_none(),
-            "full-UK alias rows must have exactly source and target IDs"
+            "ukr alias rows must have exactly source and target IDs"
         );
         assert!(
             aliases.insert(from, to).is_none(),
-            "full-UK alias source {from} must be declared only once"
+            "ukr alias source {from} must be declared only once"
         );
     }
     aliases
@@ -140,12 +140,12 @@ fn ukrainian_staging_profile_covers_every_function_table_identity() {
 }
 
 #[test]
-fn full_uk_candidate_collisions_require_explicit_alias_targets() {
+fn ukr_candidate_collisions_require_explicit_alias_targets() {
     let root = repo_root();
     let profile = fs::read_to_string(root.join("lib/surface/український-профіль-джерела.всм"))
         .expect("Ukrainian staging profile must be readable");
 
-    let rows = full_uk_candidate_rows(&profile);
+    let rows = ukr_candidate_rows(&profile);
     assert_eq!(
         rows.len(),
         167,
@@ -154,29 +154,29 @@ fn full_uk_candidate_collisions_require_explicit_alias_targets() {
 
     let by_id: BTreeMap<u32, &FullUkCandidateRow> =
         rows.iter().map(|row| (row.id, row)).collect();
-    let aliases = full_uk_aliases(&profile);
+    let aliases = ukr_aliases(&profile);
 
     for (&source_id, &target_id) in &aliases {
         let source = by_id.get(&source_id).copied().unwrap_or_else(|| {
-            panic!("full-UK alias source {source_id} is not a staging identity")
+            panic!("ukr alias source {source_id} is not a staging identity")
         });
         let target = by_id.get(&target_id).copied().unwrap_or_else(|| {
-            panic!("full-UK alias target {target_id} is not a staging identity")
+            panic!("ukr alias target {target_id} is not a staging identity")
         });
         assert!(
             !aliases.contains_key(&target_id),
-            "full-UK alias {source_id} -> {target_id} must point directly to a canonical owner"
+            "ukr alias {source_id} -> {target_id} must point directly to a canonical owner"
         );
         assert_eq!(
-            source.full_uk.as_str(),
-            target.full_uk.as_str(),
-            "full-UK alias {source_id} -> {target_id} must preserve the owner's candidate spelling"
+            source.ukr.as_str(),
+            target.ukr.as_str(),
+            "ukr alias {source_id} -> {target_id} must preserve the owner's candidate spelling"
         );
     }
 
     let mut owners: BTreeMap<&str, Vec<&FullUkCandidateRow>> = BTreeMap::new();
     for row in &rows {
-        owners.entry(row.full_uk.as_str()).or_default().push(row);
+        owners.entry(row.ukr.as_str()).or_default().push(row);
     }
 
     for (name, group) in owners {
@@ -192,7 +192,7 @@ fn full_uk_candidate_collisions_require_explicit_alias_targets() {
         assert_eq!(
             canonical.len(),
             1,
-            "duplicate full-UK candidate {name:?} must have exactly one canonical owner; rows: {:?}",
+            "duplicate ukr candidate {name:?} must have exactly one canonical owner; rows: {:?}",
             group.iter().map(|row| row.id).collect::<Vec<_>>()
         );
 
@@ -204,7 +204,7 @@ fn full_uk_candidate_collisions_require_explicit_alias_targets() {
             assert_eq!(
                 aliases.get(&row.id).copied(),
                 Some(owner_id),
-                "duplicate full-UK candidate {name:?} on row {} must explicitly alias canonical owner {}",
+                "duplicate ukr candidate {name:?} on row {} must explicitly alias canonical owner {}",
                 row.id,
                 owner_id
             );
@@ -213,21 +213,21 @@ fn full_uk_candidate_collisions_require_explicit_alias_targets() {
 }
 
 #[test]
-fn full_uk_candidates_need_no_latin_keyboard_layout() {
+fn ukr_candidates_need_no_latin_keyboard_layout() {
     let root = repo_root();
     let profile = fs::read_to_string(root.join("lib/surface/український-профіль-джерела.всм"))
         .expect("Ukrainian staging profile must be readable");
 
-    let offenders = full_uk_candidate_rows(&profile)
+    let offenders = ukr_candidate_rows(&profile)
         .into_iter()
-        .filter(|row| row.full_uk != "—")
-        .filter(|row| row.full_uk.chars().any(|character| character.is_ascii_alphabetic()))
-        .map(|row| format!("{}:{}", row.id, row.full_uk))
+        .filter(|row| row.ukr != "—")
+        .filter(|row| row.ukr.chars().any(|character| character.is_ascii_alphabetic()))
+        .map(|row| format!("{}:{}", row.id, row.ukr))
         .collect::<Vec<_>>();
 
     assert!(
         offenders.is_empty(),
-        "full-UK candidates must be typeable without switching to a Latin keyboard layout; offenders: {}",
+        "ukr candidates must be typeable without switching to a Latin keyboard layout; offenders: {}",
         offenders.join(", ")
     );
 }
