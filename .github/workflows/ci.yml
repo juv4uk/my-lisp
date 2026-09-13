@@ -51,6 +51,49 @@ jobs:
       - name: Run full vertical witness with speed-oriented native profile
         run: cargo test --profile ci-meta -p my-lisp --test meta_eval_advice_taker advice_taker_native_and_meta_preserve_expected_outcome_classes -- --ignored --nocapture
 
+  android-build:
+    name: Android cross-build (aarch64 + armv7)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: android
+      - name: Install Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r30
+          add-to-path: false
+      - name: Build aarch64-linux-android (64-bit, e.g. Redmi Note 8 Pro)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang
+          CC_aarch64_linux_android: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang
+          AR_aarch64_linux_android: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+        run: |
+          cargo build --release --target aarch64-linux-android -p my-lisp-cli
+          file target/aarch64-linux-android/release/my-lisp
+      - name: Build armv7-linux-androideabi (32-bit userspace, e.g. many cheap Android TV boxes)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi28-clang
+          CC_armv7_linux_androideabi: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi28-clang
+          AR_armv7_linux_androideabi: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+        run: |
+          cargo build --release --target armv7-linux-androideabi -p my-lisp-cli
+          file target/armv7-linux-androideabi/release/my-lisp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: my-lisp-android
+          path: |
+            target/aarch64-linux-android/release/my-lisp
+            target/armv7-linux-androideabi/release/my-lisp
+          if-no-files-found: error
+
   web-repl:
     name: portable web REPL build
     runs-on: ubuntu-latest
