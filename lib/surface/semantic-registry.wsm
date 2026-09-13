@@ -2,7 +2,7 @@
 ; Значення первинне. Мови рівноправні.
 ;
 ; Кожен перший атом — непрозорий semantic ID і містить ТІЛЬКИ цифри.
-; uk/en/sa — людські поверхні. sym — спільна немовна нотація.
+; uk/full-uk/en/sa — людські поверхні. sym — спільна немовна нотація.
 ; Порядок surface-форм не має семантичного значення.
 ; Старий uk-sa-coverage.wsm більше НЕ є authority.
 
@@ -66,7 +66,7 @@
   (0103 (en reduce stable) (uk згорнути stable) (sa saṅgraha candidate))
   (1043 (en string-append stable) (uk зчепити stable) (sa śabdasaṃyoga candidate))
   (1044 (en string-length stable) (uk довжина-тексту stable) (sa śabdapramāṇa candidate))
-  (1045 (en string-empty? stable) (uk текст-порожній? stable) (sa śūnya? stable))
+  (1045 (en string-empty? stable) (uk текст-порожній? stable) (full-uk порожній-текст? stable) (sa śūnya? stable))
   (1046 (en string-prefix? stable) (uk префікс-тексту? stable) (sa pūrva? candidate))
   (1047 (en string-contains? stable) (uk фрагмент-у-тексті? stable) (sa śabdasambaddha? candidate))
   (1048 (en string-first stable) (uk перший-символ-тексту stable) (sa prathamavarṇa candidate))
