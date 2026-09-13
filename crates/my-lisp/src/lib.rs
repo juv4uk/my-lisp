@@ -86,7 +86,6 @@ const DEFMACRO_SEMANTIC_ID: &str = "0012";
 /// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
 pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.my");
 
-
 /// Generated runtime projection of admitted surface spellings to opaque numeric
 /// semantic IDs. semantic-registry.wsm remains the only spelling authority.
 pub const META_SEMANTIC_REGISTRY_SOURCE: &str =
@@ -116,7 +115,7 @@ pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
 
 /// File text interpretation owned by Lisp. The host contributes only raw
 /// bytes through `read-file-bytes`/`write-file-bytes`; this layer defines
-/// public `read-file`/`write-file` by applying the shared UTF-8 semantics.
+/// public `read-file`/`write-file` by applying the shared UTF-8 layer.
 pub const FS_LIBRARY_SOURCE: &str = include_str!("../../../lib/fs.lisp");
 
 /// Install the one primitive macro-construction mechanism required by the
@@ -159,17 +158,52 @@ pub fn load_macro_library(session: &mut Session) -> Result<EvalResult, LanguageE
     Ok(result)
 }
 
+/// Bind stable peer spellings for values that already exist in the current
+/// bootstrap environment. The semantic registry owns which names share an ID;
+/// this function owns only the one-time binding mechanism.
+///
+/// Existing bindings are never overwritten. That matters for ordinary
+/// shadowable operations: peers begin with the same value, but shadowing one
+/// name later must not retarget the others. Canon identities are skipped here
+/// because their resolver already owns surface routing independently of the
+/// lexical environment.
+fn bind_missing_stable_surface_peers(environment: &Environment) {
+    let snapshot = environment.snapshot();
+    let mut values_by_semantic_id = std::collections::BTreeMap::new();
+
+    for (name, value) in snapshot {
+        if eval::canon::identity_for_surface(&name).is_some() {
+            continue;
+        }
+        if let Some(semantic_id) = semantic_registry::semantic_id_for_surface(&name) {
+            values_by_semantic_id.entry(semantic_id).or_insert(value);
+        }
+    }
+
+    for (semantic_id, value) in values_by_semantic_id {
+        for peer in semantic_registry::stable_surfaces_for_semantic_id(semantic_id) {
+            if environment.get(peer).is_none() {
+                environment.define(peer, value.clone());
+            }
+        }
+    }
+}
+
 /// Install the narrow macro substrate, then load the language-owned macro
-/// layer and finally the ordinary core library.
+/// layer and finally the ordinary core library. Once the Lisp-owned values
+/// exist, install every missing stable peer spelling from the semantic
+/// registry onto the same initial value; no human-language alias table is
+/// duplicated here.
 ///
 /// This is the canonical bootstrap order for embedders that start from a bare
 /// `Environment::root()`: the root itself stays smaller, while the bootstrap
 /// explicitly gains `make-macro` before evaluating `lib/macro.my`.
 pub fn load_core_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     load_macro_library(session)?;
-    eval_program(CORE_LIBRARY_SOURCE, session)
+    let result = eval_program(CORE_LIBRARY_SOURCE, session)?;
+    bind_missing_stable_surface_peers(&session.environment);
+    Ok(result)
 }
-
 
 /// Load the explicit metacircular self-hosting witness after the ordinary core.
 /// Rust owns bootstrap mechanics; surface admission stays registry-owned.
