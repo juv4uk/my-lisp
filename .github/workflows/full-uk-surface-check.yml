@@ -32,5 +32,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Check full Ukrainian staging invariants
+      - name: Reject Latin letters in full Ukrainian candidates first
+        run: cargo test -p my-lisp-cli --test uk_surface_audit_projection full_uk_candidates_need_no_latin_keyboard_layout -- --nocapture
+      - name: Check all full Ukrainian staging invariants
         run: cargo test -p my-lisp-cli --test uk_surface_audit_projection -- --nocapture
