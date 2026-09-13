@@ -397,6 +397,9 @@ pub struct Closure {
     pub(crate) environment: Environment,
 }
 
+pub type BuiltinFunction =
+    Rc<dyn Fn(&[Value], &crate::Environment, crate::Span) -> Result<Value, crate::LanguageError>>;
+
 /// A primitive operation as a first-class value. Contract 2.1 introduced
 /// callable builtin values; Contract 6.0 keeps that value-level property while
 /// reserving Canon 0+7 *names*. A Canon callable can still be passed as a value,
@@ -408,10 +411,7 @@ pub struct Closure {
 /// perevyznachennia. Ne-Canon builtiny zalyshaiutsia zvychainymy lexical values.
 pub struct Builtin {
     pub name: &'static str,
-    #[allow(clippy::type_complexity)]
-    pub func: std::rc::Rc<
-        dyn Fn(&[Value], &crate::Environment, crate::Span) -> Result<Value, crate::LanguageError>,
-    >,
+    pub func: BuiltinFunction,
 }
 
 /// Immutable contiguous numeric storage for portable bulk-compute lowering.
@@ -594,15 +594,7 @@ impl Value {
     /// The diagnostic name is intentionally generic.  The environment binding
     /// owns the user-visible surface spelling, whose authority stays with the
     /// embedding contract rather than with this core representation.
-    pub fn host_function(
-        function: std::rc::Rc<
-            dyn Fn(
-                &[Value],
-                &crate::Environment,
-                crate::Span,
-            ) -> Result<Value, crate::LanguageError>,
-        >,
-    ) -> Self {
+    pub fn host_function(function: BuiltinFunction) -> Self {
         Self::Builtin(std::rc::Rc::new(Builtin {
             name: "host-capability",
             func: function,
