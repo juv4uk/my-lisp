@@ -3,9 +3,9 @@ use my_lisp::{eval_program, Session};
 fn eval_science(source: &str) -> String {
     let mut session = Session::default();
     for library in [
-        include_str!("../../../lib/core.my"),
-        include_str!("../../../lib/quantity.my"),
-        include_str!("../../../lib/si.my"),
+        include_str!("../../../lib/core.lisp"),
+        include_str!("../../../lib/quantity.lisp"),
+        include_str!("../../../lib/si.lisp"),
     ] {
         eval_program(library, &mut session).expect("science library should load");
     }
@@ -18,14 +18,14 @@ fn eval_science(source: &str) -> String {
 fn eval_science_knowledge(source: &str) -> String {
     let mut session = Session::default();
     for library in [
-        include_str!("../../../lib/core.my"),
-        include_str!("../../../lib/unify.my"),
-        include_str!("../../../lib/reason.my"),
-        include_str!("../../../lib/forward.my"),
-        include_str!("../../../lib/knowledge.my"),
-        include_str!("../../../lib/result-status.my"),
-        include_str!("../../../lib/quantity.my"),
-        include_str!("../../../lib/si.my"),
+        include_str!("../../../lib/core.lisp"),
+        include_str!("../../../lib/unify.lisp"),
+        include_str!("../../../lib/reason.lisp"),
+        include_str!("../../../lib/forward.lisp"),
+        include_str!("../../../lib/knowledge.lisp"),
+        include_str!("../../../lib/result-status.lisp"),
+        include_str!("../../../lib/quantity.lisp"),
+        include_str!("../../../lib/si.lisp"),
     ] {
         eval_program(library, &mut session).expect("science/knowledge library should load");
     }
@@ -203,7 +203,7 @@ fn malformed_constant_cannot_project_into_knowledge() {
 
 #[test]
 fn si_source_does_not_reintroduce_a_second_literal_authority_for_numeric_views() {
-    let si = include_str!("../../../lib/si.my");
+    let si = include_str!("../../../lib/si.lisp");
 
     for forbidden in [
         "(def si:cesium-frequency 9192631770)",

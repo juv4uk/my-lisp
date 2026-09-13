@@ -12,9 +12,9 @@ use my_lisp::{eval_program, Session};
 
 fn eval_reason(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
         .value
@@ -23,9 +23,9 @@ fn eval_reason(source: &str) -> String {
 
 fn eval_reason_with_output(source: &str) -> Vec<String> {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
         .output

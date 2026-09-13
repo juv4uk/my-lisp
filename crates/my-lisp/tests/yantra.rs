@@ -20,7 +20,7 @@ fn agent_session() -> Session {
     let mut session = Session { environment };
     load_core_library(&mut session).unwrap();
     load_process_library(&mut session).unwrap();
-    eval_program(include_str!("../../../lib/yantra.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/yantra.lisp"), &mut session).unwrap();
     session
 }
 

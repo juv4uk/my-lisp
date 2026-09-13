@@ -14,7 +14,7 @@ Guard/WSM = пояснення різниці та правильного шля
 swarm-node = координаційний механізм, не semantic authority
 ```
 
-Перший зріз додає `lib/guard.wsm` зі стабільним записом `guard/1`. Вісь
+Перший зріз додає `lib/guard.lisp` зі стабільним записом `guard/1`. Вісь
 рішення (`allow/warn/reject/unknown`) навмисно відділена від доказового
 статусу (`confirmed/partial/unresolved/broken`). Відсутність факту дає
 `unknown`, а не прихований `reject`.
@@ -51,7 +51,7 @@ Oracle ніколи не застосовує цю зміну сам: підка
 Найкоротший локальний шлях для агента не потребує запущеного TCP Oracle:
 
 ```bash
- target/release/my-lisp --oracle-check path/to/source.wsm
+ target/release/my-lisp --oracle-check path/to/source.lisp
  printf '%s\n' '(def answer (+ 40 2))' | target/release/my-lisp --oracle-check -
 ```
 
@@ -76,13 +76,13 @@ my-lisp --oracle-help agent-send
 ```
 
 Через TCP це `(op oracle-help)` з необов'язковим `(topic "agent-send")`.
-Список не дублюється в Rust: Oracle завантажує `lib/guard.wsm` і
-`knowledge/guard-reference.wsm`, а потім виконує WSM-запит. Кожний tool record
+Список не дублюється в Rust: Oracle завантажує `lib/guard.lisp` і
+`knowledge/guard-reference.lisp`, а потім виконує WSM-запит. Кожний tool record
 містить український summary, path, canonical invocation, risk і verify.
 Відсутній інструмент повертає `UNKNOWN` із маршрутами, а не вигадану команду.
 
 Канонічний запуск ноди: одна identity → один unit → один абсолютний data-dir
-→ один bootstrap peer → `--auto-sync` абсолютного `tasks.my`. Rust тепер
+→ один bootstrap peer → `--auto-sync` абсолютного `tasks.lisp`. Rust тепер
 відхиляє неявні `node-1`/`unknown`, відносний data-dir, відсутній auto-sync
 файл і повторне використання data-dir іншою identity. Listener захоплюється
 до запуску background threads; перший auto-sync виконується одразу.
@@ -107,7 +107,7 @@ Guard/WSM = explanation of the difference and the proper path
 swarm-node = coordination mechanism, not semantic authority
 ```
 
-The first executable slice adds `lib/guard.wsm` with a stable `guard/1`
+The first executable slice adds `lib/guard.lisp` with a stable `guard/1`
 record. Decision (`allow/warn/reject/unknown`) is deliberately separate from
 evidence status (`confirmed/partial/unresolved/broken`). Missing facts yield
 `unknown`, never an implicit rejection.
@@ -137,7 +137,7 @@ release binary; `target/debug` is for development only and is not the
 canonical Oracle because debug stack behaviour can differ on deep evaluation:
 
 ```bash
-target/release/my-lisp --oracle-check path/to/source.wsm
+target/release/my-lisp --oracle-check path/to/source.lisp
 printf '%s\n' '(def answer (+ 40 2))' | target/release/my-lisp --oracle-check -
 ```
 
@@ -162,14 +162,14 @@ my-lisp --oracle-help agent-send
 ```
 
 The TCP form is `(op oracle-help)` with optional `(topic "agent-send")`.
-Rust does not duplicate the list: Oracle loads `lib/guard.wsm` and
-`knowledge/guard-reference.wsm`, then evaluates the WSM query. Every tool
+Rust does not duplicate the list: Oracle loads `lib/guard.lisp` and
+`knowledge/guard-reference.lisp`, then evaluates the WSM query. Every tool
 record carries a Ukrainian summary, path, canonical invocation, risk, and
 verification evidence. A missing tool returns UNKNOWN routes rather than an
 invented command.
 
 Canonical node startup is one identity → one unit → one absolute data-dir →
-one bootstrap peer → absolute `tasks.my` via `--auto-sync`. Rust rejects
+one bootstrap peer → absolute `tasks.lisp` via `--auto-sync`. Rust rejects
 implicit identities/projects, relative state, missing auto-sync files, and a
 data directory owned by another identity. The listener is bound before
 background threads start, and initial auto-sync now runs immediately.

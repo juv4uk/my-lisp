@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE (Codified 2026-08-27)
 
-**Motivation:** Incremental string-surgery (e.g., regex replacements, `sed` hacks, or partial string splits) has caused multiple file corruption incidents in registries and configuration files (such as `tasks.my`, `manifest.scm`, or Lisp metadata).
+**Motivation:** Incremental string-surgery (e.g., regex replacements, `sed` hacks, or partial string splits) has caused multiple file corruption incidents in registries and configuration files (such as `tasks.lisp`, `manifest.scm`, or Lisp metadata).
 
 ## The Rule: Rebuild from Clean Base
 

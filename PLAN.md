@@ -41,7 +41,7 @@ conformance-тестах та evidence-документах, а не повер�
 
 ## A2. Meta-evaluator ownership
 
-Machine-readable evidence matrix `knowledge/meta-eval-evidence.wsm` є
+Machine-readable evidence matrix `knowledge/meta-eval-evidence.lisp` є
 авторитетом для parity-статусів; людська проєкція генерується з неї. На
 2026-09-10 усі **34/34 required rows confirmed**.
 
@@ -113,7 +113,7 @@ Evidence: `narrate_outcomes.rs`, `advice_corpus.rs`, CI #1020/#1030.
 
 ## A5. Portability / Guard / documentation hardening
 
-- ✅ committed `core.my.fasl` перевіряється exact source hash;
+- ✅ committed `core.lisp.fasl` перевіряється exact source hash;
 - ✅ semantic changes trigger WASM browser workflow;
 - ✅ Chrome + Firefox пройшли після trigger expansion;
 - ✅ Guard Rust boundary перевіряє exact `guard/1` structure, не rendered substring;
@@ -147,7 +147,7 @@ tcp listen address/port ranges
 ## A7. Lisp-owned external translation admission — B4 first milestone
 
 Зовнішній translator більше не потребує й не отримує semantic authority.
-Versioned protocol живе в `lib/translation.my`:
+Versioned protocol живе в `lib/translation.lisp`:
 
 ```lisp
 (translation/1 candidate|ambiguous|rejected clause|batch|query source payload)
@@ -168,7 +168,7 @@ Versioned protocol живе в `lib/translation.my`:
 - ✅ versioned data-only corpus покриває accepted/rejected/ambiguous та
   downstream `proved`/`unknown`/`not-run` modes.
 
-Evidence: `translation_boundary.rs`, `translation-corpus-v1.wsm`; substantive
+Evidence: `translation_boundary.rs`, `translation-corpus-v1.lisp`; substantive
 B4 tests/build/clippy пройшли в repair sequence #1050/#1051, final current-head
 CI лишається authority перед сильнішим claim.
 
@@ -320,7 +320,7 @@ Programmatic embedding enforcement уже confirmed. Залишилися окр
 Підтверджено:
 
 - ✅ `docs/swarm-mesh-v2.md` має operational onboarding evidence;
-- ✅ machine-readable deprecation: `knowledge/swarm-legacy-deprecation.wsm`;
+- ✅ machine-readable deprecation: `knowledge/swarm-legacy-deprecation.lisp`;
 - ✅ replacement mapping + two-plane migration regression;
 - ✅ `AGENTS.md` більше не навчає legacy `:9999` coordination як first-class path.
 
@@ -343,7 +343,7 @@ Programmatic embedding enforcement уже confirmed. Залишилися окр
 4. hardware surface тільки після доказу потреби.
 
 Найцінніший hardware proof — поступове виконання
-`core.my → unify.my → reason.my` на незалежному backend.
+`core.lisp → unify.lisp → reason.lisp` на незалежному backend.
 
 ---
 

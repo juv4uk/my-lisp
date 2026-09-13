@@ -2,7 +2,7 @@
 
 Status: accepted 2026-08-18 (`MYLISP-VISIBILITY-VS-CONFLICT-ADR`, proposed
 by `my-lisp-panini`). No runtime/evaluator change — this documents and
-names an abstraction `lib/knowledge.my` already implements, so it can be
+names an abstraction `lib/knowledge.lisp` already implements, so it can be
 built on (by `my-lisp-panini` or anyone else) without re-deriving it or
 assuming it's Pāṇini-specific.
 
@@ -27,7 +27,7 @@ something `my-lisp-panini`'s own evidence discipline (rule 2 of
 `docs/agent-doctrine.md`: never state a claim stronger than its
 evidence) would want preserved, not hidden.
 
-## Decision: these are already two orthogonal mechanisms in `lib/knowledge.my`
+## Decision: these are already two orthogonal mechanisms in `lib/knowledge.lisp`
 
 **Visibility = module scope.** A module (`defmodule`, `tell-knowledge`)
 is a named, independently addressable set of clauses. `reason-in
@@ -68,7 +68,7 @@ a new contradiction into what's visible.
   be modeled as a decision procedure that runs *after* visibility is
   established, not as a filter on what's visible.
 - Neither of these requires `my-lisp`'s evaluator to change. Both are
-  expressible today as ordinary `lib/knowledge.my` usage: one module (or
+  expressible today as ordinary `lib/knowledge.lisp` usage: one module (or
   a composed view over several) for the visible rule set, and a
   conflict-resolution predicate parametrized the way `check-conflict` is
   — provability of a negation, or whatever Pāṇini's own vipratiṣedha

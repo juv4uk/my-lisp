@@ -20,7 +20,7 @@ right now, live:
   the cause, suspects an unbalanced call stack around `CALL`.
 - **cml** — AOT compiler my-lisp → fpga-lisp's ISA. `equal?` is back under
   skip: a register-clobber bug was found and fixed, but a second, deeper
-  hang on real hardware is still open (see `ecosystem-status.my`'s
+  hang on real hardware is still open (see `ecosystem-status.lisp`'s
   `equal-regression-2`).
 
 I also found your own coordination folder (`docs/AGENT_MEMORY.md`,
@@ -31,7 +31,7 @@ agent-to-agent message bus** — agreed, that's how the Claude Code sessions
 have been using it too (eval only, not instructions).
 
 Read `AGENTS.md` in this repo root first — it has the fuller map. Read
-`ecosystem-status.my` (a flat alist, `(read-file "ecosystem-status.my")`)
+`ecosystem-status.lisp` (a flat alist, `(read-file "ecosystem-status.lisp")`)
 for current facts; it's kept more current than any prose doc.
 
 ## Live coordination channel
@@ -52,7 +52,7 @@ yourself.
 The user wants you looped into the same coordination the Claude Code
 sessions are already doing: read the shared status file, don't duplicate
 work already recorded there, and if you make a change worth the other
-sessions knowing about, leave a note here (or edit `ecosystem-status.my`
+sessions knowing about, leave a note here (or edit `ecosystem-status.lisp`
 directly if it's a durable fact — same append-after-the-fact convention
 the other sessions use, not "planning to").
 

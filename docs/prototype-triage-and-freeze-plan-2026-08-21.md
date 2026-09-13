@@ -29,7 +29,7 @@ prototype/
 ├── UPC8-documentation-ua.md
 ├── bitmask64/                      pratyāhāra як 64-bit mask (чисте математичне розширення)
 ├── derivation_ir/                  IR деривацій + proof certificates (окремий граматичний стек)
-├── lisp_core_phonetics/            міст у Lisp / .my (бібліотечний рівень)
+├── lisp_core_phonetics/            міст у Lisp / .lisp (бібліотечний рівень)
 ├── fpga_alu/                       Verilog ALU + testbench (гіпотетичне RTL-продовження)
 ├── cml_lowering/                   lowering у бік cml (компіляторний патерн)
 ├── slavic_phonetics/               слов’янські розширення (дослідницька модель)

@@ -77,7 +77,7 @@ identity тепер явно посилається на цей контракт
 
 ### 6. Public/private API
 
-- Інвентаризувати exports кожного `lib/*.my`.
+- Інвентаризувати exports кожного `lib/*.lisp`.
 - Позначити helpers без обов’язкового namespace-механізму в ядрі.
 - Критерій: користувач бачить малий public surface; старі helpers мають migration path.
 
@@ -96,7 +96,7 @@ identity тепер явно посилається на цей контракт
 
 ### 9. Threading macro
 
-- Реалізувати `->` у `lib/core.my`, якщо single-evaluation і macroexpand contract
+- Реалізувати `->` у `lib/core.lisp`, якщо single-evaluation і macroexpand contract
   доводяться без нового Rust primitive.
 - Перевірити zero/one/many-step, додаткові аргументи й side-effect expression once.
 
@@ -105,7 +105,7 @@ identity тепер явно посилається на цей контракт
 - Спочатку специфікація: indentation, comments, dotted lists, quote sugar, width.
 - Formatter консервативний: не переставляє форми й не змінює семантику.
 - Law: `parse(format(parse(source))) = parse(source)`.
-- CLI `my-lisp fmt file.my` з check-mode для CI.
+- CLI `my-lisp fmt file.lisp` з check-mode для CI.
 
 ## Етап 4 — навчальний linter
 

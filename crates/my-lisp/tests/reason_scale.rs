@@ -16,9 +16,9 @@ use std::time::Instant;
 
 fn loaded_session() -> Session {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
     session
 }
 

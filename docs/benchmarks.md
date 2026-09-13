@@ -10,7 +10,7 @@
 
 ## 1. Fresh-session microbenchmarks (cold path)
 
-Every operation pays `Session::default()` + full `lib/core.my` parse —
+Every operation pays `Session::default()` + full `lib/core.lisp` parse —
 this matches one-shot CLI/batch invocations (WSM-24 style egg farms),
 which is exactly why optimization item #4 (AST snapshot) targets it.
 
@@ -19,14 +19,14 @@ Measured 2026-08-24, `MY_LISP_BENCH_ITERATIONS=200`:
 | case | ns/op | note |
 |---|---|---|
 | rust/parser | 23 511 | parse-only |
-| rust/arithmetic | 31 392 | incl. session+core.my |
+| rust/arithmetic | 31 392 | incl. session+core.lisp |
 | rust/lists | 48 746 | |
 | rust/recursion | 88 747 | |
 | rust/closures | 24 371 | |
 
 ## 2. Warm-session steady state (hot path) — NEW
 
-Session loaded once (`core.my` + setup); measures pure interpreter loop
+Session loaded once (`core.lisp` + setup); measures pure interpreter loop
 through `eval_program`. This is what LSP / REPL / swarm-node actually
 experience after startup.
 
@@ -66,16 +66,16 @@ needed before claiming a percentage improvement.
 
 ## 4. Historical note
 
-The suite historically also ran the same `.my` programs through the
+The suite historically also ran the same `.lisp` programs through the
 ClojureScript prototype (`npm run benchmark`). The CLJS prototype has
 been fully replaced by the Rust core and `package.json` no longer
-exists — those instructions were dead and are removed. The `.my`
-programs in `benchmarks/*.my` remain as fixture inputs to this runner.
+exists — those instructions were dead and are removed. The `.lisp`
+programs in `benchmarks/*.lisp` remain as fixture inputs to this runner.
 
 ## Українська
 
 Запуск: `cargo run --release -p my-lisp --example benchmark`.
-Секція 1 — cold path (кожна операція платить парсинг core.my — як раз
+Секція 1 — cold path (кожна операція платить парсинг core.lisp — як раз
 батчові CLI-запуски). Секція 2 — тепла сесія (стале навантаження
 інтерпретатора, як у LSP/REPL/swarm після старту). Головний висновок:
 точнорaціональний ланцюг масштабується надлінійно через ріст
@@ -109,9 +109,9 @@ my-lisp 14s cold; startup НЕ вузьке місце — рекурсивни�
 6c2e024) — разом ці два фікстури окреслюють поточні чесні межі мови.
 
 ### §4.1 Уточнення cold-vs-warm [2026-08-24 пізно, load 1.25]
-Warm-session n=100 (сесія з core.my вже завантажена): **10.6ms/виклик**.
+Warm-session n=100 (сесія з core.lisp вже завантажена): **10.6ms/виклик**.
 Отже у §4 співвідношення ~10× на n=100 здебільшого відноситься на рахунку
-процесного старту+парсу core.my (~0.29s фіксованих), а не обчислення.
+процесного старту+парсу core.lisp (~0.29s фіксованих), а не обчислення.
 Справжня межа двошарова:
 1. cold one-shot: старт/парс домінують → FASL snapshot (OPT #4) — пряма ціль
 2. warm глибина n≥400: суперлінійність mul/gcd великих чисел → Karatsuba

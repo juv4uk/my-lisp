@@ -2,7 +2,7 @@
 """Перевіряє, що runtime public names класифіковані numeric registry.
 
 Сире runtime inventory може містити історичні/host-oriented spellings. Воно не
-є semantic authority. Єдина authority — `semantic-registry.wsm`; кожна видима
+є semantic authority. Єдина authority — `semantic-registry.lisp`; кожна видима
 публічна назва повинна бути surface name деякої numeric identity.
 """
 
@@ -11,9 +11,9 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-REGISTRY_FILE = REPO_ROOT / "lib" / "surface" / "semantic-registry.wsm"
-INVENTORY_FILE = REPO_ROOT / "lib" / "surface" / "uk-inventory.wsm"
-CORE_LIB = REPO_ROOT / "lib" / "core.my"
+REGISTRY_FILE = REPO_ROOT / "lib" / "surface" / "semantic-registry.lisp"
+INVENTORY_FILE = REPO_ROOT / "lib" / "surface" / "uk-inventory.lisp"
+CORE_LIB = REPO_ROOT / "lib" / "core.lisp"
 SURFACE = re.compile(
     r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)\s+"
     r"(stable|candidate|missing|compatibility-only)\)"
@@ -88,7 +88,7 @@ def main() -> int:
         for name in sorted(unclassified):
             print(f"  - {name}")
         print(f"Total unclassified: {len(unclassified)}")
-        print("Add them to lib/surface/semantic-registry.wsm with an explicit status.")
+        print("Add them to lib/surface/semantic-registry.lisp with an explicit status.")
         return 1
 
     print("OK: every eligible runtime name is classified by numeric semantic registry.")

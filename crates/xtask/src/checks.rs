@@ -196,8 +196,8 @@ fn public_docs_point_to_semantic_authority() -> Result<(), String> {
     if !core.contains("semantic-authority-map.md") {
         problems.push("docs/language-core.md must link semantic-authority-map.md");
     }
-    if !authority.contains("language-contract.my") {
-        problems.push("docs/semantic-authority-map.md must reference language-contract.my");
+    if !authority.contains("language-contract.lisp") {
+        problems.push("docs/semantic-authority-map.md must reference language-contract.lisp");
     }
     if !authority_lower.contains("ratified adr") {
         problems.push("docs/semantic-authority-map.md must mention ratified ADRs");
@@ -214,7 +214,7 @@ fn public_docs_point_to_semantic_authority() -> Result<(), String> {
 
 fn host_semantic_surface_documentation_tracks_time_ownership() -> Result<(), String> {
     let hss = include_str!("../../../docs/host-semantic-surface.md");
-    let time = include_str!("../../../lib/time.my");
+    let time = include_str!("../../../lib/time.lisp");
     let builtins = include_str!("../../my-lisp/src/eval/builtins.rs");
 
     let mut problems = Vec::new();
@@ -254,7 +254,7 @@ fn host_semantic_surface_documentation_tracks_time_ownership() -> Result<(), Str
 
 fn agent_onboarding_records_removed_coordination_surface() -> Result<(), String> {
     let agents = include_str!("../../../AGENTS.md");
-    let deprecation = include_str!("../../../knowledge/swarm-legacy-deprecation.wsm");
+    let deprecation = include_str!("../../../knowledge/swarm-legacy-deprecation.lisp");
 
     let mut problems = Vec::new();
     for needle in [
@@ -262,7 +262,7 @@ fn agent_onboarding_records_removed_coordination_surface() -> Result<(), String>
         "swarm-node :910x",
         "Стара coordination surface на `:9999` фізично видалена",
         "мають повертати `unknown op`",
-        "knowledge/swarm-legacy-deprecation.wsm",
+        "knowledge/swarm-legacy-deprecation.lisp",
     ] {
         if !agents.contains(needle) {
             problems.push(format!("AGENTS.md missing: {needle}"));
@@ -354,11 +354,11 @@ fn s2_explicitly_contracts_category_not_error_wording() -> Result<(), String> {
 
 use std::collections::{BTreeMap, BTreeSet};
 
-const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
-const DOCS_INDEX: &str = include_str!("../../../lib/surface/uk-docs.wsm");
+const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
+const DOCS_INDEX: &str = include_str!("../../../lib/surface/uk-docs.lisp");
 const DOCS_MD: &str = include_str!("../../../docs/ukrainian-api.md");
-const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
-const NAME_AUDIT: &str = include_str!("../../../lib/surface/uk-name-audit.wsm");
+const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.lisp");
+const NAME_AUDIT: &str = include_str!("../../../lib/surface/uk-name-audit.lisp");
 
 fn stable_pairs() -> BTreeSet<(String, String)> {
     REGISTRY
@@ -558,8 +558,8 @@ fn stari_nazvy_smystovoho_audytu_lyshaiutsia_aliasamy_sumisnosti() -> Result<(),
 // crates/my-lisp/tests/ukrainska_programa_pryimannya.rs: keyboard/text-policy
 // lints, not semantic mutation tests (TEST-ARCHITECTURE-1 step 4). ---
 
-const UK_ACCEPTANCE: &str = include_str!("../../../lib/surface/uk-acceptance.my");
-const RIVNOPRAVNIST_UK: &str = include_str!("../../../tests/fixtures/rivnopravnist-uk.my");
+const UK_ACCEPTANCE: &str = include_str!("../../../lib/surface/uk-acceptance.lisp");
+const RIVNOPRAVNIST_UK: &str = include_str!("../../../tests/fixtures/rivnopravnist-uk.lisp");
 
 #[derive(PartialEq, Eq)]
 enum SurfaceAdmission {

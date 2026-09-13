@@ -1,7 +1,7 @@
 use my_lisp::{eval_program, load_macro_library, Environment, Session, Value};
 use std::rc::Rc;
 
-const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
+const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
 
 fn eval_with_derived_macros(source: &str) -> String {
     let mut session = Session::default();
@@ -89,7 +89,7 @@ fn bare_root_gains_peer_bindings_only_through_macro_loader() {
     match &defmacro {
         Value::Macro(bound) => assert!(
             Rc::ptr_eq(loaded_macro, bound),
-            "loader must bind the exact Macro value returned by lib/macro.my"
+            "loader must bind the exact Macro value returned by lib/macro.lisp"
         ),
         other => panic!("defmacro binding must be a Macro value, got {other:?}"),
     }

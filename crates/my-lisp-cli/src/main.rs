@@ -81,7 +81,7 @@ fn main() {
     // connection rebuilds its own `contract_version` `Value` locally from
     // these two numbers instead of cloning a shared one across threads.
     let (contract_major, contract_minor) = {
-        let contract_source = include_str!("../../../language-contract.my");
+        let contract_source = include_str!("../../../language-contract.lisp");
         let mut throwaway = Session {
             environment: Environment::root(),
         };
@@ -124,13 +124,13 @@ fn main() {
     // between the compiled-in bytes and the compiled-in source flips us to
     // the parse path, never to a wrong program.
     const CORE_SRC: &str = my_lisp::CORE_LIBRARY_SOURCE;
-    const CORE_FASL: &[u8] = include_bytes!("../../../lib/core.my.fasl");
+    const CORE_FASL: &[u8] = include_bytes!("../../../lib/core.lisp.fasl");
     let fasl_hash_ok = my_lisp::fasl_decode_program(CORE_FASL)
         .map(|(_, hash)| hash == my_lisp::sha256_source(CORE_SRC.as_bytes()))
         .unwrap_or(false);
     if !fasl_hash_ok {
         eprintln!(
-            "warning: lib/core.my.fasl is stale (source changed); run gen-fasl to regenerate"
+            "warning: lib/core.lisp.fasl is stale (source changed); run gen-fasl to regenerate"
         );
     }
     let core_expressions: Option<Vec<Expr>> = if fasl_hash_ok {
@@ -145,7 +145,7 @@ fn main() {
     // future broken snapshot would silently degrade every session's startup
     // -- every def in core.my simply wouldn't exist, with no error printed,
     // failing far from the actual cause. Same fail-fast style the --lint
-    // path already uses for lib/linter.my's own bootstrap below.
+    // path already uses for lib/linter.lisp's own bootstrap below.
     match core_expressions {
         Some(core_ast) => {
             if let Err(e) = eval_parsed_expressions(&core_ast, &mut session) {
@@ -340,14 +340,14 @@ fn main() {
             let filename = &args[2];
 
             // Load linter
-            let linter_lib = include_str!("../../../lib/linter.my");
+            let linter_lib = include_str!("../../../lib/linter.lisp");
             if let Ok(linter_ast) = parse(linter_lib) {
                 if let Err(e) = eval_parsed_expressions(&linter_ast, &mut session) {
                     eprintln!("Error loading linter: {}", e.render(linter_lib));
                     process::exit(1);
                 }
             } else {
-                eprintln!("Failed to parse linter.my");
+                eprintln!("Failed to parse linter.lisp");
                 process::exit(1);
             }
 

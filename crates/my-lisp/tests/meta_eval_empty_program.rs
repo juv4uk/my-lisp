@@ -5,7 +5,7 @@ use my_lisp::{eval_program, Session};
 #[test]
 fn empty_program_preserves_environment_and_returns_empty_result() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     my_lisp::load_meta_evaluator_library(&mut session).unwrap();
 
     let witness = r#"

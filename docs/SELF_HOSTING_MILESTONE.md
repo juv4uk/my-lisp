@@ -11,7 +11,7 @@ source
   ↓
 canonical representation
   ↓
-lib/meta-eval.my
+lib/meta-eval.lisp
   ↓
 native primitive substrate
 ```

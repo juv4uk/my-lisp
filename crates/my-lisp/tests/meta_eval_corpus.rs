@@ -54,7 +54,7 @@ fn alist_flag(entries: &[Expr], key: &str) -> bool {
 }
 
 fn meta_eval_tagged_fixtures() -> Vec<(String, Option<String>, Option<String>)> {
-    let forms = parse(include_str!("../../../tests/fixtures/conformance.my"))
+    let forms = parse(include_str!("../../../tests/fixtures/conformance.lisp"))
         .expect("conformance.my should parse as valid my-lisp source");
 
     forms
@@ -133,7 +133,7 @@ fn meta_eval_tagged_set_covers_every_mccarthy_seven_class_plus_application() {
     let fixtures = meta_eval_tagged_fixtures();
     assert!(
         !fixtures.is_empty(),
-        "no (meta-eval . t)-tagged fixtures found in conformance.my"
+        "no (meta-eval . t)-tagged fixtures found in conformance.lisp"
     );
 
     let required_heads = [
@@ -164,7 +164,7 @@ fn meta_eval_tagged_set_covers_every_mccarthy_seven_class_plus_application() {
 #[test]
 fn native_evaluator_matches_corpus_expected_on_every_meta_eval_tagged_fixture() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session)
         .expect("lib/core.my should load");
 
     for (expr, expected, error) in meta_eval_tagged_fixtures() {
@@ -197,7 +197,7 @@ fn native_evaluator_matches_corpus_expected_on_every_meta_eval_tagged_fixture() 
 #[test]
 fn my_eval_matches_corpus_expected_on_every_meta_eval_tagged_fixture() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session)
         .expect("lib/core.my should load (meta-eval.my needs core helpers)");
     my_lisp::load_meta_evaluator_library(&mut session)
         .expect("lib/meta-eval.my should load");

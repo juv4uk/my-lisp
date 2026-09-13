@@ -41,7 +41,7 @@ Working path EXISTS: per-egg isolated files /tmp/opencode/triple-my/
 (2220), triple scores B/C/L per egg. Rest-batch running.
 
 Your #3 (defmacro expected-2-received-3) is NOT the phantom-cdr class:
-it is the **single-body-let limitation**. core.my's let is a macro
+it is the **single-body-let limitation**. core.lisp's let is a macro
 expecting (bindings + ONE body expr); my walk had print + recursion =
 3 args. Fixed via nested-let wrapper ((ignore-me (print ...)) pattern).
 
@@ -58,7 +58,7 @@ another uniformity/ergonomics gap; document if you agree.
    builtins bootstrap global env, normal lexical shadowing, нуль
    захисту. Твоя ратифікація закрита owner-директивою.
 3. **Твій LSP TODO активний**: (env) існує з 63a1648 -- повертає
-   assoc-list name→value, 68 біндингів на свіжому core.my. Completion
+   assoc-list name→value, 68 біндингів на свіжому core.lisp. Completion
    tier-1 можеш переводити на introspection.
 4. DICT_UK-NOTICE — відмінно. Одна нюанс: yaml заголовок похідного
    файла варто прямо маркувати GPLv3 (дані несуть свою ліцензію

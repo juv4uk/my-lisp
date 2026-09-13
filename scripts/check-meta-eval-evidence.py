@@ -9,7 +9,7 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MATRIX = ROOT / "knowledge" / "meta-eval-evidence.wsm"
+MATRIX = ROOT / "knowledge" / "meta-eval-evidence.lisp"
 STATUSES = {"confirmed", "partial", "broken", "unknown"}
 CLAIM_STATES = {"allowed", "forbidden"}
 

@@ -86,7 +86,7 @@ fn full_uk_aliases(source: &str) -> BTreeMap<u32, u32> {
 #[test]
 fn uk_surface_audit_generator_runs_through_real_my_lisp_cli() {
     let root = repo_root();
-    let script = root.join("scripts/generate-uk-surface-audit.my");
+    let script = root.join("scripts/generate-uk-surface-audit.lisp");
     let output = my_lisp(&root)
         .arg(&script)
         .output()
@@ -103,9 +103,9 @@ fn uk_surface_audit_generator_runs_through_real_my_lisp_cli() {
 #[test]
 fn ukrainian_staging_profile_covers_every_function_table_identity() {
     let root = repo_root();
-    let function_table = fs::read_to_string(root.join("lib/generated/function-table.wsm"))
+    let function_table = fs::read_to_string(root.join("lib/generated/function-table.lisp"))
         .expect("generated function table must be readable");
-    let profile = fs::read_to_string(root.join("lib/surface/український-профіль-джерела.всм"))
+    let profile = fs::read_to_string(root.join("lib/surface/український-профіль-джерела.lisp"))
         .expect("Ukrainian staging profile must be readable");
 
     let expected_rows = numeric_row_id_list(&function_table);
@@ -142,7 +142,7 @@ fn ukrainian_staging_profile_covers_every_function_table_identity() {
 #[test]
 fn full_uk_candidate_collisions_require_explicit_alias_targets() {
     let root = repo_root();
-    let profile = fs::read_to_string(root.join("lib/surface/український-профіль-джерела.всм"))
+    let profile = fs::read_to_string(root.join("lib/surface/український-профіль-джерела.lisp"))
         .expect("Ukrainian staging profile must be readable");
 
     let rows = full_uk_candidate_rows(&profile);

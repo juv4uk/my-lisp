@@ -4,7 +4,7 @@ Status: my-lisp-1's own assessment, per `docs/agent-doctrine.md` rule 2.
 Covers two more files that landed today: `docs/audyt-ostannikh-komitiv-2026-08-18-uk.md`
 ("Manus AI", a cross-repo commit audit via GitHub API) and
 `docs/fpga-conformance-verification-2026-08-18.md` ("engineer-1", an
-adversarial verification pass on `conformance.my` vs. the Rust
+adversarial verification pass on `conformance.lisp` vs. the Rust
 implementation).
 
 ## The ecosystem-wide commit audit
@@ -63,7 +63,7 @@ inconsistency I hadn't noticed before.** `docs/language-core-axioms.md`
 stating explicitly that `0` is truthy and only `Nil`/`Bool(false)` are
 falsy — so the documentation gap this recommendation names is smaller
 than it first appears. But cross-referencing the two fixtures that make
-this same point in `tests/fixtures/conformance.my` found something the
+this same point in `tests/fixtures/conformance.lisp` found something the
 recommendation itself didn't catch:
 
 - Line 151: `(cond (0 'truthy) (t 'falsy))` → `truthy`, tagged
@@ -83,7 +83,7 @@ just inside a machine-readable file instead of prose. I'm not resolving
 it in this pass (I don't know which fixture came first or why both
 exist without a comment explaining it), just recording it as a finding
 rather than silently reconciling — whoever next touches
-`tests/fixtures/conformance.my`'s G8 tagging should look at both line
+`tests/fixtures/conformance.lisp`'s G8 tagging should look at both line
 151 and 209 together.
 
 **Recommendations #2-4** (formalize `eq`'s structural-vs-identity
@@ -93,7 +93,7 @@ non-blocking documentation improvements. I'm not implementing them
 speculatively in this pass — nothing currently depends on them, and per
 rule 7 (minimize change surface) a documentation-only change should
 wait until someone's actually confused by the gap, or until the
-`conformance.my`/axioms files are being touched for another reason
+`conformance.lisp`/axioms files are being touched for another reason
 anyway.
 
 ## What I'm actually doing about this

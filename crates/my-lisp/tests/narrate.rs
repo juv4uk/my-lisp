@@ -1,5 +1,5 @@
 //! Exercises lib/narrate.my — the "structure -> text" half of the bridge
-//! from private/lisp-to-knowledge.md §6, the reverse of lib/understand.my's
+//! from private/lisp-to-knowledge.md §6, the reverse of lib/understand.lisp's
 //! "text -> structure" half.
 //! Pereviriaie lib/narrate.my — polovynu mostu "struktura -> tekst" z
 //! private/lisp-to-knowledge.md §6, obernenu do "tekst -> struktura" z
@@ -12,11 +12,11 @@ use my_lisp::{eval_program, Session};
 
 fn eval_narrate(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/understand.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/narrate.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/understand.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/narrate.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
         .value
@@ -78,7 +78,7 @@ fn narrate_provenance_explains_a_derived_fact_with_because_and_and() {
 
 #[test]
 fn narrate_provenance_surfaces_unresolved_variables_in_a_derived_rule_head() {
-    // lib/narrate.my's own header comment documents this limitation:
+    // lib/narrate.lisp's own header comment documents this limitation:
     // `provenance` doesn't carry the query's final substitution, only the
     // proof tree — so a rule's own head, as stored in that tree, keeps
     // whatever `(var name)` placeholders `prove-rule` renamed it to,

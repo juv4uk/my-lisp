@@ -2,7 +2,7 @@
 
 Status: minimal inventory, per the task's own explicit scope. **No code
 deleted, no primitives added.** For each surface: can the behavior live
-in WSM (`.my`/`.wsm` code), what specifically requires the Rust
+in WSM (`.lisp`/`.lisp` code), what specifically requires the Rust
 substrate, and the evidence for that claim.
 
 ## `car` / `cdr` / `cons` / `eq` / `atom`
@@ -14,7 +14,7 @@ Source-confirmed: `crates/my-lisp/src/eval/builtins.rs` registers all
 five as ordinary environment bindings (`environment.define("car", ...)`)
 at bootstrap, not as special-form syntax dispatch. Empirically confirmed
 live this session: `(let ((car (lambda (x) 'shadowed))) (car '(1 2)))`
-→ `shadowed`, matching `tests/fixtures/conformance.my`'s own current
+→ `shadowed`, matching `tests/fixtures/conformance.lisp`'s own current
 fixture (`since-contract (2 1)`, note: "builtins are ordinary first-class
 values bootstrapped into the global environment, so lexical bindings may
 shadow them"). **This corrects a stale claim** in the companion
@@ -24,7 +24,7 @@ that described a pre-2.1 contract state, not the current one.
 
 Being shadowable first-class values doesn't mean they could be *defined*
 in WSM, though: `cons`/`car`/`cdr` are exactly the structural algebra G2
-says everything else (lists, `lib/core.my`'s `list`/`map`/`filter`, etc.)
+says everything else (lists, `lib/core.lisp`'s `list`/`map`/`filter`, etc.)
 is built *from* — moving their own implementation into WSM would need
 WSM primitives to build pairs with, which is circular. Rust substrate
 requirement: the underlying `Value::Pair` heap representation and
@@ -38,7 +38,7 @@ allocation itself; `eq`'s identity semantics on that representation.
 tier contract 2.1 kept genuinely special-form, per the same fixture note
 above. Rust substrate requirement: closure capture (the environment
 chain a closure holds), and per S3/the tail-call fixture
-(`tests/fixtures/conformance.my`'s 100,000-deep `count-down` case), the
+(`tests/fixtures/conformance.lisp`'s 100,000-deep `count-down` case), the
 evaluator's own tail-call loop that keeps self-tail-recursion O(1)
 host-stack regardless of depth — a property that has to live at the
 evaluator's own call structure, not be re-derivable from WSM code
@@ -52,7 +52,7 @@ exact rational arithmetic (checked add/sub/mul, S1's exactness
 guarantee, `NumericOverflow` on bit-limit) directly over Rust's
 arbitrary-precision path. WSM-level code could express arithmetic
 *policy* (e.g. how `average`/`clamp`/domain-specific numeric helpers
-compose the primitives — much like `lib/core.my` already does for
+compose the primitives — much like `lib/core.lisp` already does for
 list operations over `cons`/`car`/`cdr`), but the primitives themselves
 — exact rational representation, overflow detection, the
 exact+inexact→inexact promotion rule (S1) — need Rust's numeric types
@@ -68,7 +68,7 @@ handled directly in `eval/mod.rs`, not delegated to a WSM library. No
 strict Rust-only requirement identified here beyond convenience and
 performance — a hand-written WSM JSON parser is possible in principle
 (string manipulation + the existing primitives), just not attempted.
-Flagged as a real candidate for a future `lib/json.my`, not acted on in
+Flagged as a real candidate for a future `lib/json.lisp`, not acted on in
 this audit (scope: inventory only, no code changes).
 
 ## `sha256-hex`
@@ -104,7 +104,7 @@ five categories.
 |---|---|---|
 | car/cdr/cons/eq/atom | structural floor everything else builds from | no (foundational, not circular-safe) |
 | lambda | closure capture + O(1)-stack tail-call loop | no (evaluator structure) |
-| arithmetic core | exact-rational representation + overflow detection | no (numeric substrate); policy atop it — yes, already partly done in lib/core.my-style code |
+| arithmetic core | exact-rational representation + overflow detection | no (numeric substrate); policy atop it — yes, already partly done in lib/core.lisp-style code |
 | json-parse/string | convenience/performance today, no hard requirement found | plausible future WSM lib, not attempted |
 | sha256-hex | needs fixed-width word/bitwise ops WSM doesn't have | no, without adding new WSM primitives (out of scope) |
 | host capabilities | deliberately zero in core by design already | n/a — already correctly separated |
@@ -116,7 +116,7 @@ five categories.
   sha256-hex/car/cdr/cons/eq/atom doc entries),
   `src/eval/arithmetic.rs`, `src/eval/capabilities.rs`,
   `src/eval/mod.rs` (json-parse dispatch), `src/lib.rs` (sha256_source).
-- `tests/fixtures/conformance.my` line 145 (the shadowing fixture,
+- `tests/fixtures/conformance.lisp` line 145 (the shadowing fixture,
   current/authoritative, `since-contract (2 1)`).
 - Live oracle test this session: `(let ((car (lambda (x) 'shadowed)))
   (car '(1 2)))` → `shadowed`, confirming the fixture and correcting a

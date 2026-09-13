@@ -47,3 +47,5 @@ scratch/
 
 __pycache__/
 *.pyc
+lib/generated.bak/
+docs/archive.bak/

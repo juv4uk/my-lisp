@@ -27,7 +27,7 @@ fn numeric_field(source: &str, name: &str) -> u64 {
 
 #[test]
 fn typed_buffer_record_matches_ratified_language_contract() {
-    let proposal = repository_file("typed-buffer-proposal.my");
+    let proposal = repository_file("typed-buffer-proposal.lisp");
     let expressions = my_lisp::parse(&proposal).expect("proposal must remain valid my-lisp data");
     assert_eq!(expressions.len(), 1);
     assert!(proposal.contains("(status . ratified-implemented)"));
@@ -38,7 +38,7 @@ fn typed_buffer_record_matches_ratified_language_contract() {
     // not the newest unrelated language-contract revision. Later contract
     // bumps must not force this historical ratification record to lie about
     // its origin; they only must not regress below the 2.2 boundary.
-    let language_contract = repository_file("language-contract.my");
+    let language_contract = repository_file("language-contract.lisp");
     let current = (
         numeric_field(&language_contract, "major"),
         numeric_field(&language_contract, "minor"),

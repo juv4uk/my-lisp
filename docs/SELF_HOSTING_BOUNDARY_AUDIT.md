@@ -6,7 +6,7 @@ Record the current boundary between the native evaluator and the metacircular ev
 
 ## Current state
 
-`lib/meta-eval.my` is a self-hosting witness. It owns:
+`lib/meta-eval.lisp` is a self-hosting witness. It owns:
 
 - Canon-first name resolution
 - lexical environment model

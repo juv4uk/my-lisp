@@ -69,7 +69,7 @@ fn spawn(port: u16, node_id: &str, data_dir: &Path, connect: Option<u16>) -> Nod
         .expect("failed to spawn swarm-node — did `cargo build -p swarm-node` run first?");
     let node = Node { child };
     wait_for_port(port);
-    wait_for_file(&data_dir.join("node.my"));
+    wait_for_file(&data_dir.join("node.lisp"));
     node
 }
 
@@ -120,7 +120,7 @@ fn startup_rejects_data_dir_owned_by_another_identity() {
     let dir = data_dir("identity-mismatch");
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
-        dir.join("node.my"),
+        dir.join("node.lisp"),
         "(node (id original-node) (epoch 1) (incarnation test))",
     )
     .unwrap();
@@ -160,14 +160,14 @@ fn duplicate_port_fails_before_mutating_identity() {
     let port = alloc_ports(1);
     let dir = data_dir("duplicate-port-no-mutation");
     let _first = spawn(port, "one-owner", &dir, None);
-    let before = std::fs::read_to_string(dir.join("node.my")).unwrap();
+    let before = std::fs::read_to_string(dir.join("node.lisp")).unwrap();
 
     let output = startup_command(port, "one-owner", &dir).output().unwrap();
 
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("Address already in use"));
     assert_eq!(
-        std::fs::read_to_string(dir.join("node.my")).unwrap(),
+        std::fs::read_to_string(dir.join("node.lisp")).unwrap(),
         before
     );
     assert!(request(port, "(status)").starts_with("(status"));
@@ -178,7 +178,7 @@ fn shared_data_dir_rejects_second_live_process_on_another_port() {
     let ports = alloc_ports(2);
     let dir = data_dir("shared-data-dir-lock");
     let _first = spawn(ports, "one-owner", &dir, None);
-    let before = std::fs::read_to_string(dir.join("node.my")).unwrap();
+    let before = std::fs::read_to_string(dir.join("node.lisp")).unwrap();
 
     let output = startup_command(ports + 1, "one-owner", &dir)
         .output()
@@ -187,7 +187,7 @@ fn shared_data_dir_rejects_second_live_process_on_another_port() {
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("already owned"));
     assert_eq!(
-        std::fs::read_to_string(dir.join("node.my")).unwrap(),
+        std::fs::read_to_string(dir.join("node.lisp")).unwrap(),
         before
     );
     assert!(TcpStream::connect(("127.0.0.1", ports + 1)).is_err());
@@ -668,7 +668,7 @@ fn define_task_is_idempotent_for_an_identical_redefinition() {
 
 /// Reads this node's incarnation id out of its persisted identity store.
 fn read_incarnation(dir: &Path) -> String {
-    let text = std::fs::read_to_string(dir.join("node.my")).expect("node.my must exist");
+    let text = std::fs::read_to_string(dir.join("node.lisp")).expect("node.my must exist");
     let marker = "(incarnation ";
     let start = text
         .find(marker)
@@ -843,7 +843,7 @@ fn restart_preserves_incarnation_epoch_increments_seq_continues() {
         "restart must CONTINUE the sequence, not reset it: {e2}"
     );
 
-    let epoch_text = std::fs::read_to_string(dir.join("node.my")).unwrap();
+    let epoch_text = std::fs::read_to_string(dir.join("node.lisp")).unwrap();
     let epoch_marker = "(epoch ";
     let start = epoch_text.find(epoch_marker).unwrap() + epoch_marker.len();
     let end = epoch_text[start..].find(')').unwrap() + start;
@@ -886,7 +886,7 @@ fn task_origin_provenance_flows_through() {
     assert!(!b.contains("(origin cml)"));
 
     // 3. sync-tasks: per-task (origin . x) wins over msg-level default
-    let f = dir.join("tasks_with_origin.my");
+    let f = dir.join("tasks_with_origin.lisp");
     std::fs::write(
         &f,
         r#"
@@ -1206,7 +1206,7 @@ fn spawn_with_auto_sync(
 fn auto_sync_periodically_imports_tasks_my_file() {
     let port = alloc_ports(1);
     let dir = data_dir("autosync-basic");
-    let tasks_file = dir.join("tasks.my");
+    let tasks_file = dir.join("tasks.lisp");
 
     // Create the directory first (data_dir() only removes, doesn't recreate).
     std::fs::create_dir_all(&dir).unwrap();
@@ -1387,7 +1387,7 @@ fn spawn_logged_with_env(
         .expect("failed to spawn swarm-node — did `cargo build -p swarm-node` run first?");
     let node = Node { child };
     wait_for_port(port);
-    wait_for_file(&data_dir.join("node.my"));
+    wait_for_file(&data_dir.join("node.lisp"));
     (node, log_path)
 }
 

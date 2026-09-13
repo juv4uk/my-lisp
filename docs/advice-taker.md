@@ -12,17 +12,17 @@ To use the logic engine, you need to load the core library, the unification engi
 
 ```lisp
 ; The CLI does this automatically, but if you're in the bare REPL:
-(load "lib/core.my")
-(load "lib/unify.my")
-(load "lib/reason.my")
-(load "lib/forward.my")
-(load "lib/knowledge.my")
+(load "lib/core.lisp")
+(load "lib/unify.lisp")
+(load "lib/reason.lisp")
+(load "lib/forward.lisp")
+(load "lib/knowledge.lisp")
 ```
 
 ## Facts and Rules
 
 Knowledge lives in named modules backed by the append-only journal in
-`lib/knowledge.my`. A Horn clause has a `head` (the conclusion) followed by
+`lib/knowledge.lisp`. A Horn clause has a `head` (the conclusion) followed by
 zero or more body conditions.
 
 ### Facts
@@ -80,7 +80,7 @@ be proven. The proof can be converted through `provenance` and narrated with
 `narrate-answer`.
 
 ## Occurs Check
-The unification engine (`lib/unify.my`) includes an **occurs-check** to prevent the creation of infinite cyclic structures. If you attempt to unify `?x` with `(f ?x)`, the engine will safely fail rather than entering an infinite loop.
+The unification engine (`lib/unify.lisp`) includes an **occurs-check** to prevent the creation of infinite cyclic structures. If you attempt to unify `?x` with `(f ?x)`, the engine will safely fail rather than entering an infinite loop.
 
 ```lisp
 (unify (logic-var 'x) (list 'f (logic-var 'x)) '())

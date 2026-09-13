@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = ROOT / "lib" / "surface" / "semantic-registry.wsm"
+REGISTRY = ROOT / "lib" / "surface" / "semantic-registry.lisp"
 STATUSES = {"stable", "candidate", "missing", "compatibility-only"}
 ID = re.compile(r"^[0-9]{4,}$")
 FIRST_WAVE = {"uk", "en", "sa"}

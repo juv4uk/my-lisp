@@ -1,7 +1,7 @@
 # Canon + function-table migration plan (2026-09-11)
 
 Owner directive: a systematic plan (this document — no implementation
-here) for how every consumer of `lib/surface/semantic-registry.wsm`
+here) for how every consumer of `lib/surface/semantic-registry.lisp`
 (my-lisp itself, wsm-my-lisp, cml, fpga-lisp) should dispatch/recognize
 symbols through canonical numeric semantic IDs plus a generated
 projection of the real registry, not hardcoded ASCII spellings or
@@ -29,7 +29,7 @@ bugs, not a hypothetical concern:
 
 ## The principle, stated once so every consumer can point at it
 
-`lib/surface/semantic-registry.wsm` is my-lisp's sole authority for
+`lib/surface/semantic-registry.lisp` is my-lisp's sole authority for
 "which numeric semantic identity does a spelling belong to, across
 which language surfaces (en/uk/sa/sym)." Any project that needs to
 recognize a language form (quote, cond, lambda, define, defmacro, or
@@ -61,7 +61,7 @@ variant from scratch:
 - **wsm-my-lisp** (`dll/build.rs`, commit `55b3156`): a ~180-line
   minimal S-expression tokenizer/reader (not a general Lisp parser —
   the registry's own shape doesn't need one), reading
-  `external/my-lisp/lib/surface/semantic-registry.wsm` (a git
+  `external/my-lisp/lib/surface/semantic-registry.lisp` (a git
   submodule) at build time, emitting `$OUT_DIR/canon_spellings.rs` as
   `const &[&str]` slices for exactly the IDs `eval.rs` special-cases
   (`0001` quote, `0007` cond — deliberately narrow, per the owner's own
@@ -152,7 +152,7 @@ the same bug class as the other three, just not yet triggered by a
 reported failure. Recommend fpga-lisp write its own minimal
 registry-reading step (Python, not Rust — the same minimal-parser
 approach, adapted to the language fpga-lisp's own tooling is written
-in) that derives this dict from the real `semantic-registry.wsm` at
+in) that derives this dict from the real `semantic-registry.lisp` at
 generation time, fail-closed the same way, scoped to exactly the two
 IDs `gen_symbol_table.py` already special-cases (following the same
 narrow-scope discipline both existing implementations used, not

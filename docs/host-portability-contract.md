@@ -70,7 +70,7 @@ The host owns socket mechanisms. UTF-8 encoding/decoding and the historical defa
 host observation → raw timestamp/field/declaration values → Lisp interpretation
 ```
 
-Examples already in the repository include `mono-ns`, `unix-time-now`, `ntp-query-raw`, and `timezone-declarations-raw`, with derived/public meanings in `lib/time.my`.
+Examples already in the repository include `mono-ns`, `unix-time-now`, `ntp-query-raw`, and `timezone-declarations-raw`, with derived/public meanings in `lib/time.lisp`.
 
 ## Candidate portable mechanism set
 

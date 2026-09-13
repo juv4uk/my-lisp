@@ -8,7 +8,7 @@ exactly, before any lowering or optimization is trusted.
 
 ## What the corpus is
 
-A curated **subset** of `tests/fixtures/conformance.my` — not a new,
+A curated **subset** of `tests/fixtures/conformance.lisp` — not a new,
 parallel fixture file. Selected entries carry a new `(compiler-corpus
 . t)` alist key, added directly alongside each entry's existing
 `expr`/`expected`/`tier`/`axioms`/`role`/`note` fields — the same
@@ -18,8 +18,8 @@ fixtures rather than fork a second table that would need manual
 synchronization.
 
 `crates/my-lisp/tests/compiler_oracle_corpus.rs` is the runner:
-filters `conformance.my` for tagged entries, evaluates each through the
-current native reference evaluator (with `lib/core.my` loaded, matching
+filters `conformance.lisp` for tagged entries, evaluates each through the
+current native reference evaluator (with `lib/core.lisp` loaded, matching
 how the real CLI actually runs any program — an earlier draft of this
 test omitted that and got a real, informative failure on the `let`
 fixture below, which is itself evidence the gate works), and asserts
@@ -27,7 +27,7 @@ the recorded `expected` value or `error` kind still holds.
 
 ## Coverage against #67's required categories
 
-| Required category | Corpus fixtures (from `conformance.my`) |
+| Required category | Corpus fixtures (from `conformance.lisp`) |
 |---|---|
 | McCarthy-7 + Canon 0 | `(quote radio)`, `(atom (quote radio))`, `(eq (quote radio) (quote radio))`, `(car ...)`, `(cdr ...)`, `(cons ...)`, `(cond ...)` |
 | Exact rationals, no float coercion | `(/ 5 6 8 7)` → `5/336` |
@@ -44,9 +44,9 @@ prompt to split deep variants into nightly — the same CI-split pattern
 already applied to meta-eval witnesses (commit `46b1fec`), not a new
 mechanism to invent from scratch when the time comes.
 
-## Two categories deliberately NOT forced into `conformance.my`'s shape
+## Two categories deliberately NOT forced into `conformance.lisp`'s shape
 
-`conformance.my`'s alist format is one expression, one expected
+`conformance.lisp`'s alist format is one expression, one expected
 value/error — it does not fit multi-statement setup. Rather than
 distort either the corpus or the fixture format to cram these in, they
 are referenced as already-existing, already-passing oracle evidence:
@@ -66,7 +66,7 @@ are referenced as already-existing, already-passing oracle evidence:
 
 A future compiler backend's own conformance work should treat these
 three files as part of the same oracle corpus in spirit, even though
-they are not literally rows in `conformance.my`.
+they are not literally rows in `conformance.lisp`.
 
 ## Acceptance evidence (#67's own criteria)
 
@@ -83,7 +83,7 @@ they are not literally rows in `conformance.my`.
 - **"Small enough for ordinary CI; deep variants may live in nightly"**:
   17 fixtures, ~3 seconds, with a guard against silent unbounded growth.
 
-Meta-evaluator parity (whether `lib/meta-eval.my` also reproduces these
+Meta-evaluator parity (whether `lib/meta-eval.lisp` also reproduces these
 same 17 fixtures) is intentionally out of scope for *this* corpus —
 that is what `crates/my-lisp/tests/meta_eval_corpus.rs` and
 `docs/meta-eval-evidence.md` already do, for the self-hosting question.

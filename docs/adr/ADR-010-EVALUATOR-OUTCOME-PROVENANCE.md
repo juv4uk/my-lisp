@@ -3,7 +3,7 @@
 
 **Status:** Accepted / Прийнято  
 **Date:** 2026-09-10  
-**Scope:** `lib/meta-eval.my` internal sequencing and error propagation
+**Scope:** `lib/meta-eval.lisp` internal sequencing and error propagation
 
 ## 1. Decision / Рішення
 
@@ -62,7 +62,7 @@ The regression witnesses therefore require both forms to pass through an applica
 
 ## 4. Representation / Представлення
 
-`lib/meta-eval.my` uses two private native closure values as outcome identities. Native closures have identity semantics in the reference runtime (`eq` compares closure identity), are atoms, and cannot be manufactured by interpreted source through `quote` or `cons`.
+`lib/meta-eval.lisp` uses two private native closure values as outcome identities. Native closures have identity semantics in the reference runtime (`eq` compares closure identity), are atoms, and cannot be manufactured by interpreted source through `quote` or `cons`.
 
 Internal result-aware paths include:
 
@@ -100,7 +100,7 @@ This ADR does not:
 - change Rust `LanguageError` representation;
 - change compiler/CML semantics;
 - claim that every possible error detail already has native/meta parity;
-- make the human Markdown evidence projection authoritative over `knowledge/meta-eval-evidence.wsm`.
+- make the human Markdown evidence projection authoritative over `knowledge/meta-eval-evidence.lisp`.
 
 ## 7. Acceptance evidence / Доказ прийняття
 
@@ -113,4 +113,4 @@ quoted (error ordinary data)                 -> ordinary value
 quoted (fail ordinary data)                  -> ordinary value
 ```
 
-Evidence lives in `crates/my-lisp/tests/meta_eval_evidence.rs` and `crates/my-lisp/tests/meta_eval_error_provenance.rs`. Once these witnesses pass with the full workspace regression gate, `function-application-order` may be `confirmed` in `knowledge/meta-eval-evidence.wsm`.
+Evidence lives in `crates/my-lisp/tests/meta_eval_evidence.rs` and `crates/my-lisp/tests/meta_eval_error_provenance.rs`. Once these witnesses pass with the full workspace regression gate, `function-application-order` may be `confirmed` in `knowledge/meta-eval-evidence.lisp`.

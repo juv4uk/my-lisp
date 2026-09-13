@@ -8,7 +8,7 @@ use crate::{ErrorKind, Exactness, LanguageError, NumericBuffer, Value};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-const SURFACE_REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
+const SURFACE_REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PresentationLanguage {

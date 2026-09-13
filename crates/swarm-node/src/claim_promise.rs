@@ -35,7 +35,7 @@ pub struct ClaimPromiseStore {
 impl ClaimPromiseStore {
     pub fn open(data_dir: &Path) -> std::io::Result<Self> {
         fs::create_dir_all(data_dir)?;
-        let path = data_dir.join("claim-promises.my");
+        let path = data_dir.join("claim-promises.lisp");
         let promises = if path.exists() {
             Self::decode(&path, &fs::read_to_string(&path)?)?
         } else {
@@ -311,7 +311,7 @@ mod tests {
         let dir = test_dir("publish-failure");
         let mut store = ClaimPromiseStore::open(&dir).unwrap();
         assert!(store.acquire("TASK-1", 1, "proposer-a").unwrap());
-        let before = fs::read(dir.join("claim-promises.my")).unwrap();
+        let before = fs::read(dir.join("claim-promises.lisp")).unwrap();
 
         let error = store
             .acquire_with_before_publish("TASK-2", 1, "proposer-b", |temp| {
@@ -320,7 +320,7 @@ mod tests {
             })
             .expect_err("pre-publish failure must fail closed");
         assert_eq!(error.kind(), std::io::ErrorKind::Other);
-        assert_eq!(fs::read(dir.join("claim-promises.my")).unwrap(), before);
+        assert_eq!(fs::read(dir.join("claim-promises.lisp")).unwrap(), before);
 
         // If memory had been mutated despite the failed publication, this
         // competing proposal would be rejected.  It must still be free.
@@ -332,7 +332,7 @@ mod tests {
     fn corrupt_store_fails_closed_instead_of_forgetting_promises() {
         let dir = test_dir("corrupt");
         fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("claim-promises.my");
+        let path = dir.join("claim-promises.lisp");
         let before = b"(claim-promises/1 (promise (task \"T\") (generation 1)";
         fs::write(&path, before).unwrap();
 

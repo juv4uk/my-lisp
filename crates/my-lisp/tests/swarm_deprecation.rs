@@ -1,8 +1,8 @@
 use my_lisp::{eval_program, Session};
 
-const DEPRECATION: &str = include_str!("../../../knowledge/swarm-legacy-deprecation.wsm");
+const DEPRECATION: &str = include_str!("../../../knowledge/swarm-legacy-deprecation.lisp");
 const NO_LIVE_CALLERS_AUDIT: &str =
-    include_str!("../../../knowledge/swarm-no-live-callers-audit.wsm");
+    include_str!("../../../knowledge/swarm-no-live-callers-audit.lisp");
 
 const RETIRED_COORDINATION_OPS: &[&str] = &[
     "hello",
@@ -29,7 +29,7 @@ const RETIRED_COORDINATION_OPS: &[&str] = &[
 #[test]
 fn legacy_coordination_deprecation_records_retired_physical_surface() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     eval_program(DEPRECATION, &mut session).unwrap();
 
     let value = session
@@ -57,7 +57,7 @@ fn legacy_coordination_deprecation_records_retired_physical_surface() {
 #[test]
 fn no_live_callers_audit_records_physical_removal() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     eval_program(NO_LIVE_CALLERS_AUDIT, &mut session).unwrap();
 
     let value = session

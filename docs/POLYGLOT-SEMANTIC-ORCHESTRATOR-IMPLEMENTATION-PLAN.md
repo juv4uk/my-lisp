@@ -13,8 +13,8 @@ The transport PoC (`crates/my-lisp-host/examples/foreign_python_probe.rs`,
 commit `fc84888`) is kept as one input/evidence for this plan — it
 proved a persistent Python subprocess can hold a session across
 multiple requests. It is not the seed the architecture below grows
-from; the architecture below grows from `lib/knowledge.my`,
-`lib/tcp.my`, and `lib/process.my`, which already prove the pattern
+from; the architecture below grows from `lib/knowledge.lisp`,
+`lib/tcp.lisp`, and `lib/process.lisp`, which already prove the pattern
 end to end for other purposes.
 
 ## What the audit found already built
@@ -24,17 +24,17 @@ end to end for other purposes.
   mechanisms behind a plain-function-pointer registry (no stateful Rust
   closures allowed). This is exactly the shape a foreign-runtime bridge
   needs, already in place.
-- **`lib/process.my` already demonstrates `raw mechanism → Lisp
+- **`lib/process.lisp` already demonstrates `raw mechanism → Lisp
   semantics`**: `process-run-raw` (host, bytes only) →
   `process-run-text`/`process-run` (Lisp, UTF-8 + result policy).
-- **`lib/tcp.my` already demonstrates the same split for a persistent,
+- **`lib/tcp.lisp` already demonstrates the same split for a persistent,
   bidirectional channel**: `tcp-connect`/`tcp-read-raw`/`tcp-write-raw`/
   `tcp-close` (host, bytes/handle only) → `tcp-read`/`tcp-write` (Lisp,
   UTF-8 encoding/decoding). `TcpConnection` is already an opaque,
   first-class host resource — exactly the shape a foreign-runtime
   connection needs, already in place.
 - **Lisp-owned framing over TCP already exists and is battle-tested**:
-  `lib/knowledge.my`'s `tcp-read-frame` (newline-delimited, accumulates
+  `lib/knowledge.lisp`'s `tcp-read-frame` (newline-delimited, accumulates
   partial reads) and `exchange-knowledge-package`/
   `accept-knowledge-exchange` (write one framed canonical S-expression,
   read one framed canonical S-expression back). This is a working
@@ -53,8 +53,8 @@ end to end for other purposes.
   retry/backoff, and routing are explicitly Lisp's job, not the host's.
 
 Conclusion: a Python bridge is not a new architectural problem. It is
-an ordinary Lisp protocol (like `knowledge.my`'s) running over transport
-that already exists (`lib/tcp.my`), carried in a wire format that
+an ordinary Lisp protocol (like `knowledge.lisp`'s) running over transport
+that already exists (`lib/tcp.lisp`), carried in a wire format that
 already exists (`write-to-string`/`read`). **Reuse before invention.**
 
 ## Explicit architectural guards (unchanged, still apply)
@@ -64,13 +64,13 @@ already exists (`write-to-string`/`read`). **Reuse before invention.**
 - No `match runtime == "python"`-style branching inside
   `crates/my-lisp`'s evaluator.
 - No foreign library function (`numpy.linalg.eig`, `math.sqrt`, ...)
-  ever enters Canon or `lib/surface/semantic-registry.wsm`.
+  ever enters Canon or `lib/surface/semantic-registry.lisp`.
 - No foreign pointer/handle (Python `id()`, a bridge-local table index)
   is ever treated as my-lisp semantic identity.
 - Rust is never the spec for a foreign API; the bridge script is a
   thin, auditable adapter (like `asm/nucleus.s` for wsm-my-lisp), not a
   general Python binding.
-- No per-backend semantic corpus forks — `tests/fixtures/conformance.my`
+- No per-backend semantic corpus forks — `tests/fixtures/conformance.lisp`
   stays the one contract regardless of which runtime executes a call.
 - Rust-code line count (added or deleted) is never the success metric.
   The metric is: **a new foreign runtime needs a new adapter, not a new
@@ -81,12 +81,12 @@ already exists (`write-to-string`/`read`). **Reuse before invention.**
 ```text
                     MY-LISP
                        |
-                lib/foreign.my
+                lib/foreign.lisp
           (foreign-import/member/call/release)
                        |
           canonical S-expression request/response
              (write-to-string / read, framed
-              the same way lib/knowledge.my frames)
+              the same way lib/knowledge.lisp frames)
                        |
               tcp-connect / tcp-read / tcp-write
                   (already exist, unchanged)
@@ -101,7 +101,7 @@ already exists (`write-to-string`/`read`). **Reuse before invention.**
 ```
 
 `crates/my-lisp` and `my-lisp-host` change: **zero.** Every new line of
-code for v0 is either `lib/foreign.my` (Lisp) or `python-bridge.py`
+code for v0 is either `lib/foreign.lisp` (Lisp) or `python-bridge.py`
 (the foreign-side adapter, outside this repo's semantic surface
 entirely, same status as `foreign_python_bridge.py` already is).
 
@@ -149,7 +149,7 @@ symbol so a future incompatible change is a new symbol, not a break:
 (foreign/1 REQUEST-ID error "ValueError" "math domain error")
 ```
 
-Framing reuses `lib/knowledge.my`'s proven newline-delimited pattern
+Framing reuses `lib/knowledge.lisp`'s proven newline-delimited pattern
 (`tcp-read-frame`): `write-to-string` already escapes embedded
 newlines, so one envelope per line is an unambiguous frame boundary,
 exactly as `exchange-knowledge-package` already relies on. No design
@@ -158,14 +158,14 @@ plan does now rather than deferring to a later phase — there is no
 async/concurrency question to defer either, since one connection
 carries one request at a time, matching the existing knowledge-exchange
 protocol's own concurrency model (open a new connection per exchange
-if you need concurrency, exactly as `lib/knowledge.my` already does).
+if you need concurrency, exactly as `lib/knowledge.lisp` already does).
 
 ## Task sequence (replaces the old 8-phase structure)
 
 ```text
 POLYGLOT-SIMPLE-1  Python bridge script over existing TCP transport
         |
-POLYGLOT-SIMPLE-2  lib/foreign.my (import/member/call/release), pure Lisp
+POLYGLOT-SIMPLE-2  lib/foreign.lisp (import/member/call/release), pure Lisp
         |
 POLYGLOT-SIMPLE-3  math.sqrt end-to-end witness
         |
@@ -215,9 +215,9 @@ on the foreign-runtime track.
 
 ## Rollback / fail-closed conditions
 
-- If `lib/foreign.my`'s protocol cannot be expressed without a core
+- If `lib/foreign.lisp`'s protocol cannot be expressed without a core
   change, stop and write down exactly what is missing and why
-  `lib/tcp.my`/`write-to-string` are insufficient, before touching
+  `lib/tcp.lisp`/`write-to-string` are insufficient, before touching
   `crates/my-lisp`.
 - If the manual-bridge-startup friction or the text-TCP performance
   ceiling is hit, that becomes a new, separately justified task

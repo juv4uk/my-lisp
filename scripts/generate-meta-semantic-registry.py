@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the Lisp surface→semantic-ID projection used by meta-eval.
 
-The only spelling authority is lib/surface/semantic-registry.wsm. This script
+The only spelling authority is lib/surface/semantic-registry.lisp. This script
 owns projection mechanics only. It admits exactly stable and
 compatibility-only surfaces, matching the native semantic registry policy.
 
@@ -18,8 +18,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = ROOT / "lib" / "surface" / "semantic-registry.wsm"
-OUTPUT = ROOT / "lib" / "generated" / "meta-semantic-registry.my"
+REGISTRY = ROOT / "lib" / "surface" / "semantic-registry.lisp"
+OUTPUT = ROOT / "lib" / "generated" / "meta-semantic-registry.lisp"
 
 ENTRY = re.compile(r"^\s*\(([0-9]{4,})\s+(.*)\)\s*$")
 SURFACE = re.compile(
@@ -65,7 +65,7 @@ def admitted_entries() -> list[tuple[str, str, str]]:
 def render(entries: list[tuple[str, str, str]]) -> str:
     lines = [
         "; GENERATED FILE — DO NOT EDIT.",
-        "; Source authority: lib/surface/semantic-registry.wsm",
+        "; Source authority: lib/surface/semantic-registry.lisp",
         "; Generator: scripts/generate-meta-semantic-registry.py",
         "; stable + compatibility-only runtime surfaces only; exact ' is reader syntax.",
         "",

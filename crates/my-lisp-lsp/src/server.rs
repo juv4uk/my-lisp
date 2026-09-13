@@ -293,7 +293,7 @@ impl Server {
         if let Some(function) = self.guard.function(&symbol) {
             if let Some(source) = self.guard.source_of(function) {
                 let value = format!(
-                    "**guard function** `{}`\n\n```my-lisp\n{}\n```\n\nDefined in lib/guard.wsm (live file, not duplicated in the IDE).",
+                    "**guard function** `{}`\n\n```my-lisp\n{}\n```\n\nDefined in lib/guard.lisp (live file, not duplicated in the IDE).",
                     function.name, source
                 );
                 let result = format!(

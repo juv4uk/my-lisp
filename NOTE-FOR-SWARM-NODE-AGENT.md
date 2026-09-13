@@ -17,7 +17,7 @@ broadcast there too; this file is the durable copy.
 
 ## DESYNC found (needs a decision)
 
-Live `tasks.my` marks `MYLISP-LINGUA-FRANCA` and
+Live `tasks.lisp` marks `MYLISP-LINGUA-FRANCA` and
 `MYLISP-DIVISION-GENERALIZED` as done 2026-08-22 with evidence, but the
 swarm journal has no `task-completed` events for them — the mesh still
 shows both open. Either of us can emit the completions; whoever does,

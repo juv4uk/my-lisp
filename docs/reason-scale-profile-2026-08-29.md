@@ -6,7 +6,7 @@ failure that motivated the repair. They must not be read as the current state.
 
 ## What was measured originally
 
-- Engine: `lib/reason.my` — naive backward-chaining, no indexing.
+- Engine: `lib/reason.lisp` — naive backward-chaining, no indexing.
 - Query shape: `(reason (list (quote edge) (logic-var (quote x)) <n>) chain)`
   — asks for a predecessor of the last node, so only the final `(edge (n-1) n)`
   fact matches **after scanning all n rules**. This is the no-index **worst

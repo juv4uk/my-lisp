@@ -122,7 +122,7 @@ Bias:             при сумніві — НЕ ЗВІЛЬНЯТИ
 
 ### 5.2. Owner verification ritual — перевірка особисто, не «повір тестам»
 
-Невеликий скрипт `scripts/gc-trust-demo.my`, який запускає ВЛАСНИК:
+Невеликий скрипт `scripts/gc-trust-demo.lisp`, який запускає ВЛАСНИК:
 
 ```lisp
 (def treasure (cons 'важливі 'дані))
@@ -182,7 +182,7 @@ quarantine, ritual — існує щоб ця фраза стала буквал
 
 **Власник ратифікував варіант A: lexical shadowing allowed.**
 
-Зафіксовано у language-contract.my як формальний інваріант contract 2.1:
+Зафіксовано у language-contract.lisp як формальний інваріант contract 2.1:
 > Builtins bootstrap global env as ordinary values. Any scope may redefine
 > them; inner bindings shadow outer per lexical scoping rules.
 > No builtin is protected. Rationale: minimum magic.

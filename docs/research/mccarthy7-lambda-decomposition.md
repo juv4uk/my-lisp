@@ -74,7 +74,7 @@ sub-expressions in the normal applicative-order way.
 identical to `quote` and `cond`.
 
 **Meta-eval witness:**
-`lib/meta-eval.my` -> `my-eval` -> `(cond ... ((eq (car expr) (quote lambda)) ...))`.
+`lib/meta-eval.lisp` -> `my-eval` -> `(cond ... ((eq (car expr) (quote lambda)) ...))`.
 Head recognized using `eq` + `quote` + `car` — all L0.
 
 **Constructible from L0+L1?**
@@ -206,7 +206,7 @@ Formal params `(x y)` bound one-to-one to actual args `(42 ...)`.
 `apply_lambda` -> zips params and args into new `Environment::extend`.
 
 **Meta-eval witness:**
-`bind-params` in `meta-eval.my` — recursive `car`/`cdr` zip of two lists into an
+`bind-params` in `meta-eval.lisp` — recursive `car`/`cdr` zip of two lists into an
 association list. Pure L0 list operations.
 
 **Constructible from L0+L1?**
@@ -225,7 +225,7 @@ Captured environment extended with new binding frame `{x->42, y->...}`.
 `Environment::extend(parent_env, bindings)` — new frame over captured env.
 
 **Meta-eval witness:**
-`(extend-env bindings captured-env)` in `meta-eval.my` — new association list
+`(extend-env bindings captured-env)` in `meta-eval.lisp` — new association list
 layer prepended to existing env via `cons`.
 
 **Constructible from L0+L1?**
@@ -298,7 +298,7 @@ The remaining three split into two structurally distinct categories:
 ```text
 C1, C4 — PARTIAL (bootstrap dependency):
   Not an L0 gap. The evaluator must exist and thread env.
-  Resolved at the metacircular level (meta-eval.my witnesses this).
+  Resolved at the metacircular level (meta-eval.lisp witnesses this).
   In a self-hosting my-lisp, these become derivable via meta-eval.
 
 C9 — ADMITTED (fundamental):
@@ -354,7 +354,7 @@ L0 primitives require an evaluator to apply them to values. If C9's capability
 is already entailed by L0's own semantics, `lambda` introduces zero new admitted
 capabilities. This would strengthen the L2 candidate significantly.
 
-**Q2: Does `meta-eval.my` constitute sufficient derivation proof?**
+**Q2: Does `meta-eval.lisp` constitute sufficient derivation proof?**
 Or is a separate algebraic reduction required — showing the closure representation
 satisfies all observable contracts via L0 axioms alone, without relying on the
 host evaluator's existence as a premise?

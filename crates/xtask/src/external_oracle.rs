@@ -41,8 +41,8 @@ pub struct CorpusFixture {
 /// Both files are read from `repo_root/tests/fixtures/`.  Returns an error
 /// string if the files cannot be read, are malformed, or have different counts.
 pub fn load_corpus(repo_root: &str) -> Result<Vec<CorpusFixture>, String> {
-    let conformance_path = format!("{repo_root}/tests/fixtures/conformance.my");
-    let inventory_path = format!("{repo_root}/tests/fixtures/inventory.my");
+    let conformance_path = format!("{repo_root}/tests/fixtures/conformance.lisp");
+    let inventory_path = format!("{repo_root}/tests/fixtures/inventory.lisp");
 
     let conformance_text = std::fs::read_to_string(&conformance_path)
         .map_err(|e| format!("cannot read {conformance_path}: {e}"))?;

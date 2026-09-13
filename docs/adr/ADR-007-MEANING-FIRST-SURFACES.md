@@ -116,9 +116,9 @@ semantic identity вона має:
 ## Стан міграції
 
 Перша редакція цього ADR тимчасово дозволяла
-`lib/surface/uk-sa-coverage.wsm` залишатися authority, доки numeric registry був
+`lib/surface/uk-sa-coverage.lisp` залишатися authority, доки numeric registry був
 лише seed. **Цей перехід завершено.** ADR-008 встановлює
-`lib/surface/semantic-registry.wsm` як єдину machine authority і переводить
+`lib/surface/semantic-registry.lisp` як єдину machine authority і переводить
 стару EN-shaped таблицю в історичний аудит.
 
 Це закриває neutrality борг authority/schema. Це **не** означає, що кожне

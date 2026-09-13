@@ -2,7 +2,7 @@
 
 **Status:** Accepted  
 **Date:** 2026-09-08  
-**Registry note:** the legacy `canonical/EN` registry interpretation below is a historical snapshot; ADR-008 supersedes it with numeric-only `semantic-registry.wsm` authority.
+**Registry note:** the legacy `canonical/EN` registry interpretation below is a historical snapshot; ADR-008 supersedes it with numeric-only `semantic-registry.lisp` authority.
 
 ## Decision
 
@@ -35,7 +35,7 @@ The project goal is stronger: a program should be expressible through any of the
 
 ## Surface registry interpretation
 
-Until the legacy machine table is renamed, `lib/surface/uk-sa-coverage.wsm` is interpreted as the trilingual surface registry:
+Until the legacy machine table is renamed, `lib/surface/uk-sa-coverage.lisp` is interpreted as the trilingual surface registry:
 
 ```text
 category | canonical/EN | UK | SA | UK status | SA status | notes
@@ -88,7 +88,7 @@ Interactive introspection is split deliberately:
 - `:ім'я NAME` / `:name NAME` — one semantic identity with its EN/UK/SA names and statuses;
 - `:поверхні` / `:surfaces` — trilingual completion matrix.
 
-The REPL commands are presentation policy, not Lisp semantics and not additions to `language-contract.my`.
+The REPL commands are presentation policy, not Lisp semantics and not additions to `language-contract.lisp`.
 
 ## Completion gate
 

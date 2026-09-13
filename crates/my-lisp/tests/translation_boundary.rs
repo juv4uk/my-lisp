@@ -7,13 +7,13 @@ use my_lisp::{eval_program, parse, Session};
 fn eval_translation(source: &str) -> String {
     let mut session = Session::default();
     for library in [
-        include_str!("../../../lib/core.my"),
-        include_str!("../../../lib/unify.my"),
-        include_str!("../../../lib/reason.my"),
-        include_str!("../../../lib/forward.my"),
-        include_str!("../../../lib/knowledge.my"),
-        include_str!("../../../lib/result-status.my"),
-        include_str!("../../../lib/translation.my"),
+        include_str!("../../../lib/core.lisp"),
+        include_str!("../../../lib/unify.lisp"),
+        include_str!("../../../lib/reason.lisp"),
+        include_str!("../../../lib/forward.lisp"),
+        include_str!("../../../lib/knowledge.lisp"),
+        include_str!("../../../lib/result-status.lisp"),
+        include_str!("../../../lib/translation.lisp"),
     ] {
         eval_program(library, &mut session).unwrap();
     }
@@ -211,7 +211,7 @@ fn malformed_protocol_envelope_is_named_before_semantic_admission() {
 
 #[test]
 fn versioned_translation_corpus_is_data_only_and_contains_all_b4_modes() {
-    let corpus = include_str!("../../../tests/fixtures/translation-corpus-v1.wsm");
+    let corpus = include_str!("../../../tests/fixtures/translation-corpus-v1.lisp");
     let forms = parse(corpus).expect("translation corpus must remain parseable data");
     assert_eq!(forms.len(), 1, "corpus must be one versioned data value");
 

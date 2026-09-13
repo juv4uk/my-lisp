@@ -28,9 +28,9 @@ Rust: tcp-write-raw
 TCP socket
 ```
 
-`tcp-read-raw` performs one socket read of at most 64 KiB and returns a proper list of exact byte integers. EOF is the empty list. `lib/tcp.my` owns the public text interpretation: valid UTF-8 becomes a string, EOF becomes the empty string, and invalid UTF-8 becomes explicit language data such as `(rejected invalid-utf8)`.
+`tcp-read-raw` performs one socket read of at most 64 KiB and returns a proper list of exact byte integers. EOF is the empty list. `lib/tcp.lisp` owns the public text interpretation: valid UTF-8 becomes a string, EOF becomes the empty string, and invalid UTF-8 becomes explicit language data such as `(rejected invalid-utf8)`.
 
-`tcp-write-raw` accepts a proper list of exact byte integers `0..255` and writes exactly those bytes. It does not accept a string and contains no UTF-8 encoding rule. `lib/utf8.my` owns exact string-to-UTF-8 encoding, and `lib/tcp.my` composes that encoder with `tcp-write-raw` to provide the public `tcp-write` closure while preserving the historical result shape: a successful write returns the original text.
+`tcp-write-raw` accepts a proper list of exact byte integers `0..255` and writes exactly those bytes. It does not accept a string and contains no UTF-8 encoding rule. `lib/utf8.lisp` owns exact string-to-UTF-8 encoding, and `lib/tcp.lisp` composes that encoder with `tcp-write-raw` to provide the public `tcp-write` closure while preserving the historical result shape: a successful write returns the original text.
 
 The minimal runtime bridges are deliberately below UTF-8 semantics: `codepoint->string` materializes one already-interpreted Unicode scalar, and `string->codepoint` observes the scalar value of exactly one runtime character. Neither bridge knows UTF-8. The byte encoding/decoding algorithms are Lisp code.
 
@@ -66,9 +66,9 @@ Rust: tcp-write-raw
 TCP socket
 ```
 
-`tcp-read-raw` виконує одне читання із сокета максимум до 64 KiB і повертає правильний список точних цілих байтів. EOF — порожній список. `lib/tcp.my` володіє публічною текстовою інтерпретацією: валідний UTF-8 стає рядком, EOF — порожнім рядком, а невалідний UTF-8 — явними мовними даними на кшталт `(rejected invalid-utf8)`.
+`tcp-read-raw` виконує одне читання із сокета максимум до 64 KiB і повертає правильний список точних цілих байтів. EOF — порожній список. `lib/tcp.lisp` володіє публічною текстовою інтерпретацією: валідний UTF-8 стає рядком, EOF — порожнім рядком, а невалідний UTF-8 — явними мовними даними на кшталт `(rejected invalid-utf8)`.
 
-`tcp-write-raw` приймає правильний список точних цілих байтів `0..255` і записує саме ці байти. Він не приймає рядок і не містить правила UTF-8-кодування. `lib/utf8.my` володіє точним перетворенням рядка на UTF-8, а `lib/tcp.my` композиційно будує публічний Lisp closure `tcp-write` поверх `tcp-write-raw`, зберігаючи стару форму результату: успішний запис повертає початковий текст.
+`tcp-write-raw` приймає правильний список точних цілих байтів `0..255` і записує саме ці байти. Він не приймає рядок і не містить правила UTF-8-кодування. `lib/utf8.lisp` володіє точним перетворенням рядка на UTF-8, а `lib/tcp.lisp` композиційно будує публічний Lisp closure `tcp-write` поверх `tcp-write-raw`, зберігаючи стару форму результату: успішний запис повертає початковий текст.
 
 Мінімальні runtime-мости навмисно лежать нижче UTF-8-семантики: `codepoint->string` матеріалізує один уже інтерпретований Unicode scalar, а `string->codepoint` спостерігає scalar-значення рівно одного runtime-символу. Жоден із цих мостів не знає UTF-8. Самі алгоритми кодування й декодування байтів написані Lisp-ом.
 

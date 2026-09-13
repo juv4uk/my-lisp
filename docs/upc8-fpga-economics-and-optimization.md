@@ -255,7 +255,7 @@ If that experiment confirms the predicted 8× structural-memory advantage and ac
 ## References
 
 [1]: https://github.com/juv4uk/fpga-lisp/blob/master/README.md "fpga-lisp: measured GW5A-25A resources, 32-bit values and hardware budget"
-[2]: https://github.com/juv4uk/fpga-lisp/blob/master/isa-contract.my "fpga-lisp ISA contract 1.0"
+[2]: https://github.com/juv4uk/fpga-lisp/blob/master/isa-contract.lisp "fpga-lisp ISA contract 1.0"
 [3]: https://github.com/juv4uk/fpga-lisp/blob/master/fpga/rtl/lisp_data_unit.sv "Lisp data unit: cons heap and synchronous read FSM"
 [4]: https://github.com/juv4uk/fpga-lisp/blob/master/fpga/rtl/control.sv "Control FSM, byte I/O, monitor protocol and performance counters"
 [5]: https://github.com/juv4uk/fpga-lisp/blob/master/fpga/sim/tb_cml_e2e.sv "CML E2E UART loading and watchdog rationale"

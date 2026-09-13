@@ -1,8 +1,8 @@
 use my_lisp::{language_items, parse, LanguageItemKind, CORE_LIBRARY_SOURCE};
 use std::collections::BTreeSet;
 
-const INVENTORY: &str = include_str!("../../../lib/surface/uk-inventory.wsm");
-const SEMANTIC_REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
+const INVENTORY: &str = include_str!("../../../lib/surface/uk-inventory.lisp");
+const SEMANTIC_REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
 
 fn names_after(source: &str, marker: &str) -> BTreeSet<String> {
     let start = source.find(marker).expect("inventory marker must exist") + marker.len();

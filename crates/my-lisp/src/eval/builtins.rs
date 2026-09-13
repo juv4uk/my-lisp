@@ -168,7 +168,7 @@ pub(crate) fn install(environment: &Environment) {
     // abs/min-list/max-list/min/max migrated to lib/core.my (owner
     // directive 2026-09-11: "Lisp owns meaning, Rust owns only
     // irreducible mechanism" -- none of the five touch OS/host
-    // capability). See lib/core.my's own comment at the definitions for
+    // capability). See lib/core.lisp's own comment at the definitions for
     // the real bugs (eq-on-non-atom, atom-vs-equal? sentinel confusion)
     // found and fixed during migration, and
     // docs/BUILTIN-IDENTITY-MIGRATION-MAP-2026-09-11.md for the wider

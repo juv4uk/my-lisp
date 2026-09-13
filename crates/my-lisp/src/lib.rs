@@ -80,39 +80,39 @@ pub use syntax::fasl::{
 /// Closure -> Macro. The source returns one Macro value and deliberately binds
 /// no human surface name; `load_macro_library` installs peer spellings onto
 /// that same value after evaluation.
-pub const MACRO_LIBRARY_SOURCE: &str = include_str!("../../../lib/macro.my");
+pub const MACRO_LIBRARY_SOURCE: &str = include_str!("../../../lib/macro.lisp");
 const DEFMACRO_SEMANTIC_ID: &str = "0012";
 
 /// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
-pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.my");
+pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.lisp");
 
 
 /// Generated runtime projection of admitted surface spellings to opaque numeric
 /// semantic IDs. semantic-registry.wsm remains the only spelling authority.
 pub const META_SEMANTIC_REGISTRY_SOURCE: &str =
-    include_str!("../../../lib/generated/meta-semantic-registry.my");
+    include_str!("../../../lib/generated/meta-semantic-registry.lisp");
 
 /// Metacircular evaluator source. Surface names are supplied by the generated
 /// semantic registry projection rather than duplicated in this file.
-pub const META_EVAL_LIBRARY_SOURCE: &str = include_str!("../../../lib/meta-eval.my");
+pub const META_EVAL_LIBRARY_SOURCE: &str = include_str!("../../../lib/meta-eval.lisp");
 
 /// Language-owned time semantics. Host clocks expose raw observations such as
 /// `mono-ns` and `unix-time-now`; this library derives coarser clocks,
 /// calendar interpretation, UTC structure, and deadline arithmetic.
-pub const TIME_LIBRARY_SOURCE: &str = include_str!("../../../lib/time.my");
+pub const TIME_LIBRARY_SOURCE: &str = include_str!("../../../lib/time.lisp");
 
 /// Exact UTF-8 validation and byte-to-Unicode interpretation owned by Lisp.
-pub const UTF8_LIBRARY_SOURCE: &str = include_str!("../../../lib/utf8.my");
+pub const UTF8_LIBRARY_SOURCE: &str = include_str!("../../../lib/utf8.lisp");
 
 /// Process-result interpretation owned by Lisp. The host contributes only the
 /// `process-run-raw` capability; this layer decides how captured bytes become
 /// text and how decoding failures are represented.
-pub const PROCESS_LIBRARY_SOURCE: &str = include_str!("../../../lib/process.my");
+pub const PROCESS_LIBRARY_SOURCE: &str = include_str!("../../../lib/process.lisp");
 
 /// TCP text interpretation owned by Lisp. The host contributes only the raw
 /// socket-read bytes through `tcp-read-raw`; this layer defines public
 /// `tcp-read` by applying the shared UTF-8 semantics.
-pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.my");
+pub const TCP_LIBRARY_SOURCE: &str = include_str!("../../../lib/tcp.lisp");
 
 /// File text interpretation owned by Lisp. The host contributes only raw
 /// bytes through `read-file-bytes`/`write-file-bytes`; this layer defines

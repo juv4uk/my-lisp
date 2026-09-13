@@ -1,4 +1,4 @@
-# `lib/epistemic.my` v0: мінімальна специфікація proof-of-expression
+# `lib/epistemic.lisp` v0: мінімальна специфікація proof-of-expression
 
 **Статус:** пропозиція для library-first experiment  
 **Не є:** зміною Rust evaluator, новим primitive, scheduler-ом, effect system або новим World contract.  
@@ -14,7 +14,7 @@
 
 ## 1. Межа v0
 
-`epistemic.my` визначає лише конструктори, predicates, accessors та small validators. Він не виконує intent, не викликає network/process, не записує в World, не приймає claim як fact і не змінює existing `reason`/`forward` return values.
+`epistemic.lisp` визначає лише конструктори, predicates, accessors та small validators. Він не виконує intent, не викликає network/process, не записує в World, не приймає claim як fact і не змінює existing `reason`/`forward` return values.
 
 ```text
 ordinary my-lisp values
@@ -88,7 +88,7 @@ Intent — declarative datum. It is neither plan nor command. У v0 `requires` �
 |---|---|---|---|
 | `digest` | Evidence спирається на fixed content artifact. | `(digest "sha256:...")` або `(digest <world-content-address>)` | Address/digest стабільний і не містить runtime path. |
 | `proof` | Evidence спирається на reasoning proof або його deterministic reference. | `(proof (goal (ancestor alice dana)) (world <address>))` | Proof source/goal описані структурно. |
-| `test` | Evidence спирається на named reproducible test assertion. | `(test (fixture conformance.my) (case exact-rational-division))` | Fixture/case name та expected semantic claim стабільні. |
+| `test` | Evidence спирається на named reproducible test assertion. | `(test (fixture conformance.lisp) (case exact-rational-division))` | Fixture/case name та expected semantic claim стабільні. |
 | `observation` | Evidence посилається на конкретну attributed observation. | `(observation host-capabilities-v1)` | Reference має локальну або package-level identity. |
 
 У v0 validator має бути **структурно суворим, семантично слабким**: tag мусить бути одним із чотирьох, payload — nonempty proper data shape. Сильніша перевірка кожного variant — наприклад, чи digest криптографічно валідний, чи proof належить певному World, чи test реально існує — має з’явитися тільки з real consumer.
@@ -160,7 +160,7 @@ Intent — declarative datum. It is neither plan nor command. У v0 `requires` �
 
 ### Malformed shapes у v0
 
-V0 не заводить нового `epistemic-error` або незалежної системи rejected results. Predicates і boolean validators повертають `t` або `()`, тож malformed shape просто не проходить `observation?`, `claim?`, `evidence?`, `intent?` або `source-ref?`. Там, де caller already works у чинному knowledge/World boundary й потребує пояснення, він може перевикористати наявний tagged vocabulary на кшталт `(rejected (reason invalid-... ) (input ...))`; сам `epistemic.my` не мусить винаходити другу envelope convention.
+V0 не заводить нового `epistemic-error` або незалежної системи rejected results. Predicates і boolean validators повертають `t` або `()`, тож malformed shape просто не проходить `observation?`, `claim?`, `evidence?`, `intent?` або `source-ref?`. Там, де caller already works у чинному knowledge/World boundary й потребує пояснення, він може перевикористати наявний tagged vocabulary на кшталт `(rejected (reason invalid-... ) (input ...))`; сам `epistemic.lisp` не мусить винаходити другу envelope convention.
 
 і exact membership checks against `(requires ...)`. Snapshot is input, not a primitive-derived source of power.
 
@@ -168,7 +168,7 @@ V0 не заводить нового `epistemic-error` або незалежн�
 
 | Fixture | Minimum expression | Expected result |
 |---|---|---|
-| CML build blocker | Intent requires `process:cargo`; snapshot lacks it. | `intent-capabilities-satisfied?` повертає `()`; caller, за потреби, може побудувати `(blocked missing-capability)` через existing `result-status.my`. |
+| CML build blocker | Intent requires `process:cargo`; snapshot lacks it. | `intent-capabilities-satisfied?` повертає `()`; caller, за потреби, може побудувати `(blocked missing-capability)` через existing `result-status.lisp`. |
 | Sarvam transcript | Observation references selected audio/transcript; claim is `proposed`. | No direct World ingestion; receipt remains external. |
 | Host observation | Host capability snapshot is stored as `observation`, separate from agent declaration. | `declares` and `effective` cannot be conflated. |
 | Reasoning proof | Evidence uses `(proof ...)`, not an invented digest. | Existing `reason-explain`/provenance remains source engine. |
@@ -210,6 +210,6 @@ Those may become legitimate later. None is necessary to answer the first questio
 
 The provided refinement makes the original plan better. The right next instruction is now precise:
 
-> **Не чіпай kernel. Реалізуй `lib/epistemic.my` як opt-in data layer. Evidence має required tagged `source-ref`, але не required digest. `intent-capabilities-satisfied?` перевіряє тільки capability membership. Проганяй п’ять real fixtures. Primitive пропонуй лише через exact missing capability + minimal witness.**
+> **Не чіпай kernel. Реалізуй `lib/epistemic.lisp` як opt-in data layer. Evidence має required tagged `source-ref`, але не required digest. `intent-capabilities-satisfied?` перевіряє тільки capability membership. Проганяй п’ять real fixtures. Primitive пропонуй лише через exact missing capability + minimal witness.**
 
 This is small enough to be an experiment, strong enough to test the paradigm, and aligned with the existing `my-lisp` distinction between core semantics and Tier-3 ecosystem capabilities.

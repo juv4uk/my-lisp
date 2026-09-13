@@ -3,7 +3,7 @@
 **Статус:** PROPOSED DESIGN · **Дата:** 2026-08-23
 **Джерело:** зовнішній рецензент (ChatGPT), через власника
 **Редагування/оформлення:** Сакші (ox-alpha)
-**Звʼязок:** memory-layout-contract.my · language-core-axioms.md (G-аксіоми)
+**Звʼязок:** memory-layout-contract.lisp · language-core-axioms.md (G-аксіоми)
 
 ---
 

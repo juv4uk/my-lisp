@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate docs/meta-eval-evidence.md from the authoritative WSM matrix.
 
-`knowledge/meta-eval-evidence.wsm` owns row status and claim vocabulary. This
+`knowledge/meta-eval-evidence.lisp` owns row status and claim vocabulary. This
 script owns only the human-readable Markdown projection. The generated document
 must never become a second semantic/status authority.
 """
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MATRIX = ROOT / "knowledge" / "meta-eval-evidence.wsm"
+MATRIX = ROOT / "knowledge" / "meta-eval-evidence.lisp"
 OUTPUT = ROOT / "docs" / "meta-eval-evidence.md"
 
 
@@ -94,13 +94,13 @@ def render(as_of: str, rows: list[Row], claims: list[Claim]) -> str:
     unresolved = [row.key for row in required if row.status != "confirmed"]
 
     lines = [
-        "# Межа self-hosting для `lib/meta-eval.my`",
+        "# Межа self-hosting для `lib/meta-eval.lisp`",
         "",
         "> **GENERATED FILE — DO NOT EDIT BY HAND.**",
-        "> Джерело статусів і claim vocabulary: `knowledge/meta-eval-evidence.wsm`.",
+        "> Джерело статусів і claim vocabulary: `knowledge/meta-eval-evidence.lisp`.",
         "> Генератор: `scripts/generate-meta-eval-evidence.py`.",
         "",
-        "Цей Markdown є лише людською проєкцією machine-readable evidence matrix. Він не створює нової семантичної влади: змінювати статуси треба в `.wsm`, після чого перегенерувати цей файл.",
+        "Цей Markdown є лише людською проєкцією machine-readable evidence matrix. Він не створює нової семантичної влади: змінювати статуси треба в `.lisp`, після чого перегенерувати цей файл.",
         "",
         f"**Стан на:** `{as_of}`  ",
         f"**Required rows:** {len(required)} · **confirmed:** {sum(row.status == 'confirmed' for row in required)} · **unresolved:** {len(unresolved)}  ",
@@ -170,9 +170,9 @@ def render(as_of: str, rows: list[Row], claims: list[Claim]) -> str:
             "",
             "## Правило інтерпретації",
             "",
-            "Differential mismatch — це **finding**, а не автоматично «meta-eval неправильний». Якщо reference runtime суперечить `language-contract.my` або ратифікованому ADR, під підозрою reference implementation. Сила self-hosting тверджень обмежується machine matrix і окремим claim vocabulary вище.",
+            "Differential mismatch — це **finding**, а не автоматично «meta-eval неправильний». Якщо reference runtime суперечить `language-contract.lisp` або ратифікованому ADR, під підозрою reference implementation. Сила self-hosting тверджень обмежується machine matrix і окремим claim vocabulary вище.",
             "",
-            "Після редагування `knowledge/meta-eval-evidence.wsm` запустіть:",
+            "Після редагування `knowledge/meta-eval-evidence.lisp` запустіть:",
             "",
             "```bash",
             "python3 scripts/generate-meta-eval-evidence.py",

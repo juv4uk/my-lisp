@@ -1,4 +1,4 @@
-# my-lisp-yantra — мінімальний coding agent у `.my`
+# my-lisp-yantra — мінімальний coding agent у `.lisp`
 
 > Yantra — мінімальний evidence-aware агент, уся керувальна логіка якого
 > написана безпосередньо мовою my-lisp.
@@ -8,7 +8,7 @@ Yantra є власною реалізацією Володимира. Її ід�
 
 ## Архітектура
 
-`lib/yantra.my` реалізує повідомлення, стан агента, представлення tool calls,
+`lib/yantra.lisp` реалізує повідомлення, стан агента, представлення tool calls,
 dispatch, цикл ходів, жорсткий `MAX_TURNS` і перевірку завершальної відповіді.
 Агентної логіки в Rust немає.
 
@@ -18,8 +18,8 @@ Host-межа складається з універсальних, не спе�
 |---|---|---|
 | bash tool | `process-run` | дозволяється через `--allow-process=bash,curl` |
 | HTTP POST | `process-run` + `curl` | транспорт можна замінити без зміни agent loop |
-| JSON decode | примітив `json-parse` | `\uXXXX` потребує integer→character операції, якої немає в `.my` |
-| JSON encode | чистий `.my` | `json-encode*` поверх рядкових і спискових операцій |
+| JSON decode | примітив `json-parse` | `\uXXXX` потребує integer→character операції, якої немає в `.lisp` |
+| JSON encode | чистий `.lisp` | `json-encode*` поверх рядкових і спискових операцій |
 
 ## Представлення повідомлень
 
@@ -37,7 +37,7 @@ Host-межа складається з універсальних, не спе�
 
 Відповідь LLM завжди повертається зі статусом
 `(epistemic-status . hypothesis)`: завершення agent loop не перетворює
-гіпотезу моделі на доведений факт `reason.my`.
+гіпотезу моделі на доведений факт `reason.lisp`.
 
 ## Цикл агента
 

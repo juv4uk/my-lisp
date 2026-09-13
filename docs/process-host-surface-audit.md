@@ -27,7 +27,7 @@ Lisp: process-run
 (exit-code stdout-string stderr-string)
 ```
 
-`process-run-raw` owns process creation, the per-session allowlist, exit observation, and byte capture. It preserves stdout/stderr byte identity and performs no text decoding. `lib/utf8.my` validates/decodes UTF-8, while `lib/process.my` owns rejection policy, public result shaping, and the historical “no numeric exit code → -1” convention.
+`process-run-raw` owns process creation, the per-session allowlist, exit observation, and byte capture. It preserves stdout/stderr byte identity and performs no text decoding. `lib/utf8.lisp` validates/decodes UTF-8, while `lib/process.lisp` owns rejection policy, public result shaping, and the historical “no numeric exit code → -1” convention.
 
 Invalid UTF-8 is no longer silently replaced with U+FFFD. The public Lisp layer returns an explicit rejection such as:
 
@@ -86,7 +86,7 @@ Lisp: process-run
 (exit-code stdout-string stderr-string)
 ```
 
-`process-run-raw` володіє лише створенням процесу, session allowlist, спостереженням exit status і захопленням байтів. Він зберігає тотожність stdout/stderr і не вирішує, що ці байти означають як текст. `lib/utf8.my` виконує валідацію/декодування UTF-8, а `lib/process.my` володіє політикою відхилення, формою публічного результату та історичним правилом “немає числового exit code → `-1`”.
+`process-run-raw` володіє лише створенням процесу, session allowlist, спостереженням exit status і захопленням байтів. Він зберігає тотожність stdout/stderr і не вирішує, що ці байти означають як текст. `lib/utf8.lisp` виконує валідацію/декодування UTF-8, а `lib/process.lisp` володіє політикою відхилення, формою публічного результату та історичним правилом “немає числового exit code → `-1`”.
 
 Невалідний UTF-8 більше не перетворюється мовчки на U+FFFD. Lisp повертає явне значення, наприклад:
 

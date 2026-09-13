@@ -3,9 +3,9 @@ use my_lisp::{eval_program, Session};
 fn eval_exact_quantity(source: &str) -> String {
     let mut session = Session::default();
     for library in [
-        include_str!("../../../lib/core.my"),
-        include_str!("../../../lib/quantity.my"),
-        include_str!("../../../lib/si.my"),
+        include_str!("../../../lib/core.lisp"),
+        include_str!("../../../lib/quantity.lisp"),
+        include_str!("../../../lib/si.lisp"),
     ] {
         eval_program(library, &mut session).expect("exact quantity library should load");
     }

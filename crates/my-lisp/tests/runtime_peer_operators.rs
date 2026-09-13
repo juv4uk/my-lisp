@@ -3,9 +3,9 @@ use my_lisp::{
 };
 use std::rc::Rc;
 
-const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
-const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.my");
-const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
+const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.lisp");
+const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.lisp");
+const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
 const PRESENTATION: &str = include_str!("../src/presentation.rs");
 
 struct PeerCase {
@@ -173,8 +173,8 @@ fn runtime_peer_slice_matches_numeric_registry_rows() {
 
 #[test]
 fn ukrainian_builtin_presentation_uses_numeric_authority_not_legacy_audit() {
-    assert!(!PRESENTATION.contains("uk-sa-coverage.wsm"));
-    assert!(PRESENTATION.contains("semantic-registry.wsm"));
+    assert!(!PRESENTATION.contains("uk-sa-coverage.lisp"));
+    assert!(PRESENTATION.contains("semantic-registry.lisp"));
 
     for case in CASES {
         let mut session = Session::default();

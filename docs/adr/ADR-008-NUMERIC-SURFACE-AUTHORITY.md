@@ -7,7 +7,7 @@
 
 Етап A meaning-first міграції завершено.
 
-`lib/surface/semantic-registry.wsm` є **єдиною машинною authority** для
+`lib/surface/semantic-registry.lisp` є **єдиною машинною authority** для
 відповідності між semantic identities та людськими програмними поверхнями.
 Semantic identity у цьому реєстрі — непрозорий атом, що складається тільки з
 цифр.
@@ -46,7 +46,7 @@ Semantic identity у цьому реєстрі — непрозорий атом
 
 ## Legacy table
 
-`lib/surface/uk-sa-coverage.wsm` зберігається як історичний аудит походження
+`lib/surface/uk-sa-coverage.lisp` зберігається як історичний аудит походження
 імен і попередніх статусів. Вона **не є semantic authority** і не може живити:
 
 - REPL introspection;
@@ -55,7 +55,7 @@ Semantic identity у цьому реєстрі — непрозорий атом
 - program surface translator;
 - документаційний join key.
 
-Нові executable consumers мають читати тільки `semantic-registry.wsm`.
+Нові executable consumers мають читати тільки `semantic-registry.lisp`.
 
 ## REPL
 
@@ -135,7 +135,7 @@ full auxiliary-surface parity      ⏳
 ## Supersession
 
 Цей ADR завершує перехідний пункт ADR-007, за яким
-`uk-sa-coverage.wsm` тимчасово залишалася authority під час міграції.
+`uk-sa-coverage.lisp` тимчасово залишалася authority під час міграції.
 
 В ADR-005 зберігається фундаментальний висновок, що human surface spelling не
 може отримати machine-semantic владу лише через історичне походження. Його

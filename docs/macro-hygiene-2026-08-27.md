@@ -137,7 +137,7 @@ Macro Expansion for Theorem Proving Languages"](https://arxiv.org/pdf/2001.10490
 
 ## 6. Чесне застереження (не забуте заради стрункого висновку)
 
-`lib/knowledge.my` уже будує на явному provenance — "X, тому що A і B,
+`lib/knowledge.lisp` уже будує на явному provenance — "X, тому що A і B,
 з правила C", не "приблизно X". Навмисний capture робить сенс
 макроекспансії залежним від того, що вже є в call-site scope — менш
 детерміновано, важче простежити "чому це саме так" post-hoc. Для

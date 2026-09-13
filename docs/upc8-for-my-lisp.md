@@ -124,7 +124,7 @@ Storage / transport / CML / FPGA
 
 ## 5. UPC і knowledge/provenance: саме тут my-lisp додає найбільшу цінність
 
-`knowledge.my` уже робить важливе для UPC розділення: external knowledge входить через guarded `advise`/`advise-all` як data, валідується, перевіряється на explicit conflict і лише тоді потрапляє в append-only journal [8]. `World` зберігає explicit journal and metadata; reasoning adapters залежать від переданого world, а не від hidden global state [9].
+`knowledge.lisp` уже робить важливе для UPC розділення: external knowledge входить через guarded `advise`/`advise-all` як data, валідується, перевіряється на explicit conflict і лише тоді потрапляє в append-only journal [8]. `World` зберігає explicit journal and metadata; reasoning adapters залежать від переданого world, а не від hidden global state [9].
 
 Для UPC це означає: **mapping table, language profile і phonological assertion не мають бути просто файлом, який “зараз лежить у репозиторії”.** Вони мають бути versioned knowledge with provenance.
 
@@ -182,7 +182,7 @@ Current knowledge package deliberately serializes data as one re-readable S-expr
 
 ## 8. Error states повинні бути лінгвістично чесними
 
-Твій `result-status.my` already separates `unknown`, `partial`, `blocked` і `disputed` instead of collapsing them into `()` [10]. UPC decoder/importer має продовжити цю традицію.
+Твій `result-status.lisp` already separates `unknown`, `partial`, `blocked` і `disputed` instead of collapsing them into `()` [10]. UPC decoder/importer має продовжити цю традицію.
 
 | Стан | Приклад | Правильний результат |
 |---|---|---|
@@ -220,8 +220,8 @@ Current knowledge package deliberately serializes data as one re-readable S-expr
 
 | Пріоритет | Робота | Виграш |
 |---|---|---|
-| **P0** | Створити `lib/upc.my` як pure library над list-of-bytes: validator, 1/2/3/4-byte decoder, codec profile envelope, hex renderer. | Дає реальний executable contract без зміни runtime/FPGA. |
-| **P0** | Описати machine-readable `upc-contract.my` окремо від `language-contract.my`. | Правильно продовжує твою модель незалежних contract versions [11]. |
+| **P0** | Створити `lib/upc.lisp` як pure library над list-of-bytes: validator, 1/2/3/4-byte decoder, codec profile envelope, hex renderer. | Дає реальний executable contract без зміни runtime/FPGA. |
+| **P0** | Описати machine-readable `upc-contract.lisp` окремо від `language-contract.lisp`. | Правильно продовжує твою модель незалежних contract versions [11]. |
 | **P0** | Ввести stable `SegmentId` registry + mapping `SegmentId ↔ UPC assignment ↔ profile representation`. | Не дозволяє bytes або SLP1 стати semantic identity. |
 | **P0** | Додати exhaustive property tests: canonical decode/encode, malformed extension, unknown profile, version mismatch, `read-file-bytes` round-trip. | Захищає саме ті failure modes, що можуть silently poison reasoning. |
 | **P1** | Зробити `Bytes` immutable value only when list overhead/transport реально заважають. | Binary correctness and performance без premature ISA cost. |
@@ -245,7 +245,7 @@ Current knowledge package deliberately serializes data as one re-readable S-expr
 [5]: https://github.com/juv4uk/my-lisp/blob/main/crates/my-lisp/src/eval/special_forms/file_io.rs "Raw binary file primitives via validated byte lists"
 [6]: https://github.com/juv4uk/my-lisp/blob/main/crates/my-lisp/src/eval/special_forms/tcp.rs "TCP primitives and UTF-8 text boundary"
 [7]: https://github.com/juv4uk/my-lisp/blob/main/crates/my-lisp/src/layout.rs "NaN-boxing layout and FPGA-compatible tag space"
-[8]: https://github.com/juv4uk/my-lisp/blob/main/lib/knowledge.my "Data-only knowledge package, advice and journal"
-[9]: https://github.com/juv4uk/my-lisp/blob/main/lib/world.my "Immutable Worlds and explicit reasoning context"
-[10]: https://github.com/juv4uk/my-lisp/blob/main/lib/result-status.my "Tagged states: unknown, partial, blocked, disputed"
-[11]: https://github.com/juv4uk/my-lisp/blob/main/language-contract.my "Independent machine-readable compatibility contract"
+[8]: https://github.com/juv4uk/my-lisp/blob/main/lib/knowledge.lisp "Data-only knowledge package, advice and journal"
+[9]: https://github.com/juv4uk/my-lisp/blob/main/lib/world.lisp "Immutable Worlds and explicit reasoning context"
+[10]: https://github.com/juv4uk/my-lisp/blob/main/lib/result-status.lisp "Tagged states: unknown, partial, blocked, disputed"
+[11]: https://github.com/juv4uk/my-lisp/blob/main/language-contract.lisp "Independent machine-readable compatibility contract"

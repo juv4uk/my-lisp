@@ -15,23 +15,23 @@ use std::path::PathBuf;
 use std::process;
 
 const SURFACE_PREREQUISITES: &[(&str, &str)] = &[
-    ("unify.my", include_str!("../../../lib/unify.my")),
-    ("reason.my", include_str!("../../../lib/reason.my")),
-    ("forward.my", include_str!("../../../lib/forward.my")),
-    ("knowledge.my", include_str!("../../../lib/knowledge.my")),
+    ("unify.lisp", include_str!("../../../lib/unify.lisp")),
+    ("reason.lisp", include_str!("../../../lib/reason.lisp")),
+    ("forward.lisp", include_str!("../../../lib/forward.lisp")),
+    ("knowledge.lisp", include_str!("../../../lib/knowledge.lisp")),
     (
-        "persistent-map.my",
-        include_str!("../../../lib/persistent-map.my"),
+        "persistent-map.lisp",
+        include_str!("../../../lib/persistent-map.lisp"),
     ),
     (
-        "persistent-vector.my",
-        include_str!("../../../lib/persistent-vector.my"),
+        "persistent-vector.lisp",
+        include_str!("../../../lib/persistent-vector.lisp"),
     ),
-    ("time.my", include_str!("../../../lib/time.my")),
-    ("epistemic.my", include_str!("../../../lib/epistemic.my")),
+    ("time.lisp", include_str!("../../../lib/time.lisp")),
+    ("epistemic.lisp", include_str!("../../../lib/epistemic.lisp")),
 ];
-const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
-const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.my");
+const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.lisp");
+const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.lisp");
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ReplSurface {
@@ -104,8 +104,8 @@ fn build_surface_layer(base: &Environment, surface: ReplSurface) -> Result<Envir
             })?;
         }
         let (name, source) = match surface {
-            ReplSurface::Ukrainian => ("uk.my", UK_SURFACE),
-            ReplSurface::Sanskrit => ("sa.my", SA_SURFACE),
+            ReplSurface::Ukrainian => ("uk.lisp", UK_SURFACE),
+            ReplSurface::Sanskrit => ("sa.lisp", SA_SURFACE),
             ReplSurface::Core | ReplSurface::English => unreachable!(),
         };
         eval_program(source, &mut session)

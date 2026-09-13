@@ -80,7 +80,7 @@ fn spawn(port: u16, node_id: &str, data_dir: &Path, connect: Option<u16>) -> Nod
 fn wait_for_start(port: u16, data_dir: &Path, log: &Path) {
     let deadline = Instant::now() + Duration::from_secs(3);
     while Instant::now() < deadline {
-        if data_dir.join("node.my").is_file()
+        if data_dir.join("node.lisp").is_file()
             && TcpStream::connect(("127.0.0.1", port)).is_ok()
         {
             return;

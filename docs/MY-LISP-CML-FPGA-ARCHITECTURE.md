@@ -175,7 +175,7 @@ representation contracts.
 
 ## GPU preparation status
 
-CML now owns an analysis-only compute contract (`compute-contract.my`, version
+CML now owns an analysis-only compute contract (`compute-contract.lisp`, version
 0.1) and recognizes `map`/`reduce` execution shapes without changing my-lisp.
 GPU admission remains fail-closed. The current my-lisp `Vector` is
 heterogeneous and mutable through `vector-set!`; it is therefore not silently

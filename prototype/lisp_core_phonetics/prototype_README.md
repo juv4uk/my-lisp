@@ -15,7 +15,7 @@ This prototype integrates high-performance **unboxed phonetic vector representat
 3. **64-Bit Pratyāhāra Bitmask Engine:** 42 canonical sounds encoded into 64-bit integer masks, providing single-cycle class membership tests `((1 << sound_code) & mask) != 0` and bitwise set algebra.
 4. **Instant Bitwise Transformations:** Direct bit-flipping primitives for Sandhi voicing (`sandhi-voice`) and palatalization (`palatalize`).
 5. **Reader Macro Extensions:** First-class `#pvc(...)` and `#prat(...)` reader syntax for compile-time constant expansion.
-6. **S-Expression Knowledge Base:** Declarative `.my` knowledge base integrating phonetic facts, Sūtras, and inference rules into the immutable World model.
+6. **S-Expression Knowledge Base:** Declarative `.lisp` knowledge base integrating phonetic facts, Sūtras, and inference rules into the immutable World model.
 
 ---
 

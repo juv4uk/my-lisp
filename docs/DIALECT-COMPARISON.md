@@ -88,14 +88,14 @@ Lisp, PicoLisp — `empirically confirmed`, рівень *local run* за
 `source-confirmed`/`predicted` — LISP 1.5 як історичний артефакт не
 пакується жодним пакетним менеджером за визначенням; InterLisp не
 знайдено в Guix. Коли (якщо) з'явиться виконуваний
-`tests/fixtures/dialect-comparison.my` — твердження переперевіряються
+`tests/fixtures/dialect-comparison.lisp` — твердження переперевіряються
 ПРИ ЧИТАННІ (перезапуском фікстури проти того, що реально
 встановлено), не за збереженою датою "перевірено колись" — той самий
 механізм §3a, що вже керує кожним іншим твердженням цієї екосистеми,
 не паралельна схема.
 
 **Явно не зроблено**: сам виконуваний фікстур-файл
-(`tests/fixtures/dialect-comparison.my`) ще не написаний — усі ручні
+(`tests/fixtures/dialect-comparison.lisp`) ще не написаний — усі ручні
 перевірки вище (шість рядків, дев'ять окремих рантаймів: Guile,
 Racket, Emacs Lisp, Clojure, SBCL, ECL, CLISP, ABCL, Clasp) не
 консолідовані в жоден скрипт чи checked-in тест; підняти цей

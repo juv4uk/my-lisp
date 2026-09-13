@@ -1,8 +1,8 @@
 use my_lisp::{eval_program, load_core_library, Session};
 use std::collections::BTreeMap;
 
-const DOCS_INDEX: &str = include_str!("../../../lib/surface/uk-docs.wsm");
-const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
+const DOCS_INDEX: &str = include_str!("../../../lib/surface/uk-docs.lisp");
+const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.lisp");
 
 // vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku,
 // dokumentatsiinyi_kliuch_ie_tilky_numeric,
@@ -59,14 +59,14 @@ fn uk_session() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core bootstrap");
     for source in [
-        include_str!("../../../lib/unify.my"),
-        include_str!("../../../lib/reason.my"),
-        include_str!("../../../lib/forward.my"),
-        include_str!("../../../lib/knowledge.my"),
-        include_str!("../../../lib/persistent-map.my"),
-        include_str!("../../../lib/persistent-vector.my"),
-        include_str!("../../../lib/time.my"),
-        include_str!("../../../lib/epistemic.my"),
+        include_str!("../../../lib/unify.lisp"),
+        include_str!("../../../lib/reason.lisp"),
+        include_str!("../../../lib/forward.lisp"),
+        include_str!("../../../lib/knowledge.lisp"),
+        include_str!("../../../lib/persistent-map.lisp"),
+        include_str!("../../../lib/persistent-vector.lisp"),
+        include_str!("../../../lib/time.lisp"),
+        include_str!("../../../lib/epistemic.lisp"),
     ] {
         eval_program(source, &mut session).expect("передумови UK surface мають завантажитися");
     }

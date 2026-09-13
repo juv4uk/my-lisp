@@ -45,7 +45,7 @@ fn shared_tails_do_not_overflow_stack() {
 #[test]
 fn core_lib_list_utilities_stay_stack_safe_on_a_long_list() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     let source = r#"
         (def build (lambda (n acc) (cond ((eq n 0) acc) (t (build (- n 1) (cons n acc))))))
         (def big (build 100000 (quote ())))
@@ -62,9 +62,9 @@ fn core_lib_list_utilities_stay_stack_safe_on_a_long_list() {
 /// sorted)))` shape, not the tail-recursive one now in the file. Runs the
 /// real script's own logic against lib/core.my (83 symbols as of this
 /// writing) to guard against a future non-tail-recursive regression.
-/// Mirrors scripts/symbol-table.my's own collect/sort functions rather
+/// Mirrors scripts/symbol-table.lisp's own collect/sort functions rather
 /// than running that file directly: the script's own tail calls
-/// `(read-file "lib/core.my")` with a path relative to the repo root,
+/// `(read-file "lib/core.lisp")` with a path relative to the repo root,
 /// which isn't `cargo test`'s working directory (the crate root) --
 /// `include_str!` sidesteps that entirely by embedding the text at
 /// compile time. Keep this in sync with scripts/symbol-table.my if its
@@ -72,7 +72,7 @@ fn core_lib_list_utilities_stay_stack_safe_on_a_long_list() {
 #[test]
 fn symbol_table_sort_stays_stack_safe() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     let helpers = r#"
         (def collect-symbols-onto
           (lambda (expr acc)
@@ -104,7 +104,7 @@ fn symbol_table_sort_stays_stack_safe() {
 
     let core_forms_source = format!(
         r#"(length (sort-symbols (collect-all-symbols (read-all {:?}) (quote ()))))"#,
-        include_str!("../../../lib/core.my")
+        include_str!("../../../lib/core.lisp")
     );
     let result = eval_program(&core_forms_source, &mut session).unwrap();
     let Value::Number(count, _) = result.value else {

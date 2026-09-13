@@ -10,26 +10,26 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 
-const CORE_FASL: &[u8] = include_bytes!("../../../lib/core.my.fasl");
+const CORE_FASL: &[u8] = include_bytes!("../../../lib/core.lisp.fasl");
 
 const SURFACE_PREREQUISITES: &[(&str, &str)] = &[
-    ("unify.my", include_str!("../../../lib/unify.my")),
-    ("reason.my", include_str!("../../../lib/reason.my")),
-    ("forward.my", include_str!("../../../lib/forward.my")),
-    ("knowledge.my", include_str!("../../../lib/knowledge.my")),
+    ("unify.lisp", include_str!("../../../lib/unify.lisp")),
+    ("reason.lisp", include_str!("../../../lib/reason.lisp")),
+    ("forward.lisp", include_str!("../../../lib/forward.lisp")),
+    ("knowledge.lisp", include_str!("../../../lib/knowledge.lisp")),
     (
-        "persistent-map.my",
-        include_str!("../../../lib/persistent-map.my"),
+        "persistent-map.lisp",
+        include_str!("../../../lib/persistent-map.lisp"),
     ),
     (
-        "persistent-vector.my",
-        include_str!("../../../lib/persistent-vector.my"),
+        "persistent-vector.lisp",
+        include_str!("../../../lib/persistent-vector.lisp"),
     ),
-    ("time.my", include_str!("../../../lib/time.my")),
-    ("epistemic.my", include_str!("../../../lib/epistemic.my")),
+    ("time.lisp", include_str!("../../../lib/time.lisp")),
+    ("epistemic.lisp", include_str!("../../../lib/epistemic.lisp")),
 ];
-const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
-const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.my");
+const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.lisp");
+const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.lisp");
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum WebSurface {
@@ -80,8 +80,8 @@ fn build_surface_layer(base: &Environment, surface: WebSurface) -> Result<Enviro
                 .map_err(|error| format!("failed to load {name}: {}", error.render(source)))?;
         }
         let (name, source) = match surface {
-            WebSurface::Ukrainian => ("uk.my", UK_SURFACE),
-            WebSurface::Sanskrit => ("sa.my", SA_SURFACE),
+            WebSurface::Ukrainian => ("uk.lisp", UK_SURFACE),
+            WebSurface::Sanskrit => ("sa.lisp", SA_SURFACE),
             WebSurface::Core | WebSurface::English => unreachable!(),
         };
         eval_program(source, &mut session)
@@ -161,7 +161,7 @@ fn init_if_needed() -> Result<(), String> {
 fn session_with_core_fasl(fasl_bytes: &[u8]) -> Result<Session, String> {
     let mut session = Session::default();
     let (expressions, _) = my_lisp::fasl_decode_program(fasl_bytes)
-        .ok_or_else(|| "failed to decode core.my.fasl (format or hash mismatch)".to_string())?;
+        .ok_or_else(|| "failed to decode core.lisp.fasl (format or hash mismatch)".to_string())?;
     my_lisp::eval_parsed_expressions(&expressions, &mut session)
         .map_err(|error| format!("failed to preload core.my: {error}"))?;
     Ok(session)

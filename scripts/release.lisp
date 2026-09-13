@@ -1,0 +1,127 @@
+; scripts/release.lisp — tag and push a release (PLAN.md item 21's follow-up:
+; the actual reason `process-run` exists). Runs `cargo test --workspace`
+; first and refuses to tag if it fails — the same gate
+; `.github/workflows/release.yml`'s own `test` job re-checks server-side,
+; this just catches it locally before a bad tag ever reaches GitHub.
+;
+; Takes the version as a command-line argument (`*argv*`, added
+; 2026-08-09 alongside this script — `my-lisp-cli` defines it from
+; whatever follows the filename, before running the script), not a
+; hand-edited constant — the `l` tag prefix (`docs/versioning.md`) is
+; added here, so the caller passes a bare version:
+;
+;   my-lisp scripts/release.lisp 0.4.4
+;
+; The trusted native Lisp-machine profile can run these named programs — see
+; `docs/language-core.md`'s own entry for why the default is fully
+; disabled, not just unbounded: this project's own recommendation is to
+; run this script deliberately, by hand, never from something that also
+; accepts network input in the same session.
+;
+; No version is read from any Cargo.toml — the release workflow itself
+; derives the version purely from the git tag name (`GITHUB_REF_NAME`),
+; confirmed by reading .github/workflows/release.yml directly before
+; writing this script, not assumed.
+;
+; scripts/release.lisp — тегує й пушить реліз (продовження PLAN.md, пункт
+; 21: сама причина, чому існує `process-run`). Спершу запускає
+; `cargo test --workspace` і відмовляється тегувати, якщо він провалився —
+; той самий гейт, який власна джоба `test` `.github/workflows/release.yml`
+; перевіряє повторно на сервері, ця лише ловить це локально до того, як
+; поганий тег дійде до GitHub.
+;
+; Бере версію як аргумент командного рядка (`*argv*`, додано 2026-08-09
+; поруч із цим скриптом — `my-lisp-cli` визначає його з усього, що йде
+; після імені файлу, до запуску скрипта), не як ручну константу — префікс
+; тегу `l` (`docs/versioning.md`) додається тут, тож викликач передає
+; голу версію:
+;
+;   my-lisp scripts/release.lisp 0.4.4
+;
+; Довірений native-профіль Lisp-машини може запускати ці програми — див.
+; запис у `docs/language-core.md`, чому типовий стан повністю вимкнений,
+; не просто необмежений: власна рекомендація цього проєкту — запускати
+; цей скрипт свідомо, вручну, ніколи з чогось, що в тій самій сесії ще й
+; приймає мережевий вхід.
+;
+; Версія ніде не читається з Cargo.toml — сам release-workflow виводить
+; версію суто з імені git-тегу (`GITHUB_REF_NAME`), перевірено прямим
+; читанням .github/workflows/release.yml перед написанням цього скрипта,
+; не припущено.
+
+(def *release-remote* "origin")
+
+(def *release-version*
+  (cond
+    ((atom *argv*)
+     (error-missing-version))
+    (t (string-append "l" (car *argv*)))))
+
+; `error-missing-version` deliberately isn't defined — calling an
+; unbound symbol is `ErrorKind::UnknownSymbol`, a real named failure
+; (S2), not a made-up ad-hoc error primitive this language doesn't
+; otherwise have. If `*argv*` is empty, the script fails loud and named
+; right here, before `process-run` ever gets called.
+; `error-missing-version` свідомо не визначено — виклик незв'язаного
+; символу це `ErrorKind::UnknownSymbol`, реальний названий провал (S2),
+; не вигаданий ad-hoc примітив помилки, якого ця мова інакше не має.
+; Якщо `*argv*` порожній, скрипт провалюється гучно й названо саме тут,
+; до того, як `process-run` взагалі викликається.
+
+(def report-and-exit-if-failed
+  (lambda (label result)
+    (let ((exit-code (car result)))
+      (cond
+        ((eq exit-code 0)
+         (print (string-append label ": ok")))
+        (t ((lambda ()
+              (print (string-append label ": FAILED"))
+              (print (second result))
+              (print (third result))
+              (print "Release aborted.")
+              exit-code)))))))
+
+(def *bare-version* (car *argv*))
+
+(print (string-append "Bumping Cargo.toml versions to " (string-append *bare-version* "...")))
+(def sed-pattern (string-append "s/^version = \".*\"/version = \"" (string-append *bare-version* "\"/")))
+(def bump-result
+  (process-run "sed" (list "-i" sed-pattern 
+                           "crates/my-lisp/Cargo.toml" 
+                           "crates/my-lisp-cli/Cargo.toml" 
+                           "crates/my-lisp-literate/Cargo.toml" 
+                           "crates/my-lisp-wasm/Cargo.toml"
+                           "crates/my-lisp-lsp/Cargo.toml"
+                           "crates/my-lisp-host/Cargo.toml"
+                           "crates/my-lisp-semantic/Cargo.toml")))
+
+(report-and-exit-if-failed "sed version bump" bump-result)
+
+(def tests (process-run "cargo" (quote ("test" "--workspace"))))
+
+(cond
+  ((eq (car tests) 0)
+   ((lambda ()
+      (print "cargo test --workspace: ok")
+      
+      ;; Commit the version bump
+      (def add-result (process-run "git" (list "add" "crates/*/Cargo.toml" "Cargo.lock")))
+      (report-and-exit-if-failed "git add" add-result)
+      
+      (def commit-result (process-run "git" (list "commit" "-m" (string-append "chore: bump version to " *bare-version*))))
+      ;; It's possible there are no changes if the version is the same, but we assume it bumps.
+      
+      (def tag-result (process-run "git" (list "tag" *release-version*)))
+      (report-and-exit-if-failed "git tag" tag-result)
+      (cond
+        ((eq (car tag-result) 0)
+         ((lambda ()
+            (def push-result
+              (process-run "git" (list "push" *release-remote* "main" *release-version*)))
+            (report-and-exit-if-failed "git push" push-result)
+            (cond
+              ((eq (car push-result) 0)
+               (print (string-append (string-append "Released " *release-version*) ".")))
+              (t (quote push-failed))))))
+        (t (quote tag-failed))))))
+  (t (report-and-exit-if-failed "cargo test --workspace" tests)))

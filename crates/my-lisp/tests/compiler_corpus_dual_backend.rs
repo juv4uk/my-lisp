@@ -64,7 +64,7 @@ fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
 /// different question (does a second backend raise the same NAMED
 /// failure), not attempted here.
 fn compiler_corpus_fixtures() -> Vec<CompilerCorpusFixture> {
-    let source = include_str!("../../../tests/fixtures/conformance.my");
+    let source = include_str!("../../../tests/fixtures/conformance.lisp");
     let forms = parse(source).expect("conformance.my should parse");
     forms
         .iter()
@@ -96,7 +96,7 @@ fn eval_native(expr: &str) -> Result<String, String> {
 
 fn eval_via_meta_eval(expr: &str) -> Result<String, String> {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session)
         .expect("lib/core.my should load (meta-eval.my needs core helpers)");
     load_meta_evaluator_library(&mut session).expect("lib/meta-eval.my should load");
     let source = format!(
@@ -180,7 +180,7 @@ fn compiler_corpus_dual_backend_parity_report() {
     // meta-eval-gap tags already say exactly which fixtures meta-eval.my
     // is excused from, so total coverage is whatever's left, printed for
     // visibility rather than pinned to a number that would need editing
-    // by hand every time meta-eval.my's coverage changes.
+    // by hand every time meta-eval.lisp's coverage changes.
     println!(
         "compiler-corpus dual-backend report: {}/{} fixtures pass meta-eval.my \
          (both backends matched the corpus's own `expected` value); \

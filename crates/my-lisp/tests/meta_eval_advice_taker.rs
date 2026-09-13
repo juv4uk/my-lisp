@@ -21,10 +21,10 @@ fn escaped(source: &str) -> String {
 fn advice_program() -> String {
     format!(
         "{}\n{}\n{}\n{}\n{}",
-        include_str!("../../../lib/core.my"),
-        include_str!("../../../lib/unify.my"),
-        include_str!("../../../lib/reason.my"),
-        include_str!("../../../lib/result-status.my"),
+        include_str!("../../../lib/core.lisp"),
+        include_str!("../../../lib/unify.lisp"),
+        include_str!("../../../lib/reason.lisp"),
+        include_str!("../../../lib/result-status.lisp"),
         r#"
 (def meta-advice-rules
   (quote (
@@ -75,7 +75,7 @@ fn native_result(program: &str) -> String {
 
 fn meta_result(program: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).expect("core bootstrap");
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).expect("core bootstrap");
     my_lisp::load_meta_evaluator_library(&mut session).expect("meta-eval bootstrap");
 
     eval_program(

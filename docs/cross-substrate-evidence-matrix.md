@@ -4,7 +4,7 @@
 
 **Generated from live checkouts:** 2026-08-26
 
-**Canonical fixture source:** `my-lisp/tests/fixtures/conformance.my` at
+**Canonical fixture source:** `my-lisp/tests/fixtures/conformance.lisp` at
 `f713d8a1d81d49369c2189a0d551924ed03937ac`
 
 **CML checkout:** `ed0029b2cb95606c615a39953748ec2d9717f258`
@@ -92,7 +92,7 @@ source line in the pinned canonical fixture file above.
 
 - Rust fixture runner: `my-lisp/crates/my-lisp/tests/mccarthy.rs`,
   `conformance_tests_from_my`.
-- Canonical facts and tags: `my-lisp/tests/fixtures/conformance.my` and its
+- Canonical facts and tags: `my-lisp/tests/fixtures/conformance.lisp` and its
   `README.md`.
 - CML→RTL selection and comparison:
   `cml/tests/conformance_test.rs`.
@@ -100,7 +100,7 @@ source line in the pinned canonical fixture file above.
   `cml/tests/c_backend_conformance_test.rs`; expected aggregate
   `(35 selected, 25 supported-value, 7 supported-error, 3 unsupported-inexact)`.
 - Declared support boundary and pinned evidence:
-  `cml/compatibility.my`.
+  `cml/compatibility.lisp`.
 - Direct FPGA operation-to-milestone mapping:
   `fpga-lisp/fixture_coverage.py` and `docs/lisp-machine-plan.md`.
 - Synthesis and physical-board evidence:

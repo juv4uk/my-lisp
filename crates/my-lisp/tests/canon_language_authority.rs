@@ -2,7 +2,7 @@ use my_lisp::{eval_program, ErrorKind, Session};
 
 fn session_with_language_canon() -> Session {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/canon.my"), &mut session)
+    eval_program(include_str!("../../../lib/canon.lisp"), &mut session)
         .expect("lib/canon.my must bootstrap as executable semantics");
     session
 }

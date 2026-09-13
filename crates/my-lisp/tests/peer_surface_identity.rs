@@ -2,8 +2,8 @@ use my_lisp::{eval_program, semantic_registry_export, Session, Value};
 use std::rc::Rc;
 
 const ADD_SEMANTIC_ID: &str = "0104";
-const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.my");
-const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.my");
+const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.lisp");
+const SA_SURFACE: &str = include_str!("../../../lib/surface/sa.lisp");
 
 fn add_surfaces() -> Vec<(&'static str, &'static str)> {
     semantic_registry_export::admitted_surfaces_for_semantic_id(ADD_SEMANTIC_ID)

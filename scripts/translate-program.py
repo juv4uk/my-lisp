@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Перекладає my-lisp між людськими поверхнями через numeric identities.
 
-Джерело словника — `lib/surface/semantic-registry.wsm`. Жодна людська мова не
+Джерело словника — `lib/surface/semantic-registry.lisp`. Жодна людська мова не
 є мостом до іншої. `sym` — спільна немовна нотація: такі токени не
 "перекладаються з англійської", а зберігаються дослівно.
 """
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = REPO_ROOT / "lib" / "surface" / "semantic-registry.wsm"
+REGISTRY = REPO_ROOT / "lib" / "surface" / "semantic-registry.lisp"
 ENTRY = re.compile(r"^\s*\(([0-9]{4,})\s+(.*)\)\s*$")
 SURFACE = re.compile(
     r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)\s+"

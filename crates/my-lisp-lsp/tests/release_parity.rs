@@ -5,7 +5,7 @@
 //! This test exists because my-lisp-lsp joined the release list late and
 //! silently kept 0.1.0 through the l0.25.0 release — drift no other check
 //! would have caught. If you add a canonical crate, add its Cargo.toml to
-//! scripts/release.my's bump list AND to CRATE_MANIFESTS below.
+//! scripts/release.lisp's bump list AND to CRATE_MANIFESTS below.
 
 use std::path::Path;
 
@@ -58,7 +58,7 @@ fn all_canonical_crates_share_one_release_version() {
         assert_eq!(
             version, expected,
             "version drift: {manifest} is {version}, but {} is {expected} — \
-             add it to scripts/release.my's bump list or fix the version",
+             add it to scripts/release.lisp's bump list or fix the version",
             versions[0].0
         );
     }

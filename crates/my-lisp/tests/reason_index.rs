@@ -3,9 +3,9 @@ use my_lisp::{eval_program, Session};
 fn session() -> Session {
     let mut session = Session::default();
     for library in [
-        include_str!("../../../lib/core.my"),
-        include_str!("../../../lib/unify.my"),
-        include_str!("../../../lib/reason.my"),
+        include_str!("../../../lib/core.lisp"),
+        include_str!("../../../lib/unify.lisp"),
+        include_str!("../../../lib/reason.lisp"),
     ] {
         eval_program(library, &mut session).expect("reason index fixture should load");
     }

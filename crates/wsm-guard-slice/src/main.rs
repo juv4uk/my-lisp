@@ -73,7 +73,7 @@ fn adapter_error(reason: &str) -> String {
 
 fn policy_path(args: &[String]) -> Result<PathBuf, String> {
     if args.len() != 2 || args[0] != "--policy" {
-        return Err("usage: wsm-guard-slice --policy /absolute/policy.wsm".into());
+        return Err("usage: wsm-guard-slice --policy /absolute/policy.lisp".into());
     }
     let path = PathBuf::from(&args[1]);
     if !path.is_absolute() || !path.is_file() {
@@ -122,7 +122,7 @@ fn main() {
 mod tests {
     use super::*;
 
-    const DEFAULT_POLICY: &str = include_str!("../../../knowledge/guard-runtime-policy.wsm");
+    const DEFAULT_POLICY: &str = include_str!("../../../knowledge/guard-runtime-policy.lisp");
     const ALLOW_POLICY: &str = r#"
       (def guard-evaluate
         (lambda (kind subject evidence)

@@ -388,4 +388,4 @@ bookkeeping на обовʼязок кожного правила та кожн�
 [9] generational-arena: https://docs.rs/generational_arena/latest/generational_arena/
 [10] my-lisp value.rs: https://github.com/juv4uk/my-lisp/blob/main/crates/my-lisp/src/value.rs
 [11] my-lisp environment.rs: https://github.com/juv4uk/my-lisp/blob/main/crates/my-lisp/src/environment.rs
-[12] memory-layout-contract.my: https://github.com/juv4uk/my-lisp/blob/main/memory-layout-contract.my
+[12] memory-layout-contract.lisp: https://github.com/juv4uk/my-lisp/blob/main/memory-layout-contract.lisp

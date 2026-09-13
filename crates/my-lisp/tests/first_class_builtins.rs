@@ -12,7 +12,7 @@ use my_lisp::{eval_program, ErrorKind, Session};
 
 fn session_with_core() -> Session {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session)
         .expect("core.my should preload cleanly");
     session
 }

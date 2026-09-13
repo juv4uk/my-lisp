@@ -101,7 +101,7 @@ Substrates do not sit as a language layer. The language exists purely as semanti
                           ▼
   ┌──────────────────────────────────────────────┐
   │ L3: KNOWLEDGE / WORLD                        │
-  │     SI defining constants (lib/si.my),       │
+  │     SI defining constants (lib/si.lisp),       │
   │     physics, Panini, reasoning, chess        │
   └──────────────────────────────────────────────┘
 

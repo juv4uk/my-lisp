@@ -74,7 +74,7 @@ fn division_by_zero_has_the_contract_3_named_error() {
     }
 
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     for source in ["(quotient 5 0)", "(mod 5 0)"] {
         assert_eq!(
             eval_program(source, &mut session).unwrap_err().kind,
@@ -285,7 +285,7 @@ fn tail_recursion_uses_constant_rust_stack() {
 #[test]
 fn bootstrap_library_is_written_and_executed_in_my_lisp() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     assert_eq!(
         eval_program("(second (quote (radio antenna)))", &mut session)
             .unwrap()
@@ -303,7 +303,7 @@ fn bootstrap_library_is_written_and_executed_in_my_lisp() {
 #[test]
 fn bootstrap_library_provides_list_utilities() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     let run = |source: &str, session: &mut Session| {
         eval_program(source, session).unwrap().value.to_string()
     };
@@ -340,7 +340,7 @@ fn bootstrap_library_provides_list_utilities() {
 #[test]
 fn bootstrap_library_provides_let_and_let_star() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     let run = |source: &str, session: &mut Session| {
         eval_program(source, session).unwrap().value.to_string()
     };
@@ -367,7 +367,7 @@ fn bootstrap_library_provides_let_and_let_star() {
 #[test]
 fn bootstrap_library_provides_deep_structural_equality() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     let run = |source: &str, session: &mut Session| {
         eval_program(source, session).unwrap().value.to_string()
     };
@@ -658,7 +658,7 @@ fn princ_and_print_render_symbols_and_numbers_identically() {
 #[test]
 fn list_is_a_my_lisp_function_in_core_my_not_a_rust_builtin() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     let result = eval_program("(list 1 2 3)", &mut session).unwrap();
     assert_eq!(
         result.value,
@@ -694,7 +694,7 @@ fn evaluator_still_errors_on_a_lone_unknown_symbol() {
 #[test]
 fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     assert_eq!(
         eval_program("(<= 1 1 2)", &mut session).unwrap().value,
         Value::Symbol("t".into())
@@ -756,21 +756,21 @@ fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
 /// my-lisp, yakyi bud-yaka konformna realizatsiia vzhe maie za vyznachenniam.
 #[test]
 fn conformance_tests_from_my() {
-    let forms = parse(include_str!("../../../tests/fixtures/conformance.my"))
+    let forms = parse(include_str!("../../../tests/fixtures/conformance.lisp"))
         .expect("conformance.my should parse as valid my-lisp source");
 
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session)
         .expect("lib/core.my should load before conformance fixtures run");
-    eval_program(include_str!("../../../lib/unify.my"), &mut session)
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session)
         .expect("lib/unify.my should load before conformance fixtures run");
-    eval_program(include_str!("../../../lib/reason.my"), &mut session)
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session)
         .expect("lib/reason.my should load before conformance fixtures run");
-    eval_program(include_str!("../../../lib/understand.my"), &mut session)
+    eval_program(include_str!("../../../lib/understand.lisp"), &mut session)
         .expect("lib/understand.my should load before conformance fixtures run");
-    eval_program(include_str!("../../../lib/narrate.my"), &mut session)
+    eval_program(include_str!("../../../lib/narrate.lisp"), &mut session)
         .expect("lib/narrate.my should load before conformance fixtures run");
-    eval_program(include_str!("../../../lib/persistent-map.my"), &mut session)
+    eval_program(include_str!("../../../lib/persistent-map.lisp"), &mut session)
         .expect("lib/persistent-map.my should load before conformance fixtures run");
 
     for form in &forms {
@@ -817,7 +817,7 @@ fn conformance_tests_from_my() {
 
 #[test]
 fn conformance_fixture_exprs_parse_as_single_form() {
-    let forms = parse(include_str!("../../../tests/fixtures/conformance.my"))
+    let forms = parse(include_str!("../../../tests/fixtures/conformance.lisp"))
         .expect("conformance.my should parse as valid my-lisp source");
 
     for form in &forms {
@@ -875,11 +875,11 @@ fn conformance_fixture_exprs_parse_as_single_form() {
 
 #[test]
 fn macro_conformance_tests_from_my() {
-    let forms = parse(include_str!("../../../tests/fixtures/macro-conformance.my"))
+    let forms = parse(include_str!("../../../tests/fixtures/macro-conformance.lisp"))
         .expect("macro-conformance.my should parse as valid my-lisp source");
 
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session)
         .expect("lib/core.my should load before macro-conformance fixtures run");
 
     for form in &forms {
@@ -926,13 +926,13 @@ fn macro_conformance_tests_from_my() {
 
 #[test]
 fn linter_tests_from_my() {
-    let forms = parse(include_str!("../../../tests/fixtures/linter.my"))
+    let forms = parse(include_str!("../../../tests/fixtures/linter.lisp"))
         .expect("linter.my should parse as valid my-lisp source");
 
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session)
         .expect("lib/core.my should load before linter fixtures run");
-    eval_program(include_str!("../../../lib/linter.my"), &mut session)
+    eval_program(include_str!("../../../lib/linter.lisp"), &mut session)
         .expect("lib/linter.my should load before linter fixtures run");
 
     for form in &forms {
@@ -1019,7 +1019,7 @@ fn alist_list<'a>(entries: &'a [Expr], key: &str) -> Option<&'a [Expr]> {
 
 #[test]
 fn property_tests_from_my() {
-    let forms = parse(include_str!("../../../tests/fixtures/properties.my"))
+    let forms = parse(include_str!("../../../tests/fixtures/properties.lisp"))
         .expect("properties.my should parse as valid my-lisp source");
 
     let mut lcg = Lcg::new(42);
@@ -1047,13 +1047,13 @@ fn property_tests_from_my() {
 
         for iteration in 0..100 {
             let mut session = Session::default();
-            eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-            eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
-            eval_program(include_str!("../../../lib/persistent-map.my"), &mut session).unwrap();
-            eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
-            eval_program(include_str!("../../../lib/world.my"), &mut session).unwrap();
+            eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+            eval_program(include_str!("../../../lib/forward.lisp"), &mut session).unwrap();
+            eval_program(include_str!("../../../lib/persistent-map.lisp"), &mut session).unwrap();
+            eval_program(include_str!("../../../lib/knowledge.lisp"), &mut session).unwrap();
+            eval_program(include_str!("../../../lib/world.lisp"), &mut session).unwrap();
             eval_program(
-                include_str!("../../../tests/fixtures/properties-helpers.my"),
+                include_str!("../../../tests/fixtures/properties-helpers.lisp"),
                 &mut session,
             )
             .unwrap();
@@ -1087,7 +1087,7 @@ fn property_tests_from_my() {
 
 // Minimal symbol/string introspection this project held off on for a long
 // time (CLAUDE.md: don't grow the Rust surface) — added deliberately when
-// lib/clips-import.my's Step 2 needed to strip CLIPS's `?` prefix off a
+// lib/clips-import.lisp's Step 2 needed to strip CLIPS's `?` prefix off a
 // variable symbol, which is impossible from within my-lisp itself without
 // some way to look at a symbol's characters.
 
@@ -1171,7 +1171,7 @@ fn string_predicate_distinguishes_strings_from_other_atoms() {
 #[test]
 fn symbol_predicate_is_a_my_lisp_function_not_a_rust_builtin() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     assert_eq!(
         eval_program("(symbol? (quote hello))", &mut session)
             .unwrap()
@@ -1244,7 +1244,7 @@ fn string_rest_rejects_an_empty_string() {
 // preloads — these two need it, so they load core.my themselves.
 fn eval_with_core(source: &str) -> Value {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     eval_program(source, &mut session).unwrap().value
 }
 
@@ -1306,10 +1306,10 @@ fn a_dotted_pair_used_directly_as_code_is_an_invalid_form() {
 /// ne cherez `serde_json`.
 #[test]
 fn constitution_my_stays_in_sync_with_conformance_my() {
-    let conformance = parse(include_str!("../../../tests/fixtures/conformance.my"))
+    let conformance = parse(include_str!("../../../tests/fixtures/conformance.lisp"))
         .expect("conformance.my should parse as valid my-lisp source");
 
-    let constitution_forms = parse(include_str!("../../../my-lisp-constitution.my"))
+    let constitution_forms = parse(include_str!("../../../my-lisp-constitution.lisp"))
         .expect("my-lisp-constitution.my should parse as valid my-lisp source");
     let fixtures: Vec<&[Expr]> = constitution_forms
         .iter()
@@ -1384,11 +1384,11 @@ fn constitution_my_stays_in_sync_with_conformance_my() {
 #[test]
 fn symbolic_reasoning_layer_stays_loaded_and_tested() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session)
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session)
         .expect("lib/core.my should load before the symbolic layer");
-    eval_program(include_str!("../../../lib/unify.my"), &mut session)
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session)
         .expect("lib/unify.my should load — the symbolic reasoning layer must stay present");
-    eval_program(include_str!("../../../lib/reason.my"), &mut session)
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session)
         .expect("lib/reason.my should load — the symbolic reasoning layer must stay present");
 
     let result = eval_program(
@@ -1401,7 +1401,7 @@ fn symbolic_reasoning_layer_stays_loaded_and_tested() {
         "((() (proved (parent alice bob) (parent alice bob) ())))"
     );
 
-    let forms = parse(include_str!("../../../tests/fixtures/conformance.my"))
+    let forms = parse(include_str!("../../../tests/fixtures/conformance.lisp"))
         .expect("conformance.my should parse as valid my-lisp source");
     let tier3_count = forms
         .iter()
@@ -1624,8 +1624,8 @@ fn macro_expansion_no_longer_changes_the_identity_of_a_core_predicate_result() {
 #[test]
 fn si_defining_constants_exact_rationals() {
     let mut session = Session::default();
-    let si_source = std::fs::read_to_string("lib/si.my")
-        .or_else(|_| std::fs::read_to_string("../../lib/si.my"))
+    let si_source = std::fs::read_to_string("lib/si.lisp")
+        .or_else(|_| std::fs::read_to_string("../../lib/si.lisp"))
         .expect("lib/si.my must exist and be readable");
     eval_program(&si_source, &mut session).expect("lib/si.my must evaluate cleanly");
 
@@ -1704,7 +1704,7 @@ fn meta_eval_lambda_witness_env_capture_and_application() {
     // Witness A: Lexical environment capture (env enters closure data structure)
     // Witness B: Operator-position application (my-apply unpacks closure, binds params, evaluates in frame)
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     my_lisp::load_meta_evaluator_library(&mut session).unwrap();
 
     // 1. Witness A: Explicit environment capture

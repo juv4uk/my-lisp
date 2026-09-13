@@ -26,7 +26,7 @@ This follows the same separation already used by Canon 0+7: canonical identity i
 
 ## Non-goals
 
-- Do not fork or duplicate `lib/core.my` merely to translate function names.
+- Do not fork or duplicate `lib/core.lisp` merely to translate function names.
 - Do not put Ukrainian semantic policy into Rust.
 - Do not rename neutral internal Rust identifiers to Ukrainian.
 - Do not change the meaning of existing English names.
@@ -41,8 +41,8 @@ Public names come from these classes:
 1. Canon 0+7 surfaces.
 2. Necessary evaluator forms.
 3. Root builtins exposed through `language_items()` / the live root environment.
-4. Public definitions in `lib/core.my`.
-5. Public functions of other user-facing `lib/*.my` libraries when those libraries are intentionally included in Ukrainian coverage.
+4. Public definitions in `lib/core.lisp`.
+5. Public functions of other user-facing `lib/*.lisp` libraries when those libraries are intentionally included in Ukrainian coverage.
 
 The Ukrainian map records, for each public English-facing name:
 
@@ -104,7 +104,7 @@ The metric is descriptive, not a semantic quality score. A higher percentage mea
 
 ### Stage 1 — inventory
 
-Generate the live eligible public-name inventory. Compare it with existing `lib/surface/uk.my` and Canon surface mappings. Produce a machine-checkable list of `stable`, `candidate`, and `missing` entries.
+Generate the live eligible public-name inventory. Compare it with existing `lib/surface/uk.lisp` and Canon surface mappings. Produce a machine-checkable list of `stable`, `candidate`, and `missing` entries.
 
 Exit condition: every eligible public name is classified; there are no invisible gaps.
 
@@ -149,7 +149,7 @@ The acceptance test should exercise at least:
 - list processing;
 - higher-order operation;
 - strings;
-- one library outside `core.my`.
+- one library outside `core.lisp`.
 
 Exit condition: CI executes the program successfully and a reviewer can follow it without knowing English builtin names.
 

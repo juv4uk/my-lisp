@@ -17,13 +17,13 @@ MINIX-3/HECI паралельно.
 ## Джерело істини (не вигадувати заново)
 
 - `docs/language-core-axioms.md` — прозова семантика (G1-G8, S1-S3)
-- `my-lisp-constitution.my` — згенерована, виконувана проекція
-- `tests/fixtures/conformance.my` — сирі факти-фікстури, ті самі, що
+- `my-lisp-constitution.lisp` — згенерована, виконувана проекція
+- `tests/fixtures/conformance.lisp` — сирі факти-фікстури, ті самі, що
   й Rust, і `fpga-lisp` перевіряють
 
 ## Ціль першого milestone (Tier 1, McCarthy's seven primitives)
 
-Десять `role . "constitutive"` фікстур Рівня 1 з `my-lisp-constitution.my`
+Десять `role . "constitutive"` фікстур Рівня 1 з `my-lisp-constitution.lisp`
 — рівно ті, що безпосередньо викликають один із семи оригінальних
 примітивів МакКарті (`quote atom eq car cdr cons cond`):
 
@@ -46,7 +46,7 @@ MINIX-3/HECI паралельно.
 
 Це не дублювання одна одної, а дві різні речі. `c-runtime` (тут) —
 **незалежний C+asm субстрат** для перевірки самого мовного контракту
-й для навчання — доводить ті самі факти `conformance.my` на третій,
+й для навчання — доводить ті самі факти `conformance.lisp` на третій,
 фізично іншій реалізації, поряд із Rust і `fpga-lisp`.
 [`wsm-my-lisp`](https://github.com/juv4uk/wsm-my-lisp) — **ціль
 самостійного хостингу**, де WSM дедалі більше хостить сам себе,

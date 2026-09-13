@@ -2,15 +2,15 @@ use my_lisp::{eval_program, Session};
 
 fn eval_store(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/persistent-map.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/world.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/content-store.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/lisp-fs.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/persistent-map.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/world.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/content-store.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/lisp-fs.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap()
         .value
@@ -19,15 +19,15 @@ fn eval_store(source: &str) -> String {
 
 fn eval_store_error(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/persistent-map.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/world.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/content-store.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/lisp-fs.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/persistent-map.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/world.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/content-store.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/lisp-fs.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .expect_err("malformed serialized data must fail closed")
         .to_string()
@@ -79,7 +79,7 @@ fn lisp_fs_deduplicates_equal_objects_but_keeps_explicit_missing_status() {
 #[test]
 fn lisp_fs_conformance_fixture_is_deterministic() {
     assert_eq!(
-        eval_store(include_str!("../../../tests/fixtures/lisp-fs-conformance.my")),
+        eval_store(include_str!("../../../tests/fixtures/lisp-fs-conformance.lisp")),
         "((found (hello world) \"(hello world)\") (not-found \"notes/empty\") (found () \"()\") (not-found \"missing\") 2 1 2)"
     );
 }

@@ -18,11 +18,11 @@
   `.lisp` (issue #81) просунеться настільки, що generic тест "той самий код, три
   розширення, той самий результат" зможе його замінити.
 - **Знайдено живе протиріччя**: `rivnopravnist_mov.rs` та `runtime_peer_operators.rs`
-  стверджують, що виконавчий код більше не читає `lib/surface/uk-sa-coverage.wsm`
+  стверджують, що виконавчий код більше не читає `lib/surface/uk-sa-coverage.lisp`
   (стару EN-таблицю), але `uk_surface_equivalence.rs` — найсильніший canonical
   equivalence-тест і природна ціль для об'єднання ~45 дублюючих тестів з
   `uk_sa_surface.rs`/`uk_sa_batch2.rs` — досі парсить саме цей legacy-файл як джерело
-  даних. Треба мігрувати `uk_surface_equivalence.rs` на `semantic-registry.wsm`
+  даних. Треба мігрувати `uk_surface_equivalence.rs` на `semantic-registry.lisp`
   безпосередньо перед об'єднанням інших тестів у нього.
 - Число **140** (кількість stable UK surface) захардкожено незалежно щонайменше у
   4 місцях у 2 файлах (`uk_surface_equivalence.rs` ×2, `ukrainian_api_docs.rs` ×2),
@@ -58,12 +58,12 @@
   живе читання native).
 - `IN_SCOPE_EXPRS` у `meta_eval_parity.rs` — точний приклад бюрократії
   "скопіювати вручну, потім перевірити": 25 виразів набрано вручну, а другий тест
-  повторно парсить `conformance.my` лише щоб підтвердити точність копії.
-- **У `tests/fixtures/conformance.my` немає позитивного тегу meta-eval-охоплення
+  повторно парсить `conformance.lisp` лише щоб підтвердити точність копії.
+- **У `tests/fixtures/conformance.lisp` немає позитивного тегу meta-eval-охоплення
   сьогодні** — існує лише негативний тег `meta-eval-gap`. Потрібно ввести новий тег
   (напр. `meta-eval` зі статусом `required`/`supported`, за зразком вже наявного
   вкладеного alist `wsm-native`), перш ніж будь-який runner зможе фільтрувати
-  корпус напряму, за прикладом наявного `scripts/fixtures-for-tier.my`.
+  корпус напряму, за прикладом наявного `scripts/fixtures-for-tier.lisp`.
 - 9 файлів мають майже ідентичний допоміжний код
   `meta_session`/`meta_eval_program`/`native_value` — природні кандидати на
   об'єднання в один corpus-driven runner: `meta_eval_parity.rs`,
@@ -86,7 +86,7 @@
   `scripts/semantic-ownership.py`.
 - `documentation_contract.rs`'s `public_docs_share_current_project_identity_and_extension`
   — живий приклад саме тієї проблеми, яку побоюється власник: тест зараз проходить,
-  хоча [README.md:287](../README.md) досі каже, що канонічне розширення — `.wsm`, а
+  хоча [README.md:287](../README.md) досі каже, що канонічне розширення — `.lisp`, а
   [docs/language-core.md:11](language-core.md) каже — `.lisp`. Тест перевіряє лише
   "чи згадані всі три токени", а не яке з них справді канонічне, тож не може
   зловити це протиріччя. README.md треба виправити незалежно від того, де
@@ -107,15 +107,15 @@
 
 ## Запропонований порядок кроків 2-5
 
-1. Виправити твердження README.md про канонічне розширення (`.wsm`→`.lisp`) —
+1. Виправити твердження README.md про канонічне розширення (`.lisp`→`.lisp`) —
    невелика зміна, розблоковує виправлення `documentation_contract.rs` і усуває
    реальне живе протиріччя незалежно від рефакторингу тестів.
-2. Мігрувати `uk_surface_equivalence.rs` з `uk-sa-coverage.wsm` на
-   `semantic-registry.wsm` напряму (виправляє живе протиріччя), потім об'єднати
+2. Мігрувати `uk_surface_equivalence.rs` з `uk-sa-coverage.lisp` на
+   `semantic-registry.lisp` напряму (виправляє живе протиріччя), потім об'єднати
    дублюючі тести з `uk_sa_surface.rs`/`uk_sa_batch2.rs`, перевіривши що жодна
    назва не втратить покриття. Видалити `cyrillic_extension_witness.rs` після
    появи generic multi-extension witness.
-3. Ввести тег `meta-eval` у корпус `conformance.my`, побудувати один
+3. Ввести тег `meta-eval` у корпус `conformance.lisp`, побудувати один
    data-driven runner, що його читає, мігрувати 9 файлів-дублікатів на нього,
    виправивши напрям oracle (і native, і meta перевіряються проти `expected`,
    ніколи одне проти одного) як частину того самого переносу.

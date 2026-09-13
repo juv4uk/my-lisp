@@ -108,8 +108,8 @@ Two planes, not one:
                   └────────────── Observatory
 ```
 
-- **Durable plane**: `evidence/*.my`, `ecosystem-status.my`, contracts
-  (`language-contract.my`, `isa-contract.my`, `compatibility.my`),
+- **Durable plane**: `evidence/*.lisp`, `ecosystem-status.lisp`, contracts
+  (`language-contract.lisp`, `isa-contract.lisp`, `compatibility.lisp`),
   `NOTE-*.md` — filesystem + Git, the source of truth. Unchanged by
   this proposal.
 - **Fast plane**: an event stream carrying *signals*, never facts. An
@@ -208,9 +208,9 @@ agent-left
 ```
 
 A repo that wants these should `publish` them manually at the moment
-they become true — e.g. `cml` writing `evidence/G5/cml/<sha>.my` is a
+they become true — e.g. `cml` writing `evidence/G5/cml/<sha>.lisp` is a
 natural place to also `(op publish) (topic evidence-created) (message
-"G5/cml/<sha>.my")`, so a `subscribe`d `my-idea` refreshes its matrix
+"G5/cml/<sha>.lisp")`, so a `subscribe`d `my-idea` refreshes its matrix
 instantly instead of on its next poll of the filesystem.
 `agent-left` has no natural trigger at all in this design (there's no
 graceful disconnect signal, and `presence`'s `seconds-since-heartbeat`

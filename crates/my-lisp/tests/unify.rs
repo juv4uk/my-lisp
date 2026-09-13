@@ -19,8 +19,8 @@ use my_lisp::{eval_program, Session};
 
 fn eval_unify(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
         .value
@@ -129,7 +129,7 @@ fn thread_conjunction_finds_every_combination_satisfying_all_conditions() {
     // The shared kernel lib/reason.my and lib/forward.my both build their
     // conjunctive matching on. Here `try-one` unifies each condition
     // against a fixed candidate list, threading bindings across — the same
-    // shape lib/forward.my's match-conditions uses, tested directly rather
+    // shape lib/forward.lisp's match-conditions uses, tested directly rather
     // than only indirectly through its two consumers.
     let source = r#"
         (thread-conjunction

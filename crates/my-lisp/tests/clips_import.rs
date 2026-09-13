@@ -19,12 +19,12 @@ use my_lisp::{eval_program, Session};
 
 fn eval_import(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/clips-import.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/clips-import.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
         .value
@@ -181,7 +181,7 @@ fn clips_import_mixes_deffacts_and_defrule_into_one_usable_module() {
 #[test]
 fn clips_defrule_with_a_not_condition_imports_and_runs_correctly() {
     // Was skipped entirely as of clips-import.my Step 5, back when
-    // lib/forward.my's match-conditions had no negation-as-failure
+    // lib/forward.lisp's match-conditions had no negation-as-failure
     // handling. Step 6 added it (match-one-condition/
     // match-negated-condition), so this now imports normally and derives
     // exactly the right fact: tweety (animal, not penguin) becomes a
@@ -361,7 +361,7 @@ fn clips_import_stays_stack_safe_on_a_deffacts_block_with_many_facts() {
     // shape as the real external file that first hit this (a 128-fact
     // block in animal-external.clp) without depending on that fixture or
     // network access — mirrors how tests/stack_safety.rs regression-tests
-    // lib/core.my's own tail-recursive list utilities on a 100,000-element
+    // lib/core.lisp's own tail-recursive list utilities on a 100,000-element
     // list.
     let mut facts = String::new();
     for i in 0..5000 {

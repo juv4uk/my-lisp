@@ -10,7 +10,7 @@ a console command runs; they are not part of my-lisp's own contract,
 just the fixture setup.
 
 Per the owner's standing instruction, this project programs in
-Ukrainian by default (`lib/surface/uk.my`, 100% Ukrainian Surface
+Ukrainian by default (`lib/surface/uk.lisp`, 100% Ukrainian Surface
 Coverage) — so the fixtures below use Ukrainian identifiers for the
 invented host-command names (`телепортуй`, `дай-зброю`,
 `збережи-гру`), not English placeholders. Ukrainian identifiers are
@@ -55,7 +55,7 @@ itself a call (`(+ x 10)`) evaluates recursively before the outer
 primitive is invoked, exactly like any other my-lisp function call.
 This is ordinary evaluation order, not a host-dispatch-specific rule.
 
-## 3. `cond` fixture (special form, confirmed against `language-contract.my`)
+## 3. `cond` fixture (special form, confirmed against `language-contract.lisp`)
 
 ```lisp
 (cond ((eq гравець 42) (quote відомий-гравець)) (t (quote невідомий-гравець)))
@@ -159,7 +159,7 @@ English-only test harness is more convenient for a given step.
 This fixture set intentionally does not include `lambda`/closures
 (out of MVP scope per the earlier agreed division), macros, or
 multi-clause `cond` beyond what's shown in §3 — those are already
-covered generally by `tests/fixtures/conformance.my`'s own `cond`
+covered generally by `tests/fixtures/conformance.lisp`'s own `cond`
 fixtures if a future slice needs them. Ask if a specific case here
 turns out to be insufficient once real dispatch code is written against
 it — this is meant to be a living oracle, not a one-shot handoff.

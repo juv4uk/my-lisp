@@ -41,8 +41,8 @@ fn unique_temp_dir(label: &str) -> PathBuf {
 #[test]
 fn generator_reproduces_checked_in_constitution_byte_for_byte() {
     let root = repo_root();
-    let generated = run_generator(&root, Path::new("scripts/build-constitution.my"));
-    let checked_in = fs::read(root.join("my-lisp-constitution.my"))
+    let generated = run_generator(&root, Path::new("scripts/build-constitution.lisp"));
+    let checked_in = fs::read(root.join("my-lisp-constitution.lisp"))
         .expect("checked-in constitution should be readable");
 
     assert_eq!(
@@ -58,19 +58,19 @@ fn changing_conformance_input_changes_the_generated_projection() {
     let fixture_dir = temp.join("tests/fixtures");
     fs::create_dir_all(&fixture_dir).expect("temporary fixture directory should be created");
 
-    let mut conformance = fs::read_to_string(root.join("tests/fixtures/conformance.my"))
+    let mut conformance = fs::read_to_string(root.join("tests/fixtures/conformance.lisp"))
         .expect("conformance authority should be readable");
     conformance.push_str(
         "\n((name . \"constitution-projection-probe\") (tier . 3) (expr . \"(quote constitution-projection-probe)\") (expected . \"constitution-projection-probe\"))\n",
     );
-    fs::write(fixture_dir.join("conformance.my"), conformance)
+    fs::write(fixture_dir.join("conformance.lisp"), conformance)
         .expect("mutated temporary conformance authority should be writable");
 
     // The sandbox deliberately contains no repository data other than the
     // authoritative conformance fixture. A second required relative data
     // source would make the real generator fail here.
-    let generated = run_generator(&temp, &root.join("scripts/build-constitution.my"));
-    let checked_in = fs::read(root.join("my-lisp-constitution.my"))
+    let generated = run_generator(&temp, &root.join("scripts/build-constitution.lisp"));
+    let checked_in = fs::read(root.join("my-lisp-constitution.lisp"))
         .expect("checked-in constitution should be readable");
     let stdout = String::from_utf8_lossy(&generated.stdout);
 
@@ -89,8 +89,8 @@ fn changing_conformance_input_changes_the_generated_projection() {
 #[test]
 fn hand_editing_only_the_projection_is_detected_by_the_same_byte_check() {
     let root = repo_root();
-    let generated = run_generator(&root, Path::new("scripts/build-constitution.my"));
-    let mut hand_edited = fs::read(root.join("my-lisp-constitution.my"))
+    let generated = run_generator(&root, Path::new("scripts/build-constitution.lisp"));
+    let mut hand_edited = fs::read(root.join("my-lisp-constitution.lisp"))
         .expect("checked-in constitution should be readable");
     hand_edited.extend_from_slice(b"; simulated hand edit\n");
 
@@ -103,25 +103,25 @@ fn hand_editing_only_the_projection_is_detected_by_the_same_byte_check() {
 #[test]
 fn authoritative_inputs_are_explicit_and_projection_stays_draft() {
     let root = repo_root();
-    let script = fs::read_to_string(root.join("scripts/build-constitution.my"))
+    let script = fs::read_to_string(root.join("scripts/build-constitution.lisp"))
         .expect("constitution generator should be readable");
-    let constitution = fs::read_to_string(root.join("my-lisp-constitution.my"))
+    let constitution = fs::read_to_string(root.join("my-lisp-constitution.lisp"))
         .expect("checked-in constitution should be readable");
 
     let fixture_binding =
-        "(def fixtures (read-all (read-file \"tests/fixtures/conformance.my\")))";
+        "(def fixtures (read-all (read-file \"tests/fixtures/conformance.lisp\")))";
     assert_eq!(
         script.matches(fixture_binding).count(),
         1,
-        "the generator must bind its fixture authority directly from tests/fixtures/conformance.my"
+        "the generator must bind its fixture authority directly from tests/fixtures/conformance.lisp"
     );
     assert!(
-        constitution.contains("projection over tests/fixtures/conformance.my")
+        constitution.contains("projection over tests/fixtures/conformance.lisp")
             && constitution.contains("this script's own principle/axiom text"),
         "the generated artifact must state both authoritative inputs: conformance data and generator-owned canonical axiom text"
     );
     assert!(
-        constitution.contains("Edit tests/fixtures/conformance.my or scripts/build-constitution.my"),
+        constitution.contains("Edit tests/fixtures/conformance.lisp or scripts/build-constitution.lisp"),
         "the generated artifact must preserve the source-authority -> regenerate mutation path"
     );
     assert!(

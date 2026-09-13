@@ -1,8 +1,8 @@
 use my_lisp::syntax::Expr;
 use my_lisp::{parse, ExprKind};
 
-const REGISTRY: &str = include_str!("../../../../lib/surface/semantic-registry.wsm");
-const UK_API_DOCS: &str = include_str!("../../../../lib/surface/uk-docs.wsm");
+const REGISTRY: &str = include_str!("../../../../lib/surface/semantic-registry.lisp");
+const UK_API_DOCS: &str = include_str!("../../../../lib/surface/uk-docs.lisp");
 const HUMAN_SURFACES: [&str; 3] = ["uk", "en", "sa"];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

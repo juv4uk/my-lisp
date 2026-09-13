@@ -1,6 +1,6 @@
 # Мовна політика — українська первинна (2026-09-07)
 
-**Статус: ратифікована пряма настанова власника.** Машинний контракт: `knowledge/language-policy.wsm`. Guard-тема: `(guard-reference (quote language-policy))`.
+**Статус: ратифікована пряма настанова власника.** Машинний контракт: `knowledge/language-policy.lisp`. Guard-тема: `(guard-reference (quote language-policy))`.
 
 **Обсяг:** політика діє в усіх авторських репозиторіях власника. Фраза «всі
 мої репо» означає всі авторські репозиторії; форки, дзеркала й сторонні
@@ -15,7 +15,7 @@ upstream-проєкти до неї не входять. Межу встанов
 5. Точні upstream-назви, API, identifiers, protocol literals, filenames і цитати зберігають оригінальне написання.
 6. Ця політика **не скасовує програмні surface мови**: Sanskrit surface, канонічні ідентичності та інші предметні представлення лишаються у своїх семантичних ролях. Політика визначає мову людського пояснення, а не перелік допустимих програмних символів.
 
-7. **Публічні українські предикати пишуться як питання із `?`**, а публічні мутації — з `!`. Предикат на своїй припустимій області повертає лише канонічне `t` або `()`. Повний перевірюваний каталог: `lib/surface/uk-docs.wsm`; довідник: `docs/ukrainian-api.md`; Guard-тема: `(guard-reference (quote ukrainian-programming-surface))`.
+7. **Публічні українські предикати пишуться як питання із `?`**, а публічні мутації — з `!`. Предикат на своїй припустимій області повертає лише канонічне `t` або `()`. Повний перевірюваний каталог: `lib/surface/uk-docs.lisp`; довідник: `docs/ukrainian-api.md`; Guard-тема: `(guard-reference (quote ukrainian-programming-surface))`.
 
 Guard також реєструє інструмент `(guard-script (quote uk-latynka))`. Канонічний self-test:
 
@@ -130,9 +130,9 @@ typedef uintptr_t Value;
 
 ## Guard як довідкове бюро
 
-Перед пошуком навмання або створенням нового workflow завантажте `lib/guard.wsm` і `knowledge/guard-reference.wsm`. Запитайте `(guard-reference topic)`, `(guard-authority topic)`, `(guard-how-to topic)` або `(guard-verify topic)`. Каталог указує, де лежить авторитетна інформація; він не копіює і не замінює її. Невідома тема повертає `UNKNOWN/UNRESOLVED`, після чого потрібен перевірений новий запис, а не здогад.
+Перед пошуком навмання або створенням нового workflow завантажте `lib/guard.lisp` і `knowledge/guard-reference.lisp`. Запитайте `(guard-reference topic)`, `(guard-authority topic)`, `(guard-how-to topic)` або `(guard-verify topic)`. Каталог указує, де лежить авторитетна інформація; він не копіює і не замінює її. Невідома тема повертає `UNKNOWN/UNRESOLVED`, після чого потрібен перевірений новий запис, а не здогад.
 
-English auxiliary note: before searching blindly or inventing a workflow, load `lib/guard.wsm` and `knowledge/guard-reference.wsm`. The directory points to authority; it does not replace it.
+English auxiliary note: before searching blindly or inventing a workflow, load `lib/guard.lisp` and `knowledge/guard-reference.lisp`. The directory points to authority; it does not replace it.
 
 ## Session start — join the swarm
 
@@ -152,7 +152,7 @@ contract-version                       claim-task / release-task
 2. `(join (capabilities (...)))` → `(list-members)` → `(next-best-action (capabilities (...)))`.
 3. `(claim-task (task ...))` → work → `(complete-task (task ...) (generation N))` → `(emit (type ...) (payload ...))` for durable coordination events.
 
-Стара coordination surface на `:9999` фізично видалена. Retired operations (`hello`, `claim`, `notify`, `poll`, `subscribe`, task registry та інші) мають повертати `unknown op`; їхню відсутність перевіряє C5 removal gate. Машинний migration marker — `knowledge/swarm-legacy-deprecation.wsm`, історичні деталі лишаються в git history.
+Стара coordination surface на `:9999` фізично видалена. Retired operations (`hello`, `claim`, `notify`, `poll`, `subscribe`, task registry та інші) мають повертати `unknown op`; їхню відсутність перевіряє C5 removal gate. Машинний migration marker — `knowledge/swarm-legacy-deprecation.lisp`, історичні деталі лишаються в git history.
 
 `my-lisp --tcp=9999 --protocol=sexpr` лишається **лише semantic oracle**. Не змішуйте його з coordination plane `swarm-node :910x`.
 
@@ -164,12 +164,12 @@ Semantic source of truth for the four-repository ecosystem (`my-lisp`, `fpga-lis
 
 ## Authoritative files
 
-- `language-contract.my` — versioned semantic contract. Read its version directly; prose can drift.
+- `language-contract.lisp` — versioned semantic contract. Read its version directly; prose can drift.
 - `docs/semantic-authority-map.md` — precedence map when sources disagree.
 - ratified ADRs under `docs/adr/` — closed decisions within their stated scope.
-- `tests/fixtures/conformance.my` — executable observable facts for conformance.
-- `lib/canon.my` — executable Canon 0 + McCarthy-7 witness.
-- `ecosystem-status.my` — curated snapshot pointer, not semantic authority by itself.
+- `tests/fixtures/conformance.lisp` — executable observable facts for conformance.
+- `lib/canon.lisp` — executable Canon 0 + McCarthy-7 witness.
+- `ecosystem-status.lisp` — curated snapshot pointer, not semantic authority by itself.
 
 ## How to run tests
 
@@ -183,8 +183,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## What not to change without a contract decision
 
-- Do not edit `language-contract.my` or ratified semantic axioms as a side effect of implementation cleanup.
-- `tests/fixtures/conformance.my` entries are append-only historical facts: add a new fixture instead of silently changing an old expected observation.
+- Do not edit `language-contract.lisp` or ratified semantic axioms as a side effect of implementation cleanup.
+- `tests/fixtures/conformance.lisp` entries are append-only historical facts: add a new fixture instead of silently changing an old expected observation.
 - Do not promote a Rust helper, host capability, Guard rule, or coordination operation to semantic primitive identity by implementation accident.
 
 ## How to create evidence
@@ -193,7 +193,7 @@ See `evidence/README.md`. A durable claim (“X now passes/fails”) needs execu
 
 ## How to check neighboring repositories
 
-Read the neighbor's own contract/evidence directly (`fpga-lisp/isa-contract.my`, `cml/compatibility.my`, etc.). Use `:9999` only when a remote evaluation of the my-lisp semantic oracle is needed. Use `swarm-node` for claims, tasks, presence, handoffs, and coordination events.
+Read the neighbor's own contract/evidence directly (`fpga-lisp/isa-contract.lisp`, `cml/compatibility.lisp`, etc.). Use `:9999` only when a remote evaluation of the my-lisp semantic oracle is needed. Use `swarm-node` for claims, tasks, presence, handoffs, and coordination events.
 
 ## Host capability boundary
 
@@ -229,7 +229,7 @@ A separate, parallel coordination effort (Codex as primary agent, OpenCode as re
 
 ## Agent Guard
 
-`lib/guard.wsm` + `knowledge/guard-reference.wsm` are the current executable/reference-bureau surfaces in this repo. Older M0 planning documents remain historical process evidence; do not let a dated “implementation not started” note override current Guard code/tests.
+`lib/guard.lisp` + `knowledge/guard-reference.lisp` are the current executable/reference-bureau surfaces in this repo. Older M0 planning documents remain historical process evidence; do not let a dated “implementation not started” note override current Guard code/tests.
 
 Guard decision semantics are Lisp-owned. The Rust boundary validates the exact `guard/1` protocol shape before a host trusts it. Host authorization (filesystem/TCP/process scopes) remains an embedding boundary and must not be self-grantable by the constrained Lisp program.
 

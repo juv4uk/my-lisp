@@ -3431,7 +3431,7 @@ fn sync_tasks_from_text(
     Ok((defined, completed))
 }
 
-/// Local client op: `(sync-tasks (file "/absolute/path/to/tasks.my"))`.
+/// Local client op: `(sync-tasks (file "/absolute/path/to/tasks.lisp"))`.
 /// Reads the same durable `tasks.my` format `:9999` reads, and emits a
 /// `task-defined` fact per entry (plus a `task-completed` fact for any
 /// entry already marked `done` — bulk-importing pre-existing ground truth

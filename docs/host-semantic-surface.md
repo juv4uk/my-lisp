@@ -30,21 +30,21 @@ This is the same surgical sequence used for `mono-ms`, `utc-now`, NTP interpreta
 | Operation | Current owner | Classification | Direction |
 |---|---|---|---|
 | `mono-ns` | Rust host | irreducible monotonic observation | KEEP |
-| `mono-ms` | `lib/time.my` | derived unit view | HOST REMOVED |
+| `mono-ms` | `lib/time.lisp` | derived unit view | HOST REMOVED |
 | `unix-time-now` | Rust host | wall-clock observation | KEEP |
-| `civil-from-days` | `lib/time.my` | deterministic Gregorian semantics | LANGUAGE-OWNED |
-| `utc-from-unix` | `lib/time.my` | deterministic UTC interpretation | LANGUAGE-OWNED |
-| `utc-now` | `lib/time.my` | derived public clock meaning | HOST REMOVED |
+| `civil-from-days` | `lib/time.lisp` | deterministic Gregorian semantics | LANGUAGE-OWNED |
+| `utc-from-unix` | `lib/time.lisp` | deterministic UTC interpretation | LANGUAGE-OWNED |
+| `utc-now` | `lib/time.lisp` | derived public clock meaning | HOST REMOVED |
 | `ntp-query-raw` | Rust host | bounded UDP NTP query + extraction of fixed-width response fields | KEEP mechanism |
-| `internet-time-sync` | `lib/time.my` | public NTP interpretation | LANGUAGE-OWNED |
-| `internet-time-fields->observation` | `lib/time.my` | mode/stratum validation, NTP epoch conversion, fraction-to-nanoseconds | LANGUAGE-OWNED |
-| `internet-time-observation->utc` | `lib/time.my` | calendar interpretation/policy | LANGUAGE-OWNED |
+| `internet-time-sync` | `lib/time.lisp` | public NTP interpretation | LANGUAGE-OWNED |
+| `internet-time-fields->observation` | `lib/time.lisp` | mode/stratum validation, NTP epoch conversion, fraction-to-nanoseconds | LANGUAGE-OWNED |
+| `internet-time-observation->utc` | `lib/time.lisp` | calendar interpretation/policy | LANGUAGE-OWNED |
 | `timezone-declarations-raw` | Rust host | observe raw `TZ` and `/etc/timezone` declaration candidates | KEEP observation; boundary normalization remains auditable |
-| `timezone-declarations->observation` | `lib/time.my` | `TZ` precedence + detected/unknown result shaping | LANGUAGE-OWNED |
-| `timezone-raw->observation` | `lib/time.my` | validate raw observation tag and delegate interpretation | LANGUAGE-OWNED |
-| `timezone-detect` | `lib/time.my` | public timezone detection meaning | LANGUAGE-OWNED |
-| `timezone-config` and selectors | `lib/time.my` | configuration semantics | LANGUAGE-OWNED |
-| deadline arithmetic | `lib/time.my` | deterministic policy | LANGUAGE-OWNED |
+| `timezone-declarations->observation` | `lib/time.lisp` | `TZ` precedence + detected/unknown result shaping | LANGUAGE-OWNED |
+| `timezone-raw->observation` | `lib/time.lisp` | validate raw observation tag and delegate interpretation | LANGUAGE-OWNED |
+| `timezone-detect` | `lib/time.lisp` | public timezone detection meaning | LANGUAGE-OWNED |
+| `timezone-config` and selectors | `lib/time.lisp` | configuration semantics | LANGUAGE-OWNED |
+| deadline arithmetic | `lib/time.lisp` | deterministic policy | LANGUAGE-OWNED |
 
 The wall-clock chain is now:
 
@@ -82,7 +82,7 @@ Lisp: internet-time-observation->utc
 
 Rust no longer decides whether mode/stratum are semantically acceptable, no longer translates the NTP epoch to Unix time, and no longer computes the fractional second in nanoseconds. Those transformations are deterministic language-owned semantics. Transport failures and short packets remain host-level observations because they arise before a complete protocol field set exists.
 
-The host capability also has a mechanism-only name: `ntp-query-raw`. The public name `internet-time-sync` exists only in `lib/time.my`; before the time layer loads it is absent, and after the time layer loads it is a Lisp closure over the raw host capability. Naming exposes the same ownership boundary that the implementation enforces.
+The host capability also has a mechanism-only name: `ntp-query-raw`. The public name `internet-time-sync` exists only in `lib/time.lisp`; before the time layer loads it is absent, and after the time layer loads it is a Lisp closure over the raw host capability. Naming exposes the same ownership boundary that the implementation enforces.
 
 The timezone chain is now:
 
@@ -100,7 +100,7 @@ Lisp: timezone-declarations->observation
 Lisp: timezone-detect
 ```
 
-Rust no longer chooses `TZ` over `/etc/timezone` and no longer shapes the public `detected`/`unknown` result. It only observes the two candidate declarations. `lib/time.my` owns source precedence, observation validation, and public timezone meaning.
+Rust no longer chooses `TZ` over `/etc/timezone` and no longer shapes the public `detected`/`unknown` result. It only observes the two candidate declarations. `lib/time.lisp` owns source precedence, observation validation, and public timezone meaning.
 
 One small implementation-boundary detail remains explicit rather than hidden: Rust currently trims surrounding whitespace from the `/etc/timezone` file before exposing that candidate. This is normalization at the external text boundary, not timezone source-selection policy. It remains an audit candidate if the language later owns an appropriate raw-text normalization layer; it is not counted as already removed.
 
@@ -232,7 +232,7 @@ Lisp internet-time-sync:
   + public internet-time meaning
 ```
 
-Deterministic fixtures prove mode 4/5 acceptance, invalid mode/stratum rejection, epoch rejection, and exact `2147483648 -> 500000000 ns` conversion. Ownership tests require `internet-time-sync` to be absent before `lib/time.my`, then appear as a Lisp closure, while `ntp-query-raw` remains the Rust builtin. CI #884 proved the semantic split before the final mechanism-only host rename.
+Deterministic fixtures prove mode 4/5 acceptance, invalid mode/stratum rejection, epoch rejection, and exact `2147483648 -> 500000000 ns` conversion. Ownership tests require `internet-time-sync` to be absent before `lib/time.lisp`, then appear as a Lisp closure, while `ntp-query-raw` remains the Rust builtin. CI #884 proved the semantic split before the final mechanism-only host rename.
 
 ### Timezone declaration semantics and public detection
 
@@ -259,7 +259,7 @@ Lisp:
   + timezone-detect
 ```
 
-Deterministic tests prove `TZ` precedence, `/etc/timezone` fallback, the unknown case, and rejection of a malformed raw observation. The ownership test requires `timezone-detect` and the old `timezone-detect-raw` name to be absent from the root environment while `timezone-declarations-raw` remains a Rust builtin; after `lib/time.my` loads, `timezone-detect` appears as a Lisp closure. CI #902 passed with workspace tests, build, and zero-warning clippy after the semantic cut.
+Deterministic tests prove `TZ` precedence, `/etc/timezone` fallback, the unknown case, and rejection of a malformed raw observation. The ownership test requires `timezone-detect` and the old `timezone-detect-raw` name to be absent from the root environment while `timezone-declarations-raw` remains a Rust builtin; after `lib/time.lisp` loads, `timezone-detect` appears as a Lisp closure. CI #902 passed with workspace tests, build, and zero-warning clippy after the semantic cut.
 
 ## Principle
 

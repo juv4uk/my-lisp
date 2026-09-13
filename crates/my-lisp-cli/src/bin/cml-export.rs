@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn committed_artifact_matches_producer_output() {
         let committed = std::fs::read_to_string(
-            concat!(env!("CARGO_MANIFEST_DIR"), "/../../mylisp-cml-export.wsm"),
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../mylisp-cml-export.lisp"),
         )
         .expect("mylisp-cml-export.wsm must exist at the repo root");
         assert_eq!(committed, render_export());

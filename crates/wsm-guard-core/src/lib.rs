@@ -4,8 +4,8 @@
 
 use my_lisp::{eval_program, Session, Value};
 
-pub const CORE: &str = include_str!("../../../lib/core.my");
-pub const GUARD: &str = include_str!("../../../lib/guard.wsm");
+pub const CORE: &str = include_str!("../../../lib/core.lisp");
+pub const GUARD: &str = include_str!("../../../lib/guard.lisp");
 
 pub fn load_session() -> Result<Session, String> {
     let mut session = Session::default();

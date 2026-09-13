@@ -11,7 +11,7 @@
 use my_lisp::{eval_program, load_core_library, Session, Value};
 use std::rc::Rc;
 
-const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
+const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Admission {
@@ -118,18 +118,18 @@ fn uk_session() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core bootstrap");
     for source in [
-        include_str!("../../../lib/unify.my"),
-        include_str!("../../../lib/reason.my"),
-        include_str!("../../../lib/forward.my"),
-        include_str!("../../../lib/knowledge.my"),
-        include_str!("../../../lib/persistent-map.my"),
-        include_str!("../../../lib/persistent-vector.my"),
-        include_str!("../../../lib/time.my"),
-        include_str!("../../../lib/epistemic.my"),
+        include_str!("../../../lib/unify.lisp"),
+        include_str!("../../../lib/reason.lisp"),
+        include_str!("../../../lib/forward.lisp"),
+        include_str!("../../../lib/knowledge.lisp"),
+        include_str!("../../../lib/persistent-map.lisp"),
+        include_str!("../../../lib/persistent-vector.lisp"),
+        include_str!("../../../lib/time.lisp"),
+        include_str!("../../../lib/epistemic.lisp"),
     ] {
         eval_program(source, &mut session).expect("surface prerequisite should load");
     }
-    eval_program(include_str!("../../../lib/surface/uk.my"), &mut session)
+    eval_program(include_str!("../../../lib/surface/uk.lisp"), &mut session)
         .expect("Ukrainian surface should load");
     session
 }

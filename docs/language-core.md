@@ -2,13 +2,13 @@
 
 > **A small language that grows itself. · Маленька мова, що вирощує себе. · Eine kleine Sprache, die sich selbst wachsen lässt.**
 
-This document is the compact human explanation of the current core architecture. It is **not** the highest semantic authority. For conflicts, follow [`semantic-authority-map.md`](semantic-authority-map.md): `language-contract.my` and ratified ADRs outrank explanatory prose.
+This document is the compact human explanation of the current core architecture. It is **not** the highest semantic authority. For conflicts, follow [`semantic-authority-map.md`](semantic-authority-map.md): `language-contract.lisp` and ratified ADRs outrank explanatory prose.
 
 ## Identity
 
 The language/project name is **`my-lisp`**.
 
-The current canonical source extension is **`.lisp`** (per [my-lisp#81](https://github.com/juv4uk/my-lisp/issues/81) — extension is never semantics). **`.wsm`** and **`.my`** remain fully supported legacy aliases. The separate repository named `wsm` is not this language project.
+The current canonical source extension is **`.lisp`** (per [my-lisp#81](https://github.com/juv4uk/my-lisp/issues/81) — extension is never semantics). **`.lisp`** and **`.lisp`** remain fully supported legacy aliases. The separate repository named `wsm` is not this language project.
 
 `crates/my-lisp` is the **reference Rust implementation**. It is the mature software oracle used to check behavior, but it does not gain semantic authority merely by being the reference implementation.
 
@@ -104,9 +104,9 @@ Those mechanisms do not become new members of the seven-operation semantic primi
 
 Current implementation work distinguishes evaluator-controlled necessary-form identities from forms the language can derive after bootstrapping.
 
-`define` and `lambda` have explicit necessary-form identities in the evaluator. Historical `def` compatibility remains. `lib/macro.my` owns the normal `defmacro` binding, and the Rust evaluator no longer has a `defmacro` fallback. A bare `Environment::root()` remains the smaller Rust kernel, while standard `Session` construction evaluates the macro layer before user code.
+`define` and `lambda` have explicit necessary-form identities in the evaluator. Historical `def` compatibility remains. `lib/macro.lisp` owns the normal `defmacro` binding, and the Rust evaluator no longer has a `defmacro` fallback. A bare `Environment::root()` remains the smaller Rust kernel, while standard `Session` construction evaluates the macro layer before user code.
 
-This is an **implementation ownership migration**, not an automatic semantic-contract rewrite. `language-contract.my` remains authoritative for observable Level 1/2 guarantees until deliberately revised.
+This is an **implementation ownership migration**, not an automatic semantic-contract rewrite. `language-contract.lisp` remains authoritative for observable Level 1/2 guarantees until deliberately revised.
 
 Bootstrap order matters:
 
@@ -186,13 +186,13 @@ A claim of language compatibility is about observable behavior, not internal arc
 The main evidence chain is:
 
 ```text
-language-contract.my
+language-contract.lisp
         +
 ratified ADRs
         +
-tests/fixtures/conformance.my
+tests/fixtures/conformance.lisp
         +
-executable language-owned laws such as lib/canon.my
+executable language-owned laws such as lib/canon.lisp
         ↓
 implementation conformance claim
 ```
@@ -203,27 +203,27 @@ Rust, C/assembly, and FPGA do **not** need the same internal representation. The
 
 ## Error semantics
 
-Error categories covered by `language-contract.my` are observable semantics. Implementation refactors must therefore preserve contract-level error classification rather than collapsing distinct failures into a convenient generic error.
+Error categories covered by `language-contract.lisp` are observable semantics. Implementation refactors must therefore preserve contract-level error classification rather than collapsing distinct failures into a convenient generic error.
 
-For the current exact version and ratified invariants, read `language-contract.my` directly rather than copying a version number from prose.
+For the current exact version and ratified invariants, read `language-contract.lisp` directly rather than copying a version number from prose.
 
 ## Derived language systems
 
 Large parts of the repository deliberately live above the language core:
 
 ```text
-lib/core.my          standard language
-lib/macro.my         macro bootstrap layer
-lib/time.my          time/calendar semantics
-lib/meta-eval.my     metacircular experiments
-lib/unify.my         unification
-lib/reason.my        backward chaining
-lib/forward.my       forward chaining
-lib/knowledge.my     knowledge modules
-lib/world.my         immutable history/world semantics
-lib/epistemic.my     epistemic layer
-lib/understand.my    controlled-language ingestion
-lib/narrate.my       controlled-language rendering
+lib/core.lisp          standard language
+lib/macro.lisp         macro bootstrap layer
+lib/time.lisp          time/calendar semantics
+lib/meta-eval.lisp     metacircular experiments
+lib/unify.lisp         unification
+lib/reason.lisp        backward chaining
+lib/forward.lisp       forward chaining
+lib/knowledge.lisp     knowledge modules
+lib/world.lisp         immutable history/world semantics
+lib/epistemic.lisp     epistemic layer
+lib/understand.lisp    controlled-language ingestion
+lib/narrate.lisp       controlled-language rendering
 ```
 
 Their existence demonstrates the language growing itself, but they do not silently become primitive semantics.
@@ -255,13 +255,13 @@ When current prose and executable evidence disagree, fix the prose or explicitly
 
 ## Further reading
 
-- [`../language-contract.my`](../language-contract.my) — machine-readable current Level 1/2 contract version;
+- [`../language-contract.lisp`](../language-contract.lisp) — machine-readable current Level 1/2 contract version;
 - [`semantic-authority-map.md`](semantic-authority-map.md) — authority hierarchy;
 - [`host-semantic-surface.md`](host-semantic-surface.md) — host/Lisp ownership audit;
 - [`adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`](adr/ADR-004-CLOSED-MCCARTHY7-CORE.md) — closed primitive-set decision;
 - [`language-core-axioms.md`](language-core-axioms.md) — broader draft axioms and project principles;
-- [`../tests/fixtures/conformance.my`](../tests/fixtures/conformance.my) — executable fixtures;
-- [`../lib/canon.my`](../lib/canon.my) — language-owned Canon laws;
+- [`../tests/fixtures/conformance.lisp`](../tests/fixtures/conformance.lisp) — executable fixtures;
+- [`../lib/canon.lisp`](../lib/canon.lisp) — language-owned Canon laws;
 - [`FUNCTIONS.md`](FUNCTIONS.md) — current generated reference.
 
 ---

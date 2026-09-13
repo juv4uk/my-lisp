@@ -9,7 +9,7 @@ type, and this applies to host-boundary numbers too, not only numbers
 a program computes internally. This is consistent with the wider
 ecosystem philosophy already established (esp32-pendulum: "exact
 rational arithmetic, no float/double in the pipeline") and with
-`lib/rational.my`'s own presence in this repo as groundwork for exactly
+`lib/rational.lisp`'s own presence in this repo as groundwork for exactly
 this kind of need, not orphaned code.
 
 ## Correction to my earlier reasoning
@@ -44,7 +44,7 @@ let text = format!("{host_float}");  // Rust's f64 Display: shortest
 Rational::from_decimal_literal(&text)
 ```
 
-This reuses the *same* code path an ordinary `.my` program already
+This reuses the *same* code path an ordinary `.lisp` program already
 goes through for a typed decimal literal — a host-supplied
 `player-position/read` float becomes indistinguishable, once inside
 the language, from a program that had simply written that number as a
@@ -57,10 +57,10 @@ exactly," not a new algorithm.
 Converting via the *exact binary value* (e.g. `183369104568320000/
 1486058960531456` instead of `123.456`) would be a strictly more
 "faithful" conversion in one sense — no information about the exact
-bit pattern is discarded — but every practical `.my` program reading a
+bit pattern is discarded — but every practical `.lisp` program reading a
 player position wants "123.456," not the binary artifact of how IEEE754
 happens to represent it. The shortest-round-trip-decimal path is what
-`from_decimal_literal` already does for every literal in every `.my`
+`from_decimal_literal` already does for every literal in every `.lisp`
 file in this ecosystem; treating a host float differently would be
 inventing a second, inconsistent numeric on-ramp for no real benefit —
 the game engine's own float already lost whatever "true" real-number
@@ -80,7 +80,7 @@ capability already marshals RTTI data into `my-lisp` `Value`s — no
 change to my-lisp's own core is needed, this is purely an adapter
 (wsm-my-lisp) responsibility using an already-public my-lisp API.
 
-`lib/rational.my`'s exact-rational math (rat-sqrt, rat-power, etc.,
+`lib/rational.lisp`'s exact-rational math (rat-sqrt, rat-power, etc.,
 found untracked in this repo earlier this session) becomes directly
 relevant here rather than orphaned: once a game position is a
 `Rational`, computing distances (`rat-sqrt` of a sum of squares) with

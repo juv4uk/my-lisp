@@ -585,7 +585,7 @@ mod tests {
     /// must already match.
     #[test]
     fn lowers_and_explains_every_compiler_corpus_fixture() {
-        let source = include_str!("../../../tests/fixtures/conformance.my");
+        let source = include_str!("../../../tests/fixtures/conformance.lisp");
         let forms = parse(source).expect("conformance.my should parse");
         let mut lowered_count = 0;
         for form in &forms {

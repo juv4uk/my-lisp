@@ -48,7 +48,7 @@ impl RetryQueue {
     /// empty in-memory queue if the file is absent or unreadable (a corrupt
     /// queue must not take the node down -- it only affects retries).
     pub fn open(data_dir: &Path) -> RetryQueue {
-        let path = data_dir.join("retry-queue.my");
+        let path = data_dir.join("retry-queue.lisp");
         let pending = match fs::read_to_string(&path) {
             Ok(text) => Self::parse_entries(&text),
             Err(_) => Vec::new(),
@@ -220,7 +220,7 @@ mod tests {
         let x = q.take_for("node-x");
         assert_eq!(x[0].1, "n1:inc:8");
         // The file also round-trips through the sexp parser.
-        let text = fs::read_to_string(dir.join("retry-queue.my")).unwrap();
+        let text = fs::read_to_string(dir.join("retry-queue.lisp")).unwrap();
         assert!(text.contains("retry-queue"));
         fs::remove_dir_all(&dir).unwrap();
     }
@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn corrupt_file_degrades_to_empty() {
         let dir = tmpdir("corrupt");
-        fs::write(dir.join("retry-queue.my"), "((not valid sexp").unwrap();
+        fs::write(dir.join("retry-queue.lisp"), "((not valid sexp").unwrap();
         let q = RetryQueue::open(&dir);
         assert_eq!(q.len(), 0);
         fs::remove_dir_all(&dir).unwrap();

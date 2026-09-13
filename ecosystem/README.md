@@ -1,12 +1,12 @@
 # ecosystem/ scaffold (Swarm Contract v0.1, MYLISP-SWARM-CONTRACT-01)
 
 my-lisp's imports are contracts, not hypotheses: the canonical
-`language-contract.my` and `tests/fixtures/conformance.my` live IN this
+`language-contract.lisp` and `tests/fixtures/conformance.lisp` live IN this
 repository and are what every sibling implements against — there is
-nothing to mirror into `imports/*.my` from outside.
+nothing to mirror into `imports/*.lisp` from outside.
 
 Outbound conformance evidence for siblings lives in:
-- `evidence/<G|S-id>/<implementation>/<sha>.my` (per evidence/README.md)
+- `evidence/<G|S-id>/<implementation>/<sha>.lisp` (per evidence/README.md)
 - `docs/conformance-adversarial-report-2026-08-23.md` (independent
   witness run by wsl-ganaka-1; fpga-lisp copy refresh + F1-F5 findings)
 

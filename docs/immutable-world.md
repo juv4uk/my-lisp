@@ -2,7 +2,7 @@
 
 ## English
 
-`lib/world.my` is the first executable slice of the architecture `Expression × World → Value × World`. A world is ordinary S-expression data:
+`lib/world.lisp` is the first executable slice of the architecture `Expression × World → Value × World`. A world is ordinary S-expression data:
 
 ```lisp
 (world parent knowledge-journal metadata)
@@ -10,13 +10,13 @@
 
 `empty-world` creates a root. `world-tell` and `world-retract` return a new world whose `world-parent` is the previous value. They never alter the input world. The newest journal is one `cons` cell whose tail is the complete previous journal, so history uses structural sharing rather than copying every event. `world-clauses` projects a module at any retained version, including a version whose facts were later retracted.
 
-This layer deliberately contains no Rust primitive. Its event representation is byte-for-byte compatible with the existing journal. Once `world.my` is loaded, all principal legacy writers—including `import-knowledge-package`—become thin wrappers over World transitions. Guarded writers rebind the journal only from an accepted World; invalid versions, malformed data, rejection, and conflict preserve it exactly.
+This layer deliberately contains no Rust primitive. Its event representation is byte-for-byte compatible with the existing journal. Once `world.lisp` is loaded, all principal legacy writers—including `import-knowledge-package`—become thin wrappers over World transitions. Guarded writers rebind the journal only from an accepted World; invalid versions, malformed data, rejection, and conflict preserve it exactly.
 
 Guarded compatibility macros evaluate their input expression and pure World transition exactly once. Because `let` would place the required legacy `def` in a disposable lambda frame, one explicit `*legacy-knowledge-transition*` top-level scratch binding carries the single result through commit-or-return sequencing.
 
 `reason-in-world` and `forward-in-world` are the first consumers of that explicit state. Backward and forward reasoning now operate on a selected snapshot or branch without reading the global `*knowledge-journal*`; the same query may therefore have a different, reproducible answer in two worlds.
 
-`advise-world` makes guarded ingestion pure as well. It always returns `(decision world)`: accepted knowledge carries a new world, while malformed or conflicting input carries the exact original world. It reuses `lib/knowledge.my`'s clause validation and conflict vocabulary but checks only the supplied snapshot, never global knowledge.
+`advise-world` makes guarded ingestion pure as well. It always returns `(decision world)`: accepted knowledge carries a new world, while malformed or conflicting input carries the exact original world. It reuses `lib/knowledge.lisp`'s clause validation and conflict vocabulary but checks only the supplied snapshot, never global knowledge.
 
 `advise-all-world` applies the same contract atomically to a non-empty clause batch. Proposed facts and rules are validated and conflict-checked together, so they may support one another; success creates exactly one child world, while any malformed clause or internal/derived conflict leaves the original world intact with no partial prefix.
 
@@ -30,7 +30,7 @@ Content identity is canonical before it is cryptographic. `knowledge-content-add
 
 ## Українська
 
-`lib/world.my` — перший виконуваний зріз архітектури `Expression × World → Value × World`. Світ є звичайними S-expression-даними:
+`lib/world.lisp` — перший виконуваний зріз архітектури `Expression × World → Value × World`. Світ є звичайними S-expression-даними:
 
 ```lisp
 (world батько журнал-знань метадані)
@@ -38,13 +38,13 @@ Content identity is canonical before it is cryptographic. `knowledge-content-add
 
 `empty-world` створює корінь. `world-tell` і `world-retract` повертають новий світ, де `world-parent` — попереднє значення, і ніколи не змінюють вхідний світ. Новий журнал додає лише одну cons-комірку, хвостом якої є весь попередній журнал: історія використовує structural sharing, а не копіювання всіх подій. `world-clauses` проєктує модуль у будь-якій збереженій версії, включно з версією, факти якої пізніше відкликали.
 
-Шар навмисно не додає Rust-примітивів, а формат подій точно сумісний із чинним журналом. Після завантаження `world.my` усі основні legacy writer-и, включно з `import-knowledge-package`, стають тонкими обгортками над World-переходами. Guarded writer-и перевизначають журнал лише з accepted World; хибна версія, malformed data, rejection і conflict точно його зберігають.
+Шар навмисно не додає Rust-примітивів, а формат подій точно сумісний із чинним журналом. Після завантаження `world.lisp` усі основні legacy writer-и, включно з `import-knowledge-package`, стають тонкими обгортками над World-переходами. Guarded writer-и перевизначають журнал лише з accepted World; хибна версія, malformed data, rejection і conflict точно його зберігають.
 
 Guarded compatibility-макроси обчислюють вхідний вираз і чистий World-перехід рівно один раз. Оскільки `let` помістив би потрібний legacy `def` у тимчасовий lambda-frame, один явний top-level scratch binding `*legacy-knowledge-transition*` переносить єдиний результат через commit-or-return послідовність.
 
 `reason-in-world` і `forward-in-world` — перші споживачі цього явного стану. Backward- і forward-reasoning тепер працюють з обраним snapshot чи гілкою, не читаючи глобальний `*knowledge-journal*`; тому одна ціль може мати різну, відтворювану відповідь у двох світах.
 
-`advise-world` так само робить чистим захищене надходження знань. Він завжди повертає `(рішення світ)`: прийняте знання несе новий світ, а malformed чи конфліктний ввід — точно початковий. Функція перевикористовує validation і словник конфліктів із `lib/knowledge.my`, але перевіряє лише переданий snapshot, ніколи глобальне знання.
+`advise-world` так само робить чистим захищене надходження знань. Він завжди повертає `(рішення світ)`: прийняте знання несе новий світ, а malformed чи конфліктний ввід — точно початковий. Функція перевикористовує validation і словник конфліктів із `lib/knowledge.lisp`, але перевіряє лише переданий snapshot, ніколи глобальне знання.
 
 `advise-all-world` атомарно застосовує той самий контракт до непорожнього пакета clause. Запропоновані факти й правила перевіряються разом і можуть підтримувати одне одного; успіх створює рівно один дочірній світ, а malformed clause чи внутрішній/вивідний конфлікт лишає початковий світ цілим без часткового префікса.
 
@@ -58,7 +58,7 @@ Content-ідентичність канонічна раніше, ніж кри�
 
 ## Deutsch
 
-`lib/world.my` ist der erste ausführbare Ausschnitt der Architektur `Expression × World → Value × World`. Eine Welt besteht aus gewöhnlichen S-Expression-Daten:
+`lib/world.lisp` ist der erste ausführbare Ausschnitt der Architektur `Expression × World → Value × World`. Eine Welt besteht aus gewöhnlichen S-Expression-Daten:
 
 ```lisp
 (world vorgänger wissenjournal metadaten)
@@ -66,13 +66,13 @@ Content-ідентичність канонічна раніше, ніж кри�
 
 `empty-world` erzeugt die Wurzel. `world-tell` und `world-retract` liefern eine neue Welt, deren `world-parent` der vorige Wert ist, und verändern niemals ihre Eingabe. Das neue Journal ergänzt nur eine Cons-Zelle, deren Ende das vollständige vorige Journal ist: Geschichte nutzt strukturelle Teilung statt alle Ereignisse zu kopieren. `world-clauses` projiziert ein Modul in jeder erhaltenen Version, auch wenn seine Fakten später zurückgenommen wurden.
 
-Diese Schicht fügt bewusst kein Rust-Primitiv hinzu; ihr Ereignisformat bleibt vollständig journal-kompatibel. Nach dem Laden von `world.my` werden alle wesentlichen Legacy-Writer einschließlich `import-knowledge-package` zu dünnen Hüllen um World-Übergänge. Geschützte Writer binden das Journal nur aus einer akzeptierten World neu; ungültige Versionen, fehlerhafte Daten, Ablehnung und Konflikt bewahren es exakt.
+Diese Schicht fügt bewusst kein Rust-Primitiv hinzu; ihr Ereignisformat bleibt vollständig journal-kompatibel. Nach dem Laden von `world.lisp` werden alle wesentlichen Legacy-Writer einschließlich `import-knowledge-package` zu dünnen Hüllen um World-Übergänge. Geschützte Writer binden das Journal nur aus einer akzeptierten World neu; ungültige Versionen, fehlerhafte Daten, Ablehnung und Konflikt bewahren es exakt.
 
 Geschützte Kompatibilitätsmakros werten Eingabeausdruck und reinen World-Übergang genau einmal aus. Da `let` das nötige Legacy-`def` in einen temporären Lambda-Frame legen würde, trägt eine ausdrückliche Top-Level-Zwischenbindung `*legacy-knowledge-transition*` das einzelne Ergebnis durch die Commit-oder-Rückgabe-Sequenz.
 
 `reason-in-world` und `forward-in-world` sind die ersten Verbraucher dieses expliziten Zustands. Rückwärts- und Vorwärtsschluss arbeiten nun auf einem gewählten Schnappschuss oder Zweig, ohne das globale `*knowledge-journal*` zu lesen; dieselbe Anfrage kann deshalb in zwei Welten eine unterschiedliche, reproduzierbare Antwort haben.
 
-`advise-world` macht auch die geschützte Wissensaufnahme rein. Es liefert immer `(entscheidung welt)`: Akzeptiertes Wissen enthält eine neue Welt, ungültige oder widersprüchliche Eingabe exakt die ursprüngliche. Es nutzt Validierung und Konfliktvokabular aus `lib/knowledge.my`, prüft aber nur den übergebenen Schnappschuss, niemals globales Wissen.
+`advise-world` macht auch die geschützte Wissensaufnahme rein. Es liefert immer `(entscheidung welt)`: Akzeptiertes Wissen enthält eine neue Welt, ungültige oder widersprüchliche Eingabe exakt die ursprüngliche. Es nutzt Validierung und Konfliktvokabular aus `lib/knowledge.lisp`, prüft aber nur den übergebenen Schnappschuss, niemals globales Wissen.
 
 `advise-all-world` wendet denselben Vertrag atomar auf einen nichtleeren Clause-Stapel an. Vorgeschlagene Fakten und Regeln werden gemeinsam geprüft und dürfen einander stützen; Erfolg erzeugt genau eine Kindwelt, während eine ungültige Clause oder ein interner/abgeleiteter Konflikt die ursprüngliche Welt ohne Teilpräfix bewahrt.
 

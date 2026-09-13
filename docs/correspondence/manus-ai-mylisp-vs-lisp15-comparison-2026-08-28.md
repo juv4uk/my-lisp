@@ -87,15 +87,15 @@ Paper 1960 року містить два різні рівні: машинно-
 mark-and-sweep reclamation, reader/printer, опційна компіляція).
 
 `my-lisp` теж має щонайменше три рівні: capability-free Rust core,
-self-hosted `.my` libraries та host/substrate adapters. Порівняння не
+self-hosted `.lisp` libraries та host/substrate adapters. Порівняння не
 питає "чи такий самий тут байт-код", а: чи зберігається спостережуваний
 контракт, де навмисно змінено семантику і що вже перевірено.
 
 | Рівень | Lisp 1.5 paper | `my-lisp` | Як правильно зіставляти |
 |---|---|---|---|
-| Формальна мова | S-вирази, S-функції, універсальний `apply`/`eval` | parser, `Value`, evaluator, `meta-eval.my`, conformance fixtures | Порівнювати значення й обчислення, не machine layout |
+| Формальна мова | S-вирази, S-функції, універсальний `apply`/`eval` | parser, `Value`, evaluator, `meta-eval.lisp`, conformance fixtures | Порівнювати значення й обчислення, не machine layout |
 | Реалізаційна машина | IBM 704 list cells, registers, free list | Rust `Rc`/`RefCell`/`HashMap`, host adapters, FASL, планований explicit heap | Різні машини з різною ціною representation |
-| Причина існування | Advice Taker, theorem proving | `unify.my`, `reason.my`, `forward.my`, Worlds/JTMS, provenance | Напрям спадкоємності мети, не доказ завершеного AGI |
+| Причина існування | Advice Taker, theorem proving | `unify.lisp`, `reason.lisp`, `forward.lisp`, Worlds/JTMS, provenance | Напрям спадкоємності мети, не доказ завершеного AGI |
 
 ## 1. Для чого Lisp: від Advice Taker до reasoning substrate
 
@@ -106,7 +106,7 @@ expressions, незалежного від конкретного комп'ют�
 
 `my-lisp` core crate фізично не містить файлового доступу, процесів
 чи socket API — embedding host вирішує, чи встановлювати такі
-можливості. `reason.my` реалізує backward chaining над unification,
+можливості. `reason.lisp` реалізує backward chaining над unification,
 повертає substitutions і proof tree; `provenance` матеріалізує
 пояснення (`statement`, `source`, `rule`, `derived-from`).
 
@@ -150,7 +150,7 @@ syntax. Documentation/contract drift, не зламана поведінка. З
 ## 4. `eval`, `apply`, функції як дані, метациркулярність
 
 Host evaluator: parsed AST, trampoline для tail call, `LanguageError`,
-lexical `Environment`. `lib/meta-eval.my` — прямий аналог paper:
+lexical `Environment`. `lib/meta-eval.lisp` — прямий аналог paper:
 визначає `my-eval` у самій мові, alist environment, dispatch
 `atom`/`eq`/`car`/`cdr`/`cons` як дані. Чесно позначений як
 демонстрація, не always-loaded runtime.
@@ -158,7 +158,7 @@ lexical `Environment`. `lib/meta-eval.my` — прямий аналог paper:
 > "We shall then show how these functions themselves can be expressed
 > as symbolic expressions..." — McCarthy, §3.
 
-Чесна межа в `meta-eval.my`: чистий `my-eval` не підтримує recursive
+Чесна межа в `meta-eval.lisp`: чистий `my-eval` не підтримує recursive
 top-level `def` (immutable alist closure захоплює environment до
 власного binding) — файл не ховає це, називає окремою задачею.
 
@@ -210,15 +210,15 @@ FASL serializes parsed AST з версією і source SHA-256 binding.
 Conformance визначено як observable behavior, не спільна heap
 representation; canonical fixtures розділені на core/language/ecosystem
 tiers. Tier 1 subset має реальний cross-substrate path (Rust/FPGA/CML),
-full `conformance.my` coverage і error-result protocol ще в роботі.
+full `conformance.lisp` coverage і error-result protocol ще в роботі.
 
 ## 9. Worlds, JTMS, provenance — де my-lisp іде далі за paper
 
-`world.my` — immutable World як ordinary Lisp data, structural-shared
-journal, явний branching/ancestor diff/content address. `forward.my`
+`world.lisp` — immutable World як ordinary Lisp data, structural-shared
+journal, явний branching/ancestor diff/content address. `forward.lisp`
 — виріс від single-justification до JTMS з multiple justifications
 (код сам описує власне попереднє обмеження і як його виправлено).
-`reason.my` відділяє proof / `proved-not` (negation-as-failure) /
+`reason.lisp` відділяє proof / `proved-not` (negation-as-failure) /
 `Cannot prove` / явний provenance tree.
 
 ## 10. Зведена таблиця: доведено / спроєктовано / потребує repair
@@ -226,8 +226,8 @@ journal, явний branching/ancestor diff/content address. `forward.my`
 | Твердження | Стан | Доказ / межа |
 |---|---|---|
 | Minimal McCarthy primitives | Реалізовано, test-covered | `mccarthy.rs`, 7 semantic primitives |
-| Code як data | Реалізовано | `quote`/`read`/`eval`/macros/`meta-eval.my` |
-| Self-hosted language growth | Частково | `core.my`, `reason.my`, Worlds/JTMS |
+| Code як data | Реалізовано | `quote`/`read`/`eval`/macros/`meta-eval.lisp` |
+| Self-hosted language growth | Частково | `core.lisp`, `reason.lisp`, Worlds/JTMS |
 | Advice-Taker-style deduction | Малий symbolic layer | `reason`/unify/proof provenance, не повний AGI |
 | Explicit tracing GC | **Не реалізовано** | Design є, статус PROPOSED |
 | Cycle-safe mutable graph semantics | **Не доведено** | Static witness, потрібен regression test |

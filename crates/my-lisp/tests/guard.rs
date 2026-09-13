@@ -2,10 +2,10 @@ use my_lisp::{eval_program, Session};
 
 fn eval_guard(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/guard.wsm"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/guard.lisp"), &mut session).unwrap();
     eval_program(
-        include_str!("../../../knowledge/guard-reference.wsm"),
+        include_str!("../../../knowledge/guard-reference.lisp"),
         &mut session,
     )
     .unwrap();

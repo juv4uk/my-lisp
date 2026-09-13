@@ -1,7 +1,7 @@
 # Cyrillic file extension audit — GitHub issue juv4uk/my-lisp#62
 
-Per the owner's 2026-09-10 decision: `.всм`/`.мій`/`.лісп` are
-equal-standing Ukrainian spellings of `.wsm`/`.my`/`.lisp` — a
+Per the owner's 2026-09-10 decision: `.lisp`/`.lisp`/`.лісп` are
+equal-standing Ukrainian spellings of `.lisp`/`.lisp`/`.lisp` — a
 file-naming surface policy, not a new semantic authority. This audits
 every place in this repo that filters files by these extensions,
 following the issue's own instruction: fix real filters, and where
@@ -15,11 +15,11 @@ rejected rather than inventing unnecessary work.
   `is_source` check). Added `Some("всм") | Some("мій") | Some("лісп")`
   alongside the existing three. Verified with a real temp-directory
   test (`cyrillic_extension_tests::scan_root_recognizes_all_three_cyrillic_extensions`):
-  writes real `.мій`/`.всм`/`.лісп` files plus a `.txt` control file,
+  writes real `.lisp`/`.lisp`/`.лісп` files plus a `.txt` control file,
   confirms the three are scanned and the control file is still
   correctly ignored (proving the fix didn't accidentally widen the
   filter to "everything").
-- **`.gitattributes`** — added `*.всм`/`*.мій`/`*.лісп` linguist
+- **`.gitattributes`** — added `*.lisp`/`*.lisp`/`*.лісп` linguist
   classification lines mirroring the existing three exactly.
 - **`crates/my-lisp-cli/src/main.rs`** help text — mentions the
   Cyrillic spellings alongside the existing "canonical extension +
@@ -30,15 +30,15 @@ rejected rather than inventing unnecessary work.
 - **`crates/my-lisp-cli/src/main.rs`'s actual file-loading path**
   (`fs::read_to_string(filename)`, the code that runs `my-lisp <file>`):
   performs **no extension check of any kind**. Any filename is read and
-  evaluated as-is. This means `.мій`/`.всм`/`.лісп` files already
+  evaluated as-is. This means `.lisp`/`.lisp`/`.лісп` files already
   worked with zero code changes — verified directly, not assumed:
-  `./target/debug/my-lisp.exe /tmp/приклад.мій` (containing `(+ 1 2)`)
+  `./target/debug/my-lisp.exe /tmp/приклад.lisp` (containing `(+ 1 2)`)
   printed `3`, and `--oracle-check` on the same kind of path returned
   `(outcome valid)`. No fix needed here; this is the "prove it already
   works" case the issue anticipates.
 - **CI workflow `paths:` triggers** (`.github/workflows/*.yml`): these
-  watch specific canonical files by exact name (`lib/core.my`,
-  `knowledge/swarm-*.wsm`), not a general extension glob. Introducing
+  watch specific canonical files by exact name (`lib/core.lisp`,
+  `knowledge/swarm-*.lisp`), not a general extension glob. Introducing
   Cyrillic-spelled *copies* of these specific canonical files is not
   what this policy asks for — one semantic authority per contract
   file, multiple *spellings* of file extensions in general, not
@@ -51,12 +51,12 @@ rejected rather than inventing unnecessary work.
 
 ## Executable witness added
 
-`tests/fixtures/приклад.мій` — a genuine UTF-8 Cyrillic filename and
+`tests/fixtures/приклад.lisp` — a genuine UTF-8 Cyrillic filename and
 extension (not a transliterated stand-in), containing `(+ 1 2)`.
 `crates/my-lisp/tests/cyrillic_extension_witness.rs` reads and
 evaluates it through the ordinary `eval_program` path, asserting the
 result is `3` — proving the real repo file, not just a string literal
-in a test, round-trips through the same path any `.my` fixture would.
+in a test, round-trips through the same path any `.lisp` fixture would.
 
 ## Acceptance evidence
 

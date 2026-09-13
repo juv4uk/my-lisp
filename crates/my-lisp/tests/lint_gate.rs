@@ -13,13 +13,13 @@ fn linter_gate() {
     let mut session = Session::default();
 
     // Evaluate the libraries directly to load them into the environment
-    let core_src = fs::read_to_string("../../lib/core.my").unwrap();
+    let core_src = fs::read_to_string("../../lib/core.lisp").unwrap();
     eval_program(&core_src, &mut session).unwrap();
-    let utf8_src = fs::read_to_string("../../lib/utf8.my").unwrap();
+    let utf8_src = fs::read_to_string("../../lib/utf8.lisp").unwrap();
     eval_program(&utf8_src, &mut session).unwrap();
     let fs_src = fs::read_to_string("../../lib/fs.lisp").unwrap();
     eval_program(&fs_src, &mut session).unwrap();
-    let linter_src = fs::read_to_string("../../lib/linter.my").unwrap();
+    let linter_src = fs::read_to_string("../../lib/linter.lisp").unwrap();
     eval_program(&linter_src, &mut session).unwrap();
 
     // Check if linter.my works by defining the threshold script
@@ -48,11 +48,11 @@ fn linter_gate() {
 
         (append-all
           (list
-            (check-file "../../lib/core.my")
-            (check-file "../../lib/linter.my")
-            (check-file "../../lib/world.my")
-            (check-file "../../lib/content-store.my")
-            (check-file "../../lib/reason.my")))
+            (check-file "../../lib/core.lisp")
+            (check-file "../../lib/linter.lisp")
+            (check-file "../../lib/world.lisp")
+            (check-file "../../lib/content-store.lisp")
+            (check-file "../../lib/reason.lisp")))
     "#;
 
     match eval_program(runner_src, &mut session) {

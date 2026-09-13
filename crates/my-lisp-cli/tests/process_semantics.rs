@@ -14,7 +14,7 @@ fn my_lisp() -> Command {
 
 #[test]
 fn cli_literal_process_run_rejects_invalid_utf8_in_lisp_instead_of_lossy_host_decoding() {
-    let path = std::env::temp_dir().join("my-lisp-process-language-owned.wsm");
+    let path = std::env::temp_dir().join("my-lisp-process-language-owned.lisp");
     std::fs::write(
         &path,
         r#"(process-run
@@ -41,7 +41,7 @@ fn cli_literal_process_run_rejects_invalid_utf8_in_lisp_instead_of_lossy_host_de
 
 #[test]
 fn cli_literal_process_run_keeps_the_compatible_text_result_shape_for_valid_utf8() {
-    let path = std::env::temp_dir().join("my-lisp-process-compatible-shape.wsm");
+    let path = std::env::temp_dir().join("my-lisp-process-compatible-shape.lisp");
     std::fs::write(
         &path,
         r#"(process-run

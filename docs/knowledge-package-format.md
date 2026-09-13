@@ -14,7 +14,7 @@ The cross-project interchange format is one data-only S-expression:
 
 `format`, `version`, `module`, and `clauses` are required. Version `0.1` means
 the envelope may still change incompatibly before `1.0`; consumers must reject
-unknown versions rather than guess. Clauses use the existing `lib/reason.my`
+unknown versions rather than guess. Clauses use the existing `lib/reason.lisp`
 shape and canonical `(var name)` variables. The file is read as data and must
 never be loaded as executable source.
 
@@ -45,7 +45,7 @@ newlines inside values are escaped by `write-to-string`, so framing is stable.
 Міжпроєктний формат — один data-only S-вираз із обов'язковими полями `format`,
 `version`, `module` і `clauses`. Версія `0.1` означає, що до `1.0` оболонка ще
 може несумісно змінюватися; невідому версію треба відхиляти, а не вгадувати.
-Clause використовують чинний формат `lib/reason.my` і канонічні змінні
+Clause використовують чинний формат `lib/reason.lisp` і канонічні змінні
 `(var name)`. Файл читається як дані й ніколи не завантажується як код.
 
 `import-knowledge-package` та `import-knowledge-file` перевіряють оболонку і
@@ -71,7 +71,7 @@ Das projektübergreifende Format ist ein einziger reiner Daten-S-Ausdruck mit
 den Pflichtfeldern `format`, `version`, `module` und `clauses`. Version `0.1`
 bedeutet, dass sich die Hülle vor `1.0` noch inkompatibel ändern kann;
 unbekannte Versionen müssen abgelehnt statt erraten werden. Clauses verwenden
-die bestehende `lib/reason.my`-Form und kanonische `(var name)`-Variablen. Die
+die bestehende `lib/reason.lisp`-Form und kanonische `(var name)`-Variablen. Die
 Datei wird als Daten gelesen und niemals als ausführbarer Quelltext geladen.
 
 `import-knowledge-package` und `import-knowledge-file` prüfen die Hülle und

@@ -16,13 +16,13 @@ vyasa, під час WSM-24 shape comparison · **Серйозність:** се
 
 ## Корінь
 
-`lib/core.my::number->string` обробляє лише цілі: `digit->string`
+`lib/core.lisp::number->string` обробляє лише цілі: `digit->string`
 робить `(nth d <таблиця цифр>)`, а для d = 1/3 дробовий індекс
 спускається по cdr до порожнього списку (той самий latent-патерн, що
 й у subsample з дробовим кроком). Помилка поверхнею вводить в оману —
 виглядає як пошкодження памʼяті, хоча це звичайний unsupported-input.
 
-## Обхід (застосовано в WSM-24/mylisp/mylisp-lib.my)
+## Обхід (застосовано в WSM-24/mylisp/mylisp-lib.lisp)
 
 `rat->string` — довге ділення: ціла частина через quotient,
 дробові розряди циклом rem*10 → digit → новий залишок.

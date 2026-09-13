@@ -2,7 +2,7 @@ use my_lisp::{
     eval_parsed_expressions, eval_program, parse, ErrorKind, Expr, ExprKind, Session, Span,
 };
 
-const MACRO_LIBRARY: &str = include_str!("../../../lib/macro.my");
+const MACRO_LIBRARY: &str = include_str!("../../../lib/macro.lisp");
 
 fn symbol(name: &str) -> Expr {
     Expr {

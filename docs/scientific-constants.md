@@ -18,8 +18,8 @@ semantic objects:
 ```
 
 `my-lisp` therefore does **not** add a `const` evaluator primitive. Scientific
-meaning is represented by ordinary finite Lisp data in `lib/quantity.my`, and
-SI data is expressed by `lib/si.my`.
+meaning is represented by ordinary finite Lisp data in `lib/quantity.lisp`, and
+SI data is expressed by `lib/si.lisp`.
 
 ## Versioned data shapes
 
@@ -74,7 +74,7 @@ experiments; their presence is not evidence that those cases are complete.
 
 ## The seven SI defining constants
 
-`lib/si.my` stores one authoritative finite-data record for each defining
+`lib/si.lisp` stores one authoritative finite-data record for each defining
 constant under a regular `si:defining-*` surface:
 
 ```text
@@ -126,7 +126,7 @@ tests continue to pass.
 
 `exact-by-definition` describes the epistemic status of these SI defining
 records. It must not be reused for a quantity that is merely exactly derivable
-from defining constants. `lib/si-derived.my` is therefore a separate future
+from defining constants. `lib/si-derived.lisp` is therefore a separate future
 migration slice; a derived constant needs derivation/provenance evidence, not a
 false `exact-by-definition` label.
 

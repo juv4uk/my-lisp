@@ -8,9 +8,9 @@ use my_lisp::{eval_program, Session};
 
 fn eval_vec(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     eval_program(
-        include_str!("../../../lib/persistent-vector.my"),
+        include_str!("../../../lib/persistent-vector.lisp"),
         &mut session,
     )
     .unwrap();

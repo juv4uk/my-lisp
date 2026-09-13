@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = REPO_ROOT / "lib" / "surface" / "semantic-registry.wsm"
+REGISTRY = REPO_ROOT / "lib" / "surface" / "semantic-registry.lisp"
 ALLOWED_STATUSES = {"stable", "candidate", "missing", "compatibility-only"}
 HUMAN_SURFACES = ("uk", "en", "sa")
 ENTRY = re.compile(r"^\s*\(([0-9]{4,})\s+(.*)\)\s*$")

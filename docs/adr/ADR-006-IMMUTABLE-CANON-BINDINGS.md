@@ -142,6 +142,6 @@ The last probe is essential: it proves that the rule protects Canon rather than 
 
 ## 7. Contract effect / Вплив на контракт
 
-This decision changes observable behavior and therefore bumps `language-contract.my` from **5.0 to 6.0**.
+This decision changes observable behavior and therefore bumps `language-contract.lisp` from **5.0 to 6.0**.
 
 The older research document remains in the repository as historical evidence of the design path. ADR-006 is the newer normative authority for Canon binding semantics.

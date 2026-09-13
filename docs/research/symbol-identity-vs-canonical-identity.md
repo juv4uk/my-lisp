@@ -65,7 +65,7 @@ How should canonical primitive identities be accessible to programs and users? W
    - No `core` keyword, no special syntax.
 
 2. **Model 2: Namespace / Module Access (`canon:atom`, `si:c` style)**
-   - Follows the exact precedent already established in `my-lisp` for SI constants (`lib/si.my` -> `si:c`, `si:h`).
+   - Follows the exact precedent already established in `my-lisp` for SI constants (`lib/si.lisp` -> `si:c`, `si:h`).
    - A dedicated static prefix (e.g. `canon:atom`, `canon:атом`) resolves directly to the immutable primitive identity.
    - Does not require a new special form.
 

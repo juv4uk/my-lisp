@@ -1,6 +1,6 @@
 # Звіт про семантичну власність
 
-> Згенеровано детерміновано з `knowledge/semantic-ownership.wsm`.
+> Згенеровано детерміновано з `knowledge/semantic-ownership.lisp`.
 > Звіт рахує **аудитовані поведінки/відповідальності**, а не LOC і не повноту всієї мови.
 > Жодне число нижче не є «відсотком self-hosting».
 
@@ -56,7 +56,7 @@
 - `canon-surface-authority` — `host-hardcoded` → `registry-data` у `668794caf6f3e2e1d0d6c8e740f218cc6ef04db9`: Canon stable surface routing перенесено у shared numeric semantic registry projection
 - `core-host-capability-split` — `core-os-code` → `host-adapter` у `f565f6692c36a97f80afe0233f0bdb8dca506b81`: OS-touching filesystem/process/TCP операції перенесено з my-lisp core у my-lisp-host
 - `defmacro-fallback-to-lisp` — `host-mechanism` → `lisp-owned` у `3fff9e9fbb7171a81ba128baedd68f093fc0c65b`: Rust defmacro evaluator fallback видалено; поведінкою володіє language macro path
-- `list-rust-to-lisp` — `host-mechanism` → `lisp-owned` у `efdd9252fd4ca4af4503b219ab3ae79130ef0e64`: Rust special form list видалено; list визначено в lib/core.my
+- `list-rust-to-lisp` — `host-mechanism` → `lisp-owned` у `efdd9252fd4ca4af4503b219ab3ae79130ef0e64`: Rust special form list видалено; list визначено в lib/core.lisp
 - `macro-peer-surface-authority` — `host-hardcoded` → `registry-data` у `baa03b7acf0793bec3184a48099c484231922bea`: 0012 stable і compatibility peer names перенесено з loader literals у registry admission
 - `necessary-form-surface-authority` — `host-hardcoded` → `registry-data` у `3fa2ae1f5e5786cd5c0b41489648a23bb1f405f5`: LAMBDA/DEFINE stable surface routing перенесено з Rust spelling tables у numeric registry projection
 - `peer-builtin-surface-authority` — `host-hardcoded` → `registry-data` у `dd4d9ae7d7bccbe465a0ae8ceb1b2f17f5f80f4e`: Arithmetic/comparison peer names перенесено з Rust arrays у registry-derived bindings
@@ -80,7 +80,7 @@
 | `immutable-worlds` | `—` | `lisp-owned` | `knowledge` | `confirmed` | Immutable world snapshots і явні переходи стану світу |
 | `knowledge-journal` | `—` | `lisp-owned` | `knowledge` | `confirmed` | Append-only журнал знань і guarded knowledge admission |
 | `list-constructor` | `—` | `lisp-owned` | `stdlib` | `confirmed` | Варіадичний list-конструктор виведений із lambda/rest семантики самої мови |
-| `macro-definition` | `0012` | `lisp-owned` | `bootstrap` | `confirmed` | Поведінка визначення макросів виведена у lib/macro.my поверх вузького make-macro substrate |
+| `macro-definition` | `0012` | `lisp-owned` | `bootstrap` | `confirmed` | Поведінка визначення макросів виведена у lib/macro.lisp поверх вузького make-macro substrate |
 | `meta-evaluator` | `—` | `lisp-owned` | `self-hosting` | `confirmed` | Lisp-owned metacircular evaluator witness; усі 34 required parity rows підтверджені machine evidence matrix |
 | `monotonic-clock` | `—` | `host-observation` | `host-capability` | `confirmed` | Monotonic nanosecond observation без calendar policy |
 | `necessary-define` | `0011` | `necessary-form` | `bootstrap` | `confirmed` | DEFINE: evaluator-controlled immutable binding form |

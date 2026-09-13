@@ -145,7 +145,7 @@ pub fn fresh_incarnation() -> String {
 
 pub fn load_or_init_identity(data_dir: &Path, node_id: &str) -> std::io::Result<Identity> {
     fs::create_dir_all(data_dir)?;
-    let path = data_dir.join("node.my");
+    let path = data_dir.join("node.lisp");
     let (epoch, stored_incarnation) = if path.exists() {
         let text = fs::read_to_string(&path)?;
         let parsed = parse(&text).map_err(|e| {
@@ -465,7 +465,7 @@ mod incarnation_tests {
     fn corrupt_identity_is_rejected_without_rewriting_it() {
         let dir = test_dir("corrupt-identity");
         fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("node.my");
+        let path = dir.join("node.lisp");
         let before = b"(node (id original-node) (epoch 7)";
         fs::write(&path, before).unwrap();
 
@@ -488,7 +488,7 @@ mod incarnation_tests {
         for (index, text) in cases.into_iter().enumerate() {
             let dir = test_dir(&format!("bad-identity-{index}"));
             fs::create_dir_all(&dir).unwrap();
-            let path = dir.join("node.my");
+            let path = dir.join("node.lisp");
             fs::write(&path, text).unwrap();
 
             let err = load_or_init_identity(&dir, "n")
@@ -505,7 +505,7 @@ mod incarnation_tests {
     fn legacy_identity_without_incarnation_upgrades_but_keeps_identity() {
         let dir = test_dir("legacy-identity");
         fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("node.my");
+        let path = dir.join("node.lisp");
         fs::write(&path, "(node (id legacy) (epoch 7))").unwrap();
 
         let identity = load_or_init_identity(&dir, "legacy").unwrap();

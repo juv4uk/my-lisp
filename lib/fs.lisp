@@ -5,8 +5,8 @@
 ; byte mechanism (with allowlist enforcement already applied at that
 ; boundary); this layer owns UTF-8 decoding/encoding and the public meanings
 ; of `read-file` and `write-file`, mirroring the split already established
-; for `process-run` (lib/process.my) and `tcp-read`/`tcp-write` (lib/tcp.my).
-; Load `lib/utf8.my` before this file.
+; for `process-run` (lib/process.lisp) and `tcp-read`/`tcp-write` (lib/tcp.lisp).
+; Load `lib/utf8.lisp` before this file.
 
 ; Historical `read-file` returns the decoded text directly. Invalid UTF-8 is
 ; no longer a raw Rust IO error: it returns the same explicit rejection value

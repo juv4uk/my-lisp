@@ -7,7 +7,7 @@
 
 use std::{collections::HashMap, sync::OnceLock};
 
-const SEMANTIC_REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
+const SEMANTIC_REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SurfaceAdmission {

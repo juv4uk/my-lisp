@@ -35,7 +35,7 @@ or ordinary structure, never inventing a new one:
 - `Define` — covers both `define`/`визначити` (semantic ID `0011`) and
   the compatibility spelling `def` (ID `1000`, see "real bug" below).
 - `Defmacro` — its own shape, body kept as unexpanded source `Expr`
-  (macro expansion is `lib/macro.my`'s own transformation, a different
+  (macro expansion is `lib/macro.lisp`'s own transformation, a different
   stage than IR lowering).
 - `Apply` — ordinary application; the callee's `Provenance` says
   whether it's an admitted semantic identity or a plain user binding.
@@ -51,7 +51,7 @@ Every `Literal`/`VariableRef` carries a `Provenance`:
   via `eval::necessary_forms::identity_for_symbol`.
 - `Defmacro` — semantic ID `0012`.
 - `AdmittedSemanticIdentity(String)` — an ordinary callable admitted in
-  `lib/surface/semantic-registry.wsm` (arithmetic, comparisons, library
+  `lib/surface/semantic-registry.lisp` (arithmetic, comparisons, library
   functions), carrying the numeric ID the same way
   `crates/my-lisp-cli/src/bin/cml-export.rs` already does.
 - `OrdinaryBinding` — a plain user-defined function/variable with no
@@ -106,7 +106,7 @@ explanation at the code, not only in this document.
 
 - **"Lower a small but nontrivial corpus... and reconstruct enough
   provenance to explain each step"**: `lowers_and_explains_every_compiler_corpus_fixture`
-  parses #67's 17 tagged `conformance.my` fixtures, lowers every
+  parses #67's 17 tagged `conformance.lisp` fixtures, lowers every
   sub-form, and calls `explain` on each, asserting a non-empty trace.
   Fixtures tagged with an `error` field (deliberately malformed at the
   *evaluator* level, e.g. `(defmacro foo)`'s missing arity) are allowed

@@ -48,7 +48,7 @@ The lesson for my-lisp is not "copy Guile." It is: **one generic ABI
 substrate, described by data (library, symbol, signature), replaces an
 unbounded set of per-library Rust wrappers.** This is the same
 reuse-first, no-per-capability-Rust-code principle already applied to
-the Python track (`lib/foreign.my` over existing TCP) and to the
+the Python track (`lib/foreign.lisp` over existing TCP) and to the
 FS-CAPABILITY-UTF8-POLICY-MIGRATION slice — applied here to native
 code instead of a subprocess.
 
@@ -74,7 +74,7 @@ discipline (`docs/agent-doctrine.md` rule 7) warns against.
 ```text
                     MY-LISP
                        │
-                  lib/ffi.my
+                  lib/ffi.lisp
       (foreign-library-open/symbol/call, ABI type descriptors)
                        │
        ┌───────────────┼───────────────┐
@@ -107,12 +107,12 @@ where the subprocess/TCP substrate already existed):
   primitive scalar types (matching Guile's own type vocabulary:
   `int8`/`uint8`/.../`int64`/`uint64`/`float`/`double`/pointer).
 
-**Lisp owns** (the actual semantic surface, per `lib/ffi.my`):
+**Lisp owns** (the actual semantic surface, per `lib/ffi.lisp`):
 - `foreign-library-open`, `foreign-symbol`, `foreign-signature`,
   `foreign-call`, `foreign-pointer?`, `foreign-library-close`.
 - Every specific binding: `(define sqrt (foreign-call libm "sqrt" '(double) 'double))`,
   `(define memcpy ...)`, `(define blas-dgemm ...)` all live in ordinary
-  `.my` files, never in Rust. Zero Rust code is added when a new C
+  `.lisp` files, never in Rust. Zero Rust code is added when a new C
   function needs binding — that is the whole point.
 - ABI type descriptors as ordinary Lisp data (symbols like `int32`,
   `double`, `pointer`), not a closed Rust enum grown per type — though
@@ -195,7 +195,7 @@ vertical-slice discipline.
 - NumericBuffer/native-memory zero-copy bridge — separate research
   track, not mixed with the base call mechanism (mirrors the Python
   track's NumPy/NumericBuffer non-goal).
-- Any specific library binding (`lib/blas.my`, `lib/fftw.my`) beyond
+- Any specific library binding (`lib/blas.lisp`, `lib/fftw.lisp`) beyond
   one proof-of-concept call (e.g. `libm`'s `sqrt`) needed to validate
   the mechanism.
 - Any new `Value` variant chosen without the Model 1 vs. Model 2
@@ -203,9 +203,9 @@ vertical-slice discipline.
 
 ## What accompanies this document
 
-Nothing. No Rust code, no `lib/ffi.my`, no `Value` change. Per the
+Nothing. No Rust code, no `lib/ffi.lisp`, no `Value` change. Per the
 owner's own instruction pattern for the Python track
 (`docs/POLYGLOT-SEMANTIC-ORCHESTRATOR-IMPLEMENTATION-PLAN.md`'s "plan
-first, task DAG in tasks.my, do not start POLYGLOT-002+ in the same
+first, task DAG in tasks.lisp, do not start POLYGLOT-002+ in the same
 commit"), this pass adds only this design document and the
-corresponding `tasks.my` entries.
+corresponding `tasks.lisp` entries.

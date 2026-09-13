@@ -50,7 +50,7 @@ Each node runs as its own guix user with an explicit identity:
 swarm-node --port <p> --node-id <id> --project <proj> \
   --data-dir /home/<user>/.swarm-node/<id> \
   [--bind 0.0.0.0] [--connect <peer>...] \
-  (--auto-sync /absolute/path/to/tasks.my | --no-auto-sync)
+  (--auto-sync /absolute/path/to/tasks.lisp | --no-auto-sync)
 ```
 - Startup now requires an explicit task-sync choice. Normal ecosystem nodes
   use `--auto-sync`; `--no-auto-sync` is only for deliberate protocol-only or

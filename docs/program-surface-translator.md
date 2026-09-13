@@ -5,13 +5,13 @@
 Підтримуються всі шість напрямків.
 
 ```bash
-python3 scripts/translate-program.py --from en --to uk program.wsm
-python3 scripts/translate-program.py --from uk --to sa program.wsm -o program.sa.wsm
+python3 scripts/translate-program.py --from en --to uk program.lisp
+python3 scripts/translate-program.py --from uk --to sa program.lisp -o program.sa.lisp
 python3 scripts/translate-program.py --from sa --to en -
 ```
 
 Скрипт не має власного прихованого словника. Він читає машинну таблицю
-`lib/surface/semantic-registry.wsm`, тому перекладає лише відомі публічні назви, зводячи source і target surface через numeric semantic identity.
+`lib/surface/semantic-registry.lisp`, тому перекладає лише відомі публічні назви, зводячи source і target surface через numeric semantic identity.
 Користувацькі символи, числа, відступи й дужки зберігаються. Коментарі та
 текстові рядки не перекладаються, бо це дані програми.
 

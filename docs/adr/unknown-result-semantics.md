@@ -13,7 +13,7 @@ through `reason-observe` / `reason-in-observe`.
 
 ## The problem
 
-Historically `lib/reason.my` returns a proof-result list on success and `()` on
+Historically `lib/reason.lisp` returns a proof-result list on success and `()` on
 failure. That compatibility API is useful, but `()` by itself cannot state why
 there is no ordinary proof result. Several materially different situations
 must not be reported as the same claim:
@@ -37,7 +37,7 @@ proofs", and "malformed question" are not synonyms for false.
 
 ## Decision: one tagged-result algebra, no parallel vocabulary
 
-The canonical data-only shapes in `lib/result-status.my` are:
+The canonical data-only shapes in `lib/result-status.lisp` are:
 
 ```lisp
 (proved statement results)
@@ -89,7 +89,7 @@ a positive proof never manufactures a negative fact.
 
 ## Presentation boundary
 
-`lib/narrate.my` may present these observations to a human, but presentation is
+`lib/narrate.lisp` may present these observations to a human, but presentation is
 not the semantic authority. `narrate-outcome` keeps the outcome class visible
 so `unknown`, `partial`, `blocked`, `disputed`, and `invalid` cannot silently
 collapse back into one "cannot prove" phrase.

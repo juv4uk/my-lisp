@@ -15,7 +15,7 @@ An external parser, model or LLM may emit only versioned Lisp data:
   ((human socrates)))
 ```
 
-`lib/translation.my` owns the review protocol. The translator status is one of
+`lib/translation.lisp` owns the review protocol. The translator status is one of
 `candidate`, `ambiguous`, or `rejected`; the kind is `clause`, `batch`, or
 `query`. `translation-review` validates the protocol shell and then reuses the
 existing knowledge validators and `advice-decision` / `advice-all-decision`.
@@ -43,7 +43,7 @@ caller-owned evidence journal. A proposal with one alternative cannot claim
 ### 2. Knowledge admission
 
 `advise` is the data-only write boundary between reviewed candidate data and
-the symbolic knowledge journal. It accepts exactly one `lib/reason.my` clause,
+the symbolic knowledge journal. It accepts exactly one `lib/reason.lisp` clause,
 validates the complete structure (including canonical `(var name)` variables),
 checks for an explicitly known opposite, and mutates the journal only on
 acceptance. It never treats failure to prove a statement as proof of its
@@ -89,7 +89,7 @@ accepted knowledge payload?
 ```
 
 The versioned adversarial corpus is
-`tests/fixtures/translation-corpus-v1.wsm`; executable boundary tests live in
+`tests/fixtures/translation-corpus-v1.lisp`; executable boundary tests live in
 `crates/my-lisp/tests/translation_boundary.rs`.
 
 ## Українська
@@ -107,7 +107,7 @@ Advice Taker тепер має **дві окремі брами**, і жодна
   ((human socrates)))
 ```
 
-`lib/translation.my` належить Lisp-рівню і вирішує, чи сама пропозиція
+`lib/translation.lisp` належить Lisp-рівню і вирішує, чи сама пропозиція
 структурно коректна. Статус перекладача — `candidate`, `ambiguous` або
 `rejected`; вид — `clause`, `batch` або `query`.
 
@@ -155,7 +155,7 @@ translation-review          ← рішення Lisp, без запису
 правила.
 
 Versioned корпус для руйнівної перевірки цієї межі —
-`tests/fixtures/translation-corpus-v1.wsm`; executable tests —
+`tests/fixtures/translation-corpus-v1.lisp`; executable tests —
 `crates/my-lisp/tests/translation_boundary.rs`.
 
 ## Deutsch
@@ -174,7 +174,7 @@ vorschlagen:
   ((human socrates)))
 ```
 
-`lib/translation.my` prüft die Protokollform sowie die vorhandenen
+`lib/translation.lisp` prüft die Protokollform sowie die vorhandenen
 Wissensregeln. `translation-review` verändert das Wissensjournal nicht. Auch
 ein `accepted`-Review bedeutet nur, dass der Kandidat die Lisp-Prüfung bestanden
 hat und an die eigentliche Wissensgrenze weitergegeben werden darf.
@@ -205,5 +205,5 @@ Wissensjournal → reason-in-observe → narrate-outcome
 ```
 
 Der versionierte adversariale Korpus liegt in
-`tests/fixtures/translation-corpus-v1.wsm`; die ausführbaren Grenztests in
+`tests/fixtures/translation-corpus-v1.lisp`; die ausführbaren Grenztests in
 `crates/my-lisp/tests/translation_boundary.rs`.

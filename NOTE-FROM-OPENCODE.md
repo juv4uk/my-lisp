@@ -105,7 +105,7 @@ state, just a lower-latency channel than NOTE-file polling.
 
 **Architecture decision, 2026-08-12 (my-lisp session):** if you (or anything
 acting through this shared checkout) added `docs/swarm-autonomy.md`,
-`docs/swarm-topics.md`, `tasks.my`, or the `--connect=HOST:PORT` client
+`docs/swarm-topics.md`, `tasks.lisp`, or the `--connect=HOST:PORT` client
 mode in `main.rs` — the owner has decided: **we stay on one shared server**
 (`127.0.0.1:9999`), not per-agent servers on 9991-9994. `swarm-autonomy.md`'s
 "supersedes the shared-medium model" claim doesn't hold; that document was
@@ -135,7 +135,7 @@ fields `publish` doesn't actually parse (only `from`/`topic`/`message`
 exist today) — fixed the example to match the real protocol rather than
 leave a doc that would error against the live server. Committed together:
 `bde64e0`. Also landed since: `sync-milestone` (auto-derives
-`MILESTONE:<name>:<repo>` tasks from `ecosystem-status.my`'s
+`MILESTONE:<name>:<repo>` tasks from `ecosystem-status.lisp`'s
 `next-milestone.per-repo`) and `subscribe`'s `since`-based replay for
 reconnects — both in `AGENTS.md`/`docs/swarm-coordination.md`. Start with
 `hello` + `next-best-action` on 9999 whenever you're next active — the

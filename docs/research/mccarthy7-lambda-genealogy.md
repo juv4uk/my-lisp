@@ -91,7 +91,7 @@ REQUIRES ADMITTED EVALUATOR CAPABILITY (AEC)
 
 **Supported by:**
 - Analysis of current Rust evaluator semantics (`crates/my-lisp/src/eval/`).
-- Concrete metacircular evidence in `lib/meta-eval.my`, where closure creation and application require explicit branches in `my-eval` and `my-apply`.
+- Concrete metacircular evidence in `lib/meta-eval.lisp`, where closure creation and application require explicit branches in `my-eval` and `my-apply`.
 - Inability to reify the caller's active environment or register operator-position call hooks using only L0 primitives.
 
 **Claims explicitly NOT made:**
@@ -100,15 +100,15 @@ REQUIRES ADMITTED EVALUATOR CAPABILITY (AEC)
 
 ---
 
-## 7. Independent Witness B: Metacircular Evaluator (`lib/meta-eval.my`)
-## Незалежний свідок B: Метациркулярний обчислювач (`lib/meta-eval.my`)
+## 7. Independent Witness B: Metacircular Evaluator (`lib/meta-eval.lisp`)
+## Незалежний свідок B: Метациркулярний обчислювач (`lib/meta-eval.lisp`)
 
-To establish whether the necessity of evaluator intervention is merely an artifact of the Rust runtime (`crates/my-lisp/src/eval/`) or an intrinsic property of the observable semantics, a second independent witness was executed against `lib/meta-eval.my` via test `meta_eval_lambda_witness_env_capture_and_application` in `crates/my-lisp/tests/mccarthy.rs`.
+To establish whether the necessity of evaluator intervention is merely an artifact of the Rust runtime (`crates/my-lisp/src/eval/`) or an intrinsic property of the observable semantics, a second independent witness was executed against `lib/meta-eval.lisp` via test `meta_eval_lambda_witness_env_capture_and_application` in `crates/my-lisp/tests/mccarthy.rs`.
 
-Щоб перевірити, чи потреба у втручанні обчислювача є лише артефактом Rust-рантайму (`crates/my-lisp/src/eval/`), чи іманентною властивістю спостережуваної семантики, виконано другого незалежного свідка над `lib/meta-eval.my` через тест `meta_eval_lambda_witness_env_capture_and_application` у `crates/my-lisp/tests/mccarthy.rs`.
+Щоб перевірити, чи потреба у втручанні обчислювача є лише артефактом Rust-рантайму (`crates/my-lisp/src/eval/`), чи іманентною властивістю спостережуваної семантики, виконано другого незалежного свідка над `lib/meta-eval.lisp` через тест `meta_eval_lambda_witness_env_capture_and_application` у `crates/my-lisp/tests/mccarthy.rs`.
 
 ### Witness A (Explicit Lexical Environment Capture):
-In `lib/meta-eval.my`, `my-eval` receives the lexical environment `env` as an explicit evaluation parameter:
+In `lib/meta-eval.lisp`, `my-eval` receives the lexical environment `env` as an explicit evaluation parameter:
 ```lisp
 ((eq (car expr) (quote lambda))
  (list (quote closure) (second expr) (cdr (cdr expr)) env))
@@ -122,7 +122,7 @@ When evaluating `(lambda (x) outer)` under `witness-env = ((outer . 7))`:
 - **Conclusion:** Constructing the tagged list is ordinary list algebra (`cons`, `quote`), but obtaining the implicit lexical environment `env` requires the evaluator's internal context.
 
 ### Witness B (Operator Application & Frame Extension):
-In `lib/meta-eval.my`, `my-apply` detects the closure tag and binds arguments:
+In `lib/meta-eval.lisp`, `my-apply` detects the closure tag and binds arguments:
 ```lisp
 ((eq (car fn) (quote closure))
  (my-eval-body (third fn)
@@ -133,7 +133,7 @@ When evaluating `(my-apply closure-val (cons 42 (quote ())))`:
 - Parameter binding itself is pure list algebra (`cons`, `car`, `cdr`).
 - However, ordinary expression application `((lambda (x) outer) 42)` requires the evaluator to recognize the closure value in operator position and invoke the application protocol instead of treating `closure` as an undefined function name.
 
-Both independent implementations (Rust host evaluator and `meta-eval.my` in Lisp) exhibit the identical boundary:
+Both independent implementations (Rust host evaluator and `meta-eval.lisp` in Lisp) exhibit the identical boundary:
 1. **List algebra** handles parameter binding, alist representation, and closure records.
 2. **Evaluator capability** is required for implicit lexical environment capture and operator-position application dispatch.
 
@@ -160,6 +160,6 @@ In ADR-004 (`docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`), `lambda` remains catal
 
 ## 9. Next Steps / Наступні кроки
 
-1. Present the two independent witnesses (Rust evaluator + `meta-eval.my`) and the decomposed taxonomy to the owner.
+1. Present the two independent witnesses (Rust evaluator + `meta-eval.lisp`) and the decomposed taxonomy to the owner.
 2. If accepted, formulate the precise wording for ADR-004 to categorize `lambda` not as an 8th primitive, but as an Admitted Evaluator Capability (AEC) over closure values.
 

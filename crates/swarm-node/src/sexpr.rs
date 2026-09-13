@@ -159,11 +159,11 @@ mod tests {
 
     #[test]
     fn parses_quoted_strings_with_escapes() {
-        let text = r#"(payload (artifact "evidence/G8/a \"b\" c.my"))"#;
+        let text = r#"(payload (artifact "evidence/G8/a \"b\" c.lisp"))"#;
         let parsed = parse(text).unwrap();
         assert_eq!(
             parsed.field_atom("artifact"),
-            Some("evidence/G8/a \"b\" c.my")
+            Some("evidence/G8/a \"b\" c.lisp")
         );
     }
 }

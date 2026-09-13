@@ -25,7 +25,7 @@ premise three repos downstream with no traceable evidence chain.
 
 1. **Read the map before the code.** Authoritative contract → current
    task/status → recent evidence → recent commits. Machine-readable
-   source of truth (a versioned `.my`/`.rkt` file, a fixture, a schema)
+   source of truth (a versioned `.lisp`/`.rkt` file, a fixture, a schema)
    always outranks prose (`AGENTS.md`, `README`, this file included) —
    if they disagree, the contract wins and the prose is a bug.
 2. **Never state a claim stronger than its evidence.** Use `confirmed` /
@@ -52,7 +52,7 @@ premise three repos downstream with no traceable evidence chain.
    fixes it, that's the fix — not an architecture rewrite, absent a
    demonstrated need for one.
 8. **Library before primitive** (esp. `my-lisp`): if it's expressible in
-   the host language itself, it belongs in `lib/*.my`, not in the Rust/
+   the host language itself, it belongs in `lib/*.lisp`, not in the Rust/
    Racket/hardware implementation layer.
 9. **An event is not evidence.** A swarm `notify`/`emit` message is a
    doorbell, not a fact — verify against `evidence/` or a commit before
@@ -72,22 +72,22 @@ premise three repos downstream with no traceable evidence chain.
     scored ~9/10, but integration hygiene scored ~7-7.5/10 — three
     separate CI breakages landed back-to-back (an English-only design
     doc violating the Ukrainian-first bilingual-docs check; a
-    generated projection, `my-lisp-constitution.my`, left stale after
-    editing its source `conformance.my`; a clippy lint never checked
+    generated projection, `my-lisp-constitution.lisp`, left stale after
+    editing its source `conformance.lisp`; a clippy lint never checked
     locally before pushing) because `cargo build`/`cargo test` passing
     was treated as sufficient. A vertical slice that touches
-    `.my`/`.wsm` source, a generated projection, or public surface is
+    `.lisp`/`.lisp` source, a generated projection, or public surface is
     not finished until ALL of the following are checked, not just
     build+test: `cargo clippy --workspace --all-targets -- -D
     warnings` (the exact CI invocation — plain `cargo clippy
     --workspace` misses `--all-targets` lints in test files);
-    `my-lisp --oracle-check` on every touched `.my`/`.wsm` file;
+    `my-lisp --oracle-check` on every touched `.lisp`/`.lisp` file;
     `cargo xtask verify` (the docs/governance/policy checks TEST-
     ARCHITECTURE-1 moved out of `cargo test`, since `cargo test` now
     verifies executable behavior only); regenerating any generated
-    projection whose source changed (`my-lisp-constitution.my` from
-    `conformance.my`, `tests/fixtures/inventory.my` from the same,
-    `lib/surface/uk-inventory.wsm` classification for any newly public
+    projection whose source changed (`my-lisp-constitution.lisp` from
+    `conformance.lisp`, `tests/fixtures/inventory.lisp` from the same,
+    `lib/surface/uk-inventory.lisp` classification for any newly public
     core definition); `scripts/check-bilingual-docs` on any new/changed
     human-facing doc; and, ideally, `gh run list`/`gh run watch` after
     pushing — a green local run does not guarantee a green CI run
@@ -97,7 +97,7 @@ premise three repos downstream with no traceable evidence chain.
 14. **New complexity must buy Lisp power, or it gets deleted.** Owner
     principle 2026-09-12, distilled from this session's own strongest
     changes (the `read-file`/`write-file` migration onto existing raw
-    bytes + `lib/utf8.my`; the polyglot plan's reuse-first collapse to
+    bytes + `lib/utf8.lisp`; the polyglot plan's reuse-first collapse to
     zero core changes; `compiler_corpus_dual_backend.rs`'s rewrite so
     the corpus, not native Rust, is the oracle): a good change looks
     like `idea -> semantic ID/Lisp form -> backend`, not

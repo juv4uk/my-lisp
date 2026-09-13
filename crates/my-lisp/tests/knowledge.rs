@@ -13,13 +13,13 @@ fn install_file_capabilities() {
 fn eval_knowledge(source: &str) -> String {
     install_file_capabilities();
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/utf8.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/utf8.lisp"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/fs.lisp"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.lisp"), &mut session).unwrap();
     let result = eval_program(source, &mut session);
     match result {
         Ok(res) => {
@@ -41,7 +41,7 @@ fn eval_knowledge(source: &str) -> String {
 #[test]
 fn test_defmodule_and_reason_in() {
     let source = r#"
-        (load-knowledge "../../knowledge/family.my")
+        (load-knowledge "../../knowledge/family.lisp")
         (let ((results (reason-in (quote family) (quote (parent tom (var x))))))
              ;; We expect the first proof result to bind (x . bob)
              (car (car results)))
@@ -52,7 +52,7 @@ fn test_defmodule_and_reason_in() {
 #[test]
 fn test_defmodule_and_reason_in_physics() {
     let source = r#"
-        (load-knowledge "../../knowledge/physics.my")
+        (load-knowledge "../../knowledge/physics.lisp")
         (let ((results (reason-in (quote physics) (quote (has-mass (var x))))))
              ;; We expect the first proof result to bind (x . apple)
              (car (car results)))
@@ -71,10 +71,10 @@ fn test_reason_in_unknown_module() {
 #[test]
 fn test_forward_in_materializes_every_derivable_fact_in_a_module() {
     let source = r#"
-        (load-knowledge "../../knowledge/family.my")
+        (load-knowledge "../../knowledge/family.lisp")
         (forward-in (quote family))
     "#;
-    // family.my's `ancestor` is recursive (base case: direct parent; recursive
+    // family.lisp's `ancestor` is recursive (base case: direct parent; recursive
     // case: parent of an ancestor) — this list includes transitive facts like
     // (ancestor tom jim), three hops from a fact never stated directly,
     // proving run-multi's fixpoint loop actually re-fires a rule against its
@@ -88,7 +88,7 @@ fn test_forward_in_materializes_every_derivable_fact_in_a_module() {
 #[test]
 fn test_forward_in_materializes_every_derivable_fact_in_astronomy() {
     let source = r#"
-        (load-knowledge "../../knowledge/astronomy.my")
+        (load-knowledge "../../knowledge/astronomy.lisp")
         (forward-in (quote astronomy))
     "#;
     assert_eq!(
@@ -108,7 +108,7 @@ fn test_forward_in_unknown_module() {
 #[test]
 fn test_forward_in_chains_a_recursive_rule_through_its_own_prior_output() {
     let source = r#"
-        (load-knowledge "../../knowledge/family.my")
+        (load-knowledge "../../knowledge/family.lisp")
         (reason-in (quote family) (quote (ancestor tom jim)))
     "#;
     // grandparent alone (a fixed one-hop rule) cannot reach `jim` from `tom`
@@ -122,7 +122,7 @@ fn test_forward_in_chains_a_recursive_rule_through_its_own_prior_output() {
 #[test]
 fn test_family_module() {
     let source = r#"
-        (load-knowledge "../../knowledge/family.my")
+        (load-knowledge "../../knowledge/family.lisp")
         (let ((results (reason-in (quote family) (quote (grandparent tom ann)))))
              ;; The result contains the bindings used during the proof, including rule variables
              (car (car results)))
@@ -136,7 +136,7 @@ fn test_family_module() {
 #[test]
 fn test_forward_in_chains_multiple_rules_in_physics() {
     let source = r#"
-        (load-knowledge "../../knowledge/physics.my")
+        (load-knowledge "../../knowledge/physics.lisp")
         (forward-in (quote physics))
     "#;
     assert_eq!(
@@ -148,7 +148,7 @@ fn test_forward_in_chains_multiple_rules_in_physics() {
 #[test]
 fn test_astronomy_module() {
     let source = r#"
-        (load-knowledge "../../knowledge/astronomy.my")
+        (load-knowledge "../../knowledge/astronomy.lisp")
         (let ((results (reason-in (quote astronomy) (quote (orbits earth sun)))))
              ;; The result contains the bindings used during the proof, including rule variables
              (car (car results)))
@@ -162,7 +162,7 @@ fn test_astronomy_module() {
 #[test]
 fn test_describe_collects_every_fact_about_a_symbol_astronomy() {
     let source = r#"
-        (load-knowledge "../../knowledge/astronomy.my")
+        (load-knowledge "../../knowledge/astronomy.lisp")
         (describe (quote earth) (quote astronomy))
     "#;
     // `earth` appears in one fact (`(planet earth)`); the `orbits` rule is not
@@ -173,7 +173,7 @@ fn test_describe_collects_every_fact_about_a_symbol_astronomy() {
 #[test]
 fn test_describe_symbol_with_no_facts_astronomy() {
     let source = r#"
-        (load-knowledge "../../knowledge/astronomy.my")
+        (load-knowledge "../../knowledge/astronomy.lisp")
         (describe (quote pluto) (quote astronomy))
     "#;
     assert_eq!(eval_knowledge(source), "()");
@@ -182,7 +182,7 @@ fn test_describe_symbol_with_no_facts_astronomy() {
 #[test]
 fn test_describe_collects_every_fact_about_a_symbol() {
     let source = r#"
-        (load-knowledge "../../knowledge/family.my")
+        (load-knowledge "../../knowledge/family.lisp")
         (describe (quote jim) (quote family))
     "#;
     // `jim` appears in one fact (`(parent pat jim)`); the `grandparent`/
@@ -202,7 +202,7 @@ fn test_describe_unknown_module() {
 #[test]
 fn test_describe_symbol_with_no_facts() {
     let source = r#"
-        (load-knowledge "../../knowledge/family.my")
+        (load-knowledge "../../knowledge/family.lisp")
         (describe (quote ringo) (quote family))
     "#;
     assert_eq!(eval_knowledge(source), "()");
@@ -222,7 +222,7 @@ fn test_record_usage_accumulates_across_separate_queries() {
     // symbol), even though the printer renders real dotted pairs that way —
     // so a quoted `(x . 0)` and an actual `(cons (quote x) 0)` are not `equal?`.
     let source = r#"
-        (load-knowledge "../../knowledge/family.my")
+        (load-knowledge "../../knowledge/family.lisp")
         (def rule-key (list (quote grandparent) (list (quote var) (cons (quote x) 0)) (list (quote var) (cons (quote y) 0))))
         (def results-1 (reason-in (quote family) (quote (grandparent tom ann))))
         (record-usage! (second (car results-1)))
@@ -238,7 +238,7 @@ fn test_record_usage_accumulates_across_separate_queries() {
 #[test]
 fn test_record_usage_accumulates_across_separate_queries_astronomy() {
     let source = r#"
-        (load-knowledge "../../knowledge/astronomy.my")
+        (load-knowledge "../../knowledge/astronomy.lisp")
         (def rule-key (list (quote orbits) (list (quote var) (cons (quote p) 0)) (list (quote var) (cons (quote s) 0))))
         (def results-1 (reason-in (quote astronomy) (quote (orbits earth sun))))
         (record-usage! (second (car results-1)))
@@ -537,7 +537,7 @@ fn import_knowledge_package_rejects_a_malformed_envelope_without_writing() {
 fn import_knowledge_file_reads_the_data_only_example() {
     let source = r#"
         (list
-          (car (import-knowledge-file "../../knowledge/examples/astronomy-package.my"))
+          (car (import-knowledge-file "../../knowledge/examples/astronomy-package.lisp"))
           (car (car (reason-in (quote astronomy-exchange) (quote (has-mass earth))))))
     "#;
     assert_eq!(eval_knowledge(source), "(accepted (((x . 0) . earth)))");
@@ -545,7 +545,7 @@ fn import_knowledge_file_reads_the_data_only_example() {
 
 #[test]
 fn write_knowledge_package_round_trips_through_file_import() {
-    let path = std::env::temp_dir().join("my-lisp-knowledge-package.my");
+    let path = std::env::temp_dir().join("my-lisp-knowledge-package.lisp");
     let path_str = path.to_str().unwrap().replace('\\', "/");
     let source = format!(
         r#"
@@ -562,7 +562,7 @@ fn write_knowledge_package_round_trips_through_file_import() {
 
 #[test]
 fn write_knowledge_package_rejects_invalid_data_before_creating_a_file() {
-    let path = std::env::temp_dir().join("my-lisp-invalid-package.my");
+    let path = std::env::temp_dir().join("my-lisp-invalid-package.lisp");
     std::fs::remove_file(&path).ok();
     let path_str = path.to_str().unwrap().replace('\\', "/");
     let source = format!(r#"(write-knowledge-package "{path_str}" (quote exchange) (quote ()))"#);

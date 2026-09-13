@@ -10,9 +10,9 @@ use my_lisp::{eval_program, Session};
 
 fn eval_forward(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
         .value
@@ -318,7 +318,7 @@ fn run_multi_derives_the_same_conclusion_reason_would_from_the_same_rule_literal
 
 #[test]
 fn run_multi_supports_negation_as_failure() {
-    // Same bird/penguin example lib/reason.my's negation_as_failure test
+    // Same bird/penguin example lib/reason.lisp's negation_as_failure test
     // uses for backward-chaining — now proven forward too. tweety (an
     // animal, not a penguin) becomes a bird; pingu (a penguin) does not.
     let source = r#"

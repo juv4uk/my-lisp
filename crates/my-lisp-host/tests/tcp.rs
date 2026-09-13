@@ -9,7 +9,7 @@ use std::thread;
 
 fn tcp_session() -> Session {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
     load_tcp_library(&mut session).unwrap();
     session
 }
@@ -41,12 +41,12 @@ fn free_port() -> u16 {
 }
 
 fn load_knowledge(session: &mut Session) {
-    eval_program(include_str!("../../../lib/core.my"), session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), session).unwrap();
     load_tcp_library(session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), session).unwrap();
-    eval_program(include_str!("../../../lib/forward.my"), session).unwrap();
-    eval_program(include_str!("../../../lib/knowledge.my"), session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), session).unwrap();
+    eval_program(include_str!("../../../lib/forward.lisp"), session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.lisp"), session).unwrap();
 }
 
 #[test]

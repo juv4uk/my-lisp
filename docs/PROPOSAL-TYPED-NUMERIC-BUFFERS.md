@@ -186,7 +186,7 @@ bump. The language-value gates are complete; backend gates remain milestones:
 6. exact-to-f32 conversion is explicit in every source path;
 7. WASM uses the same capability-free core value and semantics.
 
-CML's `compute-contract.my` may now model this ratified contiguous
+CML's `compute-contract.lisp` may now model this ratified contiguous
 representation, but must not claim GPU execution until a backend and
 differential evidence exist.
 

@@ -2,15 +2,15 @@
 //! layer (observation/claim/evidence/intent, source-ref, supporting-evidence,
 //! intent-capabilities-satisfied?). Kept separate from other test files
 //! since this module isn't wired into core.my/reason.my/knowledge.my —
-//! see lib/epistemic.my's own header comment and the three source docs
+//! see lib/epistemic.lisp's own header comment and the three source docs
 //! under docs/ it implements.
 
 use my_lisp::{eval_program, Session};
 
 fn eval_epistemic(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/epistemic.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/epistemic.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
         .value
@@ -306,8 +306,8 @@ fn intent_rejects_extra_trailing_field() {
 #[test]
 fn observation_accessors_extract_the_bare_values() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/epistemic.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/epistemic.lisp"), &mut session).unwrap();
     let obs = r#"(def o (make-observation (quote (digest "d")) (quote (build cml succeeds))))"#;
     eval_program(obs, &mut session).unwrap();
     assert_eq!(
@@ -519,8 +519,8 @@ fn intent_capabilities_satisfied_is_false_for_a_malformed_intent() {
 #[test]
 fn canonical_values_round_trip_through_write_to_string_and_read() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/epistemic.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/epistemic.lisp"), &mut session).unwrap();
     for expr in [
         r#"(make-observation (quote (digest "sha256:abc")) (quote (build cml succeeds)))"#,
         r#"(make-claim (quote (build cml succeeds)) (quote (observation local-run)) (quote proposed))"#,
@@ -577,7 +577,7 @@ fn canonical_values_round_trip_through_write_to_string_and_read() {
 #[test]
 fn write_to_string_round_trips_every_core_predicate_result_bool_stays_a_boundary_concern() {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
 
     let run = |session: &mut Session, source: &str| {
         eval_program(source, session)

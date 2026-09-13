@@ -12,9 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MAP_PATH = ROOT / "knowledge" / "semantic-ownership.wsm"
+MAP_PATH = ROOT / "knowledge" / "semantic-ownership.lisp"
 REPORT_PATH = ROOT / "docs" / "semantic-ownership-report.md"
-META_EVIDENCE_PATH = ROOT / "knowledge" / "meta-eval-evidence.wsm"
+META_EVIDENCE_PATH = ROOT / "knowledge" / "meta-eval-evidence.lisp"
 
 CLASSES = {
     "canon-ground",
@@ -235,7 +235,7 @@ def render(ownership: list[Ownership], migrations: list[Migration]) -> str:
     lines = [
         "# Звіт про семантичну власність",
         "",
-        "> Згенеровано детерміновано з `knowledge/semantic-ownership.wsm`.",
+        "> Згенеровано детерміновано з `knowledge/semantic-ownership.lisp`.",
         "> Звіт рахує **аудитовані поведінки/відповідальності**, а не LOC і не повноту всієї мови.",
         "> Жодне число нижче не є «відсотком self-hosting».",
         "",

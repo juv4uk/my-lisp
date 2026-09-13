@@ -2,7 +2,7 @@
 # Звіт про покриття української та санскритської поверхні
 
 **Date:** 2026-09-07
-**Source:** `lib/surface/uk-sa-coverage.wsm` (schema `uk-sa-coverage/3`)
+**Source:** `lib/surface/uk-sa-coverage.lisp` (schema `uk-sa-coverage/3`)
 **Issue:** #1 — Ukrainian Surface Coverage
 
 ---
@@ -68,7 +68,7 @@ USC = stable mappings / eligible public names
 
 1. кожне stable українське ім’я складається лише зі знаків стандартної
    української розкладки;
-2. виконувані токени `uk-acceptance.my` не містять латинських літер.
+2. виконувані токени `uk-acceptance.lisp` не містять латинських літер.
 
 Коментарі та вміст текстових рядків не обмежуються: програма може пояснювати
 або опрацьовувати текст будь-якою мовою. Обмеження стосується саме коду — назв
@@ -137,6 +137,6 @@ UK метафори тяжіють до **практичних дій** (сит�
 
 ---
 
-*Числа звірено з `lib/surface/uk-sa-coverage.wsm` schema /3. Тест
+*Числа звірено з `lib/surface/uk-sa-coverage.lisp` schema /3. Тест
 `uk_surface_equivalence.rs` читає ту саму таблицю й перевіряє всі 140 stable
 українських відповідностей.*

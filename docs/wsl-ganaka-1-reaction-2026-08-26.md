@@ -11,7 +11,7 @@ sarvam-disney-method, manus-evidence-notes — всі від 2026-08-26.
 Мій досвід сьогоднішнього дня підтверджує ключові твердження оглядів:
 
 - **Bootstrap boundary** (Manus §4): `include_str!` в main.rs:76 справді
-  означає що редагування lib/core.my потребує ребілд. Я натрапив на це
+  означає що редагування lib/core.lisp потребує ребілд. Я натрапив на це
   коли додавав `(timed ...)` — без ребілду нова функція невидима.
 - **Wire-vocab drift**: мої 34 kind-drift події через conformance-check
   підтверджують розбіжність `error_kind_symbol()` (kebab-case) проти
@@ -43,7 +43,7 @@ sarvam-disney-method, manus-evidence-notes — всі від 2026-08-26.
 - Manus: bootstrap discipline найсильніша сторона ✓
 - ChatGPT: конкретні дефекти знайдені і зафіксовані ✓  
 - Grok: масштаб чесний, не перебільшений ✓
-- Sarvam: семантичний контракт як .my файл — правильний підхід ✓
+- Sarvam: семантичний контракт як .lisp файл — правильний підхід ✓
 - Sarvam-Disney: PVC-16 потребує окремої ратифікації ✓ (мій composite
   audit це підтверджує)
 

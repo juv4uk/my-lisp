@@ -36,7 +36,7 @@ fn eval_cap_error(source: &str) -> my_lisp::LanguageError {
 
 /// The conformance fixture's tcp-connect type-check entry, verified on the
 /// installed side: with the host layer active it must fail Type (arity/
-/// argument check), matching tests/fixtures/conformance.my's expectation.
+/// argument check), matching tests/fixtures/conformance.lisp's expectation.
 #[test]
 fn conformance_tcp_connect_type_error_holds_with_host_installed() {
     let error = eval_cap_error("(tcp-connect 42 8099)");
@@ -359,7 +359,7 @@ fn process_run_wrong_arity_is_an_arity_error() {
 
 #[test]
 fn load_evaluates_every_form_in_a_file_and_returns_the_last_value() {
-    let path = std::env::temp_dir().join("my-lisp-load-round-trip.my");
+    let path = std::env::temp_dir().join("my-lisp-load-round-trip.lisp");
     let path_str = path.to_str().unwrap().replace('\\', "/");
     std::fs::write(&path, "(def x 1) (def y 2) (+ x y)").unwrap();
 
@@ -372,7 +372,7 @@ fn load_evaluates_every_form_in_a_file_and_returns_the_last_value() {
 
 #[test]
 fn load_definitions_are_visible_in_the_calling_environment() {
-    let path = std::env::temp_dir().join("my-lisp-load-definitions.my");
+    let path = std::env::temp_dir().join("my-lisp-load-definitions.lisp");
     let path_str = path.to_str().unwrap().replace('\\', "/");
     std::fs::write(&path, "(def loaded-value 99)").unwrap();
 
@@ -402,7 +402,7 @@ fn load_wrong_arity_is_an_arity_error() {
 #[test]
 fn load_a_missing_file_fails_named_not_panics() {
     let error = eval_program(
-        r#"(load "my-lisp-load-does-not-exist-anywhere.my")"#,
+        r#"(load "my-lisp-load-does-not-exist-anywhere.lisp")"#,
         &mut capability_session(),
     )
     .expect_err("loading a nonexistent file must fail named, not panic");

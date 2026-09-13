@@ -1,6 +1,6 @@
 use my_lisp::{eval_program, Session};
 
-const УКРАЇНСЬКА_ПОВЕРХНЯ: &str = include_str!("../../../lib/surface/uk.my");
+const УКРАЇНСЬКА_ПОВЕРХНЯ: &str = include_str!("../../../lib/surface/uk.lisp");
 
 #[test]
 fn українська_поверхня_не_переводить_необхідні_форми_через_англійську() {

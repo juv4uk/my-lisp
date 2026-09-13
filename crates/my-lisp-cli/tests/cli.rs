@@ -69,7 +69,7 @@ fn help_flag_prints_usage() {
 
 #[test]
 fn oracle_check_file_is_agent_friendly_and_side_effect_free() {
-    let path = std::env::temp_dir().join("my-lisp-oracle-check-unclosed.wsm");
+    let path = std::env::temp_dir().join("my-lisp-oracle-check-unclosed.lisp");
     std::fs::write(&path, "(def answer (+ 40 2)").expect("should write fixture");
 
     let output = my_lisp()
@@ -87,7 +87,7 @@ fn oracle_check_file_is_agent_friendly_and_side_effect_free() {
 
 #[test]
 fn oracle_check_valid_file_returns_zero_without_evaluating_it() {
-    let path = std::env::temp_dir().join("my-lisp-oracle-check-valid.wsm");
+    let path = std::env::temp_dir().join("my-lisp-oracle-check-valid.lisp");
     // Unknown symbol would fail evaluation, but syntax-only preflight must
     // accept it. This proves the command does not silently become eval.
     std::fs::write(&path, "(not-defined-here 1)").expect("should write fixture");
@@ -154,7 +154,7 @@ fn oracle_help_explains_a_reference_topic_that_is_not_a_tool() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("(type reference-topic)"), "{stdout}");
     assert!(
-        stdout.contains("(source knowledge/guard-reference.wsm)"),
+        stdout.contains("(source knowledge/guard-reference.lisp)"),
         "{stdout}"
     );
     assert!(stdout.contains("docs/lsp-m0.md"), "{stdout}");
@@ -199,7 +199,7 @@ fn oracle_help_reports_not_found_when_absent_from_both_directories() {
 #[test]
 fn running_a_source_file_prints_its_result() {
     let dir = std::env::temp_dir();
-    let path = dir.join("my-lisp-cli-test-ok.my");
+    let path = dir.join("my-lisp-cli-test-ok.lisp");
     std::fs::write(&path, "(+ 1 2)").expect("should write temp file");
 
     let output = my_lisp().arg(&path).output().expect("binary should run");
@@ -239,7 +239,7 @@ fn all_three_source_extensions_run_identically() {
 #[test]
 fn running_a_file_with_an_evaluation_error_exits_nonzero() {
     let dir = std::env::temp_dir();
-    let path = dir.join("my-lisp-cli-test-eval-error.my");
+    let path = dir.join("my-lisp-cli-test-eval-error.lisp");
     std::fs::write(&path, "(car (quote ()))").expect("should write temp file");
 
     let output = my_lisp().arg(&path).output().expect("binary should run");
@@ -253,7 +253,7 @@ fn running_a_file_with_an_evaluation_error_exits_nonzero() {
 #[test]
 fn running_a_file_with_a_parse_error_exits_nonzero() {
     let dir = std::env::temp_dir();
-    let path = dir.join("my-lisp-cli-test-parse-error.my");
+    let path = dir.join("my-lisp-cli-test-parse-error.lisp");
     std::fs::write(&path, "(1 2").expect("should write temp file");
 
     let output = my_lisp().arg(&path).output().expect("binary should run");
@@ -267,7 +267,7 @@ fn running_a_file_with_a_parse_error_exits_nonzero() {
 #[test]
 fn running_a_missing_file_reports_a_read_error() {
     let output = my_lisp()
-        .arg("this-file-does-not-exist-my-lisp-cli.my")
+        .arg("this-file-does-not-exist-my-lisp-cli.lisp")
         .output()
         .expect("binary should run");
 
@@ -367,7 +367,7 @@ fn repl_echoes_a_lone_unknown_symbol_as_a_greeting_not_an_error() {
 #[test]
 fn file_mode_still_errors_on_a_lone_unknown_symbol() {
     let dir = std::env::temp_dir();
-    let path = dir.join("my-lisp-cli-test-lone-symbol.my");
+    let path = dir.join("my-lisp-cli-test-lone-symbol.lisp");
     std::fs::write(&path, "мама").expect("should write temp file");
 
     let output = my_lisp().arg(&path).output().expect("binary should run");
@@ -387,7 +387,7 @@ fn read_with_no_arguments_reads_one_line_from_real_stdin() {
     use std::process::Stdio;
 
     let dir = std::env::temp_dir();
-    let path = dir.join("my-lisp-cli-test-read-stdin.my");
+    let path = dir.join("my-lisp-cli-test-read-stdin.lisp");
     std::fs::write(&path, "(eval (read))").expect("should write temp file");
 
     let mut child = my_lisp()
@@ -420,7 +420,7 @@ fn core_lib_is_preloaded_before_running_a_file() {
     // lib/core.my definiert `identity`; würde die CLI core.my nicht mehr einspeisen,
     // schlüge dies mit einem "unknown symbol"-Fehler fehl statt 5 zurückzugeben.
     let dir = std::env::temp_dir();
-    let path = dir.join("my-lisp-cli-test-core-lib.my");
+    let path = dir.join("my-lisp-cli-test-core-lib.lisp");
     std::fs::write(&path, "(identity 5)").expect("should write temp file");
 
     let output = my_lisp().arg(&path).output().expect("binary should run");
@@ -440,7 +440,7 @@ fn argv_carries_everything_after_the_filename() {
     // bere versiiu z komandnoho riadka) — use, shcho yde pislia imeni failu, yak
     // my-lisp-spysok riadkiv — ne parsytsia yak kod, lyshe peredaietsia yak ye.
     let dir = std::env::temp_dir();
-    let path = dir.join("my-lisp-cli-test-argv.my");
+    let path = dir.join("my-lisp-cli-test-argv.lisp");
     std::fs::write(&path, "*argv*").expect("should write temp file");
 
     let output = my_lisp()
@@ -459,7 +459,7 @@ fn argv_carries_everything_after_the_filename() {
 #[test]
 fn argv_is_empty_when_nothing_follows_the_filename() {
     let dir = std::env::temp_dir();
-    let path = dir.join("my-lisp-cli-test-argv-empty.my");
+    let path = dir.join("my-lisp-cli-test-argv-empty.lisp");
     std::fs::write(&path, "*argv*").expect("should write temp file");
 
     let output = my_lisp().arg(&path).output().expect("binary should run");

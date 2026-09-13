@@ -49,7 +49,7 @@ struct CorpusEntry {
 }
 
 fn load_corpus() -> Vec<CorpusEntry> {
-    let forms = parse(include_str!("../../../tests/fixtures/conformance.my"))
+    let forms = parse(include_str!("../../../tests/fixtures/conformance.lisp"))
         .expect("conformance.my should parse as valid my-lisp source");
     forms
         .iter()
@@ -123,7 +123,7 @@ fn corpus_is_nonempty_and_covers_the_required_categories() {
     let corpus = load_corpus();
     assert!(
         !corpus.is_empty(),
-        "no (compiler-corpus . t) fixtures found in conformance.my"
+        "no (compiler-corpus . t) fixtures found in conformance.lisp"
     );
     // Small enough for ordinary CI, per #67's own acceptance criterion --
     // this is a curated representative sample, not the full 227-fixture

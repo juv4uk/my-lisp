@@ -2,10 +2,10 @@ use my_lisp::{eval_program, load_core_library, parse, Session};
 use std::{fs, hint::black_box, time::Instant};
 
 const CASES: &[(&str, &str)] = &[
-    ("arithmetic", "benchmarks/arithmetic.my"),
-    ("lists", "benchmarks/lists.my"),
-    ("recursion", "benchmarks/recursion.my"),
-    ("closures", "benchmarks/closures.my"),
+    ("arithmetic", "benchmarks/arithmetic.lisp"),
+    ("lists", "benchmarks/lists.lisp"),
+    ("recursion", "benchmarks/recursion.lisp"),
+    ("closures", "benchmarks/closures.lisp"),
 ];
 
 fn measure(iterations: usize, mut operation: impl FnMut()) -> f64 {
@@ -119,7 +119,7 @@ fn run_benchmarks() {
         .ok()
         .and_then(|value| value.parse().ok())
         .unwrap_or(1_000);
-    let parser_source = fs::read_to_string("benchmarks/parser.my").expect("read parser benchmark");
+    let parser_source = fs::read_to_string("benchmarks/parser.lisp").expect("read parser benchmark");
     let parser_ns = measure(iterations, || {
         black_box(parse(black_box(&parser_source)).expect("parse benchmark"));
     });

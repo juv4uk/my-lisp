@@ -41,7 +41,7 @@ const VALID_DOC: &str = "; a comment mentioning mystery_word\n(def answer 42)\n(
 fn t02_valid_document_produces_no_false_diagnostics() {
     let mut server = Server::new();
     let open = format!(
-        r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"file:///t.my","languageId":"my-lisp","version":1,"text":{}}}}}}}"#,
+        r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"file:///t.lisp","languageId":"my-lisp","version":1,"text":{}}}}}}}"#,
         json_string(VALID_DOC)
     );
     let replies = server.feed(&[open]);
@@ -61,7 +61,7 @@ fn t03_invalid_document_produces_real_diagnostic() {
     let mut server = Server::new();
     let bad = "(def x 1)\n(def broken\n"; // unclosed list on line 2
     let open = format!(
-        r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"file:///bad.my","languageId":"my-lisp","version":1,"text":{}}}}}}}"#,
+        r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"file:///bad.lisp","languageId":"my-lisp","version":1,"text":{}}}}}}}"#,
         json_string(bad)
     );
     let replies = server.feed(&[open]);
@@ -110,10 +110,10 @@ fn t05_document_symbol_finds_defmacro() {
 fn symbols_for(doc: &str) -> (String, String) {
     let mut server = Server::new();
     let open = format!(
-        r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"file:///s.my","languageId":"my-lisp","version":1,"text":{}}}}}}}"#,
+        r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"file:///s.lisp","languageId":"my-lisp","version":1,"text":{}}}}}}}"#,
         json_string(doc)
     );
-    let symbols = r#"{"jsonrpc":"2.0","id":7,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"file:///s.my"}}}"#;
+    let symbols = r#"{"jsonrpc":"2.0","id":7,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"file:///s.lisp"}}}"#;
     let replies = server.feed(&[open, symbols.to_string()]);
     assert_eq!(replies.len(), 2);
     (replies[1].clone(), replies[0].clone())
@@ -124,9 +124,9 @@ fn symbols_for(doc: &str) -> (String, String) {
 fn t06_hover_on_known_definition_is_useful() {
     let mut server = Server::new();
     let doc = "(def greeting \"hello\")\n(print greeting)\n";
-    let open = open_msg("file:///h.my", doc);
+    let open = open_msg("file:///h.lisp", doc);
     // hover over `greeting` usage on line 1 char 8.
-    let hover = hover_msg("file:///h.my", 1, 8);
+    let hover = hover_msg("file:///h.lisp", 1, 8);
     let replies = server.feed(&[open, hover]);
     assert_eq!(replies.len(), 2);
     let r = &replies[1];
@@ -143,8 +143,8 @@ fn t06_hover_on_known_definition_is_useful() {
     let mut shadow_server = Server::new();
     let shadow_doc = "(def max 42)\n(max)\n";
     let replies = shadow_server.feed(&[
-        open_msg("file:///shadow.my", shadow_doc),
-        hover_msg("file:///shadow.my", 1, 2),
+        open_msg("file:///shadow.lisp", shadow_doc),
+        hover_msg("file:///shadow.lisp", 1, 2),
     ]);
     let shadow = &replies[1];
     assert!(
@@ -162,15 +162,15 @@ fn t06_hover_on_known_definition_is_useful() {
 fn t07_definition_resolves_to_correct_range() {
     let mut server = Server::new();
     let doc = "(def target (+ 1 2))\n(+ target 10)\n";
-    let open = open_msg("file:///d.my", doc);
+    let open = open_msg("file:///d.lisp", doc);
     let goto =
-        r#"{"jsonrpc":"2.0","id":3,"method":"textDocument/definition","params":{"textDocument":{"uri":"file:///d.my"},"position":{"line":1,"character":3}}}"#.to_string();
+        r#"{"jsonrpc":"2.0","id":3,"method":"textDocument/definition","params":{"textDocument":{"uri":"file:///d.lisp"},"position":{"line":1,"character":3}}}"#.to_string();
     let replies = server.feed(&[open, goto]);
     assert_eq!(replies.len(), 2);
     let r = &replies[1];
     // `target` is defined at line 0, chars 5..11 ("(def |target| ...").
     assert!(
-        r.contains("\"uri\":\"file:///d.my\"") && r.contains("\"range\":{\"start\":{\"line\":0,\"character\":5},\"end\":{\"line\":0,\"character\":11}}"),
+        r.contains("\"uri\":\"file:///d.lisp\"") && r.contains("\"range\":{\"start\":{\"line\":0,\"character\":5},\"end\":{\"line\":0,\"character\":11}}"),
         "{r}"
     );
 }
@@ -184,8 +184,8 @@ fn t08_symbols_in_strings_and_comments_are_not_definitions() {
         "(print \"(def in-string 2)\")\n",
         "(def real-def 3)\n"
     );
-    let open = open_msg("file:///c.my", doc);
-    let symbols = symbols_msg("file:///c.my");
+    let open = open_msg("file:///c.lisp", doc);
+    let symbols = symbols_msg("file:///c.lisp");
     let replies = server.feed(&[open, symbols]);
     let r = &replies[1];
     assert!(r.contains("real-def"), "{r}");
@@ -220,8 +220,8 @@ fn t09_malformed_input_does_not_crash() {
     assert_eq!(replies.len(), 1);
     assert!(replies[0].contains("-32601"), "{}", replies[0]);
     // server still fully functional afterwards
-    let open = open_msg("file:///ok.my", "(def alive t)");
-    let symbols = symbols_msg("file:///ok.my");
+    let open = open_msg("file:///ok.lisp", "(def alive t)");
+    let symbols = symbols_msg("file:///ok.lisp");
     let replies = server.feed(&[open, symbols]);
     assert!(replies[1].contains("\"name\":\"alive\""), "{}", replies[1]);
 }
@@ -277,8 +277,8 @@ fn m1_workspace() -> std::path::PathBuf {
     let dir: PathBuf = std::env::temp_dir().join(format!("lsp-m1-{}-{seq}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
-    fs::write(dir.join("a.my"), "(def foo (lambda (x) (* x x)))\n").unwrap();
-    fs::write(dir.join("b.my"), "(foo 21)\n").unwrap();
+    fs::write(dir.join("a.lisp"), "(def foo (lambda (x) (* x x)))\n").unwrap();
+    fs::write(dir.join("b.lisp"), "(foo 21)\n").unwrap();
     dir
 }
 
@@ -299,8 +299,8 @@ fn request(id: u32, method: &str, params: &str) -> String {
 #[test]
 fn t10_workspace_definition_resolves_across_files() {
     let dir = m1_workspace();
-    let _a_uri = format!("file://{}/a.my", dir.display());
-    let b_uri = format!("file://{}/b.my", dir.display());
+    let _a_uri = format!("file://{}/a.lisp", dir.display());
+    let b_uri = format!("file://{}/b.lisp", dir.display());
 
     let init = request(
         1,
@@ -323,7 +323,7 @@ fn t10_workspace_definition_resolves_across_files() {
     assert_eq!(replies.len(), 1);
     let r = replies[0].as_str();
     assert!(
-        r.contains("/a.my"),
+        r.contains("/a.lisp"),
         "cross-file definition must point into a.my: {r}"
     );
     assert!(
@@ -339,12 +339,12 @@ fn t11_completion_offers_builtins_and_local_defs() {
     // fails to parse contributes no definitions. Editors see this only
     // while typing unbalanced forms; documented in docs/lsp-m0.md.
     let mut server = Server::new();
-    let open = did_open("file:///w.my", "(def alpha 1)\n(al )\n");
+    let open = did_open("file:///w.lisp", "(def alpha 1)\n(al )\n");
     let init = request(1, "initialize", "{}");
     server.feed(&[raw(&init), raw(&open)]);
 
     // Cursor at end of `(al` → prefix "al".
-    let params = r#"{"textDocument":{"uri":"file:///w.my"},"position":{"line":1,"character":3}}"#;
+    let params = r#"{"textDocument":{"uri":"file:///w.lisp"},"position":{"line":1,"character":3}}"#;
     let replies = server.feed(&[raw(&request(8, "textDocument/completion", params))]);
     assert_eq!(replies.len(), 1);
     let r = replies[0].as_str();
@@ -357,8 +357,8 @@ fn t11_completion_offers_builtins_and_local_defs() {
     );
 
     // Empty prefix → builtins are offered.
-    server.feed(&[did_open("file:///w2.my", "\n")]);
-    let params2 = r#"{"textDocument":{"uri":"file:///w2.my"},"position":{"line":0,"character":0}}"#;
+    server.feed(&[did_open("file:///w2.lisp", "\n")]);
+    let params2 = r#"{"textDocument":{"uri":"file:///w2.lisp"},"position":{"line":0,"character":0}}"#;
     let replies2 = server.feed(&[raw(&request(9, "textDocument/completion", params2))]);
     let r2 = replies2[0].as_str();
     assert!(
@@ -378,10 +378,10 @@ fn t11_completion_offers_builtins_and_local_defs() {
 
     let mut shadow_server = Server::new();
     shadow_server.feed(&[did_open(
-        "file:///shadow-completion.my",
+        "file:///shadow-completion.lisp",
         "(def max 42)\n(ma )\n",
     )]);
-    let shadow_params = r#"{"textDocument":{"uri":"file:///shadow-completion.my"},"position":{"line":1,"character":3}}"#;
+    let shadow_params = r#"{"textDocument":{"uri":"file:///shadow-completion.lisp"},"position":{"line":1,"character":3}}"#;
     let shadow_reply =
         shadow_server.feed(&[raw(&request(10, "textDocument/completion", shadow_params))]);
     let shadow = &shadow_reply[0];
@@ -404,17 +404,17 @@ fn m2_workspace() -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("lsp-m2-{}-{seq}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
-    fs::write(dir.join("defs.my"), "(def target (lambda (x) x))\n").unwrap();
-    fs::write(dir.join("use1.my"), "(target 1)\n").unwrap();
+    fs::write(dir.join("defs.lisp"), "(def target (lambda (x) x))\n").unwrap();
+    fs::write(dir.join("use1.lisp"), "(target 1)\n").unwrap();
     // quoted occurrence must NEVER count (it is data, not a code reference)
-    fs::write(dir.join("use2.my"), "(quote target)\n(list target)\n").unwrap();
+    fs::write(dir.join("use2.lisp"), "(quote target)\n(list target)\n").unwrap();
     dir
 }
 
 #[test]
 fn t12_references_cross_file_excludes_quoted_data() {
     let dir = m2_workspace();
-    let use1 = format!("file://{}/use1.my", dir.display());
+    let use1 = format!("file://{}/use1.lisp", dir.display());
 
     let init = request(
         1,
@@ -437,7 +437,7 @@ fn t12_references_cross_file_excludes_quoted_data() {
 
     // Expect: def in defs.my + usage in use1.my + usage in use2.my line 2.
     assert_eq!(3, r.matches("\"uri\"").count(), "expected 3 locations: {r}");
-    assert!(r.contains("defs.my"), "{r}");
+    assert!(r.contains("defs.lisp"), "{r}");
     assert!(
         !r.contains("quote") || !r.contains("(quote"),
         "quoted data must be excluded: {r}"
@@ -447,7 +447,7 @@ fn t12_references_cross_file_excludes_quoted_data() {
 #[test]
 fn t13_references_exclude_declaration_when_asked() {
     let dir = m2_workspace();
-    let use1 = format!("file://{}/use1.my", dir.display());
+    let use1 = format!("file://{}/use1.lisp", dir.display());
     let init = request(
         1,
         "initialize",
@@ -476,7 +476,7 @@ fn t13_references_exclude_declaration_when_asked() {
 #[test]
 fn t14_rename_produces_cross_file_edits_and_validates_name() {
     let dir = m2_workspace();
-    let use1 = format!("file://{}/use1.my", dir.display());
+    let use1 = format!("file://{}/use1.lisp", dir.display());
     let init = request(
         1,
         "initialize",
@@ -504,12 +504,12 @@ fn t14_rename_produces_cross_file_edits_and_validates_name() {
         r.matches("\"newText\":\"renamed-thing\"").count(),
         "def + 2 code usages renamed; quoted data excluded: {r}"
     );
-    let use2_section = r.split("use2.my").nth(1).unwrap_or("");
+    let use2_section = r.split("use2.lisp").nth(1).unwrap_or("");
     assert!(
         use2_section.contains("\"line\":1,"),
         "use2 edits start at line 1: {r}"
     );
-    assert!(r.contains("defs.my"), "{r}");
+    assert!(r.contains("defs.lisp"), "{r}");
 
     // Invalid name → error response, not a workspace edit.
     let bad = format!(
@@ -531,7 +531,7 @@ fn t14_rename_produces_cross_file_edits_and_validates_name() {
 #[test]
 fn t15_arity_diagnostics_are_conservative_and_shadow_aware() {
     let mut server = Server::new();
-    let bad = did_open("file:///arity-bad.my", "(car 1 2)\n");
+    let bad = did_open("file:///arity-bad.lisp", "(car 1 2)\n");
     let replies = server.feed(&[bad]);
     let diagnostic = &replies[0];
     assert!(
@@ -540,7 +540,7 @@ fn t15_arity_diagnostics_are_conservative_and_shadow_aware() {
     );
 
     let shadowed = did_open(
-        "file:///arity-shadow.my",
+        "file:///arity-shadow.lisp",
         "(def car (lambda (x y) x))\n(car 1 2)\n(quote (car 1 2))\n(read)\n",
     );
     let replies = server.feed(&[shadowed]);
@@ -550,7 +550,7 @@ fn t15_arity_diagnostics_are_conservative_and_shadow_aware() {
         replies[0]
     );
 
-    let too_many = did_open("file:///arity-read.my", "(read \"a\" \"b\")\n");
+    let too_many = did_open("file:///arity-read.lisp", "(read \"a\" \"b\")\n");
     let replies = server.feed(&[too_many]);
     assert!(
         replies[0].contains("arity: read expects between 0 and 1, received 2"),
@@ -559,16 +559,16 @@ fn t15_arity_diagnostics_are_conservative_and_shadow_aware() {
     );
 
     let mut metadata_server = Server::new();
-    metadata_server.feed(&[did_open("file:///metadata.my", "(car 1)\n")]);
-    let hover = metadata_server.feed(&[hover_msg("file:///metadata.my", 0, 2)]);
+    metadata_server.feed(&[did_open("file:///metadata.lisp", "(car 1)\n")]);
+    let hover = metadata_server.feed(&[hover_msg("file:///metadata.lisp", 0, 2)]);
     assert!(
         hover[0].contains("(car pair)"),
         "hover must expose the canonical signature: {}",
         hover[0]
     );
 
-    metadata_server.feed(&[did_open("file:///metadata-completion.my", "\n")]);
-    let params = r#"{"textDocument":{"uri":"file:///metadata-completion.my"},"position":{"line":0,"character":0}}"#;
+    metadata_server.feed(&[did_open("file:///metadata-completion.lisp", "\n")]);
+    let params = r#"{"textDocument":{"uri":"file:///metadata-completion.lisp"},"position":{"line":0,"character":0}}"#;
     let completion = metadata_server.feed(&[raw(&request(16, "textDocument/completion", params))]);
     assert!(
         completion[0].contains("builtin · (car pair)"),
@@ -588,10 +588,10 @@ fn t16_workspace_scan_recognizes_wsm_extension() {
     let dir: PathBuf = std::env::temp_dir().join(format!("lsp-wsm-{}-{seq}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
-    fs::write(dir.join("a.wsm"), "(def foo (lambda (x) (* x x)))\n").unwrap();
-    fs::write(dir.join("b.wsm"), "(foo 21)\n").unwrap();
+    fs::write(dir.join("a.lisp"), "(def foo (lambda (x) (* x x)))\n").unwrap();
+    fs::write(dir.join("b.lisp"), "(foo 21)\n").unwrap();
 
-    let b_uri = format!("file://{}/b.wsm", dir.display());
+    let b_uri = format!("file://{}/b.lisp", dir.display());
     let init = request(
         1,
         "initialize",
@@ -612,7 +612,7 @@ fn t16_workspace_scan_recognizes_wsm_extension() {
     assert_eq!(replies.len(), 1);
     let r = replies[0].as_str();
     assert!(
-        r.contains("/a.wsm"),
+        r.contains("/a.lisp"),
         "cross-file definition must point into a.wsm: {r}"
     );
 }
@@ -644,7 +644,7 @@ fn init_with_root(root: &Path) -> String {
 /// Rust copy.
 #[test]
 fn t17_g3_guard_function_hover_from_live_lib_guard_wsm() {
-    let uri = "file:///g3fn.my";
+    let uri = "file:///g3fn.lisp";
     let doc = "(guard-unknown subject missing-evidence guidance)\n";
     let mut server = Server::new();
     let replies = server.feed(&[
@@ -657,14 +657,14 @@ fn t17_g3_guard_function_hover_from_live_lib_guard_wsm() {
     assert!(r.contains("**guard function**"), "{r}");
     // The canonical source must be the live def, structurally provable.
     assert!(r.contains("(def guard-unknown"), "{r}");
-    assert!(r.contains("lib/guard.wsm"), "{r}");
+    assert!(r.contains("lib/guard.lisp"), "{r}");
 }
 
 /// A wrong-arity call to a live guard function is caught by arity
 /// diagnostics exactly like a runtime builtin would be.
 #[test]
 fn t18_g3_guard_function_wrong_arity_is_diagnosed() {
-    let uri = "file:///g3ar.my";
+    let uri = "file:///g3ar.lisp";
     let doc = "(guard-unknown only-one-arg)\n"; // expects 3
     let mut server = Server::new();
     let replies = server.feed(&[
@@ -688,7 +688,7 @@ fn t18_g3_guard_function_wrong_arity_is_diagnosed() {
 #[test]
 #[ignore = "guard-reference.wsm topic parse is slow; run explicitly in release"]
 fn t19_g3_guard_topic_hover_from_live_reference_wsm() {
-    let uri = "file:///g3tp.my";
+    let uri = "file:///g3tp.lisp";
     let doc = "(guard)\n"; // `guard` as a bare symbol form, not a call
     let mut server = Server::new();
     let replies = server.feed(&[

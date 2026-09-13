@@ -1,11 +1,11 @@
-# Brief для `lib/epistemic.my` v0
+# Brief для `lib/epistemic.lisp` v0
 
 **Статус:** готовий вузький implementation brief.  
 **Commit/push:** не робити без окремого review.
 
 ## Завдання
 
-Реалізуй `lib/epistemic.my` v0 як **opt-in pure data experiment** поверх поточного `my-lisp`. Його ціль — перевірити, чи мова вже здатна виразити claim/evidence/intent structures без жодної зміни kernel.
+Реалізуй `lib/epistemic.lisp` v0 як **opt-in pure data experiment** поверх поточного `my-lisp`. Його ціль — перевірити, чи мова вже здатна виразити claim/evidence/intent structures без жодної зміни kernel.
 
 ## Межі, яких не можна перетинати
 

@@ -20,19 +20,19 @@ architectural intention.
 ## What this adds
 
 `crates/my-lisp/tests/compiler_corpus_dual_backend.rs` — not a new
-mechanism. Applies the same native-Rust-evaluator-vs-`lib/meta-eval.my`
+mechanism. Applies the same native-Rust-evaluator-vs-`lib/meta-eval.lisp`
 comparison shape used elsewhere in this test suite (see
 `crates/my-lisp/tests/meta_eval_corpus.rs`, which drives the same
 comparison off a `meta-eval` corpus tag rather than a hand-copied
 expression list) specifically to #67's frozen compiler-corpus
-(`tests/fixtures/conformance.my`'s `(compiler-corpus . t)` fixtures)
+(`tests/fixtures/conformance.lisp`'s `(compiler-corpus . t)` fixtures)
 rather than the separate, broader self-hosting-tracking corpus that
 file already covers.
 
 ## The current, honest, verified fact
 
 **9 of 14** value-producing compiler-corpus fixtures pass through both
-the native Rust evaluator and `lib/meta-eval.my`'s Lisp-owned
+the native Rust evaluator and `lib/meta-eval.lisp`'s Lisp-owned
 meta-evaluator, with byte-identical results, right now:
 
 - All 7 McCarthy-7/Canon 0 fixtures (`quote`/`atom`/`eq`/`car`/`cdr`/
@@ -50,7 +50,7 @@ disagreement:
 - `(eq (lambda (x) x) (lambda (x) x))` — closure identity.
 - `count-down`'s named-def-plus-recursion shape (multi-statement,
   `def` + call).
-- `let`-based shadowing (`let` is a `core.my` macro, not yet expanded
+- `let`-based shadowing (`let` is a `core.lisp` macro, not yet expanded
   by `my-eval`).
 - Variadic `defmacro` success path.
 
@@ -75,9 +75,9 @@ inspect the value shape, not just the `Result` variant).
 
 ## What this is not
 
-Not a claim that meta-eval.my is "done," not a claim that 9/14 is a
+Not a claim that meta-eval.lisp is "done," not a claim that 9/14 is a
 target percentage, and not a second execution backend in the sense the
-architecture eventually wants (CML/C/WASM/FPGA) — `lib/meta-eval.my`
+architecture eventually wants (CML/C/WASM/FPGA) — `lib/meta-eval.lisp`
 is itself still Rust-hosted (it's a Lisp *program*, interpreted by the
 same native Rust evaluator it's being compared against, one level up).
 It is the first concrete instance of the actual acceptance test:

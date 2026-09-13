@@ -35,7 +35,7 @@ clone і Drop-шляху evaluator'а = головний трудовий риз
 ## Р3 EXACTNESS / РАЦІОНАЛЬНІ
 
 Раціональні поза heap у M0 (immutable, Rc-clone дешевий).
-**Діру зафіксовано в GC-docs, НЕ в language-contract.my**
+**Діру зафіксовано в GC-docs, НЕ в language-contract.lisp**
 (implementation detail, не обіцянка мови) — уточнення Vyasa прийнято.
 
 Відомий наслідок: символьно-математичні workload (WSM-24 Тейлор на
@@ -87,7 +87,7 @@ per-process.
 4. ВИМІРЯНІ рішення про дизайн heap        (якщо тиск є)
 5. Реалізація за тим самим фасадом         (без повторного переписання call-sites)
 6. Stress-mode + metamorphic sweep + quarantine default-on
-7. gc-object-contract.my ратифікація       (FPGA/CML паралель)
+7. gc-object-contract.lisp ратифікація       (FPGA/CML паралель)
 ```
 
 ## ВІДКРИТІ ПИТАННЯ (власнику)

@@ -2,7 +2,7 @@ use my_lisp::{eval_program, Session};
 
 fn eval_with_si(source: &str) -> String {
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/si.my"), &mut session)
+    eval_program(include_str!("../../../lib/si.lisp"), &mut session)
         .expect("SI definitions should load");
     eval_program(source, &mut session)
         .expect("SI expression should evaluate")

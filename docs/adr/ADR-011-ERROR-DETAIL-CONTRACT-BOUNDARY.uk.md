@@ -54,7 +54,7 @@ error category         Rust message
 ## Наслідки
 
 - Не додається parser для native error messages.
-- Localization text не копіюється в `lib/meta-eval.my`.
+- Localization text не копіюється в `lib/meta-eval.lisp`.
 - Source-span equivalence між reference evaluator та meta-evaluator не вимагається.
 - Корисні структуровані Lisp diagnostics зберігаються.
 - `error-detail-parity` може бути підтверджений лише як **явний результат визначення межі**: зараз немає додаткових ратифікованих cross-runtime detail fields понад уже підтверджену категорію.

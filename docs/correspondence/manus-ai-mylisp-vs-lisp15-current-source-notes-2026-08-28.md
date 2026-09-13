@@ -14,7 +14,7 @@ McCarthy paper).
 |---|---|---|
 | Machine-independent recursive core | `crates/my-lisp` declares capability-free core; filesystem/process/sockets live in `my-lisp-host` and embedding decides installation. | Strong conceptual continuation, with explicit modern trust boundary. |
 | `eval` and application | `eval/mod.rs` parses/evaluates expressions; dispatches fixed special forms; then ordinary builtin/closure/macro invocation. Trampoline represents tail calls as data instead of recursive Rust calls. | Same central evaluator idea, modern implementation and a larger semantic surface. |
-| Object-language universal evaluator | `lib/meta-eval.my` defines an intentionally bounded `my-eval` over ordinary association-list environments and dispatches the five primitive operations without reimplementing them. | The closest direct descendant of the paper's `apply`/`eval`; explicitly a demonstration, not the mandatory runtime evaluator or a claim of full language completeness. |
+| Object-language universal evaluator | `lib/meta-eval.lisp` defines an intentionally bounded `my-eval` over ordinary association-list environments and dispatches the five primitive operations without reimplementing them. | The closest direct descendant of the paper's `apply`/`eval`; explicitly a demonstration, not the mandatory runtime evaluator or a claim of full language completeness. |
 | `quote`, `cond`, `lambda`, recursive named definitions | Kernel has literal `quote`, `cond`, `lambda`, `def`, `defmacro`; `def` inserts into captured shared lexical frame so a closure can recurse. | Same family of mechanisms, not byte-for-byte Lisp 1.5's `LABEL`/alist semantics. |
 | Atoms/pairs and list notation | Parser has `ExprKind::Pair`; dotted list folds to nested pairs. Runtime `Value::Pair`; `cons`, `car`, `cdr`, `atom` and atom-only `eq`. | Direct semantic inheritance, now protected by spans/depth limit/named errors. |
 | Symbolic functions as symbolic data | `quote`, `read`, `eval`, macro expansion and `value_to_expr` model code/data transition. Closures/resources/builtins deliberately refuse to masquerade as syntax. | Homoiconicity preserved for syntax; full runtime reflection deliberately not claimed. |
@@ -45,7 +45,7 @@ treated as a defect in early Lisp.
 - Paper `LABEL` is an explicit S-expression representation of
   recursion. Current `my-lisp` has no `label` operator: host-level
   `def` makes a recursive closure visible by inserting it into a
-  shared lexical frame; `lib/meta-eval.my` candidly does **not**
+  shared lexical frame; `lib/meta-eval.lisp` candidly does **not**
   support recursive top-level `def` because its immutable alist
   environment captures the pre-binding environment.
 

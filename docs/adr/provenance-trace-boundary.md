@@ -2,7 +2,7 @@
 
 Status: proposed 2026-08-18 (`MYLISP-PROVENANCE-TRACE-BOUNDARY-DESIGN`,
 proposed by `my-lisp-panini`). Design only, no evaluator change —
-defines a convention over data shapes `lib/knowledge.my`/`lib/world.my`
+defines a convention over data shapes `lib/knowledge.lisp`/`lib/world.lisp`
 already use, the same way
 [Visibility vs conflict ADR](visibility-vs-conflict.md) and
 [Unknown result semantics ADR](unknown-result-semantics.md) did earlier
@@ -23,7 +23,7 @@ thing that are easy to conflate:
    same shape (`status: HYPOTHESIS` / `CONFIRMED` / `RESOLVED`, each with
    `evidence`/`limitations`).
 2. **A runtime trace** — a record of *how a computation happened*: which
-   rule fired, in what order, consuming which inputs. `lib/reason.my`'s
+   rule fired, in what order, consuming which inputs. `lib/reason.lisp`'s
    proof trees and `my-lisp-panini`'s Derivation IR are both this. A
    trace's job is to explain a computation, not to certify the truth of
    what it started from.
@@ -43,8 +43,8 @@ epistemic bookkeeping.
 consumed, and its own result's status is never stronger than the
 weakest status among those inputs.** Concretely, as ordinary tagged
 data (same style as
-[`lib/result-status.my`](../../lib/result-status.my)'s
-`unknown`/`partial`/`blocked`/`disputed`, and `lib/knowledge.my`'s
+[`lib/result-status.lisp`](../../lib/result-status.lisp)'s
+`unknown`/`partial`/`blocked`/`disputed`, and `lib/knowledge.lisp`'s
 `tell`/`retract` journal events):
 
 ```lisp
@@ -81,7 +81,7 @@ are orthogonal axes, not the same field wearing two hats.
 
 ## What this ADR does NOT do
 
-- Does not require every existing `lib/reason.my`/`lib/knowledge.my` call
+- Does not require every existing `lib/reason.lisp`/`lib/knowledge.lisp` call
   site to adopt `traced-result` — like the unknown-result-semantics ADR,
   this is a convention for new code (particularly `my-lisp-panini`'s
   Derivation IR consuming `shiva-sutras` claims) to follow, not a

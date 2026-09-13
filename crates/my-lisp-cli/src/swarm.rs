@@ -426,14 +426,14 @@ pub(crate) fn oracle_check(source: &str, contract_version: &Value) -> (Value, bo
 /// never needs to know which of the two directories actually held the
 /// answer.
 pub(crate) fn oracle_help(session: &mut Session, topic: Option<&str>) -> Result<Value, String> {
-    let reference = std::fs::read_to_string("knowledge/guard-reference.wsm").map_err(|error| {
+    let reference = std::fs::read_to_string("knowledge/guard-reference.lisp").map_err(|error| {
         format!(
             "cannot read knowledge/guard-reference.wsm (run from the my-lisp repo root): {error}"
         )
     })?;
     for (name, source) in [
-        ("lib/guard.wsm", wsm_guard_core::GUARD),
-        ("knowledge/guard-reference.wsm", reference.as_str()),
+        ("lib/guard.lisp", wsm_guard_core::GUARD),
+        ("knowledge/guard-reference.lisp", reference.as_str()),
     ] {
         let ast = parse(source)
             .map_err(|error| format!("cannot parse {name}: {}", error.render(source)))?;

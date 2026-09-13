@@ -100,4 +100,4 @@ current or near-term scope (read-only query capabilities) requires
 more than that, and inventing a budget-enforcement mechanism in the
 capability-free core before a real capability needs it would violate
 this ecosystem's own "owner's first step" discipline the same way a
-speculative `repo.my` would have.
+speculative `repo.lisp` would have.

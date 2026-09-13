@@ -20,11 +20,11 @@
 use std::fs;
 
 const TRACKED_FILES: &[&str] = &[
-    "result-status.my",
-    "narrate.my",
-    "translation.my",
-    "quantity.my",
-    "si.my",
+    "result-status.lisp",
+    "narrate.lisp",
+    "translation.lisp",
+    "quantity.lisp",
+    "si.lisp",
 ];
 
 fn defined_names(source: &str) -> Vec<&str> {

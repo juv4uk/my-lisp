@@ -95,7 +95,7 @@ The metacircular evaluator must align with the established language rule instead
 
 The semantic rule is **shared frame identity**. It does not require the metacircular evaluator to construct a cyclic host object.
 
-`lib/meta-eval.my` may represent the rule with finite Lisp data, for example by threading a data-level definition-frame observation through closure application. The representation is acceptable only if the observable rules above match the reference evaluator.
+`lib/meta-eval.lisp` may represent the rule with finite Lisp data, for example by threading a data-level definition-frame observation through closure application. The representation is acceptable only if the observable rules above match the reference evaluator.
 
 This keeps the self-hosting witness compatible with the project's existing principle:
 
@@ -127,4 +127,4 @@ parameter shadowing  -> local wins
 one-way later lambda -> callable after its later definition
 ```
 
-When those witnesses pass on both evaluators, the `arbitrary-later-binding-visibility` row in `knowledge/meta-eval-evidence.wsm` may move from `partial` to `confirmed` for the tested contract.
+When those witnesses pass on both evaluators, the `arbitrary-later-binding-visibility` row in `knowledge/meta-eval-evidence.lisp` may move from `partial` to `confirmed` for the tested contract.

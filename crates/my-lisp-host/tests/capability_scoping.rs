@@ -123,7 +123,7 @@ fn write_scope_allows_new_file_inside_and_denies_outside() {
 fn load_cannot_bypass_read_scope() {
     let allowed = unique_dir("scope-load-allowed");
     let outside = unique_dir("scope-load-outside");
-    let source = outside.join("escape.my");
+    let source = outside.join("escape.lisp");
     fs::write(&source, "(def escaped-through-load 42)").unwrap();
 
     let env = Environment::root().with_fs_read_roots(vec![allowed.clone()]);

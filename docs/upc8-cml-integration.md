@@ -172,7 +172,7 @@ The exact C ABI is deferred, but this generated shape makes one point testable i
 
 ## 6. ABI: CML needs a third contract axis, not an implicit extension of ISA 1.0
 
-CML already separates `my-lisp` language contract from `fpga-lisp` ISA contract in `compatibility.my`; the file correctly says compatibility is specific to declared contracts, not merely repo releases and SHA movement [8]. UPC should follow that rule.
+CML already separates `my-lisp` language contract from `fpga-lisp` ISA contract in `compatibility.lisp`; the file correctly says compatibility is specific to declared contracts, not merely repo releases and SHA movement [8]. UPC should follow that rule.
 
 ```text
 Compatibility tuple for a UPC-enabled artifact
@@ -284,5 +284,5 @@ It also gives you a clean conformance story: same source profile and same UPC co
 [4]: https://github.com/juv4uk/cml/blob/master/src/compiler.rs "FPGA emitter and runtime quoted-list construction"
 [5]: https://github.com/juv4uk/cml/blob/master/tests/conformance_test.rs "Blind CML → FPGA conformance adapter"
 [6]: https://github.com/juv4uk/cml/blob/master/src/c_backend.rs "CML C backend and tagged-union runtime"
-[7]: https://github.com/juv4uk/fpga-lisp/blob/master/isa-contract.my "fpga-lisp ISA contract 1.0"
-[8]: https://github.com/juv4uk/cml/blob/master/compatibility.my "CML compatibility contract and declared limits"
+[7]: https://github.com/juv4uk/fpga-lisp/blob/master/isa-contract.lisp "fpga-lisp ISA contract 1.0"
+[8]: https://github.com/juv4uk/cml/blob/master/compatibility.lisp "CML compatibility contract and declared limits"

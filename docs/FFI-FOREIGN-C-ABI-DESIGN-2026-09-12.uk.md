@@ -19,7 +19,7 @@ Python — окремий рантайм, до якого потрібен тр�
 ## Цільова архітектура
 
 ```
-MY-LISP → lib/ffi.my (foreign-library-open/symbol/call)
+MY-LISP → lib/ffi.lisp (foreign-library-open/symbol/call)
         → мінімальний Rust-субстрат (OS loader + ABI-виклик)
         → .so/.dll/.dylib (BLAS, FFTW, libc, CUDA, ...)
 ```
@@ -42,4 +42,4 @@ Callbacks (`procedure->pointer`), маршалінг структур за зн�
 
 ## Задачі
 
-`FFI-001` (цей документ, виконано) → `FFI-002` (вибір моделі значення) → `FFI-003` (мінімальний Rust-субстрат, єдине місце з виправданим новим Rust-механізмом) → `FFI-004` (`lib/ffi.my`, witness через `libm`'s `sqrt`) → `FFI-005` (дослідження zero-copy мосту, окремо від базового механізму виклику).
+`FFI-001` (цей документ, виконано) → `FFI-002` (вибір моделі значення) → `FFI-003` (мінімальний Rust-субстрат, єдине місце з виправданим новим Rust-механізмом) → `FFI-004` (`lib/ffi.lisp`, witness через `libm`'s `sqrt`) → `FFI-005` (дослідження zero-copy мосту, окремо від базового механізму виклику).

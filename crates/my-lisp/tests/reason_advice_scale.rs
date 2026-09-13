@@ -27,12 +27,12 @@ use std::time::Instant;
 fn loaded_session() -> Session {
     let mut session = Session::default();
     for library in [
-        include_str!("../../../lib/core.my"),
-        include_str!("../../../lib/unify.my"),
-        include_str!("../../../lib/reason.my"),
-        include_str!("../../../lib/forward.my"),
-        include_str!("../../../lib/knowledge.my"),
-        include_str!("../../../lib/result-status.my"),
+        include_str!("../../../lib/core.lisp"),
+        include_str!("../../../lib/unify.lisp"),
+        include_str!("../../../lib/reason.lisp"),
+        include_str!("../../../lib/forward.lisp"),
+        include_str!("../../../lib/knowledge.lisp"),
+        include_str!("../../../lib/result-status.lisp"),
     ] {
         eval_program(library, &mut session).unwrap();
     }

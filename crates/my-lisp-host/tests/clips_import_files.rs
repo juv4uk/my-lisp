@@ -10,14 +10,14 @@ use my_lisp_host::install;
 fn eval_import(source: &str) -> String {
     install();
     let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/utf8.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/utf8.lisp"), &mut session).unwrap();
     eval_program(include_str!("../../../lib/fs.lisp"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/forward.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/knowledge.my"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/clips-import.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/forward.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/knowledge.lisp"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/clips-import.lisp"), &mut session).unwrap();
     eval_program(source, &mut session)
         .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
         .value

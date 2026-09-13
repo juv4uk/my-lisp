@@ -1,6 +1,6 @@
 # data/
 
-External CLIPS example source files imported for local reference, not wired into the build, tests, or `lib/clips-import.my` fixtures. Kept separate from `tests/fixtures/*.clp` (the project's actual CLIPS-import conformance fixtures, sourced from the official `smarr/CLIPS` examples repo) so provenance stays unambiguous.
+External CLIPS example source files imported for local reference, not wired into the build, tests, or `lib/clips-import.lisp` fixtures. Kept separate from `tests/fixtures/*.clp` (the project's actual CLIPS-import conformance fixtures, sourced from the official `smarr/CLIPS` examples repo) so provenance stays unambiguous.
 
 ## Contents
 

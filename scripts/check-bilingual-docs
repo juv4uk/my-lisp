@@ -107,7 +107,7 @@ for file in "${files[@]}"; do
     # трилінгвальний тег-заголовок не мусить важити як повний абзац).
     read -r before after <<< "$(cyrillic_chars_before_after "$file" "$en_line")"
     if (( before == 0 )) || (( after > before )); then
-      printf 'English-first content order: %s (English/Deutsch heading at line %s; %d Ukrainian char(s) before it, %d after) -- move the Ukrainian content before it, per language-policy.wsm human-facing-order\n' \
+      printf 'English-first content order: %s (English/Deutsch heading at line %s; %d Ukrainian char(s) before it, %d after) -- move the Ukrainian content before it, per language-policy.lisp human-facing-order\n' \
         "$file" "$en_line" "$before" "$after" >&2
       failed=1
     fi
@@ -126,7 +126,7 @@ for file in "${files[@]}"; do
   if (( total_lines >= 10 )); then
     uk_line=$(first_real_cyrillic_line "$file")
     if [[ -n "$uk_line" ]] && (( uk_line * 2 > total_lines )); then
-      printf 'Ukrainian content only in back half of file: %s (first real Cyrillic at line %s of %s) -- expected Ukrainian-primary prose near the start, per language-policy.wsm\n' \
+      printf 'Ukrainian content only in back half of file: %s (first real Cyrillic at line %s of %s) -- expected Ukrainian-primary prose near the start, per language-policy.lisp\n' \
         "$file" "$uk_line" "$total_lines" >&2
       failed=1
     fi

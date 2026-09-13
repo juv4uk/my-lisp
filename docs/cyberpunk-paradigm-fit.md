@@ -12,7 +12,7 @@ have their own substrate concerns.
 **Self-hosting is untouched.** The whole embedding, as scoped (a
 minimal reader + evaluator dispatching to a fixed set of host
 primitives, no closures), lives entirely on the *consumer* side. Real
-my-lisp — `crates/my-lisp`, `lib/*.my`, the bootstrap chain in
+my-lisp — `crates/my-lisp`, `lib/*.lisp`, the bootstrap chain in
 `lib.rs` — is not modified, weakened, or forked to make this fit.
 `wsm-my-lisp`'s asm nucleus already proved the harder version of this
 same claim (a from-scratch substrate, oracle-verified against real
@@ -21,7 +21,7 @@ smaller instance of a pattern this ecosystem has already validated,
 not a novel risk.
 
 **The special-forms boundary holds up under real pressure.**
-`language-contract.my`'s claim that `quote cond lambda def defmacro
+`language-contract.lisp`'s claim that `quote cond lambda def defmacro
 are NOT callable values` was previously a clean theoretical line. The
 Cyberpunk scenario is the first place I've seen it get tested against
 a genuinely different design pressure — a game engine's own callback
@@ -35,7 +35,7 @@ cases.
 **"Owner's first step" discipline was followed, not worked around.**
 I advised `my-lisp-cyberpunk` to start with a README only (mirroring
 `c-runtime`'s own precedent), explicitly declining to write a
-`repo.my` for it — because `repo.my`'s `role`/`capabilities` fields
+`repo.lisp` for it — because `repo.lisp`'s `role`/`capabilities` fields
 would have encoded an architecture decision (CET vs RED4ext, what
 `capabilities` means for a game-modding host) that isn't mine to make
 first. That restraint is the axiom working as designed, not me

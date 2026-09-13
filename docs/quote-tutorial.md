@@ -2,12 +2,12 @@
 
 ## English
 
-**my-lisp** is homoiconic: code and data share one notation. Wrapping an expression in `(quote ...)` tells the evaluator "treat this as inert data, don't run it." Delete that wrapper and the exact same text becomes a running program. This tutorial is a five-stage `.my` file: run each block with the `(quote ...)`, read the printed result, then delete the `quote` wrapper and run it again.
+**my-lisp** is homoiconic: code and data share one notation. Wrapping an expression in `(quote ...)` tells the evaluator "treat this as inert data, don't run it." Delete that wrapper and the exact same text becomes a running program. This tutorial is a five-stage `.lisp` file: run each block with the `(quote ...)`, read the printed result, then delete the `quote` wrapper and run it again.
 
 Try each pair with the CLI:
 
 ```powershell
-cargo run --manifest-path crates/my-lisp-cli/Cargo.toml -- your-file.my
+cargo run --manifest-path crates/my-lisp-cli/Cargo.toml -- your-file.lisp
 ```
 
 ### Stage 1 — data vs. arithmetic
@@ -61,7 +61,7 @@ Prints `100` — the condition actually runs.
 
 ### Stage 5 — growing the language itself
 
-A `defmacro` receives its arguments as data (unevaluated, like `quote` does) and returns new code for the evaluator to run — this is how `lib/core.my` bootstraps derived forms without adding anything to the Rust core (see the bootstrap-boundary principle in `docs/language-core.md`):
+A `defmacro` receives its arguments as data (unevaluated, like `quote` does) and returns new code for the evaluator to run — this is how `lib/core.lisp` bootstraps derived forms without adding anything to the Rust core (see the bootstrap-boundary principle in `docs/language-core.md`):
 
 ```lisp
 (defmacro unless (condition body)
@@ -75,21 +75,21 @@ Prints `different`. `unless` did not exist in the language a moment ago; you jus
 
 ### Stage 6 — the trick taken all the way
 
-`quote` treats code as data; `defmacro` builds new code from data. The next step is a program that *runs* code passed to it as data — an evaluator. [`lib/meta-eval.my`](../lib/meta-eval.my) is one, written entirely in my-lisp, using `read` to turn text into data (see stage 1) and its own `car`/`cdr`/`cons`/`atom`/`eq`/`cond`/`lambda` to interpret it — the same primitives this tutorial has used throughout, now dispatching to themselves:
+`quote` treats code as data; `defmacro` builds new code from data. The next step is a program that *runs* code passed to it as data — an evaluator. [`lib/meta-eval.lisp`](../lib/meta-eval.lisp) is one, written entirely in my-lisp, using `read` to turn text into data (see stage 1) and its own `car`/`cdr`/`cons`/`atom`/`eq`/`cond`/`lambda` to interpret it — the same primitives this tutorial has used throughout, now dispatching to themselves:
 
 ```lisp
 (my-eval (read "((lambda (x) (* x x)) 6)") (quote ()))
 ```
-Prints `36`. Load it alongside `lib/core.my` and read the file's own header comment for what it deliberately leaves out and why.
+Prints `36`. Load it alongside `lib/core.lisp` and read the file's own header comment for what it deliberately leaves out and why.
 
 ## Українська
 
-**my-lisp** гомоіконічна: код і дані записуються однаково. Обгортання виразу в `(quote ...)` каже evaluator'у "став до цього як до інертних даних, не виконуй". Приберіть цю обгортку — і той самий текст стає програмою, що виконується. Цей туторіал — `.my`-файл із п'яти етапів: запустіть кожен блок з `(quote ...)`, подивіться на надрукований результат, потім приберіть `quote`-обгортку і запустіть знову.
+**my-lisp** гомоіконічна: код і дані записуються однаково. Обгортання виразу в `(quote ...)` каже evaluator'у "став до цього як до інертних даних, не виконуй". Приберіть цю обгортку — і той самий текст стає програмою, що виконується. Цей туторіал — `.lisp`-файл із п'яти етапів: запустіть кожен блок з `(quote ...)`, подивіться на надрукований результат, потім приберіть `quote`-обгортку і запустіть знову.
 
 Перевіряйте кожну пару через CLI:
 
 ```powershell
-cargo run --manifest-path crates/my-lisp-cli/Cargo.toml -- your-file.my
+cargo run --manifest-path crates/my-lisp-cli/Cargo.toml -- your-file.lisp
 ```
 
 ### Етап 1 — дані проти арифметики
@@ -143,7 +143,7 @@ cargo run --manifest-path crates/my-lisp-cli/Cargo.toml -- your-file.my
 
 ### Етап 5 — вирощування самої мови
 
-`defmacro` отримує свої аргументи як дані (необчислені, як і при `quote`) і повертає новий код для виконання evaluator'ом — саме так `lib/core.my` розгортає похідні форми, не додаючи нічого до Rust-ядра (див. принцип межі bootstrap у `docs/language-core.md`):
+`defmacro` отримує свої аргументи як дані (необчислені, як і при `quote`) і повертає новий код для виконання evaluator'ом — саме так `lib/core.lisp` розгортає похідні форми, не додаючи нічого до Rust-ядра (див. принцип межі bootstrap у `docs/language-core.md`):
 
 ```lisp
 (defmacro unless (condition body)
@@ -157,21 +157,21 @@ cargo run --manifest-path crates/my-lisp-cli/Cargo.toml -- your-file.my
 
 ### Етап 6 — прийом, доведений до кінця
 
-`quote` ставиться до коду як до даних; `defmacro` будує новий код із даних. Наступний крок — програма, що *виконує* код, переданий їй як дані — evaluator. [`lib/meta-eval.my`](../lib/meta-eval.my) — саме такий, написаний повністю самою my-lisp, через `read`, що перетворює текст на дані (див. етап 1), і власні `car`/`cdr`/`cons`/`atom`/`eq`/`cond`/`lambda` для інтерпретації — ті самі примітиви, що й у цьому туторіалі, тепер диспетчеризовані самі на себе:
+`quote` ставиться до коду як до даних; `defmacro` будує новий код із даних. Наступний крок — програма, що *виконує* код, переданий їй як дані — evaluator. [`lib/meta-eval.lisp`](../lib/meta-eval.lisp) — саме такий, написаний повністю самою my-lisp, через `read`, що перетворює текст на дані (див. етап 1), і власні `car`/`cdr`/`cons`/`atom`/`eq`/`cond`/`lambda` для інтерпретації — ті самі примітиви, що й у цьому туторіалі, тепер диспетчеризовані самі на себе:
 
 ```lisp
 (my-eval (read "((lambda (x) (* x x)) 6)") (quote ()))
 ```
-Друкує `36`. Завантажте його поряд з `lib/core.my` і прочитайте власний header-коментар файлу — що він навмисно лишає поза межами і чому.
+Друкує `36`. Завантажте його поряд з `lib/core.lisp` і прочитайте власний header-коментар файлу — що він навмисно лишає поза межами і чому.
 
 ## Deutsch
 
-**my-lisp** ist homoikonisch: Code und Daten teilen sich eine Notation. Ein Ausdruck, der in `(quote ...)` gewickelt ist, sagt dem Evaluator "behandle dies als reglose Daten, führe es nicht aus". Entfernen Sie diesen Wrapper, und derselbe Text wird zu einem laufenden Programm. Dieses Tutorial ist eine fünfstufige `.my`-Datei: Führen Sie jeden Block mit `(quote ...)` aus, lesen Sie das ausgegebene Ergebnis, entfernen Sie dann den `quote`-Wrapper und führen Sie ihn erneut aus.
+**my-lisp** ist homoikonisch: Code und Daten teilen sich eine Notation. Ein Ausdruck, der in `(quote ...)` gewickelt ist, sagt dem Evaluator "behandle dies als reglose Daten, führe es nicht aus". Entfernen Sie diesen Wrapper, und derselbe Text wird zu einem laufenden Programm. Dieses Tutorial ist eine fünfstufige `.lisp`-Datei: Führen Sie jeden Block mit `(quote ...)` aus, lesen Sie das ausgegebene Ergebnis, entfernen Sie dann den `quote`-Wrapper und führen Sie ihn erneut aus.
 
 Jedes Paar mit der CLI ausprobieren:
 
 ```powershell
-cargo run --manifest-path crates/my-lisp-cli/Cargo.toml -- your-file.my
+cargo run --manifest-path crates/my-lisp-cli/Cargo.toml -- your-file.lisp
 ```
 
 ### Stufe 1 — Daten gegen Arithmetik
@@ -225,7 +225,7 @@ Gibt `100` aus — die Bedingung wird tatsächlich ausgeführt.
 
 ### Stufe 5 — die Sprache selbst wachsen lassen
 
-Ein `defmacro` erhält seine Argumente als Daten (unausgewertet, wie bei `quote`) und gibt neuen Code zurück, den der Evaluator ausführt — so bootstrappt `lib/core.my` abgeleitete Formen, ohne die Rust-Kern-Oberfläche zu vergrößern (siehe das Bootstrap-Grenze-Prinzip in `docs/language-core.md`):
+Ein `defmacro` erhält seine Argumente als Daten (unausgewertet, wie bei `quote`) und gibt neuen Code zurück, den der Evaluator ausführt — so bootstrappt `lib/core.lisp` abgeleitete Formen, ohne die Rust-Kern-Oberfläche zu vergrößern (siehe das Bootstrap-Grenze-Prinzip in `docs/language-core.md`):
 
 ```lisp
 (defmacro unless (condition body)
@@ -239,9 +239,9 @@ Gibt `different` aus. Einen Moment zuvor existierte `unless` noch nicht in der S
 
 ### Stufe 6 — der Trick zu Ende gedacht
 
-`quote` behandelt Code als Daten; `defmacro` baut neuen Code aus Daten. Der nächste Schritt ist ein Programm, das als Daten übergebenen Code *ausführt* — ein Evaluator. [`lib/meta-eval.my`](../lib/meta-eval.my) ist genau das, vollständig in my-lisp geschrieben, mit `read`, das Text in Daten verwandelt (siehe Stufe 1), und den eigenen Primitiven `car`/`cdr`/`cons`/`atom`/`eq`/`cond`/`lambda` zur Interpretation — dieselben Primitive, die dieses Tutorial durchgehend benutzt hat, jetzt auf sich selbst angewendet:
+`quote` behandelt Code als Daten; `defmacro` baut neuen Code aus Daten. Der nächste Schritt ist ein Programm, das als Daten übergebenen Code *ausführt* — ein Evaluator. [`lib/meta-eval.lisp`](../lib/meta-eval.lisp) ist genau das, vollständig in my-lisp geschrieben, mit `read`, das Text in Daten verwandelt (siehe Stufe 1), und den eigenen Primitiven `car`/`cdr`/`cons`/`atom`/`eq`/`cond`/`lambda` zur Interpretation — dieselben Primitive, die dieses Tutorial durchgehend benutzt hat, jetzt auf sich selbst angewendet:
 
 ```lisp
 (my-eval (read "((lambda (x) (* x x)) 6)") (quote ()))
 ```
-Gibt `36` aus. Zusammen mit `lib/core.my` laden und den eigenen Header-Kommentar der Datei lesen — was sie bewusst auslässt und warum.
+Gibt `36` aus. Zusammen mit `lib/core.lisp` laden und den eigenen Header-Kommentar der Datei lesen — was sie bewusst auslässt und warum.

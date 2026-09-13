@@ -54,7 +54,7 @@ The existing paired error tests continue to prove category correspondence. Their
 ## Consequences
 
 - No parser for native error messages is introduced.
-- No localization text is copied into `lib/meta-eval.my`.
+- No localization text is copied into `lib/meta-eval.lisp`.
 - No source-span equivalence is required between host evaluator and metacircular evaluator.
 - Useful structured Lisp diagnostics are preserved.
 - `error-detail-parity` can be confirmed only as an **explicit boundary result**: there are currently no additional ratified cross-runtime detail fields beyond the already-confirmed category.

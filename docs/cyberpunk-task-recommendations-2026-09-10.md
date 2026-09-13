@@ -1,14 +1,14 @@
 # Рекомендації задач: Cyberpunk + CML export (2026-09-10)
 
-Статус: **advisory**. Не змінює `tasks.my` (щоб не ламати oracle-check). Власник може перенести рядки в `tasks.my` вручну.
+Статус: **advisory**. Не змінює `tasks.lisp` (щоб не ламати oracle-check). Власник може перенести рядки в `tasks.lisp` вручну.
 
-Повна крос-репо карта: [cml/…/CROSS-REPO-TASK-RECOMMENDATIONS-2026-09-10.my](https://github.com/juv4uk/cml/blob/master/evidence/cyberpunk/CROSS-REPO-TASK-RECOMMENDATIONS-2026-09-10.my).
+Повна крос-репо карта: [cml/…/CROSS-REPO-TASK-RECOMMENDATIONS-2026-09-10.lisp](https://github.com/juv4uk/cml/blob/master/evidence/cyberpunk/CROSS-REPO-TASK-RECOMMENDATIONS-2026-09-10.lisp).
 
 ## my-lisp (це репо)
 
 | ID | Priority | Задача |
 |----|----------|--------|
-| **CP-EXPORT-ARTIFACT-PIN** | 9.5 | Закомітити детермінований `mylisp-cml-export.wsm` (або узгоджений шлях) з `cml-export`, щоб cml міг hard-pin FNV digest замість `pending-producer-byte-pin`. |
+| **CP-EXPORT-ARTIFACT-PIN** | 9.5 | Закомітити детермінований `mylisp-cml-export.lisp` (або узгоджений шлях) з `cml-export`, щоб cml міг hard-pin FNV digest замість `pending-producer-byte-pin`. |
 | **CP-FIXTURES-OWNED** | 9.0 | `docs/cyberpunk-host-dispatch-fixtures.md` лишається oracle; зміни хоста спочатку в fixtures. |
 | **CP-MULTI-HOST-CAPABILITY-MODEL** | 8.5 | Дизайн: CLI (blocking) vs WASM vs game (frame/callback) для capabilities — **до** другого host-specific набору. |
 | **CP-ORACLE-IN-PROCESS-GAP** | 8.0 | Явно назвати розрив CI oracle ≠ in-game evaluator; запропонувати hash артефакту dll або спільний fixture runner. |

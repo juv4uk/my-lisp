@@ -35,14 +35,14 @@ use my_lisp::{eval_program, load_core_library, Session};
 
 fn load_surface_prerequisites(session: &mut Session) {
     for source in [
-        include_str!("../../../lib/unify.my"),
-        include_str!("../../../lib/reason.my"),
-        include_str!("../../../lib/forward.my"),
-        include_str!("../../../lib/knowledge.my"),
-        include_str!("../../../lib/persistent-map.my"),
-        include_str!("../../../lib/persistent-vector.my"),
-        include_str!("../../../lib/time.my"),
-        include_str!("../../../lib/epistemic.my"),
+        include_str!("../../../lib/unify.lisp"),
+        include_str!("../../../lib/reason.lisp"),
+        include_str!("../../../lib/forward.lisp"),
+        include_str!("../../../lib/knowledge.lisp"),
+        include_str!("../../../lib/persistent-map.lisp"),
+        include_str!("../../../lib/persistent-vector.lisp"),
+        include_str!("../../../lib/time.lisp"),
+        include_str!("../../../lib/epistemic.lisp"),
     ] {
         eval_program(source, session).expect("surface prerequisite should load");
     }
@@ -53,7 +53,7 @@ fn uk_session() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core bootstrap");
     load_surface_prerequisites(&mut session);
-    eval_program(include_str!("../../../lib/surface/uk.my"), &mut session)
+    eval_program(include_str!("../../../lib/surface/uk.lisp"), &mut session)
         .expect("Ukrainian surface should load");
     session
 }
@@ -63,7 +63,7 @@ fn sa_session() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core bootstrap");
     load_surface_prerequisites(&mut session);
-    eval_program(include_str!("../../../lib/surface/sa.my"), &mut session)
+    eval_program(include_str!("../../../lib/surface/sa.lisp"), &mut session)
         .expect("Sanskrit surface should load");
     session
 }
@@ -169,7 +169,7 @@ fn sa_lists_higher_order_work() {
 fn uk_acceptance_program_passes() {
     let mut s = uk_session();
     let r = eval_program(
-        include_str!("../../../lib/surface/uk-acceptance.my"),
+        include_str!("../../../lib/surface/uk-acceptance.lisp"),
         &mut s,
     )
     .expect("Ukrainian acceptance program should evaluate");
@@ -192,7 +192,7 @@ fn uk_acceptance_program_passes() {
 fn peer_identity_acceptance_program_passes() {
     let mut s = uk_session();
     let r = eval_program(
-        include_str!("../../../lib/surface/peer-identity-acceptance.my"),
+        include_str!("../../../lib/surface/peer-identity-acceptance.lisp"),
         &mut s,
     )
     .expect("peer-identity acceptance program should evaluate");

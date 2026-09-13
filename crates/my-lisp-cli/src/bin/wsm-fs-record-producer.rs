@@ -17,14 +17,14 @@ fn main() {
         std::process::exit(1);
     }
     for source in [
-        include_str!("../../../../lib/unify.my"),
-        include_str!("../../../../lib/reason.my"),
-        include_str!("../../../../lib/forward.my"),
-        include_str!("../../../../lib/knowledge.my"),
-        include_str!("../../../../lib/persistent-map.my"),
-        include_str!("../../../../lib/world.my"),
-        include_str!("../../../../lib/content-store.my"),
-        include_str!("../../../../lib/lisp-fs.my"),
+        include_str!("../../../../lib/unify.lisp"),
+        include_str!("../../../../lib/reason.lisp"),
+        include_str!("../../../../lib/forward.lisp"),
+        include_str!("../../../../lib/knowledge.lisp"),
+        include_str!("../../../../lib/persistent-map.lisp"),
+        include_str!("../../../../lib/world.lisp"),
+        include_str!("../../../../lib/content-store.lisp"),
+        include_str!("../../../../lib/lisp-fs.lisp"),
     ] {
         if let Err(error) = eval_program(source, &mut session) {
             eprintln!("wsm-fs-record-producer: library bootstrap failed: {error}");

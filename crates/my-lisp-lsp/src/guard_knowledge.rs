@@ -72,8 +72,8 @@ impl GuardKnowledge {
     /// graceful, not a failure (a workspace that is not the my-lisp repo
     /// simply gets no guard knowledge).
     pub fn load_functions(root: &Path) -> Self {
-        let reference_path = root.join("knowledge/guard-reference.wsm");
-        let guard_path = root.join("lib/guard.wsm");
+        let reference_path = root.join("knowledge/guard-reference.lisp");
+        let guard_path = root.join("lib/guard.lisp");
 
         let guard_text = std::fs::read_to_string(&guard_path).unwrap_or_default();
         let functions = parse_functions(&guard_text);
@@ -342,7 +342,7 @@ mod tests {
     ((reference
        (topic language-semantics)
        (summary "Meaning of WSM programs")
-       (authority (language-contract.my docs/language-core-axioms.md))
+       (authority (language-contract.lisp docs/language-core-axioms.md))
        (how-to (read-contract run-conformance-fixtures))
        (verify (cargo-test-workspace evidence/README.md))
        (lifecycle current-contract)
@@ -366,7 +366,7 @@ mod tests {
         assert_eq!(semantics.summary, "Meaning of WSM programs");
         assert_eq!(
             semantics.authority,
-            vec!["language-contract.my", "docs/language-core-axioms.md"]
+            vec!["language-contract.lisp", "docs/language-core-axioms.md"]
         );
         assert_eq!(semantics.how_to, vec!["read-contract", "run-conformance-fixtures"]);
         assert_eq!(

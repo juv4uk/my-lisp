@@ -20,4 +20,4 @@ PR #95 (`Canon SemanticRef: RED witness for semantic callable identity`) зро�
 - невідомий semantic callable ID завершується fail-closed;
 - legacy non-Canon `Value::Builtin` може лишатися host-механізмом, але Rust identity такого об’єкта не є Canon semantic identity.
 
-Архівна research map лишається корисною як provenance того, **чому pointer identity було відкинуто** і які migration seams були знайдені до реалізації. Вона не є нормативною й не може перекривати чинні Canon, `semantic-registry.wsm`, language contracts або executable tests.
+Архівна research map лишається корисною як provenance того, **чому pointer identity було відкинуто** і які migration seams були знайдені до реалізації. Вона не є нормативною й не може перекривати чинні Canon, `semantic-registry.lisp`, language contracts або executable tests.

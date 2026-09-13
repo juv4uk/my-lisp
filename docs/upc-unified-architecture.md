@@ -160,7 +160,7 @@ This directly continues your existing Sanskrit semantic architecture: `SLP1` is 
 
 ## 7. my-lisp: why UPC becomes more than a codec
 
-`my-lisp` is the layer that can make UPC epistemically useful. `knowledge.my` accepts external information as data through guarded `advise`/`advise-all`, validates it, checks explicit conflict and appends it to an event journal; received knowledge is not passed to `eval` [7]. `world.my` makes a World an explicit immutable value with journal and metadata, and pure reasoning takes a World argument rather than inspecting hidden global state [6].
+`my-lisp` is the layer that can make UPC epistemically useful. `knowledge.lisp` accepts external information as data through guarded `advise`/`advise-all`, validates it, checks explicit conflict and appends it to an event journal; received knowledge is not passed to `eval` [7]. `world.lisp` makes a World an explicit immutable value with journal and metadata, and pure reasoning takes a World argument rather than inspecting hidden global state [6].
 
 Thus a profile/mapping should not merely be a file that happens to exist. It should be a versioned, sourced assertion that can be named in a World.
 
@@ -378,7 +378,7 @@ The roadmap deliberately follows your principle: add a capability when a real ne
 | Publish `upc-assignment` registry | Stable `SegmentId ↔ code` mapping with status and evidence. |
 | Define profile manifest | `profile_id`, revision, normalization, analysis level, source/provenance. |
 | Host reference codec | Encode/decode/validate, hex exchange format, corpus profiler. |
-| my-lisp `lib/upc.my` prototype | Validated list-of-bytes functions and structured statuses. |
+| my-lisp `lib/upc.lisp` prototype | Validated list-of-bytes functions and structured statuses. |
 
 **Success criterion:** the same profile/input deterministically produces the same canonical byte sequence, and malformed/unknown states are distinguishable without using FPGA or CML.
 
@@ -443,12 +443,12 @@ Evidence discipline
 [3]: https://wals.info/chapter/1 "WALS: Consonant Inventories"
 [4]: https://wals.info/chapter/2 "WALS: Vowel Quality Inventories"
 [5]: https://github.com/juv4uk/my-lisp/blob/main/docs/sanskrit-semantic-migration.md "my-lisp Sanskrit semantic migration: stable identity and representations"
-[6]: https://github.com/juv4uk/my-lisp/blob/main/lib/world.my "my-lisp immutable World layer"
-[7]: https://github.com/juv4uk/my-lisp/blob/main/lib/knowledge.my "my-lisp knowledge journal and data-only import"
-[8]: https://github.com/juv4uk/my-lisp/blob/main/language-contract.my "my-lisp machine-readable language contract"
+[6]: https://github.com/juv4uk/my-lisp/blob/main/lib/world.lisp "my-lisp immutable World layer"
+[7]: https://github.com/juv4uk/my-lisp/blob/main/lib/knowledge.lisp "my-lisp knowledge journal and data-only import"
+[8]: https://github.com/juv4uk/my-lisp/blob/main/language-contract.lisp "my-lisp machine-readable language contract"
 [9]: https://github.com/juv4uk/cml/blob/master/src/main.rs "CML compilation pipeline"
 [10]: https://github.com/juv4uk/cml/blob/master/src/ir.rs "CML common intermediate representation"
-[11]: https://github.com/juv4uk/fpga-lisp/blob/master/isa-contract.my "fpga-lisp ISA contract"
+[11]: https://github.com/juv4uk/fpga-lisp/blob/master/isa-contract.lisp "fpga-lisp ISA contract"
 [12]: https://www.internationalphoneticassociation.org/content/ipa-chart "International Phonetic Association: IPA chart"
 [13]: https://www.rfc-editor.org/rfc/rfc20.html "RFC 20: ASCII format for Network Interchange"
 [14]: https://www.ibm.com/docs/ssw_aix_72/globalization/iso8859_family.html "IBM: ISO8859 family"
@@ -457,7 +457,7 @@ Evidence discipline
 [17]: https://github.com/juv4uk/my-lisp/blob/main/crates/my-lisp/src/value.rs "my-lisp runtime Value model"
 [18]: https://github.com/juv4uk/my-lisp/blob/main/crates/my-lisp/src/eval/special_forms/file_io.rs "my-lisp raw byte file primitives"
 [19]: https://github.com/juv4uk/my-lisp/blob/main/crates/my-lisp/src/eval/special_forms/tcp.rs "my-lisp TCP UTF-8 boundary"
-[20]: https://github.com/juv4uk/my-lisp/blob/main/lib/result-status.my "my-lisp tagged result-status convention"
+[20]: https://github.com/juv4uk/my-lisp/blob/main/lib/result-status.lisp "my-lisp tagged result-status convention"
 [21]: https://github.com/juv4uk/cml/blob/master/src/compiler.rs "CML FPGA emitter and quoted-list construction"
 [22]: https://github.com/juv4uk/cml/blob/master/tests/conformance_test.rs "CML blind FPGA conformance adapter"
 [23]: https://github.com/juv4uk/fpga-lisp/blob/master/README.md "fpga-lisp measured FPGA resource budget"

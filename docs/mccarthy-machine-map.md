@@ -3,7 +3,7 @@
 **Статус:** дослідницький огляд за першоджерелами
 **Джерело:** Manus AI, через власника · **Дата:** 2026-08-23
 **Оформлення:** Сакші (ox-alpha)
-**Звʼязок:** lib/epistemic.my, docs/language-core-axioms.md, Worlds/journal
+**Звʼязок:** lib/epistemic.lisp, docs/language-core-axioms.md, Worlds/journal
 
 ---
 
@@ -122,7 +122,7 @@ Worlds можуть колись host context-aware semantics — але не н
 Program має facts про own mental state [7]. Найпрактичніше: robot може
 висновити, що НЕ МОЖЕ вирішити питання з memory → seek externally.
 
-Міст до epistemic.my: observation/claim/evidence/intent + structured blocked
+Міст до epistemic.lisp: observation/claim/evidence/intent + structured blocked
 result = система не вдає всезнання. Не claim свідомості.
 
 ## 9. Пізній синтез: Human-Level AI: The Logical Road
@@ -165,7 +165,7 @@ effect in world         known/unknown/need-info
 | Explicit knowledge history | Worlds, journal, provenance. | World ≠ formal context. |
 | Epistemology ≠ heuristic | Contracts separate from strategy. | Heuristics ≠ human-level planner. |
 | Incompleteness | Statuses/partial/blocked/JTMS-like. | Не circumscription без minimization. |
-| Self-knowledge of limits | epistemic.my blocked outcomes. | Не claim свідомості. |
+| Self-knowledge of limits | epistemic.lisp blocked outcomes. | Не claim свідомості. |
 | Explicit learning | Reviewable imports, provenance-bearing candidates. | LLM output не auto-admit як fact. |
 
 Neural/LLM/multimodal tools — сучасні organs around his symbolic core,
@@ -177,7 +177,7 @@ decides formal meaning, proof status, provenance.
 
 | Зараз | Потім за потреби | Значно пізніше |
 | --- | --- | --- |
-| Small core; Worlds; provenance; explicit results; epistemic.my v0; tests. | Observation→review→admission path; narrow action/intent boundary; context experiments. | Default logic/circumscription; planning; context lifting; bounded info seeking; neural-worker ecology. |
+| Small core; Worlds; provenance; explicit results; epistemic.lisp v0; tests. | Observation→review→admission path; narrow action/intent boundary; context experiments. | Default logic/circumscription; planning; context lifting; bounded info seeking; neural-worker ecology. |
 
 ## 13. Що читати першим
 

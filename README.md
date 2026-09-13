@@ -41,7 +41,7 @@ Lisp-визначення / виконуваний доказ
 незалежні субстрати: C / CML / FPGA / WASM / Racket
 ```
 
-Поточний машинний семантичний контракт — [`language-contract.my`](language-contract.my), версія **6.0**.
+Поточний машинний семантичний контракт — [`language-contract.lisp`](language-contract.lisp), версія **6.0**.
 
 ---
 
@@ -62,7 +62,7 @@ Lisp-визначення / виконуваний доказ
 
 `() ` — **не восьмий примітив**. Це первинний об'єкт і база індукції для правильних списків.
 
-Символи також не створюють нових примітивів: `'`, `.?`, `=?`, `:`, `:п`, `:р`, `?:` — це компактні написання тих самих канонічних тотожностей. Виконуваний доказ лежить у [`lib/canon.my`](lib/canon.my).
+Символи також не створюють нових примітивів: `'`, `.?`, `=?`, `:`, `:п`, `:р`, `?:` — це компактні написання тих самих канонічних тотожностей. Виконуваний доказ лежить у [`lib/canon.lisp`](lib/canon.lisp).
 
 `QUOTE` і `COND` керують обчисленням і не маскуються під звичайні callable values.
 
@@ -97,7 +97,7 @@ Lisp-визначення / виконуваний доказ
 
 ## Українською можна програмувати
 
-Українська — не лише мова README. У репозиторії є виконувана українська програмна поверхня [`lib/surface/uk.my`](lib/surface/uk.my).
+Українська — не лише мова README. У репозиторії є виконувана українська програмна поверхня [`lib/surface/uk.lisp`](lib/surface/uk.lisp).
 
 Наприклад, після її завантаження код може виглядати так:
 
@@ -128,15 +128,15 @@ Lisp-визначення / виконуваний доказ
 
 `?` — частина ідентифікатора, а не окремий оператор. Функції, що можуть повернути дані або `()` (наприклад `карта-отримати`), предикатами не є й `?` не мають.
 
-Повна самоперевірна українська програма є в [`lib/surface/uk-acceptance.my`](lib/surface/uk-acceptance.my).
+Повна самоперевірна українська програма є в [`lib/surface/uk-acceptance.lisp`](lib/surface/uk-acceptance.lisp).
 
-Українська, англійська та санскритська **програмні поверхні не розмножують семантику**. Вони відображають різні імена на ті самі визначення й канонічні тотожності. Єдина машинна таблиця відповідності лежить у [`lib/surface/semantic-registry.wsm`](lib/surface/semantic-registry.wsm): semantic identity там numeric-only, а спільна пунктуація винесена в окрему `sym`-поверхню.
+Українська, англійська та санскритська **програмні поверхні не розмножують семантику**. Вони відображають різні імена на ті самі визначення й канонічні тотожності. Єдина машинна таблиця відповідності лежить у [`lib/surface/semantic-registry.lisp`](lib/surface/semantic-registry.lisp): semantic identity там numeric-only, а спільна пунктуація винесена в окрему `sym`-поверхню.
 
 Є й програмний перекладач поверхонь:
 
 ```bash
-python3 scripts/translate-program.py --from en --to uk input.wsm
-python3 scripts/translate-program.py --from uk --to sa input.wsm
+python3 scripts/translate-program.py --from en --to uk input.lisp
+python3 scripts/translate-program.py --from uk --to sa input.lisp
 ```
 
 Він підтримує всі шість напрямків між `en`, `uk` і `sa`, зберігаючи форматування, коментарі, рядки та невідомі користувацькі символи. Деталі: [`docs/program-surface-translator.md`](docs/program-surface-translator.md).
@@ -145,7 +145,7 @@ python3 scripts/translate-program.py --from uk --to sa input.wsm
 
 ## Мовна політика репозиторію
 
-Людська комунікація проєкту має окрему ратифіковану політику: [`knowledge/language-policy.wsm`](knowledge/language-policy.wsm).
+Людська комунікація проєкту має окрему ратифіковану політику: [`knowledge/language-policy.lisp`](knowledge/language-policy.lisp).
 
 ```text
 1. Українська — перша і головна.
@@ -164,7 +164,7 @@ python3 scripts/translate-program.py --from uk --to sa input.wsm
 README пояснює проєкт, але не визначає його семантику.
 
 ```text
-language-contract.my
+language-contract.lisp
         ↓
 ратифіковані ADR
         ↓
@@ -193,15 +193,15 @@ README / tutorials / історичні плани
 
 | Шар | Де дивитися | Що там |
 |---|---|---|
-| Bootstrap | [`lib/core.my`](lib/core.my), [`lib/macro.my`](lib/macro.my) | базова бібліотека, макроси |
-| Canon | [`lib/canon.my`](lib/canon.my) | виконувані закони 0+7 |
-| Meta-eval | [`lib/meta-eval.my`](lib/meta-eval.my) | метациркулярне обчислення, finite mutual recursion |
-| Логіка | [`lib/unify.my`](lib/unify.my), [`lib/reason.my`](lib/reason.my) | уніфікація, backward reasoning |
-| Forward reasoning | [`lib/forward.my`](lib/forward.my) | forward chaining / JTMS |
-| Знання | [`lib/knowledge.my`](lib/knowledge.my), [`lib/world.my`](lib/world.my) | модулі знань, незмінні світи |
-| Епістеміка | [`lib/epistemic.my`](lib/epistemic.my) | явні стани знання й невизначеності |
-| Мова ↔ текст | [`lib/understand.my`](lib/understand.my), [`lib/narrate.my`](lib/narrate.my) | контрольовані мовні мости |
-| Час | [`lib/time.my`](lib/time.my) | дедалі більше language-owned time semantics |
+| Bootstrap | [`lib/core.lisp`](lib/core.lisp), [`lib/macro.lisp`](lib/macro.lisp) | базова бібліотека, макроси |
+| Canon | [`lib/canon.lisp`](lib/canon.lisp) | виконувані закони 0+7 |
+| Meta-eval | [`lib/meta-eval.lisp`](lib/meta-eval.lisp) | метациркулярне обчислення, finite mutual recursion |
+| Логіка | [`lib/unify.lisp`](lib/unify.lisp), [`lib/reason.lisp`](lib/reason.lisp) | уніфікація, backward reasoning |
+| Forward reasoning | [`lib/forward.lisp`](lib/forward.lisp) | forward chaining / JTMS |
+| Знання | [`lib/knowledge.lisp`](lib/knowledge.lisp), [`lib/world.lisp`](lib/world.lisp) | модулі знань, незмінні світи |
+| Епістеміка | [`lib/epistemic.lisp`](lib/epistemic.lisp) | явні стани знання й невизначеності |
+| Мова ↔ текст | [`lib/understand.lisp`](lib/understand.lisp), [`lib/narrate.lisp`](lib/narrate.lisp) | контрольовані мовні мости |
+| Час | [`lib/time.lisp`](lib/time.lisp) | дедалі більше language-owned time semantics |
 
 Головне питання не «скільки рядків уже переписано на Lisp?», а:
 
@@ -216,11 +216,11 @@ README / tutorials / історичні плани
 ```text
 факти / правила
       ↓
-   unify.my
+   unify.lisp
       ↓
-  reason.my  ←→  forward.my
+  reason.lisp  ←→  forward.lisp
       ↓
- knowledge.my / world.my
+ knowledge.lisp / world.lisp
       ↓
  advice / proof / provenance
 ```
@@ -276,7 +276,7 @@ Lisp-визначена інтерпретація / політика / прот
 cargo run -p my-lisp-cli
 
 # виконати файл
-cargo run -p my-lisp-cli -- path/to/file.wsm
+cargo run -p my-lisp-cli -- path/to/file.lisp
 
 # повний workspace
 cargo test --workspace
@@ -284,7 +284,7 @@ cargo build --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-Канонічне розширення вихідного коду — **`.lisp`** (згідно з [my-lisp#81](https://github.com/juv4uk/my-lisp/issues/81)). **`.wsm`** і **`.my`** лишаються повністю підтримуваними legacy aliases.
+Канонічне розширення вихідного коду — **`.lisp`** (згідно з [my-lisp#81](https://github.com/juv4uk/my-lisp/issues/81)). **`.lisp`** і **`.lisp`** лишаються повністю підтримуваними legacy aliases.
 
 ---
 
@@ -292,14 +292,14 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 Якщо відкриваєте `my-lisp` уперше, цей порядок дає найменше плутанини:
 
-1. [`language-contract.my`](language-contract.my) — що саме обіцяє мова;
+1. [`language-contract.lisp`](language-contract.lisp) — що саме обіцяє мова;
 2. [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md) — хто має право визначати істину;
-3. [`lib/canon.my`](lib/canon.my) — виконуваний Canon 0+7;
+3. [`lib/canon.lisp`](lib/canon.lisp) — виконуваний Canon 0+7;
 4. [`docs/language-core.md`](docs/language-core.md) — компактна архітектура ядра;
-5. [`lib/surface/uk-acceptance.my`](lib/surface/uk-acceptance.my) — українська мова як виконуваний програмний інтерфейс;
-6. [`lib/meta-eval.my`](lib/meta-eval.my) — як мова починає обчислювати саму себе;
-7. [`lib/reason.my`](lib/reason.my) — reasoning-напрям;
-8. [`tests/fixtures/conformance.my`](tests/fixtures/conformance.my) — спостережувані факти, які мають пережити зміну реалізації.
+5. [`lib/surface/uk-acceptance.lisp`](lib/surface/uk-acceptance.lisp) — українська мова як виконуваний програмний інтерфейс;
+6. [`lib/meta-eval.lisp`](lib/meta-eval.lisp) — як мова починає обчислювати саму себе;
+7. [`lib/reason.lisp`](lib/reason.lisp) — reasoning-напрям;
+8. [`tests/fixtures/conformance.lisp`](tests/fixtures/conformance.lisp) — спостережувані факти, які мають пережити зміну реалізації.
 
 Додатково:
 
@@ -308,7 +308,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 - [`docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md`](docs/adr/ADR-004-CLOSED-MCCARTHY7-CORE.md) — чому ядро 0+7 замкнене;
 - [`docs/mccarthy-vision.md`](docs/mccarthy-vision.md) — історичний контекст і свідомі відхилення;
 - [`AGENTS.md`](AGENTS.md) — правила роботи агентів у репозиторії;
-- [`knowledge/guard-reference.wsm`](knowledge/guard-reference.wsm) — машинно-читане довідкове бюро Guard.
+- [`knowledge/guard-reference.lisp`](knowledge/guard-reference.lisp) — машинно-читане довідкове бюро Guard.
 
 ---
 
@@ -316,7 +316,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 `my-lisp` is a Lisp research language built around a permanently closed McCarthy 0+7 semantic nucleus, exact arithmetic, executable conformance, language-owned semantics, and independent substrates used to falsify implementation-specific assumptions.
 
-Ukrainian is the project's primary human language. English and German are auxiliary. The Rust runtime is the reference implementation, not semantic authority; start with [`language-contract.my`](language-contract.my) and [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md).
+Ukrainian is the project's primary human language. English and German are auxiliary. The Rust runtime is the reference implementation, not semantic authority; start with [`language-contract.lisp`](language-contract.lisp) and [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md).
 
 The central research question is: **how small can the irreducible host remain while the useful system continues to grow inside the language?**
 
@@ -324,7 +324,7 @@ The central research question is: **how small can the irreducible host remain wh
 
 `my-lisp` ist eine Lisp-Forschungssprache mit einem dauerhaft geschlossenen semantischen McCarthy-Kern 0+7, exakter Arithmetik, ausführbarer Konformität und mehreren unabhängigen Substraten.
 
-Ukrainisch ist die primäre menschliche Sprache des Projekts; Englisch und Deutsch sind Hilfssprachen. Rust ist die Referenzimplementierung, aber nicht die semantische Autorität. Maßgeblich sind [`language-contract.my`](language-contract.my), ratifizierte Entscheidungen und ausführbare Konformitätsbelege.
+Ukrainisch ist die primäre menschliche Sprache des Projekts; Englisch und Deutsch sind Hilfssprachen. Rust ist die Referenzimplementierung, aber nicht die semantische Autorität. Maßgeblich sind [`language-contract.lisp`](language-contract.lisp), ratifizierte Entscheidungen und ausführbare Konformitätsbelege.
 
 Die zentrale Forschungsfrage lautet: **Wie klein kann der irreduzible Host bleiben, während das nützliche System innerhalb der Sprache weiterwächst?**
 

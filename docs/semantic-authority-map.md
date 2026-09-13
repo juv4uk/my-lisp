@@ -14,9 +14,9 @@ No implementation file, README paragraph, agent note, benchmark, or historical p
 
 When two sources disagree, use this order:
 
-1. **`language-contract.my`** — machine-readable Level 1/2 contract version and ratified observable invariants.
+1. **`language-contract.lisp`** — machine-readable Level 1/2 contract version and ratified observable invariants.
 2. **Ratified ADRs under `docs/adr/`** — closed decisions whose scope is explicitly stated, especially `ADR-004-CLOSED-MCCARTHY7-CORE.md`.
-3. **Executable conformance evidence** — `tests/fixtures/conformance.my`, `tests/fixtures/macro-conformance.my`, `lib/canon.my`, and the tests that execute those contracts.
+3. **Executable conformance evidence** — `tests/fixtures/conformance.lisp`, `tests/fixtures/macro-conformance.lisp`, `lib/canon.lisp`, and the tests that execute those contracts.
 4. **Reference implementation** — `crates/my-lisp`. It is the mature software oracle used to test behavior, not the owner of semantics merely because it is Rust.
 5. **Independent implementations** — `fpga-lisp`, `c-runtime/`, and other declared substrates. Their value is that they can falsify implementation-specific assumptions.
 6. **Generated reference** — for example `docs/FUNCTIONS.md`. Generated output describes the current implementation surface but does not redefine the contract.
@@ -45,13 +45,13 @@ Do not collapse three different questions:
 - **evaluator-controlled bootstrap forms** — machinery needed to create language behavior;
 - **derived language forms** — behavior expressible by the language once the bootstrap substrate exists.
 
-The current implementation is actively reducing host-owned bootstrap behavior. `lib/macro.my` owns the normal `defmacro` binding, and the Rust evaluator no longer has a `defmacro` fallback. Standard `Session` construction evaluates the macro layer before user code; a bare `Environment::root()` intentionally remains the smaller Rust kernel. `define`/`lambda` have explicit necessary-form identities in the evaluator, while historical `def` compatibility remains. These are implementation facts and do not silently rewrite `language-contract.my`; observable-contract changes still require the contract process.
+The current implementation is actively reducing host-owned bootstrap behavior. `lib/macro.lisp` owns the normal `defmacro` binding, and the Rust evaluator no longer has a `defmacro` fallback. Standard `Session` construction evaluates the macro layer before user code; a bare `Environment::root()` intentionally remains the smaller Rust kernel. `define`/`lambda` have explicit necessary-form identities in the evaluator, while historical `def` compatibility remains. These are implementation facts and do not silently rewrite `language-contract.lisp`; observable-contract changes still require the contract process.
 
 ## Project identity and source extensions
 
 The project/repository name is **`my-lisp`**.
 
-The current canonical source extension is **`.lisp`** (per [my-lisp#81](https://github.com/juv4uk/my-lisp/issues/81) — extension is never semantics). **`.wsm`** and **`.my`** remain fully supported legacy aliases. The separate repository named `wsm` is unrelated foundational research; the shared letters do not rename this language project.
+The current canonical source extension is **`.lisp`** (per [my-lisp#81](https://github.com/juv4uk/my-lisp/issues/81) — extension is never semantics). **`.lisp`** and **`.lisp`** remain fully supported legacy aliases. The separate repository named `wsm` is unrelated foundational research; the shared letters do not rename this language project.
 
 ## Reference implementation terminology
 

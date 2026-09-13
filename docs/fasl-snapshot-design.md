@@ -1,7 +1,7 @@
 # FASL snapshot — дизайн-чернетка (OPT item #4)
 
 **Статус:** DRAFT · 2026-08-24 · Vyasa
-**Проблема:** `Session::default()` і кожен CLI-запуск парсять `lib/core.my`
+**Проблема:** `Session::default()` і кожен CLI-запуск парсять `lib/core.lisp`
 (644 рядки, 49 def-ів) через `include_str!` (main.rs:76). Fresh-session
 бенчмарки показують 24–89µs/op з домінуючим parse+load. Для one-shot батчів
 (WSM-24: тисячі процесів-яєць) це ×N системної втрати.
@@ -15,7 +15,7 @@
 ```
 magic   "MYF1"            (4B)
 u32     format_version    (1)
-u32     contract_major/minor  (звірка з language-contract.my)
+u32     contract_major/minor  (звірка з language-contract.lisp)
 32B     sha256(concatenated sources)   -- identity + invalidation
 repeated Expr records:
   u8 tag (Number/Rational/String/Symbol/List/Pair/Nil...)
@@ -33,13 +33,13 @@ Loader ПЕРЕВІРЯЄ sha256 джерел проти вбудованого;
 Fallback логується. Це робить механізм безпечним при будь-якому дрейфі.
 
 ## Інтеграція
-1. `scripts/gen-fasl.sh`: читає lib/*.my → пише `lib/core.my.fasl` (+sha)
+1. `scripts/gen-fasl.sh`: читає lib/*.lisp → пише `lib/core.lisp.fasl` (+sha)
 2. build.rs АБО include_bytes! фікс-артефакту в my-lisp-cli
 3. CLI прапорець `--no-fasl` — завжди доступний чистий parse-шлях (debuggability)
 
 ## Очікуваний ефект
 Cold-session бенчмарк-кейси (arithmetic/closures/lists/recursion — усі
-платять core.my parse щоразу) мають впасти пропорційно частці парсинга;
+платять core.lisp parse щоразу) мають впасти пропорційно частці парсинга;
 one-shot батчі — головний виграш. Замір: той самий harness, A/B з/без fasl.
 
 ## Не-цілі
@@ -50,14 +50,14 @@ one-shot батчі — головний виграш. Замір: той сам
 - Розмір бінарника +~50–100KB (несуттєво)
 - Хибне відчуття «ще один формат» → формат приватний для бінарника, не контрактний
 
-## ⚠️ Регенерація після зміни lib/core.my
+## ⚠️ Регенерація після зміни lib/core.lisp
 
-Якщо хтось редагує `lib/core.my` — FASL-снапшот (`lib/core.my.fasl`)
+Якщо хтось редагує `lib/core.lisp` — FASL-снапшот (`lib/core.lisp.fasl`)
 автоматично стає невалідним (sha256 mismatch). Це БЕЗПЕЧНО: CLI
 мовчки падає на text-parse fallback. Але перформанс-виграш втрачається.
 
 Перегенерувати:
 ```bash
-cargo run --release -p my-lisp-cli --bin gen-fasl -- lib/core.my lib/core.my.fasl
-git add lib/core.my.fasl && git commit -m "chore(fasl): regenerate after core.my change"
+cargo run --release -p my-lisp-cli --bin gen-fasl -- lib/core.lisp lib/core.lisp.fasl
+git add lib/core.lisp.fasl && git commit -m "chore(fasl): regenerate after core.lisp change"
 ```

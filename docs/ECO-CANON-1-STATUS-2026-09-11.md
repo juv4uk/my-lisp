@@ -7,14 +7,14 @@ Issue: [my-lisp#75](https://github.com/juv4uk/my-lisp/issues/75)
 ```text
 CANON = immutable identity / meaning
 display spelling ≠ identity
-lib/surface/semantic-registry.wsm = sole surface↔ID authority
+lib/surface/semantic-registry.lisp = sole surface↔ID authority
 ```
 
 ## What already existed
 
 | Piece | Role |
 |-------|------|
-| `lib/surface/semantic-registry.wsm` | Numeric semantic IDs + en/uk/sa/sym surfaces |
+| `lib/surface/semantic-registry.lisp` | Numeric semantic IDs + en/uk/sa/sym surfaces |
 | `scripts/check_semantic_registry.py` | Fail-closed schema checks |
 | `scripts/generate-meta-semantic-registry.py` | Runtime projection for meta-eval |
 | `crates/my-lisp/src/semantic_registry.rs` + `eval/canon.rs` | In-process resolvers |
@@ -22,13 +22,13 @@ lib/surface/semantic-registry.wsm = sole surface↔ID authority
 
 ## Deliverable status (honest, verified 2026-09-12)
 
-1. **`scripts/generate-function-table.my`** — projects registry → function
+1. **`scripts/generate-function-table.lisp`** — projects registry → function
    table (`ft/1`), written in my-lisp itself (2026-09-12), replacing the
    originally-committed Python version per issue #76
    (ECO-LISP-SCRIPTS-1: no new Python tooling; existing tooling migrates
    to my-lisp/wsm). Reads the registry as ordinary my-lisp data
    (`read-file`/`read-all`), not text/regex.
-2. **`lib/generated/function-table.wsm`** — machine-readable table, **all
+2. **`lib/generated/function-table.lisp`** — machine-readable table, **all
    161 identities actually generated and committed** (the prior version
    of this file was a 1-row placeholder despite this status doc's own
    earlier claim of "161 identities" — verified directly, not assumed,
@@ -46,7 +46,7 @@ symbol — so `(sym ' stable)` in the registry source parses as
 `(sym (quote stable))`, a 2-element list, not the intended 3-element
 `(lang word status)` shape every other row has. The generator
 reconstructs the intended shape on read, and emits the word as a
-quoted string literal (`"'"`) in the generated `.wsm` output
+quoted string literal (`"'"`) in the generated `.lisp` output
 specifically — a bare `'` there would hit the exact same collision for
 the next reader. The generated `.md` table keeps it as a plain
 character (prose has no such ambiguity).
@@ -80,19 +80,19 @@ estimated): **161** identities projected.
 ## Commands
 
 ```bash
-cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.my
+cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.lisp
 python3 scripts/check_semantic_registry.py
 ```
 
 ## Consumer rule
 
 Other repos **must not** hand-copy this table. Generate from
-`semantic-registry.wsm` or pin a published projection; unknown ID →
+`semantic-registry.lisp` or pin a published projection; unknown ID →
 fail-closed.
 
 ## Readiness verdict for other repos switching to Canon + this table
 
-**Not yet.** The registry itself (`semantic-registry.wsm`) has been a
+**Not yet.** The registry itself (`semantic-registry.lisp`) has been a
 safe dependency for a while and several repos already generate their
 own projections from it directly (`docs/CANON-MIGRATION-PLAN-2026-09-11.md`).
 This specific function-table artifact is now real (161 rows, not a

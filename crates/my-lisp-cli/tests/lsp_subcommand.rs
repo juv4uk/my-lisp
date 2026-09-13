@@ -73,7 +73,7 @@ fn my_lisp_lsp_subcommand_serves_lsp_over_stdio() {
     let escaped = doc.replace('"', "\\\"");
     stdin
         .write_all(&frame(&format!(
-            r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"file:///x.my","languageId":"my-lisp","version":1,"text":"{escaped}"}}}}}}"#
+            r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{{"textDocument":{{"uri":"file:///x.lisp","languageId":"my-lisp","version":1,"text":"{escaped}"}}}}}}"#
         )))
         .unwrap();
 
@@ -85,7 +85,7 @@ fn my_lisp_lsp_subcommand_serves_lsp_over_stdio() {
     // 3. documentSymbol finds both defs
     stdin
         .write_all(&frame(
-            r#"{"jsonrpc":"2.0","id":2,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"file:///x.my"}}}"#,
+            r#"{"jsonrpc":"2.0","id":2,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"file:///x.lisp"}}}"#,
         ))
         .unwrap();
     let symbols = reader.read_message();

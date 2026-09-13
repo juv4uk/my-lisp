@@ -20,15 +20,15 @@ Part A — authoritative-section parity. Over a list of AUTHORITATIVE_DOCS
 Part B — generated-table staleness. Over a list of GENERATED_TABLES (docs
 auto-produced from live source):
   For docs/FUNCTIONS.md it compares the builtin count recorded in the header
-  against the live `(env)` builtin count from scripts/gen-functions.my. A
+  against the live `(env)` builtin count from scripts/gen-functions.lisp. A
   mismatch means the generated table is stale relative to live source.
 
 This only READS files and runs the (cheap) live builtin inventory. A finding
-is a report to fix by hand (e.g. rerun scripts/gen-functions.my to refresh
+is a report to fix by hand (e.g. rerun scripts/gen-functions.lisp to refresh
 FUNCTIONS.md) or in the offending doc's own next edit — never auto-corrected
 here.
 
-EN / UK / DE documentation lives in lib/*.my and the repo README; keeping the
+EN / UK / DE documentation lives in lib/*.lisp and the repo README; keeping the
 three in step is what this gate protects.
 
 --------------------
@@ -53,15 +53,15 @@ MYLISP-MULTILINGUAL-PARITY-GATE — легка, лише-для-читання �
 Частина B — застарілість згенерованих таблиць. За списком GENERATED_TABLES
 (документи, автостворені з живої сирці):
   Для docs/FUNCTIONS.md звіряється кількість builtin, зафіксована в шапці,
-  із живою кількістю `(env)` builtin зі scripts/gen-functions.my.
+  із живою кількістю `(env)` builtin зі scripts/gen-functions.lisp.
   Розбіжність означає, що згенерована таблиця застаріла відносно живої сирці.
 
 Це лише ЧИТАЄ файли й виконує (дешеву) живу інвентаризацію builtin. Знахідка —
 це звіт для ручного виправлення (напр. повторний запуск
-scripts/gen-functions.my для оновлення FUNCTIONS.md) або в наступному
+scripts/gen-functions.lisp для оновлення FUNCTIONS.md) або в наступному
 редагуванні проблемного документа — ніколи не автоматичне виправлення тут.
 
-EN/UK/DE документація живе в lib/*.my і README репозиторію; узгодженість
+EN/UK/DE документація живе в lib/*.lisp і README репозиторію; узгодженість
 трьох мов — саме те, що захищає цей gate.
 
 --------------------
@@ -88,16 +88,16 @@ Teil A — Parität der maßgeblichen Abschnitte. Über die Liste AUTHORITATIVE_
 Teil B — Veraltung generierter Tabellen. Über die Liste GENERATED_TABLES
 (Dokumente, die automatisch aus der Live-Quelle erzeugt werden):
   Für docs/FUNCTIONS.md wird die im Kopf verzeichnete Builtin-Anzahl mit der
-  Live-`(env)`-Builtin-Anzahl aus scripts/gen-functions.my verglichen. Eine
+  Live-`(env)`-Builtin-Anzahl aus scripts/gen-functions.lisp verglichen. Eine
   Abweichung bedeutet, dass die generierte Tabelle gegenüber der Live-Quelle
   veraltet ist.
 
 Das liest nur DATEIEN und führt die (billige) Live-Builtin-Inventur aus. Ein
-Befund ist ein Bericht zur manuellen Korrektur (z. B. scripts/gen-functions.my
+Befund ist ein Bericht zur manuellen Korrektur (z. B. scripts/gen-functions.lisp
 erneut ausführen, um FUNCTIONS.md zu aktualisieren) oder in der nächsten
 Bearbeitung des betroffenen Dokuments — nie eine automatische Korrektur hier.
 
-Die EN/UK/DE-Dokumentation lebt in lib/*.my und im Repo-README; die drei
+Die EN/UK/DE-Dokumentation lebt in lib/*.lisp und im Repo-README; die drei
 Sprachen in Schritt zu halten, schützt genau dieser Gate.
 
 Usage:
@@ -212,7 +212,7 @@ def check_section_parity(path: Path, findings: list[str]) -> None:
 
 def check_generated_tables(root: Path, table_cfgs: list[dict], findings: list[str]) -> None:
     binary = root / "target" / "debug" / "my-lisp"
-    gen_script = root / "scripts" / "gen-functions.my"
+    gen_script = root / "scripts" / "gen-functions.lisp"
     live = live_builtin_count(binary, gen_script)
     for cfg in table_cfgs:
         path = root / cfg["path"]
@@ -230,14 +230,14 @@ def check_generated_tables(root: Path, table_cfgs: list[dict], findings: list[st
         if live is None:
             findings.append(
                 f"[B UNVERIFIABLE] {cfg['path']}: could not read live builtin "
-                f"count from scripts/gen-functions.my"
+                f"count from scripts/gen-functions.lisp"
             )
             continue
         if recorded != live:
             findings.append(
                 f"[B STALE-TABLE] {cfg['path']}: header records {recorded} "
                 f"builtins, live (env) has {live} — rerun "
-                f"scripts/gen-functions.my to refresh"
+                f"scripts/gen-functions.lisp to refresh"
             )
 
 

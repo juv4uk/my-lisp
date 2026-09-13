@@ -6,7 +6,7 @@
 **Coordination Node:** `my-lisp-1` (Port: `9101`)  
 **Target Repositories:** `my-lisp`, `fpga-lisp`, `cml`, `shiva-sutras`, `my-lisp-panini`  
 **Artifact Directory:** `/home/agents/.gemini/antigravity-cli/brain/0f589132-b672-462a-a7cc-f4f4df4b3b57/`  
-**Prototype Reference:** `scratch/` (`prototype_pvc16.py`, `prototype_pratyahara.py`, `prototype_lisp_runtime.py`, `prototype_phonetics.my`, `prototype_test_lisp_phonetics.py`, `prototype_README.md`)  
+**Prototype Reference:** `scratch/` (`prototype_pvc16.py`, `prototype_pratyahara.py`, `prototype_lisp_runtime.py`, `prototype_phonetics.lisp`, `prototype_test_lisp_phonetics.py`, `prototype_README.md`)  
 
 ---
 
@@ -31,7 +31,7 @@ This architecture specification formalizes the core runtime representations, bui
    Reader syntax `#pvc(...)` and `#prat(...)` allows literal phonetic vectors and 64-bit pratyāhāra constants to be parsed and folded directly into immutable AST constants at read time.
 
 6. **Declarative Knowledge Base Integration:**  
-   Phonetic facts, articulatory matrices, and Sūtras are expressed natively as S-expressions in `phonetics.my`, seamlessly bridging My-Lisp's `knowledge.my`, `world.my`, and `reason.my` deductive engines.
+   Phonetic facts, articulatory matrices, and Sūtras are expressed natively as S-expressions in `phonetics.lisp`, seamlessly bridging My-Lisp's `knowledge.lisp`, `world.lisp`, and `reason.lisp` deductive engines.
 
 ---
 
@@ -204,9 +204,9 @@ The reader supports `#pvc` and `#prat` macro prefixes:
 
 ---
 
-## 7. Declarative S-Expression Knowledge Base (`phonetics.my`)
+## 7. Declarative S-Expression Knowledge Base (`phonetics.lisp`)
 
-The knowledge base defines Sūtras and phonetic relations in standard `.my` format:
+The knowledge base defines Sūtras and phonetic relations in standard `.lisp` format:
 ```lisp
 ((knowledge-base . phonetics-v1)
  (description . "Phonological facts, feature matrices, and Sūtra inference rules.")

@@ -2,7 +2,7 @@ use my_lisp::{eval_program, Session, Value};
 use std::collections::HashSet;
 use std::rc::Rc;
 
-const РЕЄСТР: &str = include_str!("../../../lib/surface/semantic-registry.wsm");
+const РЕЄСТР: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
 const REPL_КАТАЛОГ: &str = include_str!("../../my-lisp-cli/src/repl/surface_catalog.rs");
 const ПЕРЕВІРКА_ПОКРИТТЯ: &str = include_str!("../../../scripts/check_surface_coverage.py");
 const ПЕРЕВІРКА_РІВНОПРАВЯ: &str = include_str!("../../../scripts/check_trilingual_surface.py");
@@ -228,11 +228,11 @@ fn executable_authority_більше_не_читає_legacy_en_shaped_табли
         ("translator", ТРАНСЛЯТОР),
     ] {
         assert!(
-            !джерело.contains("uk-sa-coverage.wsm"),
+            !джерело.contains("uk-sa-coverage.lisp"),
             "{імя}: legacy EN-shaped table знову стала executable authority"
         );
         assert!(
-            джерело.contains("semantic-registry.wsm"),
+            джерело.contains("semantic-registry.lisp"),
             "{імя}: має спиратися на numeric registry"
         );
     }

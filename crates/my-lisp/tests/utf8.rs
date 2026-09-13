@@ -3,7 +3,7 @@ use my_lisp::{eval_program, load_core_library, Session};
 fn utf8_session() -> Session {
     let mut session = Session::default();
     load_core_library(&mut session).unwrap();
-    eval_program(include_str!("../../../lib/utf8.my"), &mut session).unwrap();
+    eval_program(include_str!("../../../lib/utf8.lisp"), &mut session).unwrap();
     session
 }
 

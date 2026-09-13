@@ -59,9 +59,9 @@ Every `publish` must carry `from` + `topic`; beyond that:
 
 | topic                | required fields                          | example artifact            |
 |----------------------|------------------------------------------|-----------------------------|
-| `evidence-created`   | `artifact`, `requirement`                | `evidence/G8/fpga-lisp/a81c.my` |
+| `evidence-created`   | `artifact`, `requirement`                | `evidence/G8/fpga-lisp/a81c.lisp` |
 | `handoff-created`    | `artifact`, `to`                         | `HANDOFF-ISA-RATIONAL-001`  |
-| `contract-changed`   | `artifact`                               | `language-contract.my`      |
+| `contract-changed`   | `artifact`                               | `language-contract.lisp`      |
 | `dependency-satisfied` | `artifact`, `for`                      | task id of the unblocked one|
 | `need-published`     | `needs`, `task`                          | capability name             |
 | `task-created`       | `task`, `priority`                       | task id                     |
@@ -93,7 +93,7 @@ set stays closed, additions go through a docs change, not a payload.
 
 ```lisp
 (request (id 1) (op publish) (from "fpga-lisp") (topic "evidence-created")
-         (requirement "G8") (artifact "evidence/G8/fpga-lisp/a81c.my"))
+         (requirement "G8") (artifact "evidence/G8/fpga-lisp/a81c.lisp"))
 ```
 
 ```lisp

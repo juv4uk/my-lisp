@@ -101,7 +101,7 @@ Special forms (quote, cond, lambda, def, defmacro, ...) НЕ стають
 Additive: програми, коректні в 2.0, коректні в 2.1 — КРІМІ випадків,
 що покладаються на «unknown symbol» при передачі builtin (невідомі).
 Minor bump 2.0 → 2.1 **підтверджується ПІСЛЯ** тесту shadowing
-семантики на реальному дереві (conformance fixtures + yantra + core.my),
+семантики на реальному дереві (conformance fixtures + yantra + core.lisp),
 не автоматично.
 
 ## 8. Порядок реалізації (per ревʼю)
@@ -118,7 +118,7 @@ Minor bump 2.0 → 2.1 **підтверджується ПІСЛЯ** тесту 
 ## 9. Evidence (три інциденти сесії 2026-08-22)
 
 1. TCP-oracle: `+` невідомий всередині lambda;
-2. `lib.my`: `(reduce + ...)`, `(map car pts)` — падіння після 27с
+2. `lib.lisp`: `(reduce + ...)`, `(map car pts)` — падіння після 27с
    обчислень;
 3. 6 lambda-обгорток в одному невеликому geometry-файлі.
 

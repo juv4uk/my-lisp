@@ -1,7 +1,7 @@
 # my-lisp-lsp — Language Server Protocol adapter (M0–M3)
 
 > A thin LSP adapter over the canonical my-lisp core.
-> The LSP never re-parses `.my`, never greps for definitions, never
+> The LSP never re-parses `.lisp`, never greps for definitions, never
 > invents semantics.
 
 ## Boundary rules (enforced by module layout)
@@ -62,7 +62,7 @@ editor's LSP config at `my-lisp lsp`.
 
 ## Release integration
 
-`scripts/release.my` bumps all five canonical crates together
+`scripts/release.lisp` bumps all five canonical crates together
 (`my-lisp`, `my-lisp-cli`, `my-lisp-literate`, `my-lisp-wasm`,
 `my-lisp-lsp`). The test
 `crates/my-lisp-lsp/tests/release_parity.rs` fails on version drift,
@@ -85,7 +85,7 @@ so a crate added to one list but not the other cannot slip through.
 Added on the same principles (canonical parser only, nothing invented):
 
 - **Workspace index** (`workspace.rs`): `initialize` with `rootUri` scans
-  all `.my` files under the root (4 MB per-file cap, hidden dirs skipped)
+  all `.lisp` files under the root (4 MB per-file cap, hidden dirs skipped)
   and remembers every structurally proven definition with its file URI.
   Open/change events refresh one document's contributions incrementally.
 - **Cross-file go-to-definition**: same-document resolution first (M0 path),

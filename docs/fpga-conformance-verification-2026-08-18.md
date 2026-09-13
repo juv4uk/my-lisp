@@ -2,7 +2,7 @@
 
 **Agent**: engineer-1  
 **Date**: 2026-08-18  
-**Task**: Test conformance.my against Rust implementation. Flag ambiguous semantics.
+**Task**: Test conformance.lisp against Rust implementation. Flag ambiguous semantics.
 
 ## Summary
 
@@ -62,7 +62,7 @@ This is consistent but could be clearer. The axiom should explicitly state "eq u
 
 **Issue**: The error names (`Arity`, `Type`, `UnknownSymbol`, `InvalidForm`, `NumericOverflow`) are not formally defined in the contract. They appear in fixtures but their exact meaning is implementation-specific.
 
-**Recommendation**: Add a formal error taxonomy section to conformance.my.
+**Recommendation**: Add a formal error taxonomy section to conformance.lisp.
 
 ### 5. Missing Test Coverage
 
@@ -76,7 +76,7 @@ This is consistent but could be clearer. The axiom should explicitly state "eq u
 
 ## Verdict
 
-**The Rust implementation is correct against the conformance.my contract.** The flagged semantics are all explicitly documented but could benefit from formal axiom additions to prevent future misinterpretation.
+**The Rust implementation is correct against the conformance.lisp contract.** The flagged semantics are all explicitly documented but could benefit from formal axiom additions to prevent future misinterpretation.
 
 **Recommended contract clarifications** (non-blocking):
 1. Add explicit axiom: "0 is truthy; only Nil and Bool(false) are falsy"

@@ -15,12 +15,12 @@ that no cheaper test also kills?*
   (issue #81) is far enough along that a generic "same source, three extensions,
   same result" test replaces it, per the owner's own suggestion.
 - **Live inconsistency found**: `rivnopravnist_mov.rs` and `runtime_peer_operators.rs`
-  assert executable authority no longer reads `lib/surface/uk-sa-coverage.wsm` (the
+  assert executable authority no longer reads `lib/surface/uk-sa-coverage.lisp` (the
   legacy EN-shaped table), but `uk_surface_equivalence.rs` — the single strongest
   canonical equivalence test, and the natural merge target for the ~45 duplicate
   per-operator tests in `uk_sa_surface.rs`/`uk_sa_batch2.rs` — still parses that same
   legacy file as its data source. Must migrate `uk_surface_equivalence.rs` to read
-  `semantic-registry.wsm` directly before merging other tests into it.
+  `semantic-registry.lisp` directly before merging other tests into it.
 - The number **140** (stable UK surface count) is hardcoded independently in at least
   4 places across 2 files (`uk_surface_equivalence.rs` x2, `ukrainian_api_docs.rs` x2),
   plus related counts (`161`, `21`, `136`, `42`, `98`, `30`, `1`) hardcoded elsewhere —
@@ -54,12 +54,12 @@ that no cheaper test also kills?*
   (its `via_native` is a hand-supplied literal, not a live native read).
 - `meta_eval_parity.rs`'s `IN_SCOPE_EXPRS` is the exact hand-copy-then-verify
   bureaucracy the owner flagged: 25 expressions typed by hand, then a second test
-  re-parses `conformance.my` just to confirm the hand-copy was accurate.
-- **`tests/fixtures/conformance.my` has no positive meta-eval-scope tag today** —
+  re-parses `conformance.lisp` just to confirm the hand-copy was accurate.
+- **`tests/fixtures/conformance.lisp` has no positive meta-eval-scope tag today** —
   only the negative `meta-eval-gap` tag exists. A new tag (e.g. `meta-eval` with a
   `status` of `required`/`supported`, mirroring the existing `wsm-native` nested-alist
   precedent) must be introduced before any runner can filter the corpus directly,
-  per `scripts/fixtures-for-tier.my`'s existing tag-filtering pattern.
+  per `scripts/fixtures-for-tier.lisp`'s existing tag-filtering pattern.
 - 9 files share near-identical `meta_session`/`meta_eval_program`/`native_value`
   helper boilerplate — natural candidates to collapse into one corpus-driven runner:
   `meta_eval_parity.rs`, `meta_eval_evidence.rs`, `meta_eval_environment_semantics.rs`,
@@ -81,7 +81,7 @@ that no cheaper test also kills?*
   `scripts/semantic-ownership.py` scripts.
 - `documentation_contract.rs`'s `public_docs_share_current_project_identity_and_extension`
   is a live example of the exact failure mode the owner is worried about: it currently
-  passes while [README.md:287](../README.md) still says `.wsm` is canonical and
+  passes while [README.md:287](../README.md) still says `.lisp` is canonical and
   [docs/language-core.md:11](language-core.md) says `.lisp` is canonical — the test
   only checks all three extension tokens are *mentioned*, not which one is declared
   canonical, so it cannot catch this contradiction. Must fix README.md's claim
@@ -101,15 +101,15 @@ that no cheaper test also kills?*
 
 ## Proposed order for steps 2-5
 
-1. Fix the README.md canonical-extension claim (`.wsm`→`.lisp`) — small, unblocks the
+1. Fix the README.md canonical-extension claim (`.lisp`→`.lisp`) — small, unblocks the
    `documentation_contract.rs` fix and removes a real live contradiction independent
    of any test refactor.
-2. Migrate `uk_surface_equivalence.rs` off `uk-sa-coverage.wsm` onto
-   `semantic-registry.wsm` directly (fixes the live inconsistency), then merge
+2. Migrate `uk_surface_equivalence.rs` off `uk-sa-coverage.lisp` onto
+   `semantic-registry.lisp` directly (fixes the live inconsistency), then merge
    `uk_sa_surface.rs`/`uk_sa_batch2.rs`'s redundant per-operator tests into it,
    verifying no name loses coverage. Delete `cyrillic_extension_witness.rs` once a
    generic multi-extension witness exists.
-3. Introduce a `meta-eval` corpus tag in `conformance.my`, build one data-driven
+3. Introduce a `meta-eval` corpus tag in `conformance.lisp`, build one data-driven
    runner reading it, migrate the 9 duplicate-boilerplate meta-eval files onto it,
    fixing oracle direction (both native and meta checked against `expected`,
    never against each other) as part of the same move.

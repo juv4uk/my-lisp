@@ -46,7 +46,7 @@ because they are meaning, not implementation:
    program that can tell the difference (captured-variable mutation,
    recursion, shadowing).
 6. **Proof/provenance structures**, where a Lisp-owned library (Advice
-   Taker, `lib/meta-eval.my`'s failure provenance) defines them — a
+   Taker, `lib/meta-eval.lisp`'s failure provenance) defines them — a
    compiler must not flatten or drop structure a Lisp program can
    inspect.
 

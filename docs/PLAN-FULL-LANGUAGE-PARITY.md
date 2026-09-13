@@ -107,12 +107,12 @@ SA --/
 
 ### Етап A — нейтральна authority
 
-Мета: `lib/surface/semantic-registry.wsm` стає єдиним реєстром selected public
+Мета: `lib/surface/semantic-registry.lisp` стає єдиним реєстром selected public
 surface.
 
 Роботи:
 
-- перенести всі вибрані identities зі старого `uk-sa-coverage.wsm` у numeric
+- перенести всі вибрані identities зі старого `uk-sa-coverage.lisp` у numeric
   registry;
 - кожному рядку призначити opaque numeric ID;
 - checker має читати neutral registry, а не EN-shaped legacy table;
