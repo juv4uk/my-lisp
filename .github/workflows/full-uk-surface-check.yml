@@ -6,6 +6,7 @@ on:
       - 'lib/surface/semantic-registry.wsm'
       - 'lib/surface/український-профіль-джерела.всм'
       - 'scripts/generate-function-table.my'
+      - 'crates/my-lisp/tests/full_uk_surface.rs'
       - 'crates/my-lisp-cli/tests/uk_surface_audit_projection.rs'
       - '.github/workflows/full-uk-surface-check.yml'
   push:
@@ -15,6 +16,7 @@ on:
       - 'lib/surface/semantic-registry.wsm'
       - 'lib/surface/український-профіль-джерела.всм'
       - 'scripts/generate-function-table.my'
+      - 'crates/my-lisp/tests/full_uk_surface.rs'
       - 'crates/my-lisp-cli/tests/uk_surface_audit_projection.rs'
       - '.github/workflows/full-uk-surface-check.yml'
 
@@ -34,5 +36,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Reject Latin letters in full Ukrainian candidates first
         run: cargo test -p my-lisp-cli --test uk_surface_audit_projection full_uk_candidates_need_no_latin_keyboard_layout -- --nocapture
+      - name: Verify authoritative full Ukrainian peer identity
+        run: cargo test -p my-lisp --test full_uk_surface -- --nocapture
       - name: Check all full Ukrainian staging invariants
         run: cargo test -p my-lisp-cli --test uk_surface_audit_projection -- --nocapture
