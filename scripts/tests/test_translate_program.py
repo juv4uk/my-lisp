@@ -11,9 +11,10 @@ SPEC.loader.exec_module(MODULE)
 
 
 class TranslateProgramTests(unittest.TestCase):
-    def test_all_six_directions_are_available(self):
-        for source in MODULE.LANGUAGE_COLUMN:
-            for target in MODULE.LANGUAGE_COLUMN:
+    def test_all_surface_directions_are_available(self):
+        languages = sorted(MODULE.human_languages(MODULE.registry_rows()))
+        for source in languages:
+            for target in languages:
                 if source != target:
                     self.assertTrue(MODULE.translation_map(source, target))
 
