@@ -133,6 +133,21 @@ mod tests {
     }
 
     #[test]
+    fn ukrainian_closure_persists_in_one_canonical_session() {
+        let session = my_lisp_embed_session_new();
+        assert!(!session.is_null());
+
+        let definition = eval(
+            session,
+            "(визначити подвоїти (функція (значення) (+ значення значення)))",
+        );
+        assert_eq!(definition, "<lambda>");
+        assert_eq!(eval(session, "(подвоїти 21)"), "42");
+
+        unsafe { my_lisp_embed_session_free(session) };
+    }
+
+    #[test]
     fn language_errors_return_text_without_destroying_the_session() {
         let session = my_lisp_embed_session_new();
         assert!(!session.is_null());
