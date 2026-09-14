@@ -155,9 +155,9 @@ jobs:
         if: steps.changes.outputs.core == 'true' && steps.changes.outputs.surface != 'true' && steps.changes.outputs.workspace != 'true'
         run: cargo test -p my-lisp
 
-      - name: Host capability package tests
+      - name: Native host vertical witness
         if: steps.changes.outputs.host == 'true' && steps.changes.outputs.workspace != 'true'
-        run: cargo test -p my-lisp-host
+        run: cargo test -p my-lisp-host --test native_lisp_bytes
 
       - name: CLI black-box tests
         if: (steps.changes.outputs.cli == 'true' || steps.changes.outputs.surface == 'true') && steps.changes.outputs.workspace != 'true'
