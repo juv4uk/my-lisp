@@ -2,8 +2,8 @@
 """Перекладає my-lisp між людськими поверхнями через numeric identities.
 
 Джерело словника — `lib/surface/semantic-registry.lisp`. Жодна людська мова не
-є мостом до іншої. `sym` — спільна немовна нотація: такі токени не
-"перекладаються з англійської", а зберігаються дослівно.
+є мостом до іншої. `sym` — спільна немовна нотація, а `compat` — службовий
+простір compatibility-імен; вони не є людськими поверхнями для CLI-перекладу.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ SURFACE = re.compile(
     r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)\s+"
     r"(stable|candidate|missing|compatibility-only)\)"
 )
-NON_HUMAN = {"sym"}
+NON_HUMAN = {"sym", "compat"}
 
 
 def registry_rows() -> list[dict[str, tuple[str, str]]]:
