@@ -12,3 +12,5 @@ crates/my-lisp/tests/mccarthy.rs	print_appends_to_output_and_returns_its_argumen
 crates/my-lisp/tests/mccarthy.rs	tail_recursion_uses_constant_rust_stack	mechanism	stack-safety	remain host-owned	retained
 crates/my-lisp/tests/ukrainian_api_docs.rs	istina_i_khyba_ie_imenamy_tyh_samykh_kanonichnykh_znachen	semantic-authority	peer-surface-values	semantic registry + Lisp witness	pending
 crates/my-lisp/tests/rivnopravnist_mov.rs	peer arithmetic surface evaluation assertion	semantic-authority	peer-surface-equivalence	semantic registry + Lisp witness	pending
+tests/fixtures/authority-guard/forbidden-semantic.rs	host_authored_semantic_expectation_is_forbidden	semantic-authority	guard-negative-fixture	Lisp-owned witness corpus	fixture
+tests/fixtures/authority-guard/allowed-mechanism.rs	host_mechanism_assertion_is_allowed	mechanism	guard-positive-fixture	remain host-owned	fixture
