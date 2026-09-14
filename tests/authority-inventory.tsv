@@ -3,6 +3,7 @@ crates/my-lisp/tests/witness_authority.rs	compiler_corpus_native_actuals_are_jud
 crates/my-lisp/tests/witness_authority.rs	same_committed_corpus_drives_meta_eval_for_rows_admitted_to_that_backend	observer	Canon0+McCarthy7;lambda	tests/fixtures/conformance.lisp + tests/fixtures/witness-runner.lisp	migrated
 crates/my-lisp/tests/witness_authority.rs	peer_surface_witness_reads_semantic_registry_instead_of_copying_surface_truth	observer	peer-surface-identity	lib/surface/semantic-registry.lisp via generated projection	migrated
 crates/my-lisp/tests/witness_authority.rs	malformed_witness_fails_closed_as_lisp_data	mechanism	witness-protocol-fail-closed	tests/fixtures/witness-runner.lisp	migrated
+crates/my-lisp/tests/authority_guard_contract.rs	authority_policy_is_lisp_owned_and_fail_closed	observer	authority-boundary	scripts/authority-guard.lisp	retained
 crates/my-lisp/tests/mccarthy.rs	division_is_an_exact_reduced_rational	semantic-authority	exact-arithmetic	tests/fixtures/conformance.lisp	pending
 crates/my-lisp/tests/mccarthy.rs	division_by_zero_has_the_contract_3_named_error	semantic-authority	named-error	tests/fixtures/conformance.lisp	pending
 crates/my-lisp/tests/mccarthy.rs	comparison_with_no_arguments_is_an_arity_error	semantic-authority	named-error	tests/fixtures/conformance.lisp	pending
