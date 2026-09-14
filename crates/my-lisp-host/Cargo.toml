@@ -3,8 +3,7 @@ name = "my-lisp-host"
 version = "0.39.0"
 edition = "2021"
 license = "MIT"
-description = "Host capability layer for my-lisp: filesystem, processes, TCP, machine assembly"
+description = "Host capability layer for my-lisp: filesystem, processes, and TCP"
 
 [dependencies]
 my-lisp = { path = "../my-lisp" }
-iced-x86 = { version = "1.21.0", default-features = false, features = ["std", "code_asm"] }
