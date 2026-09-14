@@ -174,5 +174,4 @@
   (1150 (en tcp-listen stable) (uk — missing) (ukr слухати-порт-протоколу-керування-передаванням candidate) (sa — missing))
   (1151 (en read-file stable) (uk — missing) (ukr прочитати-файл candidate) (sa — missing))
   (1152 (en write-file stable) (uk — missing) (ukr записати-файл candidate) (sa — missing))
-  (1153 (en rdtsc stable) (uk такти-процесора stable) (ukr зчитати-тактовий-лічильник-процесора candidate) (sa kāla-spanda candidate))
 )
