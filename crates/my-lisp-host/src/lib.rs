@@ -11,7 +11,6 @@ use my_lisp::{
 };
 use std::{path::{Path, PathBuf}, rc::Rc};
 
-mod asm_raw;
 mod process_raw;
 
 fn denied(operation: &str, detail: impl std::fmt::Display, span: Span) -> LanguageError {
@@ -413,7 +412,7 @@ fn evaluate_tcp_close(
     let Value::TcpConnection(ref connection) = connection_value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "tcp-close expects a TCP connection · tcp-close ochikuie TCP-ziednannia · tcp-close erwartet einen TCP-Stream",
+            "tcp-close expects a TCP connection · tcp-close ochikuie TCP-ziednannia · tcp-close erwartet eine TCP-Verbindung",
             arguments[0].span,
         ));
     };
@@ -587,7 +586,6 @@ pub fn install() {
     register_capability("read-file-bytes", evaluate_read_file_bytes);
     register_capability("write-file-bytes", evaluate_write_file_bytes);
     register_capability("process-run-raw", process_raw::evaluate_process_run_raw);
-    register_capability("x86-assemble-raw", asm_raw::evaluate_x86_assemble_raw);
     register_capability("load", evaluate_load);
     register_capability("tcp-connect", evaluate_tcp_connect);
     register_capability("tcp-listen-raw", evaluate_tcp_listen_raw);
@@ -608,7 +606,6 @@ mod install_tests {
             "read-file-bytes",
             "write-file-bytes",
             "process-run-raw",
-            "x86-assemble-raw",
             "load",
             "tcp-connect",
             "tcp-listen-raw",
