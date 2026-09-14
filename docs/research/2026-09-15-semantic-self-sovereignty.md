@@ -1,8 +1,14 @@
 # Semantic self-sovereignty — design capital
 
-**Date:** 2026-09-15  
-**Status:** design capital; status vocabulary below is normative for this note  
-**Verified against:** `main` at `8bd551cc5f4282db881f2963a756a6e394f30a7e`  
+## Українське резюме
+
+**Семантичний суверенітет** означає, що нормативне значення програми належить самій мові, а evaluator, compiler, host, accelerator чи апаратна ціль є замінними реалізаціями, які мусять заробити право на виконання незмінними свідченнями. Цей документ фіксує три статуси для кожної архітектурної стрілки: `RATIFIED`, `HYPOTHESIS`, `ILLUSTRATION, NOT COMMITMENT`; називає поточний корінь довіри; забороняє продуктивності зворотно впливати на семантику; і називає вже чинне правило ADR-011 як Error Observation Identity v1 без розширення контракту.
+
+Ключова межа така: Lisp-owned corpus може бути нормативним джерелом очікуваної істини, але сьогодні його виконання все ще спирається на native Rust reader/evaluator/runtime, тому Rust лишається частиною поточного trusted execution root. Мета — не приховати цей корінь, а послідовно його зменшувати через незалежних споживачів незмінних witnesses. CML у поточному стані — **недовірений оптимізувальний кандидат, перевірюваний Lisp-owned semantic evidence**, а не вже сертифікований compiler чи повна translation validation.
+
+**Date:** 2026-09-15
+**Status:** design capital; status vocabulary below is normative for this note
+**Verified against:** `main` at `8bd551cc5f4282db881f2963a756a6e394f30a7e`
 **Scope:** authority boundaries, evidence discipline, and future-proofing. This note does not change evaluator semantics or authorize new runtime features.
 
 ## One-sentence center
