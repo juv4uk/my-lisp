@@ -1,0 +1,14 @@
+path	test	class	semantic-slice	migration-target	status
+crates/my-lisp/tests/witness_authority.rs	compiler_corpus_native_actuals_are_judged_only_by_lisp_owned_witness_logic	observer	Canon0+McCarthy7;lambda;closure;macro;named-error	tests/fixtures/conformance.lisp + tests/fixtures/witness-runner.lisp	migrated
+crates/my-lisp/tests/witness_authority.rs	same_committed_corpus_drives_meta_eval_for_rows_admitted_to_that_backend	observer	Canon0+McCarthy7;lambda	tests/fixtures/conformance.lisp + tests/fixtures/witness-runner.lisp	migrated
+crates/my-lisp/tests/witness_authority.rs	peer_surface_witness_reads_semantic_registry_instead_of_copying_surface_truth	observer	peer-surface-identity	lib/surface/semantic-registry.lisp via generated projection	migrated
+crates/my-lisp/tests/witness_authority.rs	malformed_witness_fails_closed_as_lisp_data	mechanism	witness-protocol-fail-closed	tests/fixtures/witness-runner.lisp	migrated
+crates/my-lisp/tests/mccarthy.rs	division_is_an_exact_reduced_rational	semantic-authority	exact-arithmetic	tests/fixtures/conformance.lisp	pending
+crates/my-lisp/tests/mccarthy.rs	division_by_zero_has_the_contract_3_named_error	semantic-authority	named-error	tests/fixtures/conformance.lisp	pending
+crates/my-lisp/tests/mccarthy.rs	comparison_with_no_arguments_is_an_arity_error	semantic-authority	named-error	tests/fixtures/conformance.lisp	pending
+crates/my-lisp/tests/mccarthy.rs	read_parses_text_into_data_without_evaluating_it	semantic-authority	reader-semantics	future Lisp witness row	pending
+crates/my-lisp/tests/mccarthy.rs	read_rejects_non_string_arguments_and_multi_expression_input	semantic-authority	reader-errors	future Lisp witness rows	pending
+crates/my-lisp/tests/mccarthy.rs	print_appends_to_output_and_returns_its_argument	mixed	value+output semantics	split semantic witness from transcript mechanism	pending
+crates/my-lisp/tests/mccarthy.rs	tail_recursion_uses_constant_rust_stack	mechanism	stack-safety	remain host-owned	retained
+crates/my-lisp/tests/ukrainian_api_docs.rs	istina_i_khyba_ie_imenamy_tyh_samykh_kanonichnykh_znachen	semantic-authority	peer-surface-values	semantic registry + Lisp witness	pending
+crates/my-lisp/tests/rivnopravnist_mov.rs	peer arithmetic surface evaluation assertion	semantic-authority	peer-surface-equivalence	semantic registry + Lisp witness	pending
