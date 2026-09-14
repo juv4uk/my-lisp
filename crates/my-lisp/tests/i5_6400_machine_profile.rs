@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::Path;
 
 #[test]
@@ -7,6 +8,7 @@ fn i5_6400_profile_projects_existing_semantic_identities() {
     let profile = std::fs::read_to_string(&profile_path)
         .unwrap_or_else(|error| panic!("missing i5-6400 machine profile at {profile_path:?}: {error}"));
 
+    my_lisp::parse(&profile).expect("i5-6400 machine profile must be valid my-lisp data");
     assert!(profile.contains("(machine-profile/1"));
     assert!(profile.contains("(cpu intel-core-i5-6400)"));
     assert!(profile.contains("(microarchitecture skylake)"));
@@ -42,6 +44,39 @@ fn i5_6400_profile_projects_existing_semantic_identities() {
             "semantic ID {semantic_id} must advertise {expected_machine_path:?}; row: {row}"
         );
     }
+}
+
+#[test]
+fn every_i5_6400_row_is_a_unique_existing_semantic_identity() {
+    let profile = include_str!("../../../lib/machine/intel-core-i5-6400.lisp");
+    let registry = include_str!("../../../lib/surface/semantic-registry.lisp");
+    let mut seen = HashSet::new();
+    let mut projected = 0usize;
+
+    for line in profile.lines().map(str::trim_start) {
+        let Some(rest) = line.strip_prefix('(') else {
+            continue;
+        };
+        let Some(id) = rest.split_whitespace().next() else {
+            continue;
+        };
+        if id.len() != 4 || !id.chars().all(|character| character.is_ascii_digit()) {
+            continue;
+        }
+
+        projected += 1;
+        assert!(
+            seen.insert(id),
+            "i5-6400 projection must not contain duplicate semantic ID {id}"
+        );
+        let registry_prefix = format!("  ({id} ");
+        assert!(
+            registry.lines().any(|row| row.starts_with(&registry_prefix)),
+            "i5-6400 projection may only reference semantic-registry identities; unknown ID {id}"
+        );
+    }
+
+    assert!(projected >= 50, "processor profile should cover a meaningful existing subset");
 }
 
 #[test]
