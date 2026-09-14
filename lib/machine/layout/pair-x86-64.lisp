@@ -1,0 +1,26 @@
+; Lisp-owned x86-64 pair representation contract for the first native proof slice.
+;
+; The host owns only raw memory allocation and the call boundary. Lisp-authored
+; machine lowering owns these field offsets and therefore owns the loads/stores
+; that interpret the arena as a pair cell.
+;
+; This is deliberately not a general heap or GC ABI yet. The cell exists only
+; for one native-call-u64-raw invocation and must not escape that call.
+
+(def x86-pair-cell-bytes 16)
+(def x86-pair-car-offset 0)
+(def x86-pair-cdr-offset 8)
+
+(def x86-pair-layout
+  (quote
+    (machine-pair-layout/1
+      (target x86-64)
+      (word-bits 64)
+      (cell-bytes 16)
+      (fields
+        ((car (offset-bytes 0) (width-bits 64))
+         (cdr (offset-bytes 8) (width-bits 64))))
+      (arena-argument-register rdi)
+      (allocation raw-host-arena)
+      (lifetime native-call)
+      (escape forbidden))))
