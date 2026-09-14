@@ -1,5 +1,5 @@
 use my_lisp::{
-    eval_expr, exact_arity, Environment, ErrorKind, Exactness, Expr, LanguageError, Span, Value,
+    eval_expr, Environment, ErrorKind, Exactness, Expr, LanguageError, Span, Value,
 };
 use std::ffi::c_void;
 
@@ -81,7 +81,7 @@ fn expect_arena_length(value: &Value, span: Span) -> Result<usize, LanguageError
     let Value::Number(number, Exactness::Exact) = value else {
         return Err(LanguageError::new(
             ErrorKind::Type,
-            "native-call-u64-arena-raw expects an exact positive arena byte count",
+            "native-call-u64-raw expects an exact positive arena byte count",
             span,
         ));
     };
@@ -92,7 +92,7 @@ fn expect_arena_length(value: &Value, span: Span) -> Result<usize, LanguageError
         return Err(LanguageError::new(
             ErrorKind::InvalidForm,
             format!(
-                "native-call-u64-arena-raw arena byte count must be 1..={MAX_NATIVE_ARENA_BYTES}"
+                "native-call-u64-raw arena byte count must be 1..={MAX_NATIVE_ARENA_BYTES}"
             ),
             span,
         ));
@@ -162,7 +162,7 @@ fn execute_u64_with_arena(
     arena_length: usize,
     span: Span,
 ) -> Result<u64, LanguageError> {
-    let operation = "native-call-u64-arena-raw";
+    let operation = "native-call-u64-raw";
     let code = prepare_executable(bytes, operation, span)?;
     let arena = unsafe {
         mmap(
@@ -216,26 +216,25 @@ pub(crate) fn evaluate_native_call_u64_raw(
     span: Span,
 ) -> Result<Value, LanguageError> {
     let operation = "native-call-u64-raw";
-    exact_arity(operation, arguments, 1, span)?;
-    let value = eval_expr(&arguments[0], environment)?;
-    let bytes = expect_machine_bytes(&value, operation, arguments[0].span)?;
-    result_value(execute_u64(&bytes, span)?, operation, span)
-}
+    if !(1..=2).contains(&arguments.len()) {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            format!(
+                "{operation}: expected 1 or 2 arguments; received {}",
+                arguments.len()
+            ),
+            span,
+        ));
+    }
 
-pub(crate) fn evaluate_native_call_u64_arena_raw(
-    arguments: &[Expr],
-    environment: &Environment,
-    span: Span,
-) -> Result<Value, LanguageError> {
-    let operation = "native-call-u64-arena-raw";
-    exact_arity(operation, arguments, 2, span)?;
     let byte_value = eval_expr(&arguments[0], environment)?;
     let bytes = expect_machine_bytes(&byte_value, operation, arguments[0].span)?;
-    let arena_value = eval_expr(&arguments[1], environment)?;
-    let arena_length = expect_arena_length(&arena_value, arguments[1].span)?;
-    result_value(
-        execute_u64_with_arena(&bytes, arena_length, span)?,
-        operation,
-        span,
-    )
+    let result = if arguments.len() == 1 {
+        execute_u64(&bytes, span)?
+    } else {
+        let arena_value = eval_expr(&arguments[1], environment)?;
+        let arena_length = expect_arena_length(&arena_value, arguments[1].span)?;
+        execute_u64_with_arena(&bytes, arena_length, span)?
+    };
+    result_value(result, operation, span)
 }
