@@ -5,18 +5,23 @@
 ; Python scripting surface, and tooling should be written directly in
 ; my-lisp/wsm rather than migrated later.
 ;
-; Authority remains lib/surface/semantic-registry.lisp — this script only
-; projects it, the same "projection, not a second source of truth"
+; Semantic authority remains lib/surface/semantic-registry.lisp — this script
+; only projects it, the same "projection, not a second source of truth"
 ; discipline scripts/build-constitution.lisp already uses for
 ; my-lisp-constitution.lisp. Reads the registry as ordinary my-lisp data
 ; (read-file/read-all), not text/regex — the registry is already valid
 ; my-lisp source, so no foreign parser is needed.
 ;
+; The human projection may also join processor-specific realization metadata.
+; That metadata is deliberately NOT semantic authority: the Intel Core i5-6400
+; profile is keyed by existing semantic IDs and only says how an already-known
+; meaning can reach that processor's x86-64 ISA.
+;
 ; Writes two generated views directly (write-file is language-owned,
 ; lib/fs.lisp, over the host's read-file-bytes/write-file-bytes):
-;   lib/generated/function-table.lisp  (schema ft/1, machine-readable)
+;   lib/generated/function-table.lisp  (schema ft/1, machine-readable semantics)
 ;   docs/generated/function-table.md  (human table, column order
-;     uk -> ukr -> English -> Sanskrit)
+;     uk -> ukr -> English -> Sanskrit -> Intel Core i5-6400 / Skylake)
 ;
 ; Usage (from the repo root):
 ;   cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.lisp
@@ -49,6 +54,35 @@
 
 (def registry-form (car (read-all (read-file "lib/surface/semantic-registry.lisp"))))
 (def entries (map normalize-entry (cdr registry-form)))
+
+; Processor realization projection. Its rows never create an identity: they
+; may only annotate IDs that already exist in `entries` above.
+(def machine-profile-form
+  (car (read-all (read-file "lib/machine/intel-core-i5-6400.lisp"))))
+
+(def find-section
+  (lambda (name sections)
+    (cond
+      ((atom sections) (quote ()))
+      ((eq (car (car sections)) name) (car sections))
+      (t (find-section name (cdr sections))))))
+
+(def machine-rows
+  (cdr (find-section (quote rows) (cdr machine-profile-form))))
+
+(def find-machine-row
+  (lambda (sid rows)
+    (cond
+      ((atom rows) (quote ()))
+      ((eq (car (car rows)) sid) (car rows))
+      (t (find-machine-row sid (cdr rows))))))
+
+(def machine-path
+  (lambda (sid)
+    (let ((row (find-machine-row sid machine-rows)))
+      (cond
+        ((atom row) "—")
+        (t (third row))))))
 
 ; A surface word is usually a symbol (write-to-string strips the
 ; Lisp-level Symbol wrapping down to bare text); the reconstructed
@@ -198,7 +232,8 @@
         " | " (write-to-string (car (cdr ukr)))
         " | " (surface-word-text (car en))
         " | " (surface-word-text (car sa))
-        " | " (write-to-string primary) " |"))))
+        " | " (write-to-string primary)
+        " | " (machine-path sid) " |"))))
 
 (def wsm-header
   (list
@@ -223,10 +258,12 @@
     ""
     "**Authority:** `lib/surface/semantic-registry.lisp` — projection only, not a second source of truth."
     ""
+    "**Machine projection:** `lib/machine/intel-core-i5-6400.lisp` — physical execution paths only; it does not create language meaning."
+    ""
     "Regenerate: `cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.lisp`"
     ""
-    "| ID | uk | ukr | ukr status | English | Sanskrit | primary |"
-    "|----|----|-----|------------|---------|----------|---------|"))
+    "| ID | uk | ukr | ukr status | English | Sanskrit | primary | Intel Core i5-6400 / Skylake |"
+    "|----|----|-----|------------|---------|----------|---------|------------------------------|"))
 
 (def md-body (join-newline (append md-header (map render-md-row entries))))
 (def md-output (string-append md-body "
