@@ -124,6 +124,58 @@ fn i5_6400_cpu_profile_references_declared_isa_extensions_not_semantics() {
 }
 
 #[test]
+fn i5_6400_profile_tracks_official_intel_capability_classes() {
+    let path = repo_root().join("lib/machine/cpu/intel-core-i5-6400.lisp");
+    let source = fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", path.display()));
+
+    for required in [
+        "(supported-extension MMX)",
+        "(gated-extension AES-NI (gate cpuid-aes))",
+        "(gated-extension FMA3 (gate cpuid-fma+avx-state))",
+        "(gated-extension RDRAND (gate cpuid-rdrand))",
+        "(platform-gated-extension SGX (gate cpuid-sgx+firmware+os-support))",
+        "(platform-gated-extension MPX (gate cpuid-mpx+os-support))",
+        "(virtualization-capability VT-X supported)",
+        "(virtualization-capability VT-D supported)",
+        "(virtualization-capability EPT supported)",
+        "(unavailable-extension TSX)",
+        "(unavailable-extension AVX-512)",
+        "(unavailable-extension AMX)",
+    ] {
+        assert!(source.contains(required), "CPU profile missing Intel capability fact: {required}");
+    }
+}
+
+#[test]
+fn declared_i5_6400_extension_families_have_independent_isa_catalogues() {
+    for (file, extension) in [
+        ("mmx.lisp", "MMX"),
+        ("fma3.lisp", "FMA3"),
+        ("aes-ni.lisp", "AES-NI"),
+        ("rdrand.lisp", "RDRAND"),
+        ("sgx.lisp", "SGX"),
+        ("mpx.lisp", "MPX"),
+    ] {
+        let path = repo_root().join("lib/machine/isa").join(file);
+        let source = fs::read_to_string(&path)
+            .unwrap_or_else(|error| panic!("{} must exist: {error}", path.display()));
+        my_lisp::parse(&source)
+            .unwrap_or_else(|error| panic!("{} must be valid my-lisp data: {error}", path.display()));
+        assert!(
+            source.contains(&format!("(extension {extension})")),
+            "{} must declare extension {extension}",
+            path.display()
+        );
+        assert!(
+            !source.contains("semantic-id"),
+            "{} must contain hardware facts only",
+            path.display()
+        );
+    }
+}
+
+#[test]
 fn lisp_owned_encoder_is_part_of_the_vertical_boundary_proof() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");
     let source = fs::read_to_string(&path)
