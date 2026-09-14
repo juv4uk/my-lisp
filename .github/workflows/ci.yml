@@ -67,7 +67,7 @@ jobs:
             esac
 
             case "$path" in
-              crates/my-lisp/src/*|lib/*.lisp|lib/*/*.lisp)
+              crates/my-lisp/src/*|crates/my-lisp/tests/*|lib/*.lisp|lib/*/*.lisp)
                 case "$path" in
                   lib/surface/*|lib/generated/*) ;;
                   *) core=true ;;
