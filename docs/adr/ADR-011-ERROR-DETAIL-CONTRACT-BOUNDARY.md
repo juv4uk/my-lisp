@@ -28,6 +28,39 @@ For the current language contract and the meta-evaluator evidence matrix:
 4. **The meta-evaluator `detail` payload remains available as Lisp diagnostic data, but no cross-runtime detail schema is ratified today.** Exact shapes may have implementation-level regression tests without becoming a language-conformance requirement.
 5. A future contract may ratify a structured detail schema. If that happens, it must be explicit, machine-readable, and shared by implementations. Until then, adding a Rust `ErrorDetail` enum solely to satisfy the current evidence row is rejected as unnecessary mechanism growth.
 
+## Error Observation Identity v1
+
+This section names the decision above; it does **not** expand it.
+
+For cross-runtime conformance today:
+
+```text
+semantic error identity v1
+          =
+admitted error category
+```
+
+The category is the identity-relevant observation. Message text, source span,
+meta-evaluator `detail`, implementation-internal exception/control flow, and
+payload spellings are diagnostic or implementation data unless a later
+contract explicitly promotes them.
+
+Therefore two meta-level values such as:
+
+```lisp
+(error unbound-symbol x)
+(error unbound-symbol y)
+```
+
+belong to the same current cross-runtime semantic error class when both map to
+the same admitted category. The differing `x`/`y` payload remains useful
+information, but it is not part of Error Observation Identity v1.
+
+This naming is important for backend-neutral witnesses: an implementation must
+not be rejected merely because its diagnostic payload differs in a field the
+language has never ratified as semantic; conversely, it must not invent a new
+observable category and hide that change inside a payload.
+
 In short:
 
 ```text
@@ -36,6 +69,7 @@ language semantics      diagnostic surfaces
 error category          Rust message
                         Rust source span
                         meta Lisp detail payload
+                        implementation-local payload spellings
 ```
 
 The right side may be tested for local quality. It is not silently normalized into a fake cross-runtime equality claim.
@@ -58,8 +92,15 @@ The existing paired error tests continue to prove category correspondence. Their
 - No source-span equivalence is required between host evaluator and metacircular evaluator.
 - Useful structured Lisp diagnostics are preserved.
 - `error-detail-parity` can be confirmed only as an **explicit boundary result**: there are currently no additional ratified cross-runtime detail fields beyond the already-confirmed category.
+- Error Observation Identity v1 remains category-only; naming it does not authorize new payload equality requirements.
 - This does **not** by itself authorize the project phrase `complete self-hosting`; claim vocabulary remains separately governed by the evidence matrix and project policy.
 
 ## Future extension rule
 
-If a consumer genuinely needs stable machine-readable details — for example `expected=2, received=1` or a host operation/reason pair — first add an explicit contract/ADR and an implementation-neutral representation. Only then may such a field become part of cross-runtime parity.
+If a consumer genuinely needs stable machine-readable details — for example `expected=2, received=1` or a host operation/reason pair — that field may become identity-relevant only after all three gates are satisfied:
+
+1. an explicit contract/ADR decision names the field as semantic rather than diagnostic;
+2. an implementation-neutral, machine-readable schema defines its representation;
+3. shared executable witnesses require the field across implementations.
+
+Until then, adding a Rust `ErrorDetail` enum or promoting a meta-evaluator payload solely to make current tests look more alike is rejected as unnecessary mechanism growth and an accidental contract expansion.
