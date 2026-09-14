@@ -3,6 +3,9 @@
 ; my-lisp owns language meaning and semantic IDs. Hardware specifications own ISA
 ; facts. my-lisp may represent and encode those facts. CML remains an optimizer,
 ; while the host owns only raw executable-memory / invocation mechanisms.
+;
+; Machine authority is admitted by properties, not by a historical file path or
+; implementation name. An encoder/assembler file is only a replaceable carrier.
 
 (machine-lowering-boundary
   (schema machine-lowering-boundary/2)
@@ -17,6 +20,20 @@
   (semantic-id-from-isa forbidden)
   (lowering-direction semantic-to-machine)
   (reverse-authority forbidden)
+
+  ; Admission belongs to a closed witnessed subset, not to asm-x86.lisp,
+  ; x86-64.lisp, or any other implementation carrier by name.
+  (machine-authority-basis admitted-subset-properties)
+  (admitted-subset-owner my-lisp)
+  (admitted-subset-closed required)
+  (admitted-subset-machine-readable required)
+  (admitted-subset-witnessed required)
+  (admitted-subset-implementation replaceable)
+  (implementation-file-path authority-forbidden)
+  (unadmitted-machine-form reject-before-host)
+  (canonical-raw-byte-vector-api forbidden)
+  (host-execution-input admitted-output-only)
+
   (raw-execution-mechanism host)
   (machine-text projection-only)
   (machine-bytes lisp-owned-target-product)
