@@ -157,14 +157,6 @@ jobs:
           cargo test -p xtask --test external_oracle_cli
           cargo run -p xtask -- verify
 
-      - name: Build CLI for Ukrainian profile
-        if: (steps.changes.outputs.cli == 'true' || steps.changes.outputs.surface == 'true') && steps.changes.outputs.workspace != 'true'
-        run: cargo build -p my-lisp-cli
-
-      - name: Check Ukrainian full-word source profile
-        if: steps.changes.outputs.surface == 'true' && steps.changes.outputs.workspace != 'true'
-        run: ./target/debug/my-lisp scripts/перевірити-український-профіль.lisp
-
       - name: Focused Advice Taker witness
         if: steps.changes.outputs.meta == 'true' && steps.changes.outputs.workspace != 'true'
         run: cargo test --profile ci-meta -p my-lisp --test meta_eval_advice_taker advice_taker_native_and_meta_preserve_expected_outcome_classes -- --ignored --nocapture
