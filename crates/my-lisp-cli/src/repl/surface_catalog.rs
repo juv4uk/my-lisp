@@ -209,6 +209,11 @@ fn expr_string(expr: &Expr) -> Option<&str> {
     }
 }
 
+fn expr_numeric_identity(expr: &Expr) -> Option<&str> {
+    let raw = UK_API_DOCS.get(expr.span.start..expr.span.end)?;
+    (!raw.is_empty() && raw.bytes().all(|byte| byte.is_ascii_digit())).then_some(raw)
+}
+
 fn ukrainian_docs() -> Result<Vec<SurfaceDoc>, String> {
     let program = parse(UK_API_DOCS)
         .map_err(|error| format!("не вдалося прочитати uk-docs.wsm: {}", error.render(UK_API_DOCS)))?;
@@ -238,8 +243,8 @@ fn ukrainian_docs() -> Result<Vec<SurfaceDoc>, String> {
                 category: expr_symbol(&fields[1])
                     .ok_or_else(|| "uk-docs.wsm: category має бути символом".to_string())?
                     .to_string(),
-                identity: expr_symbol(&fields[2])
-                    .ok_or_else(|| "uk-docs.wsm: numeric ID має бути символом".to_string())?
+                identity: expr_numeric_identity(&fields[2])
+                    .ok_or_else(|| "uk-docs.wsm: numeric ID має бути десятковим атомом".to_string())?
                     .to_string(),
                 kind: expr_symbol(&fields[3])
                     .ok_or_else(|| "uk-docs.wsm: kind має бути символом".to_string())?
