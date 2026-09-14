@@ -83,7 +83,7 @@ fn x86_base_catalogue_is_lisp_data_independent_of_semantic_ids() {
     assert!(source.contains("(extension X86-BASE"));
     for mnemonic in ["MOV", "ADD", "RET"] {
         assert!(
-            source.contains(&format!("(instruction {mnemonic} ")),
+            source.contains(&format!("(instruction {mnemonic}")),
             "proof catalogue must contain {mnemonic} independently of Lisp semantics"
         );
     }
