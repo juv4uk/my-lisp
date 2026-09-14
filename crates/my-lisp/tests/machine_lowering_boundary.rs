@@ -150,10 +150,17 @@ fn i5_6400_profile_tracks_official_intel_capability_classes() {
 #[test]
 fn declared_i5_6400_extension_families_have_independent_isa_catalogues() {
     for (file, extension) in [
+        ("x87.lisp", "X87"),
         ("mmx.lisp", "MMX"),
         ("fma3.lisp", "FMA3"),
         ("aes-ni.lisp", "AES-NI"),
+        ("pclmulqdq.lisp", "PCLMULQDQ"),
+        ("f16c.lisp", "F16C"),
         ("rdrand.lisp", "RDRAND"),
+        ("rdseed.lisp", "RDSEED"),
+        ("adx.lisp", "ADX"),
+        ("xsave.lisp", "XSAVE"),
+        ("clflushopt.lisp", "CLFLUSHOPT"),
         ("sgx.lisp", "SGX"),
         ("mpx.lisp", "MPX"),
     ] {
