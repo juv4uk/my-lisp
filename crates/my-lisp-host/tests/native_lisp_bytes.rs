@@ -1,9 +1,31 @@
 #![cfg(all(target_os = "linux", target_arch = "x86_64"))]
 
-use my_lisp::{eval_program, load_core_library, Session};
+use my_lisp::{
+    eval_program, load_core_library, register_capability, Environment, Exactness, Expr,
+    LanguageError, Session, Span, Value,
+};
 use my_lisp_host::install;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, MutexGuard};
+
+static EXECUTOR_CALLS: AtomicUsize = AtomicUsize::new(0);
+static TEST_LOCK: Mutex<()> = Mutex::new(());
+
+struct RestoreHostCapabilities;
+
+impl Drop for RestoreHostCapabilities {
+    fn drop(&mut self) {
+        install();
+    }
+}
+
+fn test_lock() -> MutexGuard<'static, ()> {
+    TEST_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -17,8 +39,47 @@ fn load_lisp_file(path: &str, session: &mut Session) {
         .unwrap_or_else(|error| panic!("{} must load as ordinary my-lisp: {error}", path.display()));
 }
 
+fn spy_executor(
+    _arguments: &[Expr],
+    _environment: &Environment,
+    _span: Span,
+) -> Result<Value, LanguageError> {
+    EXECUTOR_CALLS.fetch_add(1, Ordering::SeqCst);
+    Ok(Value::Number(0.0, Exactness::Exact))
+}
+
+#[test]
+fn unadmitted_ud2_form_is_rejected_before_host_executor() {
+    let _serial = test_lock();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before machine admission witness");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    EXECUTOR_CALLS.store(0, Ordering::SeqCst);
+    register_capability("native-call-u64-raw", spy_executor);
+    let _restore = RestoreHostCapabilities;
+
+    let result = eval_program(
+        "(x86-call-admitted-u64 (quote ((ud2))) 0)",
+        &mut session,
+    )
+    .expect("unadmitted machine form must be a Lisp-level named rejection");
+
+    assert_eq!(
+        result.value.to_string(),
+        "(rejected unadmitted-machine-form (ud2))"
+    );
+    assert_eq!(
+        EXECUTOR_CALLS.load(Ordering::SeqCst),
+        0,
+        "rejected machine form must never reach the host executor"
+    );
+}
+
 #[test]
 fn x86_pair_layout_is_one_lisp_owned_machine_readable_authority() {
+    let _serial = test_lock();
     let path = repo_root().join("lib/machine/layout/pair-x86-64.lisp");
     let source = fs::read_to_string(&path)
         .unwrap_or_else(|error| panic!("{} must exist: {error}", path.display()));
@@ -60,6 +121,7 @@ fn x86_pair_layout_is_one_lisp_owned_machine_readable_authority() {
 
 #[test]
 fn interpreter_pair_reference_witnesses_remain_two_and_three() {
+    let _serial = test_lock();
     install();
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before pair reference witness");
@@ -75,6 +137,7 @@ fn interpreter_pair_reference_witnesses_remain_two_and_three() {
 
 #[test]
 fn semantics_blind_raw_executor_accepts_optional_arena_bytes() {
+    let _serial = test_lock();
     install();
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before native witness");
@@ -92,6 +155,7 @@ fn semantics_blind_raw_executor_accepts_optional_arena_bytes() {
 
 #[test]
 fn lisp_owned_pair_memory_addressing_has_exact_rdi_disp8_bytes() {
+    let _serial = test_lock();
     install();
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before machine encoder witness");
@@ -121,6 +185,7 @@ fn lisp_owned_pair_memory_addressing_has_exact_rdi_disp8_bytes() {
 
 #[test]
 fn native_pair_car_cdr_match_the_interpreter_reference_witness() {
+    let _serial = test_lock();
     install();
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before pair parity witness");
@@ -150,6 +215,7 @@ fn native_pair_car_cdr_match_the_interpreter_reference_witness() {
 
 #[test]
 fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
+    let _serial = test_lock();
     install();
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before native witness");
@@ -167,6 +233,7 @@ fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
 
 #[test]
 fn native_execution_mechanism_is_not_a_language_semantic_identity() {
+    let _serial = test_lock();
     let registry = fs::read_to_string(repo_root().join("lib/surface/semantic-registry.lisp"))
         .expect("semantic registry must be readable");
     assert!(
@@ -177,6 +244,7 @@ fn native_execution_mechanism_is_not_a_language_semantic_identity() {
 
 #[test]
 fn rust_native_executor_contains_no_lisp_or_x86_lowering_decision() {
+    let _serial = test_lock();
     let source = fs::read_to_string(repo_root().join("crates/my-lisp-host/src/native_exec.rs"))
         .expect("native execution mechanism source must be readable");
 
