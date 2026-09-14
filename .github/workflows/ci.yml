@@ -15,7 +15,7 @@ jobs:
     name: focused PR verification
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
@@ -46,11 +46,18 @@ jobs:
           meta=false
           rust=false
           workspace=false
+          workflow=false
 
           while IFS= read -r path; do
             case "$path" in
               Cargo.toml|Cargo.lock|.cargo/*)
                 workspace=true
+                ;;
+            esac
+
+            case "$path" in
+              .github/workflows/*)
+                workflow=true
                 ;;
             esac
 
@@ -109,6 +116,7 @@ jobs:
             echo "meta=$meta"
             echo "rust=$rust"
             echo "workspace=$workspace"
+            echo "workflow=$workflow"
           } | tee -a "$GITHUB_OUTPUT"
 
       - name: Diff hygiene
@@ -116,6 +124,32 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: git diff --check "$BASE_SHA" "$HEAD_SHA"
+
+      - name: Validate workflow YAML syntax
+        if: steps.changes.outputs.workflow == 'true'
+        run: ruby -e 'require "psych"; Dir[".github/workflows/*.yml"].sort.each { |f| Psych.parse_file(f); puts f }'
+
+      - name: Exercise future main fast critical gate
+        if: steps.changes.outputs.workflow == 'true'
+        run: |
+          python3 scripts/generate-meta-semantic-registry.py --check
+          python3 scripts/public_api_inventory.py --check
+          cargo test -p my-lisp --lib \
+            --test canon_adversarial \
+            --test canon_language_authority \
+            --test semantic_ref_fail_closed \
+            --test machine_lowering_boundary \
+            --test machine_admission_adversarial \
+            --test machine_type_discipline \
+            --test uk_surface_equivalence \
+            --test public_api_inventory_contract
+          cargo test -p my-lisp-host --test native_lisp_bytes
+          cargo test -p my-lisp-cli --test cli
+          cargo run -p xtask -- verify
+
+      - name: Exercise future main fast clippy
+        if: steps.changes.outputs.workflow == 'true'
+        run: cargo clippy -p my-lisp -p my-lisp-host -p my-lisp-cli -p xtask --all-targets -- -D warnings
 
       - name: Workspace dependency-graph fallback
         if: steps.changes.outputs.workspace == 'true'
