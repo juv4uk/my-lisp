@@ -50,61 +50,25 @@ jobs:
 
           while IFS= read -r path; do
             case "$path" in
-              Cargo.toml|Cargo.lock|.cargo/*)
-                workspace=true
-                ;;
+              Cargo.toml|Cargo.lock|.cargo/*) workspace=true ;;
             esac
-
             case "$path" in
-              .github/workflows/*)
-                workflow=true
-                ;;
+              .github/workflows/*) workflow=true ;;
             esac
-
             case "$path" in
-              *.rs|Cargo.toml|Cargo.lock|crates/*/Cargo.toml)
-                rust=true
-                ;;
+              *.rs|Cargo.toml|Cargo.lock|crates/*/Cargo.toml) rust=true ;;
             esac
-
             case "$path" in
-              lib/surface/*|lib/generated/meta-semantic-registry.lisp|docs/ukrainian-api.md|docs/generated/public-api-discovery.md|scripts/public_api_inventory.py|scripts/generate-meta-semantic-registry.py|scripts/generate-ukrainian-api.py|scripts/перевірити-український-профіль.lisp|machine-lowering-boundary.lisp|repo.lisp|crates/my-lisp/tests/macro_derivation.rs|crates/my-lisp/tests/ukrainian_api_docs.rs|crates/my-lisp/tests/uk_surface_equivalence.rs|crates/my-lisp/tests/public_api_inventory_contract.rs|crates/my-lisp/tests/machine_lowering_boundary.rs)
-                surface=true
-                ;;
+              lib/surface/*|lib/generated/meta-semantic-registry.lisp|docs/ukrainian-api.md|docs/generated/public-api-discovery.md|scripts/public_api_inventory.py|scripts/generate-meta-semantic-registry.py|scripts/generate-ukrainian-api.py|scripts/перевірити-український-профіль.lisp|machine-lowering-boundary.lisp|repo.lisp|crates/my-lisp/tests/macro_derivation.rs|crates/my-lisp/tests/ukrainian_api_docs.rs|crates/my-lisp/tests/uk_surface_equivalence.rs|crates/my-lisp/tests/public_api_inventory_contract.rs|crates/my-lisp/tests/machine_lowering_boundary.rs) surface=true ;;
             esac
-
             case "$path" in
               crates/my-lisp/src/*|crates/my-lisp/tests/*|lib/*.lisp|lib/*/*.lisp)
-                case "$path" in
-                  lib/surface/*|lib/generated/*) ;;
-                  *) core=true ;;
-                esac
-                ;;
+                case "$path" in lib/surface/*|lib/generated/*) ;; *) core=true ;; esac ;;
             esac
-
-            case "$path" in
-              crates/my-lisp-host/src/*|crates/my-lisp-host/tests/*)
-                host=true
-                ;;
-            esac
-
-            case "$path" in
-              crates/my-lisp-cli/src/*|crates/my-lisp-cli/tests/*)
-                cli=true
-                ;;
-            esac
-
-            case "$path" in
-              crates/xtask/src/*|crates/xtask/tests/*)
-                xtask=true
-                ;;
-            esac
-
-            case "$path" in
-              lib/meta-eval.lisp|lib/reason.lisp|lib/forward.lisp|lib/knowledge.lisp|crates/my-lisp/tests/meta_eval_*|crates/my-lisp/tests/reason_*|crates/my-lisp/tests/reasoning_*)
-                meta=true
-                ;;
-            esac
+            case "$path" in crates/my-lisp-host/src/*|crates/my-lisp-host/tests/*) host=true ;; esac
+            case "$path" in crates/my-lisp-cli/src/*|crates/my-lisp-cli/tests/*) cli=true ;; esac
+            case "$path" in crates/xtask/src/*|crates/xtask/tests/*) xtask=true ;; esac
+            case "$path" in lib/meta-eval.lisp|lib/reason.lisp|lib/forward.lisp|lib/knowledge.lisp|crates/my-lisp/tests/meta_eval_*|crates/my-lisp/tests/reason_*|crates/my-lisp/tests/reasoning_*) meta=true ;; esac
           done < /tmp/changed.txt
 
           {
@@ -118,6 +82,21 @@ jobs:
             echo "workspace=$workspace"
             echo "workflow=$workflow"
           } | tee -a "$GITHUB_OUTPUT"
+
+      - name: Lisp-owned semantic authority guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build -p my-lisp-cli --bin my-lisp
+          : > tests/changed-host-tests.lisp
+          while IFS= read -r path; do
+            case "$path" in
+              crates/*/tests/*.rs|tests/fixtures/authority-guard/*.rs)
+                printf '"%s"\n' "$path" >> tests/changed-host-tests.lisp
+                ;;
+            esac
+          done < /tmp/changed.txt
+          ./target/debug/my-lisp scripts/authority-guard.lisp
 
       - name: Diff hygiene
         env:
@@ -170,19 +149,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tests=(
-            macro_derivation
-            ukrainian_api_docs
-            uk_surface_equivalence
-            public_api_inventory_contract
-          )
-          if [[ -f crates/my-lisp/tests/machine_lowering_boundary.rs ]]; then
-            tests+=(machine_lowering_boundary)
-          fi
+          tests=(macro_derivation ukrainian_api_docs uk_surface_equivalence public_api_inventory_contract)
+          if [[ -f crates/my-lisp/tests/machine_lowering_boundary.rs ]]; then tests+=(machine_lowering_boundary); fi
           args=()
-          for test_name in "${tests[@]}"; do
-            args+=(--test "$test_name")
-          done
+          for test_name in "${tests[@]}"; do args+=(--test "$test_name"); done
           cargo test -p my-lisp "${args[@]}"
 
       - name: Core language package tests
@@ -222,12 +192,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: main-fast-critical
-
       - name: Generated authority projections
         run: |
           python3 scripts/generate-meta-semantic-registry.py --check
           python3 scripts/public_api_inventory.py --check
-
       - name: Core unit and critical semantic-machine witnesses
         run: |
           cargo test -p my-lisp --lib \
@@ -239,13 +207,10 @@ jobs:
             --test machine_type_discipline \
             --test uk_surface_equivalence \
             --test public_api_inventory_contract
-
       - name: Native CPU vertical witness
         run: cargo test -p my-lisp-host --test native_lisp_bytes
-
       - name: CLI smoke
         run: cargo test -p my-lisp-cli --test cli
-
       - name: Governance and policy checks
         run: cargo run -p xtask -- verify
 
