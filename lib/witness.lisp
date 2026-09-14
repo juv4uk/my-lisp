@@ -66,7 +66,7 @@
     (cond
       ((atom result) (quote ()))
       ((atom (cdr result)) (quote ()))
-      (t (equal? (second result) (quote (status pass))))))))
+      (t (equal? (second result) (quote (status pass)))))))
 
 ; Meta-eval errors are Lisp data, not host exceptions. Normalize only the named
 ; correspondence already established by the meta-evaluator evidence. The mapping
