@@ -1,5 +1,9 @@
 # ADR-011 — Error detail contract boundary
 
+## Українське резюме
+
+Поточний cross-runtime контракт помилки визначається **категорією**, а не текстом повідомлення, span чи implementation-specific payload. Цей ADR тепер явно називає чинне правило як **Error Observation Identity v1**: одна admitted error category = одна semantic error identity для conformance. Поля на кшталт `x` у `(error unbound-symbol x)` лишаються діагностичними, доки окремий ADR не ратифікує їх через machine-readable schema та спільні executable witnesses.
+
 Status: accepted for the current meta-evaluator evidence scope · 2026-09-10
 
 ## Context
