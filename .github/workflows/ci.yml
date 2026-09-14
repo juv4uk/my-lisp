@@ -4,14 +4,170 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  pr-focused:
+    name: focused PR verification
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: pr-focused
+
+      - name: Classify changed paths
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt
+          cat /tmp/changed.txt
+
+          surface=false
+          core=false
+          cli=false
+          xtask=false
+          meta=false
+          rust=false
+          workspace=false
+
+          while IFS= read -r path; do
+            case "$path" in
+              Cargo.toml|Cargo.lock|.cargo/*)
+                workspace=true
+                ;;
+            esac
+
+            case "$path" in
+              *.rs|Cargo.toml|Cargo.lock|crates/*/Cargo.toml)
+                rust=true
+                ;;
+            esac
+
+            case "$path" in
+              lib/surface/*|lib/generated/meta-semantic-registry.lisp|docs/ukrainian-api.md|docs/generated/public-api-discovery.md|scripts/public_api_inventory.py|scripts/generate-meta-semantic-registry.py|scripts/generate-ukrainian-api.py|scripts/перевірити-український-профіль.lisp|machine-lowering-boundary.lisp|repo.lisp|crates/my-lisp/tests/macro_derivation.rs|crates/my-lisp/tests/ukrainian_api_docs.rs|crates/my-lisp/tests/uk_surface_equivalence.rs|crates/my-lisp/tests/public_api_inventory_contract.rs|crates/my-lisp/tests/machine_lowering_boundary.rs)
+                surface=true
+                ;;
+            esac
+
+            case "$path" in
+              crates/my-lisp/src/*|lib/*.lisp|lib/*/*.lisp)
+                case "$path" in
+                  lib/surface/*|lib/generated/*) ;;
+                  *) core=true ;;
+                esac
+                ;;
+            esac
+
+            case "$path" in
+              crates/my-lisp-cli/src/*|crates/my-lisp-cli/tests/*)
+                cli=true
+                ;;
+            esac
+
+            case "$path" in
+              crates/xtask/src/*|crates/xtask/tests/*)
+                xtask=true
+                ;;
+            esac
+
+            case "$path" in
+              lib/meta-eval.lisp|lib/reason.lisp|lib/forward.lisp|lib/knowledge.lisp|crates/my-lisp/tests/meta_eval_*|crates/my-lisp/tests/reason_*|crates/my-lisp/tests/reasoning_*)
+                meta=true
+                ;;
+            esac
+          done < /tmp/changed.txt
+
+          {
+            echo "surface=$surface"
+            echo "core=$core"
+            echo "cli=$cli"
+            echo "xtask=$xtask"
+            echo "meta=$meta"
+            echo "rust=$rust"
+            echo "workspace=$workspace"
+          } | tee -a "$GITHUB_OUTPUT"
+
+      - name: Diff hygiene
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git diff --check "$BASE_SHA" "$HEAD_SHA"
+
+      - name: Workspace dependency-graph fallback
+        if: steps.changes.outputs.workspace == 'true'
+        run: |
+          cargo test --workspace
+          cargo build --workspace
+
+      - name: Check generated semantic registry
+        if: steps.changes.outputs.surface == 'true' && steps.changes.outputs.workspace != 'true'
+        run: python3 scripts/generate-meta-semantic-registry.py --check
+
+      - name: Check public API discovery projection
+        if: steps.changes.outputs.surface == 'true' && steps.changes.outputs.workspace != 'true'
+        run: python3 scripts/public_api_inventory.py --check
+
+      - name: Focused surface contracts
+        if: steps.changes.outputs.surface == 'true' && steps.changes.outputs.workspace != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests=(
+            macro_derivation
+            ukrainian_api_docs
+            uk_surface_equivalence
+            public_api_inventory_contract
+          )
+          if [[ -f crates/my-lisp/tests/machine_lowering_boundary.rs ]]; then
+            tests+=(machine_lowering_boundary)
+          fi
+          args=()
+          for test_name in "${tests[@]}"; do
+            args+=(--test "$test_name")
+          done
+          cargo test -p my-lisp "${args[@]}"
+
+      - name: Core language package tests
+        if: steps.changes.outputs.core == 'true' && steps.changes.outputs.surface != 'true' && steps.changes.outputs.workspace != 'true'
+        run: cargo test -p my-lisp
+
+      - name: CLI black-box tests
+        if: (steps.changes.outputs.cli == 'true' || steps.changes.outputs.surface == 'true') && steps.changes.outputs.workspace != 'true'
+        run: cargo test -p my-lisp-cli --test cli
+
+      - name: xtask policy tests
+        if: (steps.changes.outputs.xtask == 'true' || steps.changes.outputs.surface == 'true') && steps.changes.outputs.workspace != 'true'
+        run: |
+          cargo test -p xtask --test external_oracle_cli
+          cargo run -p xtask -- verify
+
+      - name: Focused Advice Taker witness
+        if: steps.changes.outputs.meta == 'true' && steps.changes.outputs.workspace != 'true'
+        run: cargo test --profile ci-meta -p my-lisp --test meta_eval_advice_taker advice_taker_native_and_meta_preserve_expected_outcome_classes -- --ignored --nocapture
+
+      - name: Clippy changed Rust surfaces
+        if: steps.changes.outputs.rust == 'true' && steps.changes.outputs.workspace != 'true'
+        run: cargo clippy -p my-lisp -p my-lisp-cli -p xtask --all-targets -- -D warnings
+
   clippy:
     name: cargo clippy --workspace (zero warnings)
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -23,6 +179,7 @@ jobs:
 
   test:
     name: cargo test --workspace
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -40,6 +197,7 @@ jobs:
 
   meta-advice-release:
     name: full Advice Taker native/meta outcome-class check (optimized)
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -53,6 +211,7 @@ jobs:
 
   android-build:
     name: Android cross-build (aarch64 + armv7)
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -96,6 +255,7 @@ jobs:
 
   web-repl:
     name: portable web REPL build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

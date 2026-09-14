@@ -17,7 +17,8 @@ on:
   pull_request:
     paths:
       - 'crates/my-lisp-wasm/**'
-      - 'crates/my-lisp/**'
+      - 'crates/my-lisp/src/**'
+      - 'crates/my-lisp/Cargo.toml'
       - 'crates/my-lisp-literate/**'
       - 'crates/my-lisp-lsp/**'
       - 'lib/core.my'

@@ -1,5 +1,4 @@
 use my_lisp::{eval_program, load_core_library, Session};
-use std::collections::BTreeMap;
 
 const DOCS_INDEX: &str = include_str!("../../../lib/surface/uk-docs.lisp");
 const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.lisp");
@@ -11,24 +10,20 @@ const UK_SURFACE: &str = include_str!("../../../lib/surface/uk.lisp");
 // text checks, relocated to `cargo xtask verify` per TEST-ARCHITECTURE-1
 // step 4 — see crates/xtask/src/checks.rs.
 
-fn documented() -> BTreeMap<(String, String), String> {
-    DOCS_INDEX
-        .lines()
-        .filter_map(|line| {
-            let fields = line.split_whitespace().collect::<Vec<_>>();
-            if fields.first() != Some(&"(doc") {
-                return None;
-            }
-            assert!(
-                fields.len() >= 5,
-                "рядок документації має містити category numeric-ID UK kind: {line}"
-            );
-            Some((
-                (fields[2].to_string(), fields[3].to_string()),
-                fields[4].to_string(),
-            ))
-        })
-        .collect()
+fn documented_kind(name: &str) -> Option<String> {
+    let signature_prefix = format!("\"({name}");
+    DOCS_INDEX.lines().find_map(|line| {
+        let fields = line.split_whitespace().collect::<Vec<_>>();
+        if fields.first() != Some(&"(doc") {
+            return None;
+        }
+        assert!(
+            fields.len() >= 5,
+            "рядок документації має містити category numeric-ID kind signature: {line}"
+        );
+        line.contains(&signature_prefix)
+            .then(|| fields[3].to_string())
+    })
 }
 
 #[test]
@@ -46,9 +41,7 @@ fn stari_nazvy_dvokh_predykativ_lyshaiutsia_aliasamy_symisnosti() {
 #[test]
 fn dovidnyk_poiasniuie_ne_predykaty_shcho_mozhut_povernuty_pustyi_spysok() {
     for name in ["отримати-з-карти", "підтримувальний-доказ", "та", "або"] {
-        let kind = documented()
-            .into_iter()
-            .find_map(|((_id, uk), kind)| (uk == name).then_some(kind))
+        let kind = documented_kind(name)
             .unwrap_or_else(|| panic!("немає документаційного запису для {name}"));
         assert_ne!(kind, "predicate");
         assert!(!name.ends_with('?'));

@@ -50,7 +50,7 @@ struct SurfaceEntry {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct SurfaceDoc {
     category: String,
-    name: String,
+    identity: String,
     kind: String,
     call: String,
     description: String,
@@ -209,6 +209,11 @@ fn expr_string(expr: &Expr) -> Option<&str> {
     }
 }
 
+fn expr_numeric_identity(expr: &Expr) -> Option<&str> {
+    let raw = UK_API_DOCS.get(expr.span.start..expr.span.end)?;
+    (!raw.is_empty() && raw.bytes().all(|byte| byte.is_ascii_digit())).then_some(raw)
+}
+
 fn ukrainian_docs() -> Result<Vec<SurfaceDoc>, String> {
     let program = parse(UK_API_DOCS)
         .map_err(|error| format!("не вдалося прочитати uk-docs.wsm: {}", error.render(UK_API_DOCS)))?;
@@ -231,23 +236,23 @@ fn ukrainian_docs() -> Result<Vec<SurfaceDoc>, String> {
         .map(|entry| {
             let fields =
                 expr_list(entry).ok_or_else(|| "uk-docs.wsm: doc має бути списком".to_string())?;
-            if fields.len() != 7 || fields.first().and_then(expr_symbol) != Some("doc") {
+            if fields.len() != 6 || fields.first().and_then(expr_symbol) != Some("doc") {
                 return Err("uk-docs.wsm: некоректний doc-запис".to_string());
             }
             Ok(SurfaceDoc {
                 category: expr_symbol(&fields[1])
                     .ok_or_else(|| "uk-docs.wsm: category має бути символом".to_string())?
                     .to_string(),
-                name: expr_symbol(&fields[3])
-                    .ok_or_else(|| "uk-docs.wsm: UK name має бути символом".to_string())?
+                identity: expr_numeric_identity(&fields[2])
+                    .ok_or_else(|| "uk-docs.wsm: numeric ID має бути десятковим атомом".to_string())?
                     .to_string(),
-                kind: expr_symbol(&fields[4])
+                kind: expr_symbol(&fields[3])
                     .ok_or_else(|| "uk-docs.wsm: kind має бути символом".to_string())?
                     .to_string(),
-                call: expr_string(&fields[5])
+                call: expr_string(&fields[4])
                     .ok_or_else(|| "uk-docs.wsm: call має бути рядком".to_string())?
                     .to_string(),
-                description: expr_string(&fields[6])
+                description: expr_string(&fields[5])
                     .ok_or_else(|| "uk-docs.wsm: description має бути рядком".to_string())?
                     .to_string(),
             })
@@ -393,17 +398,18 @@ pub(crate) fn render_name(surface: &str, requested: &str) -> Result<String, Stri
     output.push_str(surface);
 
     if normalize_surface(surface) == "uk" {
-        if let Some(uk_name) = surface_name(entry, "uk").and_then(|name| name.name.as_deref()) {
-            if let Some(doc) = ukrainian_docs()?.into_iter().find(|doc| doc.name == uk_name) {
-                output.push_str("\n  категорія: ");
-                output.push_str(&doc.category);
-                output.push_str("\n  тип: ");
-                output.push_str(&doc.kind);
-                output.push_str("\n  виклик: ");
-                output.push_str(&doc.call);
-                output.push_str("\n  ");
-                output.push_str(&doc.description);
-            }
+        if let Some(doc) = ukrainian_docs()?
+            .into_iter()
+            .find(|doc| doc.identity == entry.identity)
+        {
+            output.push_str("\n  категорія: ");
+            output.push_str(&doc.category);
+            output.push_str("\n  тип: ");
+            output.push_str(&doc.kind);
+            output.push_str("\n  виклик: ");
+            output.push_str(&doc.call);
+            output.push_str("\n  ");
+            output.push_str(&doc.description);
         }
     }
     Ok(output)

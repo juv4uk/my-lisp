@@ -379,7 +379,7 @@ fn stable_pairs() -> BTreeSet<(String, String)> {
         .collect()
 }
 
-fn documented() -> Result<BTreeMap<(String, String), String>, String> {
+fn documented() -> Result<BTreeMap<String, String>, String> {
     let mut result = BTreeMap::new();
     for line in DOCS_INDEX.lines() {
         let fields = line.split_whitespace().collect::<Vec<_>>();
@@ -388,20 +388,37 @@ fn documented() -> Result<BTreeMap<(String, String), String>, String> {
         }
         if fields.len() < 5 {
             return Err(format!(
-                "рядок документації має містити category numeric-ID UK kind: {line}"
+                "рядок документації має містити category numeric-ID kind signature: {line}"
             ));
         }
-        result.insert(
-            (fields[2].to_string(), fields[3].to_string()),
-            fields[4].to_string(),
-        );
+        let identity = fields[2];
+        if identity.len() < 4 || !identity.chars().all(|ch| ch.is_ascii_digit()) {
+            return Err(format!(
+                "документаційний join key має бути numeric semantic ID: {identity}"
+            ));
+        }
+        if result
+            .insert(identity.to_string(), fields[3].to_string())
+            .is_some()
+        {
+            return Err(format!("дубльований документаційний semantic ID: {identity}"));
+        }
     }
     Ok(result)
+}
+
+fn stable_uk_by_identity() -> BTreeMap<String, String> {
+    stable_pairs().into_iter().collect()
 }
 
 fn vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku() -> Result<(), String> {
     let coverage = stable_pairs();
     let docs = documented()?;
+    let coverage_ids = coverage
+        .iter()
+        .map(|(identity, _)| identity.clone())
+        .collect::<BTreeSet<_>>();
+    let doc_ids = docs.keys().cloned().collect::<BTreeSet<_>>();
 
     // Floor, not exact count: the registry only grows, so restating an exact
     // literal here would silently rot (TEST-ARCHITECTURE-1 step 2). The real
@@ -413,7 +430,7 @@ fn vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku() -> Result<(), St
             coverage.len()
         ));
     }
-    if coverage != docs.keys().cloned().collect::<BTreeSet<_>>() {
+    if coverage_ids != doc_ids {
         return Err("numeric registry і український документаційний індекс розійшлися".to_string());
     }
     for (_, uk) in &coverage {
@@ -427,7 +444,7 @@ fn vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku() -> Result<(), St
 }
 
 fn dokumentatsiinyi_kliuch_ie_tilky_numeric() -> Result<(), String> {
-    for ((identity, _uk), _) in documented()? {
+    for identity in documented()?.keys() {
         if !(identity.len() >= 4 && identity.chars().all(|ch| ch.is_ascii_digit())) {
             return Err(format!(
                 "документаційний join key не може бути EN spelling: {identity}"
@@ -439,8 +456,12 @@ fn dokumentatsiinyi_kliuch_ie_tilky_numeric() -> Result<(), String> {
 
 fn znak_pytannia_tochno_vidpovidaie_predykatam() -> Result<(), String> {
     let docs = documented()?;
+    let stable_uk = stable_uk_by_identity();
     let mut predicates = 0usize;
-    for ((_id, uk), kind) in docs {
+    for (identity, kind) in docs {
+        let uk = stable_uk.get(&identity).ok_or_else(|| {
+            format!("документаційний ID {identity} не має stable UK projection у registry")
+        })?;
         let question_name = uk.ends_with('?');
         let predicate = kind == "predicate";
         if question_name != predicate {
@@ -460,8 +481,12 @@ fn znak_pytannia_tochno_vidpovidaie_predykatam() -> Result<(), String> {
 
 fn znak_oklyku_tochno_vidpovidaie_mutatsii() -> Result<(), String> {
     let docs = documented()?;
+    let stable_uk = stable_uk_by_identity();
     let mut mutations = 0usize;
-    for ((_id, uk), kind) in docs {
+    for (identity, kind) in docs {
+        let uk = stable_uk.get(&identity).ok_or_else(|| {
+            format!("документаційний ID {identity} не має stable UK projection у registry")
+        })?;
         let mutation = kind == "mutation";
         if uk.ends_with('!') != mutation {
             return Err(format!("{uk}: ! зарезервований для мутації"));
