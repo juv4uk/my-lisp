@@ -1,3 +1,4 @@
+use my_lisp::{eval_program, load_core_library, Session};
 use std::fs;
 use std::path::PathBuf;
 
@@ -112,6 +113,32 @@ fn i5_6400_cpu_profile_references_declared_isa_extensions_not_semantics() {
         !source.contains("semantic-id"),
         "CPU capability profile must not own language semantic IDs"
     );
+}
+
+#[test]
+fn lisp_owned_encoder_is_part_of_the_vertical_boundary_proof() {
+    let path = repo_root().join("lib/machine/encoding/x86-64.lisp");
+    let source = fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", path.display()));
+
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before machine encoder");
+    eval_program(&source, &mut session).expect("x86-64 encoder must load as ordinary my-lisp");
+
+    for (form, expected) in [
+        ("(x86-encode-ret)", "(195)"),
+        ("(x86-encode-mov-eax-imm32 42)", "(184 42 0 0 0)"),
+        (
+            "(x86-encode-add-r64-r64 (quote rax) (quote rbx))",
+            "(72 1 216)",
+        ),
+    ] {
+        let actual = eval_program(form, &mut session)
+            .unwrap_or_else(|error| panic!("encoder proof failed for {form}: {error}"))
+            .value
+            .to_string();
+        assert_eq!(actual, expected, "unexpected machine bytes for {form}");
+    }
 }
 
 #[test]
