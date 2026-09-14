@@ -166,7 +166,7 @@ The intended result is that native, meta, CML, and later implementations submit 
 
 This sequence is **not yet fully ratified** merely because its design is accepted. Each step earns its status through its own executable evidence.
 
-## HOST-SURGERY-1 — future falsification gate
+## #145 HOST-SURGERY-1 — future falsification gate
 
 **Status: HYPOTHESIS; blocked on #116.**
 
@@ -188,7 +188,7 @@ all applicable semantic witnesses remain GREEN
 
 The digest pin is mandatory. "We did not edit expected truth" must be machine-checkable, not a promise in prose.
 
-The surgery must be mechanical rather than semantic — examples that may be considered later include pair representation, environment layout, internal traversal strategy, or another implementation detail that the existing authority boundary already permits to vary. The exact surgery is intentionally not chosen in this design note; choosing it belongs to the future issue after #116 establishes transport.
+The surgery must be mechanical rather than semantic — examples that may be considered later include pair representation, environment layout, internal traversal strategy, or another implementation detail that the existing authority boundary already permits to vary. The exact surgery is intentionally not chosen in this design note; choosing it belongs to #145 after #116 establishes transport.
 
 A surgery that requires editing semantic expected values to recover GREEN is a falsification of the claimed separation, not a successful migration.
 
