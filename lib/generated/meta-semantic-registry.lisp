@@ -159,6 +159,7 @@
     (довжина-тексту "1044") ; uk
     (string-empty? "1045") ; en
     (текст-порожній? "1045") ; uk
+    (порожній-текст? "1045") ; ukr
     (śūnya? "1045") ; sa
     (string-prefix? "1046") ; en
     (префікс-тексту? "1046") ; uk
@@ -355,6 +356,8 @@
     (tcp-listen "1150") ; en
     (read-file "1151") ; en
     (write-file "1152") ; en
+    (rdtsc "1153") ; en
+    (такти-процесора "1153") ; uk
   )))
 
 (def my-semantic-id-for-surface
