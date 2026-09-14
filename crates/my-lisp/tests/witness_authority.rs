@@ -63,9 +63,6 @@ fn witness_rows() -> Vec<WitnessRow> {
                 return None;
             }
             Some(WitnessRow {
-                // Expr deliberately has no Display implementation. Reuse the exact
-                // original Lisp-authored source slice identified by the canonical
-                // parser span instead of teaching Rust to re-serialize witness data.
                 source: source[form.span.start..form.span.end].to_string(),
                 expr: alist_str(entries, "expr")?.to_string(),
                 expected: alist_str(entries, "expected").map(str::to_string),
@@ -84,9 +81,9 @@ fn repo_file(relative: &str) -> PathBuf {
 }
 
 fn load_witness_library(session: &mut Session) {
-    let source = fs::read_to_string(repo_file("lib/witness.lisp"))
-        .expect("#113 requires lib/witness.lisp Lisp-owned runner/comparator");
-    eval_program(&source, session).expect("lib/witness.lisp must load");
+    let source = fs::read_to_string(repo_file("tests/fixtures/witness-runner.lisp"))
+        .expect("#113 requires Lisp-owned witness runner/comparator fixture");
+    eval_program(&source, session).expect("witness-runner.lisp must load");
 }
 
 fn escape_lisp_string(value: &str) -> String {
