@@ -40,6 +40,7 @@ jobs:
 
           surface=false
           core=false
+          host=false
           cli=false
           xtask=false
           meta=false
@@ -75,6 +76,12 @@ jobs:
             esac
 
             case "$path" in
+              crates/my-lisp-host/src/*|crates/my-lisp-host/tests/*)
+                host=true
+                ;;
+            esac
+
+            case "$path" in
               crates/my-lisp-cli/src/*|crates/my-lisp-cli/tests/*)
                 cli=true
                 ;;
@@ -96,6 +103,7 @@ jobs:
           {
             echo "surface=$surface"
             echo "core=$core"
+            echo "host=$host"
             echo "cli=$cli"
             echo "xtask=$xtask"
             echo "meta=$meta"
@@ -147,6 +155,10 @@ jobs:
         if: steps.changes.outputs.core == 'true' && steps.changes.outputs.surface != 'true' && steps.changes.outputs.workspace != 'true'
         run: cargo test -p my-lisp
 
+      - name: Native host vertical witness
+        if: steps.changes.outputs.host == 'true' && steps.changes.outputs.workspace != 'true'
+        run: cargo test -p my-lisp-host --test native_lisp_bytes
+
       - name: CLI black-box tests
         if: (steps.changes.outputs.cli == 'true' || steps.changes.outputs.surface == 'true') && steps.changes.outputs.workspace != 'true'
         run: cargo test -p my-lisp-cli --test cli
@@ -163,7 +175,7 @@ jobs:
 
       - name: Clippy changed Rust surfaces
         if: steps.changes.outputs.rust == 'true' && steps.changes.outputs.workspace != 'true'
-        run: cargo clippy -p my-lisp -p my-lisp-cli -p xtask --all-targets -- -D warnings
+        run: cargo clippy -p my-lisp -p my-lisp-host -p my-lisp-cli -p xtask --all-targets -- -D warnings
 
   clippy:
     name: cargo clippy --workspace (zero warnings)
