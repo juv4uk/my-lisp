@@ -89,3 +89,49 @@
         (x86-encode-mov-r64-imm64 (quote rcx) right)
         (x86-encode-add-r64-r64 (quote rax) (quote rcx))
         (x86-encode-ret)))))
+
+; Bounded structural witness for semantic identities 0004/0005/0006.
+; The host contributes only a raw writable arena pointer in RDI. Lisp owns
+; the fact that one admitted pair cell has head at x86-pair-car-offset and
+; tail at x86-pair-cdr-offset, and Lisp emits the STORE/LOAD sequence.
+;
+; This is deliberately not a claim that arbitrary first-class pair values may
+; already escape native code: pair-x86-64.lisp fixes lifetime=native-call and
+; escape=forbidden for this proof slice.
+(def x86-lower-bounded-pair-store-u64-instructions
+  (lambda (left right)
+    (list
+      (x86-encode-mov-r64-imm64 (quote rax) left)
+      (x86-encode-mov-mem-disp8-r64
+        (quote rdi)
+        x86-pair-car-offset
+        (quote rax))
+      (x86-encode-mov-r64-imm64 (quote rax) right)
+      (x86-encode-mov-mem-disp8-r64
+        (quote rdi)
+        x86-pair-cdr-offset
+        (quote rax)))))
+
+(def x86-lower-cons-car-u64
+  (lambda (left right)
+    (x86-encode-program
+      (append
+        (x86-lower-bounded-pair-store-u64-instructions left right)
+        (list
+          (x86-encode-mov-r64-mem-disp8
+            (quote rax)
+            (quote rdi)
+            x86-pair-car-offset)
+          (x86-encode-ret))))))
+
+(def x86-lower-cons-cdr-u64
+  (lambda (left right)
+    (x86-encode-program
+      (append
+        (x86-lower-bounded-pair-store-u64-instructions left right)
+        (list
+          (x86-encode-mov-r64-mem-disp8
+            (quote rax)
+            (quote rdi)
+            x86-pair-cdr-offset)
+          (x86-encode-ret))))))
