@@ -224,6 +224,10 @@ fn semantic_0104_lowers_in_lisp_to_encoder_owned_x86_bytes() {
         lowering_source.contains("(0104 fast-path \"ADD / ADDSD\")"),
         "lowering projection must map existing semantic 0104 toward ADD"
     );
+    assert!(
+        !lowering_source.contains("(x86-encode-mov-r64-imm64 (quote rbx) right)"),
+        "native proof lowering must not clobber callee-saved RBX"
+    );
 
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before target lowering");
@@ -237,7 +241,7 @@ fn semantic_0104_lowers_in_lisp_to_encoder_owned_x86_bytes() {
         .to_string();
     assert_eq!(
         bytes,
-        "(72 184 2 0 0 0 0 0 0 0 72 187 3 0 0 0 0 0 0 0 72 1 216 195)"
+        "(72 184 2 0 0 0 0 0 0 0 72 185 3 0 0 0 0 0 0 0 72 1 200 195)"
     );
 }
 
