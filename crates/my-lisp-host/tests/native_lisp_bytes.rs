@@ -43,3 +43,30 @@ fn native_execution_mechanism_is_not_a_language_semantic_identity() {
         "raw native invocation is host mechanism, never a language semantic identity"
     );
 }
+
+#[test]
+fn rust_native_executor_contains_no_lisp_or_x86_lowering_decision() {
+    let source = fs::read_to_string(repo_root().join("crates/my-lisp-host/src/native_exec.rs"))
+        .expect("native execution mechanism source must be readable");
+
+    for forbidden in [
+        "0104",
+        "x86-lower",
+        "x86-encode",
+        "ADD",
+        "ADDSD",
+        "semantic-registry",
+    ] {
+        assert!(
+            !source.contains(forbidden),
+            "host executor must remain semantics-blind; found forbidden lowering token {forbidden}"
+        );
+    }
+
+    for required in ["mmap", "mprotect", "munmap", "PROT_WRITE", "PROT_EXEC"] {
+        assert!(
+            source.contains(required),
+            "host executor must expose only native memory/call mechanism; missing {required}"
+        );
+    }
+}
