@@ -2,6 +2,11 @@
 ; Language meaning remains owned by lib/surface/semantic-registry.lisp.
 ; ISA identity/encoding remains owned by lib/machine/isa + lib/machine/encoding.
 ; Rows here only say how an already-existing semantic identity may be realized.
+;
+; Executable lowerings first produce structured machine forms. Bytes are a
+; projection of those forms through the closed Lisp-owned admission layer.
+; Semantic lowering therefore cannot bypass admission by constructing bytes
+; directly.
 
 (def x86-semantic-lowering-profile
   (quote
@@ -76,62 +81,87 @@
 
 ; First executable semantic-lowering witness.
 ; Semantic identity 0104 already exists before this file is loaded. This
-; routine does not define addition; it chooses one bounded u64 realization
-; and delegates all physical byte construction to the Lisp-owned encoder.
+; routine does not define addition; it chooses one bounded u64 realization.
+; It returns structured machine forms first; admission then owns the only path
+; from those forms to executable bytes.
 ;
 ; RAX carries the result per SysV x86-64. RCX is caller-saved, so the proof
 ; routine does not violate the host ABI by clobbering a callee-saved register.
+(def x86-lower-add-u64-forms
+  (lambda (left right)
+    (list
+      (list (quote mov-r64-imm64) (quote rax) left)
+      (list (quote mov-r64-imm64) (quote rcx) right)
+      (list (quote add-r64-r64) (quote rax) (quote rcx))
+      (list (quote ret)))))
+
+; Compatibility byte projection for existing callers. The lowering itself is
+; the structured form above; byte materialization is admitted, never direct.
 (def x86-lower-add-u64
   (lambda (left right)
-    (x86-encode-program
-      (list
-        (x86-encode-mov-r64-imm64 (quote rax) left)
-        (x86-encode-mov-r64-imm64 (quote rcx) right)
-        (x86-encode-add-r64-r64 (quote rax) (quote rcx))
-        (x86-encode-ret)))))
+    (x86-encode-admitted-program
+      (x86-lower-add-u64-forms left right))))
 
 ; Bounded structural witness for semantic identities 0004/0005/0006.
 ; The host contributes only a raw writable arena pointer in RDI. Lisp owns
 ; the fact that one admitted pair cell has head at x86-pair-car-offset and
-; tail at x86-pair-cdr-offset, and Lisp emits the STORE/LOAD sequence.
+; tail at x86-pair-cdr-offset. These routines produce structured STORE/LOAD
+; forms; admission and the encoder produce physical bytes only afterwards.
 ;
 ; This is deliberately not a claim that arbitrary first-class pair values may
 ; already escape native code: pair-x86-64.lisp fixes lifetime=native-call and
 ; escape=forbidden for this proof slice.
-(def x86-lower-bounded-pair-store-u64-instructions
+(def x86-lower-bounded-pair-store-u64-forms
   (lambda (left right)
     (list
-      (x86-encode-mov-r64-imm64 (quote rax) left)
-      (x86-encode-mov-mem-disp8-r64
+      (list (quote mov-r64-imm64) (quote rax) left)
+      (list
+        (quote mov-mem-disp8-r64)
         (quote rdi)
         x86-pair-car-offset
         (quote rax))
-      (x86-encode-mov-r64-imm64 (quote rax) right)
-      (x86-encode-mov-mem-disp8-r64
+      (list (quote mov-r64-imm64) (quote rax) right)
+      (list
+        (quote mov-mem-disp8-r64)
         (quote rdi)
         x86-pair-cdr-offset
         (quote rax)))))
 
+; Historical internal name retained only as a form-level alias so existing
+; Lisp callers do not regain a byte-level bypass.
+(def x86-lower-bounded-pair-store-u64-instructions
+  x86-lower-bounded-pair-store-u64-forms)
+
+(def x86-lower-cons-car-u64-forms
+  (lambda (left right)
+    (append
+      (x86-lower-bounded-pair-store-u64-forms left right)
+      (list
+        (list
+          (quote mov-r64-mem-disp8)
+          (quote rax)
+          (quote rdi)
+          x86-pair-car-offset)
+        (list (quote ret))))))
+
+(def x86-lower-cons-cdr-u64-forms
+  (lambda (left right)
+    (append
+      (x86-lower-bounded-pair-store-u64-forms left right)
+      (list
+        (list
+          (quote mov-r64-mem-disp8)
+          (quote rax)
+          (quote rdi)
+          x86-pair-cdr-offset)
+        (list (quote ret))))))
+
 (def x86-lower-cons-car-u64
   (lambda (left right)
-    (x86-encode-program
-      (append
-        (x86-lower-bounded-pair-store-u64-instructions left right)
-        (list
-          (x86-encode-mov-r64-mem-disp8
-            (quote rax)
-            (quote rdi)
-            x86-pair-car-offset)
-          (x86-encode-ret))))))
+    (x86-encode-admitted-program
+      (x86-lower-cons-car-u64-forms left right))))
 
 (def x86-lower-cons-cdr-u64
   (lambda (left right)
-    (x86-encode-program
-      (append
-        (x86-lower-bounded-pair-store-u64-instructions left right)
-        (list
-          (x86-encode-mov-r64-mem-disp8
-            (quote rax)
-            (quote rdi)
-            x86-pair-cdr-offset)
-          (x86-encode-ret))))))
+    (x86-encode-admitted-program
+      (x86-lower-cons-cdr-u64-forms left right))))
