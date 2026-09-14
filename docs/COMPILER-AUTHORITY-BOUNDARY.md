@@ -1,5 +1,9 @@
 # Compiler authority boundary (GitHub issue juv4uk/my-lisp#66)
 
+## Українське резюме
+
+Ця межа фіксує просте правило: **Lisp визначає значення, а compiler/backend може змінювати лише механізм, представлення й стратегію виконання**. Поточний Rust evaluator не оголошується семантичним оракулом, але лишається частиною trusted execution root, доки Lisp-owned corpus і witnesses виконуються через цей runtime. Так само performance-policy має лише обирати серед уже admitted реалізацій; швидший backend не отримує права змінювати semantic ID, expected truth чи error category.
+
 Turns the existing architectural principle — "Lisp defines meaning; a
 compiler may change representation and execution strategy, but must
 not invent or silently replace language semantics" — into something
