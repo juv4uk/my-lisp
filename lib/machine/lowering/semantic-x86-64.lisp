@@ -75,14 +75,17 @@
      (1140 control "short-circuit TEST/Jcc"))))
 
 ; First executable semantic-lowering witness.
-; Semantic identity 0104 already exists before this file is loaded.  This
+; Semantic identity 0104 already exists before this file is loaded. This
 ; routine does not define addition; it chooses one bounded u64 realization
 ; and delegates all physical byte construction to the Lisp-owned encoder.
+;
+; RAX carries the result per SysV x86-64. RCX is caller-saved, so the proof
+; routine does not violate the host ABI by clobbering a callee-saved register.
 (def x86-lower-add-u64
   (lambda (left right)
     (x86-encode-program
       (list
         (x86-encode-mov-r64-imm64 (quote rax) left)
-        (x86-encode-mov-r64-imm64 (quote rbx) right)
-        (x86-encode-add-r64-r64 (quote rax) (quote rbx))
+        (x86-encode-mov-r64-imm64 (quote rcx) right)
+        (x86-encode-add-r64-r64 (quote rax) (quote rcx))
         (x86-encode-ret)))))
