@@ -72,6 +72,15 @@ Pair + Closure + Environment + Vector
 
 Це кандидат, а не implementation authority. #154 не повинен переносити ці типи, доки #153 не буде ратифіковано.
 
+### Що ще треба довести до #154
+
+- executable witness для `Environment ↔ Closure` strong-reference cycle;
+- executable witness або точний API-аудит, що показує, чи `Vector` сьогодні реально може утворити back-edge;
+- inventory усіх `Value` variants, щоб managed/deferred/resource класифікація була повною, а не вибірковою;
+- підтвердження, що host resource handles мають explicit close/drop policy поза semantic GC authority.
+
+Без цих чотирьох пунктів graph-core лишається гіпотезою, а не дозволом на переписування storage.
+
 ## Обов'язкові portability constraints
 
 1. Жоден raw Rust pointer не є semantic identity.
@@ -102,4 +111,4 @@ Pair + Closure + Environment + Vector
 
 ## English mirror
 
-This audit records the current ownership model before #154 changes storage. The old Pair-only M0 decision is retained as historical design capital but is no longer sufficient implementation authority after `SemanticRef`, shared recursive environments, and the machine/backend portability work. The current leading managed-graph candidate is `Pair + Closure + Environment + Vector`, subject to #153 evidence. The key invariant is `SemanticRef(id) != ObjectId(slot,generation) != physical address`; host resources retain explicit lifecycle semantics, and GC stress must not change observable Lisp semantics.
+This audit records the current ownership model before #154 changes storage. The old Pair-only M0 decision is retained as historical design capital but is no longer sufficient implementation authority after `SemanticRef`, shared recursive environments, and the machine/backend portability work. The current leading managed-graph candidate is `Pair + Closure + Environment + Vector`, subject to executable cycle evidence, complete `Value` inventory, and explicit resource-lifecycle verification in #153. The key invariant is `SemanticRef(id) != ObjectId(slot,generation) != physical address`; host resources retain explicit lifecycle semantics, and GC stress must not change observable Lisp semantics.
