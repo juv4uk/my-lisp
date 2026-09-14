@@ -7,6 +7,9 @@
 ; actual value/error into the canonical `(value "...")` / `(error "Kind")`
 ; envelope, but it must not invent the expected answer.
 ;
+; This runner intentionally lives under tests/fixtures rather than lib/: it is
+; executable semantic-test authority, not a public language API surface.
+;
 ; Semantic peer-surface truth stays in lib/surface/semantic-registry.lisp via
 ; lib/generated/meta-semantic-registry.lisp. The peer witness below consumes that
 ; projection; it does not own a second surface table.
