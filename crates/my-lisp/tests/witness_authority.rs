@@ -14,7 +14,8 @@ struct WitnessRow {
     expr: String,
     expected: Option<String>,
     error: Option<String>,
-    meta_eval_gap: bool,
+    meta_eval: bool,
+    compiler_corpus: bool,
 }
 
 fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
@@ -47,7 +48,7 @@ fn alist_flag(entries: &[Expr], key: &str) -> bool {
     })
 }
 
-fn compiler_witness_rows() -> Vec<WitnessRow> {
+fn witness_rows() -> Vec<WitnessRow> {
     let source = include_str!("../../../tests/fixtures/conformance.lisp");
     parse(source)
         .expect("conformance.lisp must parse")
@@ -56,7 +57,9 @@ fn compiler_witness_rows() -> Vec<WitnessRow> {
             let ExprKind::List(entries) = &form.kind else {
                 return None;
             };
-            if !alist_flag(entries, "compiler-corpus") {
+            let compiler_corpus = alist_flag(entries, "compiler-corpus");
+            let meta_eval = alist_flag(entries, "meta-eval");
+            if !compiler_corpus && !meta_eval {
                 return None;
             }
             Some(WitnessRow {
@@ -67,7 +70,8 @@ fn compiler_witness_rows() -> Vec<WitnessRow> {
                 expr: alist_str(entries, "expr")?.to_string(),
                 expected: alist_str(entries, "expected").map(str::to_string),
                 error: alist_str(entries, "error").map(str::to_string),
-                meta_eval_gap: alist_flag(entries, "meta-eval-gap"),
+                meta_eval,
+                compiler_corpus,
             })
         })
         .collect()
@@ -153,27 +157,51 @@ fn meta_verdict(session: &mut Session, row: &WitnessRow) -> String {
 
 #[test]
 fn compiler_corpus_native_actuals_are_judged_only_by_lisp_owned_witness_logic() {
-    let rows = compiler_witness_rows();
+    let rows: Vec<_> = witness_rows()
+        .into_iter()
+        .filter(|row| row.compiler_corpus)
+        .collect();
     assert!(!rows.is_empty(), "compiler-corpus must remain non-empty");
 
     let mut session = Session::default();
     load_core_library(&mut session).expect("core library");
     load_witness_library(&mut session);
+    let mut named_errors = 0usize;
 
     for row in &rows {
         let actual = actual_form_from_native(row, &mut session);
         assert_lisp_owned_verdict_passes(&mut session, row, &actual);
+        if row.error.is_some() {
+            named_errors += 1;
+        }
     }
+
+    assert!(
+        named_errors > 0,
+        "#113 corpus slice must contain at least one Lisp-authored named error witness"
+    );
+    assert!(
+        rows.iter().any(|row| row.expr.contains("lambda")),
+        "#113 compiler slice must retain lambda/application or closure evidence"
+    );
+    assert!(
+        rows.iter().any(|row| row.expr.contains("defmacro")),
+        "#113 compiler slice must retain macro evidence"
+    );
 }
 
 #[test]
-fn same_committed_rows_drive_meta_eval_without_rust_owned_expected_values() {
-    let rows = compiler_witness_rows();
+fn same_committed_corpus_drives_meta_eval_for_rows_admitted_to_that_backend() {
+    let rows: Vec<_> = witness_rows()
+        .into_iter()
+        .filter(|row| row.meta_eval)
+        .collect();
+    assert!(!rows.is_empty(), "meta-eval witness slice must remain non-empty");
+
     let mut session = init_meta_session();
     let mut checked_values = 0usize;
-    let mut checked_named_errors = 0usize;
 
-    for row in rows.iter().filter(|row| !row.meta_eval_gap) {
+    for row in &rows {
         let verdict = meta_verdict(&mut session, row);
         assert!(
             verdict.starts_with("(witness-result (status pass)"),
@@ -183,15 +211,19 @@ fn same_committed_rows_drive_meta_eval_without_rust_owned_expected_values() {
         if row.expected.is_some() {
             checked_values += 1;
         }
-        if row.error.is_some() {
-            checked_named_errors += 1;
-        }
     }
 
     assert!(checked_values > 0, "meta witness slice must contain value witnesses");
+    for required_head in ["quote", "atom", "eq", "car", "cdr", "cons", "cond"] {
+        let prefix = format!("({required_head}");
+        assert!(
+            rows.iter().any(|row| row.expr.trim_start().starts_with(&prefix)),
+            "meta witness slice lost McCarthy-7/Canon-0 class `{required_head}`"
+        );
+    }
     assert!(
-        checked_named_errors > 0,
-        "#113 first slice must contain at least one named error witness"
+        rows.iter().any(|row| row.expr.trim_start().starts_with("((lambda")),
+        "meta witness slice must contain lambda application"
     );
 }
 
