@@ -1,5 +1,9 @@
 # Semantic Self-Sovereignty Implementation Plan
 
+## Українське резюме
+
+Цей план реалізує лише документаційний шар схваленого дизайну: design note, trust-root/performance boundary, Error Observation Identity v1, окремий future gate #145 і розширення research queue #132. Він **не змінює runtime, evaluator, compiler, semantic IDs чи witness truth** і не торкається активної гілки PR #144.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Preserve the approved semantic-self-sovereignty design as durable design capital while tightening existing authority boundaries without changing runtime semantics.
