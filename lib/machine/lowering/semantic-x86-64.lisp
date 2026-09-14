@@ -165,3 +165,17 @@
   (lambda (left right)
     (x86-encode-admitted-program
       (x86-lower-cons-cdr-u64-forms left right))))
+
+; Bounded semantic entry for the Vertical Day CAR witness.
+; Canonical CAR/CDR own pair validity and therefore fail with the language's
+; existing Type outcome before any machine request exists. Only after that
+; language-owned gate succeeds do the extracted u64 fields become structured
+; machine forms, pass closed admission, and enter the semantics-blind host.
+; No pair predicate or tag rule is duplicated in this machine layer.
+(def x86-call-semantic-car-u64
+  (lambda (pair-value)
+    (x86-call-admitted-u64
+      (x86-lower-cons-car-u64-forms
+        (car pair-value)
+        (cdr pair-value))
+      x86-pair-cell-bytes)))
