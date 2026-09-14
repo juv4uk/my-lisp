@@ -11,6 +11,8 @@ use my_lisp::{
 };
 use std::{path::{Path, PathBuf}, rc::Rc};
 
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+mod native_exec;
 mod process_raw;
 
 fn denied(operation: &str, detail: impl std::fmt::Display, span: Span) -> LanguageError {
@@ -593,6 +595,11 @@ pub fn install() {
     register_capability("tcp-read-raw", evaluate_tcp_read_raw);
     register_capability("tcp-write-raw", evaluate_tcp_write_raw);
     register_capability("tcp-close", evaluate_tcp_close);
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    register_capability(
+        "native-call-u64-raw",
+        native_exec::evaluate_native_call_u64_raw,
+    );
 }
 
 #[cfg(test)]
