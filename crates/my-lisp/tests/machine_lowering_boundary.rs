@@ -232,6 +232,7 @@ fn semantic_0104_lowers_in_lisp_to_encoder_owned_x86_bytes() {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before target lowering");
     load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
     eval_program(&lowering_source, &mut session)
         .expect("semantic x86-64 lowering must load as ordinary my-lisp");
 

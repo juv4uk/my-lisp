@@ -78,6 +78,62 @@ fn unadmitted_ud2_form_is_rejected_before_host_executor() {
 }
 
 #[test]
+fn semantic_lowering_must_produce_structured_forms_before_admission_and_execution() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before structured machine lowering");
+    load_lisp_file("lib/machine/layout/pair-x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
+
+    let add_forms = eval_program("(x86-lower-add-u64-forms 2 3)", &mut session)
+        .expect("semantic lowering must expose structured admitted machine forms before bytes");
+    assert_eq!(
+        add_forms.value.to_string(),
+        "((mov-r64-imm64 rax 2) (mov-r64-imm64 rcx 3) (add-r64-r64 rax rcx) (ret))"
+    );
+
+    let add = eval_program(
+        "(x86-call-admitted-u64 (x86-lower-add-u64-forms 2 3) 0)",
+        &mut session,
+    )
+    .expect("admitted semantic ADD forms must execute through the canonical gateway");
+    assert_eq!(add.value.to_string(), "5");
+
+    let interpreter_car = eval_program("(перше (сполучити 2 3))", &mut session)
+        .expect("interpreter CAR reference witness must remain valid");
+    let interpreter_cdr = eval_program("(решта (сполучити 2 3))", &mut session)
+        .expect("interpreter CDR reference witness must remain valid");
+
+    let native_car = eval_program(
+        "(x86-call-admitted-u64 (x86-lower-cons-car-u64-forms 2 3) x86-pair-cell-bytes)",
+        &mut session,
+    )
+    .expect("CONS+CAR lowering must pass through admission before host execution");
+    let native_cdr = eval_program(
+        "(x86-call-admitted-u64 (x86-lower-cons-cdr-u64-forms 2 3) x86-pair-cell-bytes)",
+        &mut session,
+    )
+    .expect("CONS+CDR lowering must pass through admission before host execution");
+
+    assert_eq!(native_car.value, interpreter_car.value);
+    assert_eq!(native_cdr.value, interpreter_cdr.value);
+
+    let lowering_source = fs::read_to_string(repo_root().join("lib/machine/lowering/semantic-x86-64.lisp"))
+        .expect("semantic lowerer source must be readable");
+    assert!(
+        lowering_source.contains("x86-encode-admitted-program"),
+        "byte compatibility wrappers must route through the admitted encoder"
+    );
+    assert!(
+        !lowering_source.contains("(x86-encode-program\n"),
+        "semantic lowerer must not bypass admission by flattening raw encoded instructions itself"
+    );
+}
+
+#[test]
 fn x86_pair_layout_is_one_lisp_owned_machine_readable_authority() {
     let _serial = test_lock();
     let path = repo_root().join("lib/machine/layout/pair-x86-64.lisp");
@@ -142,6 +198,7 @@ fn semantics_blind_raw_executor_accepts_optional_arena_bytes() {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before native witness");
     load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
 
     let result = eval_program(
@@ -191,6 +248,7 @@ fn native_pair_car_cdr_match_the_interpreter_reference_witness() {
     load_core_library(&mut session).expect("core must bootstrap before pair parity witness");
     load_lisp_file("lib/machine/layout/pair-x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
 
     let interpreter_car = eval_program("(перше (сполучити 2 3))", &mut session)
@@ -220,6 +278,7 @@ fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before native witness");
     load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
 
     let result = eval_program(
