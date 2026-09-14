@@ -4,7 +4,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use my_lisp::{eval_program, load_core_library, load_meta_evaluator_library, parse, Expr, ExprKind, Session};
+use my_lisp::{
+    eval_program, load_core_library, load_meta_evaluator_library, parse, Expr, ExprKind, Session,
+};
 
 #[derive(Clone)]
 struct WitnessRow {
@@ -46,7 +48,8 @@ fn alist_flag(entries: &[Expr], key: &str) -> bool {
 }
 
 fn compiler_witness_rows() -> Vec<WitnessRow> {
-    parse(include_str!("../../../tests/fixtures/conformance.lisp"))
+    let source = include_str!("../../../tests/fixtures/conformance.lisp");
+    parse(source)
         .expect("conformance.lisp must parse")
         .into_iter()
         .filter_map(|form| {
@@ -57,7 +60,10 @@ fn compiler_witness_rows() -> Vec<WitnessRow> {
                 return None;
             }
             Some(WitnessRow {
-                source: form.to_string(),
+                // Expr deliberately has no Display implementation. Reuse the exact
+                // original Lisp-authored source slice identified by the canonical
+                // parser span instead of teaching Rust to re-serialize witness data.
+                source: source[form.span.start..form.span.end].to_string(),
                 expr: alist_str(entries, "expr")?.to_string(),
                 expected: alist_str(entries, "expected").map(str::to_string),
                 error: alist_str(entries, "error").map(str::to_string),
