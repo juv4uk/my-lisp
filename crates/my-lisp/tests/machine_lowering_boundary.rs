@@ -9,6 +9,14 @@ fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+fn load_lisp_file(path: &str, session: &mut Session) {
+    let path = repo_root().join(path);
+    let source = fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", path.display()));
+    eval_program(&source, session)
+        .unwrap_or_else(|error| panic!("{} must load as ordinary my-lisp: {error}", path.display()));
+}
+
 #[test]
 fn portable_monotonic_time_keeps_language_semantic_identity() {
     let row = REGISTRY
@@ -139,6 +147,39 @@ fn lisp_owned_encoder_is_part_of_the_vertical_boundary_proof() {
             .to_string();
         assert_eq!(actual, expected, "unexpected machine bytes for {form}");
     }
+}
+
+#[test]
+fn semantic_0104_lowers_in_lisp_to_encoder_owned_x86_bytes() {
+    assert!(
+        REGISTRY
+            .lines()
+            .any(|line| line.trim_start().starts_with("(0104 ")),
+        "semantic 0104 must already exist before target lowering"
+    );
+
+    let lowering_path = repo_root().join("lib/machine/lowering/semantic-x86-64.lisp");
+    let lowering_source = fs::read_to_string(&lowering_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", lowering_path.display()));
+    assert!(
+        lowering_source.contains("(0104 fast-path \"ADD / ADDSD\")"),
+        "lowering projection must map existing semantic 0104 toward ADD"
+    );
+
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before target lowering");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    eval_program(&lowering_source, &mut session)
+        .expect("semantic x86-64 lowering must load as ordinary my-lisp");
+
+    let bytes = eval_program("(x86-lower-add-u64 2 3)", &mut session)
+        .expect("semantic 0104 proof lowering must produce machine bytes")
+        .value
+        .to_string();
+    assert_eq!(
+        bytes,
+        "(72 184 2 0 0 0 0 0 0 0 72 187 3 0 0 0 0 0 0 0 72 1 216 195)"
+    );
 }
 
 #[test]
