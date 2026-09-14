@@ -66,3 +66,9 @@ fn generated_function_table_has_i5_6400_column_without_replacing_semantic_author
         "processor-specific realization must not contaminate the semantic machine-readable function table"
     );
 }
+
+#[test]
+fn function_table_generator_with_machine_projection_is_valid_lisp() {
+    let source = include_str!("../../../scripts/generate-function-table.lisp");
+    my_lisp::parse(source).expect("function-table generator must remain valid my-lisp source");
+}
