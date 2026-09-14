@@ -60,11 +60,9 @@ fn generated_function_table_has_i5_6400_column_without_replacing_semantic_author
         "Canon CAR identity must show its direct memory-load realization"
     );
 
-    let machine_table = include_str!("../../../lib/generated/function-table.lisp");
-    assert!(machine_table.contains("(machine intel-core-i5-6400"));
-    assert!(machine_table.contains("(0104 identity:0104"));
+    let semantic_table = include_str!("../../../lib/generated/function-table.lisp");
     assert!(
-        machine_table.contains("(machine intel-core-i5-6400 direct \"ADD"),
-        "machine projection belongs on the existing semantic row, not in a parallel semantic registry"
+        !semantic_table.contains("intel-core-i5-6400"),
+        "processor-specific realization must not contaminate the semantic machine-readable function table"
     );
 }
