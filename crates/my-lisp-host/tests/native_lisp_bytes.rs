@@ -198,6 +198,7 @@ fn semantics_blind_raw_executor_accepts_optional_arena_bytes() {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before native witness");
     load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
 
     let result = eval_program(
@@ -247,6 +248,7 @@ fn native_pair_car_cdr_match_the_interpreter_reference_witness() {
     load_core_library(&mut session).expect("core must bootstrap before pair parity witness");
     load_lisp_file("lib/machine/layout/pair-x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
 
     let interpreter_car = eval_program("(перше (сполучити 2 3))", &mut session)
@@ -276,6 +278,7 @@ fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before native witness");
     load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
 
     let result = eval_program(
