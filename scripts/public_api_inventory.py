@@ -5,7 +5,10 @@ This is a discovery tool, not semantic authority.  It observes canonical
 ``lib/**/*.lisp`` source and reports top-level ``def`` / ``defmacro`` forms.
 Visibility (public/internal/compatibility) is a separate governance decision.
 Surface spellings remain owned exclusively by ``lib/surface/semantic-registry.lisp``.
-The generated report is review input only until visibility is explicitly ratified.
+Machine/ISA internals under ``lib/machine`` are deliberately excluded: they are
+physical target data and lowering machinery, not candidates for the public
+language API.  The generated report is review input only until visibility is
+explicitly ratified.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_ROOT = REPO_ROOT / "lib"
 REPORT = REPO_ROOT / "docs" / "generated" / "public-api-discovery.md"
-EXCLUDED_TOP_LEVEL_DIRS = {"generated", "surface"}
+EXCLUDED_TOP_LEVEL_DIRS = {"generated", "surface", "machine"}
 
 
 @dataclass(frozen=True, order=True)
