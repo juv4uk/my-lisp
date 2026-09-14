@@ -1,15 +1,15 @@
-# GC current-runtime audit — #153
+# Аудит поточної runtime-моделі GC — #153
 
-Status: evidence/audit only; no collector implementation.
-Date: 2026-09-15
+Статус: лише evidence/audit; без реалізації колектора.
+Дата: 2026-09-15
 
-## Why this audit exists
+## Навіщо цей аудит
 
-The 2026-08-23 GC consensus selected a Pair-only first managed slice. The current runtime has since changed materially: semantic callable identity is moving toward `SemanticRef`, recursive definitions use shared lexical environments, and the machine/backend work now needs a portable distinction between semantic identity, runtime object identity, and physical address.
+Консенсус GC від 2026-08-23 обрав Pair-only як перший managed slice. Відтоді runtime суттєво змінився: callable semantic identity рухається до `SemanticRef`, рекурсивні визначення використовують спільні lexical environments, а machine/backend напрямок уже потребує переносимого розділення між semantic identity, runtime object identity і фізичною адресою.
 
-This document records the current ownership facts before #154 changes storage.
+Цей документ фіксує поточні факти володіння до того, як #154 змінить storage.
 
-## Current ownership graph
+## Поточний граф володіння
 
 ```text
 Value
@@ -28,59 +28,59 @@ Environment
    └─ parent: Option<Environment>
 ```
 
-The current `Environment` already has an iterative `Drop` and a 300,000-frame regression test. Therefore deep parent-chain destruction is **not** a current reason to introduce tracing GC.
+Поточний `Environment` уже має ітеративний `Drop` і regression test на 300 000 frame-рівнів. Тому deep parent-chain destruction **не є** актуальною причиною вводити tracing GC.
 
-## Current reasons for tracing GC
+## Актуальні причини для tracing GC
 
-1. **Cycles.** A closure captures an `Environment`; that environment can bind the closure. Shared recursive definition frames make this graph natural rather than exceptional.
-2. **Mutable graph objects.** `Vector` can retain Values and therefore participate in cycles once mutation exposes a back-edge.
-3. **Portable runtime identity.** Future CML/FPGA object memory must not inherit Rust `Rc` pointer identity as a language fact.
+1. **Цикли.** Closure захоплює `Environment`; цей environment може містити binding на сам closure. Shared recursive definition frames роблять такий граф природним, а не винятковим.
+2. **Мутабельні графові об'єкти.** `Vector` може утримувати `Value` і після появи back-edge брати участь у циклах.
+3. **Переносима runtime identity.** Майбутня CML/FPGA object memory не повинна успадковувати Rust `Rc` pointer identity як факт мови.
 
-Canonical identity separation:
+Канонічне розділення identity:
 
 ```text
 SemanticRef(id) != ObjectId(slot,generation) != physical address
 ```
 
-- `SemanticRef` answers **what operation/meaning is this?**
-- `ObjectId` will answer **which managed runtime object is this?**
-- physical address is backend mechanism only.
+- `SemanticRef` відповідає на питання **що це означає / яка це операція?**
+- `ObjectId` має відповідати **який саме це managed runtime object?**
+- фізична адреса є лише backend-механізмом.
 
-## Classification for #153
+## Класифікація для #153
 
-| Runtime class | Current storage | M0 classification | Reason |
+| Runtime class | Поточне storage | M0-класифікація | Причина |
 |---|---|---|---|
-| Nil/Bool/simple numeric immediates | inline | non-traced | no graph edges |
-| SemanticRef | semantic ID | non-traced semantic identity | must not acquire heap/pointer authority |
-| Pair | Rc graph | managed candidate | recursive graph node |
-| Closure/Macro | Rc + captured Environment | managed candidate | participates in natural env cycles |
-| Environment/Frame | Rc/RefCell | managed candidate | owns bindings and parent edges |
-| Vector | Rc/RefCell | managed candidate | mutable aggregate; potential cycles |
-| Symbol/String | Rc<str> | defer | immutable payload; no graph edges |
-| Rational/BigInt | owned immutable payload | defer + measure | exact arithmetic pressure is separate from cycle collection |
-| Host/resource handles | host-owned | explicit-resource | nondeterministic finalization must not own close semantics |
+| Nil/Bool/simple numeric immediates | inline | non-traced | немає graph edges |
+| SemanticRef | semantic ID | non-traced semantic identity | не повинен отримати heap/pointer authority |
+| Pair | Rc graph | managed candidate | рекурсивний graph node |
+| Closure/Macro | Rc + captured Environment | managed candidate | бере участь у природних env cycles |
+| Environment/Frame | Rc/RefCell | managed candidate | володіє bindings і parent edges |
+| Vector | Rc/RefCell | managed candidate | mutable aggregate; можливі cycles |
+| Symbol/String | Rc<str> | defer | immutable payload; немає graph edges |
+| Rational/BigInt | owned immutable payload | defer + measure | exact-arithmetic pressure окремий від cycle collection |
+| Host/resource handles | host-owned | explicit-resource | nondeterministic finalization не повинна володіти close semantics |
 
 ## Decision gate
 
-The old Pair-only consensus is retained as historical design capital, but is no longer sufficient evidence for implementation. #153 must select the first managed slice from current cycle witnesses and migration cost.
+Старий Pair-only consensus зберігається як historical design capital, але вже не є достатнім evidence для реалізації. #153 має обрати перший managed slice на основі поточних cycle witnesses і вартості міграції.
 
-The leading candidate is a **graph-core** slice:
+Провідний кандидат — **graph-core** slice:
 
 ```text
 Pair + Closure + Environment + Vector
 ```
 
-This is a candidate, not yet implementation authority. #154 must not move these types until #153 is ratified.
+Це кандидат, а не implementation authority. #154 не повинен переносити ці типи, доки #153 не буде ратифіковано.
 
-## Non-negotiable portability constraints
+## Обов'язкові portability constraints
 
-1. No raw Rust pointer is a semantic identity.
-2. Managed references must admit stable backend-neutral handles; `slot + generation` remains the leading representation.
-3. Host handles keep explicit lifecycle semantics; GC may diagnose/fallback-clean but cannot define language-visible close timing.
-4. Collector on/off or stress frequency must not change Lisp value/output/error semantics.
-5. The same reachability/object contract must be representable by native Rust, CML, and a future FPGA Lisp-machine.
+1. Жоден raw Rust pointer не є semantic identity.
+2. Managed references повинні допускати stable backend-neutral handles; `slot + generation` лишається провідним представленням.
+3. Host handles зберігають explicit lifecycle semantics; GC може робити diagnostics/fallback cleanup, але не визначати language-visible момент `close`.
+4. Увімкнення/вимкнення collector або зміна stress-frequency не повинні змінювати Lisp value/output/error semantics.
+5. Той самий reachability/object contract має бути представимий у native Rust, CML і майбутній FPGA Lisp-machine.
 
-## Implementation order retained from current architecture
+## Порядок реалізації, що відповідає поточній архітектурі
 
 ```text
 #153 current ownership/cycle evidence
@@ -96,4 +96,10 @@ This is a candidate, not yet implementation authority. #154 must not move these 
 #158 backend-neutral object contract
 ```
 
-No collector code belongs in #153.
+Жодного collector-коду не повинно потрапити в #153.
+
+---
+
+## English mirror
+
+This audit records the current ownership model before #154 changes storage. The old Pair-only M0 decision is retained as historical design capital but is no longer sufficient implementation authority after `SemanticRef`, shared recursive environments, and the machine/backend portability work. The current leading managed-graph candidate is `Pair + Closure + Environment + Vector`, subject to #153 evidence. The key invariant is `SemanticRef(id) != ObjectId(slot,generation) != physical address`; host resources retain explicit lifecycle semantics, and GC stress must not change observable Lisp semantics.
