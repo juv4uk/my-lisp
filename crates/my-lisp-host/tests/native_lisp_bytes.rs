@@ -18,6 +18,38 @@ fn load_lisp_file(path: &str, session: &mut Session) {
 }
 
 #[test]
+fn interpreter_pair_reference_witnesses_remain_two_and_three() {
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before pair reference witness");
+
+    let car = eval_program("(перше (сполучити 2 3))", &mut session)
+        .expect("interpreter CAR witness must remain valid");
+    let cdr = eval_program("(решта (сполучити 2 3))", &mut session)
+        .expect("interpreter CDR witness must remain valid");
+
+    assert_eq!(car.value.to_string(), "2");
+    assert_eq!(cdr.value.to_string(), "3");
+}
+
+#[test]
+fn semantics_blind_arena_executor_accepts_existing_lisp_owned_bytes() {
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before native witness");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
+
+    let result = eval_program(
+        "(native-call-u64-arena-raw (x86-lower-add-u64 2 3) 16)",
+        &mut session,
+    )
+    .expect("semantics-blind host must provide a raw arena pointer to Lisp-owned bytes");
+
+    assert_eq!(result.value.to_string(), "5");
+}
+
+#[test]
 fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
     install();
     let mut session = Session::default();
@@ -42,6 +74,10 @@ fn native_execution_mechanism_is_not_a_language_semantic_identity() {
         !registry.contains("native-call-u64-raw"),
         "raw native invocation is host mechanism, never a language semantic identity"
     );
+    assert!(
+        !registry.contains("native-call-u64-arena-raw"),
+        "raw arena invocation is host mechanism, never a language semantic identity"
+    );
 }
 
 #[test]
@@ -51,10 +87,16 @@ fn rust_native_executor_contains_no_lisp_or_x86_lowering_decision() {
 
     for forbidden in [
         "0104",
+        "0004",
+        "0005",
+        "0006",
         "x86-lower",
         "x86-encode",
         "ADD",
         "ADDSD",
+        "CAR",
+        "CDR",
+        "CONS",
         "semantic-registry",
     ] {
         assert!(
