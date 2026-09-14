@@ -91,6 +91,64 @@ fn semantics_blind_raw_executor_accepts_optional_arena_bytes() {
 }
 
 #[test]
+fn lisp_owned_pair_memory_addressing_has_exact_rdi_disp8_bytes() {
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before machine encoder witness");
+    load_lisp_file("lib/machine/layout/pair-x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+
+    let car_load = eval_program(
+        "(x86-encode-mov-r64-mem-disp8 (quote rax) (quote rdi) x86-pair-car-offset)",
+        &mut session,
+    )
+    .expect("Lisp encoder must encode CAR's [rdi+0] load");
+    let cdr_load = eval_program(
+        "(x86-encode-mov-r64-mem-disp8 (quote rax) (quote rdi) x86-pair-cdr-offset)",
+        &mut session,
+    )
+    .expect("Lisp encoder must encode CDR's [rdi+8] load");
+    let car_store = eval_program(
+        "(x86-encode-mov-mem-disp8-r64 (quote rdi) x86-pair-car-offset (quote rax))",
+        &mut session,
+    )
+    .expect("Lisp encoder must encode CONS's [rdi+0] store");
+
+    assert_eq!(car_load.value.to_string(), "(72 139 71 0)");
+    assert_eq!(cdr_load.value.to_string(), "(72 139 71 8)");
+    assert_eq!(car_store.value.to_string(), "(72 137 71 0)");
+}
+
+#[test]
+fn native_pair_car_cdr_match_the_interpreter_reference_witness() {
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before pair parity witness");
+    load_lisp_file("lib/machine/layout/pair-x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
+
+    let interpreter_car = eval_program("(перше (сполучити 2 3))", &mut session)
+        .expect("interpreter CAR reference witness must remain valid");
+    let interpreter_cdr = eval_program("(решта (сполучити 2 3))", &mut session)
+        .expect("interpreter CDR reference witness must remain valid");
+
+    let native_car = eval_program(
+        "(native-call-u64-raw (x86-lower-cons-car-u64 2 3) x86-pair-cell-bytes)",
+        &mut session,
+    )
+    .expect("Lisp-owned CONS+CAR bytes must execute through the raw arena mechanism");
+    let native_cdr = eval_program(
+        "(native-call-u64-raw (x86-lower-cons-cdr-u64 2 3) x86-pair-cell-bytes)",
+        &mut session,
+    )
+    .expect("Lisp-owned CONS+CDR bytes must execute through the raw arena mechanism");
+
+    assert_eq!(native_car.value, interpreter_car.value);
+    assert_eq!(native_cdr.value, interpreter_cdr.value);
+}
+
+#[test]
 fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
     install();
     let mut session = Session::default();
