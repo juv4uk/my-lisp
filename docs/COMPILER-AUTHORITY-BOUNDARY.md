@@ -64,6 +64,74 @@ because they are meaning, not implementation:
 - Performance characteristics — nothing in this boundary makes any
   speed promise or requirement (explicitly a non-goal of #66 itself).
 
+## Current trust root
+
+A language-owned corpus can be the normative source of expected semantic
+facts without the implementation that reads and executes that corpus becoming
+semantically normative. Those are separate axes.
+
+Today, `tests/fixtures/conformance.lisp` is the implementation-independent
+contract corpus, and #113 is moving verdict logic into Lisp-owned witness
+machinery. But the current execution still depends on reader/evaluator/runtime
+mechanism implemented by the native system. Therefore the native Rust evaluator
+is **not declared the semantic oracle**, while it **does remain part of the
+current trusted execution root** used to run and observe Lisp-owned evidence.
+
+The trust-minimization direction is:
+
+```text
+unchanged Lisp-owned corpus
+          ↓
+independent consumers / evaluators
+          ↓
+disagreement treated as evidence, never normalized away
+          ↓
+smaller explicitly named trusted semantic kernel
+```
+
+A disagreement does not automatically make either implementation correct. It
+is evidence that the project must identify which assumption differs and which
+language-owned contract/witness settles the semantic fact. Until independent
+consumers reduce shared implementation assumptions, do not claim the trust
+root has disappeared; name and minimize it instead.
+
+See `docs/research/2026-09-15-semantic-self-sovereignty.md` for the dated
+design-capital statement of this boundary.
+
+## Performance non-interference
+
+Performance policy is downstream of semantic admission and has no reverse
+authority edge.
+
+```text
+implementation A passes semantic witnesses
+implementation B passes semantic witnesses
+                 ↓
+semantically equal admitted candidates
+for the covered contract
+                 ↓
+performance / energy / size policy selects A or B
+                 ↓
+NO backward edge into semantic meaning
+```
+
+Consequences:
+
+- Benchmarks, CPU profiles, crossover thresholds, scheduler heuristics, target
+  capabilities, and cost models are mechanism/policy evidence, not semantic
+  authority.
+- A faster implementation does not become more canonical, more semantically
+  true, or a new semantic identity because it is faster.
+- A selector may choose among already-admitted implementations; it may not
+  rewrite semantic IDs, witness expected values, error categories, or other
+  observable contracts in order to preserve its preferred performance result.
+- If an optimization fails the language-owned witnesses, reject/fix the
+  optimization or explicitly change the language contract through the semantic
+  authority process. Performance backpressure cannot silently mutate meaning.
+
+This rule applies equally to scalar-vs-SIMD selection, CPU/GPU/FPGA target
+selection, future auto-schedulers, and ordinary compiler optimization passes.
+
 ## Explicitly forbidden
 
 - A compiler-only special form, primitive, or macro that has no
@@ -79,6 +147,8 @@ because they are meaning, not implementation:
 - A compiler changing which of two independently-valid evaluation
   orders a program observes, when the reference implementation's order
   is itself part of the admitted contract.
+- A performance selector or benchmark result being used as authority to
+  redefine semantic identity or witness truth.
 
 ## Machine-checkable gate (this issue's acceptance criterion)
 
