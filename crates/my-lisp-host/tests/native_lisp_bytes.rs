@@ -33,7 +33,7 @@ fn interpreter_pair_reference_witnesses_remain_two_and_three() {
 }
 
 #[test]
-fn semantics_blind_arena_executor_accepts_existing_lisp_owned_bytes() {
+fn semantics_blind_raw_executor_accepts_optional_arena_bytes() {
     install();
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before native witness");
@@ -41,10 +41,10 @@ fn semantics_blind_arena_executor_accepts_existing_lisp_owned_bytes() {
     load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
 
     let result = eval_program(
-        "(native-call-u64-arena-raw (x86-lower-add-u64 2 3) 16)",
+        "(native-call-u64-raw (x86-lower-add-u64 2 3) 16)",
         &mut session,
     )
-    .expect("semantics-blind host must provide a raw arena pointer to Lisp-owned bytes");
+    .expect("semantics-blind host must optionally provide a raw arena pointer to Lisp-owned bytes");
 
     assert_eq!(result.value.to_string(), "5");
 }
@@ -73,10 +73,6 @@ fn native_execution_mechanism_is_not_a_language_semantic_identity() {
     assert!(
         !registry.contains("native-call-u64-raw"),
         "raw native invocation is host mechanism, never a language semantic identity"
-    );
-    assert!(
-        !registry.contains("native-call-u64-arena-raw"),
-        "raw arena invocation is host mechanism, never a language semantic identity"
     );
 }
 
