@@ -1,0 +1,11 @@
+; #114/#115 authority inventory projection.
+; Lisp reads this as data; CI/host code may transport paths but must not own
+; the allow/deny rule. Keep tests/authority-inventory.tsv as the tabular audit
+; projection for reviewers.
+
+(authority "crates/my-lisp/tests/witness_authority.rs" observer)
+(authority "crates/my-lisp/tests/mccarthy.rs" semantic-authority)
+(authority "crates/my-lisp/tests/ukrainian_api_docs.rs" semantic-authority)
+(authority "crates/my-lisp/tests/rivnopravnist_mov.rs" semantic-authority)
+(authority "tests/fixtures/authority-guard/forbidden-semantic.rs" semantic-authority)
+(authority "tests/fixtures/authority-guard/allowed-mechanism.rs" mechanism)
