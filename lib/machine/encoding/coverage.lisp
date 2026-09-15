@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 10)
+  (partial-count 12)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -1841,8 +1841,8 @@
   (coverage
     (iclass "NEG")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-neg-r64 covers the group-3 register form (0xF7 /3) only; r/m64-memory forms are pending"))
   (coverage
     (iclass "NEG_LOCK")
     (extension X86-BASE)
@@ -1856,8 +1856,8 @@
   (coverage
     (iclass "NOT")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-not-r64 covers the group-3 register form (0xF7 /2) only; r/m64-memory forms are pending"))
   (coverage
     (iclass "NOT_LOCK")
     (extension X86-BASE)

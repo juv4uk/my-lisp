@@ -175,6 +175,27 @@
         (t
           (list (+ 88 (x86-low3 code))))))))
 
+; NOT r64 / NEG r64: group-3 opcode 0xF7, /reg extension (not a register
+; operand) selects the operation -- NOT is /2, NEG is /3 -- per #175's
+; pinned XED evidence (`PATTERN : 0xF7 MOD[0b11] MOD=3 REG[0b010] RM[nnn]`
+; / `REG[0b011]`). This matches INC/DEC's group-5 shape: always REX.W,
+; REX.B only for r8-r15.
+(def x86-encode-not-r64
+  (lambda (register)
+    (let ((code (x86-reg-code register)))
+      (list
+        (x86-encode-rex 1 0 0 (x86-high1 code))
+        247
+        (x86-encode-modrm 3 2 (x86-low3 code))))))
+
+(def x86-encode-neg-r64
+  (lambda (register)
+    (let ((code (x86-reg-code register)))
+      (list
+        (x86-encode-rex 1 0 0 (x86-high1 code))
+        247
+        (x86-encode-modrm 3 3 (x86-low3 code))))))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond
