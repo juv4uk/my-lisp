@@ -20,3 +20,4 @@
 (authority "crates/my-lisp/tests/machine_atoms.rs" mechanism)
 (authority "crates/my-lisp/tests/machine_typed_operands.rs" mechanism)
 (authority "crates/my-lisp/tests/machine_block_roundtrip.rs" mechanism)
+(authority "crates/my-lisp/tests/support/x86_64_block_decoder.rs" mechanism)
