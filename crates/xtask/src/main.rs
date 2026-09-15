@@ -14,6 +14,7 @@
 //! виконувану поведінку; цей інструмент перевіряє все інше.
 
 mod checks;
+mod contract_workflow_paths;
 pub mod encoder_coverage;
 pub mod external_oracle;
 mod gen_functions_md;
@@ -148,7 +149,11 @@ fn run_import_xed_evidence(args: impl Iterator<Item = String>) -> ExitCode {
 }
 
 fn run_verify() -> ExitCode {
-    let all_checks = checks::all();
+    let mut all_checks = checks::all();
+    all_checks.push(checks::Check {
+        name: "contract-workflows-use-canonical-lisp-paths",
+        run: contract_workflow_paths::verify,
+    });
     let mut failures = Vec::new();
 
     for check in &all_checks {

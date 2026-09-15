@@ -4,15 +4,15 @@ on:
   workflow_call:
     inputs:
       contract_path:
-        description: Vendored language-contract.my path in the consumer repository
+        description: Vendored language-contract.lisp path in the consumer repository
         required: false
         type: string
-        default: contracts/my-lisp/language-contract.my
+        default: contracts/my-lisp/language-contract.lisp
       lock_path:
         description: Generated lock record path in the consumer repository
         required: false
         type: string
-        default: contracts/my-lisp/lock.my
+        default: contracts/my-lisp/lock.lisp
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ jobs:
     env:
       UPSTREAM_REPO: juv4uk/my-lisp
       UPSTREAM_BRANCH: main
-      UPSTREAM_PATH: language-contract.my
+      UPSTREAM_PATH: language-contract.lisp
       TARGET_PATH: ${{ inputs.contract_path }}
       LOCK_PATH: ${{ inputs.lock_path }}
     steps:
@@ -73,8 +73,8 @@ jobs:
           test "$actual_digest" = "$digest"
           curl -fsSL \
             "https://raw.githubusercontent.com/${UPSTREAM_REPO}/${contract_revision}/${UPSTREAM_PATH}" \
-            -o /tmp/language-contract.my
-          cmp --silent "$TARGET_PATH" /tmp/language-contract.my
+            -o /tmp/language-contract.lisp
+          cmp --silent "$TARGET_PATH" /tmp/language-contract.lisp
 
           if [ -n "$(git status --porcelain -- "$TARGET_PATH" "$LOCK_PATH")" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
