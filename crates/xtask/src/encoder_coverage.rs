@@ -64,6 +64,14 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
             "x86-encode-pop-r64 covers the single-register 0x58+rd form only; POP r/m64-memory/segment forms are pending",
         ),
         (
+            "INC",
+            "x86-encode-inc-r64 covers the group-5 register form (0xFF /0) only; the not64 legacy single-byte form and r/m64-memory forms are pending",
+        ),
+        (
+            "DEC",
+            "x86-encode-dec-r64 covers the group-5 register form (0xFF /1) only; the not64 legacy single-byte form and r/m64-memory forms are pending",
+        ),
+        (
             "NOT",
             "x86-encode-not-r64 covers the group-3 register form (0xF7 /2) only; r/m64-memory forms are pending",
         ),

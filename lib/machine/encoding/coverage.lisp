@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 12)
+  (partial-count 14)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -651,8 +651,8 @@
   (coverage
     (iclass "DEC")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-dec-r64 covers the group-5 register form (0xFF /1) only; the not64 legacy single-byte form and r/m64-memory forms are pending"))
   (coverage
     (iclass "DEC_LOCK")
     (extension X86-BASE)
@@ -1241,8 +1241,8 @@
   (coverage
     (iclass "INC")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-inc-r64 covers the group-5 register form (0xFF /0) only; the not64 legacy single-byte form and r/m64-memory forms are pending"))
   (coverage
     (iclass "INC_LOCK")
     (extension X86-BASE)

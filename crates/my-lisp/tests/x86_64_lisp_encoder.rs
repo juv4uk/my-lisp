@@ -212,6 +212,86 @@ fn lisp_encodes_push_and_pop_with_pinned_opcodes_and_independent_decode() {
     );
 }
 
+/// Independent decoder for the INC r64 / DEC r64 group-5 shape this encoder
+/// emits: REX.W (0x48 or 0x49) + opcode 0xFF + ModRM(mod=3, reg, rm). `reg`
+/// selects INC (0) vs DEC (1) -- it is an opcode extension, not a register
+/// operand. A from-scratch decode, independent of the encoder's own
+/// construction arithmetic.
+fn decode_inc_or_dec(bytes: &[u8]) -> Option<(&'static str, u8)> {
+    let [rex, opcode, modrm] = bytes else { return None };
+    if *opcode != 0xFF {
+        return None;
+    }
+    let rex_w = (rex & 0x08) != 0;
+    let rex_b = (rex & 0x01) != 0;
+    if !rex_w || (rex & 0xF0) != 0x40 {
+        return None;
+    }
+    let mod_bits = modrm >> 6;
+    let reg_field = (modrm >> 3) & 0b111;
+    let rm_field = modrm & 0b111;
+    if mod_bits != 0b11 {
+        return None;
+    }
+    let register = rm_field | if rex_b { 0b1000 } else { 0 };
+    match reg_field {
+        0 => Some(("inc", register)),
+        1 => Some(("dec", register)),
+        _ => None,
+    }
+}
+
+/// #176 continued: INC r64 / DEC r64 always go through the group-5 ModRM
+/// path (opcode 0xFF, /0 or /1), never the legacy single-byte 0x40+r/
+/// 0x48+r form -- that pinned XED evidence itself tags the legacy form
+/// `not64`, since those exact byte values are REX prefixes in 64-bit mode.
+/// Getting this wrong (emitting the legacy form) would silently corrupt
+/// any following instruction's REX prefix, so this is exactly the kind of
+/// "illegal encoding for this mode" case the encoder must never produce.
+#[test]
+fn lisp_encodes_inc_and_dec_via_group5_modrm_never_the_not64_legacy_form() {
+    let mut session = encoder_session();
+    for (register_name, register_code) in [("rax", 0u8), ("rcx", 1), ("r8", 8), ("r15", 15)] {
+        for (op, mnemonic) in [("inc", "inc"), ("dec", "dec")] {
+            let form = format!("(x86-encode-{op}-r64 (quote {register_name}))");
+            let rendered = eval_bytes(&form, &mut session);
+            let bytes: Vec<u8> = rendered
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+                .split_whitespace()
+                .map(|token| token.parse().expect("byte must be a small integer"))
+                .collect();
+
+            assert_eq!(bytes.len(), 3, "{form} must always be REX+0xFF+ModRM, 3 bytes");
+            assert_eq!(bytes[1], 255, "{form} must use group-5 opcode 0xFF, never the not64 legacy form");
+
+            let decoded = decode_inc_or_dec(&bytes)
+                .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+            assert_eq!(
+                decoded,
+                (mnemonic, register_code),
+                "{form} round-tripped to {decoded:?} via independent decode, from bytes {bytes:?}"
+            );
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("PATTERN   : 0xFF MOD[0b11] MOD=3 REG[0b000] RM[nnn]"),
+        "pinned XED evidence must contain the exact INC group-5 pattern this encoder was checked against"
+    );
+    assert!(
+        vendor_source.contains("PATTERN   : 0xFF MOD[0b11] MOD=3 REG[0b001] RM[nnn]"),
+        "pinned XED evidence must contain the exact DEC group-5 pattern this encoder was checked against"
+    );
+    assert!(
+        vendor_source.contains("PATTERN   : 0b0100_0 SRM[rrr] not64"),
+        "pinned XED evidence must still tag the legacy single-byte INC form not64 -- if this ever changes, the group-5-only encoding choice needs re-justifying"
+    );
+}
+
 /// Independent decoder for the NOT r64 / NEG r64 group-3 shape: REX.W
 /// (0x48 or 0x49) + opcode 0xF7 + ModRM(mod=3, reg, rm). `reg` selects NOT
 /// (2) vs NEG (3), an opcode extension, not a register operand. From

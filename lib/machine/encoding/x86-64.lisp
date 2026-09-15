@@ -175,6 +175,30 @@
         (t
           (list (+ 88 (x86-low3 code))))))))
 
+; INC r64 / DEC r64: group-5 opcode 0xFF, /reg extension (not a register
+; operand) selects the operation -- INC is /0, DEC is /1 -- per #175's
+; pinned XED evidence (`PATTERN : 0xFF MOD[0b11] MOD=3 REG[0b000] RM[nnn]`
+; / `REG[0b001]`). Unlike PUSH/POP, this form always needs REX.W: the
+; legacy single-byte 0x40+r/0x48+r INC/DEC opcodes exist in the same pinned
+; evidence tagged `not64` -- those byte values became REX prefixes in
+; 64-bit mode, so encoding INC/DEC in long mode always goes through this
+; ModRM group-5 path, never the legacy one.
+(def x86-encode-inc-r64
+  (lambda (register)
+    (let ((code (x86-reg-code register)))
+      (list
+        (x86-encode-rex 1 0 0 (x86-high1 code))
+        255
+        (x86-encode-modrm 3 0 (x86-low3 code))))))
+
+(def x86-encode-dec-r64
+  (lambda (register)
+    (let ((code (x86-reg-code register)))
+      (list
+        (x86-encode-rex 1 0 0 (x86-high1 code))
+        255
+        (x86-encode-modrm 3 1 (x86-low3 code))))))
+
 ; NOT r64 / NEG r64: group-3 opcode 0xF7, /reg extension (not a register
 ; operand) selects the operation -- NOT is /2, NEG is /3 -- per #175's
 ; pinned XED evidence (`PATTERN : 0xF7 MOD[0b11] MOD=3 REG[0b010] RM[nnn]`
