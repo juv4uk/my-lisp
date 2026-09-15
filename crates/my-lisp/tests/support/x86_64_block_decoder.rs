@@ -156,6 +156,20 @@ fn decode_alu_r64_r64(bytes: &[u8], offset: usize) -> Result<Option<(String, usi
     )))
 }
 
+// #196 observer for the one conditional-transfer form demanded by the bounded
+// EQ+COND witness. This intentionally decodes the physical 0x75 shape from
+// scratch rather than sharing the Lisp encoder's Jcc table.
+fn decode_jnz_rel8(bytes: &[u8], offset: usize) -> Result<Option<(String, usize)>, String> {
+    if bytes.get(offset).copied() != Some(0x75) {
+        return Ok(None);
+    }
+    let displacement = *bytes
+        .get(offset + 1)
+        .ok_or_else(|| format!("truncated JNZ rel8 at byte {offset}"))?;
+    let signed = i8::from_ne_bytes([displacement]);
+    Ok(Some((format!("(jnz-rel8 {signed})"), offset + 2)))
+}
+
 pub fn decode_machine_block(bytes: &[u8]) -> Result<Vec<String>, String> {
     let mut forms = Vec::new();
     let mut offset = 0usize;
@@ -180,6 +194,12 @@ pub fn decode_machine_block(bytes: &[u8]) -> Result<Vec<String>, String> {
         }
 
         if let Some((form, next)) = decode_alu_r64_r64(bytes, offset)? {
+            forms.push(form);
+            offset = next;
+            continue;
+        }
+
+        if let Some((form, next)) = decode_jnz_rel8(bytes, offset)? {
             forms.push(form);
             offset = next;
             continue;
