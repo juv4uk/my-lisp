@@ -53,3 +53,44 @@ fn bounded_eq_cond_native_execution_matches_lisp_reference_in_both_directions() 
         "the two Lisp-owned reference cases must exercise different control-flow outcomes"
     );
 }
+
+#[test]
+fn conditional_structural_native_execution_matches_lisp_reference_in_both_directions() {
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session)
+        .expect("core must bootstrap before #196 conditional+structural witness");
+    load_lisp_file("lib/machine/layout/pair-x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
+
+    let mut references = Vec::new();
+
+    for (left, right) in [(2_u64, 2_u64), (2_u64, 3_u64)] {
+        let reference_source = format!(
+            "(cond ((eq {left} {right}) (car (cons 11 12))) (t (car (cons 21 22))))"
+        );
+        let reference = eval_program(&reference_source, &mut session)
+            .expect("Lisp conditional+structural reference must evaluate")
+            .value;
+
+        let native_source = format!(
+            "(x86-call-admitted-u64 (x86-lower-eq-cond-car-cons-u64-forms {left} {right} 11 12 21 22) x86-pair-cell-bytes)"
+        );
+        let native = eval_program(&native_source, &mut session)
+            .expect("admitted conditional+structural lowering must execute on the native CPU")
+            .value;
+
+        assert_eq!(
+            native, reference,
+            "native COND + CAR(CONS) composition must preserve the Lisp-owned result for {left} and {right}"
+        );
+        references.push(reference);
+    }
+
+    assert_ne!(
+        references[0], references[1],
+        "the two reference cases must exercise different structural branch results"
+    );
+}
