@@ -455,38 +455,54 @@ fn gpr_index(name: &str) -> u8 {
 
 #[test]
 fn lisp_encodes_mov_disp8_for_every_gpr_base_with_correct_negative_displacement() {
+    const ALL_GPRS: [&str; 16] = [
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12",
+        "r13", "r14", "r15",
+    ];
+
     let mut session = encoder_session();
-    // Covers: plain bases, the SIB-requiring rsp/r12 bases, and REX.B
-    // extended bases, crossed with the full disp8 boundary (min, -1, 0,
-    // max) -- exactly the combinations #176's generalization must get
-    // right without a second addressing implementation.
-    for base in ["rax", "rdi", "rsp", "rbp", "r8", "r12", "r13", "r15"] {
-        for displacement in [-128i32, -1, 0, 127] {
-            let load_form = format!("(x86-encode-mov-r64-mem-disp8 (quote rax) (quote {base}) {displacement})");
-            let store_form = format!("(x86-encode-mov-mem-disp8-r64 (quote {base}) {displacement} (quote rax))");
-
-            for (form, expected_direction) in [(&load_form, "load"), (&store_form, "store")] {
-                let rendered = eval_bytes(form, &mut session);
-                let bytes: Vec<u8> = rendered
-                    .trim_start_matches('(')
-                    .trim_end_matches(')')
-                    .split_whitespace()
-                    .map(|token| token.parse().expect("byte must be a small integer"))
-                    .collect();
-                // Parsing each token as u8 above is itself the RED witness
-                // for the original bug: before the fix, a negative
-                // displacement made the encoder emit a literal negative
-                // number, which would fail to parse as u8 right here.
-
-                let (direction, reg, base_code, decoded_disp) = decode_mov_mem_disp8(&bytes)
-                    .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
-                assert_eq!(direction, expected_direction, "{form}: {bytes:?}");
-                assert_eq!(reg, gpr_index("rax"), "{form}: {bytes:?}");
-                assert_eq!(base_code, gpr_index(base), "{form}: {bytes:?}");
-                assert_eq!(
-                    decoded_disp, displacement,
-                    "{form} round-tripped to disp {decoded_disp}, from bytes {bytes:?}"
+    // Full 16 (data register, exercises REX.R) x 16 (base register,
+    // exercises REX.B and SIB for rsp/r12) matrix, crossed with the disp8
+    // boundary (min, -1, 0, mid, max) -- 2560 combinations total. An
+    // earlier version of this witness only ever used rax as the data
+    // register, which meant REX.R was never exercised at all despite
+    // admission opening (mov-*-mem-disp8 register disp8 register) for any
+    // of the 16 GPRs in both slots; independently cross-checked with
+    // objdump against this same matrix (2560 decoded, 0 mismatches).
+    for data_register in ALL_GPRS {
+        for base in ALL_GPRS {
+            for displacement in [-128i32, -1, 0, 1, 127] {
+                let load_form = format!(
+                    "(x86-encode-mov-r64-mem-disp8 (quote {data_register}) (quote {base}) {displacement})"
                 );
+                let store_form = format!(
+                    "(x86-encode-mov-mem-disp8-r64 (quote {base}) {displacement} (quote {data_register}))"
+                );
+
+                for (form, expected_direction) in [(&load_form, "load"), (&store_form, "store")] {
+                    let rendered = eval_bytes(form, &mut session);
+                    let bytes: Vec<u8> = rendered
+                        .trim_start_matches('(')
+                        .trim_end_matches(')')
+                        .split_whitespace()
+                        .map(|token| token.parse().expect("byte must be a small integer"))
+                        .collect();
+                    // Parsing each token as u8 above is itself the RED
+                    // witness for the original bug: before the fix, a
+                    // negative displacement made the encoder emit a
+                    // literal negative number, which would fail to parse
+                    // as u8 right here.
+
+                    let (direction, reg, base_code, decoded_disp) = decode_mov_mem_disp8(&bytes)
+                        .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+                    assert_eq!(direction, expected_direction, "{form}: {bytes:?}");
+                    assert_eq!(reg, gpr_index(data_register), "{form}: {bytes:?}");
+                    assert_eq!(base_code, gpr_index(base), "{form}: {bytes:?}");
+                    assert_eq!(
+                        decoded_disp, displacement,
+                        "{form} round-tripped to disp {decoded_disp}, from bytes {bytes:?}"
+                    );
+                }
             }
         }
     }

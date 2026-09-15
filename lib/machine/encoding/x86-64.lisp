@@ -83,8 +83,11 @@
 ; the host boundary (`native-call-u64-raw` rejects non-0..255 bytes), but it
 ; meant negative disp8 could never actually be encoded despite the encoder
 ; otherwise already supporting arbitrary GPR bases/destinations, SIB for
-; rsp/r12, and REX.B for r8-r15. Adding 256 before reducing mod 256 is exact
-; for the whole disp8 domain (verified by round-trip below).
+; rsp/r12, REX.B for an extended base (r8-r15), and REX.R for an extended
+; load-destination/store-source register. Adding 256 before reducing mod
+; 256 is exact for the whole disp8 domain (verified by round-trip below,
+; independently cross-checked against objdump across the full 16x16 base x
+; data-register matrix).
 (def x86-disp8-byte
   (lambda (displacement)
     (mod (+ displacement 256) 256)))
