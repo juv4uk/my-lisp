@@ -83,6 +83,18 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(x86-call-admitted-u64 (quote ((mov-r64-mem-disp8 rax notareg 0))) 0)",
             "(rejected unadmitted-machine-form (mov-r64-mem-disp8 rax notareg 0))",
         ),
+        (
+            // Jcc rel8's disp8 slot fails closed the same way MOV's does:
+            // one past the signed max.
+            "(x86-call-admitted-u64 (quote ((jz-rel8 128))) 0)",
+            "(rejected unadmitted-machine-form (jz-rel8 128))",
+        ),
+        (
+            // A made-up condition mnemonic must fail closed, not be
+            // silently confused with a real one.
+            "(x86-call-admitted-u64 (quote ((jzzz-rel8 0))) 0)",
+            "(rejected unadmitted-machine-form (jzzz-rel8 0))",
+        ),
     ] {
         EXECUTOR_CALLS.store(0, Ordering::SeqCst);
         let result = eval_program(request, &mut session)

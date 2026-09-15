@@ -245,6 +245,37 @@
         247
         (x86-encode-modrm 3 3 (x86-low3 code))))))
 
+; Jcc rel8: opcode 0x70+cc followed by a signed 8-bit relative displacement
+; (from the address of the *next* instruction). No REX prefix -- this is a
+; control-transfer, not a GPR operation. The 16 condition codes and their
+; opcode offsets are fixed by Intel's encoding and confirmed against #175's
+; pinned XED evidence (`PATTERN : 0x7<cc> mode64 ... BRDISP8()` for each
+; ICLASS in order: JO,JNO,JB,JNB,JZ,JNZ,JBE,JNBE,JS,JNS,JP,JNP,JL,JNL,JLE,
+; JNLE). Reuses x86-disp8-byte for the same two's-complement byte
+; conversion #199 already proved correct for MOV's disp8 slot.
+(def x86-encode-jcc-rel8
+  (lambda (condition-code displacement)
+    (list
+      (+ 112 condition-code)
+      (x86-disp8-byte displacement))))
+
+(def x86-encode-jo-rel8 (lambda (displacement) (x86-encode-jcc-rel8 0 displacement)))
+(def x86-encode-jno-rel8 (lambda (displacement) (x86-encode-jcc-rel8 1 displacement)))
+(def x86-encode-jb-rel8 (lambda (displacement) (x86-encode-jcc-rel8 2 displacement)))
+(def x86-encode-jnb-rel8 (lambda (displacement) (x86-encode-jcc-rel8 3 displacement)))
+(def x86-encode-jz-rel8 (lambda (displacement) (x86-encode-jcc-rel8 4 displacement)))
+(def x86-encode-jnz-rel8 (lambda (displacement) (x86-encode-jcc-rel8 5 displacement)))
+(def x86-encode-jbe-rel8 (lambda (displacement) (x86-encode-jcc-rel8 6 displacement)))
+(def x86-encode-jnbe-rel8 (lambda (displacement) (x86-encode-jcc-rel8 7 displacement)))
+(def x86-encode-js-rel8 (lambda (displacement) (x86-encode-jcc-rel8 8 displacement)))
+(def x86-encode-jns-rel8 (lambda (displacement) (x86-encode-jcc-rel8 9 displacement)))
+(def x86-encode-jp-rel8 (lambda (displacement) (x86-encode-jcc-rel8 10 displacement)))
+(def x86-encode-jnp-rel8 (lambda (displacement) (x86-encode-jcc-rel8 11 displacement)))
+(def x86-encode-jl-rel8 (lambda (displacement) (x86-encode-jcc-rel8 12 displacement)))
+(def x86-encode-jnl-rel8 (lambda (displacement) (x86-encode-jcc-rel8 13 displacement)))
+(def x86-encode-jle-rel8 (lambda (displacement) (x86-encode-jcc-rel8 14 displacement)))
+(def x86-encode-jnle-rel8 (lambda (displacement) (x86-encode-jcc-rel8 15 displacement)))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond
