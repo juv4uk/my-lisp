@@ -209,7 +209,7 @@ fn lisp_owned_encoder_is_part_of_the_vertical_boundary_proof() {
 }
 
 #[test]
-fn semantic_0104_lowers_in_lisp_to_encoder_owned_x86_bytes() {
+fn semantic_0104_lowers_through_structured_forms_without_legacy_byte_wrappers() {
     assert!(
         REGISTRY
             .lines()
@@ -225,9 +225,24 @@ fn semantic_0104_lowers_in_lisp_to_encoder_owned_x86_bytes() {
         "lowering projection must map existing semantic 0104 toward ADD"
     );
     assert!(
+        lowering_source.contains("(def x86-lower-add-u64-forms"),
+        "semantic lowerer must expose structured machine forms"
+    );
+    assert!(
         !lowering_source.contains("(x86-encode-mov-r64-imm64 (quote rbx) right)"),
         "native proof lowering must not clobber callee-saved RBX"
     );
+    for forbidden in [
+        "(def x86-lower-add-u64\n",
+        "(def x86-lower-cons-car-u64\n",
+        "(def x86-lower-cons-cdr-u64\n",
+        "(x86-encode-program\n",
+    ] {
+        assert!(
+            !lowering_source.contains(forbidden),
+            "legacy byte-level lowering path must be retired: {forbidden}"
+        );
+    }
 
     let mut session = Session::default();
     load_core_library(&mut session).expect("core must bootstrap before target lowering");
@@ -236,10 +251,22 @@ fn semantic_0104_lowers_in_lisp_to_encoder_owned_x86_bytes() {
     eval_program(&lowering_source, &mut session)
         .expect("semantic x86-64 lowering must load as ordinary my-lisp");
 
-    let bytes = eval_program("(x86-lower-add-u64 2 3)", &mut session)
-        .expect("semantic 0104 proof lowering must produce machine bytes")
+    let forms = eval_program("(x86-lower-add-u64-forms 2 3)", &mut session)
+        .expect("semantic 0104 proof lowering must produce structured machine forms")
         .value
         .to_string();
+    assert_eq!(
+        forms,
+        "((mov-r64-imm64 rax 2) (mov-r64-imm64 rcx 3) (add-r64-r64 rax rcx) (ret))"
+    );
+
+    let bytes = eval_program(
+        "(x86-encode-admitted-program (x86-lower-add-u64-forms 2 3))",
+        &mut session,
+    )
+    .expect("structured semantic forms must materialize bytes only through admission")
+    .value
+    .to_string();
     assert_eq!(
         bytes,
         "(72 184 2 0 0 0 0 0 0 0 72 185 3 0 0 0 0 0 0 0 72 1 200 195)"

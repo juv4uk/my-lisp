@@ -1,7 +1,7 @@
 # Архітектура вертикального Lisp → ISA
 
 **Дата:** 2026-09-14
-**Статус:** перший вертикальний зріз реалізований у PR #118; архітектура лишається інкрементальною
+**Статус:** перший вертикальний зріз реалізований у PR #118; structured admission path згодом став canonical, а початковий byte-returning compatibility wrapper retired у #139
 **Область:** машинна межа `my-lisp`, Intel Core i5-6400 (Skylake), x86-64
 
 ## Мета
@@ -15,7 +15,9 @@ semantic registry
       ↓
 semantic lowering у Lisp
       ↓
-ISA facts у Lisp
+structured machine forms
+      ↓
+closed Lisp-owned admission
       ↓
 Lisp-owned encoder
       ↓
@@ -72,7 +74,8 @@ lib/machine/
 ├── isa/          ; факти x86-64 та extension families
 ├── cpu/          ; конкретний CPU profile
 ├── encoding/     ; Lisp-owned physical encoding
-└── lowering/     ; projection semantic meaning → machine realization
+├── admission/    ; closed admitted machine subset
+└── lowering/     ; projection semantic meaning → structured machine realization
 ```
 
 `lib/machine/**` не є новою public Lisp surface. Це внутрішній машинний шар.
@@ -136,7 +139,7 @@ RET          → C3
 
 Host має право:
 
-- отримати byte list;
+- отримати byte list, уже матеріалізований із admitted structured forms;
 - виділити writable memory;
 - скопіювати байти;
 - змінити protection на executable;
@@ -169,7 +172,9 @@ mmap RW → copy → mprotect RX → call → munmap
  ↓
 bounded u64 path
  ↓
-MOV / ADD / RET
+structured MOV / ADD / RET forms
+ ↓
+closed admission
  ↓
 Lisp encoder
  ↓
@@ -180,9 +185,12 @@ bytes
 
 ## Реалізований фізичний witness
 
+Поточний canonical witness після #138/#139:
+
 ```lisp
-(native-call-u64-raw
-  (x86-lower-add-u64 2 3))
+(x86-call-admitted-u64
+  (x86-lower-add-u64-forms 2 3)
+  0)
 ```
 
 Результат:
@@ -190,6 +198,8 @@ bytes
 ```text
 5
 ```
+
+Початковий PR #118 мав byte-returning compatibility wrapper між lowering і host. Він був корисний для bootstrap-доказу, але більше не є canonical surface: #139 прибирає цей другий шлях, залишаючи structured forms → admission → encoder.
 
 Байти вибираються й формуються у Lisp. Host лише виконує їх.
 
@@ -219,6 +229,8 @@ Linux + x86_64
          │                     │
          └──────────┬──────────┘
                     ▼
+             admitted machine forms
+                    ↓
                  target CPU
 ```
 
@@ -234,20 +246,10 @@ Direct path потрібен не для конкуренції з CML, а як 
 4. **Lisp semantics directly reaches CPU through Lisp-owned lowering** — після semantic witness.
 5. **Vertical Lisp architecture** — лише після кількох core semantics, включно хоча б з однією structural Lisp operation, що проходять interpreter/native parity.
 
-Поточний доказ дійшов до рівня 4 для вузького bounded arithmetic witness. Повна vertical Lisp architecture ще не заявляється.
+Початковий доказ дійшов до рівня 4 для вузького bounded arithmetic witness; пізніший Vertical Day уже закрив structural `cons/car/cdr` slice. Це все ще не claim про повну Lisp-машину, native GC або повний compiler/runtime.
 
 ## Наступний сильніший експеримент
 
-Не розширювати каталог заради кількості. Наступна черга доказів:
-
-```text
-interpreter/native parity corpus для 0104
-        ↓
-car / cdr machine data-model witness
-        ↓
-cons після явного allocation/representation contract
-```
-
-Після цього можна обґрунтовано говорити не лише про арифметичний native fast path, а про фізичне представлення самого Lisp data model.
+Не розширювати каталог заради кількості. Наступна черга доказів має виростати з необхідних Lisp effects і executable evidence, а не з бажання покрити ISA заради самої кількості.
 
 Назва явища не може бути сильнішою за найсильніший експеримент, який його підтримує.
