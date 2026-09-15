@@ -53,18 +53,39 @@
   (lambda (operand)
     (second operand)))
 
-; my-lisp's current numeric runtime has no exact?/integer? predicate and its
-; ordinary Number carrier is f64-backed. Until a wider exact machine-integer
-; path is proven, u64 literals admitted here are restricted to the largest
-; integer interval represented exactly by binary64: 0 .. 2^53-1. The `u64`
-; tag describes the target operand width; it is not a claim that every u64
-; literal is losslessly representable by today's evaluator.
-(def x86-safe-integer?
+; Exact integer recognition stays in Lisp and does not require a new host
+; `number?`/`integer?` primitive. Canonical serialization is already a language
+; contract: exact integers print as optional '-' followed only by decimal
+; digits; exact non-integral rationals contain '/', and inexact values retain a
+; decimal marker. symbol? is checked first so a symbol created with numeric text
+; cannot impersonate a number.
+(def x86-decimal-digit?
+  (lambda (character)
+    (member? character
+             (quote ("0" "1" "2" "3" "4" "5" "6" "7" "8" "9")))))
+
+(def x86-decimal-digits?
+  (lambda (text)
+    (cond
+      ((string-empty? text) t)
+      ((x86-decimal-digit? (string-first text))
+       (x86-decimal-digits? (string-rest text)))
+      (t (quote ())))))
+
+(def x86-exact-integer?
   (lambda (value)
     (cond
-      ((number? value)
-       (eq (mod value 1) 0))
-      (t (quote ())))))
+      ((not (atom value)) (quote ()))
+      ((symbol? value) (quote ()))
+      (t
+       (let ((text (write-to-string value)))
+         (cond
+           ((string-empty? text) (quote ()))
+           ((eq (string-first text) "-")
+            (cond
+              ((string-empty? (string-rest text)) (quote ()))
+              (t (x86-decimal-digits? (string-rest text)))))
+           (t (x86-decimal-digits? text))))))))
 
 (def x86-u64-imm?
   (lambda (operand)
@@ -76,8 +97,8 @@
          ((equal? (cdr (cdr operand)) (quote ()))
           (let ((value (second operand)))
             (cond
-              ((x86-safe-integer? value)
-               (and (>= value 0) (<= value 9007199254740991)))
+              ((x86-exact-integer? value)
+               (and (>= value 0) (<= value 18446744073709551615)))
               (t (quote ())))))
          (t (quote ()))))
       (t (quote ())))))
@@ -85,9 +106,9 @@
 (def x86-u64-imm
   (lambda (value)
     (cond
-      ((x86-safe-integer? value)
+      ((x86-exact-integer? value)
        (cond
-         ((and (>= value 0) (<= value 9007199254740991))
+         ((and (>= value 0) (<= value 18446744073709551615))
           (list (quote u64-imm) value))
          (t (x86-machine-operand-rejection (quote u64-imm) value))))
       (t (x86-machine-operand-rejection (quote u64-imm) value)))))
@@ -113,7 +134,7 @@
          ((equal? (cdr (cdr operand)) (quote ()))
           (let ((value (second operand)))
             (cond
-              ((x86-safe-integer? value)
+              ((x86-exact-integer? value)
                (and (>= value -128) (<= value 127)))
               (t (quote ())))))
          (t (quote ()))))
@@ -122,7 +143,7 @@
 (def x86-disp8
   (lambda (value)
     (cond
-      ((x86-safe-integer? value)
+      ((x86-exact-integer? value)
        (cond
          ((and (>= value -128) (<= value 127))
           (list (quote disp8) value))
