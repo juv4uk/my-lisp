@@ -52,3 +52,5 @@ crates/my-lisp/tests/machine_typed_operands.rs	typed_alu_atoms_follow_the_genera
 crates/my-lisp/tests/machine_typed_operands.rs	typed_unary_atoms_follow_current_push_pop_inc_dec_admission	mechanism	machine-atom-projection	lib/machine/atoms/x86-64.lisp	migrated
 crates/my-lisp/tests/machine_typed_operands.rs	new_family_atoms_keep_typed_rejection_fail_closed	mechanism	machine-operand-rejection-propagation	lib/machine/atoms/x86-64.lisp	migrated
 crates/my-lisp/tests/machine_typed_operands.rs	machine_operand_type_names_do_not_mint_semantic_surfaces	observer	machine-semantic-noninterference	lib/surface/semantic-registry.lisp	migrated
+crates/my-lisp/tests/machine_block_roundtrip.rs	composed_machine_block_round_trips_through_independent_decoder	mechanism	machine-block-roundtrip	lib/machine/block.lisp + independent test decoder	migrated
+crates/my-lisp/tests/machine_block_roundtrip.rs	independent_decoder_fails_closed_on_truncated_machine_block	mechanism	machine-block-roundtrip-fail-closed	independent test decoder	migrated
