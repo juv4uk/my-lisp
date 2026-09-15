@@ -94,8 +94,8 @@ jobs:
         run: |
           python3 scripts/generate-meta-semantic-registry.py --check
           python3 scripts/public_api_inventory.py --check
-          cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test uk_surface_equivalence --test public_api_inventory_contract
-          cargo test -p my-lisp-host --test native_lisp_bytes
+          cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test machine_atoms --test machine_minimal_profile --test uk_surface_equivalence --test public_api_inventory_contract
+          cargo test -p my-lisp-host --test native_lisp_bytes --test native_cond_profile
           cargo test -p my-lisp-cli --test cli
           cargo run -p xtask -- verify
 
@@ -133,7 +133,7 @@ jobs:
 
       - name: Native host vertical witness
         if: steps.changes.outputs.host == 'true' && steps.changes.outputs.workspace != 'true'
-        run: cargo test -p my-lisp-host --test native_lisp_bytes
+        run: cargo test -p my-lisp-host --test native_lisp_bytes --test native_cond_profile
 
       - name: CLI black-box tests
         if: (steps.changes.outputs.cli == 'true' || steps.changes.outputs.surface == 'true') && steps.changes.outputs.workspace != 'true'
@@ -171,8 +171,8 @@ jobs:
           shared-key: windows-native-exec-witness
       - name: Windows guest-ABI witness (sysv64 vs win64)
         run: cargo test -p my-lisp-host --test windows_native_exec_abi
-      - name: Native CPU vertical witness on Windows
-        run: cargo test -p my-lisp-host --test native_lisp_bytes
+      - name: Native CPU vertical witnesses on Windows
+        run: cargo test -p my-lisp-host --test native_lisp_bytes --test native_cond_profile
       - name: Clippy my-lisp-host on Windows
         run: cargo clippy -p my-lisp-host --all-targets -- -D warnings
 
@@ -200,9 +200,9 @@ jobs:
           cargo build -p my-lisp-cli --bin my-lisp
           ./target/debug/my-lisp scripts/machine-authority-guard.lisp
       - name: Core unit and critical semantic-machine witnesses
-        run: cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test uk_surface_equivalence --test public_api_inventory_contract
-      - name: Native CPU vertical witness
-        run: cargo test -p my-lisp-host --test native_lisp_bytes
+        run: cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test machine_atoms --test machine_minimal_profile --test uk_surface_equivalence --test public_api_inventory_contract
+      - name: Native CPU vertical witnesses
+        run: cargo test -p my-lisp-host --test native_lisp_bytes --test native_cond_profile
       - name: CLI smoke
         run: cargo test -p my-lisp-cli --test cli
       - name: Governance and policy checks

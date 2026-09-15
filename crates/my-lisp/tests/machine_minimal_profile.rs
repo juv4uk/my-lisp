@@ -127,3 +127,77 @@ fn structural_car_profile_reaches_bytes_only_through_closed_admission() {
         .unwrap_or_else(|error| panic!("independent decoder rejected #196 witness {bytes:?}: {error}"));
     assert_eq!(render_forms(&decoded), forms);
 }
+
+#[test]
+fn bounded_cond_profile_is_projected_from_lisp_runtime_decision_need() {
+    let mut session = profile_session();
+
+    assert_eq!(
+        eval_value("(cond ((eq 2 2) 111) (t 222))", &mut session),
+        "111"
+    );
+    assert_eq!(
+        eval_value("(cond ((eq 2 3) 111) (t 222))", &mut session),
+        "222"
+    );
+
+    let semantic_forms = eval_value(
+        "(x86-lower-eq-cond-u64-forms 2 3 111 222)",
+        &mut session,
+    );
+    assert_eq!(
+        semantic_forms,
+        "((mov-r64-imm64 rax 2) (mov-r64-imm64 rcx 3) (cmp-r64-r64 rax rcx) (jnz-rel8 11) (mov-r64-imm64 rax 111) (ret) (mov-r64-imm64 rax 222) (ret))"
+    );
+
+    let profile_forms = eval_value(
+        "(x86-minimal-eq-cond-forms 2 3 111 222)",
+        &mut session,
+    );
+    assert_eq!(profile_forms, semantic_forms);
+
+    let families = eval_value(
+        "(x86-minimal-eq-cond-observed-families 2 3 111 222)",
+        &mut session,
+    );
+    assert_eq!(families, "(mov-r64-imm64 cmp-r64-r64 jnz-rel8 ret)");
+    assert_eq!(
+        eval_value("(x86-minimal-eq-cond-dependency-families)", &mut session),
+        families
+    );
+}
+
+#[test]
+fn bounded_cond_profile_has_typed_jnz_atom_and_fails_closed_outside_disp8() {
+    let mut session = profile_session();
+
+    assert_eq!(eval_value("(x86-jnz-rel8 11)", &mut session), "(jnz-rel8 11)");
+    assert_eq!(
+        eval_value("(x86-jnz-rel8 128)", &mut session),
+        "(rejected machine-operand disp8 128)"
+    );
+}
+
+#[test]
+fn bounded_cond_profile_reaches_bytes_only_through_closed_admission_and_round_trips() {
+    let mut session = profile_session();
+    let forms = eval_value(
+        "(x86-minimal-eq-cond-forms 2 3 111 222)",
+        &mut session,
+    );
+    let encoded = eval_value(
+        "(x86-encode-admitted-program-or-reject (x86-minimal-eq-cond-forms 2 3 111 222))",
+        &mut session,
+    );
+
+    assert!(encoded.starts_with('('), "expected encoded byte list, got {encoded}");
+    assert!(
+        !encoded.contains("rejected"),
+        "conditional minimal profile must pass current closed admission: {encoded}"
+    );
+
+    let bytes = parse_byte_list(&encoded);
+    let decoded = x86_64_block_decoder::decode_machine_block(&bytes)
+        .unwrap_or_else(|error| panic!("independent decoder rejected bounded COND witness {bytes:?}: {error}"));
+    assert_eq!(render_forms(&decoded), forms);
+}

@@ -72,6 +72,19 @@
   (lambda (destination source)
     (x86-binary-gpr64-form (quote cmp-r64-r64) destination source)))
 
+; #196 bounded conditional-growth slice. The Jcc encoding/admission fact is
+; already owned by #202. This atom owns only typed composition of the one
+; conditional-transfer family demanded by the bounded EQ+COND witness.
+(def x86-jnz-rel8
+  (lambda (displacement)
+    (let ((typed-displacement (x86-as-disp8 displacement)))
+      (cond
+        ((x86-machine-rejected? typed-displacement) typed-displacement)
+        (t
+         (list
+           (quote jnz-rel8)
+           (x86-disp8-value typed-displacement)))))))
+
 (def x86-unary-gpr64-form
   (lambda (mnemonic register)
     (let ((typed-register (x86-as-gpr64 register)))

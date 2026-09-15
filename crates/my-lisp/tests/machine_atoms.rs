@@ -48,6 +48,7 @@ fn machine_atoms_project_exactly_to_current_admitted_forms() {
             "(x86-add-r64-r64 (quote rax) (quote rcx))",
             "(add-r64-r64 rax rcx)",
         ),
+        ("(x86-jnz-rel8 11)", "(jnz-rel8 11)"),
         (
             "(x86-mov-mem-disp8-r64 (quote rdi) 8 (quote rax))",
             "(mov-mem-disp8-r64 rdi 8 rax)",
@@ -110,6 +111,7 @@ fn machine_atom_names_do_not_mint_public_semantic_surfaces() {
         "x86-ret",
         "x86-mov-r64-imm64",
         "x86-add-r64-r64",
+        "x86-jnz-rel8",
         "machine-block",
     ] {
         assert!(

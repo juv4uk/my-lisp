@@ -1,14 +1,15 @@
-; #196 — first machine-readable lower-bound profile for one bounded structural Lisp witness.
+; #196 — machine-readable lower-bound profiles derived from bounded Lisp witnesses.
 ;
 ; This file is deliberately NOT a second ISA catalogue, opcode table, encoder,
-; or admission list. The observed machine families are derived from the already
-; existing semantic lowering for CAR(CONS left right). Hand-authored data below
-; explains only why each observed family is necessary for this bounded witness.
+; or admission list. Observed machine families are derived from already-existing
+; semantic lowering. Hand-authored dependency rows explain only why each family
+; is necessary for its bounded witness.
 ;
-; Current claim boundary:
-;   (car (cons 2 3)) -> 2
-; using one host-provided 16-byte pair arena whose lifetime is one native call.
-; This is not a full allocator, GC, calling convention, or self-hosting claim.
+; Current claim boundaries:
+;   structural-v0: (car (cons 2 3)) -> 2 using one 16-byte pair arena.
+;   conditional-growth-v0: (cond ((eq A B) THEN) (t ELSE)) for bounded u64.
+; Neither is a full allocator, GC, label resolver, calling convention, compiler,
+; or self-hosting claim.
 
 (def x86-minimal-structural-car-dependencies
   (quote
@@ -28,6 +29,25 @@
        ret
        required-for-minimal-runtime
        "return the bounded result through the host ABI"))))
+
+(def x86-minimal-eq-cond-dependencies
+  (quote
+    ((materialize-value
+       mov-r64-imm64
+       required-for-minimal-runtime
+       "materialize bounded u64 predicate operands and selected-arm values")
+     (compare-equality
+       cmp-r64-r64
+       required-for-minimal-runtime
+       "produce the equality condition required by the bounded EQ predicate")
+     (branch-on-false
+       jnz-rel8
+       required-for-minimal-runtime
+       "select the ELSE arm when the bounded equality predicate is false")
+     (return-selected-result
+       ret
+       required-for-minimal-runtime
+       "return the selected bounded result through the guest ABI"))))
 
 (def x86-minimal-family-member?
   (lambda (family families)
@@ -106,3 +126,35 @@
       (list (quote arena-lifetime) (quote native-call))
       (list (quote escape) (quote forbidden))
       (list (quote claim) (quote bounded-structural-lower-bound)))))
+
+(def x86-minimal-eq-cond-forms
+  (lambda (left right then-value else-value)
+    (x86-lower-eq-cond-u64-forms left right then-value else-value)))
+
+(def x86-minimal-eq-cond-observed-families
+  (lambda (left right then-value else-value)
+    (x86-minimal-unique-form-families
+      (x86-minimal-eq-cond-forms left right then-value else-value)
+      (quote ()))))
+
+(def x86-minimal-eq-cond-dependency-families
+  (lambda ()
+    (x86-minimal-map-row-second x86-minimal-eq-cond-dependencies)))
+
+(def x86-minimal-eq-cond-dependency-classes
+  (lambda ()
+    (x86-minimal-map-row-third x86-minimal-eq-cond-dependencies)))
+
+(def x86-minimal-eq-cond-profile
+  (lambda (left right then-value else-value)
+    (list
+      (list (quote witness) (quote bounded-eq-cond-u64))
+      (list
+        (quote forms)
+        (x86-minimal-eq-cond-forms left right then-value else-value))
+      (list
+        (quote observed-families)
+        (x86-minimal-eq-cond-observed-families
+          left right then-value else-value))
+      (list (quote dependencies) x86-minimal-eq-cond-dependencies)
+      (list (quote claim) (quote bounded-conditional-growth-lower-bound)))))

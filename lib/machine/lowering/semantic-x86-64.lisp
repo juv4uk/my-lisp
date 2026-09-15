@@ -94,6 +94,27 @@
       (list (quote add-r64-r64) (quote rax) (quote rcx))
       (list (quote ret)))))
 
+; #196 bounded conditional-growth witness for existing EQ + COND semantics.
+; This routine does not define equality or conditional evaluation. It chooses
+; one fixed-width u64 realization whose only purpose is to establish the
+; machine-effect lower bound demanded by a two-arm runtime decision.
+;
+; JNZ +11 skips exactly one MOV r64,imm64 (10 bytes) plus one RET (1 byte),
+; landing at the ELSE arm. This is deliberately not a general label resolver,
+; branch assembler, or compiler policy. It returns structured forms only;
+; closed admission remains the sole path to bytes.
+(def x86-lower-eq-cond-u64-forms
+  (lambda (left right then-value else-value)
+    (list
+      (list (quote mov-r64-imm64) (quote rax) left)
+      (list (quote mov-r64-imm64) (quote rcx) right)
+      (list (quote cmp-r64-r64) (quote rax) (quote rcx))
+      (list (quote jnz-rel8) 11)
+      (list (quote mov-r64-imm64) (quote rax) then-value)
+      (list (quote ret))
+      (list (quote mov-r64-imm64) (quote rax) else-value)
+      (list (quote ret)))))
+
 ; Bounded structural witness for semantic identities 0004/0005/0006.
 ; The host contributes only a raw writable arena pointer in RDI. Lisp owns
 ; the fact that one admitted pair cell has head at x86-pair-car-offset and
