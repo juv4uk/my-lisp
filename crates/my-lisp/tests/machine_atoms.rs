@@ -1,0 +1,114 @@
+use my_lisp::{eval_program, load_core_library, Session};
+use std::fs;
+use std::path::PathBuf;
+
+const REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
+
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn load_lisp_file(path: &str, session: &mut Session) {
+    let path = repo_root().join(path);
+    let source = fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", path.display()));
+    eval_program(&source, session)
+        .unwrap_or_else(|error| panic!("{} must load as ordinary my-lisp: {error}", path.display()));
+}
+
+fn machine_session() -> Session {
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before machine atoms");
+    load_lisp_file("lib/machine/block.lisp", &mut session);
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/atoms/x86-64.lisp", &mut session);
+    session
+}
+
+fn eval_value(source: &str, session: &mut Session) -> String {
+    eval_program(source, session)
+        .unwrap_or_else(|error| panic!("machine expression failed: {source}: {error}"))
+        .value
+        .to_string()
+}
+
+#[test]
+fn machine_atoms_project_exactly_to_current_admitted_forms() {
+    let mut session = machine_session();
+
+    for (source, expected) in [
+        ("(x86-ret)", "(ret)"),
+        (
+            "(x86-mov-r64-imm64 (quote rax) 42)",
+            "(mov-r64-imm64 rax 42)",
+        ),
+        (
+            "(x86-add-r64-r64 (quote rax) (quote rcx))",
+            "(add-r64-r64 rax rcx)",
+        ),
+        (
+            "(x86-mov-mem-disp8-r64 (quote rdi) 8 (quote rax))",
+            "(mov-mem-disp8-r64 rdi 8 rax)",
+        ),
+        (
+            "(x86-mov-r64-mem-disp8 (quote rax) (quote rdi) 8)",
+            "(mov-r64-mem-disp8 rax rdi 8)",
+        ),
+    ] {
+        assert_eq!(eval_value(source, &mut session), expected, "{source}");
+    }
+}
+
+#[test]
+fn machine_block_composition_is_deterministic_and_encodes_via_176_path() {
+    let mut session = machine_session();
+
+    let append_path = "(machine-block-append (machine-block-append (machine-block-append (machine-block-one (x86-mov-r64-imm64 (quote rax) 2)) (x86-mov-r64-imm64 (quote rcx) 3)) (x86-add-r64-r64 (quote rax) (quote rcx))) (x86-ret))";
+    let concat_path = "(machine-block-concat (machine-block-concat (machine-block-one (x86-mov-r64-imm64 (quote rax) 2)) (machine-block-one (x86-mov-r64-imm64 (quote rcx) 3))) (machine-block-concat (machine-block-one (x86-add-r64-r64 (quote rax) (quote rcx))) (machine-block-one (x86-ret))))";
+
+    let append_block = eval_value(append_path, &mut session);
+    let concat_block = eval_value(concat_path, &mut session);
+    assert_eq!(append_block, concat_block);
+    assert_eq!(
+        append_block,
+        "((mov-r64-imm64 rax 2) (mov-r64-imm64 rcx 3) (add-r64-r64 rax rcx) (ret))"
+    );
+
+    let encoded = eval_value(
+        &format!("(x86-encode-machine-block (quote {append_block}))"),
+        &mut session,
+    );
+    assert_eq!(
+        encoded,
+        "(72 184 2 0 0 0 0 0 0 0 72 185 3 0 0 0 0 0 0 0 72 1 200 195)"
+    );
+}
+
+#[test]
+fn unadmitted_machine_atom_fails_closed_before_byte_materialization() {
+    let mut session = machine_session();
+    assert_eq!(
+        eval_value(
+            "(x86-encode-machine-block (machine-block-one (x86-add-r64-r64 (quote rax) (quote rbx))))",
+            &mut session,
+        ),
+        "(rejected unadmitted-machine-form (add-r64-r64 rax rbx))"
+    );
+}
+
+#[test]
+fn machine_atom_names_do_not_mint_public_semantic_surfaces() {
+    let lower = REGISTRY.to_ascii_lowercase();
+    for machine_only in [
+        "x86-ret",
+        "x86-mov-r64-imm64",
+        "x86-add-r64-r64",
+        "machine-block",
+    ] {
+        assert!(
+            !lower.contains(machine_only),
+            "machine-only constructor {machine_only} must not become a semantic registry surface"
+        );
+    }
+}
