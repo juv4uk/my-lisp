@@ -1602,7 +1602,7 @@
     (iclass "MOV")
     (extension X86-BASE)
     (status partial)
-    (reason "x86-encode-mov-r64-imm64 (rax/rcx immediate only), x86-encode-mov-r64-mem-disp8, and x86-encode-mov-mem-disp8-r64 (any of 16 GPRs as base/dest, full disp8 range -128..127) cover 3 of MOV's 22 XED forms; the 32/64-bit-displacement, SIB-index, and other MOV forms are pending"))
+    (reason "x86-encode-mov-r64-imm64 (any of 16 GPRs, non-negative immediate; negative imm64 is admitted but fails closed at the real host boundary -- see #176's negative_mov_r64_imm64_is_admitted_but_fails_closed_at_the_real_host_boundary), x86-encode-mov-r64-mem-disp8, and x86-encode-mov-mem-disp8-r64 (any of 16 GPRs as base/dest, full disp8 range -128..127) cover 3 of MOV's 22 XED forms; the 32/64-bit-displacement, SIB-index, and other MOV forms are pending"))
   (coverage
     (iclass "MOVAPD")
     (extension SSE2)

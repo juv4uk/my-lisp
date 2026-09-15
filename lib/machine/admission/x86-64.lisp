@@ -14,8 +14,7 @@
 (def x86-admitted-instruction-patterns
   (quote
     ((ret)
-     (mov-r64-imm64 rax immediate)
-     (mov-r64-imm64 rcx immediate)
+     (mov-r64-imm64 register immediate)
      (add-r64-r64 register register)
      (or-r64-r64 register register)
      (and-r64-r64 register register)
@@ -153,10 +152,8 @@
     (cond
       ((equal? form (quote (ret)))
        (x86-encode-ret))
-      ((x86-admission-pattern-match? (quote (mov-r64-imm64 rax immediate)) form)
-       (x86-encode-mov-r64-imm64 (quote rax) (third form)))
-      ((x86-admission-pattern-match? (quote (mov-r64-imm64 rcx immediate)) form)
-       (x86-encode-mov-r64-imm64 (quote rcx) (third form)))
+      ((x86-admission-pattern-match? (quote (mov-r64-imm64 register immediate)) form)
+       (x86-encode-mov-r64-imm64 (second form) (third form)))
       ((x86-admission-pattern-match? (quote (add-r64-r64 register register)) form)
        (x86-encode-add-r64-r64 (second form) (third form)))
       ((x86-admission-pattern-match? (quote (or-r64-r64 register register)) form)

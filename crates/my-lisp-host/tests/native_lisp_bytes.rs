@@ -77,6 +77,40 @@ fn unadmitted_ud2_form_is_rejected_before_host_executor() {
     );
 }
 
+/// #176 continued (found while generalizing MOV r64,imm64's admission to all
+/// 16 GPRs, not a new bug introduced by that change -- rax/rcx already had
+/// the same gap): the `immediate` admission wildcard has no range check, so
+/// `(mov-r64-imm64 rax -1)` is admitted as valid Lisp data. But `x86-u64-bytes`
+/// uses a plain `mod` per byte, which does not wrap negative whole values the
+/// way `x86-disp8-byte` was fixed to for disp8 (#199) -- so encoding produces
+/// an out-of-range byte, caught fail-closed at the real host boundary
+/// (`native-call-u64-raw` rejects non-0..255 bytes) as a language error
+/// rather than a clean `(rejected unadmitted-machine-form ...)` value. Never
+/// silently executed: this documents the exact, real failure mode rather
+/// than papering over it. No current Lisp semantic need pulls negative
+/// imm64 down yet, so the fix (a floor-mod-style two's-complement byte
+/// splitter for the full imm64 range) stays out of scope for now.
+#[test]
+fn negative_mov_r64_imm64_is_admitted_but_fails_closed_at_the_real_host_boundary() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before machine admission witness");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    let result = eval_program(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax -1) (ret))) 0)",
+        &mut session,
+    );
+
+    assert!(
+        result.is_err(),
+        "a negative imm64 must never actually execute on real hardware, even though \
+         admission currently has no range check for it"
+    );
+}
+
 #[test]
 fn semantic_lowering_must_produce_structured_forms_before_admission_and_execution() {
     let _serial = test_lock();
