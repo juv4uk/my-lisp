@@ -51,6 +51,32 @@ fn lisp_encodes_add_rax_rbx_without_external_assembler() {
     );
 }
 
+/// #176 TDD requirement: compare emitted bytes against pinned external
+/// evidence. lib/machine/xed/vendor/base/xed-isa.txt (pinned at #175's
+/// commit) is upstream Intel XED's own encoding for the no-operand
+/// RET_NEAR form: `PATTERN : 0xC3 ...`. This proves the Lisp encoder's
+/// opcode choice for `(ret)` was not invented independently of the
+/// admitted ISA evidence it claims to cover.
+#[test]
+fn ret_encoding_matches_pinned_xed_pattern_for_ret_near() {
+    let mut session = encoder_session();
+    let emitted = eval_bytes("(x86-encode-ret)", &mut session);
+    assert_eq!(emitted, "(195)", "195 decimal must equal 0xC3");
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+
+    // The no-operand near-return block: ICLASS RET_NEAR whose PATTERN has
+    // no OPERANDS-affecting immediate (the imm16 stack-adjust variant is a
+    // separate block starting `PATTERN : 0xC2 ...` and is not what
+    // `x86-encode-ret` claims to cover).
+    assert!(
+        vendor_source.contains("PATTERN   : 0xC3 DF64() IMMUNE66_LOOP64()"),
+        "pinned XED evidence must still contain the exact RET_NEAR/0xC3 pattern this encoder was checked against"
+    );
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");

@@ -13,3 +13,5 @@
 (authority "crates/my-lisp/tests/skylake_inventory_contract.rs" observer)
 (authority "crates/xtask/tests/xed_import_cli.rs" observer)
 (authority "crates/my-lisp/tests/machine_noninterference_contract.rs" observer)
+(authority "crates/my-lisp/tests/x86_64_lisp_encoder.rs" mechanism)
+(authority "crates/xtask/tests/encoder_coverage_cli.rs" observer)

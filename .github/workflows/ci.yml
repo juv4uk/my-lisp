@@ -144,8 +144,10 @@ jobs:
         run: |
           cargo test -p xtask --test external_oracle_cli
           cargo test -p xtask --test xed_import_cli
+          cargo test -p xtask --test encoder_coverage_cli
           cargo run -p xtask -- verify
           cargo run -p xtask -- import-xed-evidence --check
+          cargo run -p xtask -- generate-encoder-coverage --check
 
       - name: Focused Advice Taker witness
         if: steps.changes.outputs.meta == 'true' && steps.changes.outputs.workspace != 'true'
@@ -171,6 +173,7 @@ jobs:
           python3 scripts/generate-meta-semantic-registry.py --check
           python3 scripts/public_api_inventory.py --check
           cargo run -p xtask -- import-xed-evidence --check
+          cargo run -p xtask -- generate-encoder-coverage --check
       - name: Machine non-interference guard
         shell: bash
         run: |
