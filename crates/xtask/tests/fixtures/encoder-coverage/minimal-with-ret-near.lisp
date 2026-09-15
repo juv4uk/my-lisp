@@ -1,0 +1,44 @@
+; Minimal fixture evidence file (#176 test only): admits every ICLASS the
+; curated partially-implemented set names (RET_NEAR, MOV, ADD), so the
+; generator's own cross-check against that set is satisfied, plus one
+; ordinary not-yet-implemented ICLASS for contrast.
+(xed-machine-evidence/1
+  (pinned-commit "0000000000000000000000000000000000000000")
+  (source-digest "sha256:0")
+  (form-count 4)
+  (form
+    (extension X86-BASE)
+    (xed-extension BASE)
+    (iclass "RET_NEAR")
+    (category "RET")
+    (isa-set "I86")
+    (form-count 1)
+    (operand-summary "")
+    (source-file "fixture"))
+  (form
+    (extension X86-BASE)
+    (xed-extension BASE)
+    (iclass "MOV")
+    (category "DATAXFER")
+    (isa-set "I86")
+    (form-count 1)
+    (operand-summary "")
+    (source-file "fixture"))
+  (form
+    (extension X86-BASE)
+    (xed-extension BASE)
+    (iclass "ADD")
+    (category "BINARY")
+    (isa-set "I86")
+    (form-count 1)
+    (operand-summary "")
+    (source-file "fixture"))
+  (form
+    (extension X86-BASE)
+    (xed-extension BASE)
+    (iclass "NOP")
+    (category "NOP")
+    (isa-set "I86")
+    (form-count 1)
+    (operand-summary "")
+    (source-file "fixture")))

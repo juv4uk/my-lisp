@@ -15,6 +15,7 @@
 
 mod checks;
 mod contract_workflow_paths;
+pub mod encoder_coverage;
 pub mod external_oracle;
 mod gen_functions_md;
 pub mod xed_import;
@@ -34,6 +35,7 @@ fn main() -> ExitCode {
         },
         Some("external-oracle") => run_external_oracle(args),
         Some("import-xed-evidence") => run_import_xed_evidence(args),
+        Some("generate-encoder-coverage") => run_generate_encoder_coverage(args),
         Some(other) => {
             eprintln!("unknown xtask subcommand: {other}");
             print_usage();
@@ -48,8 +50,54 @@ fn main() -> ExitCode {
 
 fn print_usage() {
     eprintln!(
-        "usage: cargo xtask <verify|gen-functions-md|external-oracle <export|render> [--fixture F-...]|import-xed-evidence [--check] [--vendor-root DIR] [--out FILE]>"
+        "usage: cargo xtask <verify|gen-functions-md|external-oracle <export|render> [--fixture F-...]|import-xed-evidence [--check] [--vendor-root DIR] [--out FILE]|generate-encoder-coverage [--check] [--evidence FILE] [--out FILE]>"
     );
+}
+
+fn run_generate_encoder_coverage(args: impl Iterator<Item = String>) -> ExitCode {
+    let repo_root = locate_repo_root();
+    let mut evidence_path = std::path::PathBuf::from(&repo_root)
+        .join("lib/machine/xed/generated/machine-evidence.lisp");
+    let mut out_path = std::path::PathBuf::from(&repo_root)
+        .join("lib/machine/encoding/coverage.lisp");
+    let mut check = false;
+
+    let remaining: Vec<String> = args.collect();
+    let mut i = 0;
+    while i < remaining.len() {
+        match remaining[i].as_str() {
+            "--check" => {
+                check = true;
+                i += 1;
+            }
+            "--evidence" => {
+                let Some(value) = remaining.get(i + 1) else {
+                    eprintln!("--evidence requires a path argument");
+                    return ExitCode::FAILURE;
+                };
+                evidence_path = std::path::PathBuf::from(value);
+                i += 2;
+            }
+            "--out" => {
+                let Some(value) = remaining.get(i + 1) else {
+                    eprintln!("--out requires a path argument");
+                    return ExitCode::FAILURE;
+                };
+                out_path = std::path::PathBuf::from(value);
+                i += 2;
+            }
+            other => {
+                eprintln!("unknown option: {other}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
+
+    encoder_coverage::run(encoder_coverage::RunOptions {
+        evidence_path,
+        out_path,
+        check,
+    })
 }
 
 const XED_PINNED_COMMIT: &str = "0bcb6237345c5066726dcc08b3d87928df3b5b26";
