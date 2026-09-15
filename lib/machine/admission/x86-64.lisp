@@ -123,6 +123,19 @@
   (lambda (forms)
     (x86-encode-program (map x86-encode-admitted-instruction forms))))
 
+; #177 safe composition seam. Unlike x86-encode-admitted-program, this entry
+; point is safe for callers holding arbitrary structured machine data: it must
+; prove admission before any byte materialization can happen.
+(def x86-encode-admitted-program-or-reject
+  (lambda (forms)
+    (cond
+      ((x86-admitted-program? forms)
+       (x86-encode-admitted-program forms))
+      (t
+       (list (quote rejected)
+             (quote unadmitted-machine-form)
+             (x86-first-unadmitted-form forms))))))
+
 (def x86-call-admitted-u64
   (lambda (forms arena-bytes)
     (cond
