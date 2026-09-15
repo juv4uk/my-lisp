@@ -54,3 +54,5 @@ crates/my-lisp/tests/machine_typed_operands.rs	new_family_atoms_keep_typed_rejec
 crates/my-lisp/tests/machine_typed_operands.rs	machine_operand_type_names_do_not_mint_semantic_surfaces	observer	machine-semantic-noninterference	lib/surface/semantic-registry.lisp	migrated
 crates/my-lisp/tests/machine_block_roundtrip.rs	composed_machine_block_round_trips_through_independent_decoder	mechanism	machine-block-roundtrip	lib/machine/block.lisp + independent test decoder	migrated
 crates/my-lisp/tests/machine_block_roundtrip.rs	independent_decoder_fails_closed_on_truncated_machine_block	mechanism	machine-block-roundtrip-fail-closed	independent test decoder	migrated
+crates/my-lisp/tests/machine_lowering_boundary.rs	semantic_0104_lowers_through_structured_forms_without_legacy_byte_wrappers	observer	machine-lowering-boundary	lib/machine/lowering/semantic-x86-64.lisp + lib/machine/admission/x86-64.lisp	migrated
+crates/my-lisp-host/tests/native_lisp_bytes.rs	laboratory_raw_host_witnesses_materialize_only_admitted_structured_forms	mechanism	raw-native-execution-mechanism	lib/machine/admission/x86-64.lisp + crates/my-lisp-host/src/native_exec.rs	retained
