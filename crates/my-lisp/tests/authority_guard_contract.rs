@@ -1,0 +1,27 @@
+//! Contract for #115: the semantic allow/deny rule itself is Lisp-owned.
+//! Rust verifies the boundary shape; CI is responsible only for transporting
+//! changed paths and observing the Lisp program's exit status.
+
+use std::fs;
+use std::path::PathBuf;
+
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+#[test]
+fn authority_policy_is_lisp_owned_and_fail_closed() {
+    let root = repo_root();
+    let guard = fs::read_to_string(root.join("scripts/authority-guard.lisp"))
+        .expect("#115 Lisp authority guard must exist");
+    let inventory = fs::read_to_string(root.join("tests/authority-inventory.lisp"))
+        .expect("#115 Lisp-readable authority inventory must exist");
+
+    assert!(guard.contains("allowed-authority?") && guard.contains("observer") && guard.contains("mechanism"));
+    assert!(guard.contains("semantic-authority-violation") && guard.contains("#112/#113"));
+    assert!(guard.contains("(t ())"), "unknown/forbidden authority must fail closed");
+    assert!(inventory.contains("forbidden-semantic.rs\" semantic-authority"));
+    assert!(inventory.contains("allowed-mechanism.rs\" mechanism"));
+    assert!(!root.join("scripts/semantic_authority_guard.py").exists(),
+        "Python must not own the semantic authority verdict");
+}
