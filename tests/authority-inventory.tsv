@@ -40,3 +40,10 @@ crates/my-lisp/tests/machine_atoms.rs	machine_atoms_project_exactly_to_current_a
 crates/my-lisp/tests/machine_atoms.rs	machine_block_composition_is_deterministic_and_encodes_via_176_path	mechanism	machine-block-composition	lib/machine/block.lisp + lib/machine/admission/x86-64.lisp	migrated
 crates/my-lisp/tests/machine_atoms.rs	unadmitted_machine_atom_fails_closed_before_byte_materialization	mechanism	machine-admission-fail-closed	lib/machine/admission/x86-64.lisp	migrated
 crates/my-lisp/tests/machine_atoms.rs	machine_atom_names_do_not_mint_public_semantic_surfaces	observer	machine-semantic-noninterference	lib/surface/semantic-registry.lisp	migrated
+crates/my-lisp/tests/machine_typed_operands.rs	typed_operands_are_explicit_lisp_machine_data	mechanism	machine-operand-types	lib/machine/operands/x86-64.lisp	migrated
+crates/my-lisp/tests/machine_typed_operands.rs	invalid_operand_values_fail_closed_before_machine_form_creation	mechanism	machine-operand-type-fail-closed	lib/machine/operands/x86-64.lisp	migrated
+crates/my-lisp/tests/machine_typed_operands.rs	typed_registers_and_immediates_project_to_existing_176_forms	mechanism	machine-operand-projection	lib/machine/atoms/x86-64.lisp	migrated
+crates/my-lisp/tests/machine_typed_operands.rs	typed_memory_operands_project_to_existing_disp8_forms	mechanism	machine-memory-operand-projection	lib/machine/atoms/x86-64.lisp	migrated
+crates/my-lisp/tests/machine_typed_operands.rs	operand_type_success_does_not_bypass_instruction_admission	mechanism	machine-admission-separation	lib/machine/admission/x86-64.lisp	migrated
+crates/my-lisp/tests/machine_typed_operands.rs	invalid_typed_operands_propagate_instead_of_becoming_instruction_forms	mechanism	machine-operand-rejection-propagation	lib/machine/atoms/x86-64.lisp	migrated
+crates/my-lisp/tests/machine_typed_operands.rs	machine_operand_type_names_do_not_mint_semantic_surfaces	observer	machine-semantic-noninterference	lib/surface/semantic-registry.lisp	migrated
