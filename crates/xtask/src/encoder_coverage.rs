@@ -71,6 +71,14 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
             "DEC",
             "x86-encode-dec-r64 covers the group-5 register form (0xFF /1) only; the not64 legacy single-byte form and r/m64-memory forms are pending",
         ),
+        (
+            "NOT",
+            "x86-encode-not-r64 covers the group-3 register form (0xF7 /2) only; r/m64-memory forms are pending",
+        ),
+        (
+            "NEG",
+            "x86-encode-neg-r64 covers the group-3 register form (0xF7 /3) only; r/m64-memory forms are pending",
+        ),
     ]
     .into_iter()
     .collect()

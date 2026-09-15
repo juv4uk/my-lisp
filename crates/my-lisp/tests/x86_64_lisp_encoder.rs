@@ -292,6 +292,79 @@ fn lisp_encodes_inc_and_dec_via_group5_modrm_never_the_not64_legacy_form() {
     );
 }
 
+/// Independent decoder for the NOT r64 / NEG r64 group-3 shape: REX.W
+/// (0x48 or 0x49) + opcode 0xF7 + ModRM(mod=3, reg, rm). `reg` selects NOT
+/// (2) vs NEG (3), an opcode extension, not a register operand. From
+/// scratch, independent of the encoder's own construction arithmetic.
+fn decode_not_or_neg(bytes: &[u8]) -> Option<(&'static str, u8)> {
+    let [rex, opcode, modrm] = bytes else { return None };
+    if *opcode != 0xF7 {
+        return None;
+    }
+    let rex_w = (rex & 0x08) != 0;
+    let rex_b = (rex & 0x01) != 0;
+    if !rex_w || (rex & 0xF0) != 0x40 {
+        return None;
+    }
+    let mod_bits = modrm >> 6;
+    let reg_field = (modrm >> 3) & 0b111;
+    let rm_field = modrm & 0b111;
+    if mod_bits != 0b11 {
+        return None;
+    }
+    let register = rm_field | if rex_b { 0b1000 } else { 0 };
+    match reg_field {
+        2 => Some(("not", register)),
+        3 => Some(("neg", register)),
+        _ => None,
+    }
+}
+
+/// #176 continued: NOT r64 / NEG r64 always go through group-3 (opcode
+/// 0xF7, /2 or /3), the same shape as INC/DEC's group-5 (opcode 0xFF, /0
+/// or /1) -- a distinct opcode byte and reg-field pair, not something
+/// this decoder can confuse with INC/DEC by construction (a differing
+/// opcode byte fails the match outright).
+#[test]
+fn lisp_encodes_not_and_neg_via_group3_modrm_with_independent_decode() {
+    let mut session = encoder_session();
+    for (register_name, register_code) in [("rax", 0u8), ("rdx", 2), ("r9", 9), ("r14", 14)] {
+        for (op, mnemonic) in [("not", "not"), ("neg", "neg")] {
+            let form = format!("(x86-encode-{op}-r64 (quote {register_name}))");
+            let rendered = eval_bytes(&form, &mut session);
+            let bytes: Vec<u8> = rendered
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+                .split_whitespace()
+                .map(|token| token.parse().expect("byte must be a small integer"))
+                .collect();
+
+            assert_eq!(bytes.len(), 3, "{form} must always be REX+0xF7+ModRM, 3 bytes");
+            assert_eq!(bytes[1], 247, "{form} must use group-3 opcode 0xF7");
+
+            let decoded = decode_not_or_neg(&bytes)
+                .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+            assert_eq!(
+                decoded,
+                (mnemonic, register_code),
+                "{form} round-tripped to {decoded:?} via independent decode, from bytes {bytes:?}"
+            );
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("PATTERN   : 0xF7 MOD[0b11] MOD=3 REG[0b010] RM[nnn]"),
+        "pinned XED evidence must contain the exact NOT group-3 pattern this encoder was checked against"
+    );
+    assert!(
+        vendor_source.contains("PATTERN   : 0xF7 MOD[0b11] MOD=3 REG[0b011] RM[nnn]"),
+        "pinned XED evidence must contain the exact NEG group-3 pattern this encoder was checked against"
+    );
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");
