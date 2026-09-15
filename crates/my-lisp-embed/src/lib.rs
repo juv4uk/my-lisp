@@ -17,15 +17,29 @@ use std::{
 /// C ABI contract version.  Hosts must compare this value before using the
 /// session exports, rather than treating matching symbol names as proof of
 /// compatibility.
-pub const MY_LISP_EMBED_ABI_VERSION: u32 = 3;
+pub const MY_LISP_EMBED_ABI_VERSION: u32 = 4;
 
-/// Result tags that a nullary host mechanism may return through the C ABI.
+/// Result tags that a nullary or typed-unary host mechanism may return
+/// through the C ABI.
 pub const MY_LISP_EMBED_NIL: u32 = 0;
 pub const MY_LISP_EMBED_TRUE: u32 = 1;
 
 /// One atomic host mechanism. It must only observe or perform the requested
 /// action; the caller's Lisp program keeps all policy and orchestration.
 pub type MyLispEmbedNullaryFn = unsafe extern "C" fn(*mut c_void, *mut u32) -> i32;
+
+/// One atomic host mechanism that takes exactly one opaque host-handle
+/// argument of a fixed, registration-time `kind`. `token` is the handle's
+/// bound `u64` (the same value passed to `my_lisp_embed_bind_host_handle`);
+/// the mechanism never receives a raw handle any other Lisp value could
+/// have produced, since `kind` is checked before this callback runs.
+///
+/// v1 keeps the result space identical to the nullary mechanism's
+/// (nil/true only, via `out_result`) rather than also allowing a typed
+/// unary mechanism to hand back a fresh opaque handle -- ABI#181 left that
+/// open as a later increment; nothing here forecloses adding it once a
+/// concrete downstream need exists.
+pub type MyLispEmbedUnaryFn = unsafe extern "C" fn(*mut c_void, u64, *mut u32) -> i32;
 
 /// Opaque owner of one canonical, persistent my-lisp session.
 pub struct MyLispEmbedSession {
@@ -83,6 +97,60 @@ fn invoke_nullary(
     }
     let mut raw_result = MY_LISP_EMBED_NIL;
     let status = unsafe { callback(context, &mut raw_result) };
+    if status != 0 {
+        return Err(my_lisp::LanguageError::new(
+            my_lisp::ErrorKind::InvalidForm,
+            format!("{surface}: host mechanism failed with status {status}"),
+            span,
+        ));
+    }
+    match raw_result {
+        MY_LISP_EMBED_NIL => Ok(my_lisp::Value::Nil),
+        MY_LISP_EMBED_TRUE => Ok(my_lisp::Value::truth(true)),
+        _ => Err(my_lisp::LanguageError::new(
+            my_lisp::ErrorKind::InvalidForm,
+            format!("{surface}: host returned an unknown result tag {raw_result}"),
+            span,
+        )),
+    }
+}
+
+fn invoke_unary(
+    callback: MyLispEmbedUnaryFn,
+    context: *mut c_void,
+    expected_kind: &str,
+    surface: &str,
+    arguments: &[my_lisp::Value],
+    span: my_lisp::Span,
+) -> Result<my_lisp::Value, my_lisp::LanguageError> {
+    let [argument] = arguments else {
+        return Err(my_lisp::LanguageError::new(
+            my_lisp::ErrorKind::InvalidForm,
+            format!(
+                "{surface} expects exactly 1 argument, an opaque {expected_kind} handle"
+            ),
+            span,
+        ));
+    };
+    let Some((actual_kind, token)) = argument.as_host_handle() else {
+        return Err(my_lisp::LanguageError::new(
+            my_lisp::ErrorKind::InvalidForm,
+            format!("{surface} expects an opaque {expected_kind} handle, not {argument}"),
+            span,
+        ));
+    };
+    if actual_kind != expected_kind {
+        return Err(my_lisp::LanguageError::new(
+            my_lisp::ErrorKind::InvalidForm,
+            format!(
+                "{surface} expects a {expected_kind} handle, but received a {actual_kind} handle"
+            ),
+            span,
+        ));
+    }
+
+    let mut raw_result = MY_LISP_EMBED_NIL;
+    let status = unsafe { callback(context, token, &mut raw_result) };
     if status != 0 {
         return Err(my_lisp::LanguageError::new(
             my_lisp::ErrorKind::InvalidForm,
@@ -173,6 +241,57 @@ pub unsafe extern "C" fn my_lisp_embed_register_nullary(
     let function = std::rc::Rc::new(
         move |arguments: &[my_lisp::Value], _environment: &my_lisp::Environment, span| {
             invoke_nullary(callback, context, &diagnostic_surface, arguments, span)
+        },
+    );
+    (&mut *session)
+        .session
+        .environment
+        .define(surface, my_lisp::Value::host_function(function));
+    0
+}
+
+/// Binds a one-argument host mechanism into one canonical session. The
+/// mechanism's single argument must be an opaque host handle bound via
+/// `my_lisp_embed_bind_host_handle` whose `kind` matches `kind` exactly;
+/// any other value (wrong kind, or not a handle at all) becomes an
+/// ordinary Lisp-catchable error, not a host-side abort.
+///
+/// Returns zero on success. Negative results indicate an invalid session,
+/// surface, kind, or callback. A non-zero result from the host callback
+/// becomes a Lisp error for that evaluation and leaves the session usable.
+///
+/// # Safety
+///
+/// `session` must be null or a live pointer returned by `my_lisp_embed_session_new`.
+/// `surface` and `kind` must be null or valid NUL-terminated strings for this call.
+/// When present, `callback` and `context` must remain valid for later invocations
+/// from this session. Calls using one session must remain on its owning host thread.
+#[no_mangle]
+pub unsafe extern "C" fn my_lisp_embed_register_unary(
+    session: *mut MyLispEmbedSession,
+    surface: *const c_char,
+    kind: *const c_char,
+    callback: Option<MyLispEmbedUnaryFn>,
+    context: *mut c_void,
+) -> i32 {
+    if session.is_null() || surface.is_null() || kind.is_null() || callback.is_none() {
+        return -1;
+    }
+    let decode = |text: *const c_char| {
+        CStr::from_ptr(text)
+            .to_str()
+            .ok()
+            .filter(|text| !text.is_empty())
+            .map(str::to_owned)
+    };
+    let (Some(surface), Some(kind)) = (decode(surface), decode(kind)) else {
+        return -2;
+    };
+    let callback = callback.expect("validated above");
+    let diagnostic_surface = surface.clone();
+    let function = std::rc::Rc::new(
+        move |arguments: &[my_lisp::Value], _environment: &my_lisp::Environment, span| {
+            invoke_unary(callback, context, &kind, &diagnostic_surface, arguments, span)
         },
     );
     (&mut *session)
@@ -277,6 +396,7 @@ mod tests {
     #[test]
     fn reports_the_documented_abi_version() {
         assert_eq!(my_lisp_embed_abi_version(), MY_LISP_EMBED_ABI_VERSION);
+        assert_eq!(MY_LISP_EMBED_ABI_VERSION, 4);
     }
 
     #[test]
@@ -300,6 +420,101 @@ mod tests {
         assert!(eval(session, "(гравець-присутній? 1)").starts_with("error: "));
         assert_eq!(eval(session, "(гравець-присутній?)"), "t");
         assert_eq!(NULLARY_CALLS.load(Ordering::SeqCst), 2);
+
+        unsafe { my_lisp_embed_session_free(session) };
+    }
+
+    static UNARY_CALLS: AtomicUsize = AtomicUsize::new(0);
+    static LAST_UNARY_TOKEN: AtomicUsize = AtomicUsize::new(0);
+
+    unsafe extern "C" fn player_present_fact(
+        _context: *mut c_void,
+        token: u64,
+        out_result: *mut u32,
+    ) -> i32 {
+        UNARY_CALLS.fetch_add(1, Ordering::SeqCst);
+        LAST_UNARY_TOKEN.store(token as usize, Ordering::SeqCst);
+        *out_result = MY_LISP_EMBED_TRUE;
+        0
+    }
+
+    #[test]
+    fn typed_unary_host_mechanism_receives_matching_handle_token_and_returns_canonical_truth() {
+        UNARY_CALLS.store(0, Ordering::SeqCst);
+        let session = my_lisp_embed_session_new();
+        assert_eq!(
+            unsafe {
+                my_lisp_embed_bind_host_handle(
+                    session,
+                    CString::new("гравець").unwrap().as_ptr(),
+                    CString::new("player").unwrap().as_ptr(),
+                    777,
+                )
+            },
+            0
+        );
+        assert_eq!(
+            unsafe {
+                my_lisp_embed_register_unary(
+                    session,
+                    CString::new("гравець-живий?").unwrap().as_ptr(),
+                    CString::new("player").unwrap().as_ptr(),
+                    Some(player_present_fact),
+                    ptr::null_mut(),
+                )
+            },
+            0
+        );
+
+        assert_eq!(eval(session, "(гравець-живий? гравець)"), "t");
+        assert_eq!(UNARY_CALLS.load(Ordering::SeqCst), 1);
+        assert_eq!(LAST_UNARY_TOKEN.load(Ordering::SeqCst), 777);
+
+        unsafe { my_lisp_embed_session_free(session) };
+    }
+
+    #[test]
+    fn typed_unary_host_mechanism_rejects_wrong_kind_handle_as_lisp_error() {
+        let session = my_lisp_embed_session_new();
+        unsafe {
+            my_lisp_embed_bind_host_handle(
+                session,
+                CString::new("зброя").unwrap().as_ptr(),
+                CString::new("weapon").unwrap().as_ptr(),
+                1,
+            );
+            my_lisp_embed_register_unary(
+                session,
+                CString::new("гравець-живий?").unwrap().as_ptr(),
+                CString::new("player").unwrap().as_ptr(),
+                Some(player_present_fact),
+                ptr::null_mut(),
+            );
+        }
+
+        let outcome = eval(session, "(гравець-живий? зброя)");
+        assert!(outcome.starts_with("error: "), "got: {outcome}");
+        assert!(outcome.contains("player") && outcome.contains("weapon"), "got: {outcome}");
+
+        unsafe { my_lisp_embed_session_free(session) };
+    }
+
+    #[test]
+    fn typed_unary_host_mechanism_rejects_non_handle_argument_and_wrong_arity() {
+        let session = my_lisp_embed_session_new();
+        unsafe {
+            my_lisp_embed_register_unary(
+                session,
+                CString::new("гравець-живий?").unwrap().as_ptr(),
+                CString::new("player").unwrap().as_ptr(),
+                Some(player_present_fact),
+                ptr::null_mut(),
+            );
+        }
+
+        assert!(eval(session, "(гравець-живий? 42)").starts_with("error: "));
+        assert!(eval(session, "(гравець-живий?)").starts_with("error: "));
+        assert!(eval(session, "(гравець-живий? 1 2)").starts_with("error: "));
 
         unsafe { my_lisp_embed_session_free(session) };
     }
