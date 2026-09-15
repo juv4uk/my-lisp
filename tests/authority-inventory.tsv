@@ -11,7 +11,7 @@ crates/my-lisp/tests/mccarthy.rs	read_parses_text_into_data_without_evaluating_i
 crates/my-lisp/tests/mccarthy.rs	read_rejects_non_string_arguments_and_multi_expression_input	semantic-authority	reader-errors	future Lisp witness rows	pending
 crates/my-lisp/tests/mccarthy.rs	print_appends_to_output_and_returns_its_argument	mixed	value+output semantics	split semantic witness from transcript mechanism	pending
 crates/my-lisp/tests/mccarthy.rs	tail_recursion_uses_constant_rust_stack	mechanism	stack-safety	remain host-owned	retained
-crates/my-lisp/tests/ukrainian_api_docs.rs	istina_i_khyba_ie_imenamy_tyh_samykh_kanonichnykh_znachen	semantic-authority	peer-surface-values	semantic registry + Lisp witness	pending
+crates/my-lisp/tests/ukrainian_api_docs.rs	istina_i_khyba_ie_imenamy_tyh_samykh_znachen	semantic-authority	peer-surface-values	semantic registry + Lisp witness	pending
 crates/my-lisp/tests/rivnopravnist_mov.rs	peer arithmetic surface evaluation assertion	semantic-authority	peer-surface-equivalence	semantic registry + Lisp witness	pending
 tests/fixtures/authority-guard/forbidden-semantic.rs	host_authored_semantic_expectation_is_forbidden	semantic-authority	guard-negative-fixture	Lisp-owned witness corpus	fixture
 tests/fixtures/authority-guard/allowed-mechanism.rs	host_mechanism_assertion_is_allowed	mechanism	guard-positive-fixture	remain host-owned	fixture
@@ -56,3 +56,4 @@ crates/my-lisp/tests/machine_block_roundtrip.rs	composed_machine_block_round_tri
 crates/my-lisp/tests/machine_block_roundtrip.rs	independent_decoder_fails_closed_on_truncated_machine_block	mechanism	machine-block-roundtrip-fail-closed	independent test decoder	migrated
 crates/my-lisp/tests/machine_lowering_boundary.rs	semantic_0104_lowers_through_structured_forms_without_legacy_byte_wrappers	observer	machine-lowering-boundary	lib/machine/lowering/semantic-x86-64.lisp + lib/machine/admission/x86-64.lisp	migrated
 crates/my-lisp-host/tests/native_lisp_bytes.rs	laboratory_raw_host_witnesses_materialize_only_admitted_structured_forms	mechanism	raw-native-execution-mechanism	lib/machine/admission/x86-64.lisp + crates/my-lisp-host/src/native_exec.rs	retained
+crates/my-lisp/tests/machine_minimal_profile.rs	structural_car_profile_is_projected_from_the_existing_semantic_witness	observer	machine-minimal-runtime-profile	lib/machine/profile/minimal-runtime-x86-64.lisp	migrated
