@@ -18,3 +18,7 @@ tests/fixtures/authority-guard/allowed-mechanism.rs	host_mechanism_assertion_is_
 crates/my-lisp/tests/skylake_inventory_contract.rs	i5_6400_inventory_is_explicitly_skylake_client_and_fail_closed	observer	machine-isa-admission	lib/machine/cpu/intel-core-i5-6400-inventory.lisp	migrated
 crates/my-lisp/tests/skylake_inventory_contract.rs	admitted_inventory_names_only_existing_lisp_machine_catalogues	observer	machine-isa-admission	lib/machine/cpu/intel-core-i5-6400-inventory.lisp	migrated
 crates/my-lisp/tests/skylake_inventory_contract.rs	avx_admission_keeps_os_state_gate_explicit	observer	machine-isa-admission	lib/machine/cpu/intel-core-i5-6400-inventory.lisp	migrated
+crates/my-lisp/tests/machine_noninterference_contract.rs	machine_layer_has_explicit_one_way_authority_contract	observer	machine-authority-boundary	lib/machine/authority-boundary.lisp	migrated
+crates/my-lisp/tests/machine_noninterference_contract.rs	public_api_discovery_uses_lisp_owned_machine_classification	observer	machine-public-api-boundary	lib/machine/authority-boundary.lisp	migrated
+crates/my-lisp/tests/machine_noninterference_contract.rs	machine_evidence_cannot_mint_semantic_identity_or_peer_surfaces	observer	machine-semantic-noninterference	lib/surface/semantic-registry.lisp	migrated
+crates/my-lisp/tests/machine_noninterference_contract.rs	reverse_authority_edge_has_an_executable_negative_witness	observer	machine-reverse-authority-negative	scripts/machine-authority-guard.lisp	migrated
