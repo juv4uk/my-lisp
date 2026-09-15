@@ -365,6 +365,32 @@ fn lisp_encodes_not_and_neg_via_group3_modrm_with_independent_decode() {
     );
 }
 
+/// #176 continued: TEST r/m64, r64 (opcode 0x85 /r) shares the group-1 ALU
+/// family's exact REX.W+opcode+ModRM shape, confirmed against #175's
+/// pinned XED evidence for TEST's own `MOD[0b11] MOD=3 REG[rrr] RM[nnn]`
+/// form -- reusing x86-encode-alu-r64-r64 was a deliberate choice, not an
+/// assumption that any group-1-shaped opcode automatically belongs there.
+#[test]
+fn lisp_encodes_test_r64_r64_matching_pinned_opcode() {
+    let mut session = encoder_session();
+    assert_eq!(
+        eval_bytes(
+            "(x86-encode-test-r64-r64 (quote rax) (quote rbx))",
+            &mut session
+        ),
+        "(72 133 216)",
+        "133 decimal must equal 0x85"
+    );
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("PATTERN   : 0x85 MOD[0b11] MOD=3 REG[rrr] RM[nnn]"),
+        "pinned XED evidence must contain the exact TEST pattern this encoder was checked against"
+    );
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");
