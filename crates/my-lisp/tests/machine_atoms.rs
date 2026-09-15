@@ -87,13 +87,18 @@ fn machine_block_composition_is_deterministic_and_encodes_via_176_path() {
 
 #[test]
 fn unadmitted_machine_atom_fails_closed_before_byte_materialization() {
+    // `add-r64-r64` itself is admitted for any register pair (#176), so this
+    // uses `mov-r64-imm64` with a register outside its still-narrow
+    // rax/rcx-only admission -- a real instruction, valid registers, just
+    // not on #176's admitted list, the same shape of gap this test always
+    // meant to exercise.
     let mut session = machine_session();
     assert_eq!(
         eval_value(
-            "(x86-encode-machine-block (machine-block-one (x86-add-r64-r64 (quote rax) (quote rbx))))",
+            "(x86-encode-machine-block (machine-block-one (x86-mov-r64-imm64 (quote rbx) 1)))",
             &mut session,
         ),
-        "(rejected unadmitted-machine-form (add-r64-r64 rax rbx))"
+        "(rejected unadmitted-machine-form (mov-r64-imm64 rbx 1))"
     );
 }
 

@@ -35,6 +35,34 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
             "ADD",
             "x86-encode-add-r64-r64 covers the register/register form only, of ADD's 18 XED forms",
         ),
+        (
+            "OR",
+            "x86-encode-or-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+        ),
+        (
+            "AND",
+            "x86-encode-and-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+        ),
+        (
+            "SUB",
+            "x86-encode-sub-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+        ),
+        (
+            "XOR",
+            "x86-encode-xor-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+        ),
+        (
+            "CMP",
+            "x86-encode-cmp-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+        ),
+        (
+            "PUSH",
+            "x86-encode-push-r64 covers the single-register 0x50+rd form only; PUSH imm/r-m64-memory/segment forms are pending",
+        ),
+        (
+            "POP",
+            "x86-encode-pop-r64 covers the single-register 0x58+rd form only; POP r/m64-memory/segment forms are pending",
+        ),
     ]
     .into_iter()
     .collect()
