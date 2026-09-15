@@ -166,7 +166,7 @@
              (t
               (list (quote mem64-disp8)
                     typed-base
-                    typed-displacement))))))))))
+                    typed-displacement)))))))))
 
 (def x86-as-mem64-disp8
   (lambda (operand)
