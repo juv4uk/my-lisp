@@ -152,6 +152,15 @@
   (lambda (destination source)
     (x86-encode-alu-r64-r64 57 destination source)))
 
+; TEST r/m64, r64 (opcode 0x85 /r, mod=3 register/register): destination AND
+; source, result discarded, flags set only -- per #175's pinned XED evidence
+; (`PATTERN : 0x85 MOD[0b11] MOD=3 REG[rrr] RM[nnn]`). Same REX.W+opcode+
+; ModRM shape used by the group-1 ALU family, so it reuses x86-encode-alu-r64-r64
+; directly rather than duplicating the REX/ModRM arithmetic.
+(def x86-encode-test-r64-r64
+  (lambda (destination source)
+    (x86-encode-alu-r64-r64 133 destination source)))
+
 ; PUSH r64 (opcode 0x50+rd, ICLASS PUSH: `0b0101_0 SRM[rrr] ... DF64()`) and
 ; POP r64 (opcode 0x58+rd, ICLASS POP: `0b0101_1 SRM[rrr] ... DF64()`), per
 ; #175's pinned XED evidence. Both default to 64-bit operand size in long

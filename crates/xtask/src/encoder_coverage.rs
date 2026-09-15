@@ -56,6 +56,10 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
             "x86-encode-cmp-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
         ),
         (
+            "TEST",
+            "x86-encode-test-r64-r64 covers the register/register form (0x85 /r) only, reusing ADD's group-1 shape",
+        ),
+        (
             "PUSH",
             "x86-encode-push-r64 covers the single-register 0x50+rd form only; PUSH imm/r-m64-memory/segment forms are pending",
         ),

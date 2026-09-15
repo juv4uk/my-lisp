@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 14)
+  (partial-count 15)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -3506,8 +3506,8 @@
   (coverage
     (iclass "TEST")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-test-r64-r64 covers the register/register form (0x85 /r) only, reusing ADD's group-1 shape"))
   (coverage
     (iclass "UCOMISD")
     (extension SSE2)
