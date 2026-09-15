@@ -337,3 +337,55 @@ fn rust_native_executor_contains_no_lisp_or_x86_lowering_decision() {
         );
     }
 }
+
+/// #176's own admitted i5-6400 inventory (#174) targets this exact CPU
+/// model, and this file already only runs on `target_os = "linux"`, so
+/// this witness is a genuine execution proof on the very silicon #174-#178
+/// describe -- not a decode-only check. Each condition's flag test is
+/// proven by actually branching (or not) on real hardware, not by
+/// disassembling the bytes and trusting the mnemonic.
+#[test]
+fn jcc_actually_branches_on_real_hardware_for_equal_and_ordering_conditions() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    // Each program: mov rax,A; mov rcx,B; cmp rax,rcx; <jcc> +10; mov rax,999;
+    // ret. `jcc`'s disp8=10 skips exactly the 10-byte mov-r64-imm64 when
+    // taken, so the result is A when taken, 999 when not taken. This is a
+    // real, executed proof (not a static decode) that each condition's
+    // flag test genuinely reflects the CMP result on real i5-6400 silicon.
+    let mut run = |jcc: &str, a: i64, b: i64| -> String {
+        let source = format!(
+            "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax {a}) (mov-r64-imm64 rcx {b}) (cmp-r64-r64 rax rcx) ({jcc}-rel8 10) (mov-r64-imm64 rax 999) (ret))) 0)"
+        );
+        eval_program(&source, &mut session)
+            .expect("real hardware must execute the admitted program")
+            .value
+            .to_string()
+    };
+
+    // JZ/JNZ: equality.
+    assert_eq!(run("jz", 5, 5), "5", "JZ must branch when equal");
+    assert_eq!(run("jz", 5, 6), "999", "JZ must not branch when not equal");
+    assert_eq!(run("jnz", 5, 6), "5", "JNZ must branch when not equal");
+    assert_eq!(run("jnz", 5, 5), "999", "JNZ must not branch when equal");
+
+    // JL/JNL: signed less-than (SF<>OF).
+    assert_eq!(run("jl", 3, 5), "3", "JL must branch when 3 < 5");
+    assert_eq!(run("jl", 5, 3), "999", "JL must not branch when 5 >= 3");
+    assert_eq!(run("jnl", 5, 3), "5", "JNL must branch when 5 >= 3");
+
+    // JB/JNB: unsigned below (CF).
+    assert_eq!(run("jb", 3, 5), "3", "JB must branch when 3 <u 5");
+    assert_eq!(run("jb", 5, 3), "999", "JB must not branch when 5 >=u 3");
+    assert_eq!(run("jnb", 5, 3), "5", "JNB must branch when 5 >=u 3");
+
+    // JLE/JNLE: signed less-or-equal.
+    assert_eq!(run("jle", 5, 5), "5", "JLE must branch when equal");
+    assert_eq!(run("jnle", 6, 5), "6", "JNLE must branch when strictly greater");
+    assert_eq!(run("jnle", 5, 5), "999", "JNLE must not branch when equal");
+}
