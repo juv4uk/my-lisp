@@ -24,3 +24,7 @@ crates/xtask/tests/xed_import_cli.rs	malformed_form_fails_closed	observer	xed-ma
 crates/xtask/tests/xed_import_cli.rs	synthetic_mnemonic_cannot_mint_a_semantic_id_or_peer_surface	observer	xed-machine-evidence-import	lib/machine/xed/generated/machine-evidence.lisp	migrated
 crates/xtask/tests/xed_import_cli.rs	duplicate_conflicting_form_produces_authority_boundary_diagnostic	observer	xed-machine-evidence-import	lib/machine/xed/generated/machine-evidence.lisp	migrated
 crates/xtask/tests/xed_import_cli.rs	provenance_extension_mapping_matches_every_admitted_extension	observer	xed-machine-evidence-import	lib/machine/xed/provenance.lisp	migrated
+crates/my-lisp/tests/machine_noninterference_contract.rs	machine_layer_has_explicit_one_way_authority_contract	observer	machine-authority-boundary	lib/machine/authority-boundary.lisp	migrated
+crates/my-lisp/tests/machine_noninterference_contract.rs	public_api_discovery_uses_lisp_owned_machine_classification	observer	machine-public-api-boundary	lib/machine/authority-boundary.lisp	migrated
+crates/my-lisp/tests/machine_noninterference_contract.rs	machine_evidence_cannot_mint_semantic_identity_or_peer_surfaces	observer	machine-semantic-noninterference	lib/surface/semantic-registry.lisp	migrated
+crates/my-lisp/tests/machine_noninterference_contract.rs	reverse_authority_edge_has_an_executable_negative_witness	observer	machine-reverse-authority-negative	scripts/machine-authority-guard.lisp	migrated
