@@ -23,7 +23,14 @@
 type GuestIdentityWin64 = unsafe extern "system" fn(*mut u8) -> u64;
 type GuestIdentitySysv64 = unsafe extern "sysv64" fn(*mut u8) -> u64;
 
+// `mov rax, rdi; ret` -- reads the SysV64 first-argument register.
 const MOV_RAX_RDI_RET: [u8; 4] = [0x48, 0x89, 0xf8, 0xc3];
+// `mov rax, rcx; ret` -- reads the Win64 first-argument register. A
+// positive pair test (this program through the Win64-convention pointer,
+// MOV_RAX_RDI_RET through the SysV64-convention pointer) proves which
+// register each convention actually delivers arg1 through, without
+// assuming anything about what the "wrong" register happens to hold.
+const MOV_RAX_RCX_RET: [u8; 4] = [0x48, 0x89, 0xc8, 0xc3];
 
 mod raw_windows_exec {
     use std::ffi::c_void;
@@ -110,32 +117,52 @@ mod raw_windows_exec {
 }
 
 #[test]
-fn win64_calling_convention_does_not_deliver_the_arena_pointer_to_rdi() {
-    let code = raw_windows_exec::ExecutableGuestCode::install(&MOV_RAX_RDI_RET);
-    let function: GuestIdentityWin64 = unsafe { std::mem::transmute(code.as_ptr()) };
-
+fn win64_calling_convention_delivers_the_arena_pointer_to_rcx_not_rdi() {
     let marker: u64 = 0xDEAD_BEEF_CAFE_F00D;
-    let observed = unsafe { function(marker as *mut u8) };
 
+    // Positive proof: calling the RCX-reading program through the Win64
+    // convention observes the marker...
+    let rcx_reader = raw_windows_exec::ExecutableGuestCode::install(&MOV_RAX_RCX_RET);
+    let function: GuestIdentityWin64 = unsafe { std::mem::transmute(rcx_reader.as_ptr()) };
+    let observed_via_rcx = unsafe { function(marker as *mut u8) };
+    assert_eq!(
+        observed_via_rcx, marker,
+        "extern \"system\" (Win64 ABI) must deliver arg1 via RCX on Windows x86-64"
+    );
+
+    // ...while calling the RDI-reading program through the same Win64
+    // convention does not, without assuming anything about what RDI
+    // happens to hold in that case.
+    let rdi_reader = raw_windows_exec::ExecutableGuestCode::install(&MOV_RAX_RDI_RET);
+    let function: GuestIdentityWin64 = unsafe { std::mem::transmute(rdi_reader.as_ptr()) };
+    let observed_via_rdi = unsafe { function(marker as *mut u8) };
     assert_ne!(
-        observed, marker,
+        observed_via_rdi, marker,
         "extern \"system\" (Win64 ABI) must NOT deliver arg1 via RDI on Windows x86-64 -- \
          if this assertion fails, the ABI hypothesis is wrong and the real root cause is elsewhere"
     );
 }
 
 #[test]
-fn sysv64_calling_convention_delivers_the_arena_pointer_to_rdi() {
-    let code = raw_windows_exec::ExecutableGuestCode::install(&MOV_RAX_RDI_RET);
-    let function: GuestIdentitySysv64 = unsafe { std::mem::transmute(code.as_ptr()) };
-
+fn sysv64_calling_convention_delivers_the_arena_pointer_to_rdi_not_rcx() {
     let marker: u64 = 0xDEAD_BEEF_CAFE_F00D;
-    let observed = unsafe { function(marker as *mut u8) };
 
+    let rdi_reader = raw_windows_exec::ExecutableGuestCode::install(&MOV_RAX_RDI_RET);
+    let function: GuestIdentitySysv64 = unsafe { std::mem::transmute(rdi_reader.as_ptr()) };
+    let observed_via_rdi = unsafe { function(marker as *mut u8) };
     assert_eq!(
-        observed, marker,
+        observed_via_rdi, marker,
         "extern \"sysv64\" must deliver arg1 via RDI on Windows x86-64, matching the \
          Lisp-owned x86-64 guest ABI (arena pointer = RDI) -- this is the fix for the \
          STATUS_HEAP_CORRUPTION finding"
+    );
+
+    let rcx_reader = raw_windows_exec::ExecutableGuestCode::install(&MOV_RAX_RCX_RET);
+    let function: GuestIdentitySysv64 = unsafe { std::mem::transmute(rcx_reader.as_ptr()) };
+    let observed_via_rcx = unsafe { function(marker as *mut u8) };
+    assert_ne!(
+        observed_via_rcx, marker,
+        "extern \"sysv64\" must NOT deliver arg1 via RCX on Windows x86-64 -- \
+         if this assertion fails, the ABI hypothesis is wrong and the real root cause is elsewhere"
     );
 }
