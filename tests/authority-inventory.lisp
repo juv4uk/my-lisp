@@ -10,3 +10,4 @@
 (authority "crates/my-lisp/tests/rivnopravnist_mov.rs" semantic-authority)
 (authority "tests/fixtures/authority-guard/forbidden-semantic.rs" semantic-authority)
 (authority "tests/fixtures/authority-guard/allowed-mechanism.rs" mechanism)
+(authority "crates/my-lisp/tests/skylake_inventory_contract.rs" observer)

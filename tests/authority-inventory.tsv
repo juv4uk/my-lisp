@@ -15,3 +15,6 @@ crates/my-lisp/tests/ukrainian_api_docs.rs	istina_i_khyba_ie_imenamy_tyh_samykh_
 crates/my-lisp/tests/rivnopravnist_mov.rs	peer arithmetic surface evaluation assertion	semantic-authority	peer-surface-equivalence	semantic registry + Lisp witness	pending
 tests/fixtures/authority-guard/forbidden-semantic.rs	host_authored_semantic_expectation_is_forbidden	semantic-authority	guard-negative-fixture	Lisp-owned witness corpus	fixture
 tests/fixtures/authority-guard/allowed-mechanism.rs	host_mechanism_assertion_is_allowed	mechanism	guard-positive-fixture	remain host-owned	fixture
+crates/my-lisp/tests/skylake_inventory_contract.rs	i5_6400_inventory_is_explicitly_skylake_client_and_fail_closed	observer	machine-isa-admission	lib/machine/cpu/intel-core-i5-6400-inventory.lisp	migrated
+crates/my-lisp/tests/skylake_inventory_contract.rs	admitted_inventory_names_only_existing_lisp_machine_catalogues	observer	machine-isa-admission	lib/machine/cpu/intel-core-i5-6400-inventory.lisp	migrated
+crates/my-lisp/tests/skylake_inventory_contract.rs	avx_admission_keeps_os_state_gate_explicit	observer	machine-isa-admission	lib/machine/cpu/intel-core-i5-6400-inventory.lisp	migrated
