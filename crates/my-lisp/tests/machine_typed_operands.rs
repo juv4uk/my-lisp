@@ -41,6 +41,10 @@ fn typed_operands_are_explicit_lisp_machine_data() {
     for (source, expected) in [
         ("(x86-gpr64 (quote rax))", "(gpr64 rax)"),
         ("(x86-u64-imm 42)", "(u64-imm 42)"),
+        (
+            "(x86-u64-imm 18446744073709551615)",
+            "(u64-imm 18446744073709551615)",
+        ),
         ("(x86-disp8 -8)", "(disp8 -8)"),
         (
             "(x86-mem64-disp8 (x86-gpr64 (quote rdi)) (x86-disp8 8))",
@@ -63,6 +67,14 @@ fn invalid_operand_values_fail_closed_before_machine_form_creation() {
         (
             "(x86-u64-imm -1)",
             "(rejected machine-operand u64-imm -1)",
+        ),
+        (
+            "(x86-u64-imm 18446744073709551616)",
+            "(rejected machine-operand u64-imm 18446744073709551616)",
+        ),
+        (
+            "(x86-u64-imm 1/2)",
+            "(rejected machine-operand u64-imm 1/2)",
         ),
         (
             "(x86-disp8 128)",
