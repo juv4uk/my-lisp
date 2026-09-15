@@ -10,6 +10,14 @@
 # all text/eol handling for vendor/ so checkouts are always byte-identical.
 vendor/** -text -diff
 
+# lib/machine/xed/vendor/ holds verbatim upstream Intel XED datafiles (#175),
+# vendored byte-for-byte at a pinned commit for reproducible-evidence
+# purposes. Their own trailing whitespace and EOF blank lines are upstream
+# formatting, not something this repo introduced or should "fix" -- doing so
+# would make the vendored copy diverge from the pinned source it exists to
+# match. Exempt them from the repo-wide whitespace/diff-hygiene gate.
+lib/machine/xed/vendor/** -text -diff
+
 # GitHub Linguist does not know my-lisp or WSM yet. Common Lisp is the
 # temporary syntax/statistics profile for my-lisp source files; this is
 # classification, not a claim of language identity.
