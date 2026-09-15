@@ -21,6 +21,7 @@ fn machine_session() -> Session {
     load_core_library(&mut session).expect("core must bootstrap before machine atoms");
     load_lisp_file("lib/machine/block.lisp", &mut session);
     load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/operands/x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
     load_lisp_file("lib/machine/atoms/x86-64.lisp", &mut session);
     session
