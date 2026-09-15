@@ -36,3 +36,5 @@ crates/xtask/tests/encoder_coverage_cli.rs	every_admitted_extension_iclass_pair_
 crates/xtask/tests/encoder_coverage_cli.rs	every_coverage_entry_has_an_allowed_status	observer	x86-encoder-coverage	lib/machine/encoding/coverage.lisp	migrated
 crates/xtask/tests/encoder_coverage_cli.rs	stale_partial_iclass_not_in_evidence_fails_closed	observer	x86-encoder-coverage	lib/machine/encoding/coverage.lisp	migrated
 crates/xtask/tests/encoder_coverage_cli.rs	minimal_evidence_with_ret_near_is_marked_partial	observer	x86-encoder-coverage	lib/machine/encoding/coverage.lisp	migrated
+crates/my-lisp/tests/machine_admission_adversarial.rs	canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_before_host	mechanism	machine-admission-fail-closed	lib/machine/admission/x86-64.lisp	retained
+crates/my-lisp/tests/x86_64_lisp_encoder.rs	lisp_encodes_the_alu_register_family_with_pinned_opcodes	mechanism	x86-encoder-pinned-evidence	lib/machine/xed/vendor/base/xed-isa.txt	migrated
