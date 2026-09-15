@@ -21,16 +21,12 @@
          (t ())))
       (t ()))))
 
+; Deliberately call an unbound diagnostic symbol.  The language error itself
+; therefore carries the authority-boundary diagnostic even when stdout is
+; buffered; CI observes the non-zero exit plus this exact diagnostic name.
 (def fail-machine-authority
   (lambda (row)
-    (let ((diagnostic
-            (print
-              (list
-                (quote machine-authority-boundary-violation)
-                row
-                (quote semantic-to-machine)
-                "Machine/backend facts may consume semantic identity; reverse authority is forbidden. See #150."))))
-      (car ()))))
+    (machine-authority-boundary-violation row)))
 
 (def check-machine-edges
   (lambda (rows)
