@@ -1,0 +1,15 @@
+name: machine block roundtrip focused
+
+on:
+  push:
+    branches: [feat/177-machine-block-roundtrip]
+  workflow_dispatch:
+
+jobs:
+  machine-block-roundtrip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p my-lisp --test machine_block_roundtrip
