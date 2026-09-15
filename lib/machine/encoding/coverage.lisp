@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 15)
+  (partial-count 31)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -1316,13 +1316,13 @@
   (coverage
     (iclass "JB")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jb-rel8 covers the rel8 form (0x72) only; the rel32 form is pending"))
   (coverage
     (iclass "JBE")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jbe-rel8 covers the rel8 form (0x76) only; the rel32 form is pending"))
   (coverage
     (iclass "JCXZ")
     (extension X86-BASE)
@@ -1336,13 +1336,13 @@
   (coverage
     (iclass "JL")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jl-rel8 covers the rel8 form (0x7C) only; the rel32 form is pending"))
   (coverage
     (iclass "JLE")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jle-rel8 covers the rel8 form (0x7E) only; the rel32 form is pending"))
   (coverage
     (iclass "JMP")
     (extension X86-BASE)
@@ -1356,53 +1356,53 @@
   (coverage
     (iclass "JNB")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jnb-rel8 covers the rel8 form (0x73) only; the rel32 form is pending"))
   (coverage
     (iclass "JNBE")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jnbe-rel8 covers the rel8 form (0x77) only; the rel32 form is pending"))
   (coverage
     (iclass "JNL")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jnl-rel8 covers the rel8 form (0x7D) only; the rel32 form is pending"))
   (coverage
     (iclass "JNLE")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jnle-rel8 covers the rel8 form (0x7F) only; the rel32 form is pending"))
   (coverage
     (iclass "JNO")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jno-rel8 covers the rel8 form (0x71) only; the rel32 form is pending"))
   (coverage
     (iclass "JNP")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jnp-rel8 covers the rel8 form (0x7B) only; the rel32 form is pending"))
   (coverage
     (iclass "JNS")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jns-rel8 covers the rel8 form (0x79) only; the rel32 form is pending"))
   (coverage
     (iclass "JNZ")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jnz-rel8 covers the rel8 form (0x75) only; the rel32 form is pending"))
   (coverage
     (iclass "JO")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jo-rel8 covers the rel8 form (0x70) only; the rel32 form is pending"))
   (coverage
     (iclass "JP")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jp-rel8 covers the rel8 form (0x7A) only; the rel32 form is pending"))
   (coverage
     (iclass "JRCXZ")
     (extension X86-BASE)
@@ -1411,13 +1411,13 @@
   (coverage
     (iclass "JS")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-js-rel8 covers the rel8 form (0x78) only; the rel32 form is pending"))
   (coverage
     (iclass "JZ")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jz-rel8 covers the rel8 form (0x74) only; the rel32 form is pending"))
   (coverage
     (iclass "LAHF")
     (extension X86-BASE)

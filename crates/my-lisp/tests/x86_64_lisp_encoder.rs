@@ -508,6 +508,88 @@ fn lisp_encodes_mov_disp8_for_every_gpr_base_with_correct_negative_displacement(
     }
 }
 
+/// Independent decoder for the Jcc rel8 family: a single opcode byte in
+/// 0x70-0x7F (low nibble is the condition code, no REX prefix -- this is
+/// address-size/register-independent control transfer) followed by one
+/// signed relative-displacement byte. From scratch, independent of the
+/// encoder's own construction arithmetic.
+fn decode_jcc_rel8(bytes: &[u8]) -> Option<(u8, i32)> {
+    let [opcode, disp] = bytes else { return None };
+    if (opcode & 0xF0) != 0x70 {
+        return None;
+    }
+    let condition_code = opcode & 0x0F;
+    let displacement = *disp as i8 as i32;
+    Some((condition_code, displacement))
+}
+
+/// #176 continued: the 16-condition Jcc rel8 family (opcode 0x70+cc) --
+/// the control-transfer half of the decision effect TEST/CMP already
+/// provide. Per #175's pinned XED evidence, the ICLASS-to-opcode-offset
+/// order is JO,JNO,JB,JNB,JZ,JNZ,JBE,JNBE,JS,JNS,JP,JNP,JL,JNL,JLE,JNLE;
+/// each is verified against its own condition-code offset and the full
+/// disp8 boundary, reusing x86-disp8-byte's already-proven two's-
+/// complement conversion. Independently cross-checked with ndisasm (which
+/// prints some of these under synonym mnemonics -- jc/jb, jnc/jnb, jna/
+/// jbe, jpe/jp are the same opcode, not a discrepancy).
+#[test]
+fn lisp_encodes_the_full_jcc_rel8_family_with_correct_condition_codes_and_displacement() {
+    let mut session = encoder_session();
+    let mnemonics = [
+        ("jo", 0u8),
+        ("jno", 1),
+        ("jb", 2),
+        ("jnb", 3),
+        ("jz", 4),
+        ("jnz", 5),
+        ("jbe", 6),
+        ("jnbe", 7),
+        ("js", 8),
+        ("jns", 9),
+        ("jp", 10),
+        ("jnp", 11),
+        ("jl", 12),
+        ("jnl", 13),
+        ("jle", 14),
+        ("jnle", 15),
+    ];
+
+    for (mnemonic, expected_cc) in mnemonics {
+        for displacement in [-128i32, -1, 0, 1, 127] {
+            let form = format!("(x86-encode-{mnemonic}-rel8 {displacement})");
+            let rendered = eval_bytes(&form, &mut session);
+            let bytes: Vec<u8> = rendered
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+                .split_whitespace()
+                .map(|token| token.parse().expect("byte must be a small integer"))
+                .collect();
+
+            assert_eq!(bytes.len(), 2, "{form} must always be opcode+disp8, 2 bytes");
+            let (condition_code, decoded_disp) = decode_jcc_rel8(&bytes)
+                .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+            assert_eq!(condition_code, expected_cc, "{form}: {bytes:?}");
+            assert_eq!(
+                decoded_disp, displacement,
+                "{form} round-tripped to disp {decoded_disp}, from bytes {bytes:?}"
+            );
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    for iclass in [
+        "JO", "JNO", "JB", "JNB", "JZ", "JNZ", "JBE", "JNBE", "JS", "JNS", "JP", "JNP", "JL",
+        "JNL", "JLE", "JNLE",
+    ] {
+        assert!(
+            vendor_source.contains(&format!("ICLASS    : {iclass}")),
+            "pinned XED evidence must name ICLASS {iclass}"
+        );
+    }
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");
