@@ -15,7 +15,7 @@ void my_lisp_embed_free_string(char *);
 void my_lisp_embed_session_free(MyLispEmbedSession *);
 ```
 
-The current ABI version is `3`.  A native host must verify it before using
+The current ABI version is `4`.  A native host must verify it before using
 the other exports.
 
 `my_lisp_embed_eval` evaluates a complete UTF-8 source fragment against the
@@ -50,3 +50,34 @@ arguments and opaque handles require a later contract.
 ABI v3 adds `my_lisp_embed_bind_host_handle`: the host may bind an opaque
 value such as `гравець` without exposing its numeric token to Lisp source or
 REPL output.
+
+## Typed unary mechanism bridge (#181)
+
+ABI v4 adds a second, still deliberately narrow bridge: a host fact or
+action that takes exactly one opaque handle argument of a fixed `kind`
+(e.g. `player`):
+
+```c
+int32_t my_lisp_embed_register_unary(
+    MyLispEmbedSession *session,
+    const char *utf8_surface,
+    const char *utf8_kind,
+    MyLispEmbedUnaryFn callback,
+    void *context);
+```
+
+The bound Lisp function accepts exactly one argument, which must already be
+an opaque handle produced by `my_lisp_embed_bind_host_handle` with a `kind`
+that matches `utf8_kind` exactly. Anything else — a handle of a different
+`kind`, a non-handle value, or the wrong argument count — becomes an
+ordinary Lisp-catchable `error:` result; it never aborts the host process or
+falls through to a second, host-defined dispatch layer. The callback itself
+receives the handle's `u64` token directly (not a fresh tagged-value
+argument protocol), since the only argument shape this mechanism admits is
+already fixed by `kind` at registration time.
+
+Like the nullary bridge, the result stays restricted to canonical `()` or
+`t` via `out_result` for this first typed-unary increment. A mechanism that
+needs to hand back a fresh opaque handle (rather than a boolean fact) is a
+later, explicit ABI increment, not something to improvise ad hoc against
+this one.
