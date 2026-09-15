@@ -8,7 +8,8 @@
 ; Current claim boundaries:
 ;   structural-v0: (car (cons 2 3)) -> 2 using one 16-byte pair arena.
 ;   conditional-growth-v0: (cond ((eq A B) THEN) (t ELSE)) for bounded u64.
-; Neither is a full allocator, GC, label resolver, calling convention, compiler,
+;   conditional-structural-v0: bounded COND with CAR(CONS ...) in both arms.
+; None is a full allocator, GC, label resolver, calling convention, compiler,
 ; or self-hosting claim.
 
 (def x86-minimal-structural-car-dependencies
@@ -48,6 +49,33 @@
        ret
        required-for-minimal-runtime
        "return the selected bounded result through the guest ABI"))))
+
+(def x86-minimal-eq-cond-car-cons-dependencies
+  (quote
+    ((materialize-values
+       mov-r64-imm64
+       required-for-minimal-runtime
+       "materialize bounded EQ operands and branch-local pair fields, including r8-r11")
+     (compare-equality
+       cmp-r64-r64
+       required-for-minimal-runtime
+       "produce the equality condition required by the bounded EQ predicate")
+     (branch-on-false
+       jnz-rel8
+       required-for-minimal-runtime
+       "select the ELSE structural arm when bounded equality is false")
+     (store-pair-field
+       mov-mem-disp8-r64
+       required-for-minimal-runtime
+       "store the selected branch pair into the native-call arena")
+     (load-pair-car
+       mov-r64-mem-disp8
+       required-for-minimal-runtime
+       "load the selected branch CAR result from the bounded pair")
+     (return-result
+       ret
+       required-for-minimal-runtime
+       "return the selected structural result through the guest ABI"))))
 
 (def x86-minimal-family-member?
   (lambda (family families)
@@ -158,3 +186,42 @@
           left right then-value else-value))
       (list (quote dependencies) x86-minimal-eq-cond-dependencies)
       (list (quote claim) (quote bounded-conditional-growth-lower-bound)))))
+
+(def x86-minimal-eq-cond-car-cons-forms
+  (lambda (left right then-car then-cdr else-car else-cdr)
+    (x86-lower-eq-cond-car-cons-u64-forms
+      left right then-car then-cdr else-car else-cdr)))
+
+(def x86-minimal-eq-cond-car-cons-observed-families
+  (lambda (left right then-car then-cdr else-car else-cdr)
+    (x86-minimal-unique-form-families
+      (x86-minimal-eq-cond-car-cons-forms
+        left right then-car then-cdr else-car else-cdr)
+      (quote ()))))
+
+(def x86-minimal-eq-cond-car-cons-dependency-families
+  (lambda ()
+    (x86-minimal-map-row-second x86-minimal-eq-cond-car-cons-dependencies)))
+
+(def x86-minimal-eq-cond-car-cons-dependency-classes
+  (lambda ()
+    (x86-minimal-map-row-third x86-minimal-eq-cond-car-cons-dependencies)))
+
+(def x86-minimal-eq-cond-car-cons-profile
+  (lambda (left right then-car then-cdr else-car else-cdr)
+    (list
+      (list (quote witness) (quote bounded-eq-cond-car-cons-u64))
+      (list
+        (quote forms)
+        (x86-minimal-eq-cond-car-cons-forms
+          left right then-car then-cdr else-car else-cdr))
+      (list
+        (quote observed-families)
+        (x86-minimal-eq-cond-car-cons-observed-families
+          left right then-car then-cdr else-car else-cdr))
+      (list (quote dependencies) x86-minimal-eq-cond-car-cons-dependencies)
+      (list (quote arena-lifetime) (quote native-call))
+      (list (quote escape) (quote forbidden))
+      (list
+        (quote claim)
+        (quote bounded-conditional-structural-composition-lower-bound)))))
