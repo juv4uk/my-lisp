@@ -5,10 +5,9 @@ This is a discovery tool, not semantic authority.  It observes canonical
 ``lib/**/*.lisp`` source and reports top-level ``def`` / ``defmacro`` forms.
 Visibility (public/internal/compatibility) is a separate governance decision.
 Surface spellings remain owned exclusively by ``lib/surface/semantic-registry.lisp``.
-Machine/ISA internals under ``lib/machine`` are deliberately excluded: they are
-physical target data and lowering machinery, not candidates for the public
-language API.  The generated report is review input only until visibility is
-explicitly ratified.
+Machine/ISA exclusion is read from the Lisp-owned machine authority contract;
+Python transports that classification but does not own it.  The generated
+report is review input only until visibility is explicitly ratified.
 """
 
 from __future__ import annotations
@@ -16,12 +15,17 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
+import re
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIB_ROOT = REPO_ROOT / "lib"
 REPORT = REPO_ROOT / "docs" / "generated" / "public-api-discovery.md"
-EXCLUDED_TOP_LEVEL_DIRS = {"generated", "surface", "machine"}
+MACHINE_AUTHORITY = LIB_ROOT / "machine" / "authority-boundary.lisp"
+STATIC_EXCLUDED_TOP_LEVEL_DIRS = {"generated", "surface"}
+PUBLIC_API_EXCLUDED_ROOT = re.compile(
+    r"^\s*\(public-api-excluded-root\s+lib/([^/\s()]+)\)\s*$"
+)
 
 
 @dataclass(frozen=True, order=True)
@@ -137,11 +141,28 @@ def scan_file(path: Path, *, display_name: str | None = None) -> list[Definition
     )
 
 
+def classified_excluded_top_level_dirs() -> set[str]:
+    """Read explicit public-API exclusions from Lisp-owned authority data."""
+    source = MACHINE_AUTHORITY.read_text(encoding="utf-8")
+    classified = {
+        match.group(1)
+        for line in source.splitlines()
+        if (match := PUBLIC_API_EXCLUDED_ROOT.match(line)) is not None
+    }
+    if not classified:
+        raise ValueError(
+            f"{MACHINE_AUTHORITY.relative_to(REPO_ROOT)} has no "
+            "public-api-excluded-root classification"
+        )
+    return STATIC_EXCLUDED_TOP_LEVEL_DIRS | classified
+
+
 def library_files() -> list[Path]:
+    excluded_top_level_dirs = classified_excluded_top_level_dirs()
     files = []
     for path in LIB_ROOT.rglob("*.lisp"):
         relative = path.relative_to(LIB_ROOT)
-        if relative.parts and relative.parts[0] in EXCLUDED_TOP_LEVEL_DIRS:
+        if relative.parts and relative.parts[0] in excluded_top_level_dirs:
             continue
         files.append(path)
     return sorted(files, key=lambda path: path.relative_to(REPO_ROOT).as_posix())
