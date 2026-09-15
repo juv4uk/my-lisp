@@ -123,14 +123,17 @@ fn semantic_lowering_must_produce_structured_forms_before_admission_and_executio
 
     let lowering_source = fs::read_to_string(repo_root().join("lib/machine/lowering/semantic-x86-64.lisp"))
         .expect("semantic lowerer source must be readable");
-    assert!(
-        lowering_source.contains("x86-encode-admitted-program"),
-        "byte compatibility wrappers must route through the admitted encoder"
-    );
-    assert!(
-        !lowering_source.contains("(x86-encode-program\n"),
-        "semantic lowerer must not bypass admission by flattening raw encoded instructions itself"
-    );
+    for forbidden in [
+        "(def x86-lower-add-u64\n",
+        "(def x86-lower-cons-car-u64\n",
+        "(def x86-lower-cons-cdr-u64\n",
+        "(x86-encode-program\n",
+    ] {
+        assert!(
+            !lowering_source.contains(forbidden),
+            "semantic lowerer must expose forms only; found retired byte path {forbidden}"
+        );
+    }
 }
 
 #[test]
@@ -202,10 +205,10 @@ fn semantics_blind_raw_executor_accepts_optional_arena_bytes() {
     load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
 
     let result = eval_program(
-        "(native-call-u64-raw (x86-lower-add-u64 2 3) 16)",
+        "(native-call-u64-raw (x86-encode-admitted-program (x86-lower-add-u64-forms 2 3)) 16)",
         &mut session,
     )
-    .expect("semantics-blind host must optionally provide a raw arena pointer to Lisp-owned bytes");
+    .expect("raw host mechanism must receive only bytes materialized from admitted structured forms");
 
     assert_eq!(result.value.to_string(), "5");
 }
@@ -257,15 +260,15 @@ fn native_pair_car_cdr_match_the_interpreter_reference_witness() {
         .expect("interpreter CDR reference witness must remain valid");
 
     let native_car = eval_program(
-        "(native-call-u64-raw (x86-lower-cons-car-u64 2 3) x86-pair-cell-bytes)",
+        "(native-call-u64-raw (x86-encode-admitted-program (x86-lower-cons-car-u64-forms 2 3)) x86-pair-cell-bytes)",
         &mut session,
     )
-    .expect("Lisp-owned CONS+CAR bytes must execute through the raw arena mechanism");
+    .expect("Lisp-owned CONS+CAR forms must materialize through admission before raw host execution");
     let native_cdr = eval_program(
-        "(native-call-u64-raw (x86-lower-cons-cdr-u64 2 3) x86-pair-cell-bytes)",
+        "(native-call-u64-raw (x86-encode-admitted-program (x86-lower-cons-cdr-u64-forms 2 3)) x86-pair-cell-bytes)",
         &mut session,
     )
-    .expect("Lisp-owned CONS+CDR bytes must execute through the raw arena mechanism");
+    .expect("Lisp-owned CONS+CDR forms must materialize through admission before raw host execution");
 
     assert_eq!(native_car.value, interpreter_car.value);
     assert_eq!(native_cdr.value, interpreter_cdr.value);
@@ -282,10 +285,10 @@ fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
     load_lisp_file("lib/machine/lowering/semantic-x86-64.lisp", &mut session);
 
     let result = eval_program(
-        "(native-call-u64-raw (x86-lower-add-u64 2 3))",
+        "(native-call-u64-raw (x86-encode-admitted-program (x86-lower-add-u64-forms 2 3)))",
         &mut session,
     )
-    .expect("host must execute exactly the bytes produced by Lisp lowering");
+    .expect("host must execute bytes admitted from Lisp-owned structured forms");
 
     assert_eq!(result.value.to_string(), "5");
 }
