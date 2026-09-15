@@ -3,10 +3,9 @@
 ; ISA identity/encoding remains owned by lib/machine/isa + lib/machine/encoding.
 ; Rows here only say how an already-existing semantic identity may be realized.
 ;
-; Executable lowerings first produce structured machine forms. Bytes are a
-; projection of those forms through the closed Lisp-owned admission layer.
-; Semantic lowering therefore cannot bypass admission by constructing bytes
-; directly.
+; Executable lowerings produce structured machine forms. Byte materialization
+; belongs to the closed Lisp-owned admission layer and is deliberately not
+; re-exported from semantic lowering as a compatibility convenience.
 
 (def x86-semantic-lowering-profile
   (quote
@@ -82,8 +81,8 @@
 ; First executable semantic-lowering witness.
 ; Semantic identity 0104 already exists before this file is loaded. This
 ; routine does not define addition; it chooses one bounded u64 realization.
-; It returns structured machine forms first; admission then owns the only path
-; from those forms to executable bytes.
+; It returns structured machine forms only. Admission owns the path from those
+; forms to executable bytes.
 ;
 ; RAX carries the result per SysV x86-64. RCX is caller-saved, so the proof
 ; routine does not violate the host ABI by clobbering a callee-saved register.
@@ -94,13 +93,6 @@
       (list (quote mov-r64-imm64) (quote rcx) right)
       (list (quote add-r64-r64) (quote rax) (quote rcx))
       (list (quote ret)))))
-
-; Compatibility byte projection for existing callers. The lowering itself is
-; the structured form above; byte materialization is admitted, never direct.
-(def x86-lower-add-u64
-  (lambda (left right)
-    (x86-encode-admitted-program
-      (x86-lower-add-u64-forms left right))))
 
 ; Bounded structural witness for semantic identities 0004/0005/0006.
 ; The host contributes only a raw writable arena pointer in RDI. Lisp owns
@@ -155,16 +147,6 @@
           (quote rdi)
           x86-pair-cdr-offset)
         (list (quote ret))))))
-
-(def x86-lower-cons-car-u64
-  (lambda (left right)
-    (x86-encode-admitted-program
-      (x86-lower-cons-car-u64-forms left right))))
-
-(def x86-lower-cons-cdr-u64
-  (lambda (left right)
-    (x86-encode-admitted-program
-      (x86-lower-cons-cdr-u64-forms left right))))
 
 ; Bounded semantic entry for the Vertical Day CAR witness.
 ; Canonical CAR/CDR own pair validity and therefore fail with the language's
