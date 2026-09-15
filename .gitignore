@@ -37,6 +37,7 @@ node_modules
 # Build artifacts
 my-lisp-bin
 span
+*.fasl
 
 # Racket compiled bytecode
 **/compiled/
