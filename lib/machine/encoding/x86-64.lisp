@@ -276,6 +276,17 @@
 (def x86-encode-jle-rel8 (lambda (displacement) (x86-encode-jcc-rel8 14 displacement)))
 (def x86-encode-jnle-rel8 (lambda (displacement) (x86-encode-jcc-rel8 15 displacement)))
 
+; JMP rel8: opcode 0xEB followed by a signed 8-bit relative displacement,
+; confirmed against #175's pinned XED evidence
+; (`PATTERN : 0xEB mode64 norex2_prefix FORCE64() BRDISP8()`). Unlike Jcc,
+; JMP is unconditional -- no condition-code byte, no ModRM, no REX -- but
+; reuses the same x86-disp8-byte two's-complement conversion.
+(def x86-encode-jmp-rel8
+  (lambda (displacement)
+    (list
+      235
+      (x86-disp8-byte displacement))))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond

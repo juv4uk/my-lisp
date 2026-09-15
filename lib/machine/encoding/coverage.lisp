@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 31)
+  (partial-count 32)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -1346,8 +1346,8 @@
   (coverage
     (iclass "JMP")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB) only; the rel32 (0xE9) and indirect register/memory (0xFF /4) forms are pending"))
   (coverage
     (iclass "JMP_FAR")
     (extension X86-BASE)
