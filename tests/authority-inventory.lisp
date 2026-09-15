@@ -17,3 +17,4 @@
 (authority "crates/my-lisp/tests/x86_64_lisp_encoder.rs" mechanism)
 (authority "crates/xtask/tests/encoder_coverage_cli.rs" observer)
 (authority "crates/my-lisp/tests/machine_atoms.rs" mechanism)
+(authority "crates/my-lisp/tests/machine_typed_operands.rs" mechanism)
