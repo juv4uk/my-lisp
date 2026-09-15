@@ -11,3 +11,4 @@
 (authority "tests/fixtures/authority-guard/forbidden-semantic.rs" semantic-authority)
 (authority "tests/fixtures/authority-guard/allowed-mechanism.rs" mechanism)
 (authority "crates/my-lisp/tests/skylake_inventory_contract.rs" observer)
+(authority "crates/my-lisp/tests/machine_noninterference_contract.rs" observer)
