@@ -45,6 +45,71 @@ fn decode_mov_r64_imm64(bytes: &[u8], offset: usize) -> Result<Option<(String, u
     )))
 }
 
+fn decode_mov_mem_disp8(bytes: &[u8], offset: usize) -> Result<Option<(String, usize)>, String> {
+    let Some(&rex) = bytes.get(offset) else {
+        return Ok(None);
+    };
+    if !rex_w_no_index(rex) {
+        return Ok(None);
+    }
+
+    let Some(&opcode) = bytes.get(offset + 1) else {
+        return Err(format!("truncated instruction after REX at byte {offset}"));
+    };
+    if opcode != 0x8B && opcode != 0x89 {
+        return Ok(None);
+    }
+
+    let Some(&modrm) = bytes.get(offset + 2) else {
+        return Err(format!("truncated MOV memory ModR/M at byte {offset}"));
+    };
+    if (modrm >> 6) != 0b01 {
+        return Err(format!(
+            "MOV memory observer only admits mod=01 disp8 at byte {offset}"
+        ));
+    }
+
+    let data_code = ((modrm >> 3) & 0b111) | (((rex >> 2) & 0x01) << 3);
+    let data_register = register_name(data_code)?;
+    let rm = modrm & 0b111;
+    let rex_b = (rex & 0x01) << 3;
+
+    let (base_code, displacement_offset, next) = if rm == 0b100 {
+        let Some(&sib) = bytes.get(offset + 3) else {
+            return Err(format!("truncated MOV memory SIB at byte {offset}"));
+        };
+        let scale = sib >> 6;
+        let index = (sib >> 3) & 0b111;
+        let base = sib & 0b111;
+        if scale != 0 || index != 0b100 || base != 0b100 {
+            return Err(format!(
+                "MOV memory observer requires no-index rsp/r12 SIB at byte {offset}"
+            ));
+        }
+        (base | rex_b, offset + 4, offset + 5)
+    } else {
+        (rm | rex_b, offset + 3, offset + 4)
+    };
+
+    let base_register = register_name(base_code)?;
+    let Some(&disp_byte) = bytes.get(displacement_offset) else {
+        return Err(format!("truncated MOV memory disp8 at byte {offset}"));
+    };
+    let displacement = i8::from_ne_bytes([disp_byte]) as i32;
+
+    let form = if opcode == 0x8B {
+        format!(
+            "(mov-r64-mem-disp8 {data_register} {base_register} {displacement})"
+        )
+    } else {
+        format!(
+            "(mov-mem-disp8-r64 {base_register} {displacement} {data_register})"
+        )
+    };
+
+    Ok(Some((form, next)))
+}
+
 fn alu_name(opcode: u8) -> Option<&'static str> {
     match opcode {
         0x01 => Some("add"),
@@ -103,6 +168,12 @@ pub fn decode_machine_block(bytes: &[u8]) -> Result<Vec<String>, String> {
         }
 
         if let Some((form, next)) = decode_mov_r64_imm64(bytes, offset)? {
+            forms.push(form);
+            offset = next;
+            continue;
+        }
+
+        if let Some((form, next)) = decode_mov_mem_disp8(bytes, offset)? {
             forms.push(form);
             offset = next;
             continue;
