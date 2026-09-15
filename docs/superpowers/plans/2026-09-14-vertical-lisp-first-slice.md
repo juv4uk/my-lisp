@@ -1,7 +1,7 @@
 # Перший вертикальний зріз Lisp → x86-64
 
 **Дата:** 2026-09-14
-**Статус:** виконано як експериментальний вертикальний доказ у PR #118
+**Статус:** виконано як експериментальний вертикальний доказ у PR #118; byte-returning compatibility wrapper з початкового proof path пізніше retired у #139
 **Ціль:** довести збережений шлях, у якому my-lisp володіє семантичним lowering та формуванням x86-64 байтів, а host лишається семантично сліпим механізмом виконання.
 
 ## Що було заплановано
@@ -19,17 +19,21 @@
 - `lib/machine/isa/` містить незалежні каталоги x86-64 та розширень, які декларує профіль Intel Core i5-6400.
 - `lib/machine/cpu/intel-core-i5-6400.lisp` розділяє baseline, runtime-gated, platform-gated, virtualization та unavailable capabilities.
 - `lib/machine/encoding/x86-64.lisp` у Lisp обчислює коди регістрів, REX, ModR/M, little-endian immediate та байти `MOV`, `ADD`, `RET`.
-- `lib/machine/lowering/semantic-x86-64.lisp` дає bounded `u64` realization для semantic identity `0104`.
+- `lib/machine/lowering/semantic-x86-64.lisp` дає bounded `u64` realization для semantic identity `0104` як **structured machine forms**.
+- closed admission є єдиним canonical переходом від structured forms до executable bytes.
 - proof lowering виправлено відповідно до SysV x86-64 ABI: використовується caller-saved `RCX`, а не callee-saved `RBX`.
 - `crates/my-lisp-host/src/native_exec.rs` на Linux x86-64 робить лише `mmap RW → copy → mprotect RX → call → munmap`.
 - `native-call-u64-raw` не має semantic ID і не вибирає інструкцію за Lisp-семантикою.
 
-Фізичний witness:
+Поточний canonical фізичний witness після #138/#139:
 
 ```lisp
-(native-call-u64-raw
-  (x86-lower-add-u64 2 3))
+(x86-call-admitted-u64
+  (x86-lower-add-u64-forms 2 3)
+  0)
 ```
+
+Початковий історичний proof використовував byte-returning compatibility wrapper; він навмисно більше не є рекомендованою або canonical surface.
 
 Очікуваний і перевірений результат:
 
@@ -44,7 +48,9 @@
 ```text
 існуюча Lisp-семантика
         ↓
-Lisp-owned semantic lowering
+Lisp-owned semantic lowering → structured machine forms
+        ↓
+closed Lisp-owned admission
         ↓
 Lisp-owned x86-64 encoding
         ↓
