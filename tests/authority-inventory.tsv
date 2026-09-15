@@ -36,3 +36,7 @@ crates/xtask/tests/encoder_coverage_cli.rs	every_admitted_extension_iclass_pair_
 crates/xtask/tests/encoder_coverage_cli.rs	every_coverage_entry_has_an_allowed_status	observer	x86-encoder-coverage	lib/machine/encoding/coverage.lisp	migrated
 crates/xtask/tests/encoder_coverage_cli.rs	stale_partial_iclass_not_in_evidence_fails_closed	observer	x86-encoder-coverage	lib/machine/encoding/coverage.lisp	migrated
 crates/xtask/tests/encoder_coverage_cli.rs	minimal_evidence_with_ret_near_is_marked_partial	observer	x86-encoder-coverage	lib/machine/encoding/coverage.lisp	migrated
+crates/my-lisp/tests/machine_atoms.rs	machine_atoms_project_exactly_to_current_admitted_forms	mechanism	machine-atom-projection	lib/machine/atoms/x86-64.lisp	migrated
+crates/my-lisp/tests/machine_atoms.rs	machine_block_composition_is_deterministic_and_encodes_via_176_path	mechanism	machine-block-composition	lib/machine/block.lisp + lib/machine/admission/x86-64.lisp	migrated
+crates/my-lisp/tests/machine_atoms.rs	unadmitted_machine_atom_fails_closed_before_byte_materialization	mechanism	machine-admission-fail-closed	lib/machine/admission/x86-64.lisp	migrated
+crates/my-lisp/tests/machine_atoms.rs	machine_atom_names_do_not_mint_public_semantic_surfaces	observer	machine-semantic-noninterference	lib/surface/semantic-registry.lisp	migrated
