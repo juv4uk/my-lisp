@@ -44,8 +44,11 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(rejected unadmitted-machine-form 15)",
         ),
         (
-            "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rbx 1))) 0)",
-            "(rejected unadmitted-machine-form (mov-r64-imm64 rbx 1))",
+            // #176 generalized mov-r64-imm64 admission to all 16 GPRs
+            // (previously rax/rcx only), so a made-up register name is now
+            // the register slot's negative witness instead of a real GPR.
+            "(x86-call-admitted-u64 (quote ((mov-r64-imm64 notareg 1))) 0)",
+            "(rejected unadmitted-machine-form (mov-r64-imm64 notareg 1))",
         ),
         (
             "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax))) 0)",

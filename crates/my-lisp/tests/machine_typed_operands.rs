@@ -134,15 +134,19 @@ fn typed_memory_operands_project_to_existing_disp8_forms() {
 fn operand_type_success_does_not_bypass_instruction_admission() {
     let mut session = machine_session();
 
-    // #190 generalized ALU register admission, so ADD rax,rbx is no longer
-    // an honest negative witness. RBX is a valid typed GPR while MOV-imm
-    // currently admits only RAX/RCX destinations.
+    // #190 generalized ALU register admission and #176 generalized
+    // mov-r64-imm64 admission to all 16 GPRs, so neither ADD rax,rbx nor
+    // MOV-imm to any register is an honest negative witness anymore. SHL is
+    // a real x86-64 mnemonic, RBX is a valid typed GPR (operand typing
+    // succeeds), but SHL-r64 is still not on #176's admitted list --
+    // exactly the "typing success does not bypass admission" gap this test
+    // means to exercise.
     assert_eq!(
         eval_value(
-            "(x86-encode-machine-block (machine-block-one (x86-mov-r64-imm64 (x86-gpr64 (quote rbx)) (x86-u64-imm 1))))",
+            "(x86-encode-machine-block (machine-block-one (list (quote shl-r64) (x86-gpr64-value (x86-gpr64 (quote rbx))))))",
             &mut session,
         ),
-        "(rejected unadmitted-machine-form (mov-r64-imm64 rbx 1))"
+        "(rejected unadmitted-machine-form (shl-r64 rbx))"
     );
 }
 

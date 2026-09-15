@@ -590,6 +590,69 @@ fn lisp_encodes_the_full_jcc_rel8_family_with_correct_condition_codes_and_displa
     }
 }
 
+/// Independent decoder for MOV r64,imm64: REX.W (+REX.B for r8-r15) followed
+/// by opcode 0xB8+r (register in the low 3 opcode bits) and an 8-byte
+/// little-endian immediate. From scratch, independent of the encoder's own
+/// construction arithmetic.
+fn decode_mov_r64_imm64(bytes: &[u8]) -> Option<(u8, u64)> {
+    let [rex, opcode, imm @ ..] = bytes else {
+        return None;
+    };
+    if rex & 0xF8 != 0x48 {
+        return None;
+    }
+    let rex_b = rex & 0x01;
+    if (*opcode & 0xF8) != 0xB8 {
+        return None;
+    }
+    let register = (*opcode & 0x07) | (rex_b << 3);
+    if imm.len() != 8 {
+        return None;
+    }
+    let mut value = 0u64;
+    for (index, byte) in imm.iter().enumerate() {
+        value |= (*byte as u64) << (8 * index);
+    }
+    Some((register, value))
+}
+
+/// #176 continued: generalizes MOV r64,imm64 admission from the previous
+/// rax/rcx-only pair to all 16 GPRs. The encoder (`x86-encode-mov-r64-imm64`)
+/// was already fully general -- REX.B for r8-r15 via the same x86-high1/
+/// x86-reg-code machinery #199's disp8 work proved correct -- so this is an
+/// admission-only generalization, not a new encoder, matching #199's own
+/// "generalize admission around the encoder you already have" discipline.
+#[test]
+fn lisp_encodes_mov_r64_imm64_for_every_gpr_with_independent_decode() {
+    const ALL_GPRS: [&str; 16] = [
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12",
+        "r13", "r14", "r15",
+    ];
+    let mut session = encoder_session();
+
+    for register in ALL_GPRS {
+        for immediate in [0u64, 1, 42, 999, 4294967296, 9007199254740991] {
+            let form = format!("(x86-encode-mov-r64-imm64 (quote {register}) {immediate})");
+            let rendered = eval_bytes(&form, &mut session);
+            let bytes: Vec<u8> = rendered
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+                .split_whitespace()
+                .map(|token| token.parse().expect("byte must be a small integer"))
+                .collect();
+
+            assert_eq!(bytes.len(), 10, "{form} must be REX+opcode+imm64, 10 bytes");
+            let (decoded_register, decoded_immediate) = decode_mov_r64_imm64(&bytes)
+                .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+            assert_eq!(decoded_register, gpr_index(register), "{form}: {bytes:?}");
+            assert_eq!(
+                decoded_immediate, immediate,
+                "{form} round-tripped to {decoded_immediate}, from bytes {bytes:?}"
+            );
+        }
+    }
+}
+
 /// Independent decoder for JMP rel8: a single fixed opcode byte (0xEB), no
 /// condition code, no REX, no ModRM, followed by one signed relative-
 /// displacement byte. From scratch, independent of the encoder's own
