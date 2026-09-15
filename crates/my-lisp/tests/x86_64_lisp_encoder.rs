@@ -77,6 +77,52 @@ fn ret_encoding_matches_pinned_xed_pattern_for_ret_near() {
     );
 }
 
+/// #176 continued: the group-1 ALU register/register family (OR/AND/SUB/
+/// XOR/CMP) sharing ADD's shape, one opcode byte apart, per Intel's
+/// canonical group-1 opcode layout confirmed against #175's pinned XED
+/// evidence for each ICLASS's `MOD[0b11] MOD=3 REG[rrr] RM[nnn]` form.
+#[test]
+fn lisp_encodes_the_alu_register_family_with_pinned_opcodes() {
+    let mut session = encoder_session();
+    for (form, expected, xed_pattern) in [
+        (
+            "(x86-encode-or-r64-r64 (quote rax) (quote rbx))",
+            "(72 9 216)",
+            "PATTERN   : 0x09 MOD[0b11] MOD=3 REG[rrr] RM[nnn]",
+        ),
+        (
+            "(x86-encode-and-r64-r64 (quote rax) (quote rbx))",
+            "(72 33 216)",
+            "PATTERN   : 0x21 MOD[0b11] MOD=3 REG[rrr] RM[nnn]",
+        ),
+        (
+            "(x86-encode-sub-r64-r64 (quote rax) (quote rbx))",
+            "(72 41 216)",
+            "PATTERN   : 0x29 MOD[0b11] MOD=3 REG[rrr] RM[nnn]",
+        ),
+        (
+            "(x86-encode-xor-r64-r64 (quote rax) (quote rbx))",
+            "(72 49 216)",
+            "PATTERN   : 0x31 MOD[0b11] MOD=3 REG[rrr] RM[nnn]",
+        ),
+        (
+            "(x86-encode-cmp-r64-r64 (quote rax) (quote rbx))",
+            "(72 57 216)",
+            "PATTERN   : 0x39 MOD[0b11] MOD=3 REG[rrr] RM[nnn]",
+        ),
+    ] {
+        assert_eq!(eval_bytes(form, &mut session), expected, "form: {form}");
+
+        let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+        let vendor_source = fs::read_to_string(&vendor_path)
+            .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+        assert!(
+            vendor_source.contains(xed_pattern),
+            "pinned XED evidence must contain the exact pattern {form} was checked against: {xed_pattern}"
+        );
+    }
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");

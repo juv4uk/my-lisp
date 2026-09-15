@@ -114,14 +114,43 @@
               (t
                 (list rex 137 modrm (mod displacement 256))))))))))
 
-(def x86-encode-add-r64-r64
-  (lambda (destination source)
+; Group-1 ALU r/m64, r64 (mod=3 register/register), opcode base+1: ADD 0x01,
+; OR 0x09, AND 0x21, SUB 0x29, XOR 0x31, CMP 0x39 (Intel SDM, confirmed
+; against #175's pinned XED evidence: lib/machine/xed/vendor/base/xed-isa.txt
+; PATTERN lines for each ICLASS's `MOD[0b11] MOD=3 REG[rrr] RM[nnn]` form).
+; All six share one shape; only the opcode byte differs.
+(def x86-encode-alu-r64-r64
+  (lambda (opcode destination source)
     (let ((dst (x86-reg-code destination)))
       (let ((src (x86-reg-code source)))
         (list
           (x86-encode-rex 1 (x86-high1 src) 0 (x86-high1 dst))
-          1
+          opcode
           (x86-encode-modrm 3 (x86-low3 src) (x86-low3 dst)))))))
+
+(def x86-encode-add-r64-r64
+  (lambda (destination source)
+    (x86-encode-alu-r64-r64 1 destination source)))
+
+(def x86-encode-or-r64-r64
+  (lambda (destination source)
+    (x86-encode-alu-r64-r64 9 destination source)))
+
+(def x86-encode-and-r64-r64
+  (lambda (destination source)
+    (x86-encode-alu-r64-r64 33 destination source)))
+
+(def x86-encode-sub-r64-r64
+  (lambda (destination source)
+    (x86-encode-alu-r64-r64 41 destination source)))
+
+(def x86-encode-xor-r64-r64
+  (lambda (destination source)
+    (x86-encode-alu-r64-r64 49 destination source)))
+
+(def x86-encode-cmp-r64-r64
+  (lambda (destination source)
+    (x86-encode-alu-r64-r64 57 destination source)))
 
 (def x86-encode-program
   (lambda (instructions)

@@ -51,6 +51,13 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax))) 0)",
             "(rejected unadmitted-machine-form (mov-r64-imm64 rax))",
         ),
+        (
+            // `register` is an operand-slot wildcard admitting only the 16
+            // real GPR names; a made-up symbol must still fail closed, not
+            // be silently accepted because *some* atom sits in that slot.
+            "(x86-call-admitted-u64 (quote ((add-r64-r64 rax notareg))) 0)",
+            "(rejected unadmitted-machine-form (add-r64-r64 rax notareg))",
+        ),
     ] {
         EXECUTOR_CALLS.store(0, Ordering::SeqCst);
         let result = eval_program(request, &mut session)

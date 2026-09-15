@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 3)
+  (partial-count 8)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -111,8 +111,8 @@
   (coverage
     (iclass "AND")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-and-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
   (coverage
     (iclass "ANDN")
     (extension BMI1)
@@ -421,8 +421,8 @@
   (coverage
     (iclass "CMP")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-cmp-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
   (coverage
     (iclass "CMPPD")
     (extension SSE2)
@@ -1866,8 +1866,8 @@
   (coverage
     (iclass "OR")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-or-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
   (coverage
     (iclass "ORPD")
     (extension SSE2)
@@ -3446,8 +3446,8 @@
   (coverage
     (iclass "SUB")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-sub-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
   (coverage
     (iclass "SUBPD")
     (extension SSE2)
@@ -5841,8 +5841,8 @@
   (coverage
     (iclass "XOR")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-xor-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
   (coverage
     (iclass "XORPD")
     (extension SSE2)

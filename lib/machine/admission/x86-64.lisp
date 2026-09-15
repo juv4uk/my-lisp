@@ -16,21 +16,33 @@
     ((ret)
      (mov-r64-imm64 rax immediate)
      (mov-r64-imm64 rcx immediate)
-     (add-r64-r64 rax rcx)
+     (add-r64-r64 register register)
+     (or-r64-r64 register register)
+     (and-r64-r64 register register)
+     (sub-r64-r64 register register)
+     (xor-r64-r64 register register)
+     (cmp-r64-r64 register register)
      (mov-mem-disp8-r64 rdi 0 rax)
      (mov-mem-disp8-r64 rdi 8 rax)
      (mov-r64-mem-disp8 rax rdi 0)
      (mov-r64-mem-disp8 rax rdi 8))))
 
-; `immediate` is an operand slot, not an opcode wildcard. The selected Lisp
-; encoder still validates whether the operand can be represented before the
-; raw host capability is reachable.
+; `immediate` and `register` are operand-slot wildcards, not opcode
+; wildcards. `register` only admits the 16 GPR names x86-reg-code knows
+; about -- any other atom (a number, a made-up symbol) fails the match, the
+; same way an out-of-range immediate would fail the encoder later. The
+; selected Lisp encoder still validates whether the operand can be
+; represented before the raw host capability is reachable.
 (def x86-admission-pattern-match?
   (lambda (pattern form)
     (cond
       ((atom pattern)
        (cond
          ((eq pattern (quote immediate)) t)
+         ((eq pattern (quote register))
+          (cond
+            ((atom form) (not (eq (x86-reg-code form) (quote ()))))
+            (t (quote ()))))
          ((atom form) (eq pattern form))
          (t (quote ()))))
       ((atom form) (quote ()))
@@ -77,8 +89,18 @@
        (x86-encode-mov-r64-imm64 (quote rax) (third form)))
       ((x86-admission-pattern-match? (quote (mov-r64-imm64 rcx immediate)) form)
        (x86-encode-mov-r64-imm64 (quote rcx) (third form)))
-      ((equal? form (quote (add-r64-r64 rax rcx)))
-       (x86-encode-add-r64-r64 (quote rax) (quote rcx)))
+      ((x86-admission-pattern-match? (quote (add-r64-r64 register register)) form)
+       (x86-encode-add-r64-r64 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (or-r64-r64 register register)) form)
+       (x86-encode-or-r64-r64 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (and-r64-r64 register register)) form)
+       (x86-encode-and-r64-r64 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (sub-r64-r64 register register)) form)
+       (x86-encode-sub-r64-r64 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (xor-r64-r64 register register)) form)
+       (x86-encode-xor-r64-r64 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (cmp-r64-r64 register register)) form)
+       (x86-encode-cmp-r64-r64 (second form) (third form)))
       ((equal? form (quote (mov-mem-disp8-r64 rdi 0 rax)))
        (x86-encode-mov-mem-disp8-r64 (quote rdi) 0 (quote rax)))
       ((equal? form (quote (mov-mem-disp8-r64 rdi 8 rax)))
