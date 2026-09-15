@@ -123,6 +123,95 @@ fn lisp_encodes_the_alu_register_family_with_pinned_opcodes() {
     }
 }
 
+/// Independent decoder for exactly the PUSH r64 / POP r64 byte shapes this
+/// encoder emits: an optional REX prefix (0x40-0x4F, bit 0 = REX.B) followed
+/// by a single opcode byte in 0x50-0x5F. This is deliberately a *second*,
+/// from-scratch implementation of the bit arithmetic (decode direction, not
+/// mirroring the encoder's own construction), so a test built only from the
+/// encoder's own math could not pass it by coincidence.
+fn decode_push_or_pop(bytes: &[u8]) -> Option<(&'static str, u8)> {
+    let (rex_b, rest) = match bytes {
+        [rex, rest @ ..] if (0x40..=0x4F).contains(rex) => ((rex & 0x01) != 0, rest),
+        rest => (false, rest),
+    };
+    let [opcode] = rest else { return None };
+    let reg_low3 = opcode & 0b0000_0111;
+    let reg = reg_low3 | if rex_b { 0b1000 } else { 0 };
+    match opcode & 0b1111_1000 {
+        0x50 => Some(("push", reg)),
+        0x58 => Some(("pop", reg)),
+        _ => None,
+    }
+}
+
+/// #176 continued: PUSH r64 (opcode 0x50+rd) / POP r64 (opcode 0x58+rd),
+/// both `DF64()` (default 64-bit operand size in long mode, no REX.W)
+/// per #175's pinned XED evidence, with REX.B only for r8-r15. Verified two
+/// ways: against the pinned XED PATTERN text, and by independently decoding
+/// the emitted bytes back to (mnemonic, register index).
+#[test]
+fn lisp_encodes_push_and_pop_with_pinned_opcodes_and_independent_decode() {
+    let mut session = encoder_session();
+    let registers = [
+        ("rax", 0u8),
+        ("rcx", 1),
+        ("rdx", 2),
+        ("rbx", 3),
+        ("rsp", 4),
+        ("rbp", 5),
+        ("rsi", 6),
+        ("rdi", 7),
+        ("r8", 8),
+        ("r9", 9),
+        ("r10", 10),
+        ("r11", 11),
+        ("r12", 12),
+        ("r13", 13),
+        ("r14", 14),
+        ("r15", 15),
+    ];
+
+    for (register_name, register_code) in registers {
+        for (op, mnemonic) in [("push", "push"), ("pop", "pop")] {
+            let form = format!("(x86-encode-{op}-r64 (quote {register_name}))");
+            let rendered = eval_bytes(&form, &mut session);
+            let bytes: Vec<u8> = rendered
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+                .split_whitespace()
+                .map(|token| token.parse().expect("byte must be a small integer"))
+                .collect();
+
+            let decoded = decode_push_or_pop(&bytes)
+                .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+            assert_eq!(
+                decoded,
+                (mnemonic, register_code),
+                "{form} round-tripped to {decoded:?} via independent decode, from bytes {bytes:?}"
+            );
+
+            if register_code < 8 {
+                assert_eq!(bytes.len(), 1, "{form} for a low register must need no REX prefix");
+            } else {
+                assert_eq!(bytes.len(), 2, "{form} for r8-r15 must carry REX.B");
+                assert_eq!(bytes[0], 0x41, "REX.B-only prefix must be exactly 0x41");
+            }
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("PATTERN   : 0b0101_0 SRM[rrr] REX2=0 DF64()"),
+        "pinned XED evidence must contain the exact PUSH r64 pattern this encoder was checked against"
+    );
+    assert!(
+        vendor_source.contains("PATTERN   : 0b0101_1 SRM[rrr] REX2=0 DF64()"),
+        "pinned XED evidence must contain the exact POP r64 pattern this encoder was checked against"
+    );
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");

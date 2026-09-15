@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 8)
+  (partial-count 10)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -2516,8 +2516,8 @@
   (coverage
     (iclass "POP")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-pop-r64 covers the single-register 0x58+rd form only; POP r/m64-memory/segment forms are pending"))
   (coverage
     (iclass "POPA")
     (extension X86-BASE)
@@ -2871,8 +2871,8 @@
   (coverage
     (iclass "PUSH")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-push-r64 covers the single-register 0x50+rd form only; PUSH imm/r-m64-memory/segment forms are pending"))
   (coverage
     (iclass "PUSHA")
     (extension X86-BASE)

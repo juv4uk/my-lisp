@@ -152,6 +152,29 @@
   (lambda (destination source)
     (x86-encode-alu-r64-r64 57 destination source)))
 
+; PUSH r64 (opcode 0x50+rd, ICLASS PUSH: `0b0101_0 SRM[rrr] ... DF64()`) and
+; POP r64 (opcode 0x58+rd, ICLASS POP: `0b0101_1 SRM[rrr] ... DF64()`), per
+; #175's pinned XED evidence. Both default to 64-bit operand size in long
+; mode (`DF64()`), so no REX.W is emitted; only REX.B is needed, and only
+; for r8-r15.
+(def x86-encode-push-r64
+  (lambda (register)
+    (let ((code (x86-reg-code register)))
+      (cond
+        ((eq (x86-high1 code) 1)
+          (list (x86-encode-rex 0 0 0 1) (+ 80 (x86-low3 code))))
+        (t
+          (list (+ 80 (x86-low3 code))))))))
+
+(def x86-encode-pop-r64
+  (lambda (register)
+    (let ((code (x86-reg-code register)))
+      (cond
+        ((eq (x86-high1 code) 1)
+          (list (x86-encode-rex 0 0 0 1) (+ 88 (x86-low3 code))))
+        (t
+          (list (+ 88 (x86-low3 code))))))))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond
