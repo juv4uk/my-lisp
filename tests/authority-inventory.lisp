@@ -12,4 +12,5 @@
 (authority "tests/fixtures/authority-guard/allowed-mechanism.rs" mechanism)
 (authority "crates/my-lisp/tests/skylake_inventory_contract.rs" observer)
 (authority "crates/xtask/tests/xed_import_cli.rs" observer)
+(authority "crates/xtask/tests/external_oracle_cli.rs" observer)
 (authority "crates/my-lisp/tests/machine_noninterference_contract.rs" observer)
