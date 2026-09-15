@@ -38,6 +38,64 @@
                     (x86-gpr64-value typed-destination)
                     (x86-gpr64-value typed-source))))))))))
 
+(def x86-binary-gpr64-form
+  (lambda (mnemonic destination source)
+    (let ((typed-destination (x86-as-gpr64 destination)))
+      (cond
+        ((x86-machine-rejected? typed-destination) typed-destination)
+        (t
+         (let ((typed-source (x86-as-gpr64 source)))
+           (cond
+             ((x86-machine-rejected? typed-source) typed-source)
+             (t
+              (list mnemonic
+                    (x86-gpr64-value typed-destination)
+                    (x86-gpr64-value typed-source))))))))))
+
+(def x86-or-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote or-r64-r64) destination source)))
+
+(def x86-and-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote and-r64-r64) destination source)))
+
+(def x86-sub-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote sub-r64-r64) destination source)))
+
+(def x86-xor-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote xor-r64-r64) destination source)))
+
+(def x86-cmp-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmp-r64-r64) destination source)))
+
+(def x86-unary-gpr64-form
+  (lambda (mnemonic register)
+    (let ((typed-register (x86-as-gpr64 register)))
+      (cond
+        ((x86-machine-rejected? typed-register) typed-register)
+        (t
+         (list mnemonic (x86-gpr64-value typed-register)))))))
+
+(def x86-push-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote push-r64) register)))
+
+(def x86-pop-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote pop-r64) register)))
+
+(def x86-inc-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote inc-r64) register)))
+
+(def x86-dec-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote dec-r64) register)))
+
 (def x86-mov-mem64-r64
   (lambda (memory source)
     (let ((typed-memory (x86-as-mem64-disp8 memory)))
