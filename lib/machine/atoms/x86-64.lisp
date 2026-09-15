@@ -22,7 +22,7 @@
              (t
               (list (quote mov-r64-imm64)
                     (x86-gpr64-value typed-register)
-                    (x86-u64-imm-value typed-immediate)))))))))))
+                    (x86-u64-imm-value typed-immediate))))))))))
 
 (def x86-add-r64-r64
   (lambda (destination source)
@@ -36,7 +36,7 @@
              (t
               (list (quote add-r64-r64)
                     (x86-gpr64-value typed-destination)
-                    (x86-gpr64-value typed-source)))))))))))
+                    (x86-gpr64-value typed-source))))))))))
 
 (def x86-mov-mem64-r64
   (lambda (memory source)
@@ -51,7 +51,7 @@
               (list (quote mov-mem-disp8-r64)
                     (x86-mem64-disp8-base typed-memory)
                     (x86-mem64-disp8-displacement typed-memory)
-                    (x86-gpr64-value typed-source)))))))))))
+                    (x86-gpr64-value typed-source))))))))))
 
 (def x86-mov-r64-mem64
   (lambda (destination memory)
@@ -66,7 +66,7 @@
               (list (quote mov-r64-mem-disp8)
                     (x86-gpr64-value typed-destination)
                     (x86-mem64-disp8-base typed-memory)
-                    (x86-mem64-disp8-displacement typed-memory)))))))))))
+                    (x86-mem64-disp8-displacement typed-memory))))))))))
 
 ; Compatibility constructors for the first #177 foundation. They now pass
 ; through typed memory/register validation and project back to the canonical
