@@ -76,6 +76,22 @@
           (+ 184 (x86-low3 code))
           (x86-u64-bytes immediate))))))
 
+; Two's-complement byte for a disp8 value already known to be in [-128,127].
+; `mod` in this Lisp does not wrap negative operands (`(mod -1 256)` is -1,
+; not 255), so a plain `(mod displacement 256)` silently produced an
+; out-of-range byte for any negative displacement -- caught fail-closed at
+; the host boundary (`native-call-u64-raw` rejects non-0..255 bytes), but it
+; meant negative disp8 could never actually be encoded despite the encoder
+; otherwise already supporting arbitrary GPR bases/destinations, SIB for
+; rsp/r12, REX.B for an extended base (r8-r15), and REX.R for an extended
+; load-destination/store-source register. Adding 256 before reducing mod
+; 256 is exact for the whole disp8 domain (verified by round-trip below,
+; independently cross-checked against objdump across the full 16x16 base x
+; data-register matrix).
+(def x86-disp8-byte
+  (lambda (displacement)
+    (mod (+ displacement 256) 256)))
+
 ; MOV r64, [base + disp8], opcode 8B /r.
 ; ModR/M mode 01 always carries one displacement byte. RSP/R12 bases use the
 ; required no-index SIB byte instead of silently emitting an invalid address.
@@ -92,9 +108,9 @@
                   139
                   modrm
                   (x86-encode-sib 0 4 4)
-                  (mod displacement 256)))
+                  (x86-disp8-byte displacement)))
               (t
-                (list rex 139 modrm (mod displacement 256))))))))))
+                (list rex 139 modrm (x86-disp8-byte displacement))))))))))
 
 ; MOV [base + disp8], r64, opcode 89 /r.
 (def x86-encode-mov-mem-disp8-r64
@@ -110,9 +126,9 @@
                   137
                   modrm
                   (x86-encode-sib 0 4 4)
-                  (mod displacement 256)))
+                  (x86-disp8-byte displacement)))
               (t
-                (list rex 137 modrm (mod displacement 256))))))))))
+                (list rex 137 modrm (x86-disp8-byte displacement))))))))))
 
 ; Group-1 ALU r/m64, r64 (mod=3 register/register), opcode base+1: ADD 0x01,
 ; OR 0x09, AND 0x21, SUB 0x29, XOR 0x31, CMP 0x39 (Intel SDM, confirmed

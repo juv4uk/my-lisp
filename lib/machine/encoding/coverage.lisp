@@ -1602,7 +1602,7 @@
     (iclass "MOV")
     (extension X86-BASE)
     (status partial)
-    (reason "x86-encode-mov-r64-imm64/-mov-r64-mem-disp8/-mov-mem-disp8-r64 cover a handful of register/disp8-memory forms of MOV's 22 XED forms"))
+    (reason "x86-encode-mov-r64-imm64 (rax/rcx immediate only), x86-encode-mov-r64-mem-disp8, and x86-encode-mov-mem-disp8-r64 (any of 16 GPRs as base/dest, full disp8 range -128..127) cover 3 of MOV's 22 XED forms; the 32/64-bit-displacement, SIB-index, and other MOV forms are pending"))
   (coverage
     (iclass "MOVAPD")
     (extension SSE2)

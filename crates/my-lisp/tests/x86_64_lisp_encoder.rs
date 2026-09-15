@@ -391,6 +391,123 @@ fn lisp_encodes_test_r64_r64_matching_pinned_opcode() {
     );
 }
 
+/// #176 continued: the `mov-r64-mem-disp8` / `mov-mem-disp8-r64` encoder
+/// was already structurally general (arbitrary GPR base/destination, SIB
+/// for rsp/r12, REX.B for r8-r15) but had a real latent bug for negative
+/// displacements: `(mod displacement 256)` does not wrap negative Lisp
+/// numbers (`(mod -1 256)` is -1, not 255), so any negative disp8 produced
+/// an out-of-range "byte" that `native-call-u64-raw` would reject at the
+/// host boundary -- fail-closed, but it meant the encoder's claimed
+/// generality was never actually true for negative offsets. This is a RED
+/// witness for that bug plus a round-trip proof it's fixed.
+fn decode_mov_mem_disp8(bytes: &[u8]) -> Option<(&'static str, u8, u8, i32)> {
+    let mut i = 0;
+    let rex = *bytes.get(i)?;
+    if (rex & 0xF0) != 0x40 || (rex & 0x08) == 0 {
+        return None;
+    }
+    i += 1;
+    let opcode = *bytes.get(i)?;
+    let direction = match opcode {
+        0x8B => "load", // MOV r64, [mem]
+        0x89 => "store", // MOV [mem], r64
+        _ => return None,
+    };
+    i += 1;
+    let modrm = *bytes.get(i)?;
+    i += 1;
+    if (modrm >> 6) != 0b01 {
+        return None;
+    }
+    let reg_field = (modrm >> 3) & 0b111;
+    let rm_field = modrm & 0b111;
+    let rex_r = (rex & 0x04) != 0;
+    let rex_b = (rex & 0x01) != 0;
+    let reg = reg_field | if rex_r { 0b1000 } else { 0 };
+    let base = if rm_field == 0b100 {
+        // SIB byte present for rsp/r12 bases.
+        let sib = *bytes.get(i)?;
+        i += 1;
+        if sib != 0x24 {
+            return None; // scale=0, index=none (0b100) only
+        }
+        0b100 | if rex_b { 0b1000 } else { 0 }
+    } else {
+        rm_field | if rex_b { 0b1000 } else { 0 }
+    };
+    let disp_byte = *bytes.get(i)?;
+    if bytes.len() != i + 1 {
+        return None;
+    }
+    let disp = disp_byte as i8 as i32;
+    Some((direction, reg, base, disp))
+}
+
+fn gpr_index(name: &str) -> u8 {
+    [
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12",
+        "r13", "r14", "r15",
+    ]
+    .iter()
+    .position(|candidate| *candidate == name)
+    .expect("known GPR name") as u8
+}
+
+#[test]
+fn lisp_encodes_mov_disp8_for_every_gpr_base_with_correct_negative_displacement() {
+    const ALL_GPRS: [&str; 16] = [
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12",
+        "r13", "r14", "r15",
+    ];
+
+    let mut session = encoder_session();
+    // Full 16 (data register, exercises REX.R) x 16 (base register,
+    // exercises REX.B and SIB for rsp/r12) matrix, crossed with the disp8
+    // boundary (min, -1, 0, mid, max) -- 2560 combinations total. An
+    // earlier version of this witness only ever used rax as the data
+    // register, which meant REX.R was never exercised at all despite
+    // admission opening (mov-*-mem-disp8 register disp8 register) for any
+    // of the 16 GPRs in both slots; independently cross-checked with
+    // objdump against this same matrix (2560 decoded, 0 mismatches).
+    for data_register in ALL_GPRS {
+        for base in ALL_GPRS {
+            for displacement in [-128i32, -1, 0, 1, 127] {
+                let load_form = format!(
+                    "(x86-encode-mov-r64-mem-disp8 (quote {data_register}) (quote {base}) {displacement})"
+                );
+                let store_form = format!(
+                    "(x86-encode-mov-mem-disp8-r64 (quote {base}) {displacement} (quote {data_register}))"
+                );
+
+                for (form, expected_direction) in [(&load_form, "load"), (&store_form, "store")] {
+                    let rendered = eval_bytes(form, &mut session);
+                    let bytes: Vec<u8> = rendered
+                        .trim_start_matches('(')
+                        .trim_end_matches(')')
+                        .split_whitespace()
+                        .map(|token| token.parse().expect("byte must be a small integer"))
+                        .collect();
+                    // Parsing each token as u8 above is itself the RED
+                    // witness for the original bug: before the fix, a
+                    // negative displacement made the encoder emit a
+                    // literal negative number, which would fail to parse
+                    // as u8 right here.
+
+                    let (direction, reg, base_code, decoded_disp) = decode_mov_mem_disp8(&bytes)
+                        .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+                    assert_eq!(direction, expected_direction, "{form}: {bytes:?}");
+                    assert_eq!(reg, gpr_index(data_register), "{form}: {bytes:?}");
+                    assert_eq!(base_code, gpr_index(base), "{form}: {bytes:?}");
+                    assert_eq!(
+                        decoded_disp, displacement,
+                        "{form} round-tripped to disp {decoded_disp}, from bytes {bytes:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");

@@ -29,17 +29,57 @@
      (dec-r64 register)
      (not-r64 register)
      (neg-r64 register)
-     (mov-mem-disp8-r64 rdi 0 rax)
-     (mov-mem-disp8-r64 rdi 8 rax)
-     (mov-r64-mem-disp8 rax rdi 0)
-     (mov-r64-mem-disp8 rax rdi 8))))
+     (mov-mem-disp8-r64 register disp8 register)
+     (mov-r64-mem-disp8 register register disp8))))
 
-; `immediate` and `register` are operand-slot wildcards, not opcode
-; wildcards. `register` only admits the 16 GPR names x86-reg-code knows
-; about -- any other atom (a number, a made-up symbol) fails the match, the
-; same way an out-of-range immediate would fail the encoder later. The
-; selected Lisp encoder still validates whether the operand can be
-; represented before the raw host capability is reachable.
+; A disp8 slot only admits an exact integer in [-128,127]. Comparison
+; operators like `>=` error on a non-number rather than returning () (a
+; naive `register`-style guard would crash admission on a symbol/list
+; operand instead of failing closed), so this checks the operand's own
+; printed form character-by-character first -- the same digit-classifying
+; approach #177's typed operands layer uses, kept self-contained here since
+; admission must not depend on loading that file.
+(def x86-admission-decimal-digit?
+  (lambda (character)
+    (member? character
+             (quote ("0" "1" "2" "3" "4" "5" "6" "7" "8" "9")))))
+
+(def x86-admission-decimal-digits?
+  (lambda (text)
+    (cond
+      ((string-empty? text) t)
+      ((x86-admission-decimal-digit? (string-first text))
+       (x86-admission-decimal-digits? (string-rest text)))
+      (t (quote ())))))
+
+(def x86-admission-exact-integer?
+  (lambda (value)
+    (cond
+      ((symbol? value) (quote ()))
+      ((not (atom value)) (quote ()))
+      (t
+       (let ((text (write-to-string value)))
+         (cond
+           ((string-empty? text) (quote ()))
+           ((eq (string-first text) "-")
+            (cond
+              ((string-empty? (string-rest text)) (quote ()))
+              (t (x86-admission-decimal-digits? (string-rest text)))))
+           (t (x86-admission-decimal-digits? text))))))))
+
+(def x86-admission-disp8?
+  (lambda (value)
+    (cond
+      ((x86-admission-exact-integer? value)
+       (and (>= value -128) (<= value 127)))
+      (t (quote ())))))
+
+; `immediate`, `register`, and `disp8` are operand-slot wildcards, not
+; opcode wildcards. `register` only admits the 16 GPR names x86-reg-code
+; knows about -- any other atom (a number, a made-up symbol) fails the
+; match, the same way an out-of-range immediate would fail the encoder
+; later. The selected Lisp encoder still validates whether the operand can
+; be represented before the raw host capability is reachable.
 (def x86-admission-pattern-match?
   (lambda (pattern form)
     (cond
@@ -49,6 +89,10 @@
          ((eq pattern (quote register))
           (cond
             ((atom form) (not (eq (x86-reg-code form) (quote ()))))
+            (t (quote ()))))
+         ((eq pattern (quote disp8))
+          (cond
+            ((atom form) (x86-admission-disp8? form))
             (t (quote ()))))
          ((atom form) (eq pattern form))
          (t (quote ()))))
@@ -122,14 +166,10 @@
        (x86-encode-not-r64 (second form)))
       ((x86-admission-pattern-match? (quote (neg-r64 register)) form)
        (x86-encode-neg-r64 (second form)))
-      ((equal? form (quote (mov-mem-disp8-r64 rdi 0 rax)))
-       (x86-encode-mov-mem-disp8-r64 (quote rdi) 0 (quote rax)))
-      ((equal? form (quote (mov-mem-disp8-r64 rdi 8 rax)))
-       (x86-encode-mov-mem-disp8-r64 (quote rdi) 8 (quote rax)))
-      ((equal? form (quote (mov-r64-mem-disp8 rax rdi 0)))
-       (x86-encode-mov-r64-mem-disp8 (quote rax) (quote rdi) 0))
-      ((equal? form (quote (mov-r64-mem-disp8 rax rdi 8)))
-       (x86-encode-mov-r64-mem-disp8 (quote rax) (quote rdi) 8))
+      ((x86-admission-pattern-match? (quote (mov-mem-disp8-r64 register disp8 register)) form)
+       (x86-encode-mov-mem-disp8-r64 (second form) (third form) (fourth form)))
+      ((x86-admission-pattern-match? (quote (mov-r64-mem-disp8 register register disp8)) form)
+       (x86-encode-mov-r64-mem-disp8 (second form) (third form) (fourth form)))
       ; Unreachable after admission. Keep fail-closed data instead of inventing
       ; a fallback encoder.
       (t (quote ())))))
