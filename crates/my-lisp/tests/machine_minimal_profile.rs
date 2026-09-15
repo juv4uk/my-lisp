@@ -201,3 +201,57 @@ fn bounded_cond_profile_reaches_bytes_only_through_closed_admission_and_round_tr
         .unwrap_or_else(|error| panic!("independent decoder rejected bounded COND witness {bytes:?}: {error}"));
     assert_eq!(render_forms(&decoded), forms);
 }
+
+#[test]
+fn conditional_structural_profile_composes_cond_with_car_cons_and_extended_gprs() {
+    let mut session = profile_session();
+
+    let semantic_forms = eval_value(
+        "(x86-lower-eq-cond-car-cons-u64-forms 2 2 11 12 21 22)",
+        &mut session,
+    );
+    assert_eq!(
+        semantic_forms,
+        "((mov-r64-imm64 rax 2) (mov-r64-imm64 rcx 2) (cmp-r64-r64 rax rcx) (jnz-rel8 33) (mov-r64-imm64 r8 11) (mov-mem-disp8-r64 rdi 0 r8) (mov-r64-imm64 r9 12) (mov-mem-disp8-r64 rdi 8 r9) (mov-r64-mem-disp8 rax rdi 0) (ret) (mov-r64-imm64 r10 21) (mov-mem-disp8-r64 rdi 0 r10) (mov-r64-imm64 r11 22) (mov-mem-disp8-r64 rdi 8 r11) (mov-r64-mem-disp8 rax rdi 0) (ret))"
+    );
+
+    let profile_forms = eval_value(
+        "(x86-minimal-eq-cond-car-cons-forms 2 2 11 12 21 22)",
+        &mut session,
+    );
+    assert_eq!(profile_forms, semantic_forms);
+
+    let families = eval_value(
+        "(x86-minimal-eq-cond-car-cons-observed-families 2 2 11 12 21 22)",
+        &mut session,
+    );
+    assert_eq!(
+        families,
+        "(mov-r64-imm64 cmp-r64-r64 jnz-rel8 mov-mem-disp8-r64 mov-r64-mem-disp8 ret)"
+    );
+    assert_eq!(
+        eval_value("(x86-minimal-eq-cond-car-cons-dependency-families)", &mut session),
+        families
+    );
+
+    assert!(
+        profile_forms.contains("mov-r64-imm64 r8 11")
+            && profile_forms.contains("mov-r64-imm64 r9 12")
+            && profile_forms.contains("mov-r64-imm64 r10 21")
+            && profile_forms.contains("mov-r64-imm64 r11 22"),
+        "composition witness must require #207 extended-GPR materialization: {profile_forms}"
+    );
+
+    let encoded = eval_value(
+        "(x86-encode-admitted-program-or-reject (x86-minimal-eq-cond-car-cons-forms 2 2 11 12 21 22))",
+        &mut session,
+    );
+    assert!(
+        !encoded.contains("rejected"),
+        "conditional+structural composition must stay on closed admission: {encoded}"
+    );
+    let bytes = parse_byte_list(&encoded);
+    let decoded = x86_64_block_decoder::decode_machine_block(&bytes)
+        .unwrap_or_else(|error| panic!("independent decoder rejected composed #196 witness {bytes:?}: {error}"));
+    assert_eq!(render_forms(&decoded), profile_forms);
+}
