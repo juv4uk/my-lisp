@@ -1,36 +1,29 @@
 use my_lisp::{
     eval_expr, Environment, ErrorKind, Exactness, Expr, LanguageError, Span, Value,
 };
-use std::ffi::c_void;
 
-const PROT_READ: i32 = 0x1;
-const PROT_WRITE: i32 = 0x2;
-const PROT_EXEC: i32 = 0x4;
-const MAP_PRIVATE: i32 = 0x02;
-const MAP_ANONYMOUS: i32 = 0x20;
 const MAX_EXACT_LISP_INTEGER: u64 = 9_007_199_254_740_991;
 const MAX_NATIVE_ARENA_BYTES: usize = 1_048_576;
 
-extern "C" {
-    fn mmap(
-        address: *mut c_void,
-        length: usize,
-        protection: i32,
-        flags: i32,
-        file_descriptor: i32,
-        offset: isize,
-    ) -> *mut c_void;
-    fn mprotect(address: *mut c_void, length: usize, protection: i32) -> i32;
-    fn munmap(address: *mut c_void, length: usize) -> i32;
-}
+// The Lisp-owned x86-64 guest ABI (lib/machine/lowering/semantic-x86-64.lisp)
+// fixes arena pointer = RDI, result = RAX -- the SysV64 convention. On Linux
+// `extern "C"` happens to mean SysV64, so the two coincided by accident. On
+// Windows `extern "C"` means the Win64 convention (arg1 = RCX), which does
+// NOT match the guest ABI: calling guest bytes that read RDI through a
+// Win64-convention function pointer reads whatever RDI held from the
+// caller's frame, not the arena pointer. `extern "sysv64"` is used
+// explicitly here on every platform so one Lisp-owned guest ABI holds
+// regardless of host OS -- the host adapter (platform module) changes,
+// not the guest meaning.
+type GuestNoArena = unsafe extern "sysv64" fn() -> u64;
+type GuestWithArena = unsafe extern "sysv64" fn(*mut u8) -> u64;
 
-fn mechanism_error(operation: &str, action: &str, span: Span) -> LanguageError {
+use crate::platform::{self, ExecutableMemory};
+
+fn mechanism_error(operation: &str, action: &str, detail: &str, span: Span) -> LanguageError {
     LanguageError::new(
         ErrorKind::InvalidForm,
-        format!(
-            "{operation}: {action} failed: {}",
-            std::io::Error::last_os_error()
-        ),
+        format!("{operation}: {action} failed: {detail}"),
         span,
     )
 }
@@ -104,7 +97,7 @@ fn prepare_executable(
     bytes: &[u8],
     operation: &str,
     span: Span,
-) -> Result<*mut c_void, LanguageError> {
+) -> Result<ExecutableMemory, LanguageError> {
     if bytes.is_empty() {
         return Err(LanguageError::new(
             ErrorKind::InvalidForm,
@@ -113,32 +106,16 @@ fn prepare_executable(
         ));
     }
 
-    let length = bytes.len();
-    let memory = unsafe {
-        mmap(
-            std::ptr::null_mut(),
-            length,
-            PROT_READ | PROT_WRITE,
-            MAP_PRIVATE | MAP_ANONYMOUS,
-            -1,
-            0,
-        )
-    };
-
-    if memory as isize == -1 {
-        return Err(mechanism_error(operation, "mmap RW", span));
-    }
+    let memory = platform::allocate_rw(bytes.len())
+        .map_err(|detail| mechanism_error(operation, "allocate RW", &detail, span))?;
 
     unsafe {
-        std::ptr::copy_nonoverlapping(bytes.as_ptr(), memory.cast::<u8>(), length);
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), memory.as_ptr().cast::<u8>(), bytes.len());
     }
 
-    if unsafe { mprotect(memory, length, PROT_READ | PROT_EXEC) } != 0 {
-        let error = mechanism_error(operation, "mprotect RW->RX", span);
-        unsafe {
-            munmap(memory, length);
-        }
-        return Err(error);
+    if let Err(detail) = platform::make_executable(&memory) {
+        let _ = platform::release(&memory);
+        return Err(mechanism_error(operation, "make executable", &detail, span));
     }
 
     Ok(memory)
@@ -147,12 +124,11 @@ fn prepare_executable(
 fn execute_u64(bytes: &[u8], span: Span) -> Result<u64, LanguageError> {
     let operation = "native-call-u64-raw";
     let memory = prepare_executable(bytes, operation, span)?;
-    let function: unsafe extern "C" fn() -> u64 = unsafe { std::mem::transmute(memory) };
+    let function: GuestNoArena = unsafe { std::mem::transmute(memory.as_ptr()) };
     let result = unsafe { function() };
 
-    if unsafe { munmap(memory, bytes.len()) } != 0 {
-        return Err(mechanism_error(operation, "munmap code", span));
-    }
+    platform::release(&memory)
+        .map_err(|detail| mechanism_error(operation, "release code", &detail, span))?;
 
     Ok(result)
 }
@@ -164,35 +140,21 @@ fn execute_u64_with_arena(
 ) -> Result<u64, LanguageError> {
     let operation = "native-call-u64-raw";
     let code = prepare_executable(bytes, operation, span)?;
-    let arena = unsafe {
-        mmap(
-            std::ptr::null_mut(),
-            arena_length,
-            PROT_READ | PROT_WRITE,
-            MAP_PRIVATE | MAP_ANONYMOUS,
-            -1,
-            0,
-        )
-    };
+    let arena = platform::allocate_rw(arena_length).map_err(|detail| {
+        let _ = platform::release(&code);
+        mechanism_error(operation, "allocate arena", &detail, span)
+    })?;
 
-    if arena as isize == -1 {
-        let error = mechanism_error(operation, "mmap arena RW", span);
-        unsafe {
-            munmap(code, bytes.len());
-        }
-        return Err(error);
+    let function: GuestWithArena = unsafe { std::mem::transmute(code.as_ptr()) };
+    let result = unsafe { function(arena.as_ptr().cast::<u8>()) };
+
+    let code_release = platform::release(&code);
+    let arena_release = platform::release(&arena);
+    if let Err(detail) = code_release {
+        return Err(mechanism_error(operation, "release code", &detail, span));
     }
-
-    let function: unsafe extern "C" fn(*mut u8) -> u64 = unsafe { std::mem::transmute(code) };
-    let result = unsafe { function(arena.cast::<u8>()) };
-
-    let code_unmap = unsafe { munmap(code, bytes.len()) };
-    let arena_unmap = unsafe { munmap(arena, arena_length) };
-    if code_unmap != 0 {
-        return Err(mechanism_error(operation, "munmap code", span));
-    }
-    if arena_unmap != 0 {
-        return Err(mechanism_error(operation, "munmap arena", span));
+    if let Err(detail) = arena_release {
+        return Err(mechanism_error(operation, "release arena", &detail, span));
     }
 
     Ok(result)

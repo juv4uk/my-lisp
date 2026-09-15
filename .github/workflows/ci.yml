@@ -157,6 +157,25 @@ jobs:
         if: steps.changes.outputs.rust == 'true' && steps.changes.outputs.workspace != 'true'
         run: cargo clippy -p my-lisp -p my-lisp-host -p my-lisp-cli -p xtask --all-targets -- -D warnings
 
+  windows-native-exec-witness:
+    name: Windows native-exec ABI witness
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: windows-native-exec-witness
+      - name: Windows guest-ABI witness (sysv64 vs win64)
+        run: cargo test -p my-lisp-host --test windows_native_exec_abi
+      - name: Native CPU vertical witness on Windows
+        run: cargo test -p my-lisp-host --test native_lisp_bytes
+      - name: Clippy my-lisp-host on Windows
+        run: cargo clippy -p my-lisp-host --all-targets -- -D warnings
+
   main-fast-critical:
     name: main fast critical gate
     if: github.event_name != 'pull_request'

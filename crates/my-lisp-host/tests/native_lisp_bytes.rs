@@ -1,4 +1,4 @@
-#![cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#![cfg(all(any(target_os = "linux", target_os = "windows"), target_arch = "x86_64"))]
 
 use my_lisp::{
     eval_program, load_core_library, register_capability, Environment, Exactness, Expr,
@@ -307,8 +307,13 @@ fn native_execution_mechanism_is_not_a_language_semantic_identity() {
 #[test]
 fn rust_native_executor_contains_no_lisp_or_x86_lowering_decision() {
     let _serial = test_lock();
-    let source = fs::read_to_string(repo_root().join("crates/my-lisp-host/src/native_exec.rs"))
-        .expect("native execution mechanism source must be readable");
+    let mut source =
+        fs::read_to_string(repo_root().join("crates/my-lisp-host/src/native_exec.rs"))
+            .expect("native execution mechanism source must be readable");
+    source.push_str(
+        &fs::read_to_string(repo_root().join("crates/my-lisp-host/src/platform.rs"))
+            .expect("host memory-adapter source must be readable"),
+    );
 
     for forbidden in [
         "0104",
@@ -330,7 +335,22 @@ fn rust_native_executor_contains_no_lisp_or_x86_lowering_decision() {
         );
     }
 
-    for required in ["mmap", "mprotect", "munmap", "PROT_WRITE", "PROT_EXEC"] {
+    // The raw OS memory calls differ by host (mmap/mprotect on Unix,
+    // VirtualAlloc/VirtualProtect on Windows) but every host must expose
+    // real syscall-level executable-memory mechanism, not a semantic
+    // abstraction.
+    #[cfg(unix)]
+    let required = ["mmap", "mprotect", "munmap", "PROT_WRITE", "PROT_EXEC"];
+    #[cfg(windows)]
+    let required = [
+        "VirtualAlloc",
+        "VirtualProtect",
+        "VirtualFree",
+        "FlushInstructionCache",
+        "PAGE_EXECUTE_READ",
+    ];
+
+    for required in required {
         assert!(
             source.contains(required),
             "host executor must expose only native memory/call mechanism; missing {required}"
