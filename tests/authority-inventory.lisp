@@ -19,3 +19,4 @@
 (authority "crates/my-lisp/tests/machine_admission_adversarial.rs" mechanism)
 (authority "crates/my-lisp/tests/machine_atoms.rs" mechanism)
 (authority "crates/my-lisp/tests/machine_typed_operands.rs" mechanism)
+(authority "crates/my-lisp/tests/machine_block_roundtrip.rs" mechanism)
