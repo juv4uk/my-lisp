@@ -64,6 +64,21 @@ jobs:
           done < /tmp/changed.txt
           ./target/debug/my-lisp scripts/authority-guard.lisp
 
+      - name: Lisp-owned machine non-interference guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build -p my-lisp-cli --bin my-lisp
+          ./target/debug/my-lisp scripts/machine-authority-guard.lisp
+          cp tests/machine-authority-edges.lisp /tmp/machine-authority-edges.lisp
+          cp tests/fixtures/machine-authority/reverse-edge.lisp tests/machine-authority-edges.lisp
+          if ./target/debug/my-lisp scripts/machine-authority-guard.lisp > /tmp/machine-reverse-edge.log 2>&1; then
+            echo "ERROR: #150 reverse machine->semantic authority edge was accepted"
+            exit 1
+          fi
+          grep -q 'machine-authority-boundary-violation' /tmp/machine-reverse-edge.log
+          cp /tmp/machine-authority-edges.lisp tests/machine-authority-edges.lisp
+
       - name: Diff hygiene
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -79,7 +94,7 @@ jobs:
         run: |
           python3 scripts/generate-meta-semantic-registry.py --check
           python3 scripts/public_api_inventory.py --check
-          cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test uk_surface_equivalence --test public_api_inventory_contract
+          cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test uk_surface_equivalence --test public_api_inventory_contract
           cargo test -p my-lisp-host --test native_lisp_bytes
           cargo test -p my-lisp-cli --test cli
           cargo run -p xtask -- verify
@@ -107,7 +122,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tests=(macro_derivation ukrainian_api_docs uk_surface_equivalence public_api_inventory_contract)
+          tests=(macro_derivation ukrainian_api_docs uk_surface_equivalence public_api_inventory_contract machine_noninterference_contract)
           if [[ -f crates/my-lisp/tests/machine_lowering_boundary.rs ]]; then tests+=(machine_lowering_boundary); fi
           args=(); for test_name in "${tests[@]}"; do args+=(--test "$test_name"); done
           cargo test -p my-lisp "${args[@]}"
@@ -153,8 +168,14 @@ jobs:
         run: |
           python3 scripts/generate-meta-semantic-registry.py --check
           python3 scripts/public_api_inventory.py --check
+      - name: Machine non-interference guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build -p my-lisp-cli --bin my-lisp
+          ./target/debug/my-lisp scripts/machine-authority-guard.lisp
       - name: Core unit and critical semantic-machine witnesses
-        run: cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test uk_surface_equivalence --test public_api_inventory_contract
+        run: cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test uk_surface_equivalence --test public_api_inventory_contract
       - name: Native CPU vertical witness
         run: cargo test -p my-lisp-host --test native_lisp_bytes
       - name: CLI smoke
