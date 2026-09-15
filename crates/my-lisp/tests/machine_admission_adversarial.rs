@@ -58,6 +58,31 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(x86-call-admitted-u64 (quote ((add-r64-r64 rax notareg))) 0)",
             "(rejected unadmitted-machine-form (add-r64-r64 rax notareg))",
         ),
+        (
+            // #176's generalized mov-mem-disp8 admission: 128 is one past
+            // the signed disp8 maximum (127) and must fail closed, not be
+            // silently truncated or wrapped into something encodable.
+            "(x86-call-admitted-u64 (quote ((mov-r64-mem-disp8 rax rdi 128))) 0)",
+            "(rejected unadmitted-machine-form (mov-r64-mem-disp8 rax rdi 128))",
+        ),
+        (
+            // -129 is one past the signed disp8 minimum (-128).
+            "(x86-call-admitted-u64 (quote ((mov-mem-disp8-r64 rdi -129 rax))) 0)",
+            "(rejected unadmitted-machine-form (mov-mem-disp8-r64 rdi -129 rax))",
+        ),
+        (
+            // The `disp8` wildcard must fail closed on a non-numeric atom
+            // rather than erroring out of the comparison operators that
+            // would otherwise be applied to it.
+            "(x86-call-admitted-u64 (quote ((mov-mem-disp8-r64 rdi notanumber rax))) 0)",
+            "(rejected unadmitted-machine-form (mov-mem-disp8-r64 rdi notanumber rax))",
+        ),
+        (
+            // A made-up base register in the mem-disp8 form must fail
+            // closed the same way an invalid register does elsewhere.
+            "(x86-call-admitted-u64 (quote ((mov-r64-mem-disp8 rax notareg 0))) 0)",
+            "(rejected unadmitted-machine-form (mov-r64-mem-disp8 rax notareg 0))",
+        ),
     ] {
         EXECUTOR_CALLS.store(0, Ordering::SeqCst);
         let result = eval_program(request, &mut session)
