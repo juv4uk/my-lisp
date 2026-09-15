@@ -192,9 +192,10 @@ fn three_execution_paths_share_one_lisp_owned_witness() {
     );
 
     // CML independently consumes the same first compiler-corpus row from this
-    // committed corpus.  my-lisp deliberately does not depend on CML: the
-    // adapter declaration is transport metadata, while CML's own CI proves
-    // parser -> lowering -> x86 backend consumption without an expected value.
+    // committed corpus. my-lisp deliberately does not depend on CML: the
+    // adapter declaration is transport metadata, while CML's sibling-repo test
+    // is the executable parser -> lowering -> x86 backend consumer and carries
+    // no expected semantic answer of its own.
     assert!(
         row.compiler_corpus,
         "shared row must remain admitted to compiler transport"
