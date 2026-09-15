@@ -409,3 +409,39 @@ fn jcc_actually_branches_on_real_hardware_for_equal_and_ordering_conditions() {
     assert_eq!(run("jnle", 6, 5), "6", "JNLE must branch when strictly greater");
     assert_eq!(run("jnle", 5, 5), "999", "JNLE must not branch when equal");
 }
+
+/// #176 continued: JMP rel8's defining property, compared to Jcc, is that
+/// it branches unconditionally -- there is no CMP/flag state to satisfy.
+/// This is a real, executed proof on the i5-6400 that the branch is taken
+/// regardless of any prior flag state, not merely that the bytes decode to
+/// an unconditional-jump mnemonic.
+#[test]
+fn jmp_actually_branches_unconditionally_on_real_hardware_regardless_of_flags() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    // mov rax,A; mov rcx,B; cmp rax,rcx (sets flags one way or another,
+    // deliberately including the "not equal" case that would make JZ NOT
+    // branch); jmp +10 (unconditionally skips the following mov-r64-imm64,
+    // regardless of what CMP just set); mov rax,999; ret.
+    let mut run = |a: i64, b: i64| -> String {
+        let source = format!(
+            "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax {a}) (mov-r64-imm64 rcx {b}) (cmp-r64-r64 rax rcx) (jmp-rel8 10) (mov-r64-imm64 rax 999) (ret))) 0)"
+        );
+        eval_program(&source, &mut session)
+            .expect("real hardware must execute the admitted program")
+            .value
+            .to_string()
+    };
+
+    assert_eq!(run(5, 5), "5", "JMP must branch when the prior CMP set ZF");
+    assert_eq!(
+        run(5, 6),
+        "5",
+        "JMP must branch even when the prior CMP cleared ZF -- unlike JZ, it does not consult flags"
+    );
+}

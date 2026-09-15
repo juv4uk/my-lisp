@@ -59,3 +59,5 @@ crates/my-lisp-host/tests/native_lisp_bytes.rs	laboratory_raw_host_witnesses_mat
 crates/my-lisp-host/tests/windows_native_exec_abi.rs	win64_calling_convention_delivers_the_arena_pointer_to_rcx_not_rdi	mechanism	native-execution-host-abi	crates/my-lisp-host/src/platform.rs	retained
 crates/my-lisp-host/tests/windows_native_exec_abi.rs	sysv64_calling_convention_delivers_the_arena_pointer_to_rdi_not_rcx	mechanism	native-execution-host-abi	crates/my-lisp-host/src/platform.rs	retained
 crates/my-lisp/tests/machine_minimal_profile.rs	structural_car_profile_is_projected_from_the_existing_semantic_witness	observer	machine-minimal-runtime-profile	lib/machine/profile/minimal-runtime-x86-64.lisp	migrated
+crates/my-lisp/tests/x86_64_lisp_encoder.rs	lisp_encodes_jmp_rel8_with_the_pinned_opcode_and_correct_displacement	mechanism	x86-encoder-pinned-evidence	lib/machine/xed/vendor/base/xed-isa.txt	migrated
+crates/my-lisp-host/tests/native_lisp_bytes.rs	jmp_actually_branches_unconditionally_on_real_hardware_regardless_of_flags	mechanism	raw-native-execution-mechanism	lib/machine/admission/x86-64.lisp + crates/my-lisp-host/src/native_exec.rs	retained

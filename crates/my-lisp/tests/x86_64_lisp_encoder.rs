@@ -590,6 +590,62 @@ fn lisp_encodes_the_full_jcc_rel8_family_with_correct_condition_codes_and_displa
     }
 }
 
+/// Independent decoder for JMP rel8: a single fixed opcode byte (0xEB), no
+/// condition code, no REX, no ModRM, followed by one signed relative-
+/// displacement byte. From scratch, independent of the encoder's own
+/// construction arithmetic.
+fn decode_jmp_rel8(bytes: &[u8]) -> Option<i32> {
+    let [opcode, disp] = bytes else { return None };
+    if *opcode != 0xEB {
+        return None;
+    }
+    Some(*disp as i8 as i32)
+}
+
+/// #176 continued: JMP rel8 (opcode 0xEB) -- the unconditional counterpart
+/// to the Jcc rel8 family, needed as soon as a control-transfer decision
+/// (e.g. a multi-clause COND, or a loop back-edge) requires more than a
+/// single conditional skip. Per #175's pinned XED evidence
+/// (`PATTERN : 0xEB mode64 norex2_prefix FORCE64() BRDISP8()`), reuses the
+/// same x86-disp8-byte two's-complement conversion #199's MOV disp8 and
+/// #202's Jcc rel8 already proved correct.
+#[test]
+fn lisp_encodes_jmp_rel8_with_the_pinned_opcode_and_correct_displacement() {
+    let mut session = encoder_session();
+
+    for displacement in [-128i32, -1, 0, 1, 127] {
+        let form = format!("(x86-encode-jmp-rel8 {displacement})");
+        let rendered = eval_bytes(&form, &mut session);
+        let bytes: Vec<u8> = rendered
+            .trim_start_matches('(')
+            .trim_end_matches(')')
+            .split_whitespace()
+            .map(|token| token.parse().expect("byte must be a small integer"))
+            .collect();
+
+        assert_eq!(bytes.len(), 2, "{form} must always be opcode+disp8, 2 bytes");
+        assert_eq!(bytes[0], 0xEB, "{form}: {bytes:?}");
+        let decoded_disp = decode_jmp_rel8(&bytes)
+            .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+        assert_eq!(
+            decoded_disp, displacement,
+            "{form} round-tripped to disp {decoded_disp}, from bytes {bytes:?}"
+        );
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("ICLASS    : JMP"),
+        "pinned XED evidence must name ICLASS JMP"
+    );
+    assert!(
+        vendor_source.contains("PATTERN   : 0xEB mode64"),
+        "pinned XED evidence must contain the 0xEB rel8 JMP pattern"
+    );
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");

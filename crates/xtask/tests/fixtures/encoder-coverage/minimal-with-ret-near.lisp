@@ -1,11 +1,11 @@
 ; Minimal fixture evidence file (#176 test only): admits every ICLASS the
-; curated partially-implemented set names (RET_NEAR, MOV, ADD, OR, AND, SUB, XOR, CMP, TEST, PUSH, POP, INC, DEC, NOT, NEG, JO, JNO, JB, JNB, JZ, JNZ, JBE, JNBE, JS, JNS, JP, JNP, JL, JNL, JLE, JNLE),
+; curated partially-implemented set names (RET_NEAR, MOV, ADD, OR, AND, SUB, XOR, CMP, TEST, PUSH, POP, INC, DEC, NOT, NEG, JO, JNO, JB, JNB, JZ, JNZ, JBE, JNBE, JS, JNS, JP, JNP, JL, JNL, JLE, JNLE, JMP),
 ; so the generator's own cross-check against that set is satisfied, plus
 ; one ordinary not-yet-implemented ICLASS for contrast.
 (xed-machine-evidence/1
   (pinned-commit "0000000000000000000000000000000000000000")
   (source-digest "sha256:0")
-  (form-count 32)
+  (form-count 33)
   (form
     (extension X86-BASE)
     (xed-extension BASE)
@@ -281,6 +281,15 @@
     (xed-extension BASE)
     (iclass "JNLE")
     (category "COND_BR")
+    (isa-set "I86")
+    (form-count 1)
+    (operand-summary "")
+    (source-file "fixture"))
+  (form
+    (extension X86-BASE)
+    (xed-extension BASE)
+    (iclass "JMP")
+    (category "UNCOND_BR")
     (isa-set "I86")
     (form-count 1)
     (operand-summary "")
