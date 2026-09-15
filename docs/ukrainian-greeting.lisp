@@ -1,5 +1,5 @@
 ; Маленька програма на українській поверхні my-lisp.
-; Запуск: cat lib/surface/uk.my docs/ukrainian-greeting.my | my-lisp --surface uk
+; Запуск: cat lib/surface/uk.lisp docs/ukrainian-greeting.lisp | my-lisp --surface uk
 
 (визначити привітання (функція (ім'я) (зчепити (зчепити "Привіт, " ім'я) "!")))
 
