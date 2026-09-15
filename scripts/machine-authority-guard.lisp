@@ -23,13 +23,13 @@
 
 (def fail-machine-authority
   (lambda (row)
-    (cons
-      (print
-        (list
-          (quote machine-authority-boundary-violation)
-          row
-          (quote semantic-to-machine)
-          "Machine/backend facts may consume semantic identity; reverse authority is forbidden. See #150."))
+    (let ((diagnostic
+            (print
+              (list
+                (quote machine-authority-boundary-violation)
+                row
+                (quote semantic-to-machine)
+                "Machine/backend facts may consume semantic identity; reverse authority is forbidden. See #150."))))
       (car ()))))
 
 (def check-machine-edges
