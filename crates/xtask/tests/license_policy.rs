@@ -111,3 +111,42 @@ fn superseded_truthiness_assertions_are_explicitly_classified_before_test_transi
         "mixed",
     );
 }
+
+#[test]
+fn semantic_fast_lane_is_lisp_owned_and_does_not_run_the_full_legacy_package_suite() {
+    let root = workspace_root();
+    let script = fs::read_to_string(root.join("scripts/test-current-semantic-slice.sh"))
+        .expect("#231 requires scripts/test-current-semantic-slice.sh");
+
+    assert!(
+        script.contains("--test witness_authority"),
+        "the fast semantic lane must execute the Lisp-owned witness observer"
+    );
+    assert!(
+        script.contains("--test authority_guard_contract"),
+        "the fast semantic lane must keep the Lisp-owned authority boundary executable"
+    );
+    assert!(
+        script.contains("--test semantic_ref_fail_closed"),
+        "the fast semantic lane must retain fail-closed semantic identity evidence"
+    );
+    assert!(
+        !script.contains("canon_adversarial") && !script.contains("canon_language_authority"),
+        "legacy host-authored Canon expectations must not define the fast canonical semantic lane"
+    );
+
+    let workflow = fs::read_to_string(root.join(".github/workflows/ci.yml"))
+        .expect("CI workflow must be readable");
+    assert!(
+        workflow.contains("semantic=false") && workflow.contains("semantic=$semantic"),
+        "PR path classification must expose an explicit semantic-change lane"
+    );
+    assert!(
+        workflow.contains("scripts/test-current-semantic-slice.sh"),
+        "PR and main fast paths must call the focused current-contract semantic script"
+    );
+    assert!(
+        workflow.contains("steps.changes.outputs.semantic != 'true'"),
+        "full package tests must be excluded from the focused semantic migration lane"
+    );
+}
