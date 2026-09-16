@@ -13,7 +13,7 @@
 //! a build that never calls the installer cannot reach it.
 
 use super::EvalStep;
-use crate::{Environment, Expr, LanguageError, Span, Value};
+use crate::{Environment, ErrorKind, Expr, LanguageError, Span, Value};
 use std::collections::BTreeMap;
 use std::sync::{OnceLock, RwLock};
 
@@ -76,7 +76,9 @@ pub fn capability_installed(name: &str) -> bool {
     )
 }
 
-/// Names of all installed capabilities, sorted (for diagnostics/UIs).
+/// Compatibility diagnostics projection. This legacy list-only API cannot
+/// represent an unreadable registry, so it retains its empty-list fallback.
+/// Canonical evaluator dispatch does not use this projection.
 pub fn installed_capabilities() -> Vec<String> {
     registry()
         .read()
@@ -84,25 +86,42 @@ pub fn installed_capabilities() -> Vec<String> {
         .unwrap_or_default()
 }
 
+fn dispatch_capability_from(
+    source: &RwLock<BTreeMap<String, HostFn>>,
+    name: &str,
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Option<Result<EvalStep, LanguageError>> {
+    match lookup_capability(source, name) {
+        CapabilityLookup::Present(handler) => {
+            Some(handler(arguments, environment, span).map(EvalStep::Value))
+        }
+        CapabilityLookup::Absent => None,
+        CapabilityLookup::Unreadable => Some(Err(LanguageError::new(
+            ErrorKind::MechanismUnavailable,
+            format!("capability registry unavailable while resolving: {name}"),
+            span,
+        ))),
+    }
+}
+
 /// Dispatch fallback in the evaluator: consulted after the kernel's own
 /// special forms and primitives, before ordinary function application.
+/// A readable registry may establish absence; an unreadable registry is a
+/// named mechanism failure and must never masquerade as `UnknownSymbol`.
 pub(crate) fn dispatch_capability(
     name: &str,
     arguments: &[Expr],
     environment: &Environment,
     span: Span,
 ) -> Option<Result<EvalStep, LanguageError>> {
-    let handler = {
-        let map = registry().read().ok()?;
-        map.get(name).copied()?
-    };
-    Some(handler(arguments, environment, span).map(EvalStep::Value))
+    dispatch_capability_from(registry(), name, arguments, environment, span)
 }
 
 #[cfg(test)]
 mod honesty_tests {
     use super::*;
-    use crate::ErrorKind;
 
     fn dummy_handler(
         _arguments: &[Expr],
