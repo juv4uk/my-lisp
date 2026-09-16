@@ -50,11 +50,13 @@
     (and
       (not (atom (assoc (quote identity) row)))
       (not (atom (assoc (quote surface) row)))
+      (not (atom (assoc (quote producer) row)))
       (not (atom (assoc (quote current-result) row)))
       (not (atom (assoc (quote question-domain) row)))
       (not (atom (assoc (quote mathematical-binary?) row)))
       (not (atom (assoc (quote owner) row)))
       (not (atom (assoc (quote consumer-class) row)))
+      (not (atom (assoc (quote compatibility-impact) row)))
       (not (atom (assoc (quote migration) row))))))
 
 (def sqi-all-public-covered-once?
