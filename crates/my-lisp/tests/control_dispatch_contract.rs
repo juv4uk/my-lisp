@@ -80,15 +80,15 @@ fn explicit_dispatch_and_bounded_migration_compatibility_follow_lisp_witnesses()
             Err(error) => format!("(error \"{:?}\")", error.kind),
         };
         let program = format!(
-            "(witness-pass? (witness-verdict (quote {}) (quote {})))",
+            "(witness-status (witness-verdict (quote {}) (quote {})))",
             row.source, actual
         );
-        let verdict = eval_program(&program, &mut session)
+        let status = eval_program(&program, &mut session)
             .unwrap_or_else(|error| panic!("#217 witness verdict failed for {}: {error}", row.expr))
             .value
             .to_string();
         assert_eq!(
-            verdict, "t",
+            status, "pass",
             "#217 Lisp-owned control witness rejected {} (actual={actual})",
             row.expr
         );
