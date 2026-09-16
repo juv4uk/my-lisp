@@ -8,5 +8,6 @@ set -euo pipefail
 cargo test -p my-lisp \
   --test witness_authority \
   --test structural_query_inventory \
+  --test structural_observation_contract \
   --test authority_guard_contract \
   --test semantic_ref_fail_closed
