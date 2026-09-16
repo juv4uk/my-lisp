@@ -86,10 +86,15 @@ fn load_witness_library(session: &mut Session) {
     eval_program(&source, session).expect("witness-runner.lisp must load");
 }
 
-fn load_answer_contract(session: &mut Session) {
-    let source = fs::read_to_string(repo_file("lib/answer-contract.lisp"))
-        .expect("#228 requires the Lisp-owned lib/answer-contract.lisp artifact");
-    eval_program(&source, session).expect("answer-contract.lisp must load");
+fn parse_answer_contract_document() {
+    let source = fs::read_to_string(repo_file("contracts/answer-contract.lisp"))
+        .expect("#228 requires the Lisp-owned contracts/answer-contract.lisp data artifact");
+    let forms = parse(&source).expect("answer-contract.lisp must be readable Lisp data");
+    assert_eq!(
+        forms.len(),
+        1,
+        "#228 answer contract must remain one self-contained Lisp data document"
+    );
 }
 
 fn load_answer_contract_witness(session: &mut Session) {
@@ -279,9 +284,10 @@ fn malformed_witness_fails_closed_as_lisp_data() {
 
 #[test]
 fn answer_contract_semantics_are_owned_by_lisp_data_not_host_expectations() {
+    parse_answer_contract_document();
+
     let mut session = Session::default();
     load_core_library(&mut session).expect("core library");
-    load_answer_contract(&mut session);
     load_answer_contract_witness(&mut session);
 
     let verdict = eval_program("(answer-contract-witness)", &mut session)
