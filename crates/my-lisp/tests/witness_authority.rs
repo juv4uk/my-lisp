@@ -101,6 +101,30 @@ fn canon_zero_rows() -> Vec<WitnessRow> {
         .collect()
 }
 
+fn structure_core_rows() -> Vec<WitnessRow> {
+    let source = include_str!("../../../tests/fixtures/structure-core-v1.lisp");
+    parse(source)
+        .expect("structure-core-v1.lisp must parse")
+        .into_iter()
+        .filter_map(|form| {
+            let ExprKind::List(entries) = &form.kind else {
+                return None;
+            };
+            if !alist_flag(entries, "structure-core") {
+                return None;
+            }
+            Some(WitnessRow {
+                source: source[form.span.start..form.span.end].to_string(),
+                expr: alist_str(entries, "expr")?.to_string(),
+                expected: alist_str(entries, "expected").map(str::to_string),
+                error: alist_str(entries, "error").map(str::to_string),
+                meta_eval: true,
+                compiler_corpus: false,
+            })
+        })
+        .collect()
+}
+
 fn repo_file(relative: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -253,6 +277,30 @@ fn canon_zero_empty_list_is_data_not_false() {
 }
 
 #[test]
+fn structure_core_stays_stable_across_native_and_meta_eval() {
+    let rows = structure_core_rows();
+    assert!(!rows.is_empty(), "#230 structure-core witness slice must remain non-empty");
+
+    let mut native = Session::default();
+    load_core_library(&mut native).expect("core library");
+    load_witness_library(&mut native);
+
+    let mut meta = init_meta_session();
+
+    for row in &rows {
+        let native_actual = actual_form_from_native(row, &mut native);
+        assert_lisp_owned_verdict_passes(&mut native, row, &native_actual);
+
+        let meta_result = meta_verdict(&mut meta, row);
+        assert!(
+            meta_result.starts_with("(witness-result (status pass)"),
+            "#230 meta-eval disagreed with Lisp-owned structure row {}: {meta_result}",
+            row.expr
+        );
+    }
+}
+
+#[test]
 fn same_committed_corpus_drives_meta_eval_for_rows_admitted_to_that_backend() {
     let rows: Vec<_> = witness_rows()
         .into_iter()
@@ -300,14 +348,19 @@ fn peer_surface_witness_reads_semantic_registry_instead_of_copying_surface_truth
     .expect("generated semantic registry");
     load_witness_library(&mut session);
 
-    let verdict = eval_program("(witness-peer-surface-verdict \"0005\")", &mut session)
+    for semantic_id in ["0001", "0004", "0005", "0006"] {
+        let verdict = eval_program(
+            &format!("(witness-peer-surface-verdict \"{semantic_id}\")"),
+            &mut session,
+        )
         .expect("peer surface witness")
         .value
         .to_string();
-    assert!(
-        verdict.starts_with("(witness-result (status pass)"),
-        "CAR peer surfaces must project to one registry-owned semantic identity: {verdict}"
-    );
+        assert!(
+            verdict.starts_with("(witness-result (status pass)"),
+            "#230 structure peer surfaces must project to one registry-owned semantic identity {semantic_id}: {verdict}"
+        );
+    }
 }
 
 #[test]
