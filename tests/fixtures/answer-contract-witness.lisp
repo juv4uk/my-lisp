@@ -1,4 +1,4 @@
-; #228 — Lisp-owned executable witness for the layered answer-contract data.
+; #228/#244 — Lisp-owned executable witness for the layered answer-contract data.
 ;
 ; contracts/answer-contract.lisp is pure data. The host test transports its
 ; UTF-8 source text into Lisp and defines `answer-contract-document` through
@@ -56,6 +56,16 @@
            expected
            (answer-contract-field entry field)))))))
 
+; #244 negative law: Canon 0 is not an alias for any stronger domain-owned
+; state. A pass is represented by () because this helper itself only reports
+; a failure when an accidental semantic collapse is detected.
+(def answer-contract-witness-expect-distinct
+  (lambda (left right)
+    (cond
+      ((equal? left right)
+       (list (quote unexpected-collapse) left right))
+      (t (quote ())))))
+
 (def answer-contract-witness-expect-missing
   (lambda (identity)
     (cond
@@ -79,6 +89,26 @@
                   (quote canon-zero)
                   (quote domain-owner)
                   (quote no-answer-boundary))
+                (answer-contract-witness-expect
+                  (quote canon-zero)
+                  (quote answer-role)
+                  (quote unspecialized-accumulator))
+                (answer-contract-witness-expect
+                  (quote canon-zero)
+                  (quote indeterminacy)
+                  (quote unresolved-specialization))
+                (answer-contract-witness-expect
+                  (quote canon-zero)
+                  (quote specialization-policy)
+                  (quote justified-only))
+                (answer-contract-witness-expect
+                  (quote canon-zero)
+                  (quote cause-required)
+                  (quote no))
+                (answer-contract-witness-expect
+                  (quote canon-zero)
+                  (quote reentry)
+                  (quote allowed-at-query-boundaries))
                 (answer-contract-witness-expect
                   (quote canon-zero)
                   (quote result-form)
@@ -147,13 +177,25 @@
                   (quote outside-domain)
                   (quote delegate))
                 (answer-contract-witness-expect
+                  "1014"
+                  (quote unspecialized-result)
+                  (quote ()))
+                (answer-contract-witness-expect
                   "0104"
                   (quote domain-owner)
                   (quote mathematical-result))
                 (answer-contract-witness-expect
+                  "0104"
+                  (quote unspecialized-result)
+                  (quote ()))
+                (answer-contract-witness-expect
                   "1118"
                   (quote domain-owner)
                   (quote non-mathematical-reasoning))
+                (answer-contract-witness-expect
+                  "1118"
+                  (quote unspecialized-result)
+                  (quote ()))
                 (answer-contract-witness-expect
                   "1118"
                   (quote no-answer)
@@ -164,8 +206,27 @@
                   (quote control-consumer))
                 (answer-contract-witness-expect
                   "0007"
+                  (quote unspecialized-result)
+                  (quote ()))
+                (answer-contract-witness-expect
+                  "0007"
                   (quote generic-value-coercion)
                   (quote forbidden))
+
+                ; Canon 0 preserves unresolved specialization. These explicit
+                ; negative witnesses prevent future code from silently
+                ; rebranding () as one stronger answer or observation class.
+                (answer-contract-witness-expect-distinct (quote ()) 0/1)
+                (answer-contract-witness-expect-distinct (quote ()) 1/1)
+                (answer-contract-witness-expect-distinct
+                  (quote ()) (quote unknown))
+                (answer-contract-witness-expect-distinct
+                  (quote ()) (quote conflict))
+                (answer-contract-witness-expect-distinct
+                  (quote ()) (quote timeout))
+                (answer-contract-witness-expect-distinct
+                  (quote ()) (quote error))
+
                 ; Human spellings stay in semantic-registry.lisp. The contract
                 ; is keyed by semantic identity only. Canon 0 is the one special
                 ; non-ID entry because the empty list has no lexical Canon ID.
@@ -175,7 +236,9 @@
         ((eq (answer-contract-schema) (quote answer-contract/1))
          (cond
            ((atom failure)
-            (answer-contract-witness-record (quote pass) (quote layered-domains)))
+            (answer-contract-witness-record
+              (quote pass)
+              (quote canon-zero-unspecialized-accumulator)))
            (t
             (answer-contract-witness-record (quote fail) failure))))
         (t
