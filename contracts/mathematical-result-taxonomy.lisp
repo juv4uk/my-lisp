@@ -45,7 +45,7 @@
    (rationality . irrational)
    (algebraic-status . transcendental)
    (result-role . exact-object)
-   (representation-policy . representation-may-vary-without-changing-object)))
+   (representation-policy . representation-may-vary-without-changing-object))
 
   ; sqrt(2) is an exact algebraic irrational mathematical object even when a
   ; concrete runtime represents it symbolically rather than as a finite scalar.
@@ -55,7 +55,7 @@
    (rationality . irrational)
    (algebraic-status . algebraic)
    (result-role . exact-object)
-   (representation-policy . representation-may-vary-without-changing-object)))
+   (representation-policy . representation-may-vary-without-changing-object))
 
   ; An approximation relates two mathematical objects: the exact approximant
   ; and its target. It must state how strongly the approximation is justified.
