@@ -2,7 +2,7 @@
 name = "my-lisp-embed"
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license-file.workspace = true
 description = "Canonical stateful my-lisp C ABI embedding boundary"
 
 [lib]
