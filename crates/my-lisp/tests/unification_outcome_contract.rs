@@ -22,6 +22,8 @@ fn completed_unification_queries_report_explicit_outcomes() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.lisp"), &mut session).expect("core library");
     eval_program(include_str!("../../../lib/unify.lisp"), &mut session).expect("unify library");
+    eval_program(include_str!("../../../lib/unify-observe.lisp"), &mut session)
+        .expect("unification observation layer");
     let witness = fs::read_to_string(repo_file("tests/fixtures/witness-runner.lisp"))
         .expect("Lisp-owned witness runner");
     eval_program(&witness, &mut session).expect("witness runner must load");
