@@ -12,6 +12,8 @@ struct Row {
     expr: String,
     expected: Option<String>,
     error: Option<String>,
+    active: bool,
+    blocked_by: Option<String>,
 }
 
 fn repo_file(relative: &str) -> PathBuf {
@@ -38,16 +40,26 @@ fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
     })
 }
 
-fn alist_true(entries: &[Expr], key: &str) -> bool {
-    entries.iter().any(|entry| {
+fn alist_symbol<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
+    entries.iter().find_map(|entry| {
         let ExprKind::Pair(k, v) = &entry.kind else {
-            return false;
+            return None;
         };
         let ExprKind::Symbol(name) = &k.kind else {
-            return false;
+            return None;
         };
-        &**name == key && matches!(&v.kind, ExprKind::Symbol(value) if &**value == "t")
+        if &**name != key {
+            return None;
+        }
+        match &v.kind {
+            ExprKind::Symbol(value) => Some(value.as_ref()),
+            _ => None,
+        }
     })
+}
+
+fn alist_true(entries: &[Expr], key: &str) -> bool {
+    alist_symbol(entries, key) == Some("t")
 }
 
 fn rows() -> Vec<Row> {
@@ -59,14 +71,13 @@ fn rows() -> Vec<Row> {
             let ExprKind::List(entries) = &form.kind else {
                 return None;
             };
-            if !alist_true(entries, "active") {
-                return None;
-            }
             Some(Row {
                 source: source[form.span.start..form.span.end].to_string(),
                 expr: alist_str(entries, "expr")?.to_string(),
                 expected: alist_str(entries, "expected").map(str::to_string),
                 error: alist_str(entries, "error").map(str::to_string),
+                active: alist_true(entries, "active"),
+                blocked_by: alist_symbol(entries, "blocked-by").map(str::to_string),
             })
         })
         .collect()
@@ -140,9 +151,28 @@ fn lisp_owned_structural_observation_contract_is_self_consistent() {
 }
 
 #[test]
-fn native_runtime_matches_lisp_owned_structural_observation_results() {
+fn superseded_value_results_stay_explicitly_blocked_only_by_control_migration() {
     let rows = rows();
-    assert_eq!(rows.len(), 6, "#218 RED target must retain six structural rows");
+    assert_eq!(rows.len(), 6, "#218 target must retain all six structural rows");
+
+    let blocked: Vec<_> = rows.iter().filter(|row| !row.active).collect();
+    assert_eq!(blocked.len(), 5, "exactly five new value-result rows stay blocked after RED");
+    assert!(
+        blocked
+            .iter()
+            .all(|row| row.blocked_by.as_deref() == Some("control-logic-217")),
+        "every deferred atom/eq value-result row must name #217 as its blocker"
+    );
+
+    let active: Vec<_> = rows.iter().filter(|row| row.active).collect();
+    assert_eq!(active.len(), 1, "only the already-valid eq Type-domain row stays active");
+    assert_eq!(active[0].error.as_deref(), Some("Type"));
+}
+
+#[test]
+fn active_runtime_rows_match_lisp_owned_structural_observation_results() {
+    let rows: Vec<_> = rows().into_iter().filter(|row| row.active).collect();
+    assert!(!rows.is_empty(), "#218 must retain at least one live runtime row");
 
     let mut session = Session::default();
     load_core_library(&mut session).expect("core library");
