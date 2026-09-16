@@ -2,7 +2,7 @@
 name = "my-lisp-lsp"
 version = "0.39.0"
 edition = "2021"
-license = "MIT"
+license-file.workspace = true
 description = "Language Server Protocol adapter for my-lisp · LSP-adapter dlia my-lisp"
 
 [[bin]]
