@@ -7,6 +7,7 @@
 (authority "crates/my-lisp/tests/structural_query_inventory.rs" observer)
 (authority "crates/my-lisp/tests/structural_observation_contract.rs" observer)
 (authority "crates/my-lisp/tests/exact_q_binary_contract.rs" observer)
+(authority "crates/my-lisp/tests/mathematical_result_taxonomy.rs" observer)
 (authority "crates/my-lisp/tests/authority_guard_contract.rs" observer)
 (authority "crates/my-lisp/tests/mccarthy.rs" semantic-authority)
 (authority "crates/my-lisp/tests/ukrainian_api_docs.rs" semantic-authority)
