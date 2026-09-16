@@ -86,6 +86,18 @@ fn load_witness_library(session: &mut Session) {
     eval_program(&source, session).expect("witness-runner.lisp must load");
 }
 
+fn load_answer_contract(session: &mut Session) {
+    let source = fs::read_to_string(repo_file("lib/answer-contract.lisp"))
+        .expect("#228 requires the Lisp-owned lib/answer-contract.lisp artifact");
+    eval_program(&source, session).expect("answer-contract.lisp must load");
+}
+
+fn load_answer_contract_witness(session: &mut Session) {
+    let source = fs::read_to_string(repo_file("tests/fixtures/answer-contract-witness.lisp"))
+        .expect("#228 requires its Lisp-owned answer-contract witness");
+    eval_program(&source, session).expect("answer-contract-witness.lisp must load");
+}
+
 fn escape_lisp_string(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
 }
@@ -262,5 +274,23 @@ fn malformed_witness_fails_closed_as_lisp_data() {
     assert!(
         verdict.starts_with("(witness-result (status malformed)"),
         "missing expected/error must fail closed: {verdict}"
+    );
+}
+
+#[test]
+fn answer_contract_semantics_are_owned_by_lisp_data_not_host_expectations() {
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core library");
+    load_answer_contract(&mut session);
+    load_answer_contract_witness(&mut session);
+
+    let verdict = eval_program("(answer-contract-witness)", &mut session)
+        .expect("Lisp-owned answer-contract witness must execute")
+        .value
+        .to_string();
+
+    assert!(
+        verdict.starts_with("(answer-contract-witness (status pass)"),
+        "Lisp-owned answer-contract witness rejected the first #228 slice: {verdict}"
     );
 }
