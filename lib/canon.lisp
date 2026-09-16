@@ -23,120 +23,221 @@
 ;   '  .?  =?  :  :п  :р  ?:
 ; These are spellings of the same 0+7 identities, never additional primitives.
 
+; --- Canon V2 result records ----------------------------------------------
+; A law does not return universal TRUE/FALSE. It returns explicit Lisp data.
+; Закон не повертає універсальні TRUE/FALSE, а явний Lisp-запис.
+
+(def canon-law-result
+  (lambda (law status)
+    (сполучити
+      (quote canon-law-result)
+      (сполучити law (сполучити status (quote ()))))))
+
+(def canon-law-satisfied
+  (lambda (law)
+    (canon-law-result law (quote satisfied))))
+
+(def canon-law-violated
+  (lambda (law)
+    (canon-law-result law (quote violated))))
+
+(def canon-law-status
+  (lambda (result)
+    (перше (решта (решта result)))))
+
+(def canon-conformance-result
+  (lambda (status)
+    (сполучити
+      (quote canon-conformance)
+      (сполучити status (quote ())))))
+
 ; --- Constitutive laws ----------------------------------------------------
-; Each function returns t exactly when the runtime satisfies the stated law
-; for the supplied witnesses. These are executable semantics, not examples.
+; Every branch below uses canonical #217 explicit-result dispatch. `()` is
+; structural data / Canon 0 and is never consumed as FALSE.
 
 (def canon-law-empty-list
   (lambda ()
-    (тотожне? canon-empty-list (quote ()))))
+    (за-умовою
+      ((тотожне? canon-empty-list (quote ()))
+       (identity-relation same)
+       (canon-law-satisfied (quote empty-list)))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote empty-list))))))
 
 (def canon-law-atom-cons
   (lambda (x y)
-    (тотожне? (атом? (сполучити x y)) (quote ()))))
+    (за-умовою
+      ((атом? (сполучити x y))
+       (structural-kind pair)
+       (canon-law-satisfied (quote atom-cons)))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote atom-cons))))))
 
 (def canon-law-car-cons
   (lambda (x y)
-    (тотожне? (перше (сполучити x y)) x)))
+    (за-умовою
+      ((тотожне? (перше (сполучити x y)) x)
+       (identity-relation same)
+       (canon-law-satisfied (quote car-cons)))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote car-cons))))))
 
 (def canon-law-cdr-cons
   (lambda (x y)
-    (тотожне? (решта (сполучити x y)) y)))
+    (за-умовою
+      ((тотожне? (решта (сполучити x y)) y)
+       (identity-relation same)
+       (canon-law-satisfied (quote cdr-cons)))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote cdr-cons))))))
 
 (def canon-law-eq-reflexive-atom
   (lambda (x)
     (за-умовою
-      ((атом? x) (тотожне? x x))
-      (t (quote ())))))
+      ((атом? x) (structural-kind atom)
+       (за-умовою
+         ((тотожне? x x) (identity-relation same)
+          (canon-law-satisfied (quote eq-reflexive-atom)))
+         ((quote canon-fallback) canon-fallback
+          (canon-law-violated (quote eq-reflexive-atom)))))
+      ((атом? x) (structural-kind empty-list)
+       (за-умовою
+         ((тотожне? x x) (identity-relation same)
+          (canon-law-satisfied (quote eq-reflexive-atom)))
+         ((quote canon-fallback) canon-fallback
+          (canon-law-violated (quote eq-reflexive-atom)))))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote eq-reflexive-atom))))))
 
 ; `решта` must be a pair projection, not a human-language "second element".
 (def canon-law-cdr-dotted
   (lambda ()
-    (тотожне?
-      (решта (сполучити (quote кіт) 42))
-      42)))
+    (за-умовою
+      ((тотожне?
+         (решта (сполучити (quote кіт) 42))
+         42)
+       (identity-relation same)
+       (canon-law-satisfied (quote cdr-dotted)))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote cdr-dotted))))))
 
-; EQ is atom-only. Therefore the proper-list witness is checked by projecting
-; the returned pair chain into atoms instead of comparing two lists structurally.
+; EQ is atom-only. The proper-list witness therefore checks projected atom
+; values and recognizes final `()` through its structural-kind result.
 (def canon-law-cdr-proper
   (lambda ()
     (за-умовою
       ((тотожне? (перше (решта (як-є (1 2 3)))) 2)
+       (identity-relation same)
        (за-умовою
          ((тотожне? (перше (решта (решта (як-є (1 2 3))))) 3)
-          (тотожне? (решта (решта (решта (як-є (1 2 3))))) (як-є ())))
-         (t (як-є ()))))
-      (t (як-є ())))))
+          (identity-relation same)
+          (за-умовою
+            ((атом? (решта (решта (решта (як-є (1 2 3))))))
+             (structural-kind empty-list)
+             (canon-law-satisfied (quote cdr-proper)))
+            ((quote canon-fallback) canon-fallback
+             (canon-law-violated (quote cdr-proper)))))
+         ((quote canon-fallback) canon-fallback
+          (canon-law-violated (quote cdr-proper)))))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote cdr-proper))))))
 
-; EQ is atom-only, so structural equality is not used for the improper result;
-; project it back into atom witnesses instead.
+; EQ is atom-only, so the improper tail is checked through atom projections.
 (def canon-law-cdr-improper
   (lambda ()
     (за-умовою
       ((тотожне? (перше (решта (як-є (1 2 . 3)))) 2)
-       (тотожне? (решта (решта (як-є (1 2 . 3)))) 3))
-      (t (quote ())))))
+       (identity-relation same)
+       (за-умовою
+         ((тотожне? (решта (решта (як-є (1 2 . 3)))) 3)
+          (identity-relation same)
+          (canon-law-satisfied (quote cdr-improper)))
+         ((quote canon-fallback) canon-fallback
+          (canon-law-violated (quote cdr-improper)))))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote cdr-improper))))))
 
-; Evaluation-control laws: unselected/quoted unknown symbols must never be
-; evaluated. If a host eagerly evaluates them, these functions fail before
-; returning t.
+; Evaluation-control laws: quoted/unselected unknown symbols must never be
+; evaluated. If a host eagerly evaluates them, execution errors before a law
+; record can be produced.
 (def canon-law-quote-suppresses-evaluation
   (lambda ()
-    (тотожне? (як-є never-defined-canon-symbol)
-              (quote never-defined-canon-symbol))))
+    (за-умовою
+      ((тотожне? (як-є never-defined-canon-symbol)
+                  (quote never-defined-canon-symbol))
+       (identity-relation same)
+       (canon-law-satisfied (quote quote-suppresses-evaluation)))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote quote-suppresses-evaluation))))))
 
-(def canon-law-cond-first-true-short-circuit
-  (lambda ()
-    (тотожне?
-      (за-умовою
-        (t (як-є selected))
-        ((never-defined-canon-predicate) (як-є forbidden)))
-      (quote selected))))
-
-; The compact Ukrainian-keyboard surface must denote the same seven
-; operations. This law deliberately exercises every symbolic spelling in one
-; vertical slice: quote, atom, eq, cons, car, cdr, and cond.
-(def canon-law-symbolic-surface
-  (lambda ()
-    (?:
-      ((=? (:п (: 'ліве 'праве)) 'ліве)
-       (?:
-         ((=? (:р (: 'ліве 'праве)) 'праве)
-          (.? 'атом))
-         (t '())))
-      (t '()))))
-
-; One language-level verdict used by every runtime conformance test.
-(def canon-conforms?
+(def canon-law-cond-first-match-short-circuit
   (lambda ()
     (за-умовою
-      ((canon-law-empty-list)
-       (за-умовою
-         ((canon-law-atom-cons (quote x) (quote y))
-          (за-умовою
-            ((canon-law-car-cons (quote x) (quote y))
-             (за-умовою
-               ((canon-law-cdr-cons (quote x) (quote y))
-                (за-умовою
-                  ((canon-law-eq-reflexive-atom (quote x))
-                   (за-умовою
-                     ((canon-law-cdr-dotted)
-                      (за-умовою
-                        ((canon-law-cdr-proper)
-                         (за-умовою
-                           ((canon-law-cdr-improper)
-                            (за-умовою
-                              ((canon-law-quote-suppresses-evaluation)
-                               (за-умовою
-                                 ((canon-law-cond-first-true-short-circuit)
-                                  (canon-law-symbolic-surface))
-                                 (t (quote ()))))
-                              (t (quote ()))))
-                           (t (quote ()))))
-                        (t (quote ()))))
-                     (t (quote ()))))
-                  (t (quote ()))))
-               (t (quote ()))))
-            (t (quote ()))))
-         (t (quote ()))))
-      (t (quote ())))))
+      ((тотожне?
+         (за-умовою
+           ((quote selected) selected (як-є selected))
+           ((never-defined-canon-predicate) impossible (як-є forbidden)))
+         (quote selected))
+       (identity-relation same)
+       (canon-law-satisfied (quote cond-first-match-short-circuit)))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote cond-first-match-short-circuit))))))
+
+; The compact Ukrainian-keyboard surface denotes the same seven operations.
+; This vertical witness exercises quote, atom, eq, cons, car, cdr, and cond
+; without relying on historical T/NIL truthiness.
+(def canon-law-symbolic-surface
+  (lambda ()
+    (за-умовою
+      ((тотожне?
+         (?:
+           ((.? 'атом) (structural-kind atom)
+            (?:
+              ((=? (:п (: 'ліве 'праве)) 'ліве)
+               (identity-relation same)
+               (:р (: 'ліве 'праве))))))
+         (quote праве))
+       (identity-relation same)
+       (canon-law-satisfied (quote symbolic-surface)))
+      ((quote canon-fallback) canon-fallback
+       (canon-law-violated (quote symbolic-surface))))))
+
+; Aggregate explicit law records recursively. The empty list terminates the
+; result list structurally; it does not mean FALSE.
+(def canon-conformance-from
+  (lambda (results)
+    (за-умовою
+      ((атом? results) (structural-kind empty-list)
+       (canon-conformance-result (quote satisfied)))
+      ((canon-law-status (перше results)) satisfied
+       (canon-conformance-from (решта results)))
+      ((quote canon-fallback) canon-fallback
+       (canon-conformance-result (quote violated))))))
+
+; One language-level explicit conformance record used by runtime observers.
+(def canon-conforms?
+  (lambda ()
+    (canon-conformance-from
+      (сполучити
+        (canon-law-empty-list)
+        (сполучити
+          (canon-law-atom-cons (quote x) (quote y))
+          (сполучити
+            (canon-law-car-cons (quote x) (quote y))
+            (сполучити
+              (canon-law-cdr-cons (quote x) (quote y))
+              (сполучити
+                (canon-law-eq-reflexive-atom (quote x))
+                (сполучити
+                  (canon-law-cdr-dotted)
+                  (сполучити
+                    (canon-law-cdr-proper)
+                    (сполучити
+                      (canon-law-cdr-improper)
+                      (сполучити
+                        (canon-law-quote-suppresses-evaluation)
+                        (сполучити
+                          (canon-law-cond-first-match-short-circuit)
+                          (сполучити
+                            (canon-law-symbolic-surface)
+                            (quote ())))))))))))))))

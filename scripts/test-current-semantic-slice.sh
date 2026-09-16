@@ -13,6 +13,7 @@ cargo test -p my-lisp \
   --test exact_q_binary_contract \
   --test mathematical_result_taxonomy \
   --test control_dispatch_contract \
+  --test canon_laws_v2_contract \
   --test reason_honesty_contract \
   --test authority_guard_contract \
   --test semantic_ref_fail_closed
