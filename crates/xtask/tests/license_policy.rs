@@ -101,7 +101,7 @@ fn superseded_truthiness_assertions_are_explicitly_classified_before_test_transi
     require_authority_row(
         &contents,
         "crates/my-lisp/tests/ukrainian_api_docs.rs",
-        "istina_i_khyba_ie_imenamy_tyh_samykh_znachen",
+        "istina_i_khyba_ie_imenamy_tyh_samykh_kanonichnykh_znachen",
         "legacy-semantic",
     );
     require_authority_row(
