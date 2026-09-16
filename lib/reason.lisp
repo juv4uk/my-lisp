@@ -246,42 +246,23 @@
       (lambda (goal state)
         (prove-goal-state goal state all-rules depth)))))
 
+; A body goal, including `(not P)`, is an ordinary reasoning goal. Historical
+; negation-as-failure fabricated `(proved-not P)` merely because P had no proof.
+; Under #219/#244 that absence remains Canon 0. Explicit negative evidence may
+; still prove `(not P)` through an actual rule/fact whose head is `(not P)`.
 (def prove-goal-state
   (lambda (goal state all-rules depth)
     (let ((subst (car state))
           (proofs (second state))
           (index (reason-ensure-index all-rules)))
-      (cond
-        ((eq (car goal) (quote not))
-         (let ((inner (second goal)))
-           (let ((not-result
-                   (prove-goal
-                     inner
-                     (reason-index-candidates inner index)
-                     subst
-                     index
-                     depth)))
-             (cond
-               ((atom not-result)
-                (list
-                  (list
-                    subst
-                    (append
-                      proofs
-                      (list
-                        (list
-                          (quote proved-not)
-                          inner))))))
-               (t (quote ()))))))
-        (t
-         (map-goal-results
-           (prove-goal
-             goal
-             (reason-index-candidates goal index)
-             subst
-             index
-             depth)
-           proofs))))))
+      (map-goal-results
+        (prove-goal
+          goal
+          (reason-index-candidates goal index)
+          subst
+          index
+          depth)
+        proofs))))
 
 (def map-goal-results
   (lambda (results proofs)
