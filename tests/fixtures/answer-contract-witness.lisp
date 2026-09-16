@@ -143,4 +143,4 @@
         (t
          (answer-contract-witness-record
            (quote fail)
-           (list (quote schema) (answer-contract-schema)))))))))
+           (list (quote schema) (answer-contract-schema))))))))
