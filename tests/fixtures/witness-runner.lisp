@@ -72,6 +72,18 @@
   (lambda (result)
     (second (second result))))
 
+; Migration-only adapter for older host observers not yet converted to
+; `witness-status`. It dispatches on the explicit status datum; it does NOT
+; coerce an arbitrary Lisp value to truth. New/modified observers must use
+; `witness-status` directly. Remove this with the last old observer under #220.
+(def witness-pass?
+  (lambda (result)
+    (cond
+      ((witness-status result) pass t)
+      ((witness-status result) fail (quote ()))
+      ((witness-status result) malformed (quote ()))
+      (t (quote ())))))
+
 ; Meta-eval errors are Lisp data, not host exceptions. Normalize only the named
 ; correspondence already established by the meta-evaluator evidence. The mapping
 ; lives in Lisp so a Rust observer does not become the semantic classifier.
