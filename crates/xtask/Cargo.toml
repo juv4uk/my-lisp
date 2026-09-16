@@ -2,7 +2,7 @@
 name = "xtask"
 version = "0.1.0"
 edition = "2021"
-license-file.workspace = true
+license-file = "../../LICENSE"
 description = "Project verification/policy tool · Інструмент верифікації/політик проєкту · Verifizierungs-/Richtlinien-Werkzeug"
 publish = false
 
