@@ -109,7 +109,7 @@
 ; - positive proof(s) => proved(goal, all-results)
 ; - only explicit opposite proof(s) => proved(opposite, all-results)
 ; - both => disputed(two proved observations)
-; - neither => unknown(goal)
+; - neither => unknown(not-proved-under-search(goal, concrete search scope))
 ;
 ; `rules-or-index` may be the historical rule list or an explicitly prepared
 ; immutable `reason-index/1`. Positive and opposite observations share that one
@@ -150,7 +150,12 @@
             (make-proved goal positive-results))
            ((not (atom opposite-results))
             (make-proved opposite opposite-results))
-           (t (make-unknown goal))))))))
+           (t
+            (make-unknown
+              (list
+                (quote not-proved-under-search)
+                goal
+                (quote (reason-search finite-snapshot exhausted)))))))))))
 
 ; Knowledge-module adapter. Validation precedes lookup: malformed input is an
 ; `invalid` observation even when the named module does not exist. If a
