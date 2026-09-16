@@ -195,6 +195,7 @@ python3 scripts/translate-program.py --from uk --to sa input.lisp
 ---
 
 ## Мовна політика репозиторію
+
 Людська комунікація проєкту має окрему ратифіковану політику: [`knowledge/language-policy.lisp`](knowledge/language-policy.lisp).
 
 ```text
@@ -375,3 +376,11 @@ The central research question is: **how small can the irreducible host remain wh
 `my-lisp` ist eine Lisp-Forschungssprache mit einem dauerhaft geschlossenen semantischen McCarthy-Kern 0+7, exakter Arithmetik, ausführbarer Konformität und mehreren unabhängigen Substraten.
 
 Ukrainisch ist die primäre menschliche Sprache des Projekts; Englisch und Deutsch sind Hilfssprachen. Rust ist die Referenzimplementierung, aber nicht die semantische Autorität. Maßgeblich sind [`language-contract.lisp`](language-contract.lisp), ratifizierte Entscheidungen und ausführbare Konformitätsbelege.
+
+Die zentrale Forschungsfrage lautet: **Wie klein kann der irreduzible Host bleiben, während das nützliche System innerhalb der Sprache weiterwächst?**
+
+---
+
+## Ліцензія
+
+[ВОЛЬНІСТЬ](LICENSE)
