@@ -2,7 +2,7 @@
 name = "my-lisp-semantic"
 version = "0.39.0"
 edition = "2021"
-license = "MIT"
+license-file.workspace = true
 description = "EXPERIMENTAL Sanskrit/Paninian semantic layer for my-lisp (not wired into the evaluator)"
 
 [dependencies]
