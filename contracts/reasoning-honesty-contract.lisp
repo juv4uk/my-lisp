@@ -1,5 +1,5 @@
 ; #219/#244 — Lisp-owned reasoning honesty contract.
-; Pure data: absence of proof is not a proof of negation.
+; Pure data: reasoning may specialize only what it actually establishes.
 
 (reasoning-honesty-contract/1
   ((law . no-proof-is-not-negation)
@@ -13,5 +13,10 @@
 
   ((law . canon-zero-is-not-refutation)
    (left . ())
-   (not-equal . (proved-not refuted false 0/1))))
-)
+   (not-equal . (proved-not refuted false 0/1)))
+
+  ((law . missing-module-is-blocked)
+   (observed . module-absent-after-complete-journal-scan)
+   (result . blocked)
+   (reason-form . (module-not-found name))
+   (forbidden-specialization . unknown)))
