@@ -96,6 +96,45 @@
                   (quote domain-owner)
                   (quote structural-observation))
                 (answer-contract-witness-expect
+                  "0002"
+                  (quote result-form)
+                  (quote structural-kind))
+                (answer-contract-witness-expect
+                  "0002"
+                  (quote result-values)
+                  (quote ((structural-kind empty-list)
+                          (structural-kind pair)
+                          (structural-kind atom))))
+                (answer-contract-witness-expect
+                  "0002"
+                  (quote no-answer)
+                  (quote not-applicable))
+                (answer-contract-witness-expect
+                  "0003"
+                  (quote domain-owner)
+                  (quote structural-observation))
+                (answer-contract-witness-expect
+                  "0003"
+                  (quote input-domain)
+                  (quote (atom atom)))
+                (answer-contract-witness-expect
+                  "0003"
+                  (quote result-form)
+                  (quote identity-relation))
+                (answer-contract-witness-expect
+                  "0003"
+                  (quote result-values)
+                  (quote ((identity-relation same)
+                          (identity-relation distinct))))
+                (answer-contract-witness-expect
+                  "0003"
+                  (quote outside-domain)
+                  (quote type-error))
+                (answer-contract-witness-expect
+                  "0003"
+                  (quote no-answer)
+                  (quote not-applicable))
+                (answer-contract-witness-expect
                   "1014"
                   (quote domain-owner)
                   (quote exact-q-decision))
@@ -136,7 +175,7 @@
         ((eq (answer-contract-schema) (quote answer-contract/1))
          (cond
            ((atom failure)
-            (answer-contract-witness-record (quote pass) (quote first-slice)))
+            (answer-contract-witness-record (quote pass) (quote layered-domains)))
            (t
             (answer-contract-witness-record (quote fail) failure))))
         (t
