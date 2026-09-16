@@ -2,7 +2,7 @@
 name = "my-lisp"
 version = "0.39.0"
 edition = "2021"
-license = "MIT"
+license-file = "../../LICENSE"
 description = "Independent my-lisp core · Незалежне ядро my-lisp · Unabhängiger my-lisp-Kern"
 
 [lib]

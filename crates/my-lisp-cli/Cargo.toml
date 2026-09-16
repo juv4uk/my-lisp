@@ -2,6 +2,7 @@
 name = "my-lisp-cli"
 version = "0.39.0"
 edition = "2021"
+license-file = "../../LICENSE"
 
 [[bin]]
 name = "my-lisp"

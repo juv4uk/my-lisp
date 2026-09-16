@@ -2,6 +2,7 @@
 name = "wsm-guard-core"
 version = "0.1.0"
 edition = "2024"
+license-file = "../../LICENSE"
 
 [dependencies]
 my-lisp = { path = "../my-lisp" }
