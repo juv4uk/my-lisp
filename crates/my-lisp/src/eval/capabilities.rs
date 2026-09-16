@@ -75,3 +75,44 @@ pub(crate) fn dispatch_capability(
     };
     Some(handler(arguments, environment, span).map(EvalStep::Value))
 }
+
+#[cfg(test)]
+mod honesty_tests {
+    use super::*;
+    use std::sync::RwLock;
+
+    fn dummy_handler(
+        _arguments: &[Expr],
+        _environment: &Environment,
+        _span: Span,
+    ) -> Result<Value, LanguageError> {
+        Ok(Value::Nil)
+    }
+
+    #[test]
+    fn lookup_distinguishes_present_absent_and_unreadable_registry() {
+        let lock = RwLock::new(BTreeMap::new());
+        lock.write()
+            .expect("fresh local registry")
+            .insert("demo".to_string(), dummy_handler as HostFn);
+
+        assert!(matches!(
+            lookup_capability(&lock, "demo"),
+            CapabilityLookup::Present(_)
+        ));
+        assert!(matches!(
+            lookup_capability(&lock, "missing"),
+            CapabilityLookup::Absent
+        ));
+
+        let poisoned = std::panic::catch_unwind(|| {
+            let _guard = lock.write().expect("lock is readable before poison");
+            panic!("poison local test registry");
+        });
+        assert!(poisoned.is_err());
+        assert!(matches!(
+            lookup_capability(&lock, "demo"),
+            CapabilityLookup::Unreadable
+        ));
+    }
+}
