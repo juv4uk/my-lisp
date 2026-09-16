@@ -98,3 +98,17 @@ fn missing_module_is_blocked_by_established_precondition() {
         "#219 missing-module-is-blocked",
     );
 }
+
+#[test]
+fn unknown_names_the_search_that_established_no_proof() {
+    assert_one_row_fixture(
+        include_str!("../../../tests/fixtures/reason-search-honesty-v1.lisp"),
+        &[
+            ("core", include_str!("../../../lib/core.lisp")),
+            ("unify", include_str!("../../../lib/unify.lisp")),
+            ("reason", include_str!("../../../lib/reason.lisp")),
+            ("result-status", include_str!("../../../lib/result-status.lisp")),
+        ],
+        "#219 search-unknown-must-name-its-scope",
+    );
+}
