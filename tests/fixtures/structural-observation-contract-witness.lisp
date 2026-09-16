@@ -90,7 +90,7 @@
                   (quote non-pair-nonempty)
                   (quote (structural-kind atom)))
                 (so-expect "0002" (quote generic-truth-coercion) (quote forbidden))
-                (so-expect "0002" (quote control-dispatch) (quote delegated-to-217))
+                (so-expect "0002" (quote control-dispatch) (quote explicit-result-equality))
                 (so-expect "0003" (quote input-domain) (quote (atom atom)))
                 (so-expect "0003" (quote result-form) (quote identity-relation))
                 (so-expect-case
@@ -103,7 +103,7 @@
                   (quote (identity-relation distinct)))
                 (so-expect "0003" (quote outside-domain) (quote type-error))
                 (so-expect "0003" (quote generic-truth-coercion) (quote forbidden))
-                (so-expect "0003" (quote control-dispatch) (quote delegated-to-217))))))
+                (so-expect "0003" (quote control-dispatch) (quote explicit-result-equality))))))
       (cond
         ((not (eq (car structural-observation-document)
                   (quote structural-observation-contract/1)))
