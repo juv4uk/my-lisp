@@ -4,6 +4,7 @@
 ; projection for reviewers.
 
 (authority "crates/my-lisp/tests/witness_authority.rs" observer)
+(authority "crates/my-lisp/tests/structural_query_inventory.rs" observer)
 (authority "crates/my-lisp/tests/authority_guard_contract.rs" observer)
 (authority "crates/my-lisp/tests/mccarthy.rs" semantic-authority)
 (authority "crates/my-lisp/tests/ukrainian_api_docs.rs" semantic-authority)
