@@ -19,4 +19,10 @@
    (observed . module-absent-after-complete-journal-scan)
    (result . blocked)
    (reason-form . (module-not-found name))
-   (forbidden-specialization . unknown)))
+   (forbidden-specialization . unknown))
+
+  ((law . no-evidence-is-not-unknown)
+   (observed . neither-side-proved)
+   (requires-for-unknown . named-completeness-or-search-contract)
+   (forbidden-default-specialization . unknown)
+   (unspecialized-result . ())))
