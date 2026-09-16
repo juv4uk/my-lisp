@@ -64,12 +64,13 @@
         (t
          (witness-result-record (quote fail) expected actual))))))
 
-(def witness-pass?
+; #218/#220 transition: host observers consume an explicit status datum instead
+; of asking Lisp for a universal truth value. A witness result has canonical
+; shape `(witness-result (status STATUS) ...)`, so status extraction requires no
+; boolean interpretation at all.
+(def witness-status
   (lambda (result)
-    (cond
-      ((atom result) (quote ()))
-      ((atom (cdr result)) (quote ()))
-      (t (equal? (second result) (quote (status pass)))))))
+    (second (second result))))
 
 ; Meta-eval errors are Lisp data, not host exceptions. Normalize only the named
 ; correspondence already established by the meta-evaluator evidence. The mapping
