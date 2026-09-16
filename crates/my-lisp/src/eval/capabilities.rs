@@ -15,7 +15,7 @@
 use super::EvalStep;
 use crate::{Environment, Expr, LanguageError, Span, Value};
 use std::collections::BTreeMap;
-use std::sync::OnceLock;
+use std::sync::{OnceLock, RwLock};
 
 /// Signature of one installed capability handler. A plain function
 /// pointer keeps the registry `Copy`/`Send` and forbids stateful
@@ -23,9 +23,29 @@ use std::sync::OnceLock;
 /// the `Environment`, exactly like every kernel primitive.
 pub type HostFn = fn(&[Expr], &Environment, Span) -> Result<Value, LanguageError>;
 
-fn registry() -> &'static std::sync::RwLock<BTreeMap<String, HostFn>> {
-    static REGISTRY: OnceLock<std::sync::RwLock<BTreeMap<String, HostFn>>> = OnceLock::new();
-    REGISTRY.get_or_init(|| std::sync::RwLock::new(BTreeMap::new()))
+#[derive(Clone, Copy)]
+enum CapabilityLookup {
+    Present(HostFn),
+    Absent,
+    Unreadable,
+}
+
+fn lookup_capability(
+    source: &RwLock<BTreeMap<String, HostFn>>,
+    name: &str,
+) -> CapabilityLookup {
+    match source.read() {
+        Ok(map) => match map.get(name).copied() {
+            Some(handler) => CapabilityLookup::Present(handler),
+            None => CapabilityLookup::Absent,
+        },
+        Err(_) => CapabilityLookup::Unreadable,
+    }
+}
+
+fn registry() -> &'static RwLock<BTreeMap<String, HostFn>> {
+    static REGISTRY: OnceLock<RwLock<BTreeMap<String, HostFn>>> = OnceLock::new();
+    REGISTRY.get_or_init(|| RwLock::new(BTreeMap::new()))
 }
 
 /// Install one capability under its surface-form name (e.g. "read-file").
@@ -45,12 +65,15 @@ pub fn unregister_capability(name: &str) {
     }
 }
 
-/// True when a capability with this name is currently installed.
+/// Compatibility projection: true only when the richer lookup observes the
+/// capability as present. An unreadable registry is deliberately not treated
+/// as canonical evidence of absence; evaluator dispatch handles that state
+/// separately.
 pub fn capability_installed(name: &str) -> bool {
-    registry()
-        .read()
-        .map(|map| map.contains_key(name))
-        .unwrap_or(false)
+    matches!(
+        lookup_capability(registry(), name),
+        CapabilityLookup::Present(_)
+    )
 }
 
 /// Names of all installed capabilities, sorted (for diagnostics/UIs).
@@ -79,7 +102,6 @@ pub(crate) fn dispatch_capability(
 #[cfg(test)]
 mod honesty_tests {
     use super::*;
-    use std::sync::RwLock;
 
     fn dummy_handler(
         _arguments: &[Expr],
