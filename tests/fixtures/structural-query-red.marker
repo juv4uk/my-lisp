@@ -1,2 +1,0 @@
-#218 RED gate: contracts/structural-query-inventory.lisp is intentionally absent in this commit sequence.
-The fast semantic lane must fail because the language has not yet supplied one domain row per public predicate.
