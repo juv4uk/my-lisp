@@ -153,9 +153,10 @@
            (t (make-unknown goal))))))))
 
 ; Knowledge-module adapter. Validation precedes lookup: malformed input is an
-; `invalid` observation even when the named module does not exist. Only a
-; well-formed question about a well-formed but absent module becomes
-; `(unknown (module-not-found ...))`.
+; `invalid` observation even when the named module does not exist. If a
+; well-formed module name is absent after scanning the concrete append-only
+; knowledge journal, that absence is already established: reasoning is blocked
+; by a known missing precondition rather than epistemically `unknown`.
 (def reason-in-observe
   (lambda (module-name goal)
     (cond
@@ -166,5 +167,5 @@
       ((module-known? module-name)
        (reason-observe goal (module-clauses-now module-name)))
       (t
-       (make-unknown
+       (make-blocked
          (list (quote module-not-found) module-name))))))
