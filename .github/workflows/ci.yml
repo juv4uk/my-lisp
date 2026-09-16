@@ -37,19 +37,20 @@ jobs:
           set -euo pipefail
           git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt
           cat /tmp/changed.txt
-          surface=false; core=false; host=false; cli=false; xtask=false; meta=false; rust=false; workspace=false; workflow=false
+          surface=false; core=false; semantic=false; host=false; cli=false; xtask=false; meta=false; rust=false; workspace=false; workflow=false
           while IFS= read -r path; do
             case "$path" in Cargo.toml|Cargo.lock|.cargo/*) workspace=true ;; esac
             case "$path" in .github/workflows/*) workflow=true ;; esac
             case "$path" in *.rs|Cargo.toml|Cargo.lock|crates/*/Cargo.toml) rust=true ;; esac
             case "$path" in lib/surface/*|lib/generated/meta-semantic-registry.lisp|docs/ukrainian-api.md|docs/generated/public-api-discovery.md|scripts/public_api_inventory.py|scripts/generate-meta-semantic-registry.py|scripts/generate-ukrainian-api.py|scripts/перевірити-український-профіль.lisp|machine-lowering-boundary.lisp|repo.lisp|crates/my-lisp/tests/macro_derivation.rs|crates/my-lisp/tests/ukrainian_api_docs.rs|crates/my-lisp/tests/uk_surface_equivalence.rs|crates/my-lisp/tests/public_api_inventory_contract.rs|crates/my-lisp/tests/machine_lowering_boundary.rs) surface=true ;; esac
             case "$path" in crates/my-lisp/src/*|crates/my-lisp/tests/*|lib/*.lisp|lib/*/*.lisp) case "$path" in lib/surface/*|lib/generated/*) ;; *) core=true ;; esac ;; esac
+            case "$path" in crates/my-lisp/src/value.rs|crates/my-lisp/src/eval/*|lib/canon.lisp|lib/core.lisp|lib/meta-eval.lisp|lib/answer-contract.lisp|tests/fixtures/conformance.lisp|tests/fixtures/witness-runner.lisp|my-lisp-constitution.lisp) semantic=true ;; esac
             case "$path" in crates/my-lisp-host/src/*|crates/my-lisp-host/tests/*) host=true ;; esac
             case "$path" in crates/my-lisp-cli/src/*|crates/my-lisp-cli/tests/*) cli=true ;; esac
             case "$path" in crates/xtask/src/*|crates/xtask/tests/*) xtask=true ;; esac
             case "$path" in lib/meta-eval.lisp|lib/reason.lisp|lib/forward.lisp|lib/knowledge.lisp|crates/my-lisp/tests/meta_eval_*|crates/my-lisp/tests/reason_*|crates/my-lisp/tests/reasoning_*) meta=true ;; esac
           done < /tmp/changed.txt
-          { echo "surface=$surface"; echo "core=$core"; echo "host=$host"; echo "cli=$cli"; echo "xtask=$xtask"; echo "meta=$meta"; echo "rust=$rust"; echo "workspace=$workspace"; echo "workflow=$workflow"; } | tee -a "$GITHUB_OUTPUT"
+          { echo "surface=$surface"; echo "core=$core"; echo "semantic=$semantic"; echo "host=$host"; echo "cli=$cli"; echo "xtask=$xtask"; echo "meta=$meta"; echo "rust=$rust"; echo "workspace=$workspace"; echo "workflow=$workflow"; } | tee -a "$GITHUB_OUTPUT"
 
       - name: Lisp-owned semantic authority guard
         shell: bash
@@ -94,7 +95,8 @@ jobs:
         run: |
           python3 scripts/generate-meta-semantic-registry.py --check
           python3 scripts/public_api_inventory.py --check
-          cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test machine_atoms --test machine_minimal_profile --test uk_surface_equivalence --test public_api_inventory_contract
+          bash scripts/test-current-semantic-slice.sh
+          cargo test -p my-lisp --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test machine_atoms --test machine_minimal_profile --test uk_surface_equivalence --test public_api_inventory_contract
           cargo test -p my-lisp-host --test native_lisp_bytes --test native_cond_profile
           cargo test -p my-lisp-cli --test cli
           cargo test -p xtask --test license_policy
@@ -128,8 +130,12 @@ jobs:
           args=(); for test_name in "${tests[@]}"; do args+=(--test "$test_name"); done
           cargo test -p my-lisp "${args[@]}"
 
+      - name: Current Lisp-owned semantic slice
+        if: steps.changes.outputs.semantic == 'true' && steps.changes.outputs.workspace != 'true'
+        run: bash scripts/test-current-semantic-slice.sh
+
       - name: Core language package tests
-        if: steps.changes.outputs.core == 'true' && steps.changes.outputs.surface != 'true' && steps.changes.outputs.workspace != 'true'
+        if: steps.changes.outputs.core == 'true' && steps.changes.outputs.surface != 'true' && steps.changes.outputs.semantic != 'true' && steps.changes.outputs.workspace != 'true'
         run: cargo test -p my-lisp
 
       - name: Native host vertical witness
@@ -201,8 +207,10 @@ jobs:
           set -euo pipefail
           cargo build -p my-lisp-cli --bin my-lisp
           ./target/debug/my-lisp scripts/machine-authority-guard.lisp
-      - name: Core unit and critical semantic-machine witnesses
-        run: cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test machine_atoms --test machine_minimal_profile --test uk_surface_equivalence --test public_api_inventory_contract
+      - name: Current Lisp-owned semantic witnesses
+        run: bash scripts/test-current-semantic-slice.sh
+      - name: Critical machine and surface witnesses
+        run: cargo test -p my-lisp --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test machine_atoms --test machine_minimal_profile --test uk_surface_equivalence --test public_api_inventory_contract
       - name: Native CPU vertical witnesses
         run: cargo test -p my-lisp-host --test native_lisp_bytes --test native_cond_profile
       - name: CLI smoke
