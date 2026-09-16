@@ -42,15 +42,33 @@ pub(crate) fn evaluate_cond(
                 clause.span,
             ));
         };
-        if parts.len() != 2 {
-            return Err(LanguageError::new(
-                ErrorKind::InvalidForm,
-                "cond expects (test expression) clauses · cond ochikuie umovy (perevirka vyraz) · cond erwartet Klauseln der Form (Test Ausdruck)",
-                clause.span,
-            ));
-        }
-        if evaluate(&parts[0], environment)?.is_truthy() {
-            return evaluate_step(&parts[1], environment);
+        match parts.len() {
+            // #217 canonical path: the clause explicitly names the domain
+            // result that selects it. The expected form is data, not code.
+            // No Value -> bool conversion occurs on this path.
+            3 => {
+                let actual = evaluate(&parts[0], environment)?;
+                let expected = quoted(&parts[1])?;
+                if actual == expected {
+                    return evaluate_step(&parts[2], environment);
+                }
+            }
+            // Migration-only compatibility path for the existing library
+            // bootstrap. This is deliberately isolated so callers can move to
+            // explicit result dispatch incrementally; #217 retires it after
+            // that migration rather than pretending it is canonical semantics.
+            2 => {
+                if evaluate(&parts[0], environment)?.is_truthy() {
+                    return evaluate_step(&parts[1], environment);
+                }
+            }
+            _ => {
+                return Err(LanguageError::new(
+                    ErrorKind::InvalidForm,
+                    "cond expects canonical (query expected-result expression) clauses or migration-only (test expression) clauses · cond ochikuie kanonichni (zapyt ochikuvanyi-rezultat vyraz) abo tymchasovi (perevirka vyraz) · cond erwartet kanonische (Abfrage erwartetes-Ergebnis Ausdruck)- oder voruebergehende (Test Ausdruck)-Klauseln",
+                    clause.span,
+                ));
+            }
         }
     }
     if clauses.is_empty() {

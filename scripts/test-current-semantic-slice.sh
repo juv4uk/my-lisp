@@ -11,5 +11,6 @@ cargo test -p my-lisp \
   --test structural_observation_contract \
   --test exact_q_binary_contract \
   --test mathematical_result_taxonomy \
+  --test control_dispatch_contract \
   --test authority_guard_contract \
   --test semantic_ref_fail_closed
