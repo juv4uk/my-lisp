@@ -1,11 +1,11 @@
 ; #228 — Lisp-owned executable witness for the layered answer-contract data.
 ;
-; lib/answer-contract.lisp is pure data. This witness reads and interprets
-; that data in Lisp. Rust may launch this witness and observe PASS/FAIL, but
-; it does not own any expected semantic value below.
+; contracts/answer-contract.lisp is pure data. This witness reads and
+; interprets that data in Lisp. Rust may launch this witness and observe
+; PASS/FAIL, but it does not own any expected semantic value below.
 
 (def answer-contract-document
-  (car (read-all (read-file "lib/answer-contract.lisp"))))
+  (car (read-all (read-file "contracts/answer-contract.lisp"))))
 
 (def answer-contract-schema
   (lambda () (car answer-contract-document)))
