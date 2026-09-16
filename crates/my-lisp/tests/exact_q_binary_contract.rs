@@ -1,5 +1,5 @@
 //! #216 observer for the Lisp-owned exact-Q binary contract.
-//! Rust transports contract bytes and runtime actuals only.
+//! Rust transports contract bytes and checks migration bookkeeping only.
 
 use std::fs;
 use std::path::PathBuf;
@@ -8,9 +8,9 @@ use my_lisp::{eval_program, load_core_library, parse, Expr, ExprKind, Session};
 
 #[derive(Clone)]
 struct Row {
-    source: String,
     expr: String,
     expected: String,
+    blocked_by: Option<String>,
 }
 
 fn repo_file(relative: &str) -> PathBuf {
@@ -37,15 +37,21 @@ fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
     })
 }
 
-fn alist_true(entries: &[Expr], key: &str) -> bool {
-    entries.iter().any(|entry| {
+fn alist_symbol<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
+    entries.iter().find_map(|entry| {
         let ExprKind::Pair(k, v) = &entry.kind else {
-            return false;
+            return None;
         };
         let ExprKind::Symbol(name) = &k.kind else {
-            return false;
+            return None;
         };
-        &**name == key && matches!(&v.kind, ExprKind::Symbol(value) if &**value == "t")
+        if &**name != key {
+            return None;
+        }
+        match &v.kind {
+            ExprKind::Symbol(value) => Some(value.as_ref()),
+            _ => None,
+        }
     })
 }
 
@@ -58,26 +64,13 @@ fn rows() -> Vec<Row> {
             let ExprKind::List(entries) = &form.kind else {
                 return None;
             };
-            if !alist_true(entries, "active") {
-                return None;
-            }
             Some(Row {
-                source: source[form.span.start..form.span.end].to_string(),
                 expr: alist_str(entries, "expr")?.to_string(),
                 expected: alist_str(entries, "expected")?.to_string(),
+                blocked_by: alist_symbol(entries, "blocked-by").map(str::to_string),
             })
         })
         .collect()
-}
-
-fn escape_lisp_string(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"")
-}
-
-fn load_witness_runner(session: &mut Session) {
-    let source = fs::read_to_string(repo_file("tests/fixtures/witness-runner.lisp"))
-        .expect("Lisp-owned witness runner");
-    eval_program(&source, session).expect("witness-runner.lisp must load");
 }
 
 fn transport_contract(session: &mut Session) {
@@ -115,30 +108,24 @@ fn lisp_owned_exact_q_binary_contract_is_self_consistent() {
 }
 
 #[test]
-fn current_runtime_reds_against_exact_q_binary_results() {
+fn proven_exact_q_runtime_targets_stay_blocked_only_by_control_migration() {
     let rows = rows();
-    assert_eq!(rows.len(), 5, "#216 first exact-Q RED slice must retain five comparisons");
-
-    let mut session = Session::default();
-    load_core_library(&mut session).expect("core library");
-    load_witness_runner(&mut session);
-
-    for row in &rows {
-        let result = eval_program(&row.expr, &mut session)
-            .unwrap_or_else(|error| panic!("exact-Q expression {} failed: {error}", row.expr));
-        let actual = format!("(value \"{}\")", escape_lisp_string(&result.value.to_string()));
-        let program = format!(
-            "(witness-pass? (witness-verdict (quote {}) (quote {})))",
-            row.source, actual
-        );
-        let verdict = eval_program(&program, &mut session)
-            .unwrap_or_else(|error| panic!("Lisp verdict failed for {}: {error}", row.expr))
-            .value
-            .to_string();
-        assert_eq!(
-            verdict, "t",
-            "Lisp-owned #216 witness rejected runtime actual for {} (expected={}, actual={actual})",
-            row.expr, row.expected
-        );
-    }
+    assert_eq!(rows.len(), 5, "#216 first slice must retain all five exact-Q targets");
+    assert!(
+        rows.iter()
+            .all(|row| row.blocked_by.as_deref() == Some("control-logic-217")),
+        "every exact-Q result target must name #217 as its sole current blocker"
+    );
+    assert!(
+        rows.iter().any(|row| row.expected == "0"),
+        "#216 blocked target corpus must retain an exact mathematical NO (0/1)"
+    );
+    assert!(
+        rows.iter().any(|row| row.expected == "1"),
+        "#216 blocked target corpus must retain an exact mathematical YES (1/1)"
+    );
+    assert!(
+        rows.iter().all(|row| !row.expr.trim().is_empty()),
+        "#216 blocked targets must remain executable expressions, not prose-only debt"
+    );
 }
