@@ -2,7 +2,7 @@
 name = "my-lisp-host"
 version = "0.39.0"
 edition = "2021"
-license-file.workspace = true
+license-file = "../../LICENSE"
 description = "Host capability layer for my-lisp: filesystem, processes, TCP"
 
 [dependencies]
