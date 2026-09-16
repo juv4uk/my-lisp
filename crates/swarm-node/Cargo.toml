@@ -2,6 +2,7 @@
 name = "swarm-node"
 version = "0.1.0"
 edition = "2021"
+license-file.workspace = true
 
 [[bin]]
 name = "swarm-node"
