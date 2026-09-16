@@ -7,5 +7,6 @@ set -euo pipefail
 # broader mechanism and integration evidence.
 cargo test -p my-lisp \
   --test witness_authority \
+  --test structural_query_inventory \
   --test authority_guard_contract \
   --test semantic_ref_fail_closed
