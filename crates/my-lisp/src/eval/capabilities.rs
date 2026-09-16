@@ -102,6 +102,7 @@ pub(crate) fn dispatch_capability(
 #[cfg(test)]
 mod honesty_tests {
     use super::*;
+    use crate::ErrorKind;
 
     fn dummy_handler(
         _arguments: &[Expr],
@@ -136,5 +137,24 @@ mod honesty_tests {
             lookup_capability(&lock, "demo"),
             CapabilityLookup::Unreadable
         ));
+    }
+
+    #[test]
+    fn unreadable_registry_dispatch_is_named_mechanism_failure() {
+        let lock = RwLock::new(BTreeMap::new());
+        let poisoned = std::panic::catch_unwind(|| {
+            let _guard = lock.write().expect("lock is readable before poison");
+            panic!("poison local test registry");
+        });
+        assert!(poisoned.is_err());
+
+        let environment = Environment::root();
+        let span = Span { start: 0, end: 4 };
+        let result = dispatch_capability_from(&lock, "demo", &[], &environment, span)
+            .expect("unreadable registry is an observed mechanism failure, not absence")
+            .expect_err("unreadable registry must fail named");
+
+        assert_eq!(result.kind, ErrorKind::MechanismUnavailable);
+        assert_ne!(result.kind, ErrorKind::UnknownSymbol);
     }
 }
