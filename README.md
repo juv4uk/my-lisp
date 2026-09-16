@@ -45,6 +45,45 @@ Lisp-визначення / виконуваний доказ
 
 ---
 
+## Що вже доведено
+
+Три терміни, на яких тримається evidence layer:
+
+- **semantic ID** — стабільна числова тотожність значення, незалежна від написання імені;
+- **surface** — шар написань/проєкцій, який відображає імена на semantic IDs;
+- **witness** — виконуваний доказ, що перевіряє конкретне обмежене семантичне твердження.
+
+На сьогодні README може чесно показати такі вже ратифіковані результати:
+
+- **Canon 0+7 має executable witnesses.** Закони замкненого ядра не лише описані прозою: вони виконуються в [`lib/canon.lisp`](lib/canon.lisp) і перевіряються conformance/Canon-тестами.
+- **Українська поверхня є peer projection тих самих numeric semantic identities.** `uk`, `en`, `sa` та інші admitted spellings не створюють окремих значень і не перекладають «привілейовану англійську семантику»; authority лежить у numeric-only registry [`lib/surface/semantic-registry.lisp`](lib/surface/semantic-registry.lisp).
+- **Vertical Day — bounded фізичний доказ.** Ратифікований зріз [`2026-09-14`](docs/research/2026-09-14-vertical-day.md) проводить `(перше (сполучити 2 3))` через structured machine forms → closed admission → Lisp-owned x86-64 encoding → semantics-blind host → physical CPU і отримує `2`. Це доказ конкретного bounded шляху, не твердження про повну native Lisp-машину.
+- **Canonical machine path fail-closed.** Ill-typed semantic input та raw/malformed/unadmitted, зокрема truncated, machine requests відхиляються до входу в host; негативні witnesses фіксують `HOST CALL COUNT = 0`, а не використовують crash як oracle.
+
+```text
+(перше (сполучити 2 3))
+        ↓
+semantic identity
+        ↓
+structured machine forms
+        ↓
+closed admission
+        ↓
+Lisp-owned x86-64 encoding
+        ↓
+semantics-blind host
+        ↓
+physical CPU
+        ↓
+2
+```
+
+**Ще не доведено:** complete native GC/general heap, first-class escaping native pairs, automatic GPU/FPGA scheduler, complete Lisp machine або OS. Повний список меж твердження й exact evidence ledger лежить у датованому [`Vertical Day record`](docs/research/2026-09-14-vertical-day.md).
+
+README лише показує вже зароблені докази; він не є новим джерелом семантичної влади.
+
+---
+
 ## Canon 0 + 7
 
 Семантичне ядро замкнене. Є **Canon 0** — конкретний порожній правильний список `()` — і рівно сім канонічних операцій Маккарті.
@@ -156,7 +195,6 @@ python3 scripts/translate-program.py --from uk --to sa input.lisp
 ---
 
 ## Мовна політика репозиторію
-
 Людська комунікація проєкту має окрему ратифіковану політику: [`knowledge/language-policy.lisp`](knowledge/language-policy.lisp).
 
 ```text
@@ -337,11 +375,3 @@ The central research question is: **how small can the irreducible host remain wh
 `my-lisp` ist eine Lisp-Forschungssprache mit einem dauerhaft geschlossenen semantischen McCarthy-Kern 0+7, exakter Arithmetik, ausführbarer Konformität und mehreren unabhängigen Substraten.
 
 Ukrainisch ist die primäre menschliche Sprache des Projekts; Englisch und Deutsch sind Hilfssprachen. Rust ist die Referenzimplementierung, aber nicht die semantische Autorität. Maßgeblich sind [`language-contract.lisp`](language-contract.lisp), ratifizierte Entscheidungen und ausführbare Konformitätsbelege.
-
-Die zentrale Forschungsfrage lautet: **Wie klein kann der irreduzible Host bleiben, während das nützliche System innerhalb der Sprache weiterwächst?**
-
----
-
-## Ліцензія
-
-[ВОЛЬНІСТЬ](LICENSE)
