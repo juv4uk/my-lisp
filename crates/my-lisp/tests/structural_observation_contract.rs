@@ -13,7 +13,6 @@ struct Row {
     expected: Option<String>,
     error: Option<String>,
     active: bool,
-    blocked_by: Option<String>,
 }
 
 fn repo_file(relative: &str) -> PathBuf {
@@ -77,7 +76,6 @@ fn rows() -> Vec<Row> {
                 expected: alist_str(entries, "expected").map(str::to_string),
                 error: alist_str(entries, "error").map(str::to_string),
                 active: alist_true(entries, "active"),
-                blocked_by: alist_symbol(entries, "blocked-by").map(str::to_string),
             })
         })
         .collect()
@@ -151,28 +149,23 @@ fn lisp_owned_structural_observation_contract_is_self_consistent() {
 }
 
 #[test]
-fn superseded_value_results_stay_explicitly_blocked_only_by_control_migration() {
+fn all_structural_result_targets_are_active_after_explicit_control_lands() {
     let rows = rows();
     assert_eq!(rows.len(), 6, "#218 target must retain all six structural rows");
-
-    let blocked: Vec<_> = rows.iter().filter(|row| !row.active).collect();
-    assert_eq!(blocked.len(), 5, "exactly five new value-result rows stay blocked after RED");
     assert!(
-        blocked
-            .iter()
-            .all(|row| row.blocked_by.as_deref() == Some("control-logic-217")),
-        "every deferred atom/eq value-result row must name #217 as its blocker"
+        rows.iter().all(|row| row.active),
+        "#217 landed explicit result dispatch; no #218 structural-result row may remain blocked"
     );
-
-    let active: Vec<_> = rows.iter().filter(|row| row.active).collect();
-    assert_eq!(active.len(), 1, "only the already-valid eq Type-domain row stays active");
-    assert_eq!(active[0].error.as_deref(), Some("Type"));
+    assert!(
+        rows.iter().any(|row| row.error.as_deref() == Some("Type")),
+        "the atom-only eq jurisdiction must retain its Type boundary"
+    );
 }
 
 #[test]
 fn active_runtime_rows_match_lisp_owned_structural_observation_results() {
     let rows: Vec<_> = rows().into_iter().filter(|row| row.active).collect();
-    assert!(!rows.is_empty(), "#218 must retain at least one live runtime row");
+    assert_eq!(rows.len(), 6, "all #218 structural rows must now execute");
 
     let mut session = Session::default();
     load_core_library(&mut session).expect("core library");
