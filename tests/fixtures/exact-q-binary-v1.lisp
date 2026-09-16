@@ -1,12 +1,15 @@
 ; #216 — executable exact-Q binary runtime targets.
+; First runtime activation slice after #217/#229: primitive <, >, = only.
+;
 ; `expected` is the canonical writer form of the language-owned result:
 ;   1  = mathematical 1/1 (YES)
 ;   0  = mathematical 0/1 (NO)
 ;   () = this exact-Q layer produced no answer
 ;
-; #217 has landed canonical explicit-result dispatch, so the former
-; `blocked-by control-logic-217` bookkeeping is no longer authoritative.
-; These rows now directly test production comparison semantics.
+; <= and >= remain ratified by contracts/exact-q-binary-contract.lisp but are
+; intentionally deferred to the next slice: their current Lisp definitions
+; still contain migration-era two-part cond consumers and must be migrated
+; explicitly rather than teaching generic control that numeric 0 means false.
 
 ((expr . "(= 1/3 2/6)")
  (expected . "1")
@@ -22,16 +25,6 @@
  (expected . "0")
  (identity . "1015")
  (case . rational-greater-no))
-
-((expr . "(<= 1/3 1/3 2/3)")
- (expected . "1")
- (identity . "1017")
- (case . rational-nondecreasing-yes))
-
-((expr . "(>= 3/4 2/3 2/3)")
- (expected . "1")
- (identity . "1018")
- (case . rational-nonincreasing-yes))
 
 ; Harvested from the preserved pre-#217 branch `feat/binary-math-216`.
 ; Inexact values are outside absolute exact-Q authority. `()` here is
