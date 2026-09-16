@@ -19,4 +19,13 @@
    (observed . module-absent-after-complete-journal-scan)
    (result . blocked)
    (reason-form . (module-not-found name))
-   (forbidden-specialization . unknown)))
+   (forbidden-specialization . unknown))
+
+  ((law . search-unknown-must-name-its-scope)
+   (observed . no-proof-on-either-side-after-search-return)
+   (result-form .
+     (unknown
+       (not-proved-under-search
+         subject
+         (reason-search finite-snapshot exhausted))))
+   (forbidden-result . (unknown subject))))
