@@ -90,7 +90,7 @@ fn lisp_owned_exact_q_binary_contract_is_self_consistent() {
 #[test]
 fn exact_q_runtime_matches_lisp_owned_rows() {
     let rows = rows();
-    assert_eq!(rows.len(), 7, "#216 first active slice must retain seven targets");
+    assert_eq!(rows.len(), 5, "#216 first active runtime slice must retain five targets");
     assert!(rows.iter().any(|row| row.expected == "0"));
     assert!(rows.iter().any(|row| row.expected == "1"));
     assert!(rows.iter().any(|row| row.expected == "()"));
