@@ -64,22 +64,30 @@
    (allowed-coercions . ())
    (forbidden-coercions . (generic-value->bool host-bool)))
 
-  ; #218 will ratify the concrete result algebra for structural observations.
-  ; #228 only establishes that atom/eq do NOT inherit mathematical binary
-  ; semantics or generic truthiness.
+  ; #218 has now selected explicit domain-owned result forms. PRIM_ATOM is a
+  ; structural classifier over the actual value shape: Canon 0, pair, or other
+  ; non-pair atom. It is not a universal proposition returning T/NIL.
   ((identity . "0002")
    (domain-owner . structural-observation)
    (input-domain . value)
-   (result-form . structural-observation-result)
-   (no-answer . ())
+   (result-form . structural-kind)
+   (result-values . ((structural-kind empty-list)
+                     (structural-kind pair)
+                     (structural-kind atom)))
+   (no-answer . not-applicable)
    (allowed-coercions . ())
    (forbidden-coercions . (generic-value->bool host-bool mathematical-binary-collapse)))
 
+  ; PRIM_EQ remains atom-only. Its two cases belong to the atomic-identity
+  ; domain, not to mathematical 0/1 and not to universal truthiness.
   ((identity . "0003")
    (domain-owner . structural-observation)
-   (input-domain . (value value))
-   (result-form . structural-observation-result)
-   (no-answer . ())
+   (input-domain . (atom atom))
+   (result-form . identity-relation)
+   (result-values . ((identity-relation same)
+                     (identity-relation distinct)))
+   (outside-domain . type-error)
+   (no-answer . not-applicable)
    (allowed-coercions . ())
    (forbidden-coercions . (generic-value->bool host-bool mathematical-binary-collapse)))
 
