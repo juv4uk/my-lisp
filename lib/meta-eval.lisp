@@ -576,12 +576,36 @@
     (cond
       ((atom clauses) (my-result-ok (quote ())))
       (t
-       (let ((test-result (my-eval-result (car (car clauses)) env)))
+       (let ((clause (car clauses)))
          (cond
-           ((my-result-fail? test-result) test-result)
-           ((my-result-value test-result)
-            (my-eval-result (second (car clauses)) env))
-           (t (my-eval-cond-result (cdr clauses) env))))))))
+           ; #217 canonical path: evaluate only the query. The expected result
+           ; is already Lisp data in the interpreted program and must never be
+           ; executed as code. Match it structurally, then evaluate the branch.
+           ((eq (length clause) 3) (identity-relation same)
+            (let ((test-result (my-eval-result (car clause) env)))
+              (cond
+                ((my-result-fail? test-result) test-result)
+                ((equal? (my-result-value test-result) (second clause))
+                 (structural-relation same)
+                 (my-eval-result (third clause) env))
+                ((equal? (my-result-value test-result) (second clause))
+                 (structural-relation distinct)
+                 (my-eval-cond-result (cdr clauses) env)))))
+           ; Historical two-part clauses remain migration-only, mirroring the
+           ; native evaluator until their callers are moved to explicit result
+           ; matching. This path intentionally retains old truthiness.
+           ((eq (length clause) 2) (identity-relation same)
+            (let ((test-result (my-eval-result (car clause) env)))
+              (cond
+                ((my-result-fail? test-result) test-result)
+                ((my-result-value test-result)
+                 (my-eval-result (second clause) env))
+                (t (my-eval-cond-result (cdr clauses) env)))))
+           (t
+            (my-result-fail
+              (my-error
+                (quote invalid-form)
+                (list (quote cond-clause) clause))))))))))
 
 (def my-eval-cond
   (lambda (clauses env)

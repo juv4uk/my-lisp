@@ -45,15 +45,17 @@ fn two_symbol_record(value: &Value) -> Option<(&str, &str)> {
 /// Temporary bridge for historical two-part `cond` only.
 ///
 /// Canonical three-part #217 dispatch never calls this function. The mapping
-/// preserves the old branching behavior of `atom`/`eq` while their callers are
-/// migrated to explicit domain-result matching. Once two-part `cond` is retired,
-/// this adapter disappears with it.
+/// preserves the old branching behavior of the migrated #218 structural
+/// observations while their callers move to explicit domain-result matching.
+/// Once two-part `cond` is retired, this adapter disappears with it.
 fn migration_only_cond_truthy(value: &Value) -> bool {
     match two_symbol_record(value) {
         Some(("structural-kind", "empty-list" | "atom")) => true,
         Some(("structural-kind", "pair")) => false,
         Some(("identity-relation", "same")) => true,
         Some(("identity-relation", "distinct")) => false,
+        Some(("structural-relation", "same")) => true,
+        Some(("structural-relation", "distinct")) => false,
         _ => value.is_truthy(),
     }
 }
