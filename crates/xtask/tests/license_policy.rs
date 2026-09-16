@@ -34,7 +34,9 @@ fn owned_workspace_crates_point_directly_to_the_single_root_license_file() {
         .expect("workspace Cargo.toml must be readable");
 
     assert!(
-        !root_manifest.contains("[workspace.package]"),
+        !root_manifest
+            .lines()
+            .any(|line| line.trim_start().starts_with("license-file") || line.trim_start().starts_with("license =")),
         "license metadata must stay package-local so a license-only change is not classified as a workspace dependency-graph change"
     );
 
