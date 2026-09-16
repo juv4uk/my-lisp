@@ -97,6 +97,7 @@ jobs:
           cargo test -p my-lisp --lib --test canon_adversarial --test canon_language_authority --test semantic_ref_fail_closed --test machine_lowering_boundary --test machine_admission_adversarial --test machine_type_discipline --test machine_noninterference_contract --test machine_atoms --test machine_minimal_profile --test uk_surface_equivalence --test public_api_inventory_contract
           cargo test -p my-lisp-host --test native_lisp_bytes --test native_cond_profile
           cargo test -p my-lisp-cli --test cli
+          cargo test -p xtask --test license_policy
           cargo run -p xtask -- verify
 
       - name: Exercise future main fast clippy
@@ -145,6 +146,7 @@ jobs:
           cargo test -p xtask --test external_oracle_cli
           cargo test -p xtask --test xed_import_cli
           cargo test -p xtask --test encoder_coverage_cli
+          cargo test -p xtask --test license_policy
           cargo run -p xtask -- verify
           cargo run -p xtask -- import-xed-evidence --check
           cargo run -p xtask -- generate-encoder-coverage --check
@@ -206,7 +208,9 @@ jobs:
       - name: CLI smoke
         run: cargo test -p my-lisp-cli --test cli
       - name: Governance and policy checks
-        run: cargo run -p xtask -- verify
+        run: |
+          cargo test -p xtask --test license_policy
+          cargo run -p xtask -- verify
 
   main-fast-clippy:
     name: main fast clippy
