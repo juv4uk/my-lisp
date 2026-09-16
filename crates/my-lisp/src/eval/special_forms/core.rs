@@ -49,7 +49,20 @@ pub(crate) fn evaluate_cond(
                 clause.span,
             ));
         }
-        if evaluate(&parts[0], environment)?.is_truthy() {
+
+        let decision = evaluate(&parts[0], environment)?;
+        // #215: Canon 0 is structural empty/no-answer data, never logical NO.
+        // Rejecting it here is intentionally narrower than #217: the remaining
+        // legacy truthiness protocol is preserved temporarily for non-Nil values
+        // until control gets its explicit answer-domain dispatch contract.
+        if matches!(decision, Value::Nil) {
+            return Err(LanguageError::new(
+                ErrorKind::Type,
+                "cond cannot consume () as a decision; empty list is data/no-answer, not FALSE · cond ne mozhe vykorystovuvaty () yak rishennia; porozhnii spysok ye danymy/vidsutnistiu vidpovidi, a ne FALSE · cond kann () nicht als Entscheidung verwenden; die leere Liste ist Daten/keine Antwort, nicht FALSE",
+                parts[0].span,
+            ));
+        }
+        if decision.is_truthy() {
             return evaluate_step(&parts[1], environment);
         }
     }
