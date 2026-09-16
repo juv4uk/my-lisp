@@ -2,7 +2,7 @@
 name = "my-lisp-wasm"
 version = "0.39.0"
 edition = "2021"
-license = "MIT"
+license-file.workspace = true
 description = "WebAssembly bindings for the my-lisp engine · WASM-прив'язки до рушія my-lisp · WebAssembly-Bindungen für die my-lisp-Engine"
 
 [lib]
