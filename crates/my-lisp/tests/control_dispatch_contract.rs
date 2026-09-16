@@ -60,9 +60,13 @@ fn escape_lisp_string(value: &str) -> String {
 }
 
 #[test]
-fn canonical_cond_dispatches_only_by_explicit_expected_result() {
+fn explicit_dispatch_and_bounded_migration_compatibility_follow_lisp_witnesses() {
     let rows = rows();
-    assert_eq!(rows.len(), 6, "#217 first explicit-dispatch slice must keep six rows");
+    assert_eq!(
+        rows.len(),
+        10,
+        "#217/#218 slice must keep six canonical and four migration-only rows"
+    );
 
     let mut session = Session::default();
     load_core_library(&mut session).expect("core library");
@@ -76,15 +80,15 @@ fn canonical_cond_dispatches_only_by_explicit_expected_result() {
             Err(error) => format!("(error \"{:?}\")", error.kind),
         };
         let program = format!(
-            "(witness-pass? (witness-verdict (quote {}) (quote {})))",
+            "(witness-status (witness-verdict (quote {}) (quote {})))",
             row.source, actual
         );
-        let verdict = eval_program(&program, &mut session)
+        let status = eval_program(&program, &mut session)
             .unwrap_or_else(|error| panic!("#217 witness verdict failed for {}: {error}", row.expr))
             .value
             .to_string();
         assert_eq!(
-            verdict, "t",
+            status, "pass",
             "#217 Lisp-owned control witness rejected {} (actual={actual})",
             row.expr
         );

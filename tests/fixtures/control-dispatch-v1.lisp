@@ -28,3 +28,26 @@
 ((expr . "(cond ((quote radio) antenna (quote wrong)))")
  (expected . "()")
  (active . t))
+
+; Migration-only two-part clauses preserve historical atom/eq branching while
+; library source is moved to canonical three-part dispatch. These rows are NOT
+; semantic authority for new control; they only bound the temporary adapter.
+((expr . "(cond ((atom (quote ())) (quote legacy-atom)) (t (quote wrong)))")
+ (expected . "legacy-atom")
+ (active . t)
+ (compatibility . t))
+
+((expr . "(cond ((atom (quote (radio))) (quote wrong)) (t (quote legacy-pair)))")
+ (expected . "legacy-pair")
+ (active . t)
+ (compatibility . t))
+
+((expr . "(cond ((eq (quote radio) (quote radio)) (quote legacy-same)) (t (quote wrong)))")
+ (expected . "legacy-same")
+ (active . t)
+ (compatibility . t))
+
+((expr . "(cond ((eq (quote radio) (quote antenna)) (quote wrong)) (t (quote legacy-distinct)))")
+ (expected . "legacy-distinct")
+ (active . t)
+ (compatibility . t))

@@ -5,7 +5,7 @@
 //! opaque numeric IDs by the shared registry module. This module owns only the
 //! finite mapping from those IDs to canonical evaluator meaning, plus Canon 0.
 
-use super::special_forms::{car_value, cdr_value, cons_values, eq_values};
+use super::special_forms::{atom_value, car_value, cdr_value, cons_values, eq_values};
 use crate::{semantic_registry, Environment, ErrorKind, LanguageError, Span, Value};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -180,7 +180,7 @@ pub(crate) fn invoke_semantic_ref(
     match identity {
         CanonicalIdentity::Atom => {
             exact_args("PRIM_ATOM", args, 1, span)?;
-            Ok(Value::truth(args[0].is_atom()))
+            Ok(atom_value(&args[0]))
         }
         CanonicalIdentity::Eq => {
             exact_args("PRIM_EQ", args, 2, span)?;

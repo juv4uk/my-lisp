@@ -7,6 +7,57 @@ use crate::eval::{evaluate, evaluate_step, EvalStep};
 use crate::{Environment, ErrorKind, Expr, ExprKind, LanguageError, Span, Value};
 use std::rc::Rc;
 
+fn semantic_record(kind: &str, state: &str) -> Value {
+    Value::list([
+        Value::Symbol(Rc::from(kind)),
+        Value::Symbol(Rc::from(state)),
+    ])
+}
+
+pub(crate) fn atom_value(value: &Value) -> Value {
+    let state = match value {
+        Value::Nil => "empty-list",
+        Value::Pair(_, _) => "pair",
+        _ => "atom",
+    };
+    semantic_record("structural-kind", state)
+}
+
+fn two_symbol_record(value: &Value) -> Option<(&str, &str)> {
+    let Value::Pair(kind, tail) = value else {
+        return None;
+    };
+    let Value::Symbol(kind) = kind.as_ref() else {
+        return None;
+    };
+    let Value::Pair(state, end) = tail.as_ref() else {
+        return None;
+    };
+    let Value::Symbol(state) = state.as_ref() else {
+        return None;
+    };
+    if !matches!(end.as_ref(), Value::Nil) {
+        return None;
+    }
+    Some((kind.as_ref(), state.as_ref()))
+}
+
+/// Temporary bridge for historical two-part `cond` only.
+///
+/// Canonical three-part #217 dispatch never calls this function. The mapping
+/// preserves the old branching behavior of `atom`/`eq` while their callers are
+/// migrated to explicit domain-result matching. Once two-part `cond` is retired,
+/// this adapter disappears with it.
+fn migration_only_cond_truthy(value: &Value) -> bool {
+    match two_symbol_record(value) {
+        Some(("structural-kind", "empty-list" | "atom")) => true,
+        Some(("structural-kind", "pair")) => false,
+        Some(("identity-relation", "same")) => true,
+        Some(("identity-relation", "distinct")) => false,
+        _ => value.is_truthy(),
+    }
+}
+
 pub(crate) fn evaluate_definition(
     arguments: &[Expr],
     environment: &Environment,
@@ -54,11 +105,12 @@ pub(crate) fn evaluate_cond(
                 }
             }
             // Migration-only compatibility path for the existing library
-            // bootstrap. This is deliberately isolated so callers can move to
-            // explicit result dispatch incrementally; #217 retires it after
-            // that migration rather than pretending it is canonical semantics.
+            // bootstrap. It understands the new #218 structural records only
+            // to preserve historical callers while source migrates to the
+            // canonical three-part form. This path owns no language semantics.
             2 => {
-                if evaluate(&parts[0], environment)?.is_truthy() {
+                let value = evaluate(&parts[0], environment)?;
+                if migration_only_cond_truthy(&value) {
                     return evaluate_step(&parts[1], environment);
                 }
             }
@@ -179,5 +231,8 @@ pub(crate) fn eq_values(left: Value, right: Value, span: Span) -> Result<Value, 
             span,
         ));
     }
-    Ok(Value::truth(left == right))
+    Ok(semantic_record(
+        "identity-relation",
+        if left == right { "same" } else { "distinct" },
+    ))
 }

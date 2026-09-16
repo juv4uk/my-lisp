@@ -10,8 +10,9 @@
 ; relation instead of borrowing a universal truth sentinel.
 ;
 ; These result records are ordinary Lisp data, not new primitive identities.
-; They are intentionally non-coercible to generic truth. #217 must define any
-; later control dispatch over them explicitly.
+; They are intentionally non-coercible to generic truth. #217 now supplies the
+; canonical explicit-result-equality dispatch that can consume them without
+; Value -> bool coercion. Historical two-part cond remains migration-only.
 
 (structural-observation-contract/1
   ((identity . "0002")
@@ -27,7 +28,7 @@
       ((when . non-pair-nonempty)
        (result . (structural-kind atom)))))
    (generic-truth-coercion . forbidden)
-   (control-dispatch . delegated-to-217))
+   (control-dispatch . explicit-result-equality))
 
   ((identity . "0003")
    (surface . eq)
@@ -41,4 +42,4 @@
        (result . (identity-relation distinct)))))
    (outside-domain . type-error)
    (generic-truth-coercion . forbidden)
-   (control-dispatch . delegated-to-217)))
+   (control-dispatch . explicit-result-equality)))
