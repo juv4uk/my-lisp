@@ -42,10 +42,26 @@
             (so-first-failure
               (list
                 (so-expect "0002" (quote result-form) (quote structural-kind))
+                (so-expect
+                  "0002"
+                  (quote cases)
+                  (quote (((when . canon-zero)
+                           (result . (structural-kind empty-list)))
+                          ((when . pair)
+                           (result . (structural-kind pair)))
+                          ((when . non-pair-nonempty)
+                           (result . (structural-kind atom))))))
                 (so-expect "0002" (quote generic-truth-coercion) (quote forbidden))
                 (so-expect "0002" (quote control-dispatch) (quote delegated-to-217))
                 (so-expect "0003" (quote input-domain) (quote (atom atom)))
                 (so-expect "0003" (quote result-form) (quote identity-relation))
+                (so-expect
+                  "0003"
+                  (quote cases)
+                  (quote (((when . same-atom)
+                           (result . (identity-relation same)))
+                          ((when . distinct-atoms)
+                           (result . (identity-relation distinct))))))
                 (so-expect "0003" (quote outside-domain) (quote type-error))
                 (so-expect "0003" (quote generic-truth-coercion) (quote forbidden))
                 (so-expect "0003" (quote control-dispatch) (quote delegated-to-217))))))
