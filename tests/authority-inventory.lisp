@@ -10,6 +10,7 @@
 (authority "crates/my-lisp/tests/exact_q_binary_contract.rs" observer)
 (authority "crates/my-lisp/tests/mathematical_result_taxonomy.rs" observer)
 (authority "crates/my-lisp/tests/control_dispatch_contract.rs" observer)
+(authority "crates/my-lisp/tests/canon_laws_v2_contract.rs" observer)
 (authority "crates/my-lisp/tests/reason_honesty_contract.rs" observer)
 (authority "crates/my-lisp/tests/authority_guard_contract.rs" observer)
 (authority "crates/my-lisp/tests/mccarthy.rs" semantic-authority)
