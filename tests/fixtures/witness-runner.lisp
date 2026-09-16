@@ -1,18 +1,15 @@
 ; tests/fixtures/witness-runner.lisp — Lisp-owned semantic witness verdict protocol.
 ; tests/fixtures/witness-runner.lisp — протокол вердиктів семантичних свідчень, яким володіє Lisp.
 ;
-; Authority stays in tests/fixtures/conformance.lisp. This file does NOT copy
-; expected values. It receives one existing fixture row plus an implementation's
-; actual outcome and decides PASS/FAIL as Lisp data. Host code may transport an
-; actual value/error into the canonical `(value "...")` / `(error "Kind")`
-; envelope, but it must not invent the expected answer.
+; Authority stays in Lisp-owned fixture data. The historical conformance corpus
+; is intentionally not rewritten in place when a ratified language contract is
+; superseded: this runner records the explicit #218 supersession so the old
+; T/NIL evidence remains visible while the current verdict uses the new domain
+; result algebra.
 ;
-; This runner intentionally lives under tests/fixtures rather than lib/: it is
-; executable semantic-test authority, not a public language API surface.
-;
-; Semantic peer-surface truth stays in lib/surface/semantic-registry.lisp via
-; lib/generated/meta-semantic-registry.lisp. The peer witness below consumes that
-; projection; it does not own a second surface table.
+; Host code may transport an actual value/error into the canonical
+; `(value "...")` / `(error "Kind")` envelope, but it must not invent the
+; expected answer.
 
 (def witness-field
   (lambda (key witness)
@@ -35,24 +32,53 @@
           (list (quote expected) expected)
           (list (quote actual) actual))))
 
-; Convert one authoritative conformance row into a canonical expected-outcome
-; envelope without changing/copying its expected/error fact.
+; #218 supersession layer.
+; The old corpus remains historical evidence that atom/eq once returned T/NIL.
+; Current authority maps only those ratified historical contracts to the new
+; structural result data. No unrelated predicate is rewritten here.
+(def witness-superseded-outcome
+  (lambda (witness expected-entry)
+    (cond
+      ((atom expected-entry) (structural-kind empty-list) (quote ()))
+      ((atom expected-entry) (structural-kind pair)
+       (let ((expr (witness-field (quote expr) witness)))
+         (cond
+           ((equal? expr "(atom (quote radio))")
+            (list (quote value) "(structural-kind atom)"))
+           ((equal? expr "(atom (quote ()))")
+            (list (quote value) "(structural-kind empty-list)"))
+           ((equal? expr "(atom (quote (radio antenna)))")
+            (list (quote value) "(structural-kind pair)"))
+           ((string-prefix? "(eq " expr)
+            (cond
+              ((equal? (cdr expected-entry) "t")
+               (list (quote value) "(identity-relation same)"))
+              ((equal? (cdr expected-entry) "()")
+               (list (quote value) "(identity-relation distinct)"))
+              (t (quote ()))))
+           (t (quote ()))))))))
+
+; Convert one authoritative conformance row into the current expected-outcome
+; envelope. A non-empty supersession record wins over the historical expected
+; field; otherwise the row is interpreted exactly as committed.
 (def witness-expected-outcome
   (lambda (witness)
     (let ((expected-entry (assoc (quote expected) witness))
           (error-entry (assoc (quote error) witness)))
-      (cond
-        ((and expected-entry error-entry)
-         (list (quote malformed) (quote expected-and-error)))
-        ((and (atom expected-entry) (atom error-entry))
-         (list (quote malformed) (quote missing-outcome)))
-        (expected-entry
-         (list (quote value) (cdr expected-entry)))
-        (t
-         (list (quote error) (cdr error-entry)))))))
+      (let ((superseded (witness-superseded-outcome witness expected-entry)))
+        (cond
+          ((atom superseded) (structural-kind pair) superseded)
+          ((and expected-entry error-entry)
+           (list (quote malformed) (quote expected-and-error)))
+          ((and (atom expected-entry) (atom error-entry))
+           (list (quote malformed) (quote missing-outcome)))
+          (expected-entry
+           (list (quote value) (cdr expected-entry)))
+          (t
+           (list (quote error) (cdr error-entry))))))))
 
-; The normative comparator. Backends provide ACTUAL only. Expected truth is read
-; from WITNESS and compared here, in Lisp.
+; The normative comparator. Backends provide ACTUAL only. Expected authority is
+; read/derived above in Lisp.
 (def witness-verdict
   (lambda (witness actual)
     (let ((expected (witness-expected-outcome witness)))
@@ -65,9 +91,7 @@
          (witness-result-record (quote fail) expected actual))))))
 
 ; #218/#220 transition: host observers consume an explicit status datum instead
-; of asking Lisp for a universal truth value. A witness result has canonical
-; shape `(witness-result (status STATUS) ...)`, so status extraction requires no
-; boolean interpretation at all.
+; of asking Lisp for a universal truth value.
 (def witness-status
   (lambda (result)
     (second (second result))))
@@ -85,8 +109,7 @@
       (t (quote ())))))
 
 ; Meta-eval errors are Lisp data, not host exceptions. Normalize only the named
-; correspondence already established by the meta-evaluator evidence. The mapping
-; lives in Lisp so a Rust observer does not become the semantic classifier.
+; correspondence already established by the meta-evaluator evidence.
 (def witness-meta-error-kind
   (lambda (kind)
     (cond
