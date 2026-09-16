@@ -132,7 +132,7 @@
                 ; is keyed by semantic identity only. Canon 0 is the one special
                 ; non-ID entry because the empty list has no lexical Canon ID.
                 (answer-contract-witness-expect-missing (quote cons))
-                (answer-contract-witness-expect-missing (quote reason)))))))
+                (answer-contract-witness-expect-missing (quote reason))))))
       (cond
         ((eq (answer-contract-schema) (quote answer-contract/1))
          (cond
