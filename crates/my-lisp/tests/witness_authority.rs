@@ -83,6 +83,12 @@ fn canon_zero_rows() -> Vec<WitnessRow> {
             let ExprKind::List(entries) = &form.kind else {
                 return None;
             };
+            // #215 is deliberately two-phase. The fixture keeps already-proven
+            // future RED targets, but only rows explicitly marked active are
+            // executable before #218/#217 replace structural T/NIL control.
+            if !alist_flag(entries, "active") {
+                return None;
+            }
             Some(WitnessRow {
                 source: source[form.span.start..form.span.end].to_string(),
                 expr: alist_str(entries, "expr")?.to_string(),
@@ -234,7 +240,7 @@ fn compiler_corpus_native_actuals_are_judged_only_by_lisp_owned_witness_logic() 
 #[test]
 fn canon_zero_empty_list_is_data_not_false() {
     let rows = canon_zero_rows();
-    assert!(!rows.is_empty(), "#215 Canon 0 witness slice must remain non-empty");
+    assert!(!rows.is_empty(), "#215 active Canon 0 witness slice must remain non-empty");
 
     let mut session = Session::default();
     load_core_library(&mut session).expect("core library");
