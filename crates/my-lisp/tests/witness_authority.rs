@@ -74,6 +74,33 @@ fn witness_rows() -> Vec<WitnessRow> {
         .collect()
 }
 
+fn canon_zero_rows() -> Vec<WitnessRow> {
+    let source = include_str!("../../../tests/fixtures/canon-zero-v2.lisp");
+    parse(source)
+        .expect("canon-zero-v2.lisp must parse")
+        .into_iter()
+        .filter_map(|form| {
+            let ExprKind::List(entries) = &form.kind else {
+                return None;
+            };
+            // #215 is deliberately two-phase. The fixture keeps already-proven
+            // future RED targets, but only rows explicitly marked active are
+            // executable before #218/#217 replace structural T/NIL control.
+            if !alist_flag(entries, "active") {
+                return None;
+            }
+            Some(WitnessRow {
+                source: source[form.span.start..form.span.end].to_string(),
+                expr: alist_str(entries, "expr")?.to_string(),
+                expected: alist_str(entries, "expected").map(str::to_string),
+                error: alist_str(entries, "error").map(str::to_string),
+                meta_eval: false,
+                compiler_corpus: false,
+            })
+        })
+        .collect()
+}
+
 fn repo_file(relative: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -98,9 +125,7 @@ fn transport_answer_contract_document(session: &mut Session) {
 
     let form = &forms[0];
     let exact_form_source = &source[form.span.start..form.span.end];
-    let transport = format!(
-        "(def answer-contract-document (quote {exact_form_source}))"
-    );
+    let transport = format!("(def answer-contract-document (quote {exact_form_source}))");
     eval_program(&transport, session)
         .expect("host observer must be able to transport contract bytes into Lisp data");
 }
@@ -210,6 +235,21 @@ fn compiler_corpus_native_actuals_are_judged_only_by_lisp_owned_witness_logic() 
         rows.iter().any(|row| row.expr.contains("defmacro")),
         "#113 compiler slice must retain macro evidence"
     );
+}
+
+#[test]
+fn canon_zero_empty_list_is_data_not_false() {
+    let rows = canon_zero_rows();
+    assert!(!rows.is_empty(), "#215 active Canon 0 witness slice must remain non-empty");
+
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core library");
+    load_witness_library(&mut session);
+
+    for row in &rows {
+        let actual = actual_form_from_native(row, &mut session);
+        assert_lisp_owned_verdict_passes(&mut session, row, &actual);
+    }
 }
 
 #[test]
