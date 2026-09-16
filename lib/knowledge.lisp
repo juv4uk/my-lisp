@@ -409,10 +409,13 @@
 (def knowledge-clauses-valid?
   (lambda (clauses)
     (cond
-      ((atom clauses) (eq clauses (quote ())))
-      ((knowledge-clause-valid? (car clauses))
-       (knowledge-clauses-valid? (cdr clauses)))
-      (t (quote ())))))
+      ((atom clauses) (structural-kind empty-list) t)
+      ((atom clauses) (structural-kind atom) (quote ()))
+      ((atom clauses) (structural-kind pair)
+       (cond
+         ((knowledge-clause-valid? (car clauses))
+          (knowledge-clauses-valid? (cdr clauses)))
+         (t (quote ())))))))
 
 (def advice-negative-head-conflict
   (lambda (rules all-rules)
@@ -528,11 +531,14 @@
 (def knowledge-package-entries-valid?
   (lambda (entries)
     (cond
-      ((atom entries) (eq entries (quote ())))
-      ((atom (car entries)) (quote ()))
-      ((symbol? (car (car entries)))
-       (knowledge-package-entries-valid? (cdr entries)))
-      (t (quote ())))))
+      ((atom entries) (structural-kind empty-list) t)
+      ((atom entries) (structural-kind atom) (quote ()))
+      ((atom entries) (structural-kind pair)
+       (cond
+         ((atom (car entries)) (quote ()))
+         ((symbol? (car (car entries)))
+          (knowledge-package-entries-valid? (cdr entries)))
+         (t (quote ())))))))
 
 (def knowledge-package-field
   (lambda (name package)

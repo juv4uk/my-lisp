@@ -9,6 +9,7 @@ cargo test -p my-lisp \
   --test witness_authority \
   --test structural_query_inventory \
   --test structural_observation_contract \
+  --test deep_structural_relation_contract \
   --test exact_q_binary_contract \
   --test mathematical_result_taxonomy \
   --test control_dispatch_contract \

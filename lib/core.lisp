@@ -287,40 +287,32 @@
 ; `eq` is deliberately atom-only per McCarthy's original primitive (see
 ; docs/language-core.md) — `(eq '(1 2) '(1 2))` errors rather than comparing
 ; structurally. `equal?` is the structural/deep-equality counterpart, built
-; on top of `eq` and `atom` rather than replacing them: two atoms compare
-; via `eq` (always safe — both sides are already known atoms in that
-; branch); two pairs compare by recursing into `car`/`cdr`; an atom against
-; a pair is unconditionally false, checked before ever reaching `eq` so it
-; can't be handed a non-atom the way `var?` and `unify` in lib/unify.lisp
-; originally were (see that file's header comment for the bug that caught).
-; `eq` навмисно приймає лише атоми, за оригінальним примітивом Маккарті
-; (див. docs/language-core.md) — `(eq '(1 2) '(1 2))` падає замість
-; структурного порівняння. `equal?` — структурний/глибокий відповідник,
-; побудований поверх `eq` і `atom`, не замість них: два атоми порівнюються
-; через `eq` (завжди безпечно — обидві сторони вже точно атоми в цій
-; гілці); дві пари порівнюються рекурсією в `car`/`cdr`; атом проти пари —
-; безумовно хиба, перевіряється до того, як дійде до `eq`, тож йому не
-; можна підсунути не-атом так, як спершу можна було `var?` і `unify` в
-; lib/unify.lisp (баг, який це зловив, описано в header-коментарі того файлу).
-; `eq` akzeptiert nach McCarthys ursprünglichem Primitiv bewusst nur Atome
-; (siehe docs/language-core.md) — `(eq '(1 2) '(1 2))` löst einen Fehler
-; aus statt strukturell zu vergleichen. `equal?` ist das
-; strukturelle/tiefe Gegenstück, aufgebaut auf `eq` und `atom`, statt sie
-; zu ersetzen: zwei Atome vergleichen sich über `eq` (immer sicher — beide
-; Seiten sind in diesem Zweig bereits bekanntermaßen Atome); zwei Paare
-; vergleichen sich durch Rekursion in `car`/`cdr`; ein Atom gegen ein Paar
-; ist unbedingt falsch, geprüft bevor es je zu `eq` kommt, sodass ihm nie
-; ein Nicht-Atom untergeschoben werden kann, wie es `var?` und `unify` in
-; lib/unify.lisp anfangs passieren konnte (der dabei gefangene Bug steht im
-; Header-Kommentar dieser Datei).
+; on top of `eq` and `atom` rather than replacing them. Its answer belongs
+; to the structural domain: `(structural-relation same|distinct)`, never a
+; universal truth sentinel. Canonical three-part `cond` consumes the domain
+; results explicitly; the historical two-part bridge exists only for callers
+; not yet migrated.
 (def equal?
   (lambda (a b)
     (cond
-      ((atom a) (cond ((atom b) (eq a b)) (t (quote ()))))
-      ((atom b) (quote ()))
-      (t (cond
-           ((equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
-           (t (quote ())))))))
+      ((atom a) (structural-kind pair)
+       (cond
+         ((atom b) (structural-kind pair)
+          (cond
+            ((equal? (car a) (car b)) (structural-relation same)
+             (equal? (cdr a) (cdr b)))
+            ((equal? (car a) (car b)) (structural-relation distinct)
+             (quote (structural-relation distinct)))))
+         ((atom b) (structural-kind empty-list)
+          (quote (structural-relation distinct)))
+         ((atom b) (structural-kind atom)
+          (quote (structural-relation distinct)))))
+      ((atom b) (structural-kind pair)
+       (quote (structural-relation distinct)))
+      ((eq a b) (identity-relation same)
+       (quote (structural-relation same)))
+      ((eq a b) (identity-relation distinct)
+       (quote (structural-relation distinct))))))
 
 ; nth/member?/assoc (G5 test: already expressible via existing means?)
 ; — yes, same recursive-list-walk shape as length/reverse above.
@@ -521,7 +513,7 @@
 ; supplies variadic chaining. A required first parameter keeps zero arguments
 ; an Arity error; one argument is vacuously ordered, matching the old builtin.
 ; `<=` і `>=` не потребують Rust-dispatch: строгих порівнянь і рівності вже
-; досить, а ланцюжок дає звичайна рекурсія. Обов'язковий перший параметр
+; досить, а ланцюжок дає звичайна рекурсія. Обов'язковий first параметр
 ; зберігає Arity для нуля аргументів; один аргумент тривіально впорядкований.
 ; `<=` und `>=` brauchen keinen Rust-Dispatch: strikte Vergleiche und Gleichheit
 ; reichen, gewöhnliche Rekursion liefert die Verkettung. Der Pflichtparameter
