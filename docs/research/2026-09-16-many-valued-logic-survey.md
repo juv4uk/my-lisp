@@ -24,6 +24,87 @@ no richer logic produces a defined answer
 
 A many-valued logic's own internal `unknown`, `neither`, `both`, etc. are defined answers and therefore must remain distinct from outer `()`.
 
+## Pyramid sovereignty / one-way authority
+
+The pyramid is not merely a fallback sequence. It is an **authority hierarchy**.
+
+The upper floor owns the semantic space in which lower floors are allowed to operate. A lower floor may refine, classify, or add structure **only inside the territory delegated to it**. It may never redefine the semantics of an upper floor.
+
+The direction of semantic authority is one-way:
+
+```text
+                        ()
+          space of all answers and no-answer
+                        |
+                        v
+             exact binary mathematics
+                  ℚ -> {0/1, 1/1}
+                        |
+                        v
+              richer/many-valued logics
+                        |
+                        v
+            domain-specific reasoning
+```
+
+Read the arrows as **permission to specialize**, not permission to rewrite upward.
+
+### Meaning of the top `()` level
+
+`()` remains literally the empty list as a Lisp value. At the architecture level it also supplies the zero-result boundary: any layer may end with no produced answer, represented by `()`.
+
+The top level therefore accommodates:
+
+- every possible answer that may later be produced by a lower logic;
+- every possible structured state of knowledge;
+- every possible structured state of ignorance;
+- and the complete absence of an answer.
+
+This does **not** turn `()` into a universal truth value or a magic tagged union. It means lower-level answer spaces are contained within the language's larger possibility space, while `()` remains the canonical zero-result.
+
+### Hard non-interference laws
+
+A richer/many-valued logic MUST NOT:
+
+1. redefine `()` as one of its truth values;
+2. reinterpret `()` as FALSE, UNKNOWN, NEITHER, conflict, or probability zero;
+3. change the exact binary contract `0/1` = NO and `1/1` = YES;
+4. extend the absolute binary layer beyond exact rational mathematics ℚ;
+5. reinterpret an exact `0/1` or `1/1` result according to its own truth tables;
+6. force its own internal values (`NEITHER`, `BOTH`, degrees, probabilities, proof states, etc.) into an upper layer;
+7. collapse an upper-level distinction merely because doing so is convenient for a lower-level algorithm.
+
+Conversely, the richer layer may operate only when the upper layer has no applicable exact rational answer and delegates the question downward.
+
+### Containment invariant
+
+Conceptually:
+
+```text
+many-valued answer space
+        subset-of
+post-ℚ delegated answer space
+        subset-of
+whole Lisp result possibility space
+```
+
+But this is **not** ordinary set inclusion of runtime datatypes. It is an authority/semantic containment relation: lower layers have less authority, not more.
+
+### Research consequence
+
+Any candidate logic surveyed below is disqualified as a direct architecture fit if adopting it requires any of these upward changes:
+
+```text
+() becomes an internal truth value
+binary ℚ answers are reinterpreted
+non-rational propositions are pushed back into binary
+lower logic controls universal branching semantics
+```
+
+The research question is therefore not “which many-valued logic should replace binary logic?” It is:
+
+> Which established richer logic can live **strictly below** the already-ratified `()` and ℚ-binary floors without changing them?
+
 ## Research question
 
 We need established logic machinery for questions that do not belong to the absolute ℚ-only binary layer. We should not invent a bespoke truth algebra until existing results are surveyed and executable examples show a gap.
@@ -221,6 +302,8 @@ orthogonal domain enrichments
     = probability when genuinely stochastic/uncertain
 ```
 
+This hypothesis is valid only if the richer layer obeys the pyramid sovereignty law above. Belnap/FDE/bilattice semantics are candidates for the delegated post-ℚ region; they are **not** candidates for redefining upper floors.
+
 An even stronger possibility is that the richer layer should not expose a magic enum at all. It may derive the logical information state from explicit support objects:
 
 ```lisp
@@ -243,18 +326,20 @@ This would preserve information instead of replacing evidence with labels.
 7. run a backward-chaining query through the same distinction.
 8. compare K3 behavior on cases 3 and 4 to Belnap/FDE behavior.
 9. test whether bilattice operators can remain Lisp-authored ordinary data/functions rather than host semantic magic.
+10. prove that the richer prototype cannot reinterpret `()`, `0/1`, or `1/1`.
+11. prove that removing the richer layer leaves the semantics of the two upper floors unchanged.
 
 ## Comparison matrix to fill
 
-| Family | Gap | Conflict | Paraconsistent | Logic-programming semantics | Degree/continuum | Outer `()` compatible | Main risk |
-|---|---|---|---|---|---|---|---|
-| Kleene K3 | yes | conflates/weak | generally no | yes/related partial semantics | no | yes | one indeterminate state may lose gap-vs-glut distinction |
-| Belnap–Dunn / FDE | yes | yes | yes | yes, esp. via bilattice work | no | yes | need careful separation of information-state vs truth-value language |
-| Bilattices / Fitting | yes | yes | yes | strong | not inherently | yes | richer algebra; must keep implementation small and language-owned |
-| Priest LP | weaker gap story | yes | yes | yes | no | yes | glut-focused if used alone |
-| Łukasiewicz | intermediate values | not primary aim | depends on variant | some | finite/infinite | yes | may model degree/intermediate truth rather than evidence structure |
-| Fuzzy | degree | not by itself | not by itself | domain-specific | yes | yes | vagueness != ignorance != probability |
-| Probabilistic | uncertainty | not by itself | not by itself | probabilistic LP exists | yes | yes | probability != logical information state |
+| Family | Gap | Conflict | Paraconsistent | Logic-programming semantics | Degree/continuum | Outer `()` compatible | Respects upper-floor sovereignty? | Main risk |
+|---|---|---|---|---|---|---|---|---|
+| Kleene K3 | yes | conflates/weak | generally no | yes/related partial semantics | no | yes | to test | one indeterminate state may lose gap-vs-glut distinction |
+| Belnap–Dunn / FDE | yes | yes | yes | yes, esp. via bilattice work | no | yes | to test | need careful separation of information-state vs truth-value language |
+| Bilattices / Fitting | yes | yes | yes | strong | not inherently | yes | to test | richer algebra; must keep implementation small and language-owned |
+| Priest LP | weaker gap story | yes | yes | yes | no | yes | to test | glut-focused if used alone |
+| Łukasiewicz | intermediate values | not primary aim | depends on variant | some | finite/infinite | yes | to test | may model degree/intermediate truth rather than evidence structure |
+| Fuzzy | degree | not by itself | not by itself | domain-specific | yes | yes | only as delegated domain | vagueness != ignorance != probability |
+| Probabilistic | uncertainty | not by itself | not by itself | probabilistic LP exists | yes | yes | only as delegated domain | probability != logical information state |
 
 This matrix is provisional and must be replaced/refined with primary-source definitions and executable witnesses.
 
@@ -267,6 +352,8 @@ Do not select a “winner” because its vocabulary resembles our current archit
 - executable Lisp examples;
 - interaction with #219 reasoning/provenance;
 - preservation of outer `()`;
+- preservation of the ℚ-only binary layer;
+- proof of one-way semantic authority;
 - explicit trade-offs.
 
 ## Next reading pass
@@ -285,4 +372,4 @@ Priority order:
 
 No richer logic has been ratified yet.
 
-The strongest evidence lead is currently **Belnap–Dunn + bilattice/Fitting semantics**, because it separately represents gaps and conflicts and already has logic-programming literature. But #223 remains a research issue until we have primary-source comparison and executable my-lisp witnesses.
+The strongest evidence lead is currently **Belnap–Dunn + bilattice/Fitting semantics**, because it separately represents gaps and conflicts and already has logic-programming literature. But #223 remains a research issue until we have primary-source comparison, executable my-lisp witnesses, and evidence that the candidate obeys pyramid sovereignty without rewriting `()` or the exact ℚ binary layer.
