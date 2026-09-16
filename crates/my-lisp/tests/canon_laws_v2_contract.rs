@@ -1,6 +1,6 @@
 //! #229 observer for the current Lisp-owned executable Canon laws.
 //! Rust transports actual outcomes only; expected semantics live in
-//! tests/fixtures/canon-laws-v2-v1.lisp and are judged by witness-runner.lisp.
+//! tests/fixtures/canon-laws-v2-witness.lisp and are judged by witness-runner.lisp.
 
 use std::fs;
 use std::path::PathBuf;
@@ -50,9 +50,9 @@ fn alist_true(entries: &[Expr], key: &str) -> bool {
 }
 
 fn rows() -> Vec<Row> {
-    let source = include_str!("../../../tests/fixtures/canon-laws-v2-v1.lisp");
+    let source = include_str!("../../../tests/fixtures/canon-laws-v2-witness.lisp");
     parse(source)
-        .expect("canon-laws-v2-v1.lisp must parse")
+        .expect("canon-laws-v2-witness.lisp must parse")
         .into_iter()
         .filter_map(|form| {
             let ExprKind::List(entries) = &form.kind else {
