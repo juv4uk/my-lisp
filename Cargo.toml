@@ -22,6 +22,9 @@ members = [
 # Einzelne gemeinsame Cargo.lock-Datei im Workspace-Root.
 resolver = "2"
 
+[workspace.package]
+license-file = "LICENSE"
+
 # Release profile for wasm-pack: optimize for binary size.
 # Профіль release для wasm-pack: оптимізація на розмір бінарника.
 # Release-Profil für wasm-pack: Größenoptimierung.
