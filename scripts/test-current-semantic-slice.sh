@@ -16,3 +16,8 @@ cargo test -p my-lisp \
   --test reason_honesty_contract \
   --test authority_guard_contract \
   --test semantic_ref_fail_closed
+
+# Mechanism-honesty witness for #250. It is intentionally narrow: semantic
+# authority remains in Lisp, while this unit slice proves that evaluator
+# capability transport does not collapse an unreadable registry into absence.
+cargo test -p my-lisp --lib eval::capabilities::honesty_tests
