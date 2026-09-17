@@ -35,6 +35,27 @@
       ((eq register (quote r15b)) 15)
       (t (quote ())))))
 
+(def x86-xmm-reg-code
+  (lambda (register)
+    (cond
+      ((eq register (quote xmm0)) 0)
+      ((eq register (quote xmm1)) 1)
+      ((eq register (quote xmm2)) 2)
+      ((eq register (quote xmm3)) 3)
+      ((eq register (quote xmm4)) 4)
+      ((eq register (quote xmm5)) 5)
+      ((eq register (quote xmm6)) 6)
+      ((eq register (quote xmm7)) 7)
+      ((eq register (quote xmm8)) 8)
+      ((eq register (quote xmm9)) 9)
+      ((eq register (quote xmm10)) 10)
+      ((eq register (quote xmm11)) 11)
+      ((eq register (quote xmm12)) 12)
+      ((eq register (quote xmm13)) 13)
+      ((eq register (quote xmm14)) 14)
+      ((eq register (quote xmm15)) 15)
+      (t (quote ())))))
+
 (def x86-low3
   (lambda (code)
     (mod code 8)))
@@ -863,6 +884,123 @@
 (def x86-encode-rep-movsb
   (lambda ()
     (list 243 164)))
+
+(def x86-encode-sse2-f2-xmm-xmm
+  (lambda (opcode-byte dst src)
+    (let ((dst-code (x86-xmm-reg-code dst))
+          (src-code (x86-xmm-reg-code src)))
+      (cond
+        ((and (eq (x86-high1 dst-code) 0) (eq (x86-high1 src-code) 0))
+         (list 242 15 opcode-byte (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))
+        (t
+         (list 242 (x86-encode-rex 0 (x86-high1 dst-code) 0 (x86-high1 src-code))
+               15 opcode-byte (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))))))
+
+(def x86-encode-sse2-66-xmm-xmm
+  (lambda (opcode-byte dst src)
+    (let ((dst-code (x86-xmm-reg-code dst))
+          (src-code (x86-xmm-reg-code src)))
+      (cond
+        ((and (eq (x86-high1 dst-code) 0) (eq (x86-high1 src-code) 0))
+         (list 102 15 opcode-byte (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))
+        (t
+         (list 102 (x86-encode-rex 0 (x86-high1 dst-code) 0 (x86-high1 src-code))
+               15 opcode-byte (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))))))
+
+; MOVSD xmm, xmm: opcode 0xF2 0x0F 0x10 /r
+(def x86-encode-movsd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-f2-xmm-xmm 16 dst src)))
+
+; SQRTSD xmm, xmm: opcode 0xF2 0x0F 0x51 /r
+(def x86-encode-sqrtsd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-f2-xmm-xmm 81 dst src)))
+
+; ADDSD xmm, xmm: opcode 0xF2 0x0F 0x58 /r
+(def x86-encode-addsd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-f2-xmm-xmm 88 dst src)))
+
+; MULSD xmm, xmm: opcode 0xF2 0x0F 0x59 /r
+(def x86-encode-mulsd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-f2-xmm-xmm 89 dst src)))
+
+; SUBSD xmm, xmm: opcode 0xF2 0x0F 0x5C /r
+(def x86-encode-subsd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-f2-xmm-xmm 92 dst src)))
+
+; MINSD xmm, xmm: opcode 0xF2 0x0F 0x5D /r
+(def x86-encode-minsd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-f2-xmm-xmm 93 dst src)))
+
+; DIVSD xmm, xmm: opcode 0xF2 0x0F 0x5E /r
+(def x86-encode-divsd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-f2-xmm-xmm 94 dst src)))
+
+; MAXSD xmm, xmm: opcode 0xF2 0x0F 0x5F /r
+(def x86-encode-maxsd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-f2-xmm-xmm 95 dst src)))
+
+; UCOMISD xmm, xmm: opcode 0x66 0x0F 0x2E /r
+(def x86-encode-ucomisd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-66-xmm-xmm 46 dst src)))
+
+; XORPD xmm, xmm: opcode 0x66 0x0F 0x57 /r
+(def x86-encode-xorpd-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse2-66-xmm-xmm 87 dst src)))
+
+; CVTSI2SD xmm, r64: opcode 0xF2 REX.W 0x0F 0x2A /r
+(def x86-encode-cvtsi2sd-xmm-r64
+  (lambda (dst src)
+    (let ((dst-code (x86-xmm-reg-code dst))
+          (src-code (x86-reg-code src)))
+      (list 242 (x86-encode-rex 1 (x86-high1 dst-code) 0 (x86-high1 src-code))
+            15 42 (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))))
+
+; CVTTSD2SI r64, xmm: opcode 0xF2 REX.W 0x0F 0x2C /r
+(def x86-encode-cvttsd2si-r64-xmm
+  (lambda (dst src)
+    (let ((dst-code (x86-reg-code dst))
+          (src-code (x86-xmm-reg-code src)))
+      (list 242 (x86-encode-rex 1 (x86-high1 dst-code) 0 (x86-high1 src-code))
+            15 44 (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))))
+
+; MOVQ xmm, r64: opcode 0x66 REX.W 0x0F 0x6E /r
+(def x86-encode-movq-xmm-r64
+  (lambda (dst src)
+    (let ((dst-code (x86-xmm-reg-code dst))
+          (src-code (x86-reg-code src)))
+      (list 102 (x86-encode-rex 1 (x86-high1 dst-code) 0 (x86-high1 src-code))
+            15 110 (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))))
+
+; MOVQ r64, xmm: opcode 0x66 REX.W 0x0F 0x7E /r
+(def x86-encode-movq-r64-xmm
+  (lambda (dst src)
+    (let ((dst-code (x86-reg-code dst))
+          (src-code (x86-xmm-reg-code src)))
+      (list 102 (x86-encode-rex 1 (x86-high1 src-code) 0 (x86-high1 dst-code))
+            15 126 (x86-encode-modrm 3 (x86-low3 src-code) (x86-low3 dst-code))))))
+
+; RDTSC: opcode 0x0F 0x31
+(def x86-encode-rdtsc
+  (lambda ()
+    (list 15 49)))
+
+; CMPXCHG r64, r64: opcode REX.W 0x0F 0xB1 /r
+(def x86-encode-cmpxchg-r64-r64
+  (lambda (dst src)
+    (let ((dst-code (x86-reg-code dst))
+          (src-code (x86-reg-code src)))
+      (list (x86-encode-rex 1 (x86-high1 src-code) 0 (x86-high1 dst-code))
+            15 177 (x86-encode-modrm 3 (x86-low3 src-code) (x86-low3 dst-code))))))
 
 (def x86-encode-program
   (lambda (instructions)
