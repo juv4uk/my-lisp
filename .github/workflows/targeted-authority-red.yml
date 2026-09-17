@@ -1,0 +1,16 @@
+name: Targeted authority guard RED
+
+on:
+  pull_request:
+    paths:
+      - crates/my-lisp/tests/authority_guard_contract.rs
+      - .github/workflows/targeted-authority-red.yml
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run deletion-only authority RED
+        run: cargo test -p my-lisp --test authority_guard_contract authority_migration_allows_only_deletion_only_host_test_changes -- --exact --nocapture
