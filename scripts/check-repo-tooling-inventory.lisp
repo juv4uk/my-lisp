@@ -1,6 +1,6 @@
 ; #382 — Lisp-owned repository tooling inventory validator.
-; GREEN slices: unregistered-tool + duplicate-path + stale-path + closed enums.
-; RED slice: active/transitional Python must point to migration authority.
+; GREEN slices: unregistered-tool + duplicate-path + stale-path + closed enums
+; + Python migration ownership.
 
 (def repo-tooling-kinds
   (quote (check generator migration benchmark deploy release helper other)))
@@ -109,6 +109,68 @@
             (structural-relation distinct)
             row-verdict)))))))
 
+(def repo-tooling-python-migration-required-state
+  (lambda (row)
+    (let ((language (repo-tooling-field (quote language) row))
+          (lifecycle (repo-tooling-field (quote lifecycle) row)))
+      (cond
+        ((eq language (quote python)) (identity-relation same)
+         (cond
+           ((eq lifecycle (quote active)) (identity-relation same) (quote required))
+           ((eq lifecycle (quote active)) (identity-relation distinct)
+            (cond
+              ((eq lifecycle (quote transitional))
+               (identity-relation same)
+               (quote required))
+              ((eq lifecycle (quote transitional))
+               (identity-relation distinct)
+               (quote not-required))))))
+        ((eq language (quote python)) (identity-relation distinct)
+         (quote not-required))))))
+
+(def repo-tooling-migration-owner-state
+  (lambda (owner)
+    (cond
+      ((atom owner) (structural-kind empty-list) (quote missing))
+      ((atom owner) (structural-kind atom)
+       (cond
+         ((eq owner (quote missing)) (identity-relation same) (quote missing))
+         ((eq owner (quote missing)) (identity-relation distinct) (quote present))))
+      ((atom owner) (structural-kind pair) (quote present)))))
+
+(def repo-tooling-row-python-migration-verdict
+  (lambda (row)
+    (let ((required-state (repo-tooling-python-migration-required-state row)))
+      (cond
+        ((eq required-state (quote not-required)) (identity-relation same)
+         (list (quote repo-tooling-ok)))
+        ((eq required-state (quote required)) (identity-relation same)
+         (let* ((owner (repo-tooling-field (quote migration-issue) row))
+                (owner-state (repo-tooling-migration-owner-state owner)))
+           (cond
+             ((eq owner-state (quote present)) (identity-relation same)
+              (list (quote repo-tooling-ok)))
+             ((eq owner-state (quote missing)) (identity-relation same)
+              (repo-tooling-violation
+                (quote python-migration-unowned)
+                (repo-tooling-field (quote path) row))))))))))
+
+(def repo-tooling-python-migration-verdict
+  (lambda (rows)
+    (cond
+      ((atom rows) (structural-kind empty-list) (list (quote repo-tooling-ok)))
+      ((atom rows) (structural-kind atom)
+       (repo-tooling-violation (quote malformed-inventory-list) rows))
+      ((atom rows) (structural-kind pair)
+       (let ((row-verdict (repo-tooling-row-python-migration-verdict (car rows))))
+         (cond
+           ((equal? row-verdict (list (quote repo-tooling-ok)))
+            (structural-relation same)
+            (repo-tooling-python-migration-verdict (cdr rows)))
+           ((equal? row-verdict (list (quote repo-tooling-ok)))
+            (structural-relation distinct)
+            row-verdict)))))))
+
 (def repo-tooling-observed-coverage-verdict
   (lambda (rows observed)
     (cond
@@ -175,8 +237,7 @@
            ((eq state (quote malformed)) (identity-relation same)
             (repo-tooling-violation (quote malformed-observed-list) observed))))))))
 
-; Python migration ownership validation is intentionally absent in this RED commit.
-(def repo-tooling-verdict-after-enums
+(def repo-tooling-verdict-after-migration
   (lambda (rows observed)
     (let ((duplicate-verdict (repo-tooling-duplicate-path-verdict rows)))
       (cond
@@ -193,6 +254,17 @@
         ((equal? duplicate-verdict (list (quote repo-tooling-ok)))
          (structural-relation distinct)
          duplicate-verdict)))))
+
+(def repo-tooling-verdict-after-enums
+  (lambda (rows observed)
+    (let ((migration-verdict (repo-tooling-python-migration-verdict rows)))
+      (cond
+        ((equal? migration-verdict (list (quote repo-tooling-ok)))
+         (structural-relation same)
+         (repo-tooling-verdict-after-migration rows observed))
+        ((equal? migration-verdict (list (quote repo-tooling-ok)))
+         (structural-relation distinct)
+         migration-verdict)))))
 
 (def repo-tooling-verdict
   (lambda (rows observed)
@@ -350,7 +422,6 @@
   (repo-tooling-selftest-invalid-lifecycle)
   (quote (repo-tooling-violation invalid-lifecycle parity-green)))
 
-; RED: repo-owned Python cannot be transitional without #76 migration ownership.
 (repo-tooling-assert-verdict
   (repo-tooling-selftest-python-unowned)
   (quote (repo-tooling-violation python-migration-unowned "scripts/a.py")))
