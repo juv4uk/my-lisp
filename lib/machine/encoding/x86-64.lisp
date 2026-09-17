@@ -130,6 +130,33 @@
               (t
                 (list rex 137 modrm (x86-disp8-byte displacement))))))))))
 
+; LEA r64, [base + disp8], opcode 0x8D /r -- per #175's pinned XED evidence
+; (`PATTERN : 0x8D MOD[mm] MOD!=3 REG[rrr] RM[nnn] MODRM() REMOVE_SEGMENT()`,
+; `OPERANDS : REG0=GPRv_R():w AGEN:r`). AGEN means the operand is an address
+; computed from the ModRM/SIB/displacement, never an actual memory read --
+; the identical addressing shape #199's mov-r64-mem-disp8 already encodes,
+; only the opcode byte differs and no memory access happens. This is the
+; first form the encoder admits that computes an address without touching
+; any flags, needed once pointer/offset arithmetic (e.g. advancing a
+; bump-pointer arena, or computing a struct field's address) must not
+; disturb a CMP result still pending in a nearby branch.
+(def x86-encode-lea-r64-mem-disp8
+  (lambda (destination base displacement)
+    (let ((dst (x86-reg-code destination)))
+      (let ((base-code (x86-reg-code base)))
+        (let ((rex (x86-encode-rex 1 (x86-high1 dst) 0 (x86-high1 base-code))))
+          (let ((modrm (x86-encode-modrm 1 (x86-low3 dst) (x86-low3 base-code))))
+            (cond
+              ((eq (x86-low3 base-code) 4)
+                (list
+                  rex
+                  141
+                  modrm
+                  (x86-encode-sib 0 4 4)
+                  (x86-disp8-byte displacement)))
+              (t
+                (list rex 141 modrm (x86-disp8-byte displacement))))))))))
+
 ; Group-1 ALU r/m64, r64 (mod=3 register/register), opcode base+1: ADD 0x01,
 ; OR 0x09, AND 0x21, SUB 0x29, XOR 0x31, CMP 0x39 (Intel SDM, confirmed
 ; against #175's pinned XED evidence: lib/machine/xed/vendor/base/xed-isa.txt
@@ -405,6 +432,51 @@
 (def x86-encode-call-rel32
   (lambda (displacement)
     (cons 232 (x86-rel32-bytes displacement))))
+
+; Jcc rel32: opcode 0x0F, then 0x80+cc, then a signed 32-bit relative
+; displacement -- the conditional counterpart to JMP rel32, needed for the
+; same reason: #196's own growth-v0 witnesses lean on CMP+Jcc far more than
+; unconditional JMP (an arena-bounds check is inherently a Jcc), and their
+; hand-derived disp8 offsets (e.g. "JNZ +11", "JNZ +33") will not survive
+; much further composition. Confirmed against #175's pinned XED evidence
+; (`PATTERN : 0x0F 0x8<cc> mode64 norex2_prefix FORCE64() BRANCH_HINT()
+; BRDISP32()` for each ICLASS in the identical order the rel8 family
+; already uses: JO,JNO,JB,JNB,JZ,JNZ,JBE,JNBE,JS,JNS,JP,JNP,JL,JNL,JLE,
+; JNLE) -- reuses that same condition-code-to-opcode-offset mapping, just
+; with a 2-byte opcode and a 4-byte displacement instead of 1+1.
+(def x86-encode-jcc-rel32
+  (lambda (condition-code displacement)
+    (cons
+      15
+      (cons
+        (+ 128 condition-code)
+        (x86-rel32-bytes displacement)))))
+
+(def x86-encode-jo-rel32 (lambda (displacement) (x86-encode-jcc-rel32 0 displacement)))
+(def x86-encode-jno-rel32 (lambda (displacement) (x86-encode-jcc-rel32 1 displacement)))
+(def x86-encode-jb-rel32 (lambda (displacement) (x86-encode-jcc-rel32 2 displacement)))
+(def x86-encode-jnb-rel32 (lambda (displacement) (x86-encode-jcc-rel32 3 displacement)))
+(def x86-encode-jz-rel32 (lambda (displacement) (x86-encode-jcc-rel32 4 displacement)))
+(def x86-encode-jnz-rel32 (lambda (displacement) (x86-encode-jcc-rel32 5 displacement)))
+(def x86-encode-jbe-rel32 (lambda (displacement) (x86-encode-jcc-rel32 6 displacement)))
+(def x86-encode-jnbe-rel32 (lambda (displacement) (x86-encode-jcc-rel32 7 displacement)))
+(def x86-encode-js-rel32 (lambda (displacement) (x86-encode-jcc-rel32 8 displacement)))
+(def x86-encode-jns-rel32 (lambda (displacement) (x86-encode-jcc-rel32 9 displacement)))
+(def x86-encode-jp-rel32 (lambda (displacement) (x86-encode-jcc-rel32 10 displacement)))
+(def x86-encode-jnp-rel32 (lambda (displacement) (x86-encode-jcc-rel32 11 displacement)))
+(def x86-encode-jl-rel32 (lambda (displacement) (x86-encode-jcc-rel32 12 displacement)))
+(def x86-encode-jnl-rel32 (lambda (displacement) (x86-encode-jcc-rel32 13 displacement)))
+(def x86-encode-jle-rel32 (lambda (displacement) (x86-encode-jcc-rel32 14 displacement)))
+(def x86-encode-jnle-rel32 (lambda (displacement) (x86-encode-jcc-rel32 15 displacement)))
+
+; JMP rel32: opcode 0xE9 followed by a signed 32-bit relative displacement,
+; confirmed against #175's pinned XED evidence (`PATTERN : 0xE9 mode64
+; norex2_prefix FORCE64() BRDISP32()`). Matches JMP rel8's own
+; unconditional, no-ModRM, no-REX shape -- only the opcode byte and
+; displacement width differ.
+(def x86-encode-jmp-rel32
+  (lambda (displacement)
+    (cons 233 (x86-rel32-bytes displacement))))
 
 ; CALL r64 / JMP r64 (indirect through a register): group-5 opcode 0xFF,
 ; /reg extension selects the operation -- CALL is /2, JMP is /4 -- per
