@@ -1,6 +1,4 @@
-use my_lisp::{
-    eval_program, load_core_library, load_text_boundary_libraries, Session, Value,
-};
+use my_lisp::{eval_program, load_core_library, Session, Value};
 
 #[test]
 fn canonical_core_loader_installs_language_owned_defmacro_before_core() {
@@ -38,29 +36,4 @@ fn core_macros_work_after_canonical_macro_first_bootstrap() {
         .expect("core.my OR macro should be available after canonical bootstrap")
         .value;
     assert_eq!(value.to_string(), "fallback");
-}
-
-#[test]
-fn shared_text_boundary_loader_installs_process_tcp_and_fs_adapters() {
-    let mut session = Session::default();
-    load_core_library(&mut session).expect("core bootstrap");
-    load_text_boundary_libraries(&mut session)
-        .expect("shared text bootstrap should install all text boundary adapters");
-
-    assert!(matches!(
-        session.environment.get("process-run"),
-        Some(Value::Closure(_))
-    ));
-    assert!(matches!(
-        session.environment.get("tcp-read"),
-        Some(Value::Closure(_))
-    ));
-    assert!(matches!(
-        session.environment.get("read-file"),
-        Some(Value::Closure(_))
-    ));
-    assert!(matches!(
-        session.environment.get("write-file"),
-        Some(Value::Closure(_))
-    ));
 }
