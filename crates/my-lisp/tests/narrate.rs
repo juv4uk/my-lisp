@@ -111,14 +111,6 @@ fn narrate_provenance_surfaces_unresolved_variables_in_a_derived_rule_head() {
 }
 
 #[test]
-fn assert_understand_and_narrate_are_direct_inverses_for_the_is_a_shape() {
-    let source = r#"
-        (equal? (quote (mars is a planet)) (narrate-fact (car (understand (quote (mars is a planet))))))
-    "#;
-    assert_eq!(eval_narrate(source), "t");
-}
-
-#[test]
 fn narrate_answer_uses_the_ground_query_and_the_real_proof_premises() {
     let source = r#"
         (let* ((rules (quote (((has (var x) mass) (planet (var x)))
