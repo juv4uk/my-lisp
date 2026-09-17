@@ -2,13 +2,21 @@
 ; GREEN slices:
 ; - newly observed artifacts require explicit classification rows;
 ; - every classification row must carry the required provenance fields;
+; - artifact classes come from a bounded institutional vocabulary;
 ; - directory placement is never an authority source;
 ; - registry rows must still exist in the observed knowledge tree.
-; RED slice:
-; - artifact classes must come from the bounded institutional vocabulary.
 
 (def knowledge-authority-required-fields
   (quote (path class scope authority-source lifecycle consumers)))
+
+(def knowledge-authority-classes
+  (quote
+    (executable-policy
+     operational-reference
+     coordination-marker
+     derived-reference
+     evidence-ledger
+     historical-record)))
 
 (def knowledge-authority-field-from
   (lambda (name fields)
@@ -100,6 +108,49 @@
            ((eq (knowledge-authority-verdict-ok-state row-verdict) (quote yes))
             (identity-relation same)
             (knowledge-authority-required-verdict (cdr rows)))
+           ((eq (knowledge-authority-verdict-ok-state row-verdict) (quote no))
+            (identity-relation same)
+            row-verdict)))))))
+
+(def knowledge-authority-symbol-admission
+  (lambda (value admitted)
+    (cond
+      ((atom admitted) (structural-kind empty-list) (quote rejected))
+      ((atom admitted) (structural-kind atom) (quote malformed-admitted-set))
+      ((atom admitted) (structural-kind pair)
+       (cond
+         ((eq value (car admitted)) (identity-relation same) (quote admitted))
+         ((eq value (car admitted)) (identity-relation distinct)
+          (knowledge-authority-symbol-admission value (cdr admitted))))))))
+
+(def knowledge-authority-row-class-verdict
+  (lambda (row)
+    (let* ((class (knowledge-authority-field (quote class) row))
+           (class-state
+             (knowledge-authority-symbol-admission class knowledge-authority-classes)))
+      (cond
+        ((eq class-state (quote admitted)) (identity-relation same)
+         (list (quote knowledge-authority-ok)))
+        ((eq class-state (quote rejected)) (identity-relation same)
+         (knowledge-authority-violation (quote invalid-class) class))
+        ((eq class-state (quote malformed-admitted-set)) (identity-relation same)
+         (knowledge-authority-violation
+           (quote malformed-class-vocabulary)
+           class))))))
+
+(def knowledge-authority-class-verdict
+  (lambda (rows)
+    (cond
+      ((atom rows) (structural-kind empty-list)
+       (list (quote knowledge-authority-ok)))
+      ((atom rows) (structural-kind atom)
+       (knowledge-authority-violation (quote malformed-inventory-list) rows))
+      ((atom rows) (structural-kind pair)
+       (let ((row-verdict (knowledge-authority-row-class-verdict (car rows))))
+         (cond
+           ((eq (knowledge-authority-verdict-ok-state row-verdict) (quote yes))
+            (identity-relation same)
+            (knowledge-authority-class-verdict (cdr rows)))
            ((eq (knowledge-authority-verdict-ok-state row-verdict) (quote no))
             (identity-relation same)
             row-verdict)))))))
@@ -204,7 +255,7 @@
          (identity-relation same)
          stale-verdict)))))
 
-(def knowledge-authority-verdict-after-required
+(def knowledge-authority-verdict-after-class
   (lambda (rows observed)
     (let ((source-verdict (knowledge-authority-source-verdict rows)))
       (cond
@@ -214,6 +265,17 @@
         ((eq (knowledge-authority-verdict-ok-state source-verdict) (quote no))
          (identity-relation same)
          source-verdict)))))
+
+(def knowledge-authority-verdict-after-required
+  (lambda (rows observed)
+    (let ((class-verdict (knowledge-authority-class-verdict rows)))
+      (cond
+        ((eq (knowledge-authority-verdict-ok-state class-verdict) (quote yes))
+         (identity-relation same)
+         (knowledge-authority-verdict-after-class rows observed))
+        ((eq (knowledge-authority-verdict-ok-state class-verdict) (quote no))
+         (identity-relation same)
+         class-verdict)))))
 
 (def knowledge-authority-verdict
   (lambda (rows observed)
@@ -299,7 +361,6 @@
       (list knowledge-authority-sample-row knowledge-authority-sample-stale-row)
       (quote ("a.lisp")))))
 
-; Intentionally RED: class admission is not implemented yet.
 (def knowledge-authority-selftest-invalid-class
   (lambda ()
     (knowledge-authority-verdict
@@ -352,6 +413,6 @@
     (knowledge-authority-selftests-ok
       unclassified-artifact
       missing-field
+      invalid-class
       directory-derived-authority
-      stale-path
-      invalid-class)))
+      stale-path)))
