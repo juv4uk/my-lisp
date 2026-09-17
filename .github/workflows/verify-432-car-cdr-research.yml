@@ -65,8 +65,15 @@ jobs:
       - name: Fresh-atom fixed point excludes projection capability
         shell: bash
         run: |
+          set +e
           output=$(cargo run -q -p my-lisp-cli --bin my-lisp -- docs/research/432/fresh-atom-fixed-point.lisp 2>&1)
+          status=$?
+          set -e
           printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            echo "Fixed-point checker exited nonzero: $status" >&2
+            exit "$status"
+          fi
           printf '%s\n' "$output" | grep -Fq 'relative-no-projection-capability'
           printf '%s\n' "$output" | grep -Fq '(fresh-top-level no)'
 
