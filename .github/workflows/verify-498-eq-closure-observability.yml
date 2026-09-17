@@ -119,13 +119,13 @@ jobs:
                   lower_value(&two_fresh(
                       "(cons (write-to-string left) (cons (write-to-string right) (quote ())))"
                   )),
-                  "("<lambda>" "<lambda>")"
+                  r#"("<lambda>" "<lambda>")"#
               );
               assert_eq!(
                   lower_value(&two_fresh(
                       "(cons (write-to-string (car (cons left (quote tail-marker)))) (cons (write-to-string (car (cons right (quote tail-marker)))) (quote ())))"
                   )),
-                  "("<lambda>" "<lambda>")"
+                  r#"("<lambda>" "<lambda>")"#
               );
               assert_eq!(
                   lower_value(&two_fresh(
