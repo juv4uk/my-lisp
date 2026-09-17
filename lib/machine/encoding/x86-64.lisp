@@ -2,21 +2,37 @@
   (lambda (register)
     (cond
       ((eq register (quote rax)) 0)
+      ((eq register (quote al)) 0)
       ((eq register (quote rcx)) 1)
+      ((eq register (quote cl)) 1)
       ((eq register (quote rdx)) 2)
+      ((eq register (quote dl)) 2)
       ((eq register (quote rbx)) 3)
+      ((eq register (quote bl)) 3)
       ((eq register (quote rsp)) 4)
+      ((eq register (quote spl)) 4)
       ((eq register (quote rbp)) 5)
+      ((eq register (quote bpl)) 5)
       ((eq register (quote rsi)) 6)
+      ((eq register (quote sil)) 6)
       ((eq register (quote rdi)) 7)
+      ((eq register (quote dil)) 7)
       ((eq register (quote r8)) 8)
+      ((eq register (quote r8b)) 8)
       ((eq register (quote r9)) 9)
+      ((eq register (quote r9b)) 9)
       ((eq register (quote r10)) 10)
+      ((eq register (quote r10b)) 10)
       ((eq register (quote r11)) 11)
+      ((eq register (quote r11b)) 11)
       ((eq register (quote r12)) 12)
+      ((eq register (quote r12b)) 12)
       ((eq register (quote r13)) 13)
+      ((eq register (quote r13b)) 13)
       ((eq register (quote r14)) 14)
+      ((eq register (quote r14b)) 14)
       ((eq register (quote r15)) 15)
+      ((eq register (quote r15b)) 15)
       (t (quote ())))))
 
 (def x86-low3
@@ -512,6 +528,141 @@
 (def x86-encode-jmp-r64
   (lambda (register)
     (x86-encode-group5-indirect-r64 4 register)))
+
+; SETcc r8: opcode 0x0F 0x90+cc, ModRM mod=3, reg=0, rm=low3(code).
+; In 64-bit mode:
+; - codes 0..3 (al, cl, dl, bl) require no REX prefix.
+; - codes 4..7 (spl, bpl, sil, dil) require REX prefix (0x40) to distinguish
+;   them from legacy high bytes (ah, ch, dh, bh).
+; - codes 8..15 (r8b..r15b) require REX.B=1 prefix (0x41).
+(def x86-encode-setcc-r8
+  (lambda (condition-code register)
+    (let ((code (x86-reg-code register)))
+      (cond
+        ((> code 3)
+         (list
+           (x86-encode-rex 0 0 0 (x86-high1 code))
+           15
+           (+ 144 condition-code)
+           (x86-encode-modrm 3 0 (x86-low3 code))))
+        (t
+         (list
+           15
+           (+ 144 condition-code)
+           (x86-encode-modrm 3 0 (x86-low3 code))))))))
+
+(def x86-encode-seto-r8 (lambda (register) (x86-encode-setcc-r8 0 register)))
+(def x86-encode-setno-r8 (lambda (register) (x86-encode-setcc-r8 1 register)))
+(def x86-encode-setb-r8 (lambda (register) (x86-encode-setcc-r8 2 register)))
+(def x86-encode-setc-r8 (lambda (register) (x86-encode-setcc-r8 2 register)))
+(def x86-encode-setnb-r8 (lambda (register) (x86-encode-setcc-r8 3 register)))
+(def x86-encode-setnc-r8 (lambda (register) (x86-encode-setcc-r8 3 register)))
+(def x86-encode-setae-r8 (lambda (register) (x86-encode-setcc-r8 3 register)))
+(def x86-encode-setz-r8 (lambda (register) (x86-encode-setcc-r8 4 register)))
+(def x86-encode-sete-r8 (lambda (register) (x86-encode-setcc-r8 4 register)))
+(def x86-encode-setnz-r8 (lambda (register) (x86-encode-setcc-r8 5 register)))
+(def x86-encode-setne-r8 (lambda (register) (x86-encode-setcc-r8 5 register)))
+(def x86-encode-setbe-r8 (lambda (register) (x86-encode-setcc-r8 6 register)))
+(def x86-encode-setna-r8 (lambda (register) (x86-encode-setcc-r8 6 register)))
+(def x86-encode-setnbe-r8 (lambda (register) (x86-encode-setcc-r8 7 register)))
+(def x86-encode-seta-r8 (lambda (register) (x86-encode-setcc-r8 7 register)))
+(def x86-encode-sets-r8 (lambda (register) (x86-encode-setcc-r8 8 register)))
+(def x86-encode-setns-r8 (lambda (register) (x86-encode-setcc-r8 9 register)))
+(def x86-encode-setp-r8 (lambda (register) (x86-encode-setcc-r8 10 register)))
+(def x86-encode-setpe-r8 (lambda (register) (x86-encode-setcc-r8 10 register)))
+(def x86-encode-setnp-r8 (lambda (register) (x86-encode-setcc-r8 11 register)))
+(def x86-encode-setpo-r8 (lambda (register) (x86-encode-setcc-r8 11 register)))
+(def x86-encode-setl-r8 (lambda (register) (x86-encode-setcc-r8 12 register)))
+(def x86-encode-setnge-r8 (lambda (register) (x86-encode-setcc-r8 12 register)))
+(def x86-encode-setnl-r8 (lambda (register) (x86-encode-setcc-r8 13 register)))
+(def x86-encode-setge-r8 (lambda (register) (x86-encode-setcc-r8 13 register)))
+(def x86-encode-setle-r8 (lambda (register) (x86-encode-setcc-r8 14 register)))
+(def x86-encode-setng-r8 (lambda (register) (x86-encode-setcc-r8 14 register)))
+(def x86-encode-setnle-r8 (lambda (register) (x86-encode-setcc-r8 15 register)))
+(def x86-encode-setg-r8 (lambda (register) (x86-encode-setcc-r8 15 register)))
+
+; MOVZX r64, r8: opcode 0x0F 0xB6, ModRM mod=3, reg=dest, rm=src.
+; REX.W=1 extends the 8-bit source into the full 64-bit destination register.
+(def x86-encode-movzx-r64-r8
+  (lambda (destination source)
+    (let ((dest-code (x86-reg-code destination))
+          (src-code (x86-reg-code source)))
+      (list
+        (x86-encode-rex 1 (x86-high1 dest-code) 0 (x86-high1 src-code))
+        15
+        182
+        (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
+
+; IMUL r64, r64: two-operand signed multiply, opcode 0x0F 0xAF.
+; Destination receives the low 64 bits of the signed product.
+(def x86-encode-imul-r64-r64
+  (lambda (destination source)
+    (let ((dest-code (x86-reg-code destination))
+          (src-code (x86-reg-code source)))
+      (list
+        (x86-encode-rex 1 (x86-high1 dest-code) 0 (x86-high1 src-code))
+        15
+        175
+        (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
+
+; CQO: Convert Quadword to Octword (sign-extend RAX into RDX:RAX).
+; Opcode 0x48 0x99. Prepares dividend for 64-bit IDIV.
+(def x86-encode-cqo
+  (lambda ()
+    (list 72 153)))
+
+; IDIV r64: signed division of RDX:RAX by r64 operand.
+; Group 3 opcode 0xF7 /7, ModRM mod=3, reg=7, rm=src.
+; Quotient is stored in RAX, remainder in RDX.
+(def x86-encode-idiv-r64
+  (lambda (source)
+    (let ((src-code (x86-reg-code source)))
+      (list
+        (x86-encode-rex 1 0 0 (x86-high1 src-code))
+        247
+        (x86-encode-modrm 3 7 (x86-low3 src-code))))))
+
+; CMOVcc r64, r64: conditional move, opcode 0x0F 0x40+cc.
+; Moves source to destination if condition code is satisfied.
+(def x86-encode-cmovcc-r64-r64
+  (lambda (condition-code destination source)
+    (let ((dest-code (x86-reg-code destination))
+          (src-code (x86-reg-code source)))
+      (list
+        (x86-encode-rex 1 (x86-high1 dest-code) 0 (x86-high1 src-code))
+        15
+        (+ 64 condition-code)
+        (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
+
+(def x86-encode-cmovo-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 0 dest src)))
+(def x86-encode-cmovno-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 1 dest src)))
+(def x86-encode-cmovb-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 2 dest src)))
+(def x86-encode-cmovc-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 2 dest src)))
+(def x86-encode-cmovnb-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 3 dest src)))
+(def x86-encode-cmovnc-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 3 dest src)))
+(def x86-encode-cmovae-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 3 dest src)))
+(def x86-encode-cmovz-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 4 dest src)))
+(def x86-encode-cmove-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 4 dest src)))
+(def x86-encode-cmovnz-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 5 dest src)))
+(def x86-encode-cmovne-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 5 dest src)))
+(def x86-encode-cmovbe-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 6 dest src)))
+(def x86-encode-cmovna-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 6 dest src)))
+(def x86-encode-cmovnbe-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 7 dest src)))
+(def x86-encode-cmova-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 7 dest src)))
+(def x86-encode-cmovs-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 8 dest src)))
+(def x86-encode-cmovns-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 9 dest src)))
+(def x86-encode-cmovp-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 10 dest src)))
+(def x86-encode-cmovpe-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 10 dest src)))
+(def x86-encode-cmovnp-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 11 dest src)))
+(def x86-encode-cmovpo-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 11 dest src)))
+(def x86-encode-cmovl-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 12 dest src)))
+(def x86-encode-cmovnge-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 12 dest src)))
+(def x86-encode-cmovnl-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 13 dest src)))
+(def x86-encode-cmovge-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 13 dest src)))
+(def x86-encode-cmovle-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 14 dest src)))
+(def x86-encode-cmovng-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 14 dest src)))
+(def x86-encode-cmovnle-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 15 dest src)))
+(def x86-encode-cmovg-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 15 dest src)))
 
 (def x86-encode-program
   (lambda (instructions)
