@@ -120,7 +120,7 @@
 ; 1044: `string-length` / `довжина-тексту` встановлюються як registry-driven direct peers.
 ; 1045: `string-empty?` / `текст-порожній?` / `порожній-текст?` встановлюються як registry-driven direct peers.
 (define префікс-тексту? string-prefix?)
-(define фрагмент-у-тексті? string-contains?)
+; 1047: `string-contains?` / `фрагмент-у-тексті?` встановлюються як registry-driven direct peers.
 (define перший-символ-тексту string-first)
 (define решта-символів-тексту string-rest)
 (define відрізати string-slice)
