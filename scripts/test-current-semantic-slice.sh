@@ -74,3 +74,11 @@ if [[ "$vector_balance_status" != "(persistent-vector-balance-witness (status pa
   printf 'persistent vector balance Lisp witness failed: %s\n' "$vector_balance_status" >&2
   exit 1
 fi
+
+# #362: UTF-8 acceptance, scalar decoding, rejection classes, and failure
+# precedence are Lisp-owned. The shell observes only the named pass envelope.
+utf8_fused_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/utf8-fused-decode-witness.lisp)"
+if [[ "$utf8_fused_status" != "(utf8-fused-decode-witness (status pass))" ]]; then
+  printf 'fused UTF-8 Lisp witness failed: %s\n' "$utf8_fused_status" >&2
+  exit 1
+fi
