@@ -1,0 +1,19 @@
+name: Verify 343 final xtask
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-343-final-xtask.yml'
+      - 'docs/meta-eval-evidence.md'
+      - 'knowledge/meta-eval-evidence.lisp'
+      - 'knowledge/semantic-ownership.lisp'
+      - 'scripts/generate-meta-eval-evidence.py'
+
+jobs:
+  xtask-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify repository evidence graph
+        run: cargo run -p xtask -- verify
