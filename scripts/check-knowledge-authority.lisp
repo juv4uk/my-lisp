@@ -3,6 +3,8 @@
 ; - newly observed artifacts require explicit classification rows;
 ; - every classification row must carry the required provenance fields;
 ; - directory placement is never an authority source.
+; RED slice:
+; - a registry row whose artifact disappeared from the observed tree must fail.
 
 (def knowledge-authority-required-fields
   (quote (path class scope authority-source lifecycle consumers)))
@@ -210,6 +212,16 @@
       (lifecycle active)
       (consumers ()))))
 
+(def knowledge-authority-sample-stale-row
+  (quote
+    (artifact
+      (path "knowledge/c.lisp")
+      (class operational-reference)
+      (scope stale-sample)
+      (authority-source (issue 383))
+      (lifecycle active)
+      (consumers ()))))
+
 (def knowledge-authority-selftest-unclassified
   (lambda ()
     (knowledge-authority-verdict
@@ -226,6 +238,13 @@
   (lambda ()
     (knowledge-authority-verdict
       (list knowledge-authority-sample-directory-authority)
+      (quote ("a.lisp")))))
+
+; Intentionally RED: coverage catches missing rows, not rows for vanished artifacts.
+(def knowledge-authority-selftest-stale-path
+  (lambda ()
+    (knowledge-authority-verdict
+      (list knowledge-authority-sample-row knowledge-authority-sample-stale-row)
       (quote ("a.lisp")))))
 
 (def knowledge-authority-assert-verdict
@@ -255,9 +274,17 @@
       directory-derived-authority
       "knowledge/a.lisp")))
 
+(knowledge-authority-assert-verdict
+  (knowledge-authority-selftest-stale-path)
+  (quote
+    (knowledge-authority-violation
+      stale-path
+      "knowledge/c.lisp")))
+
 (print
   (quote
     (knowledge-authority-selftests-ok
       unclassified-artifact
       missing-field
-      directory-derived-authority)))
+      directory-derived-authority
+      stale-path)))
