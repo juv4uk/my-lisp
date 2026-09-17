@@ -1,5 +1,6 @@
 //! #216 observer for the Lisp-owned exact-Q binary contract.
-//! Rust transports contract bytes and checks migration bookkeeping only.
+//! Rust transports contract bytes and runtime actuals only. Expected semantic
+//! outcomes stay in tests/fixtures/exact-q-binary-v1.lisp.
 
 use std::fs;
 use std::path::PathBuf;
@@ -8,9 +9,9 @@ use my_lisp::{eval_program, load_core_library, parse, Expr, ExprKind, Session};
 
 #[derive(Clone)]
 struct Row {
+    source: String,
     expr: String,
     expected: String,
-    blocked_by: Option<String>,
 }
 
 fn repo_file(relative: &str) -> PathBuf {
@@ -37,24 +38,6 @@ fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
     })
 }
 
-fn alist_symbol<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
-    entries.iter().find_map(|entry| {
-        let ExprKind::Pair(k, v) = &entry.kind else {
-            return None;
-        };
-        let ExprKind::Symbol(name) = &k.kind else {
-            return None;
-        };
-        if &**name != key {
-            return None;
-        }
-        match &v.kind {
-            ExprKind::Symbol(value) => Some(value.as_ref()),
-            _ => None,
-        }
-    })
-}
-
 fn rows() -> Vec<Row> {
     let source = include_str!("../../../tests/fixtures/exact-q-binary-v1.lisp");
     parse(source)
@@ -65,9 +48,9 @@ fn rows() -> Vec<Row> {
                 return None;
             };
             Some(Row {
+                source: source[form.span.start..form.span.end].to_string(),
                 expr: alist_str(entries, "expr")?.to_string(),
                 expected: alist_str(entries, "expected")?.to_string(),
-                blocked_by: alist_symbol(entries, "blocked-by").map(str::to_string),
             })
         })
         .collect()
@@ -85,6 +68,23 @@ fn transport_contract(session: &mut Session) {
         session,
     )
     .expect("transport exact-Q binary contract");
+}
+
+fn load_witness_runner(session: &mut Session) {
+    let source = fs::read_to_string(repo_file("tests/fixtures/witness-runner.lisp"))
+        .expect("Lisp-owned witness runner");
+    eval_program(&source, session).expect("witness-runner.lisp must load");
+}
+
+fn escape_lisp_string(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+fn actual(row: &Row, session: &mut Session) -> String {
+    match eval_program(&row.expr, session) {
+        Ok(result) => format!("(value \"{}\")", escape_lisp_string(&result.value.to_string())),
+        Err(error) => format!("(error \"{:?}\")", error.kind),
+    }
 }
 
 #[test]
@@ -108,24 +108,45 @@ fn lisp_owned_exact_q_binary_contract_is_self_consistent() {
 }
 
 #[test]
-fn proven_exact_q_runtime_targets_stay_blocked_only_by_control_migration() {
+fn exact_q_runtime_targets_are_active_after_control_and_canon_migration() {
     let rows = rows();
-    assert_eq!(rows.len(), 5, "#216 first slice must retain all five exact-Q targets");
-    assert!(
-        rows.iter()
-            .all(|row| row.blocked_by.as_deref() == Some("control-logic-217")),
-        "every exact-Q result target must name #217 as its sole current blocker"
-    );
+    assert_eq!(rows.len(), 7, "#216 current slice must retain seven executable targets");
     assert!(
         rows.iter().any(|row| row.expected == "0"),
-        "#216 blocked target corpus must retain an exact mathematical NO (0/1)"
+        "#216 corpus must retain an exact mathematical NO (0/1)"
     );
     assert!(
         rows.iter().any(|row| row.expected == "1"),
-        "#216 blocked target corpus must retain an exact mathematical YES (1/1)"
+        "#216 corpus must retain an exact mathematical YES (1/1)"
     );
-    assert!(
-        rows.iter().all(|row| !row.expr.trim().is_empty()),
-        "#216 blocked targets must remain executable expressions, not prose-only debt"
+    assert_eq!(
+        rows.iter().filter(|row| row.expected == "()").count(),
+        2,
+        "#216 must retain explicit no-answer witnesses outside exact-Q"
     );
+}
+
+#[test]
+fn runtime_comparisons_match_lisp_owned_exact_q_results() {
+    let rows = rows();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core library");
+    load_witness_runner(&mut session);
+
+    for row in &rows {
+        let runtime_actual = actual(row, &mut session);
+        let program = format!(
+            "(witness-status (witness-verdict (quote {}) (quote {})))",
+            row.source, runtime_actual
+        );
+        let status = eval_program(&program, &mut session)
+            .unwrap_or_else(|error| panic!("#216 Lisp verdict failed for {}: {error}", row.expr))
+            .value
+            .to_string();
+        assert_eq!(
+            status, "pass",
+            "Lisp-owned #216 witness rejected runtime actual for {} (expected={}, actual={runtime_actual})",
+            row.expr, row.expected
+        );
+    }
 }
