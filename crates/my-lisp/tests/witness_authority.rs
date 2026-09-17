@@ -48,9 +48,34 @@ fn alist_flag(entries: &[Expr], key: &str) -> bool {
     })
 }
 
-fn witness_rows() -> Vec<WitnessRow> {
-    let source = include_str!("../../../tests/fixtures/conformance.lisp");
+fn transition_rows() -> Vec<(String, WitnessRow)> {
+    let source = include_str!("../../../tests/fixtures/conformance-transition-witness.lisp");
     parse(source)
+        .expect("conformance-transition-witness.lisp must parse")
+        .into_iter()
+        .filter_map(|form| {
+            let ExprKind::List(entries) = &form.kind else {
+                return None;
+            };
+            Some((
+                alist_str(entries, "supersedes-expr")?.to_string(),
+                WitnessRow {
+                    source: source[form.span.start..form.span.end].to_string(),
+                    expr: alist_str(entries, "expr")?.to_string(),
+                    expected: alist_str(entries, "expected").map(str::to_string),
+                    error: alist_str(entries, "error").map(str::to_string),
+                    meta_eval: alist_flag(entries, "meta-eval"),
+                    compiler_corpus: alist_flag(entries, "compiler-corpus"),
+                },
+            ))
+        })
+        .collect()
+}
+
+fn witness_rows() -> Vec<WitnessRow> {
+    let transitions = transition_rows();
+    let source = include_str!("../../../tests/fixtures/conformance.lisp");
+    let mut rows: Vec<_> = parse(source)
         .expect("conformance.lisp must parse")
         .into_iter()
         .filter_map(|form| {
@@ -62,16 +87,26 @@ fn witness_rows() -> Vec<WitnessRow> {
             if !compiler_corpus && !meta_eval {
                 return None;
             }
+            let expr = alist_str(entries, "expr")?.to_string();
+            if transitions
+                .iter()
+                .any(|(supersedes_expr, _)| supersedes_expr == &expr)
+            {
+                return None;
+            }
             Some(WitnessRow {
                 source: source[form.span.start..form.span.end].to_string(),
-                expr: alist_str(entries, "expr")?.to_string(),
+                expr,
                 expected: alist_str(entries, "expected").map(str::to_string),
                 error: alist_str(entries, "error").map(str::to_string),
                 meta_eval,
                 compiler_corpus,
             })
         })
-        .collect()
+        .collect();
+
+    rows.extend(transitions.into_iter().map(|(_, row)| row));
+    rows
 }
 
 fn canon_zero_rows() -> Vec<WitnessRow> {
