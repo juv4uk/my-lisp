@@ -31,4 +31,4 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - name: Run one unify law
-        run: cargo test -p my-lisp --test unify --exact ${{ matrix.test }} -- --nocapture
+        run: cargo test -p my-lisp --test unify "${{ matrix.test }}" -- --exact --nocapture
