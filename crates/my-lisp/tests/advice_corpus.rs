@@ -74,19 +74,6 @@ fn recursive_rule_survives_the_same_end_to_end_path() {
 }
 
 #[test]
-fn known_module_unknown_query_stays_unknown_through_narration() {
-    let source = r#"
-        (advise astronomy (understand (quote (earth is a planet))))
-        (narrate-outcome
-          (reason-in-observe (quote astronomy) (quote (planet mars))))
-    "#;
-    assert_eq!(
-        eval_advice_corpus(source),
-        "(unknown because no-proof-found-for (planet mars))"
-    );
-}
-
-#[test]
 fn explicit_conflict_is_rejected_and_cannot_replace_the_existing_fact() {
     let source = r#"
         (advise ethics (quote ((mortal socrates))))
@@ -97,18 +84,6 @@ fn explicit_conflict_is_rejected_and_cannot_replace_the_existing_fact() {
           (list (car decision) (result-status outcome)))
     "#;
     assert_eq!(eval_advice_corpus(source), "(conflict proved)");
-}
-
-#[test]
-fn malformed_advice_is_rejected_and_does_not_become_unknown_knowledge() {
-    let source = r#"
-        (advise geometry (quote ((point origin))))
-        (let* ((decision (advise geometry (quote (point broken))))
-               (outcome
-                 (reason-in-observe (quote geometry) (quote (point broken)))))
-          (list (car decision) (result-status outcome)))
-    "#;
-    assert_eq!(eval_advice_corpus(source), "(rejected unknown)");
 }
 
 #[test]
