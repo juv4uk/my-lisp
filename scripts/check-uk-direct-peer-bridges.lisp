@@ -6,38 +6,29 @@
 ; only prevents a migrated UK spelling from quietly returning to the old
 ; `(define UK EN)` bridge topology.
 ;
+; Keep this guard deliberately narrow while answer-semantics migration is in
+; flight: it avoids list predicates that still depend on historical atom/NIL
+; truthiness and checks only already-migrated source topology.
+;
 ; Run from the repository root with the normal CLI host capabilities:
 ;   ./target/debug/my-lisp scripts/check-uk-direct-peer-bridges.lisp
 
-(def uk-forms (read-all (read-file "lib/surface/uk.lisp")))
-
-; Keep this list narrow: add a row only after that semantic identity has a
-; registry-driven direct peer path. Row schema:
-;   (semantic-id forbidden-top-level-form)
-(def migrated-direct-peers
-  (quote
-    ((1043 (define зчепити string-append)))))
-
-(def second
-  (lambda (value) (car (cdr value))))
-
-(def bridge-present?
-  (lambda (row)
-    (member? (second row) uk-forms)))
-
-(def first-violation
-  (lambda (rows)
-    (cond
-      ((atom rows) (structural-kind empty-list) (quote ()))
-      ((bridge-present? (car rows)) t (car rows))
-      (t t (first-violation (cdr rows))))))
-
-(def violation (first-violation migrated-direct-peers))
+(def uk-source (read-file "lib/surface/uk.lisp"))
+(def old-1043-bridge "(define зчепити string-append)")
 
 (cond
-  ((atom violation) (structural-kind empty-list)
-   (print (quote (uk-direct-peer-bridge-check (status pass) (ids (1043))))))
+  ((string-contains? old-1043-bridge uk-source) t
+   ((lambda (printed)
+      (car (quote ())))
+    (print
+      (quote
+        (uk-direct-peer-bridge-violation
+          (semantic-id 1043)
+          (uk зчепити)
+          (en string-append))))))
   (t t
-   (cons
-     (print (list (quote uk-direct-peer-bridge-violation) violation))
-     (car (quote ())))))
+   (print
+     (quote
+       (uk-direct-peer-bridge-check
+         (status pass)
+         (ids (1043)))))))
