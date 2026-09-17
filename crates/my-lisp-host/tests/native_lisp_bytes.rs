@@ -327,6 +327,53 @@ fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
     assert_eq!(result.value.to_string(), "5");
 }
 
+/// #176 continued: LEA r64,[base+disp8] is proven on this session's own
+/// i5-6400 by actually computing an address, not by disassembling the
+/// bytes. Two properties define LEA against ordinary memory access or
+/// arithmetic: it never dereferences the computed address (a real
+/// dereference of an address this test picks, like 1000+23, would fault),
+/// and it never touches flags (unlike ADD's own group-1 shape). Both are
+/// proven by real execution, not decode: an out-of-bounds "address" is
+/// computed and returned intact, and a CMP's ZF survives an intervening
+/// LEA to still drive a real JZ branch.
+#[test]
+fn lea_r64_mem_disp8_actually_computes_an_address_without_touching_memory_or_flags() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before native witness");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    // rdi=1000 is not a mapped address; if LEA actually dereferenced
+    // [rdi+23] this would fault instead of returning 1023.
+    let address_only = eval_program(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rdi 1000) (lea-r64-mem-disp8 rax rdi 23) (ret))) 0)",
+        &mut session,
+    )
+    .expect("host must execute the admitted LEA bytes without dereferencing the computed address");
+    assert_eq!(
+        address_only.value.to_string(),
+        "1023",
+        "LEA must compute base+disp8 as a plain value, never read the memory it addresses"
+    );
+
+    // mov rax,5; mov rcx,5; cmp rax,rcx (ZF=1); lea rdx,[rax+1] (must NOT
+    // clear ZF); jz +10 (skips the 10-byte mov-r64-imm64 when taken); mov
+    // rax,999; ret. If LEA disturbed flags the way ADD would, JZ would not
+    // fire and the sentinel 999 would leak through.
+    let flags_preserved = eval_program(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax 5) (mov-r64-imm64 rcx 5) (cmp-r64-r64 rax rcx) (lea-r64-mem-disp8 rdx rax 1) (jz-rel8 10) (mov-r64-imm64 rax 999) (ret))) 0)",
+        &mut session,
+    )
+    .expect("host must execute the admitted LEA + branch bytes");
+    assert_ne!(
+        flags_preserved.value.to_string(),
+        "999",
+        "LEA must not disturb the flags CMP just set, so JZ must still branch away from the sentinel"
+    );
+}
+
 #[test]
 fn native_execution_mechanism_is_not_a_language_semantic_identity() {
     let _serial = test_lock();

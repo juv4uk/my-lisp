@@ -130,6 +130,33 @@
               (t
                 (list rex 137 modrm (x86-disp8-byte displacement))))))))))
 
+; LEA r64, [base + disp8], opcode 0x8D /r -- per #175's pinned XED evidence
+; (`PATTERN : 0x8D MOD[mm] MOD!=3 REG[rrr] RM[nnn] MODRM() REMOVE_SEGMENT()`,
+; `OPERANDS : REG0=GPRv_R():w AGEN:r`). AGEN means the operand is an address
+; computed from the ModRM/SIB/displacement, never an actual memory read --
+; the identical addressing shape #199's mov-r64-mem-disp8 already encodes,
+; only the opcode byte differs and no memory access happens. This is the
+; first form the encoder admits that computes an address without touching
+; any flags, needed once pointer/offset arithmetic (e.g. advancing a
+; bump-pointer arena, or computing a struct field's address) must not
+; disturb a CMP result still pending in a nearby branch.
+(def x86-encode-lea-r64-mem-disp8
+  (lambda (destination base displacement)
+    (let ((dst (x86-reg-code destination)))
+      (let ((base-code (x86-reg-code base)))
+        (let ((rex (x86-encode-rex 1 (x86-high1 dst) 0 (x86-high1 base-code))))
+          (let ((modrm (x86-encode-modrm 1 (x86-low3 dst) (x86-low3 base-code))))
+            (cond
+              ((eq (x86-low3 base-code) 4)
+                (list
+                  rex
+                  141
+                  modrm
+                  (x86-encode-sib 0 4 4)
+                  (x86-disp8-byte displacement)))
+              (t
+                (list rex 141 modrm (x86-disp8-byte displacement))))))))))
+
 ; Group-1 ALU r/m64, r64 (mod=3 register/register), opcode base+1: ADD 0x01,
 ; OR 0x09, AND 0x21, SUB 0x29, XOR 0x31, CMP 0x39 (Intel SDM, confirmed
 ; against #175's pinned XED evidence: lib/machine/xed/vendor/base/xed-isa.txt

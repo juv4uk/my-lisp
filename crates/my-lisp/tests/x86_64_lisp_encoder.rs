@@ -508,6 +508,103 @@ fn lisp_encodes_mov_disp8_for_every_gpr_base_with_correct_negative_displacement(
     }
 }
 
+/// Independent decoder for LEA r64,[base+disp8], deliberately separate from
+/// decode_mov_mem_disp8 above (different opcode, and there is no "load"
+/// vs. "store" direction to decode -- LEA only ever writes its destination
+/// register from a computed address, never reads or writes memory).
+fn decode_lea_mem_disp8(bytes: &[u8]) -> Option<(u8, u8, i32)> {
+    let mut i = 0;
+    let rex = *bytes.get(i)?;
+    if (rex & 0xF0) != 0x40 || (rex & 0x08) == 0 {
+        return None;
+    }
+    i += 1;
+    let opcode = *bytes.get(i)?;
+    if opcode != 0x8D {
+        return None;
+    }
+    i += 1;
+    let modrm = *bytes.get(i)?;
+    i += 1;
+    if (modrm >> 6) != 0b01 {
+        return None;
+    }
+    let reg_field = (modrm >> 3) & 0b111;
+    let rm_field = modrm & 0b111;
+    let rex_r = (rex & 0x04) != 0;
+    let rex_b = (rex & 0x01) != 0;
+    let reg = reg_field | if rex_r { 0b1000 } else { 0 };
+    let base = if rm_field == 0b100 {
+        let sib = *bytes.get(i)?;
+        i += 1;
+        if sib != 0x24 {
+            return None;
+        }
+        0b100 | if rex_b { 0b1000 } else { 0 }
+    } else {
+        rm_field | if rex_b { 0b1000 } else { 0 }
+    };
+    let disp_byte = *bytes.get(i)?;
+    if bytes.len() != i + 1 {
+        return None;
+    }
+    Some((reg, base, disp_byte as i8 as i32))
+}
+
+/// #176 continued: LEA r64,[base+disp8] (opcode 0x8D /r) shares
+/// mov-r64-mem-disp8's exact ModRM/SIB/disp8 addressing shape -- only the
+/// opcode byte differs, and LEA never actually dereferences the computed
+/// address (AGEN operand, per #175's pinned XED evidence). Verified across
+/// the full 16 (destination) x 16 (base) x 5 (disp8 boundary) matrix, the
+/// same coverage #199's mov-disp8 witness already established for that
+/// addressing shape.
+#[test]
+fn lisp_encodes_lea_r64_mem_disp8_for_every_destination_and_base_gpr() {
+    const ALL_GPRS: [&str; 16] = [
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12",
+        "r13", "r14", "r15",
+    ];
+    let mut session = encoder_session();
+    for destination in ALL_GPRS {
+        for base in ALL_GPRS {
+            for displacement in [-128i32, -1, 0, 1, 127] {
+                let form = format!(
+                    "(x86-encode-lea-r64-mem-disp8 (quote {destination}) (quote {base}) {displacement})"
+                );
+                let rendered = eval_bytes(&form, &mut session);
+                let bytes: Vec<u8> = rendered
+                    .trim_start_matches('(')
+                    .trim_end_matches(')')
+                    .split_whitespace()
+                    .map(|token| token.parse().expect("byte must be a small integer"))
+                    .collect();
+
+                let (reg, base_code, decoded_disp) = decode_lea_mem_disp8(&bytes)
+                    .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+                assert_eq!(reg, gpr_index(destination), "{form}: {bytes:?}");
+                assert_eq!(base_code, gpr_index(base), "{form}: {bytes:?}");
+                assert_eq!(
+                    decoded_disp, displacement,
+                    "{form} round-tripped to disp {decoded_disp}, from bytes {bytes:?}"
+                );
+            }
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("ICLASS    : LEA"),
+        "pinned XED evidence must name ICLASS LEA"
+    );
+    assert!(
+        vendor_source
+            .contains("PATTERN   : 0x8D MOD[mm] MOD!=3 REG[rrr] RM[nnn] MODRM() REMOVE_SEGMENT()"),
+        "pinned XED evidence must contain the exact LEA pattern this encoder was checked against"
+    );
+}
+
 /// Independent decoder for the Jcc rel8 family: a single opcode byte in
 /// 0x70-0x7F (low nibble is the condition code, no REX prefix -- this is
 /// address-size/register-independent control transfer) followed by one

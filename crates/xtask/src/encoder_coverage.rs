@@ -152,6 +152,12 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
             "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB) only; the rel32 \
              (0xE9) and indirect register/memory (0xFF /4) forms are pending",
         ),
+        (
+            "LEA",
+            "x86-encode-lea-r64-mem-disp8 covers the [base+disp8] addressing form (0x8D /r, any \
+             of 16 GPRs in either slot) only; SIB-index and 32-bit-displacement addressing \
+             forms are pending",
+        ),
     ]
     .into_iter()
     .collect()

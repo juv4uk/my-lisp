@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 32)
+  (partial-count 33)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -1446,8 +1446,8 @@
   (coverage
     (iclass "LEA")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-lea-r64-mem-disp8 covers the [base+disp8] addressing form (0x8D /r, any of 16 GPRs in either slot) only; SIB-index and 32-bit-displacement addressing forms are pending"))
   (coverage
     (iclass "LEAVE")
     (extension X86-BASE)

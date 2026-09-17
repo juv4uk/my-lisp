@@ -104,6 +104,18 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(x86-call-admitted-u64 (quote ((jmp-rel8 -129))) 0)",
             "(rejected unadmitted-machine-form (jmp-rel8 -129))",
         ),
+        (
+            // LEA's disp8 slot fails closed the same way MOV's does: one
+            // past the signed max.
+            "(x86-call-admitted-u64 (quote ((lea-r64-mem-disp8 rax rdi 128))) 0)",
+            "(rejected unadmitted-machine-form (lea-r64-mem-disp8 rax rdi 128))",
+        ),
+        (
+            // A made-up base register in LEA's addressing slot fails
+            // closed the same way it does for MOV.
+            "(x86-call-admitted-u64 (quote ((lea-r64-mem-disp8 rax notareg 0))) 0)",
+            "(rejected unadmitted-machine-form (lea-r64-mem-disp8 rax notareg 0))",
+        ),
     ] {
         EXECUTOR_CALLS.store(0, Ordering::SeqCst);
         let result = eval_program(request, &mut session)
