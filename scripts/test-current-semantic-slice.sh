@@ -39,3 +39,12 @@ if [[ "$meta_empty_status" != "(meta-eval-empty-program-witness (status pass))" 
   printf 'empty meta-program Lisp witness failed: %s\n' "$meta_empty_status" >&2
   exit 1
 fi
+
+# #329 / #220: meta-evaluator peer-surface semantics are authored in Lisp.
+# The shell checks only the named envelope; Canon/necessary-form expectations
+# and current structural result shapes remain inside the witness.
+meta_peer_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/meta-eval-peer-surface-witness.lisp)"
+if [[ "$meta_peer_status" != "(meta-eval-peer-surface-witness (status pass))" ]]; then
+  printf 'meta-eval peer-surface Lisp witness failed: %s\n' "$meta_peer_status" >&2
+  exit 1
+fi
