@@ -1,0 +1,14 @@
+name: Verification-only #305 missing-module oracle retirement
+
+on:
+  pull_request:
+
+jobs:
+  reason-in-outcome-invalid:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Focused reason-in outcome test
+        run: cargo test -p my-lisp --test reason_in_outcome_invalid
