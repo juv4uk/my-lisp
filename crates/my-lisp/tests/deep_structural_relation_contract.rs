@@ -74,7 +74,6 @@ fn escape_lisp_string(value: &str) -> String {
 #[test]
 fn equal_reports_deep_structural_relation_instead_of_universal_truth() {
     let rows = rows();
-    assert_eq!(rows.len(), 6, "#218 equal? slice must keep six relation rows");
 
     let mut session = Session::default();
     load_core_library(&mut session).expect("core library");

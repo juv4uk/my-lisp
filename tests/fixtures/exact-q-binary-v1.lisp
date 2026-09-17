@@ -36,6 +36,24 @@
  (identity . "1018")
  (case . rational-nonincreasing-yes))
 
+; #295 — strict comparison laws preserved after retiring the legacy Rust
+; truth-sentinel test. The mathematical answer stays in the existing exact-Q
+; result domain; no new host-side semantic oracle is introduced.
+((expr . "(< 1 2 3)")
+ (expected . "1")
+ (identity . "1014")
+ (case . strict-chain-yes))
+
+((expr . "(< 1 3 2)")
+ (expected . "0")
+ (identity . "1014")
+ (case . strict-chain-no))
+
+((expr . "(< 5)")
+ (expected . "1")
+ (identity . "1014")
+ (case . strict-single-argument-vacuous-yes))
+
 ((expr . "(= (json-parse \"3.0\") (json-parse \"3.0\"))")
  (expected . "()")
  (identity . "1016")
