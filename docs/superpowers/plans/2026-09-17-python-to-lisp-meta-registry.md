@@ -1,12 +1,12 @@
-# Meta semantic registry generator: implementation plan
+# План реалізації генератора meta semantic registry
 
-**Goal:** replace the active Python projection generator with a native my-lisp implementation while preserving the authority boundary and exact generated meaning.
+**Мета:** замінити активний Python-генератор projection нативною реалізацією на my-lisp, не змінюючи межу authority та значення згенерованої проєкції.
 
-**Design:** `docs/superpowers/specs/2026-09-17-python-to-lisp-meta-registry-design.md`.
+**Дизайн:** `docs/superpowers/specs/2026-09-17-python-to-lisp-meta-registry-design.md`.
 
-1. **RED gate:** change the focused projection CI check to build `my-lisp` and invoke `scripts/generate-meta-semantic-registry.lisp --check`. Verify the branch PR fails because that script does not exist yet.
-2. **GREEN generator:** add `scripts/generate-meta-semantic-registry.lisp`, structurally read `lib/surface/semantic-registry.lisp`, normalize the reader-only apostrophe shape, admit only stable/compatibility-only surfaces, deduplicate same-ID spellings, fail on cross-ID collision, and render deterministic output.
-3. **Parity:** regenerate `lib/generated/meta-semantic-registry.lisp`; the only intentional textual provenance change is `.py` → `.lisp` in the generator header. Run the new `--check` gate.
-4. **Negative witness:** add a `--self-test` mode exercising same-ID dedupe, cross-ID collision rejection, reader-only apostrophe exclusion, candidate/missing exclusion, and deterministic sample rendering. Wire it into focused CI.
-5. **Cutover:** replace every active CI invocation of the Python generator, update path classification and live documentation/test references, then delete `scripts/generate-meta-semantic-registry.py`.
-6. **Verify:** inspect exact PR diff, run PR workflows, ensure no active `generate-meta-semantic-registry.py` references remain except immutable/historical evidence, and confirm unrelated Python scripts remain untouched for later #76 slices.
+1. **RED gate:** змінити focused projection CI так, щоб він збирав `my-lisp` і викликав `scripts/generate-meta-semantic-registry.lisp --check`. Підтвердити, що PR падає саме через відсутність нового скрипта.
+2. **GREEN generator:** додати `scripts/generate-meta-semantic-registry.lisp`, структурно читати `lib/surface/semantic-registry.lisp`, нормалізувати reader-only апостроф, допускати лише `stable`/`compatibility-only` surfaces, дедуплікувати однакові spelling тієї самої identity, fail-closed відхиляти колізію між різними semantic IDs і детерміновано рендерити результат.
+3. **Parity:** регенерувати `lib/generated/meta-semantic-registry.lisp`; єдина навмисна текстова зміна provenance після cutover — `.py` → `.lisp` у рядку generator. Прогнати новий `--check` gate.
+4. **Negative witness:** додати режим `--self-test` для same-ID dedupe, cross-ID collision, reader-only apostrophe exclusion, candidate/missing exclusion і детермінованого sample rendering. Підключити його до focused CI.
+5. **Cutover:** замінити всі активні CI-виклики Python-generator, оновити path classification та живі documentation/test references, після чого видалити `scripts/generate-meta-semantic-registry.py`.
+6. **Перевірка:** оглянути точний PR diff, прогнати PR workflows, переконатися, що активних посилань на `generate-meta-semantic-registry.py` не лишилося поза immutable/historical evidence, і що інші Python-скрипти не зачеплені — вони підуть окремими зрізами #76.
