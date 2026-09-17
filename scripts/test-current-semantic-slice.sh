@@ -39,3 +39,12 @@ if [[ "$meta_empty_status" != "(meta-eval-empty-program-witness (status pass))" 
   printf 'empty meta-program Lisp witness failed: %s\n' "$meta_empty_status" >&2
   exit 1
 fi
+
+# #305: registry projection, peer-surface parity, and necessary-form routing
+# are now witnessed by Lisp itself. The shell observes only the named pass
+# envelope and does not encode any semantic expected values.
+meta_registry_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/meta-semantic-registry-witness.lisp)"
+if [[ "$meta_registry_status" != "(meta-semantic-registry-witness (status pass))" ]]; then
+  printf 'meta semantic-registry Lisp witness failed: %s\n' "$meta_registry_status" >&2
+  exit 1
+fi
