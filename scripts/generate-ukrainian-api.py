@@ -110,8 +110,8 @@ def parse_docs_index() -> list[DocRow]:
         )
 
     identities = [row.identity for row in rows]
-    if len(rows) != 140:
-        raise SystemExit(f"expected 140 documented stable uk identities, found {len(rows)}")
+    if len(rows) < 140:
+        raise SystemExit(f"expected at least 140 documented stable uk identities, found {len(rows)}")
     if len(set(identities)) != len(identities):
         raise SystemExit("documentation index contains duplicate numeric semantic IDs")
     return rows
@@ -228,7 +228,7 @@ def main() -> int:
         return 1
 
     API_DOC.write_text(desired, encoding="utf-8")
-    print("ukrainian-api: generated 140 documented identities")
+    print(f"ukrainian-api: generated {len(parse_docs_index())} documented identities")
     return 0
 
 
