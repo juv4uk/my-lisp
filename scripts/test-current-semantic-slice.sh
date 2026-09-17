@@ -73,3 +73,12 @@ if [[ "$reason_index_status" != "(reason-index-authority-witness (status pass) (
   printf 'reason-index Lisp witness failed: %s\n' "$reason_index_status" >&2
   exit 1
 fi
+
+# #369: CLIPS importer symbol classification is preserved as importer behavior,
+# not as a historical t/() predicate oracle. The shell observes only the named
+# Lisp-owned witness envelope.
+clips_symbol_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/clips-symbol-boundary-witness.lisp)"
+if [[ "$clips_symbol_status" != "(clips-symbol-boundary-witness (status pass))" ]]; then
+  printf 'CLIPS symbol-boundary Lisp witness failed: %s\n' "$clips_symbol_status" >&2
+  exit 1
+fi
