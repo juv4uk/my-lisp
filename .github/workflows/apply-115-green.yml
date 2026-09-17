@@ -28,7 +28,10 @@ jobs:
           cargo build -p my-lisp-cli --bin my-lisp
 
           printf '(change "crates/my-lisp/tests/mccarthy.rs" deletion-only)\n' > tests/changed-host-tests.lisp
-          ./target/debug/my-lisp scripts/authority-guard.lisp > /tmp/authority-deletion.log 2>&1
+          if ! ./target/debug/my-lisp scripts/authority-guard.lisp > /tmp/authority-deletion.log 2>&1; then
+            cat /tmp/authority-deletion.log
+            exit 1
+          fi
           cat /tmp/authority-deletion.log
           grep -q 'authority-ok' /tmp/authority-deletion.log
 
