@@ -1,0 +1,15 @@
+name: Verify #305 narrate unknown full package
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-305-narrate-unknown-full.yml'
+
+jobs:
+  full-package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Full my-lisp package
+        run: cargo test -p my-lisp
