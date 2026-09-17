@@ -8,6 +8,10 @@ pub enum ErrorKind {
     Arity,
     Type,
     InvalidForm,
+    /// An evaluator-side mechanism needed to answer the question was observed
+    /// unavailable. This is not semantic absence: callers must not rewrite it
+    /// as `UnknownSymbol`, false, or Canon 0.
+    MechanismUnavailable,
     /// A resource limit was hit, not a logic error — S3's own example
     /// ("4096 cons cells on an FPGA") named this category before it
     /// existed in code (found during a 2026-08-09 pre-ratification axiom
@@ -71,7 +75,8 @@ pub enum Classification {
     /// A resource/magnitude boundary, not a logic error (`OutOfMemory`,
     /// `NumericOverflow` already argued this in their own doc comments).
     Limit,
-    /// The program did something the evaluator can't make sense of.
+    /// The program did something the evaluator can't make sense of, or a
+    /// required evaluator mechanism was positively observed unavailable.
     Fault,
 }
 
@@ -94,6 +99,7 @@ impl ErrorKind {
             | ErrorKind::Arity
             | ErrorKind::Type
             | ErrorKind::InvalidForm
+            | ErrorKind::MechanismUnavailable
             | ErrorKind::DivisionByZero => Classification::Fault,
         }
     }
