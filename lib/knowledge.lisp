@@ -755,25 +755,40 @@
          (t (contains-atom? item (cdr lst)))))
       (t (contains-atom? item (cdr lst))))))
 
-;; is-fact? — a clause with an empty body, i.e. a fact rather than a rule
-;; with conditions. Facts are what `describe` reports; rules describe how
-;; new facts get derived, not what's directly known about one symbol.
+;; is-fact? answers the knowledge-domain question explicitly. The structural
+;; shape of the clause body is mechanism: an empty body means a fact, while a
+;; non-empty proper body means a rule. Do not leak atom's structural record as
+;; the public answer and do not collapse the distinction into historical t/().
 (def is-fact?
   (lambda (clause)
-    (atom (cdr clause))))
+    (cond
+      ((atom (cdr clause)) (structural-kind empty-list)
+       (list (quote clause-kind) (quote fact)))
+      ((atom (cdr clause)) (structural-kind pair)
+       (list (quote clause-kind) (quote rule))))))
 
-;; collect-facts-about walks a module's clause list, keeping every fact
-;; (not rule) whose head mentions `item`.
+;; collect-facts-about consumes the explicit clause-domain result. Its list
+;; traversal and the legacy contains-atom? compatibility result are also
+;; dispatched explicitly, so no generic truthiness decides whether a clause is
+;; a fact worth reporting.
 (def collect-facts-about
   (lambda (item clauses)
     (cond
-      ((atom clauses) (quote ()))
-      (t (let ((clause (car clauses)))
-           (let ((head (car clause)))
-             (cond
-               ((eq (is-fact? clause) (quote ())) (collect-facts-about item (cdr clauses)))
-               ((eq (contains-atom? item head) (quote ())) (collect-facts-about item (cdr clauses)))
-               (t (cons head (collect-facts-about item (cdr clauses)))))))))))
+      ((atom clauses) (structural-kind empty-list) (quote ()))
+      ((atom clauses) (structural-kind atom) (quote ()))
+      ((atom clauses) (structural-kind pair)
+       (let ((clause (car clauses)))
+         (let ((head (car clause)))
+           (cond
+             ((is-fact? clause) (clause-kind rule)
+              (collect-facts-about item (cdr clauses)))
+             ((is-fact? clause) (clause-kind fact)
+              (let ((contains (contains-atom? item head)))
+                (cond
+                  ((eq contains (quote ())) (identity-relation same)
+                   (collect-facts-about item (cdr clauses)))
+                  ((eq contains (quote ())) (identity-relation distinct)
+                   (cons head (collect-facts-about item (cdr clauses))))))))))))))
 
 ;; describe returns every known fact about `item` within `module-name`,
 ;; or `Module-not-found` for consistency with `reason-in`.
