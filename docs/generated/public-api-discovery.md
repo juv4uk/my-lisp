@@ -4,14 +4,19 @@
 > top-level визначення, але **не** оголошує їх публічним API.
 
 - проскановано бібліотечних файлів: 32
-- top-level функцій: 822
+- top-level функцій: 828
 - top-level макросів: 33
-- усього визначень: 855
+- усього визначень: 861
 - класифікація: `unreviewed`
 
 | джерело | вид | ім'я | класифікація |
 |---|---|---|---|
 | `lib/canon.lisp` | function | `canon-empty-list` | unreviewed |
+| `lib/canon.lisp` | function | `canon-law-result` | unreviewed |
+| `lib/canon.lisp` | function | `canon-law-satisfied` | unreviewed |
+| `lib/canon.lisp` | function | `canon-law-violated` | unreviewed |
+| `lib/canon.lisp` | function | `canon-law-status` | unreviewed |
+| `lib/canon.lisp` | function | `canon-conformance-result` | unreviewed |
 | `lib/canon.lisp` | function | `canon-law-empty-list` | unreviewed |
 | `lib/canon.lisp` | function | `canon-law-atom-cons` | unreviewed |
 | `lib/canon.lisp` | function | `canon-law-car-cons` | unreviewed |
@@ -21,8 +26,9 @@
 | `lib/canon.lisp` | function | `canon-law-cdr-proper` | unreviewed |
 | `lib/canon.lisp` | function | `canon-law-cdr-improper` | unreviewed |
 | `lib/canon.lisp` | function | `canon-law-quote-suppresses-evaluation` | unreviewed |
-| `lib/canon.lisp` | function | `canon-law-cond-first-true-short-circuit` | unreviewed |
+| `lib/canon.lisp` | function | `canon-law-cond-first-match-short-circuit` | unreviewed |
 | `lib/canon.lisp` | function | `canon-law-symbolic-surface` | unreviewed |
+| `lib/canon.lisp` | function | `canon-conformance-from` | unreviewed |
 | `lib/canon.lisp` | function | `canon-conforms?` | unreviewed |
 | `lib/clips-import.lisp` | function | `clips-deftemplate-form?` | unreviewed |
 | `lib/clips-import.lisp` | function | `clips-string-empty?` | unreviewed |
