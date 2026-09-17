@@ -4,11 +4,11 @@
 
 **Goal:** Before the 1.0 freeze, test which current Canon concepts are independently irreducible without changing language semantics during the audit.
 
-**Architecture:** `knowledge/canon-sculpt-audit.lisp` is a non-authoritative evidence map. Research probes live under `evidence/canon-sculpt/` so they cannot accidentally enter the active semantic-fixture routing work. Any real semantic change is a separate follow-up only after preservation, circularity, and cross-backend gates are satisfied.
+**Architecture:** `docs/research/canon-sculpt-audit.lisp` is a non-authoritative, machine-readable research map. Executable falsification probes live under `docs/research/canon-sculpt-probes/`. They deliberately do not live in `knowledge/` (to avoid claiming authority by folder placement under #383/#427), in `evidence/` (whose protocol is reserved for data-only records of actual runs), or in `tests/fixtures/` (to avoid competing with active #421 semantic-fixture routing). Any real semantic change is a separate follow-up only after preservation, circularity, and cross-backend gates are satisfied.
 
 **Tech Stack:** my-lisp S-expressions, existing Lisp-owned fixture corpora, GitHub Actions, Rust evaluator only as observed mechanism.
 
-**Spec:** GitHub issue #419 and `knowledge/canon-sculpt-audit.lisp`.
+**Spec:** GitHub issue #419 and `docs/research/canon-sculpt-audit.lisp`.
 
 ## Global Constraints
 
@@ -18,17 +18,18 @@
 - Do not edit files owned by active #421, #422/#418/#410/#406/#396, #427, #328, #402/#403, #409/#424/#426/#428/#429, or #317.
 - A machine/backend lowering is implementation evidence, never proof of semantic derivability.
 - `insufficient-evidence` wins over a guessed classification.
+- `evidence/` receives only post-run evidence records conforming to `evidence/README.md`; executable probes stay in research scope.
 
 ---
 
 ### Task 1: Keep the integrated demolition map current
 
 **Files:**
-- Modify: `knowledge/canon-sculpt-audit.lisp`
+- Modify: `docs/research/canon-sculpt-audit.lisp`
 
 **Interfaces:**
 - Consumes: current `main` Canon implementation, semantic registry, existing Lisp-owned fixtures.
-- Produces: one machine-readable evidence map; no semantic behavior.
+- Produces: one machine-readable research map; no semantic behavior.
 
 - [ ] **Step 1: Compare audit branch to current main**
 
@@ -36,36 +37,36 @@ Run:
 ```bash
 git diff --name-only main...audit/419-canon-sculpt-integrated
 ```
-Expected: only `knowledge/canon-sculpt-audit.lisp`, `evidence/canon-sculpt/*`, and this plan until a separately approved audit-only file is added.
+Expected: only `docs/research/canon-sculpt-audit.lisp`, `docs/research/canon-sculpt-probes/*`, and this plan until a separately approved research-only file is added.
 
 - [ ] **Step 2: Verify no production authority file changed**
 
 Run:
 ```bash
-git diff --name-only main...audit/419-canon-sculpt-integrated | grep -E '^(language-contract\.lisp|lib/|crates/|contracts/|tests/fixtures/)' && exit 1 || exit 0
+git diff --name-only main...audit/419-canon-sculpt-integrated | grep -E '^(language-contract\.lisp|lib/|crates/|contracts/|tests/fixtures/|knowledge/|evidence/)' && exit 1 || exit 0
 ```
 Expected: exit 0.
 
-- [ ] **Step 3: Commit only evidence-map reconciliation**
+- [ ] **Step 3: Commit only research-map reconciliation**
 
 ```bash
-git add knowledge/canon-sculpt-audit.lisp
-git commit -m "audit(#419): reconcile Canon evidence map"
+git add docs/research/canon-sculpt-audit.lisp
+git commit -m "audit(#419): reconcile Canon research map"
 ```
 
 ### Task 2: Falsify ordinary-function `quote`
 
 **Files:**
-- Existing probe: `evidence/canon-sculpt/quote-ordinary-function-red.lisp`
+- Existing probe: `docs/research/canon-sculpt-probes/quote-ordinary-function-red.lisp`
 
 **Interfaces:**
 - Consumes: eager ordinary function application and current source symbol resolution.
-- Produces: evidence only that ordinary eager application cannot explain quote's non-evaluation behavior.
+- Produces: research evidence only that ordinary eager application cannot explain quote's non-evaluation behavior.
 
 - [ ] **Step 1: Run the research probe with the normal CLI/evaluator**
 
 ```bash
-cargo run -q -p my-lisp-cli -- evidence/canon-sculpt/quote-ordinary-function-red.lisp
+cargo run -q -p my-lisp-cli -- docs/research/canon-sculpt-probes/quote-ordinary-function-red.lisp
 ```
 Expected: failure before the function body because `canon-sculpt-unbound-symbol` is evaluated as an unbound symbol.
 
@@ -80,17 +81,17 @@ A valid follow-up must explicitly name a strictly lower evaluation-control mecha
 ### Task 3: Isolate the selective-evaluation lower bound for `cond`
 
 **Files:**
-- Existing probe: `evidence/canon-sculpt/selective-evaluation-ordinary-function-red.lisp`
+- Existing probe: `docs/research/canon-sculpt-probes/selective-evaluation-ordinary-function-red.lisp`
 - Read-only authority: `tests/fixtures/control-dispatch-v1.lisp`
 
 **Interfaces:**
 - Consumes: eager ordinary application and canonical explicit-result `cond` witnesses.
-- Produces: evidence only that an ordinary eager function cannot skip an unselected runtime branch.
+- Produces: research evidence only that an ordinary eager function cannot skip an unselected runtime branch.
 
 - [ ] **Step 1: Run the ordinary-function selective-evaluation probe**
 
 ```bash
-cargo run -q -p my-lisp-cli -- evidence/canon-sculpt/selective-evaluation-ordinary-function-red.lisp
+cargo run -q -p my-lisp-cli -- docs/research/canon-sculpt-probes/selective-evaluation-ordinary-function-red.lisp
 ```
 Expected: failure while evaluating `canon-sculpt-unbound-branch` before `choose-first-eager` can return `selected`.
 
@@ -108,8 +109,8 @@ If Task 3.1 RED and Task 3.2 GREEN, record only: ordinary eager function applica
 ### Task 4: Search for a strictly smaller runtime selector
 
 **Files:**
-- Modify only: `knowledge/canon-sculpt-audit.lisp`
-- New probe allowed only under: `evidence/canon-sculpt/`
+- Modify only: `docs/research/canon-sculpt-audit.lisp`
+- New probe allowed only under: `docs/research/canon-sculpt-probes/`
 
 **Interfaces:**
 - Consumes: semantic registry, macro substrate, necessary forms, callable value set.
@@ -135,7 +136,7 @@ Absence of a current lower selector is evidence against easy reduction, not a pr
 **Files:**
 - Read-only: `docs/cross-substrate-evidence-matrix.md`
 - Read-only: current CML/fpga evidence referenced there.
-- Modify only: `knowledge/canon-sculpt-audit.lisp`
+- Modify only: `docs/research/canon-sculpt-audit.lisp`
 
 **Interfaces:**
 - Consumes: existing evidence classes.
@@ -149,7 +150,20 @@ Record `HARNESS-COVERED`, `MILESTONE-EQUIVALENT`, or other existing evidence cla
 
 Do not treat old CML bridge work as merge-ready evidence while it is based on an old main.
 
-### Task 6: Open audit PR only after fresh verification
+### Task 6: Convert successful runs into protocol-compliant evidence
+
+**Files:**
+- Create only after a real run: `evidence/<requirement-id>/<implementation>/<short-sha>.lisp`
+
+- [ ] **Step 1: Do not pre-create evidence records**
+
+A predicted RED is research, not evidence. Wait for actual runner output.
+
+- [ ] **Step 2: After a real run, record commit, runner, expected, actual, result, timestamp**
+
+Follow `evidence/README.md` exactly. A `fail` is valid evidence.
+
+### Task 7: Open audit PR only after fresh verification
 
 **Files:** no new production files.
 
@@ -162,7 +176,7 @@ Expected: exit 0.
 
 - [ ] **Step 2: Run the two research probes and the canonical control witness**
 
-Use Tasks 2 and 3 commands. Preserve RED as RED evidence; do not make the research probes part of steady-state semantic CI.
+Use Tasks 2 and 3 commands. Preserve RED as RED research evidence; only afterward materialize protocol-compliant run records under `evidence/`.
 
 - [ ] **Step 3: Open a draft PR**
 
