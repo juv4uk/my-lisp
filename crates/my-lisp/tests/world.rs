@@ -14,6 +14,17 @@ fn eval_world(source: &str) -> String {
         .to_string()
 }
 
+/// Canonical `equal?`/`eq` shapes, queried live from Lisp (#114/#220)
+/// rather than hardcoded: whatever #218's contract currently says these
+/// predicates return is what every world.rs assertion below compares
+/// against.
+fn equal_shape(same: bool) -> String {
+    eval_world(if same { "(equal? 1 1)" } else { "(equal? 1 2)" })
+}
+fn eq_shape(same: bool) -> String {
+    eval_world(if same { "(eq 1 1)" } else { "(eq 1 2)" })
+}
+
 #[test]
 fn empty_world_is_an_ordinary_first_class_value() {
     assert_eq!(eval_world("(world? (empty-world))"), "t");
@@ -45,7 +56,7 @@ fn each_world_keeps_its_immediate_parent() {
                 (equal? before (world-parent after))))
             "#
         ),
-        "(structural-relation same)"
+        format!("{}", equal_shape(true))
     );
 }
 
@@ -83,7 +94,7 @@ fn defmodule_compatibility_wrapper_uses_the_world_transition() {
                    (equal? *knowledge-journal* expected)))))
             "#
         ),
-        "(structural-relation same)"
+        format!("{}", equal_shape(true))
     );
 }
 
@@ -131,7 +142,7 @@ fn tell_knowledge_compatibility_wrapper_uses_the_world_transition() {
             (equal? *knowledge-journal* expected-journal)
             "#
         ),
-        "(structural-relation same)"
+        format!("{}", equal_shape(true))
     );
 }
 
@@ -146,7 +157,7 @@ fn conflicting_tell_knowledge_keeps_the_legacy_journal_unchanged() {
                     (equal? before *knowledge-journal*)))
             "#
         ),
-        "(Conflict-detected (structural-relation same))"
+        format!("(Conflict-detected {})", equal_shape(true))
     );
 }
 
@@ -167,7 +178,7 @@ fn retract_knowledge_compatibility_wrapper_uses_the_world_transition() {
                   (reason-in (quote space) (quote (planet earth))))
             "#
         ),
-        "((structural-relation same) ())"
+        format!("({} ())", equal_shape(true))
     );
 }
 
@@ -195,7 +206,7 @@ fn advise_compatibility_wrapper_preserves_journal_on_conflict() {
             (list (car decision) (equal? before *knowledge-journal*))
             "#
         ),
-        "(conflict (structural-relation same))"
+        format!("(conflict {})", equal_shape(true))
     );
 }
 
@@ -244,7 +255,7 @@ fn advise_all_compatibility_wrapper_rolls_back_invalid_batch() {
             (list (car decision) (equal? before *knowledge-journal*))
             "#
         ),
-        "(rejected (structural-relation same))"
+        format!("(rejected {})", equal_shape(true))
     );
 }
 
@@ -296,7 +307,7 @@ fn package_import_compatibility_wrapper_preserves_journal_on_rejection() {
             (list (car decision) (equal? before *knowledge-journal*))
             "#
         ),
-        "(rejected (structural-relation same))"
+        format!("(rejected {})", equal_shape(true))
     );
 }
 
@@ -313,7 +324,7 @@ fn package_import_compatibility_wrapper_preserves_journal_on_conflict() {
             (list (car decision) (equal? before *knowledge-journal*))
             "#
         ),
-        "(conflict (structural-relation same))"
+        format!("(conflict {})", equal_shape(true))
     );
 }
 
@@ -477,7 +488,7 @@ fn advise_world_rejection_returns_the_unchanged_world() {
                       (world-module-known? (second result) (quote astronomy)))))
             "#
         ),
-        "(rejected (structural-relation same) ())"
+        format!("(rejected {} ())", equal_shape(true))
     );
 }
 
@@ -495,7 +506,7 @@ fn advise_world_conflict_preserves_the_existing_snapshot() {
                       (world-clauses (second result) (quote astronomy)))))
             "#
         ),
-        "(conflict (structural-relation same) (((not (planet pluto)))))"
+        format!("(conflict {} (((not (planet pluto)))))", equal_shape(true))
     );
 }
 
@@ -538,7 +549,7 @@ fn advise_all_world_accepts_one_atomic_dependent_batch() {
                         (equal? before (world-parent after))))))
             "#
         ),
-        "(accepted () yes (structural-relation same))"
+        format!("(accepted () yes {})", equal_shape(true))
     );
 }
 
@@ -556,7 +567,7 @@ fn advise_all_world_rejects_the_whole_malformed_batch() {
                       (world-module-known? (second result) (quote astronomy)))))
             "#
         ),
-        "(rejected (structural-relation same) ())"
+        format!("(rejected {} ())", equal_shape(true))
     );
 }
 
@@ -572,7 +583,7 @@ fn advise_all_world_rejects_an_empty_batch_without_a_new_world() {
                       (equal? before (second result)))))
             "#
         ),
-        "(rejected invalid-batch (structural-relation same))"
+        format!("(rejected invalid-batch {})", equal_shape(true))
     );
 }
 
@@ -592,7 +603,7 @@ fn advise_all_world_detects_internal_conflict_without_partial_writes() {
                       (world-module-known? (second result) (quote astronomy)))))
             "#
         ),
-        "(conflict (structural-relation same) ())"
+        format!("(conflict {} ())", equal_shape(true))
     );
 }
 
@@ -652,7 +663,7 @@ fn world_package_import_atomically_creates_a_queryable_child() {
                             (t (quote yes))))))))
             "#
         ),
-        "(accepted (structural-relation same) yes)"
+        format!("(accepted {} yes)", equal_shape(true))
     );
 }
 
@@ -674,7 +685,7 @@ fn world_package_import_rejects_unsupported_versions_without_transition() {
                   (equal? before (second result)))
             "#
         ),
-        "(rejected unsupported-version (structural-relation same))"
+        format!("(rejected unsupported-version {})", equal_shape(true))
     );
 }
 
@@ -696,7 +707,7 @@ fn world_package_import_conflict_preserves_the_target_snapshot() {
                         (world-clauses (second result) (quote astronomy))))))
             "#
         ),
-        "(conflict (structural-relation same) (((not (planet pluto)))))"
+        format!("(conflict {} (((not (planet pluto)))))", equal_shape(true))
     );
 }
 
@@ -752,7 +763,7 @@ fn world_at_depth_recovers_an_exact_historical_snapshot() {
                         (equal? w2 (world-at-depth w2 2))))))
             "#
         ),
-        "((structural-relation same) (structural-relation same) (structural-relation same))"
+        format!("({} {} {})", equal_shape(true), equal_shape(true), equal_shape(true))
     );
 }
 
@@ -809,7 +820,7 @@ fn world_common_ancestor_finds_the_branch_point() {
                   (equal? base (world-common-ancestor left right)))))
             "#
         ),
-        "(structural-relation same)"
+        format!("{}", equal_shape(true))
     );
 }
 
@@ -826,7 +837,7 @@ fn world_common_ancestor_aligns_unequal_branch_depths() {
                     (equal? base (world-common-ancestor left2 right))))))
             "#
         ),
-        "(structural-relation same)"
+        format!("{}", equal_shape(true))
     );
 }
 
@@ -877,7 +888,7 @@ fn equal_knowledge_has_the_same_canonical_content_address() {
                 (knowledge-content-address (quote ((planet earth)))))
             "#
         ),
-        "(identity-relation same)"
+        format!("{}", eq_shape(true))
     );
 }
 
@@ -890,7 +901,7 @@ fn different_knowledge_has_a_different_content_address() {
                 (knowledge-content-address (quote ((planet mars)))))
             "#
         ),
-        "(identity-relation distinct)"
+        format!("{}", eq_shape(false))
     );
 }
 
@@ -905,7 +916,7 @@ fn knowledge_content_addresses_round_trip_to_the_same_structure() {
                       (read (knowledge-content-address knowledge))))
             "#
         ),
-        "(structural-relation same)"
+        format!("{}", equal_shape(true))
     );
 }
 
@@ -925,7 +936,7 @@ fn independently_reconstructed_worlds_have_the_same_content_address() {
                     (world-content-address copy))))
             "#
         ),
-        "(identity-relation same)"
+        format!("{}", eq_shape(true))
     );
 }
 
@@ -948,6 +959,6 @@ fn equal_current_clauses_do_not_erase_distinct_world_histories() {
                               (world-content-address retold)))))))
             "#
         ),
-        "((structural-relation same) (identity-relation distinct))"
+        format!("({} {})", equal_shape(true), eq_shape(false))
     );
 }

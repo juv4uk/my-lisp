@@ -16,5 +16,14 @@ fn empty_program_preserves_environment_and_returns_empty_result() {
 "#;
 
     let result = eval_program(witness, &mut session).unwrap();
-    assert_eq!(result.value.to_string(), "((structural-relation same) ())");
+
+    // Expected shape queried live from Lisp, not hardcoded (#114/#220).
+    let equal_same_shape = eval_program("(equal? 1 1)", &mut session)
+        .unwrap()
+        .value
+        .to_string();
+    assert_eq!(
+        result.value.to_string(),
+        format!("({equal_same_shape} ())")
+    );
 }

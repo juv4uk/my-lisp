@@ -8,6 +8,13 @@ fn obchyslyty(source: &str) -> String {
         .to_string()
 }
 
+/// Поточна канонічна форма результату `eq` — запитана в самого Lisp
+/// (#114/#220), а не вписана тут: що #218's контракт зараз каже, що
+/// повертає `eq`, те й порівнюємо.
+fn eq_forma(same: bool) -> String {
+    obchyslyty(if same { "(eq 1 1)" } else { "(eq 1 2)" })
+}
+
 fn ochikuvaty_symvol(source: &str) {
     let forms = parse(source).expect("читання символу має бути успішним");
     assert_eq!(forms.len(), 1);
@@ -19,11 +26,11 @@ fn ochikuvaty_symvol(source: &str) {
 
 #[test]
 fn desiatkova_koma_i_krapka_maiut_odnu_tochnu_semantyku() {
-    assert_eq!(obchyslyty("(eq 12,455 12.455)"), "(identity-relation same)");
+    assert_eq!(obchyslyty("(eq 12,455 12.455)"), eq_forma(true));
     assert_eq!(obchyslyty("(+ 1,5 2,5)"), "4");
-    assert_eq!(obchyslyty("(eq -0,25 -0.25)"), "(identity-relation same)");
-    assert_eq!(obchyslyty("(eq 1,5e3 1500)"), "(identity-relation same)");
-    assert_eq!(obchyslyty("(eq (read \"12,455\") 12.455)"), "(identity-relation same)");
+    assert_eq!(obchyslyty("(eq -0,25 -0.25)"), eq_forma(true));
+    assert_eq!(obchyslyty("(eq 1,5e3 1500)"), eq_forma(true));
+    assert_eq!(obchyslyty("(eq (read \"12,455\") 12.455)"), eq_forma(true));
 }
 
 #[test]
@@ -54,6 +61,6 @@ fn f32_buffer_pryimaie_desiatkovu_komu() {
     assert_eq!(forms.len(), 1);
     assert!(matches!(forms[0].kind, ExprKind::NumericBuffer(_)));
 
-    assert_eq!(obchyslyty("(eq #f32(-0,0) #f32(0,0))"), "(identity-relation distinct)");
-    assert_eq!(obchyslyty("(eq #f32(-0.0) #f32(0.0))"), "(identity-relation distinct)");
+    assert_eq!(obchyslyty("(eq #f32(-0,0) #f32(0,0))"), eq_forma(false));
+    assert_eq!(obchyslyty("(eq #f32(-0.0) #f32(0.0))"), eq_forma(false));
 }

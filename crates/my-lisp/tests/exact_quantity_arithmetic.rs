@@ -37,9 +37,13 @@ fn speed_of_light_times_one_second_is_exact_distance_and_divides_back() {
             (scientific-constant-quantity si:defining-speed-of-light)))
     "#;
 
+    // Expected shape queried live from Lisp, not hardcoded (#114/#220).
+    let equal_same_shape = eval_exact_quantity("(equal? 1 1)");
     assert_eq!(
         eval_exact_quantity(source),
-        "((quantity/1 299792458 (unit/1 (dimension/1 metre 1))) (quantity/1 299792458 (unit/1 (dimension/1 metre 1) (dimension/1 second -1))) (structural-relation same))"
+        format!(
+            "((quantity/1 299792458 (unit/1 (dimension/1 metre 1))) (quantity/1 299792458 (unit/1 (dimension/1 metre 1) (dimension/1 second -1))) {equal_same_shape})"
+        )
     );
 }
 

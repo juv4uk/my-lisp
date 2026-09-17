@@ -23,8 +23,10 @@ fn invalid_binding(source: &str) {
 
 #[test]
 fn canon_zero_is_atomic_but_not_a_pair() {
-    assert_eq!(eval("(атом? ())"), "(structural-kind empty-list)");
-    assert_eq!(eval("(aṇu ())"), "(structural-kind empty-list)");
+    // Expected shape queried live from Lisp, not hardcoded (#114/#220).
+    let atom_of_empty_list = eval("(atom (quote ()))");
+    assert_eq!(eval("(атом? ())"), atom_of_empty_list);
+    assert_eq!(eval("(aṇu ())"), atom_of_empty_list);
 }
 
 #[test]

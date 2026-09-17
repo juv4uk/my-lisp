@@ -5,13 +5,71 @@
 //! `vector-ref` access promised by the Value::Vector docstring, and
 //! named-failure bounds/type errors instead of panics.
 
-use my_lisp::{eval_program, ErrorKind, Session};
+use my_lisp::{eval_program, parse, ErrorKind, Expr, ExprKind, Session};
 
 fn session_with_core() -> Session {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.lisp"), &mut session)
         .expect("core.my should preload cleanly");
     session
+}
+
+fn session_with_witness_runner() -> Session {
+    let mut session = session_with_core();
+    eval_program(
+        include_str!("../../../tests/fixtures/witness-runner.lisp"),
+        &mut session,
+    )
+    .expect("witness-runner.lisp must load");
+    session
+}
+
+fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
+    entries.iter().find_map(|entry| {
+        let ExprKind::Pair(k, v) = &entry.kind else {
+            return None;
+        };
+        let ExprKind::Symbol(name) = &k.kind else {
+            return None;
+        };
+        if &**name != key {
+            return None;
+        }
+        match &v.kind {
+            ExprKind::String(s) => Some(s.as_ref()),
+            _ => None,
+        }
+    })
+}
+
+/// Rust transports the actual outcome; the expected value lives in the
+/// referenced Lisp-owned fixture, never authored here (#114/#220).
+fn assert_witness_fixture_passes(fixture_source: &str) {
+    let mut session = session_with_witness_runner();
+    let rows = parse(fixture_source).expect("witness fixture must parse");
+    for row in &rows {
+        let ExprKind::List(entries) = &row.kind else {
+            panic!("each witness fixture row must be an alist: {row:?}");
+        };
+        let expr = alist_str(entries, "expr").expect("witness row needs \"expr\"");
+        let actual = match eval_program(expr, &mut session) {
+            Ok(result) => format!(
+                "(value \"{}\")",
+                result.value.to_string().replace('\\', "\\\\").replace('"', "\\\"")
+            ),
+            Err(error) => format!("(error \"{:?}\")", error.kind),
+        };
+        let program = format!(
+            r#"(witness-status (witness-verdict (quote {}) (quote {})))"#,
+            &fixture_source[row.span.start..row.span.end],
+            actual
+        );
+        let status = eval_program(&program, &mut session)
+            .expect("witness-verdict must evaluate")
+            .value
+            .to_string();
+        assert_eq!(status, "pass", "witness failed for {expr}: actual {actual}");
+    }
 }
 
 fn eval_source(source: &str) -> String {
@@ -39,24 +97,10 @@ fn make_vector_fills_with_nil_and_length_reports_size() {
 }
 
 #[test]
-fn vectors_are_structurally_equal_across_objects() {
-    assert_eq!(eval_source("(eq (vector 1 2 3) (vector 1 2 3))"), "(identity-relation same)");
-    assert_eq!(
-        eval_source("(def v (vector 1 2))\n(eq v v)"),
-        "(identity-relation same)",
-        "identity case must also hold"
-    );
-    assert_eq!(eval_source("(eq (vector 1 2) (vector 1 9))"), "(identity-relation distinct)");
-    assert_eq!(eval_source("(eq (vector 1 2) (vector 1))"), "(identity-relation distinct)");
-    assert_eq!(eval_source("(eq (vector) (vector))"), "(identity-relation same)");
-}
-
-#[test]
-fn nested_elements_compare_structurally() {
-    assert_eq!(
-        eval_source("(eq (vector (list 1 2)) (vector (list 1 2)))"),
-        "(identity-relation same)"
-    );
+fn vectors_are_structurally_equal_across_objects_including_nested_elements() {
+    assert_witness_fixture_passes(include_str!(
+        "../../../tests/fixtures/vectors-eq-witness.lisp"
+    ));
 }
 
 #[test]

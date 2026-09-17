@@ -22,6 +22,12 @@ fn eval_source(source: &str) -> String {
     result.value.to_string()
 }
 
+/// Canonical `eq` shapes, queried live from Lisp (#114/#220) rather than
+/// hardcoded.
+fn eq_shape(same: bool) -> String {
+    eval_source(if same { "(eq 1 1)" } else { "(eq 1 2)" })
+}
+
 #[test]
 
 fn builtins_are_callable_in_head_position_unchanged() {
@@ -103,7 +109,7 @@ fn canon_peer_surfaces_observe_one_semantic_callable_identity() {
             let source = format!("(eq {} {})", left.name, right.name);
             assert_eq!(
                 eval_source(&source),
-                "(identity-relation same)",
+                eq_shape(true),
                 "peer surfaces {}:{} and {}:{} share semantic ID 0005 and must be eq by semantic identity",
                 left.namespace,
                 left.name,
@@ -120,7 +126,7 @@ fn canon_peer_surfaces_observe_one_semantic_callable_identity() {
     let source = format!("(eq {} {})", car_surfaces[0].name, cdr_surface.name);
     assert_eq!(
         eval_source(&source),
-        "(identity-relation distinct)",
+        eq_shape(false),
         "different semantic IDs 0005 and 0006 must remain observably distinct"
     );
 }

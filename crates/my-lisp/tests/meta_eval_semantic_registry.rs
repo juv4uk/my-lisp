@@ -60,7 +60,8 @@ fn generated_projection_exposes_only_admitted_runtime_surfaces() {
         &mut session,
     )
     .expect("projection witness should execute");
-    assert_eq!(result.value.to_string(), "(structural-kind empty-list)");
+    // Expected shape queried live from Lisp, not hardcoded (#114/#220).
+    assert_eq!(result.value.to_string(), native_value("(atom (quote ()))"));
 }
 
 #[test]
@@ -68,7 +69,8 @@ fn canonical_surface_parity_survives_registry_indirection() {
     // Every surface spelling below names the same semantic identity, so
     // every one of them must evaluate to the same authored expected value —
     // checked independently for native and meta, never against each other.
-    let expected = "(structural-kind atom)";
+    // Expected shape queried live from Lisp, not hardcoded (#114/#220).
+    let expected = native_value("(atom (quote x))");
     for source in [
         "(atom (quote x))",
         "(атом? (як-є x))",

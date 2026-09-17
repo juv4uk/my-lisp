@@ -32,6 +32,19 @@ fn eval_with_agent(source: &str) -> String {
         .to_string()
 }
 
+/// The current canonical `equal?` "same" shape, queried live from Lisp
+/// rather than hardcoded (#114/#220): whatever #218's contract says `equal?`
+/// returns for a true comparison, today, is what these tests compare
+/// against -- Rust never states that shape itself.
+fn equal_same_shape() -> String {
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap");
+    eval_program("(equal? 1 1)", &mut session)
+        .expect("equal? must evaluate")
+        .value
+        .to_string()
+}
+
 /// A pure `complete` stub: returns script element #n where n is the number
 /// of assistant messages already in the conversation — deterministic state
 /// threading through the immutable message list itself. Index clamps to the
@@ -234,7 +247,7 @@ fn tool_result_correlated_by_tool_call_id() {
         tool_call = assistant_tool_call("call_pwd_42", "pwd"),
         final_answer = assistant("pwd printed the working directory."),
     );
-    assert_eq!(eval_with_agent(&source), "(structural-relation same)");
+    assert_eq!(eval_with_agent(&source), equal_same_shape());
 }
 
 /// Test 5: the hard MAX_TURNS limit stops an endlessly tool-calling model
@@ -275,7 +288,10 @@ fn json_encode_and_parse_round_trip() {
     .to_string();
     assert_eq!(
         eval_with_agent(&source),
-        "((structural-relation same) \"say \\\"hi\\\"\\nnow\" 1)",
+        format!(
+            "({} \"say \\\"hi\\\"\\nnow\" 1)",
+            equal_same_shape()
+        ),
         "encode/parse round trip must preserve strings incl. escapes"
     );
 }

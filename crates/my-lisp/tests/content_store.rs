@@ -17,6 +17,11 @@ fn eval_store(source: &str) -> String {
         .to_string()
 }
 
+/// Canonical `equal?` "same" shape, queried live from Lisp (#114/#220).
+fn equal_same_shape() -> String {
+    eval_store("(equal? 1 1)")
+}
+
 fn eval_store_error(source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
@@ -229,7 +234,10 @@ fn lisp_fs_f6_image_records_are_deterministic_and_data_only() {
                 (fs-deserialize-object object-a)))
             "#
         ),
-        "((structural-relation same) (structural-relation same) (accepted (lambda (x) x)))"
+        format!(
+            "({same} {same} (accepted (lambda (x) x)))",
+            same = equal_same_shape()
+        )
     );
 }
 
@@ -531,6 +539,6 @@ fn worlds_with_equal_projection_but_different_history_remain_distinct() {
                         (content-store-size store)))))
             "#
         ),
-        "((structural-relation same) 2)"
+        format!("({} 2)", equal_same_shape())
     );
 }

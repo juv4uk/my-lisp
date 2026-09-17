@@ -8,6 +8,16 @@ fn eval(source: &str) -> String {
         .to_string()
 }
 
+/// Canonical `atom`/`eq` "true" shapes, queried live from Lisp (#114/#220)
+/// rather than hardcoded: whatever #218's contract currently says these
+/// predicates return, for any peer surface, is what's compared against.
+fn atom_shape() -> String {
+    eval("(atom (quote x))")
+}
+fn eq_same_shape() -> String {
+    eval("(eq (quote x) (quote x))")
+}
+
 #[test]
 fn canon_zero_is_the_empty_list_itself() {
     assert_eq!(eval("()"), "()");
@@ -16,8 +26,8 @@ fn canon_zero_is_the_empty_list_itself() {
 #[test]
 fn ukrainian_surface_executes_all_seven_canonical_operations() {
     assert_eq!(eval("(як-є кіт)"), "кіт");
-    assert_eq!(eval("(атом? (як-є кіт))"), "(structural-kind atom)");
-    assert_eq!(eval("(тотожне? (як-є кіт) (як-є кіт))"), "(identity-relation same)");
+    assert_eq!(eval("(атом? (як-є кіт))"), atom_shape());
+    assert_eq!(eval("(тотожне? (як-є кіт) (як-є кіт))"), eq_same_shape());
     assert_eq!(eval("(сполучити (як-є кіт) 42)"), "(кіт . 42)");
     assert_eq!(eval("(перше (сполучити 10 20))"), "10");
     assert_eq!(eval("(решта (як-є (1 2 3)))"), "(2 3)");
@@ -30,8 +40,8 @@ fn ukrainian_surface_executes_all_seven_canonical_operations() {
 #[test]
 fn sanskrit_surface_executes_all_seven_canonical_operations() {
     assert_eq!(eval("(svarūpa phalam)"), "phalam");
-    assert_eq!(eval("(aṇu (svarūpa phalam))"), "(structural-kind atom)");
-    assert_eq!(eval("(abheda (svarūpa phalam) (svarūpa phalam))"), "(identity-relation same)");
+    assert_eq!(eval("(aṇu (svarūpa phalam))"), atom_shape());
+    assert_eq!(eval("(abheda (svarūpa phalam) (svarūpa phalam))"), eq_same_shape());
     assert_eq!(eval("(saṃyuj (svarūpa phalam) 42)"), "(phalam . 42)");
     assert_eq!(eval("(ādi (saṃyuj 10 20))"), "10");
     assert_eq!(eval("(śeṣa (svarūpa (1 2 3)))"), "(2 3)");

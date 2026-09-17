@@ -28,6 +28,15 @@ fn eval_meta(expr_source: &str, env_source: &str) -> String {
         .to_string()
 }
 
+/// Independent oracle for `eq`/`atom`'s canonical shape: the native
+/// evaluator, not the meta-evaluator under test (#114/#220) -- avoids
+/// hardcoding and avoids the meta-evaluator grading its own homework.
+fn eval_native(source: &str) -> String {
+    let mut session = Session::default();
+    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
+    eval_program(source, &mut session).unwrap().value.to_string()
+}
+
 fn eval_meta_program(program_source: &str, probe_source: &str) -> String {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
@@ -73,8 +82,11 @@ fn list_primitives_dispatch_to_the_real_primitives() {
         "(1 2)"
     );
     assert_eq!(eval_meta("(car (cons 1 2))", "(quote ())"), "1");
-    assert_eq!(eval_meta("(atom (quote ()))", "(quote ())"), "(structural-kind empty-list)");
-    assert_eq!(eval_meta("(eq 1 1)", "(quote ())"), "(identity-relation same)");
+    assert_eq!(
+        eval_meta("(atom (quote ()))", "(quote ())"),
+        eval_native("(atom (quote ()))")
+    );
+    assert_eq!(eval_meta("(eq 1 1)", "(quote ())"), eval_native("(eq 1 1)"));
 }
 
 #[test]

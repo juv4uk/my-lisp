@@ -17,6 +17,15 @@ fn eval_epistemic(source: &str) -> String {
         .to_string()
 }
 
+/// Canonical `equal?`/`eq` shapes, queried live from Lisp (#114/#220)
+/// rather than hardcoded.
+fn equal_shape(same: bool) -> String {
+    eval_epistemic(if same { "(equal? 1 1)" } else { "(equal? 1 2)" })
+}
+fn eq_shape(same: bool) -> String {
+    eval_epistemic(if same { "(eq 1 1)" } else { "(eq 1 2)" })
+}
+
 // --- Constructors ---------------------------------------------------
 
 #[test]
@@ -411,7 +420,7 @@ fn supporting_evidence_returns_the_matching_record_for_a_supports_outcome_and_cl
                    (quote (claim-ref cml-build-available)))
                  (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (digest "d"))))"#
         ),
-        "(structural-relation same)"
+        format!("{}", equal_shape(true))
     );
 }
 
@@ -453,7 +462,7 @@ fn supporting_evidence_matches_structural_claim_refs_via_equal() {
                    (quote (claim-ref (claim (statement (build cml succeeds)) (source (observation local-run)) (review proposed))))
                    (quote live-test) (quote supports) (quote (digest "d"))))"#
         ),
-        "(structural-relation same)"
+        format!("{}", equal_shape(true))
     );
 }
 
@@ -533,7 +542,7 @@ fn canonical_values_round_trip_through_write_to_string_and_read() {
                 .unwrap()
                 .value
                 .to_string(),
-            "(structural-relation same)",
+            format!("{}", equal_shape(true)),
             "round trip failed for: {expr}"
         );
     }
@@ -588,7 +597,7 @@ fn write_to_string_round_trips_every_core_predicate_result_bool_stays_a_boundary
 
     assert_eq!(
         run(&mut session, "(eq (read (write-to-string ())) ())"),
-        "(identity-relation same)",
+        format!("{}", eq_shape(true)),
         "Nil round-trips correctly today; if this fails, something else broke"
     );
     // The case that used to live here -- `(eq (eq 1 1) (eq 1 1))` -- no
@@ -602,13 +611,13 @@ fn write_to_string_round_trips_every_core_predicate_result_bool_stays_a_boundary
     // can answer by substitution -- left open rather than decided here.
     assert_eq!(
         run(&mut session, "(eq (read (write-to-string (< 2 1))) (< 2 1))"),
-        "(identity-relation same)",
+        format!("{}", eq_shape(true)),
         "`<` still returns Value::truth (an atom) today -- #216 has not migrated \
          comparisons yet, so this round-trips exactly like Nil/t always did"
     );
     assert_eq!(
         run(&mut session, "(eq (read (write-to-string (< 1 2))) (< 1 2))"),
-        "(identity-relation same)",
+        format!("{}", eq_shape(true)),
         "same for the true case"
     );
     assert_eq!(
@@ -616,7 +625,7 @@ fn write_to_string_round_trips_every_core_predicate_result_bool_stays_a_boundary
             &mut session,
             r#"(eq (read (write-to-string (json-parse "false"))) (json-parse "false"))"#
         ),
-        "(identity-relation distinct)",
+        format!("{}", eq_shape(false)),
         "still true, and correctly so: json-parse's Bool(false) is a real JSON boundary value \
          (JSON has its own true/false/null triple), deliberately not migrated -- this pins that \
          the boundary is untouched, not that it's still broken"

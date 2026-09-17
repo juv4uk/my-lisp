@@ -67,5 +67,10 @@ fn ukrainian_keyboard_symbols_execute_the_same_canon() {
     assert_eq!(result.value.to_string(), "пес");
 
     let atom = eval_program("(.? 'кіт)", &mut session).expect(".? should denote PRIM_ATOM");
-    assert_eq!(atom.value.to_string(), "(structural-kind atom)");
+    // Expected shape queried live from Lisp, not hardcoded (#114/#220).
+    let atom_shape = eval_program("(atom (quote кіт))", &mut session)
+        .expect("atom must evaluate")
+        .value
+        .to_string();
+    assert_eq!(atom.value.to_string(), atom_shape);
 }

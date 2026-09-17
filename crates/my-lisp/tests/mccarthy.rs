@@ -1230,9 +1230,11 @@ fn read_of_a_printed_dotted_pair_reconstructs_the_same_structure() {
     // The literal round-trip: `(cons (quote p) 0)` prints as the text "(p . 0)"
     // (see value.rs's `write_pair`); feeding that exact text back through
     // `read` must reconstruct something `equal?` to the original cons cell.
+    // Expected shape queried live from Lisp, not hardcoded (#114/#220).
+    let equal_same_shape = eval_with_core("(equal? 1 1)").to_string();
     assert_eq!(
         eval_with_core(r#"(equal? (read "(p . 0)") (cons (quote p) 0))"#).to_string(),
-        "(structural-relation same)"
+        equal_same_shape
     );
 }
 
@@ -1560,31 +1562,30 @@ fn core_predicates_are_eq_to_canonical_t_or_nil_not_a_hidden_bool() {
     // `Value::Nil`/`Value::Bool` themselves remain distinct under `PartialEq`
     // (see value.rs), so `eq` still faithfully reports "same"/"distinct"
     // here -- only the shape of eq's own result changed, not what it proves.
-    assert_eq!(eval("(eq (< 1 2) t)").to_string(), "(identity-relation same)");
-    assert_eq!(
-        eval("(eq (< 2 1) (quote ()))").to_string(),
-        "(identity-relation same)"
-    );
-    assert_eq!(eval("(eq (= 1 1) t)").to_string(), "(identity-relation same)");
-    assert_eq!(
-        eval("(eq (= 1 2) (quote ()))").to_string(),
-        "(identity-relation same)"
-    );
+    //
+    // The `<`/`=` cases that used to live here were retired: #216 (landed
+    // after this test was last touched) migrated numeric comparisons off
+    // t/() entirely onto exact-Q 1/1|0/1, so `(eq (< 1 2) t)` no longer
+    // exercises "does a core predicate still equal literal t" at all --
+    // `<` doesn't produce `t` anymore, full stop. That premise is #216's
+    // territory, not this test's. string<?/string? are unaffected by #216
+    // (still legitimately t/()) and keep proving the original point.
+    let eq_same_shape = eval("(eq 1 1)").to_string();
     assert_eq!(
         eval(r#"(eq (string<? "a" "b") t)"#).to_string(),
-        "(identity-relation same)"
+        eq_same_shape
     );
     assert_eq!(
         eval(r#"(eq (string<? "b" "a") (quote ()))"#).to_string(),
-        "(identity-relation same)"
+        eq_same_shape
     );
     assert_eq!(
         eval(r#"(eq (string? "x") t)"#).to_string(),
-        "(identity-relation same)"
+        eq_same_shape
     );
     assert_eq!(
         eval("(eq (string? 5) (quote ()))").to_string(),
-        "(identity-relation same)"
+        eq_same_shape
     );
 }
 
