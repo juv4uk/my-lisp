@@ -72,24 +72,10 @@
        (quote excluded))
       (t t (quote included)))))
 
-; Seen rows are (spelling semantic-id). equal? is consumed through its explicit
-; structural-relation result, never through the temporary boolean bridge.
-(def find-seen
-  (lambda (word seen)
-    (cond
-      ((atom seen) (structural-kind empty-list)
-       (quote ()))
-      ((atom seen) (structural-kind pair)
-       (cond
-         ((equal? word (car (car seen))) (structural-relation same)
-          (car seen))
-         ((equal? word (car (car seen))) (structural-relation distinct)
-          (find-seen word (cdr seen)))))
-      ((atom seen) (structural-kind atom)
-       (fail-closed "meta semantic registry generation failed: malformed seen table")))))
-
-; State is (reversed-output-rows seen-spellings).
-; An output row is (spelling semantic-id namespace).
+; State is (reversed-output-rows seen-map). The persistent map is already part
+; of the normal CLI Lisp profile. It is keyed by spelling text and stores the
+; first admitted semantic ID. Output order remains owned by the separate row
+; list, so changing lookup structure cannot reorder the generated projection.
 (def collect-surface
   (lambda (sid raw-surface state)
     (let* ((surface (normalize-surface raw-surface))
@@ -110,19 +96,20 @@
              ((eq (symbol? word) t) (identity-relation distinct)
               (fail-closed "meta semantic registry generation failed: admitted surface is not one symbol"))
              ((eq (symbol? word) t) (identity-relation same)
-              (let ((previous (find-seen word seen)))
+              (let* ((key (symbol->string word))
+                     (previous (map-get key seen)))
                 (cond
                   ((atom previous) (structural-kind empty-list)
                    (list (cons (list word sid namespace) rows)
-                         (cons (list word sid) seen)))
+                         (map-insert key sid seen)))
                   ((atom previous) (structural-kind pair)
                    (cond
-                     ((eq (second previous) sid) (identity-relation same)
+                     ((eq (car previous) sid) (identity-relation same)
                       state)
-                     ((eq (second previous) sid) (identity-relation distinct)
+                     ((eq (car previous) sid) (identity-relation distinct)
                       (fail-closed "meta semantic registry generation failed: ambiguous admitted surface"))))
                   ((atom previous) (structural-kind atom)
-                   (fail-closed "meta semantic registry generation failed: malformed seen row"))))))))))))
+                   (fail-closed "meta semantic registry generation failed: malformed seen-map result"))))))))))))
 
 (def collect-surfaces
   (lambda (sid surfaces state)
@@ -204,7 +191,7 @@
    (fail-closed "meta semantic registry generation failed: expected sr/1 registry")))
 
 (def collected
-  (collect-entries (cdr registry-form) (list (quote ()) (quote ()))))
+  (collect-entries (cdr registry-form) (list (quote ()) map-empty)))
 (def projection-rows (reverse (car collected)))
 
 (cond
