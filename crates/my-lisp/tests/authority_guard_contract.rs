@@ -1,6 +1,6 @@
 //! Contract for #115: the semantic allow/deny rule itself is Lisp-owned.
 //! Rust verifies the boundary shape; CI is responsible only for transporting
-//! change facts and observing the Lisp program's exit status.
+//! change facts and observing the Lisp-owned verdict/enforcement boundary.
 
 use std::fs;
 use std::path::PathBuf;
@@ -45,5 +45,31 @@ fn authority_migration_allows_only_deletion_only_host_test_changes() {
     assert!(
         !guard.contains("(cons\n      (print"),
         "diagnostic print must not be wrapped in the same expression that intentionally fails"
+    );
+}
+
+#[test]
+fn authority_diagnostic_and_failure_are_separate_lisp_processes() {
+    let root = repo_root();
+    let guard = fs::read_to_string(root.join("scripts/authority-guard.lisp"))
+        .expect("#115 Lisp authority guard must exist");
+    let enforcer = fs::read_to_string(root.join("scripts/authority-guard-enforce.lisp"))
+        .expect("#115 Lisp authority enforcer must exist");
+    let ci = fs::read_to_string(root.join(".github/workflows/ci.yml"))
+        .expect("CI workflow must exist");
+
+    assert!(
+        !guard.contains("(car ())"),
+        "verdict producer must complete successfully so its diagnostic cannot be rolled back"
+    );
+    assert!(
+        enforcer.contains("semantic-authority-violation") && enforcer.contains("(car ())"),
+        "a second Lisp process must own fail-closed enforcement"
+    );
+    assert!(
+        ci.contains("tests/authority-verdict.lisp")
+            && ci.contains("cat tests/authority-verdict.lisp")
+            && ci.contains("scripts/authority-guard-enforce.lisp"),
+        "CI may transport/show the Lisp verdict and invoke Lisp enforcement, but may not interpret authority itself"
     );
 }
