@@ -1,5 +1,4 @@
 //! #218 observer for the Lisp-owned PRIM_ATOM / PRIM_EQ result contract.
-//! Rust transports contract bytes and runtime actuals only.
 
 use std::fs;
 use std::path::PathBuf;
