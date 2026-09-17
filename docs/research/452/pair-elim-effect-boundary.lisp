@@ -8,7 +8,7 @@
 ; ordinary callable eliminator from a stronger delayed-selector special form.
 
 (pair-elim-effect-boundary
-  (schema-version 2)
+  (schema-version 3)
   (issue 452)
   (role research-only)
 
@@ -21,18 +21,23 @@
   (two-candidate-interpretations
     (ordinary-callable
       (surface-shape (pair-elim pair selector-expression))
-      (evaluation "pair argument and selector-expression are evaluated before pair-elim body runs")
-      (consequence "selector-expression effects can occur even when pair value is not admissible"))
+      (evaluation "pair argument and selector-expression are evaluated left-to-right before pair-elim body runs")
+      (consequence "selector-expression effects can occur even when the pair value later fails admission"))
     (delayed-selector-form
       (surface-shape (pair-elim pair selector-source))
       (evaluation "pair is admitted before selector source is evaluated")
       (consequence "requires non-eager evaluation-control power beyond ordinary function application")))
 
-  (reverse-current-route
-    (shape "selector-expression is operator of (selector (car p) (cdr p))")
-    (consequence "operator expression is evaluated before CAR/CDR arguments; its effects occur before a later projector failure"))
+  (exact-reverse-derivation
+    (shape
+      (lambda (p selector)
+        (selector (car p) (cdr p))))
+    (outer-application-order pair-expression selector-expression)
+    (body-order car-projection cdr-projection selector-body)
+    (nonpair-boundary
+      "both outer arguments are already evaluated before the closure body reaches CAR failure"))
 
-  (fresh-run
+  (preliminary-effect-run
     (verification-pr 453)
     (actions-run 35282403011)
     (verification-head "d1f3b0ade20fb8d6deadcc0202425f5a79296af8")
@@ -43,8 +48,9 @@
     (observer-passed 3)
     (observer-failed 0)
     (ordinary-callable selector-expression-effect-before-body-domain-failure)
-    (reverse-current selector-expression-effect-before-car-failure)
-    (valid-reverse selector-body-effect-exactly-once)
+    (direct-selector-route selector-expression-effect-before-car-failure)
+    (valid-direct-route selector-body-effect-exactly-once)
+    (status supporting-not-final-shape)
     (diff-check pass))
 
   (observer-correction
@@ -53,12 +59,33 @@
     (reason "CLI error path did not expose the Session output buffer, so absence of printed marker in process output was not semantic evidence")
     (correction "temporary Rust integration observer read Session.environment.output_snapshot() after eval_program returned Err; no production Rust was committed"))
 
+  (exact-reverse-run
+    (verification-pr 460)
+    (actions-run 35283084878)
+    (verification-head "0b5602e4d5ffc6b61591ce19edc553d66e249f55")
+    (runner ubuntu-24.04)
+    (observer temporary-integration-test-removed-before-diff-check)
+    (observer-tests 3)
+    (observer-passed 3)
+    (observer-failed 0)
+    (valid-pair
+      (effect-order pair-expression-effect selector-expression-effect selector-body-effect)
+      (result fresh-left))
+    (nonpair
+      (effect-order pair-expression-effect selector-expression-effect)
+      (selector-body-effect suppressed)
+      (failure car-type-error))
+    (selector-body-failure
+      (effect-order pair-expression-effect selector-expression-effect selector-body-effect)
+      (failure selector-body-type-error))
+    (diff-check pass))
+
   (classification
     (ordinary-callable pure-basis-exchange-extends-to-selector-expression-effects)
     (delayed-selector-form callback-candidate-observably-stronger))
 
   (classification-reason
-    "The live evaluator executes the selector expression before an ordinary closure body and before CAR/CDR arguments on the reverse-current route. Both paths therefore preserve this observed effect order. A candidate that instead suppresses selector-expression evaluation until after pair admission differs observably and requires additional non-eager evaluation-control power."))
+    "The exact reverse derivation evaluates pair-expression, then selector-expression, then enters the closure body; on an admitted pair the selector body runs after CAR/CDR projection, while on a non-pair CAR fails only after both outer effects have already occurred. That is the same eager outer-argument envelope required of an ordinary callable pair-elim. A candidate that instead suppresses selector-expression evaluation until after pair admission differs observably and therefore carries additional non-eager evaluation-control power.")
 
   (non-claims
     all-effect-kinds-not-exhausted
@@ -68,7 +95,7 @@
     canon-change-not-authorized)
 
   (next-falsification
-    "Keep any future pair-elim candidate ordinary/eager unless it explicitly declares and independently justifies extra control power; then separately test resource/allocation and failure-propagation observations."))
+    "The remaining bounded seam is resource/allocation observability: test whether a callback-style eliminator changes allocation, repeated-coordinate materialization, or host/resource effects relative to the exact reverse derivation without turning backend mechanism into semantic authority.")
 
   (claim-boundary
-    "Suppressing evaluation of the selector expression on non-pair input is not a free implementation detail: under the current eager application contract it is extra evaluation-control power."))
+    "Suppressing evaluation of the selector expression on non-pair input is not a free implementation detail: under the current eager application contract it is extra evaluation-control power.")) 
