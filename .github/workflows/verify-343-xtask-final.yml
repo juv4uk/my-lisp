@@ -1,0 +1,15 @@
+name: Verify #343 xtask final
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-343-xtask-final.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify evidence maps and projections
+        run: cargo run -p xtask -- verify
