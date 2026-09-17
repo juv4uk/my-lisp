@@ -654,4 +654,28 @@
           (operands)
           (legacy-prefix F3)
           (opcode A4)
-          (modrm none))))))
+          (modrm none))))
+
+    (instruction RDTSC
+      (class time-stamp-counter)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form rdtsc
+          (operands)
+          (opcode-map 0F)
+          (opcode 31)
+          (modrm none))))
+
+    (instruction CMPXCHG
+      (class compare-and-exchange)
+      (privilege user)
+      (mode64 valid)
+      (flags ZF CF PF AF SF OF)
+      (forms
+        (form cmpxchg-r64-r64
+          (operands r/m64 r64)
+          (rex W)
+          (opcode-map 0F)
+          (opcode B1)
+          (modrm required))))))
