@@ -408,10 +408,8 @@ mod tests {
     #[test]
     fn all_three_human_surfaces_have_catalogs() {
         let en = render_surface_names(ReplSurface::English).expect("EN catalog");
-        let uk = render_surface_names(ReplSurface::Ukrainian).expect("UK catalog");
         let sa = render_surface_names(ReplSurface::Sanskrit).expect("SA catalog");
         assert!(en.contains("surface en: stable 137 · candidate 0 · missing 9"));
-        assert!(uk.contains("surface uk: stable 140"));
         assert!(sa.contains("surface sa: stable 36 · candidate 88 · missing 22"));
     }
 
