@@ -7,7 +7,9 @@
 ; so these rows are active runtime requirements rather than blocked design debt.
 ;
 ; Values outside the exact rational domain do not receive a binary answer from
-; this layer. Inexact numeric input therefore yields Canon 0: (), never FALSE.
+; this layer. Decimal source literals are exact rationals in my-lisp; JSON
+; decimal tokens are an existing explicit inexact boundary and therefore make
+; the non-applicability witnesses below real rather than syntactic guesses.
 
 ((expr . "(= 1/3 2/6)")
  (expected . "1")
@@ -34,12 +36,12 @@
  (identity . "1018")
  (case . rational-nonincreasing-yes))
 
-((expr . "(= 3.0 3.0)")
+((expr . "(= (json-parse \"3.0\") (json-parse \"3.0\"))")
  (expected . "()")
  (identity . "1016")
  (case . inexact-equality-no-answer))
 
-((expr . "(< 0.5 1.0)")
+((expr . "(< (json-parse \"0.5\") (json-parse \"1.0\"))")
  (expected . "()")
  (identity . "1014")
  (case . inexact-less-no-answer))
