@@ -73,3 +73,13 @@ if [[ "$reason_index_status" != "(reason-index-authority-witness (status pass) (
   printf 'reason-index Lisp witness failed: %s\n' "$reason_index_status" >&2
   exit 1
 fi
+
+# #408 / #305: a well-formed explicit negative is a valid reasoning goal, and
+# no evidence for either side remains Canon 0 unless a named completeness
+# contract establishes a richer epistemic status. The shell observes only the
+# Lisp witness's pass envelope before the stale Rust `unknown` oracle retires.
+explicit_negative_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/explicit-negative-reason-observe-witness.lisp)"
+if [[ "$explicit_negative_status" != "(explicit-negative-reason-observe-witness (status pass))" ]]; then
+  printf 'explicit-negative reasoning Lisp witness failed: %s\n' "$explicit_negative_status" >&2
+  exit 1
+fi
