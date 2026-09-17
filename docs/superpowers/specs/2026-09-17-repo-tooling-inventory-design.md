@@ -1,18 +1,20 @@
-# Repo Tooling Inventory Design
+# Дизайн Lisp-owned інвентаря інструментів репозиторію
 
-**Issue:** #382  
-**Status:** implementation design  
-**Date:** 2026-09-17
+**Задача:** #382
+**Статус:** затверджений дизайн реалізації
+**Дата:** 2026-09-17
 
-## Goal
+## Мета
 
-Give `my-lisp` one Lisp-owned, machine-readable inventory of active repo-owned tooling so the repository can answer what each tool is, who calls it, what authority it depends on, its lifecycle state, and when it may be removed.
+Дати `my-lisp` один Lisp-owned, machine-readable інвентар активного repo-owned tooling, щоб сам репозиторій міг відповісти: що це за інструмент, хто його викликає, від якого джерела authority він залежить, який у нього життєвий статус у репо і за якої умови його можна прибрати.
 
-The inventory is governance metadata and a projection over repository state. It is **not** semantic authority and must not become a second source of language truth.
+Цей інвентар — governance metadata і проєкція над фактичним станом репозиторію. Він **не є semantic authority** і не повинен перетворюватися на друге джерело мовної істини.
 
-## Global constraint: Rust retirement valve
+> **Репозиторій має пам’ятати, навіщо існує інструмент, до того як люди вирішать, де йому лежати або чи може він зникнути.**
 
-Issue #299 is authoritative for this work while host retirement is active:
+## Глобальні обмеження
+
+Під час host-retirement авторитетною для цього зрізу є #299:
 
 ```text
 Lisp may grow.
@@ -20,29 +22,21 @@ Existing Rust may remain unchanged where still necessary.
 Rust may only shrink.
 ```
 
-Therefore #382 must add **zero Rust lines** and no new `.rs` files. In particular, it must not add an `xtask` check even though `xtask` is otherwise a natural governance surface. The inventory/checker and their CI integration must be non-Rust.
+Отже #382 додає **нуль Rust-рядків** і жодного нового `.rs` файла. #76 лишається єдиною authority для Python→Lisp migration. #382 лише записує ownership міграції й не створює другого roadmap. Жоден script не переноситься і не видаляється лише заради зеленого інвентаря.
 
-## Architectural choice
+## Архітектурне рішення
 
-Use a dedicated Lisp registry under `knowledge/` plus a Lisp checker under `scripts/`. Run that checker through the existing `my-lisp` CLI from an existing CI workflow; do not create a second policy implementation in Rust, Python, or Markdown.
+Використовуємо окремий Lisp registry у `knowledge/` і Lisp checker у `scripts/`. Постійний gate запускає checker через наявний `my-lisp` CLI з **існуючого** CI workflow. Не створюємо другу реалізацію policy у Rust, Python чи Markdown і не залишаємо окремий постійний workflow.
 
-This follows existing repository patterns such as `scripts/build-inventory.lisp`: Lisp owns structured meaning; projections and host mechanisms do not outrank their sources.
+Тимчасовий RED-only workflow допустимий лише як одноразовий ізольований доказ, якщо звичайний CI перекритий стороннім baseline-break. Це verification scaffolding: **перед готовністю PR його потрібно видалити**. Lifecycle workflow-ів належить #384.
 
-Rejected alternatives:
-
-1. **Hand-maintained Markdown table** — easy to read but drift-prone and not a reliable machine surface.
-2. **Rust/`xtask`-owned inventory or verifier** — conflicts with #299 and would move repository policy data into the host.
-3. **Python checker** — conflicts with #76 and creates fresh Python debt while Python is being removed.
-4. **Guard as the registry itself** — rejected because Guard is navigation/reference infrastructure, not the owner of every tooling row.
-5. **New dedicated workflow** — unnecessary; #384 already owns workflow lifecycle and #382 only needs one extra step in an existing cheap CI lane.
-
-## Files and responsibilities
+## Файли та відповідальність
 
 ### `knowledge/repo-tooling-inventory.lisp`
 
-Owns one row per active repo-owned tooling entrypoint.
+Містить по одному рядку на кожний in-scope repo-owned tooling entrypoint.
 
-Each row records at least:
+Кожен рядок має поля:
 
 ```text
 path
@@ -57,23 +51,22 @@ replacement
 removal-condition
 ```
 
-Closed vocabularies for the first slice:
+Закриті словники першого зрізу:
 
 ```text
 kind:
   check | generator | migration | benchmark | deploy | release | helper | other
 
 lifecycle:
-  active | transitional | legacy | generated-helper | archive-candidate |
-  parity-green | switched-to-lisp | removable | bootstrap-exception
+  active | transitional | legacy | generated-helper | archive-candidate
 
 language:
   lisp | python | shell | javascript | powershell | other
 ```
 
-Unknown factual metadata must be represented explicitly as `unknown` or `()` according to field type. The registry must not invent callers, replacements, or authority.
+Невідомі факти позначаються явно як `unknown` або `()` відповідно до типу поля. Registry не має права вигадувати callers, replacement чи authority.
 
-A representative row shape:
+Приклад рядка:
 
 ```lisp
 (tool
@@ -89,155 +82,114 @@ A representative row shape:
   (removal-condition parity-green-and-callers-switched))
 ```
 
-`replacement` remains empty until the replacement path really exists. Planned filenames are not reported as repository facts.
+`replacement` лишається порожнім, доки replacement-path реально не існує. Заплановані назви файлів не видаються за факти репозиторію.
+
+## `lifecycle` і стан міграції — різні виміри
+
+`lifecycle` відповідає на питання:
+
+> Яка роль/стадія життя цього artifact у репозиторії?
+
+Стан міграції відповідає на інше питання:
+
+> Де цей tool перебуває в процесі заміни?
+
+Перший зріз навмисно містить лише artifact-level `lifecycle` плюс `migration-issue`. Python migration progress належить #76 і **не кодується** у lifecycle-значеннях на кшталт `parity-green`, `switched-to-lisp`, `removable` чи `bootstrap-exception`.
+
+Якщо зрілий інвентар вимагатиме одночасно описати обидва факти — наприклад `archive-candidate` **і** `parity-green` — це явний trigger для schema evolution:
+
+```text
+lifecycle
+migration-state
+```
+
+Майбутній `migration-state`, якщо він знадобиться, буде лише проєкцією/індексом #76, а не незалежною migration authority.
+
+Тимчасовий bootstrap exception, якщо він реально потрібен, описується явними migration/removal metadata, а не маскується під artifact lifecycle.
 
 ### `scripts/check-repo-tooling-inventory.lisp`
 
-Owns executable repository checks for this inventory and may use the existing CLI-installed filesystem capabilities (`read-dir`, `read-file`, etc.).
-
-The mechanical coverage domain for the first slice is exact:
-
-```text
-all immediate entries returned by read-dir("scripts")
-minus the explicit out-of-scope directory entry "tests"
-```
-
-A new immediate entry under `scripts/` is therefore fail-closed until it is either inventoried as tooling or the scope rule is deliberately amended. Nested `scripts/tests/*` helpers are left to a later slice and are not silently guessed to be production tooling.
-
-The checker must expose its core validation as a pure Lisp function over:
+Checker володіє executable governance checks. Його core validation має бути чистою Lisp-функцією над:
 
 ```text
 inventory rows + observed immediate script-entry names
 ```
 
-The filesystem-backed top-level runner only obtains the real observations and feeds them into that pure validator. Negative tests therefore do not need to mutate the working tree.
+Filesystem-backed runner лише отримує реальні observations через `read-dir`/`read-file` і передає їх validator-у. Negative witnesses тому не потребують мутації робочого дерева.
 
-First-slice checks:
+Перший зріз механічно перевіряє:
 
-- every in-scope immediate `scripts/*` entry is represented exactly once;
-- every registered in-scope live path exists in the observed `scripts/` entries;
-- duplicate `path` rows fail;
-- unknown `kind`, `language`, or `lifecycle` values fail closed;
-- an active/transitional repo-owned Python tool has a migration issue or an explicit `bootstrap-exception` lifecycle;
-- `bootstrap-exception` must carry an explicit removal condition;
-- a `removable` row must have a concrete removal condition and may not silently masquerade as active-without-explanation;
-- declared repository-relative caller/authority paths are checked for existence only where the checker can do so without guessing their meaning;
-- vendored dependencies, archives, immutable historical evidence, and `scripts/tests/*` are not automatically treated as active tooling.
+- кожен in-scope immediate `scripts/*` entry представлений рівно один раз;
+- кожен зареєстрований живий path реально присутній серед observed entries;
+- duplicate `path` дає RED;
+- відсутнє required field дає RED;
+- невідомі `kind`, `language` або `lifecycle` fail-closed;
+- активний/transitional repo-owned Python має `migration-issue`, що веде до #76 або child issue;
+- replacement-path не оголошується фактом до його фізичної появи;
+- removal condition зберігається явно, а не виводиться здогадом.
 
-The checker emits a small machine-readable final verdict and precise human diagnostics. It must not implement language semantics.
+Checker повертає малий machine-readable verdict і точну діагностику. Він не визначає мовну семантику і використовує чинні explicit result domains замість generic `t/()` truth authority.
 
-### Existing CI workflow
+### Існуючий CI workflow
 
-Add one step to an existing cheap CI lane, using the canonical CLI execution pattern:
-
-```sh
-cargo run -p my-lisp-cli --bin my-lisp -- scripts/check-repo-tooling-inventory.lisp
-```
-
-Do not create a new workflow solely for #382. Do not add Rust glue. Workflow lifecycle/placement remains reviewable under #384.
+Фінальний gate — один сусідній step у `.github/workflows/ci.yml`, що запускається через canonical CLI. Без Rust glue і без постійного нового workflow.
 
 ### `knowledge/guard-reference.lisp`
 
-Add one navigation topic, `repo-tooling`, that points to:
+Додається одна navigation topic `repo-tooling`, що вказує на inventory, checker, design і #382. Guard не копіює окремі tooling rows.
 
-- `knowledge/repo-tooling-inventory.lisp`;
-- `scripts/check-repo-tooling-inventory.lisp`;
-- issue #382.
+## Межа coverage
 
-Guard does not copy the inventory rows.
+Перший implementation slice покриває immediate entries, які повертає `read-dir("scripts")`, крім явно out-of-scope directory entry `tests`.
 
-## Coverage boundary
+Свідомо не класифікуємо тут:
 
-The first implementation covers active repo-owned tooling entrypoints that are immediate entries under top-level `scripts/`, except the explicitly excluded `scripts/tests` directory.
+- nested `scripts/tests/*` helpers;
+- lifecycle GitHub workflows — #384;
+- authority-класи всього `knowledge/*` — #383;
+- environment paths — #385;
+- lifecycle root-artifacts — #23;
+- фізичну реорганізацію `scripts/`;
+- сам Python→Lisp implementation migration — #76 і child issues.
 
-It deliberately does not yet classify:
+## RED → GREEN дисципліна
 
-- every test helper under `scripts/tests/` as active tooling;
-- GitHub workflows themselves — #384 owns workflow lifecycle;
-- all `knowledge/*` artifacts — #383 owns authority classification there;
-- environment-path requirements — #385 owns those;
-- root artifacts — #23 owns root lifecycle;
-- physical reorganization of `scripts/`;
-- Python→Lisp implementation migration itself — #76 and child issues own that work;
-- any Rust additions — forbidden by #299.
+RED зараховується лише тоді, коли виконання доходить до поведінки, яку ми тестуємо. Parser error, stale-branch failure або сторонній authority-guard failure **не є** валідним RED-доказом.
 
-The inventory may reference those tasks but must not absorb them.
+Порядок:
 
-## Gate rollout
+1. ізолювати одне відсутнє governance rule executable witness-ом;
+2. побачити точний очікуваний failure на синхронізованій гілці;
+3. реалізувати мінімальну Lisp-зміну, яка робить саме цей witness GREEN;
+4. зберегти попередні GREEN witnesses;
+5. повторити для duplicate path, stale path, invalid enum і Python migration ownership;
+6. заповнити реальний inventory та ввімкнути filesystem-backed enforcement;
+7. прибрати тимчасовий RED-only workflow перед завершенням.
 
-### Phase 1 — RED witness
+## Анти-геймінг
 
-Create focused Lisp-owned negative fixtures/witnesses for schema/policy behavior, including an intentionally unregistered observed tool.
-
-### Phase 2 — current inventory GREEN
-
-Populate rows for the current in-scope immediate `scripts/*` surface until the checker passes against real `read-dir("scripts")` observations on the exact branch head.
-
-### Phase 3 — protection against new debt
-
-Wire the standalone Lisp checker into an existing cheap CI lane. Once current coverage is complete, a newly added immediate `scripts/*` entry without a row is a hard failure.
-
-Historical uncertainty remains explicit/reportable rather than guessed into a lifecycle state.
-
-## Python migration relationship
-
-#382 does not create a second Python roadmap. For Python tools it records the state of #76 migration work.
-
-Expected lifecycle interpretation:
-
-```text
-active/transitional + migration-issue -> migration is tracked
-parity-green                          -> parity witness exists
-switched-to-lisp                      -> active callers use Lisp replacement
-removable                             -> deletion preconditions are satisfied
-bootstrap-exception                   -> temporary exception with removal condition
-```
-
-If an active Python tool lacks a migration issue and is not a justified bootstrap exception, the checker reports it.
-
-## Error handling
-
-Fail closed for schema violations and contradictions that are fully mechanical:
-
-- duplicate path;
-- unsupported enum value;
-- missing required field;
-- registered in-scope path absent from observed immediate `scripts/*` entries;
-- unregistered observed immediate `scripts/*` entry;
-- Python migration state without required issue/removal metadata.
-
-Do not fail by guessing uncertain facts. Unknown caller/provenance information remains explicit and is surfaced for follow-up.
-
-## Testing strategy
-
-Use RED→GREEN in small Lisp-owned slices:
-
-1. focused negative witness for unregistered tooling;
-2. duplicate-row witness;
-3. stale/missing-path witness;
-4. invalid-enum witness;
-5. Python-without-migration witness;
-6. bootstrap-exception-without-removal-condition witness;
-7. full current inventory coverage against `read-dir("scripts")`;
-8. existing-CI integration through the CLI;
-9. authority/Rust valve checks proving the change adds zero Rust lines.
-
-The tests protect repository-governance behavior only; they must not introduce expected language semantics into Rust.
+- Script не переноситься лише для виходу зі scope checker-а.
+- Python-файл не видаляється лише для зеленого coverage.
+- Невідомі callers/authority лишаються явно невідомими, а не вигадуються.
+- Generated artifact посилається на generator/upstream authority і не отримує authority через сам факт внесення в inventory.
+- `replacement` лишається `()`, доки файл не існує.
+- Checker ніколи не стає semantic oracle.
 
 ## Acceptance
 
-The slice is complete when:
+Зріз завершений, коли:
 
-- every in-scope immediate repo-owned `scripts/*` entry has one row;
-- the inventory is Lisp-owned and machine-readable;
-- unregistered new tooling is mechanically detectable;
-- stale registered in-scope paths are mechanically detectable;
-- active Python tooling is linked to #76 migration state or an explicit bootstrap exception;
-- Guard can navigate to the inventory without copying it;
-- an existing CI lane runs the checker through `my-lisp` CLI;
-- zero Rust lines/files are added, preserving #299;
-- no scripts are moved and no Python tool is deleted merely to satisfy this issue.
+- кожен in-scope immediate repo-owned `scripts/*` entry має рівно один row;
+- inventory Lisp-owned і machine-readable;
+- unregistered новий tool та stale registered path механічно виявляються;
+- duplicate rows та invalid enum values механічно виявляються;
+- active/transitional Python tooling прив’язаний до #76 або вузького child issue без другого migration state machine;
+- Guard навігує до inventory без копіювання його rows;
+- існуючий CI lane запускає checker через `my-lisp` CLI;
+- тимчасовий RED-only workflow видалено;
+- Rust additions = 0;
+- жоден script не перенесений і жоден Python tool не видалений лише заради #382.
 
-## Principle
+## Принцип
 
-**The repository should remember why a tool exists before humans decide where it belongs or whether it can disappear.**
+**Репозиторій має пам’ятати, навіщо існує інструмент, до того як люди вирішать, де йому лежати або чи може він зникнути.**
