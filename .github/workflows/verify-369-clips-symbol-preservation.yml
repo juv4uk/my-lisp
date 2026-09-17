@@ -1,0 +1,19 @@
+name: Verify 369 CLIPS symbol preservation
+
+on:
+  pull_request:
+    paths:
+      - 'tests/fixtures/clips-symbol-boundary-witness.lisp'
+      - '.github/workflows/verify-369-clips-symbol-preservation.yml'
+
+jobs:
+  clips-symbol-boundary:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run Lisp-owned CLIPS symbol-boundary witness
+        run: |
+          status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/clips-symbol-boundary-witness.lisp)"
+          printf '%s\n' "$status"
+          test "$status" = '(clips-symbol-boundary-witness (status pass))'
