@@ -65,3 +65,11 @@ if [[ "$vector_balance_status" != "(persistent-vector-balance-witness (status pa
   printf 'persistent vector balance Lisp witness failed: %s\n' "$vector_balance_status" >&2
   exit 1
 fi
+
+# #305: reason-index parity and snapshot meaning are Lisp-owned. The shell
+# observes only the named pass envelope before stale Rust `t` oracles retire.
+reason_index_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/reason-index-authority-witness.lisp)"
+if [[ "$reason_index_status" != "(reason-index-authority-witness (status pass) (laws indexed-linear-parity immutable-prepared-snapshot recursion-negation-parity))" ]]; then
+  printf 'reason-index Lisp witness failed: %s\n' "$reason_index_status" >&2
+  exit 1
+fi
