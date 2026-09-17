@@ -123,6 +123,91 @@ fn lisp_encodes_the_alu_register_family_with_pinned_opcodes() {
     }
 }
 
+/// Independent decoder for the group-1 ALU r/m64,imm32 family: REX.W(+REX.B
+/// for r8-r15), opcode 0x81, ModRM(mod=3, reg=opcode-extension, rm=dest),
+/// then a 4-byte little-endian sign-extended immediate. From scratch,
+/// independent of the encoder's own construction arithmetic.
+fn decode_alu_r64_imm32(bytes: &[u8]) -> Option<(u8, u8, i64)> {
+    let [rex, opcode, modrm, b0, b1, b2, b3] = bytes else {
+        return None;
+    };
+    if rex & 0xF8 != 0x48 {
+        return None;
+    }
+    let rex_b = rex & 0x01;
+    if *opcode != 0x81 {
+        return None;
+    }
+    if (modrm & 0xC0) != 0xC0 {
+        return None;
+    }
+    let opcode_extension = (modrm >> 3) & 0x07;
+    let destination = (modrm & 0x07) | (rex_b << 3);
+    let raw = u32::from_le_bytes([*b0, *b1, *b2, *b3]);
+    Some((opcode_extension, destination, raw as i32 as i64))
+}
+
+/// #176 continued: the group-1 ALU r/m64,imm32 family (ADD/OR/AND/SUB/XOR/
+/// CMP against a literal), opcode 0x81 with the same fixed group-1
+/// reg-field numbering (0/1/4/5/6/7) the register/register family's own
+/// opcodes already encode, per #175's pinned XED evidence
+/// (`PATTERN : 0x81 MOD[0b11] MOD=3 REG[rrr] RM[nnn] SIMMz()`). Lets a
+/// comparison/arithmetic against a constant (the #196 COND base-case shape)
+/// skip loading the constant into a scratch register first.
+#[test]
+fn lisp_encodes_the_alu_immediate_family_for_every_gpr_and_the_full_imm32_range() {
+    const ALL_GPRS: [&str; 16] = [
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12",
+        "r13", "r14", "r15",
+    ];
+    let mut session = encoder_session();
+
+    for (mnemonic, expected_extension) in [
+        ("add", 0u8),
+        ("or", 1),
+        ("and", 4),
+        ("sub", 5),
+        ("xor", 6),
+        ("cmp", 7),
+    ] {
+        for register in ALL_GPRS {
+            for immediate in [-2147483648i64, -1, 0, 1, 2147483647] {
+                let form = format!("(x86-encode-{mnemonic}-r64-imm32 (quote {register}) {immediate})");
+                let rendered = eval_bytes(&form, &mut session);
+                let bytes: Vec<u8> = rendered
+                    .trim_start_matches('(')
+                    .trim_end_matches(')')
+                    .split_whitespace()
+                    .map(|token| token.parse().expect("byte must be a small integer"))
+                    .collect();
+
+                assert_eq!(
+                    bytes.len(),
+                    7,
+                    "{form} must be REX+opcode+ModRM+imm32, 7 bytes"
+                );
+                let (decoded_extension, decoded_register, decoded_immediate) =
+                    decode_alu_r64_imm32(&bytes)
+                        .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+                assert_eq!(decoded_extension, expected_extension, "{form}: {bytes:?}");
+                assert_eq!(decoded_register, gpr_index(register), "{form}: {bytes:?}");
+                assert_eq!(
+                    decoded_immediate, immediate,
+                    "{form} round-tripped to {decoded_immediate}, from bytes {bytes:?}"
+                );
+            }
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("PATTERN   : 0x81 MOD[0b11] MOD=3 REG[0b111] RM[nnn] SIMMz()"),
+        "pinned XED evidence must contain the exact 0x81 /7 (CMP) rel32-immediate pattern"
+    );
+}
+
 /// Independent decoder for exactly the PUSH r64 / POP r64 byte shapes this
 /// encoder emits: an optional REX prefix (0x40-0x4F, bit 0 = REX.B) followed
 /// by a single opcode byte in 0x50-0x5F. This is deliberately a *second*,

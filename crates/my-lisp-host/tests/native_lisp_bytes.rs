@@ -479,3 +479,57 @@ fn jmp_actually_branches_unconditionally_on_real_hardware_regardless_of_flags() 
         "JMP must branch even when the prior CMP cleared ZF -- unlike JZ, it does not consult flags"
     );
 }
+
+/// #176 continued: CMP r64,imm32's defining property, compared to the
+/// register/register CMP that already backs #196's COND witness, is
+/// comparing a variable against a *literal constant* directly -- no
+/// scratch register needed to hold the constant first. This is a real,
+/// executed proof on the i5-6400 that the resulting flags genuinely drive
+/// a subsequent Jcc, for both the base-case-style equality check and an
+/// ordering check.
+#[test]
+fn cmp_r64_imm32_actually_sets_flags_that_drive_a_real_conditional_branch() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    // mov rax,A; cmp rax,<constant>; jz +10 (skips the following
+    // mov-r64-imm64 when equal); mov rax,999; ret.
+    let mut run_jz = |a: i64, constant: i64| -> String {
+        let source = format!(
+            "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax {a}) (cmp-r64-imm32 rax {constant}) (jz-rel8 10) (mov-r64-imm64 rax 999) (ret))) 0)"
+        );
+        eval_program(&source, &mut session)
+            .expect("real hardware must execute the admitted program")
+            .value
+            .to_string()
+    };
+
+    assert_eq!(run_jz(0, 0), "0", "CMP against a literal 0 must set ZF when equal");
+    assert_eq!(
+        run_jz(5, 0),
+        "999",
+        "CMP against a literal 0 must clear ZF when not equal"
+    );
+
+    // Same shape with jl to prove ordering flags, not just equality.
+    let mut run_jl = |a: i64, constant: i64| -> String {
+        let source = format!(
+            "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax {a}) (cmp-r64-imm32 rax {constant}) (jl-rel8 10) (mov-r64-imm64 rax 999) (ret))) 0)"
+        );
+        eval_program(&source, &mut session)
+            .expect("real hardware must execute the admitted program")
+            .value
+            .to_string()
+    };
+
+    assert_eq!(run_jl(3, 5), "3", "CMP against a literal must branch when 3 < 5");
+    assert_eq!(
+        run_jl(5, 3),
+        "999",
+        "CMP against a literal must not branch when 5 >= 3"
+    );
+}

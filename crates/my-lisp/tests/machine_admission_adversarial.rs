@@ -104,6 +104,18 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(x86-call-admitted-u64 (quote ((jmp-rel8 -129))) 0)",
             "(rejected unadmitted-machine-form (jmp-rel8 -129))",
         ),
+        (
+            // CMP r64,imm32's imm32 slot fails closed the same way disp8
+            // does: one past the signed max.
+            "(x86-call-admitted-u64 (quote ((cmp-r64-imm32 rax 2147483648))) 0)",
+            "(rejected unadmitted-machine-form (cmp-r64-imm32 rax 2147483648))",
+        ),
+        (
+            // A made-up register in the imm32 slot's register position must
+            // fail closed the same way it does elsewhere.
+            "(x86-call-admitted-u64 (quote ((add-r64-imm32 notareg 1))) 0)",
+            "(rejected unadmitted-machine-form (add-r64-imm32 notareg 1))",
+        ),
     ] {
         EXECUTOR_CALLS.store(0, Ordering::SeqCst);
         let result = eval_program(request, &mut session)

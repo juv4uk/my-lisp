@@ -33,27 +33,27 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
         ),
         (
             "ADD",
-            "x86-encode-add-r64-r64 covers the register/register form only, of ADD's 18 XED forms",
+            "x86-encode-add-r64-r64 and x86-encode-add-r64-imm32 cover the register/register and register/imm32 forms, of ADD's 18 XED forms",
         ),
         (
             "OR",
-            "x86-encode-or-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+            "x86-encode-or-r64-r64 and x86-encode-or-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape",
         ),
         (
             "AND",
-            "x86-encode-and-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+            "x86-encode-and-r64-r64 and x86-encode-and-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape",
         ),
         (
             "SUB",
-            "x86-encode-sub-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+            "x86-encode-sub-r64-r64 and x86-encode-sub-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape",
         ),
         (
             "XOR",
-            "x86-encode-xor-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+            "x86-encode-xor-r64-r64 and x86-encode-xor-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape",
         ),
         (
             "CMP",
-            "x86-encode-cmp-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart",
+            "x86-encode-cmp-r64-r64 and x86-encode-cmp-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape",
         ),
         (
             "TEST",

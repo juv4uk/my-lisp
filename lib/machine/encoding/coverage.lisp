@@ -42,7 +42,7 @@
     (iclass "ADD")
     (extension X86-BASE)
     (status partial)
-    (reason "x86-encode-add-r64-r64 covers the register/register form only, of ADD's 18 XED forms"))
+    (reason "x86-encode-add-r64-r64 and x86-encode-add-r64-imm32 cover the register/register and register/imm32 forms, of ADD's 18 XED forms"))
   (coverage
     (iclass "ADDPD")
     (extension SSE2)
@@ -112,7 +112,7 @@
     (iclass "AND")
     (extension X86-BASE)
     (status partial)
-    (reason "x86-encode-and-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
+    (reason "x86-encode-and-r64-r64 and x86-encode-and-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape"))
   (coverage
     (iclass "ANDN")
     (extension BMI1)
@@ -422,7 +422,7 @@
     (iclass "CMP")
     (extension X86-BASE)
     (status partial)
-    (reason "x86-encode-cmp-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
+    (reason "x86-encode-cmp-r64-r64 and x86-encode-cmp-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape"))
   (coverage
     (iclass "CMPPD")
     (extension SSE2)
@@ -1867,7 +1867,7 @@
     (iclass "OR")
     (extension X86-BASE)
     (status partial)
-    (reason "x86-encode-or-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
+    (reason "x86-encode-or-r64-r64 and x86-encode-or-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape"))
   (coverage
     (iclass "ORPD")
     (extension SSE2)
@@ -3447,7 +3447,7 @@
     (iclass "SUB")
     (extension X86-BASE)
     (status partial)
-    (reason "x86-encode-sub-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
+    (reason "x86-encode-sub-r64-r64 and x86-encode-sub-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape"))
   (coverage
     (iclass "SUBPD")
     (extension SSE2)
@@ -5842,7 +5842,7 @@
     (iclass "XOR")
     (extension X86-BASE)
     (status partial)
-    (reason "x86-encode-xor-r64-r64 covers the register/register form only, sharing ADD's group-1 shape one opcode byte apart"))
+    (reason "x86-encode-xor-r64-r64 and x86-encode-xor-r64-imm32 cover the register/register and register/imm32 forms, sharing ADD's group-1 shape"))
   (coverage
     (iclass "XORPD")
     (extension SSE2)

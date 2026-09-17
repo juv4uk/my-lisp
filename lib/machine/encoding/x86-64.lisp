@@ -168,6 +168,58 @@
   (lambda (destination source)
     (x86-encode-alu-r64-r64 57 destination source)))
 
+; Two's-complement little-endian bytes for a sign-extended imm32 value
+; already known to be in [-2147483648,2147483647]. Same wrap-before-split
+; discipline #199 proved for disp8 (x86-disp8-byte) -- `mod` in this Lisp
+; does not wrap negative operands, so adding 2^32 before reducing mod 2^32
+; is exact for the whole imm32 domain.
+(def x86-imm32-bytes
+  (lambda (immediate)
+    (x86-u32-bytes (mod (+ immediate 4294967296) 4294967296))))
+
+; ALU r/m64, imm32 (mod=3, sign-extended to 64 bits): opcode 0x81, ModRM reg
+; field selects the operation (ADD=0, OR=1, AND=4, SUB=5, XOR=6, CMP=7,
+; matching the same fixed group-1 numbering the register/register family's
+; own opcodes already encode), rm field is the destination register -- per
+; #175's pinned XED evidence (`PATTERN : 0x81 MOD[0b11] MOD=3 REG[rrr]
+; RM[nnn] SIMMz()`). Lets a comparison/arithmetic-against-a-constant (the
+; #196 COND base-case shape: compare a variable to a literal) skip loading
+; the constant into a scratch register first.
+(def x86-encode-alu-r64-imm32
+  (lambda (opcode-extension destination immediate)
+    (let ((dst (x86-reg-code destination)))
+      (cons
+        (x86-encode-rex 1 0 0 (x86-high1 dst))
+        (cons
+          129
+          (cons
+            (x86-encode-modrm 3 opcode-extension (x86-low3 dst))
+            (x86-imm32-bytes immediate)))))))
+
+(def x86-encode-add-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 0 destination immediate)))
+
+(def x86-encode-or-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 1 destination immediate)))
+
+(def x86-encode-and-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 4 destination immediate)))
+
+(def x86-encode-sub-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 5 destination immediate)))
+
+(def x86-encode-xor-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 6 destination immediate)))
+
+(def x86-encode-cmp-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 7 destination immediate)))
+
 ; TEST r/m64, r64 (opcode 0x85 /r, mod=3 register/register): destination AND
 ; source, result discarded, flags set only -- per #175's pinned XED evidence
 ; (`PATTERN : 0x85 MOD[0b11] MOD=3 REG[rrr] RM[nnn]`). Same REX.W+opcode+
