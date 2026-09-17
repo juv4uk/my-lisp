@@ -68,12 +68,12 @@ Native REPL розрізняє людський словник і реальне
 Поточна виміряна картина:
 
 ```text
-UK  stable 140 · candidate 0  · missing 0
-EN  stable 131 · candidate 0  · missing 9
-SA  stable 36  · candidate 88 · missing 16
+UK  stable 142 · candidate 0  · missing 4
+EN  stable 137 · candidate 0  · missing 9
+SA  stable 36  · candidate 88 · missing 22
 ```
 
-Ще 21 ряд у кожній поверхні належить до `compatibility-only` і не входить до вибраного 140-іменного публічного знаменника.
+Ще 21 ряд належить до `compatibility-only`; вони не входять до поточного публічного знаменника з 146 semantic identities.
 
 ### `:ім'я`
 
@@ -101,15 +101,15 @@ identity: 0101
 Команда показує release-parity без прикрашання стану:
 
 ```text
-Рівноправність людських поверхонь · public identities: 140 · shared symbolic identities: 18
-UK  stable 140 · candidate   0 · missing   0 · compatibility  21
-EN  stable 131 · candidate   0 · missing   9 · compatibility  21
-SA  stable  36 · candidate  88 · missing  16 · compatibility  21
-trilingual stable: 29/140
+Рівноправність людських поверхонь · public identities: 146 · shared symbolic identities: 18
+UK  stable 142 · candidate   0 · missing   4 · compatibility  21
+EN  stable 137 · candidate   0 · missing   9 · compatibility  21
+SA  stable  36 · candidate  88 · missing  22 · compatibility  21
+trilingual stable: 29/146
 release parity: OPEN
 ```
 
-Повний тримовний статус можна буде назвати `CONFIRMED` лише коли всі 140 translation-eligible identities матимуть stable EN, UK і SA назви та відповідні виконувані докази.
+Повний тримовний статус можна буде назвати `CONFIRMED` лише коли всі 146 поточних public identities матимуть stable EN, UK і SA назви та відповідні виконувані докази.
 
 ## Публічна поверхня і реальне середовище — різні речі
 
