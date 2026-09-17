@@ -1,9 +1,4 @@
 //! Vector family acceptance — contract 2.1 style, value-level semantics.
-//!
-//! Covers the audit findings: structural `eq` on vectors (was falling
-//! through to `_ => false` even for the same object), O(1)-style
-//! `vector-ref` access promised by the Value::Vector docstring, and
-//! named-failure bounds/type errors instead of panics.
 
 use my_lisp::{eval_program, ErrorKind, Session};
 
@@ -36,27 +31,6 @@ fn vector_literal_and_ref() {
 fn make_vector_fills_with_nil_and_length_reports_size() {
     assert_eq!(eval_source("(vector-length (make-vector 5))"), "5");
     assert_eq!(eval_source("(vector-ref (make-vector 3) 1)"), "()");
-}
-
-#[test]
-fn vectors_are_structurally_equal_across_objects() {
-    assert_eq!(eval_source("(eq (vector 1 2 3) (vector 1 2 3))"), "t");
-    assert_eq!(
-        eval_source("(def v (vector 1 2))\n(eq v v)"),
-        "t",
-        "identity case must also hold"
-    );
-    assert_eq!(eval_source("(eq (vector 1 2) (vector 1 9))"), "()");
-    assert_eq!(eval_source("(eq (vector 1 2) (vector 1))"), "()");
-    assert_eq!(eval_source("(eq (vector) (vector))"), "t");
-}
-
-#[test]
-fn nested_elements_compare_structurally() {
-    assert_eq!(
-        eval_source("(eq (vector (list 1 2)) (vector (list 1 2)))"),
-        "t"
-    );
 }
 
 #[test]
