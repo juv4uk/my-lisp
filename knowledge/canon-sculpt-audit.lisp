@@ -71,7 +71,7 @@
       (syntax-only-not-callable))
     (experiment
       (hypothesis ordinary-eager-function-derivation)
-      (fixture tests/fixtures/canon-sculpt-quote-ordinary-function-red.lisp)
+      (fixture evidence/canon-sculpt/quote-ordinary-function-red.lisp)
       (predicted-result red)
       (meaning "ordinary eager function application cannot explain suppression of argument evaluation"))
     (remaining-question
@@ -149,7 +149,7 @@
     (PRIM_CAR tests/fixtures/conformance.lisp)
     (PRIM_CDR tests/fixtures/conformance.lisp)
     (PRIM_COND tests/fixtures/conformance.lisp)
-    (PRIM_QUOTE tests/fixtures/canon-sculpt-quote-ordinary-function-red.lisp))
+    (PRIM_QUOTE evidence/canon-sculpt/quote-ordinary-function-red.lisp))
 
   (backend-discipline
     (law "lowering proves an implementation path, not semantic derivability")
