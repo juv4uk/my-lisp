@@ -1,0 +1,49 @@
+name: Verify 362 proven-byte read-file
+
+on:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-362-proven-byte-readfile
+
+      - name: Preserve benchmark harness
+        run: cp scripts/benchmark-semantic-registry-read.lisp /tmp/benchmark-semantic-registry-read.lisp
+
+      - name: Verify candidate semantics and boundary
+        run: |
+          git checkout --detach "$HEAD_SHA"
+          if grep -Fq '(utf8-decode-string (read-file-bytes path))' lib/fs.lisp; then
+            echo 'read-file still repeats generic byte-domain validation' >&2
+            exit 1
+          fi
+          grep -Fq '(utf8-decode-onto (read-file-bytes path) (quote ()))' lib/fs.lisp
+          cargo test -p my-lisp-host --test fs_text
+
+      - name: Measure base on this runner
+        run: |
+          git checkout --detach "$BASE_SHA"
+          cargo build -p my-lisp-cli --bin my-lisp
+          echo '--- BASE ---'
+          /usr/bin/time -f 'base_wall_seconds=%e' \
+            ./target/debug/my-lisp /tmp/benchmark-semantic-registry-read.lisp
+
+      - name: Measure candidate on this runner
+        run: |
+          git checkout --detach "$HEAD_SHA"
+          cargo build -p my-lisp-cli --bin my-lisp
+          echo '--- CANDIDATE ---'
+          /usr/bin/time -f 'candidate_wall_seconds=%e' \
+            ./target/debug/my-lisp /tmp/benchmark-semantic-registry-read.lisp
