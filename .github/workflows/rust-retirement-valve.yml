@@ -60,7 +60,8 @@ jobs:
           set -euo pipefail
           cp tests/fixtures/rust-retirement-valve/added-line.lisp tests/rust-retirement-changes.lisp
           ./target/debug/my-lisp scripts/rust-retirement-valve.lisp > tests/rust-retirement-verdict.lisp
-          if ./target/debug/my-lisp scripts/rust-retirement-valve-enforce.lisp > /tmp/rust-valve-added.log 2>&1; then
+          cp tests/rust-retirement-verdict.lisp /tmp/rust-valve-added.log
+          if ./target/debug/my-lisp scripts/rust-retirement-valve-enforce.lisp >> /tmp/rust-valve-added.log 2>&1; then
             echo 'ERROR: added Rust line was accepted'
             exit 1
           fi
@@ -72,7 +73,8 @@ jobs:
           set -euo pipefail
           cp tests/fixtures/rust-retirement-valve/new-file.lisp tests/rust-retirement-changes.lisp
           ./target/debug/my-lisp scripts/rust-retirement-valve.lisp > tests/rust-retirement-verdict.lisp
-          if ./target/debug/my-lisp scripts/rust-retirement-valve-enforce.lisp > /tmp/rust-valve-new.log 2>&1; then
+          cp tests/rust-retirement-verdict.lisp /tmp/rust-valve-new.log
+          if ./target/debug/my-lisp scripts/rust-retirement-valve-enforce.lisp >> /tmp/rust-valve-new.log 2>&1; then
             echo 'ERROR: new Rust path was accepted'
             exit 1
           fi
@@ -84,7 +86,8 @@ jobs:
           set -euo pipefail
           cp tests/fixtures/rust-retirement-valve/replacement.lisp tests/rust-retirement-changes.lisp
           ./target/debug/my-lisp scripts/rust-retirement-valve.lisp > tests/rust-retirement-verdict.lisp
-          if ./target/debug/my-lisp scripts/rust-retirement-valve-enforce.lisp > /tmp/rust-valve-replacement.log 2>&1; then
+          cp tests/rust-retirement-verdict.lisp /tmp/rust-valve-replacement.log
+          if ./target/debug/my-lisp scripts/rust-retirement-valve-enforce.lisp >> /tmp/rust-valve-replacement.log 2>&1; then
             echo 'ERROR: replacement Rust was accepted'
             exit 1
           fi
