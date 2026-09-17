@@ -385,35 +385,12 @@ fn reader_supports_unicode_comments_and_quote_sugar() {
     assert_eq!(eval("(quote радіо)"), Value::Symbol("радіо".into()));
 }
 
-#[test]
-fn implements_mccarthys_seven_primitives() {
-    // atom/eq assertions that used to live here were retired (#114/#220):
-    // both are now compiler-corpus rows in tests/fixtures/conformance.lisp,
-    // exercised by witness_authority.rs against the Lisp-owned
-    // witness-runner verdict instead of a Rust-authored expected string.
-    // quote/car/cdr/cons/cond below are unrelated mechanism/parsing checks,
-    // not truth-sentinel semantics, and stay here.
-    assert_eq!(eval("(quote radio)"), Value::Symbol("radio".into()));
-    assert_eq!(
-        eval("(car (quote (radio antenna)))"),
-        Value::Symbol("radio".into())
-    );
-    assert_eq!(
-        eval("(cdr (quote (radio antenna)))"),
-        Value::list([Value::Symbol("antenna".into())])
-    );
-    assert_eq!(
-        eval("(cons (quote radio) (quote (antenna)))"),
-        Value::list([
-            Value::Symbol("radio".into()),
-            Value::Symbol("antenna".into())
-        ])
-    );
-    assert_eq!(
-        eval("(cond (() (quote wrong)) (t (quote right)))"),
-        Value::Symbol("right".into())
-    );
-}
+// implements_mccarthys_seven_primitives was retired here (#114/#220):
+// every case it checked (quote/atom/eq/car/cdr/cons/cond) is now a
+// compiler-corpus row in tests/fixtures/conformance.lisp, exercised by
+// witness_authority.rs against the Lisp-owned witness-runner verdict.
+// Re-asserting the same cases here duplicated that normative meaning in
+// a second, host-authored place.
 
 #[test]
 fn reports_structured_errors_with_source_spans() {
