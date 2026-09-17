@@ -1,6 +1,7 @@
 ; #382 — Lisp-owned repository tooling inventory validator.
 ; GREEN slices: unregistered-tool + duplicate-path + stale-path + closed enums
 ; + Python migration ownership.
+; RED slice: every tooling row must carry every required field.
 
 (def repo-tooling-kinds
   (quote (check generator migration benchmark deploy release helper other)))
@@ -361,6 +362,19 @@
       (replacement ())
       (removal-condition parity-green-and-callers-switched))))
 
+(def repo-tooling-sample-missing-role
+  (quote
+    (tool
+      (path "scripts/a.lisp")
+      (kind check)
+      (language lisp)
+      (lifecycle active)
+      (callers ())
+      (authority-source (issue 382))
+      (migration-issue ())
+      (replacement ())
+      (removal-condition ()))))
+
 (def repo-tooling-selftest-unregistered
   (lambda ()
     (repo-tooling-verdict (list repo-tooling-sample-row-a) (quote ("a.lisp" "b.lisp")))))
@@ -388,6 +402,10 @@
 (def repo-tooling-selftest-python-unowned
   (lambda ()
     (repo-tooling-verdict (list repo-tooling-sample-python-unowned) (quote ("a.py")))))
+
+(def repo-tooling-selftest-missing-role
+  (lambda ()
+    (repo-tooling-verdict (list repo-tooling-sample-missing-role) (quote ("a.lisp")))))
 
 (def repo-tooling-assert-verdict
   (lambda (actual expected)
@@ -426,7 +444,13 @@
   (repo-tooling-selftest-python-unowned)
   (quote (repo-tooling-violation python-migration-unowned "scripts/a.py")))
 
+; RED: a tooling row missing any required field must fail closed.
+(repo-tooling-assert-verdict
+  (repo-tooling-selftest-missing-role)
+  (quote (repo-tooling-violation missing-field role)))
+
 (print
   (quote
     (repo-tooling-selftests-ok
-      unregistered-tool duplicate-path stale-path closed-enums python-migration-ownership)))
+      unregistered-tool duplicate-path stale-path closed-enums
+      python-migration-ownership required-fields)))
