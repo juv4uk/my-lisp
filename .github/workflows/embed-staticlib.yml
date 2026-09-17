@@ -76,6 +76,8 @@ jobs:
 
       - name: Ask rustc for native static link dependencies
         shell: pwsh
+        env:
+          CARGO_TERM_COLOR: never
         run: |
           $nativeOutput = @(& cargo rustc --release -p my-lisp-embed --lib -- --print native-static-libs 2>&1 | ForEach-Object { "$_" })
           $nativeOutput | ForEach-Object { Write-Output $_ }
