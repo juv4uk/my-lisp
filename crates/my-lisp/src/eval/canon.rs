@@ -344,6 +344,16 @@ mod tests {
     }
 
     #[test]
+    fn unknown_semantic_callable_identity_fails_closed() {
+        let span = Span { start: 0, end: 0 };
+        let environment = Environment::root();
+        let error = invoke_semantic_ref("9999", &[], &environment, span)
+            .expect_err("an unknown semantic callable identity must not be guessed from spelling");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "unknown semantic callable identity: 9999");
+    }
+
+    #[test]
     fn empty_list_is_a_value_not_a_primitive_operation() {
         assert_eq!(ground_value(CanonicalIdentity::EmptyList), Some(Value::Nil));
         assert!(value(CanonicalIdentity::Quote).is_none());
