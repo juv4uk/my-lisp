@@ -33,9 +33,10 @@
           (list (quote actual) actual))))
 
 ; #218 supersession layer.
-; The old corpus remains historical evidence that atom/eq once returned T/NIL.
-; Current authority maps only those ratified historical contracts to the new
-; structural result data. No unrelated predicate is rewritten here.
+; The old corpus remains historical evidence that atom/eq/equal? once
+; returned T/NIL. Current authority maps only those ratified historical
+; contracts to the new structural result data. No unrelated predicate is
+; rewritten here.
 (def witness-superseded-outcome
   (lambda (witness expected-entry)
     (cond
@@ -55,6 +56,13 @@
                (list (quote value) "(identity-relation same)"))
               ((equal? (cdr expected-entry) "()")
                (list (quote value) "(identity-relation distinct)"))
+              (t (quote ()))))
+           ((string-prefix? "(equal? " expr)
+            (cond
+              ((equal? (cdr expected-entry) "t")
+               (list (quote value) "(structural-relation same)"))
+              ((equal? (cdr expected-entry) "()")
+               (list (quote value) "(structural-relation distinct)"))
               (t (quote ()))))
            (t (quote ()))))))))
 

@@ -103,7 +103,7 @@ fn canon_peer_surfaces_observe_one_semantic_callable_identity() {
             let source = format!("(eq {} {})", left.name, right.name);
             assert_eq!(
                 eval_source(&source),
-                "t",
+                "(identity-relation same)",
                 "peer surfaces {}:{} and {}:{} share semantic ID 0005 and must be eq by semantic identity",
                 left.namespace,
                 left.name,
@@ -120,7 +120,7 @@ fn canon_peer_surfaces_observe_one_semantic_callable_identity() {
     let source = format!("(eq {} {})", car_surfaces[0].name, cdr_surface.name);
     assert_eq!(
         eval_source(&source),
-        "()",
+        "(identity-relation distinct)",
         "different semantic IDs 0005 and 0006 must remain observably distinct"
     );
 }

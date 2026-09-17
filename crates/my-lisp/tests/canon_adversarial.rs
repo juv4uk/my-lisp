@@ -23,8 +23,8 @@ fn invalid_binding(source: &str) {
 
 #[test]
 fn canon_zero_is_atomic_but_not_a_pair() {
-    assert_eq!(eval("(атом? ())"), "t");
-    assert_eq!(eval("(aṇu ())"), "t");
+    assert_eq!(eval("(атом? ())"), "(structural-kind empty-list)");
+    assert_eq!(eval("(aṇu ())"), "(structural-kind empty-list)");
 }
 
 #[test]

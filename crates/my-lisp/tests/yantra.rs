@@ -234,7 +234,7 @@ fn tool_result_correlated_by_tool_call_id() {
         tool_call = assistant_tool_call("call_pwd_42", "pwd"),
         final_answer = assistant("pwd printed the working directory."),
     );
-    assert_eq!(eval_with_agent(&source), "t");
+    assert_eq!(eval_with_agent(&source), "(structural-relation same)");
 }
 
 /// Test 5: the hard MAX_TURNS limit stops an endlessly tool-calling model
@@ -275,7 +275,7 @@ fn json_encode_and_parse_round_trip() {
     .to_string();
     assert_eq!(
         eval_with_agent(&source),
-        "(t \"say \\\"hi\\\"\\nnow\" 1)",
+        "((structural-relation same) \"say \\\"hi\\\"\\nnow\" 1)",
         "encode/parse round trip must preserve strings incl. escapes"
     );
 }

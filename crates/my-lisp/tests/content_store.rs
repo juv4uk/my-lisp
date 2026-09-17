@@ -229,7 +229,7 @@ fn lisp_fs_f6_image_records_are_deterministic_and_data_only() {
                 (fs-deserialize-object object-a)))
             "#
         ),
-        "(t t (accepted (lambda (x) x)))"
+        "((structural-relation same) (structural-relation same) (accepted (lambda (x) x)))"
     );
 }
 
@@ -531,6 +531,6 @@ fn worlds_with_equal_projection_but_different_history_remain_distinct() {
                         (content-store-size store)))))
             "#
         ),
-        "(t 2)"
+        "((structural-relation same) 2)"
     );
 }

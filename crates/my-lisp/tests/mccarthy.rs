@@ -103,15 +103,20 @@ fn exact_arithmetic_handles_products_beyond_i64_range() {
 
 #[test]
 fn bare_large_integer_literals_remain_exact() {
+    // The `eq` assertion this test used to carry (t/() for equal large
+    // literals) was retired here: #218 migrated `eq` to the Lisp-owned
+    // `(identity-relation same|distinct)` contract, already covered as an
+    // observer test against tests/fixtures/structural-observation-v1.lisp
+    // (crates/my-lisp/tests/structural_observation_contract.rs). Reasserting
+    // a hardcoded `t` here would duplicate that normative meaning in a
+    // second, host-authored place -- exactly what #114 asks migrated tests
+    // to stop doing. This test's own irreducible value is the exact-integer
+    // evidence below, which is unrelated to eq/truth semantics.
     let literal = "123456789012345678901234567890";
     assert_eq!(eval(literal).to_string(), literal);
     assert_eq!(
         eval(&format!("(+ {literal} 1)")).to_string(),
         "123456789012345678901234567891"
-    );
-    assert_eq!(
-        eval(&format!("(eq {literal} {literal})")),
-        Value::Symbol("t".into())
     );
 }
 
@@ -364,42 +369,14 @@ fn bootstrap_library_provides_let_and_let_star() {
     assert_eq!(run("(let* () 7)", &mut session), "7");
 }
 
-#[test]
-fn bootstrap_library_provides_deep_structural_equality() {
-    let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
-    let run = |source: &str, session: &mut Session| {
-        eval_program(source, session).unwrap().value.to_string()
-    };
-    assert_eq!(
-        run("(equal? (quote (1 2 3)) (quote (1 2 3)))", &mut session),
-        "t"
-    );
-    assert_eq!(
-        run("(equal? (quote (1 2 3)) (quote (1 2 4)))", &mut session),
-        "()"
-    );
-    assert_eq!(
-        run(
-            "(equal? (quote (1 (2 3) 4)) (quote (1 (2 3) 4)))",
-            &mut session
-        ),
-        "t"
-    );
-    assert_eq!(run("(equal? (quote ()) (quote ()))", &mut session), "t");
-    assert_eq!(
-        run("(equal? (quote radio) (quote radio))", &mut session),
-        "t"
-    );
-    // Different lengths, and an atom compared against a compound term —
-    // neither should ever reach `eq` with a non-atom operand.
-    assert_eq!(
-        run("(equal? (quote (1 2)) (quote (1 2 3)))", &mut session),
-        "()"
-    );
-    assert_eq!(run("(equal? 5 (quote (5)))", &mut session), "()");
-    assert_eq!(run("(equal? (quote (1 2)) 5)", &mut session), "()");
-}
+// bootstrap_library_provides_deep_structural_equality was retired here
+// (#114/#220): every `equal?` case it checked now lives as a
+// compiler-corpus row in tests/fixtures/conformance.lisp, exercised by
+// crates/my-lisp/tests/witness_authority.rs's
+// compiler_corpus_native_actuals_are_judged_only_by_lisp_owned_witness_logic,
+// which asks the Lisp-owned witness-runner for the verdict instead of a
+// Rust-authored expected string. Re-asserting the same cases here would
+// duplicate that normative meaning in a second, host-authored place.
 
 #[test]
 fn reader_supports_unicode_comments_and_quote_sugar() {
@@ -410,18 +387,13 @@ fn reader_supports_unicode_comments_and_quote_sugar() {
 
 #[test]
 fn implements_mccarthys_seven_primitives() {
+    // atom/eq assertions that used to live here were retired (#114/#220):
+    // both are now compiler-corpus rows in tests/fixtures/conformance.lisp,
+    // exercised by witness_authority.rs against the Lisp-owned
+    // witness-runner verdict instead of a Rust-authored expected string.
+    // quote/car/cdr/cons/cond below are unrelated mechanism/parsing checks,
+    // not truth-sentinel semantics, and stay here.
     assert_eq!(eval("(quote radio)"), Value::Symbol("radio".into()));
-    assert_eq!(eval("(atom (quote radio))"), Value::Symbol("t".into()));
-    assert_eq!(eval("(atom (quote ()))"), Value::Symbol("t".into()));
-    assert_eq!(eval("(atom (quote (radio antenna)))"), Value::Nil);
-    assert_eq!(
-        eval("(eq (quote radio) (quote radio))"),
-        Value::Symbol("t".into())
-    );
-    assert_eq!(
-        eval("(eq (quote radio) (quote antenna))"),
-        Value::Nil
-    );
     assert_eq!(
         eval("(car (quote (radio antenna)))"),
         Value::Symbol("radio".into())
@@ -1248,13 +1220,10 @@ fn eval_with_core(source: &str) -> Value {
     eval_program(source, &mut session).unwrap().value
 }
 
-#[test]
-fn a_quoted_dotted_pair_literal_equals_the_cons_it_prints_as() {
-    assert_eq!(
-        eval_with_core("(equal? (quote (p . 0)) (cons (quote p) 0))").to_string(),
-        "t"
-    );
-}
+// a_quoted_dotted_pair_literal_equals_the_cons_it_prints_as was retired
+// here (#114/#220): its exact `equal?` case is now a compiler-corpus row
+// in tests/fixtures/conformance.lisp, exercised by witness_authority.rs
+// against the Lisp-owned witness-runner verdict.
 
 #[test]
 fn read_of_a_printed_dotted_pair_reconstructs_the_same_structure() {
@@ -1263,7 +1232,7 @@ fn read_of_a_printed_dotted_pair_reconstructs_the_same_structure() {
     // `read` must reconstruct something `equal?` to the original cons cell.
     assert_eq!(
         eval_with_core(r#"(equal? (read "(p . 0)") (cons (quote p) 0))"#).to_string(),
-        "t"
+        "(structural-relation same)"
     );
 }
 
@@ -1586,17 +1555,37 @@ fn core_predicates_are_eq_to_canonical_t_or_nil_not_a_hidden_bool() {
     // A printer-only check is insufficient here: Bool(false) and Nil
     // both print as "()" (this was true before this fix too). `eq`
     // is the only way to observe the underlying representation.
-    assert_eq!(eval("(eq (< 1 2) t)"), Value::truth(true));
-    assert_eq!(eval("(eq (< 2 1) (quote ()))"), Value::truth(true));
-    assert_eq!(eval("(eq (= 1 1) t)"), Value::truth(true));
-    assert_eq!(eval("(eq (= 1 2) (quote ()))"), Value::truth(true));
-    assert_eq!(eval(r#"(eq (string<? "a" "b") t)"#), Value::truth(true));
+    //
+    // #218 migrated `eq` from raw t/() to `(identity-relation same|distinct)`;
+    // `Value::Nil`/`Value::Bool` themselves remain distinct under `PartialEq`
+    // (see value.rs), so `eq` still faithfully reports "same"/"distinct"
+    // here -- only the shape of eq's own result changed, not what it proves.
+    assert_eq!(eval("(eq (< 1 2) t)").to_string(), "(identity-relation same)");
     assert_eq!(
-        eval(r#"(eq (string<? "b" "a") (quote ()))"#),
-        Value::truth(true)
+        eval("(eq (< 2 1) (quote ()))").to_string(),
+        "(identity-relation same)"
     );
-    assert_eq!(eval(r#"(eq (string? "x") t)"#), Value::truth(true));
-    assert_eq!(eval("(eq (string? 5) (quote ()))"), Value::truth(true));
+    assert_eq!(eval("(eq (= 1 1) t)").to_string(), "(identity-relation same)");
+    assert_eq!(
+        eval("(eq (= 1 2) (quote ()))").to_string(),
+        "(identity-relation same)"
+    );
+    assert_eq!(
+        eval(r#"(eq (string<? "a" "b") t)"#).to_string(),
+        "(identity-relation same)"
+    );
+    assert_eq!(
+        eval(r#"(eq (string<? "b" "a") (quote ()))"#).to_string(),
+        "(identity-relation same)"
+    );
+    assert_eq!(
+        eval(r#"(eq (string? "x") t)"#).to_string(),
+        "(identity-relation same)"
+    );
+    assert_eq!(
+        eval("(eq (string? 5) (quote ()))").to_string(),
+        "(identity-relation same)"
+    );
 }
 
 #[test]

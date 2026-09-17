@@ -60,7 +60,7 @@ fn generated_projection_exposes_only_admitted_runtime_surfaces() {
         &mut session,
     )
     .expect("projection witness should execute");
-    assert_eq!(result.value.to_string(), "t");
+    assert_eq!(result.value.to_string(), "(structural-kind empty-list)");
 }
 
 #[test]
@@ -68,7 +68,7 @@ fn canonical_surface_parity_survives_registry_indirection() {
     // Every surface spelling below names the same semantic identity, so
     // every one of them must evaluate to the same authored expected value —
     // checked independently for native and meta, never against each other.
-    let expected = "t";
+    let expected = "(structural-kind atom)";
     for source in [
         "(atom (quote x))",
         "(атом? (як-є x))",

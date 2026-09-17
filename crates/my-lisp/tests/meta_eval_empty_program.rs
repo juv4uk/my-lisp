@@ -16,5 +16,5 @@ fn empty_program_preserves_environment_and_returns_empty_result() {
 "#;
 
     let result = eval_program(witness, &mut session).unwrap();
-    assert_eq!(result.value.to_string(), "(t ())");
+    assert_eq!(result.value.to_string(), "((structural-relation same) ())");
 }

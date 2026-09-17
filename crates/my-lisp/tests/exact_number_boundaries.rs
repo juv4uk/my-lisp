@@ -96,7 +96,14 @@ fn exactness_is_observable_while_numeric_equality_compares_magnitude() {
     let identity = eval(r#"(def x (json-parse "3.0")) (eq 3 x)"#);
     let magnitude = eval(r#"(def x (json-parse "3.0")) (= 3 x)"#);
 
-    assert_eq!(identity, Value::Nil, "eq must preserve the exact/inexact distinction");
+    assert_eq!(
+        identity,
+        Value::list([
+            Value::Symbol("identity-relation".into()),
+            Value::Symbol("distinct".into())
+        ]),
+        "eq must preserve the exact/inexact distinction"
+    );
     assert_eq!(magnitude, Value::Symbol("t".into()));
 }
 

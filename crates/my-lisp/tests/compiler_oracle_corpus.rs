@@ -12,6 +12,30 @@
 
 use my_lisp::{eval_program, load_core_library, parse, Expr, ExprKind, Session};
 
+/// #218 retired t/() for atom/eq/equal?, replacing them with named
+/// structural records. The historical `expected` field in
+/// tests/fixtures/conformance.lisp is deliberately left as pre-#218
+/// evidence (see tests/fixtures/witness-runner.lisp's own comment); this
+/// resolves each fixture's *current* expected value through that same
+/// Lisp-owned supersession mapping instead of hand-duplicating it here.
+fn resolve_expected(session: &mut Session, expr: &str, expected: &str) -> String {
+    let program = format!(
+        r#"(witness-superseded-outcome (quote ((expr . "{}") (expected . "{}"))) (quote (expected . "{}")))"#,
+        expr.replace('\\', "\\\\").replace('"', "\\\""),
+        expected.replace('\\', "\\\\").replace('"', "\\\""),
+        expected.replace('\\', "\\\\").replace('"', "\\\""),
+    );
+    let superseded = eval_program(&program, session)
+        .expect("witness-superseded-outcome must evaluate")
+        .value
+        .to_string();
+    if let Some(rest) = superseded.strip_prefix("(value \"").and_then(|s| s.strip_suffix("\")")) {
+        rest.replace("\\\"", "\"").replace("\\\\", "\\")
+    } else {
+        expected.to_string()
+    }
+}
+
 fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
     entries.iter().find_map(|entry| {
         let ExprKind::Pair(k, v) = &entry.kind else {
@@ -49,6 +73,14 @@ struct CorpusEntry {
 }
 
 fn load_corpus() -> Vec<CorpusEntry> {
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("lib/core.my should load");
+    eval_program(
+        include_str!("../../../tests/fixtures/witness-runner.lisp"),
+        &mut session,
+    )
+    .expect("witness-runner.lisp must load");
+
     let forms = parse(include_str!("../../../tests/fixtures/conformance.lisp"))
         .expect("conformance.my should parse as valid my-lisp source");
     forms
@@ -61,7 +93,8 @@ fn load_corpus() -> Vec<CorpusEntry> {
                 return None;
             }
             let expr = alist_str(entries, "expr")?.to_string();
-            let expected = alist_str(entries, "expected").map(str::to_string);
+            let expected = alist_str(entries, "expected")
+                .map(|value| resolve_expected(&mut session, &expr, value));
             let error = alist_str(entries, "error").map(str::to_string);
             Some(CorpusEntry {
                 expr,

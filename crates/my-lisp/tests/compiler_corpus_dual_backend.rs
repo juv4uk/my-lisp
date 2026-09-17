@@ -23,6 +23,30 @@
 
 use my_lisp::{eval_program, load_core_library, load_meta_evaluator_library, parse, Expr, ExprKind, Session};
 
+/// #218 retired t/() for atom/eq/equal?, replacing them with named
+/// structural records. The historical `expected` field in
+/// tests/fixtures/conformance.lisp is deliberately left as pre-#218
+/// evidence (see tests/fixtures/witness-runner.lisp's own comment); this
+/// resolves each fixture's *current* expected value through that same
+/// Lisp-owned supersession mapping instead of hand-duplicating it here.
+fn resolve_expected(session: &mut Session, expr: &str, expected: &str) -> String {
+    let program = format!(
+        r#"(witness-superseded-outcome (quote ((expr . "{}") (expected . "{}"))) (quote (expected . "{}")))"#,
+        expr.replace('\\', "\\\\").replace('"', "\\\""),
+        expected.replace('\\', "\\\\").replace('"', "\\\""),
+        expected.replace('\\', "\\\\").replace('"', "\\\""),
+    );
+    let superseded = eval_program(&program, session)
+        .expect("witness-superseded-outcome must evaluate")
+        .value
+        .to_string();
+    if let Some(rest) = superseded.strip_prefix("(value \"").and_then(|s| s.strip_suffix("\")")) {
+        rest.replace("\\\"", "\"").replace("\\\\", "\\")
+    } else {
+        expected.to_string()
+    }
+}
+
 struct CompilerCorpusFixture {
     expr: String,
     expected: String,
@@ -64,6 +88,14 @@ fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
 /// different question (does a second backend raise the same NAMED
 /// failure), not attempted here.
 fn compiler_corpus_fixtures() -> Vec<CompilerCorpusFixture> {
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("lib/core.my should load");
+    eval_program(
+        include_str!("../../../tests/fixtures/witness-runner.lisp"),
+        &mut session,
+    )
+    .expect("witness-runner.lisp must load");
+
     let source = include_str!("../../../tests/fixtures/conformance.lisp");
     let forms = parse(source).expect("conformance.my should parse");
     forms
@@ -78,8 +110,8 @@ fn compiler_corpus_fixtures() -> Vec<CompilerCorpusFixture> {
             let expected = alist_str(entries, "expected")?;
             let expr = alist_str(entries, "expr")?;
             Some(CompilerCorpusFixture {
+                expected: resolve_expected(&mut session, expr, expected),
                 expr: expr.to_string(),
-                expected: expected.to_string(),
                 meta_eval_gap: alist_bool_true(entries, "meta-eval-gap"),
             })
         })

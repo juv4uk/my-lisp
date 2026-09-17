@@ -40,22 +40,22 @@ fn make_vector_fills_with_nil_and_length_reports_size() {
 
 #[test]
 fn vectors_are_structurally_equal_across_objects() {
-    assert_eq!(eval_source("(eq (vector 1 2 3) (vector 1 2 3))"), "t");
+    assert_eq!(eval_source("(eq (vector 1 2 3) (vector 1 2 3))"), "(identity-relation same)");
     assert_eq!(
         eval_source("(def v (vector 1 2))\n(eq v v)"),
-        "t",
+        "(identity-relation same)",
         "identity case must also hold"
     );
-    assert_eq!(eval_source("(eq (vector 1 2) (vector 1 9))"), "()");
-    assert_eq!(eval_source("(eq (vector 1 2) (vector 1))"), "()");
-    assert_eq!(eval_source("(eq (vector) (vector))"), "t");
+    assert_eq!(eval_source("(eq (vector 1 2) (vector 1 9))"), "(identity-relation distinct)");
+    assert_eq!(eval_source("(eq (vector 1 2) (vector 1))"), "(identity-relation distinct)");
+    assert_eq!(eval_source("(eq (vector) (vector))"), "(identity-relation same)");
 }
 
 #[test]
 fn nested_elements_compare_structurally() {
     assert_eq!(
         eval_source("(eq (vector (list 1 2)) (vector (list 1 2)))"),
-        "t"
+        "(identity-relation same)"
     );
 }
 

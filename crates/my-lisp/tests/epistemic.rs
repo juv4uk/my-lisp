@@ -411,7 +411,7 @@ fn supporting_evidence_returns_the_matching_record_for_a_supports_outcome_and_cl
                    (quote (claim-ref cml-build-available)))
                  (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (digest "d"))))"#
         ),
-        "t"
+        "(structural-relation same)"
     );
 }
 
@@ -453,7 +453,7 @@ fn supporting_evidence_matches_structural_claim_refs_via_equal() {
                    (quote (claim-ref (claim (statement (build cml succeeds)) (source (observation local-run)) (review proposed))))
                    (quote live-test) (quote supports) (quote (digest "d"))))"#
         ),
-        "t"
+        "(structural-relation same)"
     );
 }
 
@@ -533,7 +533,7 @@ fn canonical_values_round_trip_through_write_to_string_and_read() {
                 .unwrap()
                 .value
                 .to_string(),
-            "t",
+            "(structural-relation same)",
             "round trip failed for: {expr}"
         );
     }
@@ -588,33 +588,35 @@ fn write_to_string_round_trips_every_core_predicate_result_bool_stays_a_boundary
 
     assert_eq!(
         run(&mut session, "(eq (read (write-to-string ())) ())"),
-        "t",
+        "(identity-relation same)",
         "Nil round-trips correctly today; if this fails, something else broke"
     );
-    assert_eq!(
-        run(
-            &mut session,
-            "(eq (read (write-to-string (eq 1 1))) (eq 1 1))"
-        ),
-        "t",
-        "eq's own result now round-trips: it returns Symbol(\"t\")/Nil, not Bool -- if this fails, that changed again"
-    );
+    // The case that used to live here -- `(eq (eq 1 1) (eq 1 1))` -- no
+    // longer type-checks at all: #218 migrated `eq`'s own result from an
+    // atom (Symbol("t")/Nil) to the compound record
+    // `(identity-relation same|distinct)`, and canonical `eq` requires both
+    // operands to be atoms. `(eq 1 1)` is itself no longer a valid `eq`
+    // operand. Whether/how `eq`'s own result should be compared for
+    // round-trip fidelity (via `equal?`, or some other means) is a new
+    // question this migration raises, not one this pre-existing assertion
+    // can answer by substitution -- left open rather than decided here.
     assert_eq!(
         run(&mut session, "(eq (read (write-to-string (< 2 1))) (< 2 1))"),
-        "t",
-        "FIXED: `<` now returns Value::truth, not Value::Bool -- round-trips like Nil/t always did"
+        "(identity-relation same)",
+        "`<` still returns Value::truth (an atom) today -- #216 has not migrated \
+         comparisons yet, so this round-trips exactly like Nil/t always did"
     );
     assert_eq!(
         run(&mut session, "(eq (read (write-to-string (< 1 2))) (< 1 2))"),
-        "t",
-        "FIXED: same for the true case"
+        "(identity-relation same)",
+        "same for the true case"
     );
     assert_eq!(
         run(
             &mut session,
             r#"(eq (read (write-to-string (json-parse "false"))) (json-parse "false"))"#
         ),
-        "()",
+        "(identity-relation distinct)",
         "still true, and correctly so: json-parse's Bool(false) is a real JSON boundary value \
          (JSON has its own true/false/null triple), deliberately not migrated -- this pins that \
          the boundary is untouched, not that it's still broken"

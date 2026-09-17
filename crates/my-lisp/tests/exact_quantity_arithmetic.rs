@@ -39,7 +39,7 @@ fn speed_of_light_times_one_second_is_exact_distance_and_divides_back() {
 
     assert_eq!(
         eval_exact_quantity(source),
-        "((quantity/1 299792458 (unit/1 (dimension/1 metre 1))) (quantity/1 299792458 (unit/1 (dimension/1 metre 1) (dimension/1 second -1))) t)"
+        "((quantity/1 299792458 (unit/1 (dimension/1 metre 1))) (quantity/1 299792458 (unit/1 (dimension/1 metre 1) (dimension/1 second -1))) (structural-relation same))"
     );
 }
 
