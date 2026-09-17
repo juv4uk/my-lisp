@@ -1,6 +1,5 @@
 ; #382 — Lisp-owned repository tooling inventory validator.
-; RED-first: unregistered-tool coverage already has a minimal implementation;
-; duplicate-path is the next intentionally missing rule and must fail below.
+; GREEN slices so far: unregistered-tool + duplicate-path.
 
 (def repo-tooling-field-from
   (lambda (name fields)
@@ -55,10 +54,34 @@
            ((atom found) (structural-kind pair)
             (repo-tooling-observed-coverage-verdict rows (cdr observed)))))))))
 
-; duplicate-path validation is intentionally absent in this RED commit.
+(def repo-tooling-duplicate-path-verdict
+  (lambda (rows)
+    (cond
+      ((atom rows) (structural-kind empty-list) (list (quote repo-tooling-ok)))
+      ((atom rows) (structural-kind atom)
+       (repo-tooling-violation (quote malformed-inventory-list) rows))
+      ((atom rows) (structural-kind pair)
+       (let* ((row (car rows))
+              (path (repo-tooling-field (quote path) row))
+              (found (repo-tooling-find-row-by-path path (cdr rows))))
+         (cond
+           ((atom found) (structural-kind empty-list)
+            (repo-tooling-duplicate-path-verdict (cdr rows)))
+           ((atom found) (structural-kind atom)
+            (repo-tooling-violation (quote malformed-row) path))
+           ((atom found) (structural-kind pair)
+            (repo-tooling-violation (quote duplicate-path) path))))))))
+
 (def repo-tooling-verdict
   (lambda (rows observed)
-    (repo-tooling-observed-coverage-verdict rows observed)))
+    (let ((duplicate-verdict (repo-tooling-duplicate-path-verdict rows)))
+      (cond
+        ((equal? duplicate-verdict (list (quote repo-tooling-ok)))
+         (structural-relation same)
+         (repo-tooling-observed-coverage-verdict rows observed))
+        ((equal? duplicate-verdict (list (quote repo-tooling-ok)))
+         (structural-relation distinct)
+         duplicate-verdict)))))
 
 (def repo-tooling-sample-row-a
   (quote
@@ -95,12 +118,10 @@
        (let ((shown (print actual)))
          (car (quote ())))))))
 
-; Existing implemented behavior must remain GREEN.
 (repo-tooling-assert-verdict
   (repo-tooling-selftest-unregistered)
   (quote (repo-tooling-violation unregistered-tool "scripts/b.lisp")))
 
-; RED: current validator returns (repo-tooling-ok); it must learn duplicate paths.
 (repo-tooling-assert-verdict
   (repo-tooling-selftest-duplicate-path)
   (quote (repo-tooling-violation duplicate-path "scripts/a.lisp")))
