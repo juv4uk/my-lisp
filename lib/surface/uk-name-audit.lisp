@@ -3,10 +3,10 @@
 
 (uk-name-audit
   (schema uk-name-audit/1)
-  (reviewed-at "2026-09-08")
-  (stable-reviewed 140)
+  (reviewed-at "2026-09-18")
+  (stable-reviewed 142)
   (renamed 42)
-  (retained 98)
+  (retained 100)
   (criteria semantic-accuracy natural-ukrainian intuitive-without-english)
   (renames
     (rename string<? текст-менше? текст-передує? "Лексикографічний порядок: «передує» не плутається з довжиною тексту.")
