@@ -353,9 +353,17 @@
 (defmacro let* (bindings body)
   (cond
     ((atom bindings) body)
-    (t (list (quote let)
-             (list (car bindings))
-             (list (quote let*) (cdr bindings) body)))))
+    (t
+     ; Build the recursive expansion from the primitive tree substrate only.
+     ; This keeps let* semantics in Lisp while allowing generic macro
+     ; frontends to execute the law without importing the higher-level list
+     ; helper as host/compiler semantic authority.
+     (cons (quote let)
+           (cons (cons (car bindings) (quote ()))
+                 (cons (cons (quote let*)
+                             (cons (cdr bindings)
+                                   (cons body (quote ()))))
+                       (quote ())))))))
 
 ; string-length/string-empty?/string-prefix?/string-contains? (PLAN.md
 ; item 14, item 20's G5 audit test applied live) — none of these need a
