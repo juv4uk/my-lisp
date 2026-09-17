@@ -1,6 +1,10 @@
 ; #383 — Lisp-owned knowledge artifact authority classification checker.
-; GREEN slice: newly observed artifacts require explicit classification rows.
-; RED slice: every classification row must carry all required fields.
+; GREEN slices:
+; - newly observed artifacts require explicit classification rows;
+; - every classification row must carry the required provenance fields.
+
+(def knowledge-authority-required-fields
+  (quote (path class scope authority-source lifecycle consumers)))
 
 (def knowledge-authority-field-from
   (lambda (name fields)
@@ -37,6 +41,65 @@
   (lambda (kind detail)
     (list (quote knowledge-authority-violation) kind detail)))
 
+(def knowledge-authority-verdict-ok-state
+  (lambda (verdict)
+    (cond
+      ((equal? verdict (list (quote knowledge-authority-ok)))
+       (structural-relation same)
+       (quote yes))
+      ((equal? verdict (list (quote knowledge-authority-ok)))
+       (structural-relation distinct)
+       (quote no)))))
+
+(def knowledge-authority-required-fields-verdict
+  (lambda (required row)
+    (cond
+      ((atom required) (structural-kind empty-list)
+       (list (quote knowledge-authority-ok)))
+      ((atom required) (structural-kind atom)
+       (knowledge-authority-violation (quote malformed-required-field-list) required))
+      ((atom required) (structural-kind pair)
+       (let* ((name (car required))
+              (value (knowledge-authority-field name row)))
+         (cond
+           ((equal? value (quote missing)) (structural-relation same)
+            (knowledge-authority-violation (quote missing-field) name))
+           ((equal? value (quote missing)) (structural-relation distinct)
+            (knowledge-authority-required-fields-verdict (cdr required) row))))))))
+
+(def knowledge-authority-row-required-verdict
+  (lambda (row)
+    (cond
+      ((atom row) (structural-kind empty-list)
+       (knowledge-authority-violation (quote malformed-row) row))
+      ((atom row) (structural-kind atom)
+       (knowledge-authority-violation (quote malformed-row) row))
+      ((atom row) (structural-kind pair)
+       (cond
+         ((eq (car row) (quote artifact)) (identity-relation same)
+          (knowledge-authority-required-fields-verdict
+            knowledge-authority-required-fields
+            row))
+         ((eq (car row) (quote artifact)) (identity-relation distinct)
+          (knowledge-authority-violation (quote malformed-row-kind) (car row))))))))
+
+(def knowledge-authority-required-verdict
+  (lambda (rows)
+    (cond
+      ((atom rows) (structural-kind empty-list)
+       (list (quote knowledge-authority-ok)))
+      ((atom rows) (structural-kind atom)
+       (knowledge-authority-violation (quote malformed-inventory-list) rows))
+      ((atom rows) (structural-kind pair)
+       (let ((row-verdict (knowledge-authority-row-required-verdict (car rows))))
+         (cond
+           ((eq (knowledge-authority-verdict-ok-state row-verdict) (quote yes))
+            (identity-relation same)
+            (knowledge-authority-required-verdict (cdr rows)))
+           ((eq (knowledge-authority-verdict-ok-state row-verdict) (quote no))
+            (identity-relation same)
+            row-verdict)))))))
+
 (def knowledge-authority-observed-coverage-verdict
   (lambda (rows observed)
     (cond
@@ -55,6 +118,17 @@
             (knowledge-authority-violation (quote malformed-row) path))
            ((atom found) (structural-kind pair)
             (knowledge-authority-observed-coverage-verdict rows (cdr observed)))))))))
+
+(def knowledge-authority-verdict
+  (lambda (rows observed)
+    (let ((required-verdict (knowledge-authority-required-verdict rows)))
+      (cond
+        ((eq (knowledge-authority-verdict-ok-state required-verdict) (quote yes))
+         (identity-relation same)
+         (knowledge-authority-observed-coverage-verdict rows observed))
+        ((eq (knowledge-authority-verdict-ok-state required-verdict) (quote no))
+         (identity-relation same)
+         required-verdict)))))
 
 (def knowledge-authority-sample-row
   (quote
@@ -77,14 +151,13 @@
 
 (def knowledge-authority-selftest-unclassified
   (lambda ()
-    (knowledge-authority-observed-coverage-verdict
+    (knowledge-authority-verdict
       (list knowledge-authority-sample-row)
       (quote ("a.lisp" "b.lisp")))))
 
-; Intentionally RED: coverage alone cannot detect a present row with missing schema fields.
 (def knowledge-authority-selftest-missing-class
   (lambda ()
-    (knowledge-authority-observed-coverage-verdict
+    (knowledge-authority-verdict
       (list knowledge-authority-sample-missing-class)
       (quote ("a.lisp")))))
 
