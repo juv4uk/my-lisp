@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - perf/74-balanced-unicode-string-materialization
+  pull_request:
+    paths:
+      - lib/utf8.lisp
+      - scripts/benchmark-semantic-registry-read.lisp
+      - .github/workflows/issue-74-real-readfile-benchmark.yml
   workflow_dispatch:
 
 jobs:
