@@ -25,8 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: host-abi-${{ matrix.os }}
       - name: Guest ABI isolation witness
         run: cargo test -p my-lisp-host --test native_guest_abi -- --nocapture
+      - name: Existing native execution witnesses
+        run: cargo test -p my-lisp-host --test native_lisp_bytes --test native_cond_profile
+      - name: Clippy host crate
+        run: cargo clippy -p my-lisp-host --all-targets -- -D warnings
