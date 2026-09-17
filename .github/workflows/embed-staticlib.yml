@@ -74,10 +74,33 @@ jobs:
           }
           Write-Output "staticlib=$env:MY_LISP_EMBED_STATIC"
 
+      - name: Ask rustc for native static link dependencies
+        shell: pwsh
+        run: |
+          $nativeOutput = @(& cargo rustc --release -p my-lisp-embed --lib -- --print native-static-libs 2>&1 | ForEach-Object { "$_" })
+          $nativeOutput | ForEach-Object { Write-Output $_ }
+          if ($LASTEXITCODE -ne 0) {
+            throw 'rustc failed while reporting native-static-libs'
+          }
+
+          $matches = @($nativeOutput | Where-Object { $_ -match 'native-static-libs:\s*(.+)$' })
+          if ($matches.Count -eq 0) {
+            throw 'rustc did not report native-static-libs for my-lisp-embed'
+          }
+          $match = [regex]::Match($matches[-1], 'native-static-libs:\s*(.+)$')
+          $libs = @($match.Groups[1].Value.Trim() -split '\s+' | Where-Object { $_ })
+          if ($libs.Count -eq 0) {
+            throw 'native-static-libs report was empty'
+          }
+          $libs | ForEach-Object { Write-Output "native-lib=$_" }
+          "MY_LISP_NATIVE_LIBS=$($libs -join ';')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Configure native static C consumer
         shell: pwsh
         run: |
-          cmake -S crates/my-lisp-embed/tests/static-consumer -B target/static-consumer -DMY_LISP_EMBED_STATIC="$env:MY_LISP_EMBED_STATIC"
+          cmake -S crates/my-lisp-embed/tests/static-consumer -B target/static-consumer `
+            "-DMY_LISP_EMBED_STATIC=$env:MY_LISP_EMBED_STATIC" `
+            "-DMY_LISP_NATIVE_LIBS=$env:MY_LISP_NATIVE_LIBS"
           if ($LASTEXITCODE -ne 0) { throw 'static consumer configure failed' }
 
       - name: Link native static C consumer
