@@ -1,6 +1,6 @@
 ; #383 — Lisp-owned knowledge artifact authority classification checker.
-; GREEN slice: a newly observed knowledge artifact must not pass without
-; an explicit classification row.
+; GREEN slice: newly observed artifacts require explicit classification rows.
+; RED slice: every classification row must carry all required fields.
 
 (def knowledge-authority-field-from
   (lambda (name fields)
@@ -66,11 +66,27 @@
       (lifecycle active)
       (consumers ()))))
 
+(def knowledge-authority-sample-missing-class
+  (quote
+    (artifact
+      (path "knowledge/a.lisp")
+      (scope sample)
+      (authority-source (issue 383))
+      (lifecycle active)
+      (consumers ()))))
+
 (def knowledge-authority-selftest-unclassified
   (lambda ()
     (knowledge-authority-observed-coverage-verdict
       (list knowledge-authority-sample-row)
       (quote ("a.lisp" "b.lisp")))))
+
+; Intentionally RED: coverage alone cannot detect a present row with missing schema fields.
+(def knowledge-authority-selftest-missing-class
+  (lambda ()
+    (knowledge-authority-observed-coverage-verdict
+      (list knowledge-authority-sample-missing-class)
+      (quote ("a.lisp")))))
 
 (def knowledge-authority-assert-verdict
   (lambda (actual expected)
@@ -88,4 +104,8 @@
       unclassified-artifact
       "knowledge/b.lisp")))
 
-(print (quote (knowledge-authority-selftests-ok unclassified-artifact)))
+(knowledge-authority-assert-verdict
+  (knowledge-authority-selftest-missing-class)
+  (quote (knowledge-authority-violation missing-field class)))
+
+(print (quote (knowledge-authority-selftests-ok unclassified-artifact missing-field)))
