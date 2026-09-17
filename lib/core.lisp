@@ -450,7 +450,7 @@
 ; quotient/mod (G5-тест: уже виразне через наявне?) — так. На відміну
 ; від бітових операцій (AND/OR/XOR/зсув — жоден примітив узагалі не
 ; відкриває бінарне представлення числа, тож ті справді потребували б
-; нового Rust-примітиву), цілочисельне ділення й остача для
+; нового Rust-примітива), цілочисельне ділення й остача для
 ; невід'ємних чисел випливають напряму з наявних арифметичних і
 ; порівняльних примітивів — без нового Rust-коду, той самий клас
 ; прогалини, що й string-length раніше. Знахідка з сесії fpga-lisp,
@@ -508,35 +508,30 @@
   (lambda (a b)
     (- a (* b (quotient a b)))))
 
-; `<=` and `>=` need no Rust dispatch: the strict comparisons plus equality
-; already preserve exact/inexact numeric semantics, while ordinary recursion
-; supplies variadic chaining. A required first parameter keeps zero arguments
-; an Arity error; one argument is vacuously ordered, matching the old builtin.
-; `<=` і `>=` не потребують Rust-dispatch: строгих порівнянь і рівності вже
-; досить, а ланцюжок дає звичайна рекурсія. Обов'язковий first параметр
-; зберігає Arity для нуля аргументів; один аргумент тривіально впорядкований.
-; `<=` und `>=` brauchen keinen Rust-Dispatch: strikte Vergleiche und Gleichheit
-; reichen, gewöhnliche Rekursion liefert die Verkettung. Der Pflichtparameter
-; erhält den Arity-Fehler bei null Argumenten; ein Argument ist trivial geordnet.
+; `<=` and `>=` stay Lisp-derived, but #216 now requires the derived
+; operators to preserve the same exact-Q answer algebra as `<`, `>` and `=`:
+; exact YES -> 1/1, exact NO -> 0/1, and any inexact operand -> Canon 0 `()`.
+; Canonical three-part `cond` distinguishes exact NO (0) from no-answer `()`
+; without routing either through generic truthiness.
 (def nondecreasing-from?
   (lambda (current remaining)
     (cond
-      ((atom remaining) t)
-      ((< current (car remaining))
+      ((atom remaining) (structural-kind empty-list) 1)
+      ((< current (car remaining)) 1
        (nondecreasing-from? (car remaining) (cdr remaining)))
-      ((= current (car remaining))
+      ((= current (car remaining)) 1
        (nondecreasing-from? (car remaining) (cdr remaining)))
-      (t (quote ())))))
+      ((= current (car remaining)) 0 0))))
 
 (def nonincreasing-from?
   (lambda (current remaining)
     (cond
-      ((atom remaining) t)
-      ((> current (car remaining))
+      ((atom remaining) (structural-kind empty-list) 1)
+      ((> current (car remaining)) 1
        (nonincreasing-from? (car remaining) (cdr remaining)))
-      ((= current (car remaining))
+      ((= current (car remaining)) 1
        (nonincreasing-from? (car remaining) (cdr remaining)))
-      (t (quote ())))))
+      ((= current (car remaining)) 0 0))))
 
 (def <=
   (lambda (first . remaining)
