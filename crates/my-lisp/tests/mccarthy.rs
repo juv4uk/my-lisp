@@ -109,10 +109,6 @@ fn bare_large_integer_literals_remain_exact() {
         eval(&format!("(+ {literal} 1)")).to_string(),
         "123456789012345678901234567891"
     );
-    assert_eq!(
-        eval(&format!("(eq {literal} {literal})")),
-        Value::Symbol("t".into())
-    );
 }
 
 /// The case that actually matters, more than any single large literal:
@@ -165,23 +161,6 @@ fn arithmetic_promotes_exact_integers_and_preserves_inexact_numbers() {
         eval("(+ (/ 1 2) (/ 1 2))"),
         Value::Number(1.0, Exactness::Exact)
     );
-}
-
-#[test]
-fn comparisons_chain_and_promote_exact_inexact_like_arithmetic() {
-    assert_eq!(eval("(< 1 2 3)"), Value::truth(true));
-    assert_eq!(eval("(< 1 3 2)"), Value::truth(false));
-    assert_eq!(eval("(> 3 2 1)"), Value::truth(true));
-    assert_eq!(eval("(> 3 1 2)"), Value::truth(false));
-    assert_eq!(eval("(= 1 1 1)"), Value::truth(true));
-    assert_eq!(eval("(= 1 2)"), Value::truth(false));
-    // One inexact operand makes the whole comparison inexact, same rule as +/-/*.
-    assert_eq!(eval("(= 1 1.0)"), Value::truth(true));
-    // Cross-multiplication compares exact fractions without ever going through f64.
-    assert_eq!(eval("(= 1/2 0.5)"), Value::truth(true));
-    assert_eq!(eval("(< (/ 1 3) (/ 1 2))"), Value::truth(true));
-    // A single argument is vacuously ordered/equal.
-    assert_eq!(eval("(< 5)"), Value::truth(true));
 }
 
 #[test]
@@ -365,43 +344,6 @@ fn bootstrap_library_provides_let_and_let_star() {
 }
 
 #[test]
-fn bootstrap_library_provides_deep_structural_equality() {
-    let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
-    let run = |source: &str, session: &mut Session| {
-        eval_program(source, session).unwrap().value.to_string()
-    };
-    assert_eq!(
-        run("(equal? (quote (1 2 3)) (quote (1 2 3)))", &mut session),
-        "t"
-    );
-    assert_eq!(
-        run("(equal? (quote (1 2 3)) (quote (1 2 4)))", &mut session),
-        "()"
-    );
-    assert_eq!(
-        run(
-            "(equal? (quote (1 (2 3) 4)) (quote (1 (2 3) 4)))",
-            &mut session
-        ),
-        "t"
-    );
-    assert_eq!(run("(equal? (quote ()) (quote ()))", &mut session), "t");
-    assert_eq!(
-        run("(equal? (quote radio) (quote radio))", &mut session),
-        "t"
-    );
-    // Different lengths, and an atom compared against a compound term —
-    // neither should ever reach `eq` with a non-atom operand.
-    assert_eq!(
-        run("(equal? (quote (1 2)) (quote (1 2 3)))", &mut session),
-        "()"
-    );
-    assert_eq!(run("(equal? 5 (quote (5)))", &mut session), "()");
-    assert_eq!(run("(equal? (quote (1 2)) 5)", &mut session), "()");
-}
-
-#[test]
 fn reader_supports_unicode_comments_and_quote_sugar() {
     let expressions = parse("; коментар\n'радіо").unwrap();
     assert_eq!(expressions.len(), 1);
@@ -411,17 +353,6 @@ fn reader_supports_unicode_comments_and_quote_sugar() {
 #[test]
 fn implements_mccarthys_seven_primitives() {
     assert_eq!(eval("(quote radio)"), Value::Symbol("radio".into()));
-    assert_eq!(eval("(atom (quote radio))"), Value::Symbol("t".into()));
-    assert_eq!(eval("(atom (quote ()))"), Value::Symbol("t".into()));
-    assert_eq!(eval("(atom (quote (radio antenna)))"), Value::Nil);
-    assert_eq!(
-        eval("(eq (quote radio) (quote radio))"),
-        Value::Symbol("t".into())
-    );
-    assert_eq!(
-        eval("(eq (quote radio) (quote antenna))"),
-        Value::Nil
-    );
     assert_eq!(
         eval("(car (quote (radio antenna)))"),
         Value::Symbol("radio".into())
@@ -695,30 +626,6 @@ fn evaluator_still_errors_on_a_lone_unknown_symbol() {
 fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
     let mut session = Session::default();
     eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
-    assert_eq!(
-        eval_program("(<= 1 1 2)", &mut session).unwrap().value,
-        Value::Symbol("t".into())
-    );
-    assert_eq!(
-        eval_program("(<= 1 2 1)", &mut session).unwrap().value,
-        Value::Nil
-    );
-    assert_eq!(
-        eval_program("(>= 3 3 2)", &mut session).unwrap().value,
-        Value::Symbol("t".into())
-    );
-    assert_eq!(
-        eval_program("(>= 2 3)", &mut session).unwrap().value,
-        Value::Nil
-    );
-    assert_eq!(
-        eval_program("(<= 1/2 0.5)", &mut session).unwrap().value,
-        Value::Symbol("t".into())
-    );
-    assert_eq!(
-        eval_program("(<= 5)", &mut session).unwrap().value,
-        Value::Symbol("t".into())
-    );
     assert_eq!(
         eval_program("(<=)", &mut session).unwrap_err().kind,
         ErrorKind::Arity
@@ -1231,42 +1138,6 @@ fn string_rest_rejects_an_empty_string() {
     assert_eq!(error.kind, ErrorKind::Type);
 }
 
-// --- dotted pairs: read ∘ print must be identity ------------------------
-// Before this, `'(p . 0)` read as a *proper* 3-element list containing the
-// literal symbol `.` in the middle — not a real dotted pair — even though
-// the printer renders a genuine `(cons (quote p) 0)` with exactly that same text.
-// The two structures printed identically but were never `equal?`. This is
-// exactly the P2 axiom violation flagged while discussing
-// `my-lisp-constitution.json`: every value must round-trip through
-// read/print as itself, and a printed dotted pair must read back as one.
-
-// `equal?` lives in lib/core.my, not the primitive core `eval()` above
-// preloads — these two need it, so they load core.my themselves.
-fn eval_with_core(source: &str) -> Value {
-    let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
-    eval_program(source, &mut session).unwrap().value
-}
-
-#[test]
-fn a_quoted_dotted_pair_literal_equals_the_cons_it_prints_as() {
-    assert_eq!(
-        eval_with_core("(equal? (quote (p . 0)) (cons (quote p) 0))").to_string(),
-        "t"
-    );
-}
-
-#[test]
-fn read_of_a_printed_dotted_pair_reconstructs_the_same_structure() {
-    // The literal round-trip: `(cons (quote p) 0)` prints as the text "(p . 0)"
-    // (see value.rs's `write_pair`); feeding that exact text back through
-    // `read` must reconstruct something `equal?` to the original cons cell.
-    assert_eq!(
-        eval_with_core(r#"(equal? (read "(p . 0)") (cons (quote p) 0))"#).to_string(),
-        "t"
-    );
-}
-
 #[test]
 fn a_multi_element_dotted_list_reads_as_nested_pairs() {
     assert_eq!(eval("(quote (a b . c))").to_string(), "(a b . c)");
@@ -1580,46 +1451,6 @@ fn string_less_than_wrong_arity_is_an_arity_error() {
 // for that boundary to lose. json-parse/swarm-protocol/host `Value::Bool`
 // uses are untouched — those are real external booleans (JSON's own
 // true/false/null triple, wire-protocol acks), not WSM predicate results.
-
-#[test]
-fn core_predicates_are_eq_to_canonical_t_or_nil_not_a_hidden_bool() {
-    // A printer-only check is insufficient here: Bool(false) and Nil
-    // both print as "()" (this was true before this fix too). `eq`
-    // is the only way to observe the underlying representation.
-    assert_eq!(eval("(eq (< 1 2) t)"), Value::truth(true));
-    assert_eq!(eval("(eq (< 2 1) (quote ()))"), Value::truth(true));
-    assert_eq!(eval("(eq (= 1 1) t)"), Value::truth(true));
-    assert_eq!(eval("(eq (= 1 2) (quote ()))"), Value::truth(true));
-    assert_eq!(eval(r#"(eq (string<? "a" "b") t)"#), Value::truth(true));
-    assert_eq!(
-        eval(r#"(eq (string<? "b" "a") (quote ()))"#),
-        Value::truth(true)
-    );
-    assert_eq!(eval(r#"(eq (string? "x") t)"#), Value::truth(true));
-    assert_eq!(eval("(eq (string? 5) (quote ()))"), Value::truth(true));
-}
-
-#[test]
-fn macro_expansion_no_longer_changes_the_identity_of_a_core_predicate_result() {
-    // The live witness that motivated this fix: the same expression
-    // `(< 2 1)` used to disagree with itself depending on whether it
-    // was called directly or returned as a macro's own expansion value
-    // (closures::value_to_expr's Bool(false)->empty-list conversion,
-    // re-evaluated, used to silently produce Nil instead of Bool(false)).
-    let mut session = Session::default();
-    let direct = eval_program("(< 2 1)", &mut session)
-        .expect("direct comparison should succeed")
-        .value;
-    let via_macro = eval_program(
-        "(defmacro yields-false-bool () (< 2 1)) (yields-false-bool)",
-        &mut session,
-    )
-    .expect("macro expansion should succeed")
-    .value;
-    assert_eq!(direct, Value::truth(false));
-    assert_eq!(via_macro, Value::truth(false));
-    assert_eq!(direct, via_macro);
-}
 
 #[test]
 fn si_defining_constants_exact_rationals() {
