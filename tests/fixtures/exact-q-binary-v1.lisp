@@ -26,6 +26,20 @@
  (identity . "1015")
  (case . rational-greater-no))
 
+; Preserved from the original feat/binary-math-216 research branch: exact
+; integer equality is still an exact-Q YES and must not regress to `t`.
+((expr . "(= 3 3)")
+ (expected . "1")
+ (identity . "1016")
+ (case . integer-equality-yes))
+
+; Preserved from the same branch: strict comparison is variadic/chained inside
+; the exact-Q domain, so every adjacent relation must hold for the answer 1/1.
+((expr . "(< 1 2 3 4)")
+ (expected . "1")
+ (identity . "1014")
+ (case . integer-less-chain-yes))
+
 ((expr . "(<= 1/3 1/3 2/3)")
  (expected . "1")
  (identity . "1017")
