@@ -67,11 +67,11 @@ jobs:
           fn write_to_string_collapses_distinct_closures_to_one_text() {
               assert_eq!(
                   value("(write-to-string (lambda (x) x))"),
-                  ""<lambda>""
+                  r#""<lambda>""#
               );
               assert_eq!(
                   value("(write-to-string (lambda (y) y))"),
-                  ""<lambda>""
+                  r#""<lambda>""#
               );
           }
 
