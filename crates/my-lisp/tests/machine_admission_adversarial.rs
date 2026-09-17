@@ -104,6 +104,17 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(x86-call-admitted-u64 (quote ((jmp-rel8 -129))) 0)",
             "(rejected unadmitted-machine-form (jmp-rel8 -129))",
         ),
+        (
+            // CALL r64's register slot fails closed the same way every
+            // other register slot does.
+            "(x86-call-admitted-u64 (quote ((call-r64 notareg))) 0)",
+            "(rejected unadmitted-machine-form (call-r64 notareg))",
+        ),
+        (
+            // JMP r64's register slot fails closed the same way.
+            "(x86-call-admitted-u64 (quote ((jmp-r64 notareg))) 0)",
+            "(rejected unadmitted-machine-form (jmp-r64 notareg))",
+        ),
     ] {
         EXECUTOR_CALLS.store(0, Ordering::SeqCst);
         let result = eval_program(request, &mut session)

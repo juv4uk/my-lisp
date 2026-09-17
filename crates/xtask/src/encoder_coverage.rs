@@ -149,8 +149,14 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
         ),
         (
             "JMP",
-            "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB) only; the rel32 \
-             (0xE9) and indirect register/memory (0xFF /4) forms are pending",
+            "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB) only, and \
+             x86-encode-jmp-r64 covers the indirect register form (0xFF /4, any of 16 GPRs); \
+             the rel32 (0xE9) and indirect memory forms are pending",
+        ),
+        (
+            "CALL_NEAR",
+            "x86-encode-call-r64 covers the indirect register form (0xFF /2, any of 16 GPRs) \
+             only; the rel32 (0xE8) and indirect memory forms are pending",
         ),
     ]
     .into_iter()

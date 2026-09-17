@@ -46,7 +46,9 @@
      (jnl-rel8 disp8)
      (jle-rel8 disp8)
      (jnle-rel8 disp8)
-     (jmp-rel8 disp8))))
+     (jmp-rel8 disp8)
+     (call-r64 register)
+     (jmp-r64 register))))
 
 ; A disp8 slot only admits an exact integer in [-128,127]. Comparison
 ; operators like `>=` error on a non-number rather than returning () (a
@@ -218,6 +220,10 @@
        (x86-encode-jnle-rel8 (second form)))
       ((x86-admission-pattern-match? (quote (jmp-rel8 disp8)) form)
        (x86-encode-jmp-rel8 (second form)))
+      ((x86-admission-pattern-match? (quote (call-r64 register)) form)
+       (x86-encode-call-r64 (second form)))
+      ((x86-admission-pattern-match? (quote (jmp-r64 register)) form)
+       (x86-encode-jmp-r64 (second form)))
       ; Unreachable after admission. Keep fail-closed data instead of inventing
       ; a fallback encoder.
       (t (quote ())))))

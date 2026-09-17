@@ -327,6 +327,66 @@ fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
     assert_eq!(result.value.to_string(), "5");
 }
 
+/// A genuine SysV64-compatible callee living entirely in the host, at a
+/// real address only known at runtime -- never encoded as a displacement,
+/// only ever loaded as a register value the way any indirect call target
+/// legitimately would be.
+unsafe extern "sysv64" fn returns_seven_hundred_seventy_seven() -> u64 {
+    777
+}
+
+unsafe extern "sysv64" fn returns_eight_hundred_eighty_eight() -> u64 {
+    888
+}
+
+/// #176 continued: CALL r64 / JMP r64 are proven on this session's own
+/// i5-6400 by actually dispatching to a real, independently-compiled Rust
+/// function at an address the guest program cannot know until runtime --
+/// not by disassembling the bytes. The register holds a genuine host
+/// function pointer (cast to u64, loaded via the already-admitted
+/// mov-r64-imm64), so a successful, correct-valued return proves the CPU
+/// actually transferred control through the register, not through some
+/// address baked into the bytes at encode time the way CALL rel32 would.
+/// CALL additionally proves it pushed a real return address on the real
+/// machine stack (the callee's own `ret` lands back in the guest's next
+/// instruction); JMP proves the opposite -- no return address is pushed,
+/// so the callee's own `ret` instead pops the guest's original caller
+/// return address and returns directly to the Rust test, a genuine tail
+/// call.
+#[test]
+fn call_and_jmp_r64_actually_dispatch_to_a_real_host_function_pointer() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before native witness");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    let call_target = returns_seven_hundred_seventy_seven as *const () as usize as u64;
+    let call_program = format!(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax {call_target}) (call-r64 rax) (ret))) 0)"
+    );
+    let call_result = eval_program(&call_program, &mut session)
+        .expect("host must execute the admitted CALL r64 bytes");
+    assert_eq!(
+        call_result.value.to_string(),
+        "777",
+        "CALL r64 must transfer control to the real function pointer loaded into rax and return with its result"
+    );
+
+    let jmp_target = returns_eight_hundred_eighty_eight as *const () as usize as u64;
+    let jmp_program = format!(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rcx {jmp_target}) (jmp-r64 rcx))) 0)"
+    );
+    let jmp_result = eval_program(&jmp_program, &mut session)
+        .expect("host must execute the admitted JMP r64 bytes");
+    assert_eq!(
+        jmp_result.value.to_string(),
+        "888",
+        "JMP r64 must tail-transfer control to the real function pointer loaded into rcx, whose own ret returns straight to the caller"
+    );
+}
+
 #[test]
 fn native_execution_mechanism_is_not_a_language_semantic_identity() {
     let _serial = test_lock();

@@ -287,6 +287,41 @@
       235
       (x86-disp8-byte displacement))))
 
+; CALL r64 / JMP r64 (indirect through a register): group-5 opcode 0xFF,
+; /reg extension selects the operation -- CALL is /2, JMP is /4 -- per
+; #175's pinned XED evidence (`PATTERN : 0xFF MOD[0b11] MOD=3 REG[0b010]
+; RM[nnn] DF64() ...` for CALL, `REG[0b100]` for JMP). Both are `DF64()`
+; (default 64-bit operand size in long mode), matching PUSH/POP's own
+; default-64-bit shape, so no REX.W is emitted -- only REX.B, and only for
+; r8-r15. Unlike CALL rel32,
+; the target here is whatever absolute address the admitted register holds
+; at runtime, not a displacement fixed at encode time; CALL still pushes a
+; real return address via XED_REG_STACKPUSH, onto the same real machine
+; stack #204 already established. This is the first indirect (register-
+; target) control transfer the encoder admits: the destination is
+; genuinely a runtime value, not something knowable from the bytes alone.
+(def x86-encode-group5-indirect-r64
+  (lambda (opcode-extension register)
+    (let ((code (x86-reg-code register)))
+      (cond
+        ((eq (x86-high1 code) 1)
+          (list
+            (x86-encode-rex 0 0 0 1)
+            255
+            (x86-encode-modrm 3 opcode-extension (x86-low3 code))))
+        (t
+          (list
+            255
+            (x86-encode-modrm 3 opcode-extension (x86-low3 code))))))))
+
+(def x86-encode-call-r64
+  (lambda (register)
+    (x86-encode-group5-indirect-r64 2 register)))
+
+(def x86-encode-jmp-r64
+  (lambda (register)
+    (x86-encode-group5-indirect-r64 4 register)))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond

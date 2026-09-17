@@ -709,6 +709,89 @@ fn lisp_encodes_jmp_rel8_with_the_pinned_opcode_and_correct_displacement() {
     );
 }
 
+fn decode_group5_indirect(bytes: &[u8]) -> Option<(&'static str, u8)> {
+    let (rex_b, rest) = match bytes {
+        [rex, rest @ ..] if (0x40..=0x4F).contains(rex) => ((rex & 0x01) != 0, rest),
+        rest => (false, rest),
+    };
+    let [opcode, modrm] = rest else { return None };
+    if *opcode != 0xFF {
+        return None;
+    }
+    let mod_bits = modrm >> 6;
+    if mod_bits != 0b11 {
+        return None;
+    }
+    let reg_field = (modrm >> 3) & 0b111;
+    let rm_field = modrm & 0b111;
+    let register = rm_field | if rex_b { 0b1000 } else { 0 };
+    match reg_field {
+        2 => Some(("call", register)),
+        4 => Some(("jmp", register)),
+        _ => None,
+    }
+}
+
+/// #176 continued: CALL r64 / JMP r64 (group-5 opcode 0xFF, /2 or /4) are
+/// the first *indirect* control transfers the encoder admits -- the target
+/// is whatever absolute address the register holds at runtime, not a
+/// displacement fixed at encode time. Both are `DF64()` (default 64-bit
+/// operand size in long mode), the same as PUSH/POP, so no REX.W is ever
+/// emitted, only REX.B for r8-r15 -- confirmed against #175's pinned XED
+/// evidence (`PATTERN : 0xFF MOD[0b11] MOD=3 REG[0b010] RM[nnn] DF64()`
+/// for CALL, `REG[0b100]` for JMP).
+#[test]
+fn lisp_encodes_call_and_jmp_r64_via_group5_indirect_with_independent_decode() {
+    let mut session = encoder_session();
+    const ALL_GPRS: [&str; 16] = [
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12",
+        "r13", "r14", "r15",
+    ];
+    for (register_name, register_code) in ALL_GPRS.iter().zip(0u8..) {
+        for (op, mnemonic) in [("call", "call"), ("jmp", "jmp")] {
+            let form = format!("(x86-encode-{op}-r64 (quote {register_name}))");
+            let rendered = eval_bytes(&form, &mut session);
+            let bytes: Vec<u8> = rendered
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+                .split_whitespace()
+                .map(|token| token.parse().expect("byte must be a small integer"))
+                .collect();
+
+            let decoded = decode_group5_indirect(&bytes)
+                .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+            assert_eq!(
+                decoded,
+                (mnemonic, register_code),
+                "{form} round-tripped to {decoded:?} via independent decode, from bytes {bytes:?}"
+            );
+
+            if register_code < 8 {
+                assert_eq!(bytes.len(), 2, "{form} for a low register must need no REX prefix");
+            } else {
+                assert_eq!(bytes.len(), 3, "{form} for r8-r15 must carry REX.B");
+                assert_eq!(bytes[0], 0x41, "REX.B-only prefix must be exactly 0x41");
+            }
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains(
+            "PATTERN   : 0xFF MOD[0b11] MOD=3 REG[0b010] RM[nnn]  DF64() IMMUNE66_LOOP64() CET_NO_TRACK()"
+        ),
+        "pinned XED evidence must contain the exact CALL r64 group-5 pattern this encoder was checked against"
+    );
+    assert!(
+        vendor_source.contains(
+            "PATTERN   : 0xFF MOD[0b11] MOD=3 REG[0b100] RM[nnn] DF64() IMMUNE66_LOOP64() CET_NO_TRACK()"
+        ),
+        "pinned XED evidence must contain the exact JMP r64 group-5 pattern this encoder was checked against"
+    );
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");
