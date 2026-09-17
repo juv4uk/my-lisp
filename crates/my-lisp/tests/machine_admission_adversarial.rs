@@ -104,6 +104,26 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(x86-call-admitted-u64 (quote ((jmp-rel8 -129))) 0)",
             "(rejected unadmitted-machine-form (jmp-rel8 -129))",
         ),
+        (
+            // SHL's uimm8 slot fails closed the same way disp8 does: one
+            // past the *unsigned* max (255), not a signed range.
+            "(x86-call-admitted-u64 (quote ((shl-r64-imm8 rax 256))) 0)",
+            "(rejected unadmitted-machine-form (shl-r64-imm8 rax 256))",
+        ),
+        (
+            // Unlike every other admitted immediate/displacement slot,
+            // uimm8 has no negative half at all -- a negative count must
+            // still fail closed, not be silently treated as an unsigned
+            // wraparound.
+            "(x86-call-admitted-u64 (quote ((shr-r64-imm8 rax -1))) 0)",
+            "(rejected unadmitted-machine-form (shr-r64-imm8 rax -1))",
+        ),
+        (
+            // A made-up register in the shift family's register slot must
+            // fail closed the same way it does elsewhere.
+            "(x86-call-admitted-u64 (quote ((sar-r64-imm8 notareg 1))) 0)",
+            "(rejected unadmitted-machine-form (sar-r64-imm8 notareg 1))",
+        ),
     ] {
         EXECUTOR_CALLS.store(0, Ordering::SeqCst);
         let result = eval_program(request, &mut session)

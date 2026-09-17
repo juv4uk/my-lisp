@@ -245,6 +245,35 @@
         247
         (x86-encode-modrm 3 3 (x86-low3 code))))))
 
+; SHL/SHR/SAR r64, imm8: group-2 opcode 0xC1, /reg extension selects the
+; operation -- SHL is /4, SHR is /5, SAR is /7 (/6 duplicates SHL under an
+; undocumented encoding and is intentionally not admitted) -- per #175's pinned XED
+; evidence (`PATTERN : 0xC1 MOD[0b11] MOD=3 REG[0b100] RM[nnn] UIMM8()`
+; for SHL, `REG[0b101]` for SHR, `REG[0b111]` for SAR). Unlike disp8/
+; rel8/rel32/imm32, UIMM8 is an *unsigned* byte in [0,255], so no
+; two's-complement wrap-before-split is needed -- the admitted count
+; becomes the raw trailing byte directly.
+(def x86-encode-shift-r64-imm8
+  (lambda (opcode-extension register count)
+    (let ((code (x86-reg-code register)))
+      (list
+        (x86-encode-rex 1 0 0 (x86-high1 code))
+        193
+        (x86-encode-modrm 3 opcode-extension (x86-low3 code))
+        count))))
+
+(def x86-encode-shl-r64-imm8
+  (lambda (register count)
+    (x86-encode-shift-r64-imm8 4 register count)))
+
+(def x86-encode-shr-r64-imm8
+  (lambda (register count)
+    (x86-encode-shift-r64-imm8 5 register count)))
+
+(def x86-encode-sar-r64-imm8
+  (lambda (register count)
+    (x86-encode-shift-r64-imm8 7 register count)))
+
 ; Jcc rel8: opcode 0x70+cc followed by a signed 8-bit relative displacement
 ; (from the address of the *next* instruction). No REX prefix -- this is a
 ; control-transfer, not a GPR operation. The 16 condition codes and their

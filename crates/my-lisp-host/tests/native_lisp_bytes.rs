@@ -327,6 +327,56 @@ fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
     assert_eq!(result.value.to_string(), "5");
 }
 
+/// #176 continued: SHL and SAR are proven on this session's own i5-6400 by
+/// actually executing them, not by disassembling the bytes. SHL doubles a
+/// positive value the way multiplying by 2 would. SAR's defining property
+/// versus SHR -- both share the identical opcode/ModRM shape and differ
+/// only in the /reg extension this session chose -- is that it preserves
+/// the sign bit on an arithmetic shift; a logical shift would instead
+/// zero-fill the top bit and leave the value non-negative. NEG puts a
+/// genuine negative value in a register; since native-call-u64-raw's own
+/// u64->f64 return path cannot represent a huge two's-complement value
+/// exactly, the sign check is proven via CMP+JL branching on real flags
+/// (the same technique the Jcc witness above already uses) rather than by
+/// printing the shifted value's own magnitude.
+#[test]
+fn shift_family_actually_shifts_on_real_hardware_including_sign_preservation() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before native witness");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    let doubled = eval_program(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax 21) (shl-r64-imm8 rax 1) (ret))) 0)",
+        &mut session,
+    )
+    .expect("host must execute the admitted SHL bytes");
+    assert_eq!(doubled.value.to_string(), "42");
+
+    // mov rax,8; neg rax; sar rax,1; mov rcx,0; cmp rax,rcx; jl +11 (skips
+    // the 10-byte mov-r64-imm64 plus the 1-byte ret that follows it, when
+    // taken); mov rax,0; ret; mov rax,1; ret. rax starts at -8; an
+    // arithmetic shift right by one bit must still be negative (-4), so JL
+    // must take the branch and land on the second "mov rax,1; ret",
+    // returning 1. A logical shift would instead have produced a huge
+    // positive value, failed JL, fallen through to "mov rax,0; ret", and
+    // returned 0 -- and either way the returned value stays small enough
+    // for my-lisp's exact-integer range, unlike printing the shifted
+    // value's own huge two's-complement magnitude directly would be.
+    let sign_preserved = eval_program(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax 8) (neg-r64 rax) (sar-r64-imm8 rax 1) (mov-r64-imm64 rcx 0) (cmp-r64-r64 rax rcx) (jl-rel8 11) (mov-r64-imm64 rax 0) (ret) (mov-r64-imm64 rax 1) (ret))) 0)",
+        &mut session,
+    )
+    .expect("host must execute the admitted SAR + branch bytes");
+    assert_eq!(
+        sign_preserved.value.to_string(),
+        "1",
+        "SAR must keep the shifted value negative on real hardware, so JL must branch to the positive-sign marker"
+    );
+}
+
 #[test]
 fn native_execution_mechanism_is_not_a_language_semantic_identity() {
     let _serial = test_lock();

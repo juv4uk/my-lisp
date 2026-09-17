@@ -46,7 +46,10 @@
      (jnl-rel8 disp8)
      (jle-rel8 disp8)
      (jnle-rel8 disp8)
-     (jmp-rel8 disp8))))
+     (jmp-rel8 disp8)
+     (shl-r64-imm8 register uimm8)
+     (shr-r64-imm8 register uimm8)
+     (sar-r64-imm8 register uimm8))))
 
 ; A disp8 slot only admits an exact integer in [-128,127]. Comparison
 ; operators like `>=` error on a non-number rather than returning () (a
@@ -90,6 +93,15 @@
        (and (>= value -128) (<= value 127)))
       (t (quote ())))))
 
+; A uimm8 slot admits an exact integer in [0,255] -- UIMM8 is unsigned,
+; unlike disp8/rel8/rel32/imm32, so its range has no negative half.
+(def x86-admission-uimm8?
+  (lambda (value)
+    (cond
+      ((x86-admission-exact-integer? value)
+       (and (>= value 0) (<= value 255)))
+      (t (quote ())))))
+
 ; `immediate`, `register`, and `disp8` are operand-slot wildcards, not
 ; opcode wildcards. `register` only admits the 16 GPR names x86-reg-code
 ; knows about -- any other atom (a number, a made-up symbol) fails the
@@ -109,6 +121,10 @@
          ((eq pattern (quote disp8))
           (cond
             ((atom form) (x86-admission-disp8? form))
+            (t (quote ()))))
+         ((eq pattern (quote uimm8))
+          (cond
+            ((atom form) (x86-admission-uimm8? form))
             (t (quote ()))))
          ((atom form) (eq pattern form))
          (t (quote ()))))
@@ -218,6 +234,12 @@
        (x86-encode-jnle-rel8 (second form)))
       ((x86-admission-pattern-match? (quote (jmp-rel8 disp8)) form)
        (x86-encode-jmp-rel8 (second form)))
+      ((x86-admission-pattern-match? (quote (shl-r64-imm8 register uimm8)) form)
+       (x86-encode-shl-r64-imm8 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (shr-r64-imm8 register uimm8)) form)
+       (x86-encode-shr-r64-imm8 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (sar-r64-imm8 register uimm8)) form)
+       (x86-encode-sar-r64-imm8 (second form) (third form)))
       ; Unreachable after admission. Keep fail-closed data instead of inventing
       ; a fallback encoder.
       (t (quote ())))))

@@ -365,6 +365,92 @@ fn lisp_encodes_not_and_neg_via_group3_modrm_with_independent_decode() {
     );
 }
 
+fn decode_shift(bytes: &[u8]) -> Option<(&'static str, u8, u8)> {
+    let [rex, opcode, modrm, count] = bytes else {
+        return None;
+    };
+    if *opcode != 0xC1 {
+        return None;
+    }
+    let rex_w = (rex & 0x08) != 0;
+    let rex_b = (rex & 0x01) != 0;
+    if !rex_w || (rex & 0xF0) != 0x40 {
+        return None;
+    }
+    let mod_bits = modrm >> 6;
+    let reg_field = (modrm >> 3) & 0b111;
+    let rm_field = modrm & 0b111;
+    if mod_bits != 0b11 {
+        return None;
+    }
+    let register = rm_field | if rex_b { 0b1000 } else { 0 };
+    let mnemonic = match reg_field {
+        4 => "shl",
+        5 => "shr",
+        7 => "sar",
+        _ => return None,
+    };
+    Some((mnemonic, register, *count))
+}
+
+/// #176 continued: SHL/SHR/SAR r64,imm8 (group-2 opcode 0xC1, /4, /5, /7)
+/// carry an UNSIGNED imm8 count -- unlike every other immediate/displacement
+/// slot implemented so far (disp8/rel8/rel32/imm32 are all signed), so this
+/// independently re-derives the count directly from the trailing byte with
+/// no two's-complement interpretation, cross-checked against the full
+/// unsigned byte range including 0 and 255.
+#[test]
+fn lisp_encodes_the_shift_family_for_every_gpr_and_the_full_uimm8_range() {
+    let mut session = encoder_session();
+    const ALL_GPRS: [&str; 16] = [
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12",
+        "r13", "r14", "r15",
+    ];
+    for (register_name, register_code) in ALL_GPRS.iter().zip(0u8..) {
+        for (op, mnemonic) in [("shl", "shl"), ("shr", "shr"), ("sar", "sar")] {
+            for count in [0u32, 1, 63, 128, 255] {
+                let form = format!("(x86-encode-{op}-r64-imm8 (quote {register_name}) {count})");
+                let rendered = eval_bytes(&form, &mut session);
+                let bytes: Vec<u8> = rendered
+                    .trim_start_matches('(')
+                    .trim_end_matches(')')
+                    .split_whitespace()
+                    .map(|token| token.parse().expect("byte must be a small integer"))
+                    .collect();
+
+                assert_eq!(
+                    bytes.len(),
+                    4,
+                    "{form} must always be REX+0xC1+ModRM+imm8, 4 bytes"
+                );
+                assert_eq!(bytes[1], 193, "{form} must use group-2 opcode 0xC1");
+
+                let decoded = decode_shift(&bytes)
+                    .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+                assert_eq!(
+                    decoded,
+                    (mnemonic, register_code, count as u8),
+                    "{form} round-tripped to {decoded:?} via independent decode, from bytes {bytes:?}"
+                );
+            }
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    for pattern in [
+        "PATTERN   : 0xC1 MOD[0b11] MOD=3 REG[0b100] RM[nnn] UIMM8()",
+        "PATTERN   : 0xC1 MOD[0b11] MOD=3 REG[0b101] RM[nnn] UIMM8()",
+        "PATTERN   : 0xC1 MOD[0b11] MOD=3 REG[0b111] RM[nnn] UIMM8()",
+    ] {
+        assert!(
+            vendor_source.contains(pattern),
+            "pinned XED evidence must contain the exact shift group-2 pattern this encoder was checked against: {pattern}"
+        );
+    }
+}
+
 /// #176 continued: TEST r/m64, r64 (opcode 0x85 /r) shares the group-1 ALU
 /// family's exact REX.W+opcode+ModRM shape, confirmed against #175's
 /// pinned XED evidence for TEST's own `MOD[0b11] MOD=3 REG[rrr] RM[nnn]`

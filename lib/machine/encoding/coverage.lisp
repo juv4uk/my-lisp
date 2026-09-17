@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 32)
+  (partial-count 35)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -3196,8 +3196,8 @@
   (coverage
     (iclass "SAR")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-sar-r64-imm8 covers the group-2 register/uimm8 form (0xC1 /7) only; the by-1, by-CL, and r/m64-memory forms are pending"))
   (coverage
     (iclass "SARX")
     (extension BMI2)
@@ -3326,8 +3326,8 @@
   (coverage
     (iclass "SHL")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-shl-r64-imm8 covers the group-2 register/uimm8 form (0xC1 /4) only; the by-1, by-CL, and r/m64-memory forms are pending"))
   (coverage
     (iclass "SHLD")
     (extension X86-BASE)
@@ -3341,8 +3341,8 @@
   (coverage
     (iclass "SHR")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-shr-r64-imm8 covers the group-2 register/uimm8 form (0xC1 /5) only; the by-1, by-CL, and r/m64-memory forms are pending"))
   (coverage
     (iclass "SHRD")
     (extension X86-BASE)

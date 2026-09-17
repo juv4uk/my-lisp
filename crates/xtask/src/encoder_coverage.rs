@@ -152,6 +152,21 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
             "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB) only; the rel32 \
              (0xE9) and indirect register/memory (0xFF /4) forms are pending",
         ),
+        (
+            "SHL",
+            "x86-encode-shl-r64-imm8 covers the group-2 register/uimm8 form (0xC1 /4) only; \
+             the by-1, by-CL, and r/m64-memory forms are pending",
+        ),
+        (
+            "SHR",
+            "x86-encode-shr-r64-imm8 covers the group-2 register/uimm8 form (0xC1 /5) only; \
+             the by-1, by-CL, and r/m64-memory forms are pending",
+        ),
+        (
+            "SAR",
+            "x86-encode-sar-r64-imm8 covers the group-2 register/uimm8 form (0xC1 /7) only; \
+             the by-1, by-CL, and r/m64-memory forms are pending",
+        ),
     ]
     .into_iter()
     .collect()
