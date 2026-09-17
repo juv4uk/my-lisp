@@ -190,3 +190,173 @@
 (def utf8-encode-string
   (lambda (text)
     (utf8-encode-string-onto text (quote ()))))
+
+; #362 — single-pass semantic decoder. Every byte-domain check happens in
+; Lisp while the same traversal interprets UTF-8. Once a malformed UTF-8
+; prefix is observed, keep scanning only for byte-domain violations so the
+; historical global precedence remains exact: any invalid byte anywhere wins
+; over invalid-utf8.
+(def utf8-fused-invalid-rest
+  (lambda (bytes)
+    (cond
+      ((atom bytes) (structural-kind empty-list)
+       (list (quote rejected) (quote invalid-utf8)))
+      ((atom bytes) (structural-kind atom)
+       (list (quote rejected) (quote invalid-byte)))
+      ((atom bytes) (structural-kind pair)
+       (let ((b (car bytes)))
+         (cond
+           ((equal? (utf8-byte? b) 1) (structural-relation same)
+            (utf8-fused-invalid-rest (cdr bytes)))
+           ((equal? (utf8-byte? b) 1) (structural-relation distinct)
+            (list (quote rejected) (quote invalid-byte)))))))))
+
+(def utf8-decode-fused-onto
+  (lambda (bytes out)
+    (cond
+      ((atom bytes) (structural-kind empty-list)
+       (list (quote decoded) (reverse out)))
+      ((atom bytes) (structural-kind atom)
+       (list (quote rejected) (quote invalid-byte)))
+      ((atom bytes) (structural-kind pair)
+       (let* ((b1 (car bytes))
+              (r1 (cdr bytes)))
+         (cond
+           ((equal? (utf8-byte? b1) 1) (structural-relation distinct)
+            (list (quote rejected) (quote invalid-byte)))
+
+           ; ASCII
+           ((<= b1 127) 1
+            (utf8-decode-fused-onto r1 (cons b1 out)))
+
+           ; 2-byte sequence: C2..DF 80..BF
+           ((* (>= b1 194) (<= b1 223)) 1
+            (cond
+              ((atom r1) (structural-kind empty-list)
+               (list (quote rejected) (quote invalid-utf8)))
+              ((atom r1) (structural-kind atom)
+               (list (quote rejected) (quote invalid-byte)))
+              ((atom r1) (structural-kind pair)
+               (let* ((b2 (car r1))
+                      (r2 (cdr r1)))
+                 (cond
+                   ((equal? (utf8-byte? b2) 1) (structural-relation distinct)
+                    (list (quote rejected) (quote invalid-byte)))
+                   ((* (>= b2 128) (<= b2 191)) 1
+                    (utf8-decode-fused-onto
+                      r2
+                      (cons (+ (* (- b1 192) 64)
+                               (- b2 128))
+                            out)))
+                   ((* (>= b2 128) (<= b2 191)) 0
+                    (utf8-fused-invalid-rest r2)))))))
+
+           ; 3-byte sequence with overlong/surrogate exclusions.
+           ((* (>= b1 224) (<= b1 239)) 1
+            (cond
+              ((atom r1) (structural-kind empty-list)
+               (list (quote rejected) (quote invalid-utf8)))
+              ((atom r1) (structural-kind atom)
+               (list (quote rejected) (quote invalid-byte)))
+              ((atom r1) (structural-kind pair)
+               (let* ((b2 (car r1))
+                      (r2 (cdr r1)))
+                 (cond
+                   ((equal? (utf8-byte? b2) 1) (structural-relation distinct)
+                    (list (quote rejected) (quote invalid-byte)))
+                   ((atom r2) (structural-kind empty-list)
+                    (list (quote rejected) (quote invalid-utf8)))
+                   ((atom r2) (structural-kind atom)
+                    (list (quote rejected) (quote invalid-byte)))
+                   ((atom r2) (structural-kind pair)
+                    (let* ((b3 (car r2))
+                           (r3 (cdr r2))
+                           (second-ok
+                             (cond
+                               ((= b1 224) 1
+                                (* (>= b2 160) (<= b2 191)))
+                               ((= b1 237) 1
+                                (* (>= b2 128) (<= b2 159)))
+                               ((= b1 b1) 1
+                                (* (>= b2 128) (<= b2 191))))))
+                      (cond
+                        ((equal? (utf8-byte? b3) 1)
+                         (structural-relation distinct)
+                         (list (quote rejected) (quote invalid-byte)))
+                        ((* second-ok
+                            (* (>= b3 128) (<= b3 191))) 1
+                         (utf8-decode-fused-onto
+                           r3
+                           (cons (+ (* (- b1 224) 4096)
+                                    (* (- b2 128) 64)
+                                    (- b3 128))
+                                 out)))
+                        ((* second-ok
+                            (* (>= b3 128) (<= b3 191))) 0
+                         (utf8-fused-invalid-rest r3))))))))))
+
+           ; 4-byte sequence, restricted to Unicode scalar range <= 10FFFF.
+           ((* (>= b1 240) (<= b1 244)) 1
+            (cond
+              ((atom r1) (structural-kind empty-list)
+               (list (quote rejected) (quote invalid-utf8)))
+              ((atom r1) (structural-kind atom)
+               (list (quote rejected) (quote invalid-byte)))
+              ((atom r1) (structural-kind pair)
+               (let* ((b2 (car r1))
+                      (r2 (cdr r1)))
+                 (cond
+                   ((equal? (utf8-byte? b2) 1) (structural-relation distinct)
+                    (list (quote rejected) (quote invalid-byte)))
+                   ((atom r2) (structural-kind empty-list)
+                    (list (quote rejected) (quote invalid-utf8)))
+                   ((atom r2) (structural-kind atom)
+                    (list (quote rejected) (quote invalid-byte)))
+                   ((atom r2) (structural-kind pair)
+                    (let* ((b3 (car r2))
+                           (r3 (cdr r2)))
+                      (cond
+                        ((equal? (utf8-byte? b3) 1)
+                         (structural-relation distinct)
+                         (list (quote rejected) (quote invalid-byte)))
+                        ((atom r3) (structural-kind empty-list)
+                         (list (quote rejected) (quote invalid-utf8)))
+                        ((atom r3) (structural-kind atom)
+                         (list (quote rejected) (quote invalid-byte)))
+                        ((atom r3) (structural-kind pair)
+                         (let* ((b4 (car r3))
+                                (r4 (cdr r3))
+                                (second-ok
+                                  (cond
+                                    ((= b1 240) 1
+                                     (* (>= b2 144) (<= b2 191)))
+                                    ((= b1 244) 1
+                                     (* (>= b2 128) (<= b2 143)))
+                                    ((= b1 b1) 1
+                                     (* (>= b2 128) (<= b2 191))))))
+                           (cond
+                             ((equal? (utf8-byte? b4) 1)
+                              (structural-relation distinct)
+                              (list (quote rejected) (quote invalid-byte)))
+                             ((* second-ok
+                                 (* (>= b3 128) (<= b3 191))
+                                 (* (>= b4 128) (<= b4 191))) 1
+                              (utf8-decode-fused-onto
+                                r4
+                                (cons (+ (* (- b1 240) 262144)
+                                         (* (- b2 128) 4096)
+                                         (* (- b3 128) 64)
+                                         (- b4 128))
+                                      out)))
+                             ((* second-ok
+                                 (* (>= b3 128) (<= b3 191))
+                                 (* (>= b4 128) (<= b4 191))) 0
+                              (utf8-fused-invalid-rest r4))))))))))))
+
+           ; b1 is a byte, but not a valid UTF-8 leading byte.
+           ((= b1 b1) 1
+            (utf8-fused-invalid-rest r1)))))))))
+
+(def utf8-decode-fused
+  (lambda (bytes)
+    (utf8-decode-fused-onto bytes (quote ()))))
