@@ -1,5 +1,6 @@
 ; #382 — Lisp-owned repository tooling inventory validator.
 ; GREEN slices: unregistered-tool + duplicate-path + stale-path + closed enums.
+; RED slice: active/transitional Python must point to migration authority.
 
 (def repo-tooling-kinds
   (quote (check generator migration benchmark deploy release helper other)))
@@ -174,6 +175,7 @@
            ((eq state (quote malformed)) (identity-relation same)
             (repo-tooling-violation (quote malformed-observed-list) observed))))))))
 
+; Python migration ownership validation is intentionally absent in this RED commit.
 (def repo-tooling-verdict-after-enums
   (lambda (rows observed)
     (let ((duplicate-verdict (repo-tooling-duplicate-path-verdict rows)))
@@ -273,6 +275,20 @@
       (replacement ())
       (removal-condition ()))))
 
+(def repo-tooling-sample-python-unowned
+  (quote
+    (tool
+      (path "scripts/a.py")
+      (kind check)
+      (language python)
+      (role python-without-migration-owner)
+      (lifecycle transitional)
+      (callers ())
+      (authority-source (issue 382))
+      (migration-issue ())
+      (replacement ())
+      (removal-condition parity-green-and-callers-switched))))
+
 (def repo-tooling-selftest-unregistered
   (lambda ()
     (repo-tooling-verdict (list repo-tooling-sample-row-a) (quote ("a.lisp" "b.lisp")))))
@@ -296,6 +312,10 @@
 (def repo-tooling-selftest-invalid-lifecycle
   (lambda ()
     (repo-tooling-verdict (list repo-tooling-sample-bad-lifecycle) (quote ("a.lisp")))))
+
+(def repo-tooling-selftest-python-unowned
+  (lambda ()
+    (repo-tooling-verdict (list repo-tooling-sample-python-unowned) (quote ("a.py")))))
 
 (def repo-tooling-assert-verdict
   (lambda (actual expected)
@@ -330,4 +350,12 @@
   (repo-tooling-selftest-invalid-lifecycle)
   (quote (repo-tooling-violation invalid-lifecycle parity-green)))
 
-(print (quote (repo-tooling-selftests-ok unregistered-tool duplicate-path stale-path closed-enums)))
+; RED: repo-owned Python cannot be transitional without #76 migration ownership.
+(repo-tooling-assert-verdict
+  (repo-tooling-selftest-python-unowned)
+  (quote (repo-tooling-violation python-migration-unowned "scripts/a.py")))
+
+(print
+  (quote
+    (repo-tooling-selftests-ok
+      unregistered-tool duplicate-path stale-path closed-enums python-migration-ownership)))
