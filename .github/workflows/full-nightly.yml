@@ -60,6 +60,10 @@ jobs:
             echo '1047 regression: stable UK фрагмент-у-тексті? must be a registry-driven peer, not an EN bridge' >&2
             exit 1
           fi
+          if grep -Fqx '(define перший-символ-тексту string-first)' lib/surface/uk.lisp; then
+            echo '1048 regression: stable preferred UK перший-символ-тексту must be a registry-driven peer, not an EN bridge' >&2
+            exit 1
+          fi
 
   workspace-clippy:
     name: full workspace clippy
