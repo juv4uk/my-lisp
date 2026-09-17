@@ -664,6 +664,106 @@
 (def x86-encode-cmovnle-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 15 dest src)))
 (def x86-encode-cmovg-r64-r64 (lambda (dest src) (x86-encode-cmovcc-r64-r64 15 dest src)))
 
+; NOP: opcode 0x90.
+(def x86-encode-nop
+  (lambda ()
+    (list 144)))
+
+; TEST r/m64, imm32: Group 3 opcode 0xF7 /0 id, ModRM mod=3, reg=0, rm=dest.
+(def x86-encode-test-r64-imm32
+  (lambda (destination immediate)
+    (let ((code (x86-reg-code destination)))
+      (append
+        (list
+          (x86-encode-rex 1 0 0 (x86-high1 code))
+          247
+          (x86-encode-modrm 3 0 (x86-low3 code)))
+        (x86-imm32-bytes immediate)))))
+
+; BT r/m64, r64: opcode 0x0F 0xA3 /r. ModRM reg=index, rm=base.
+; Sets Carry Flag (CF) to the value of the bit at the given index.
+(def x86-encode-bt-r64-r64
+  (lambda (base index)
+    (let ((base-code (x86-reg-code base))
+          (index-code (x86-reg-code index)))
+      (list
+        (x86-encode-rex 1 (x86-high1 index-code) 0 (x86-high1 base-code))
+        15
+        163
+        (x86-encode-modrm 3 (x86-low3 index-code) (x86-low3 base-code))))))
+
+; Group 8 bit operations with imm8: opcode 0x0F 0xBA /reg ib.
+(def x86-encode-group8-r64-imm8
+  (lambda (opcode-extension register bit-index)
+    (let ((code (x86-reg-code register)))
+      (list
+        (x86-encode-rex 1 0 0 (x86-high1 code))
+        15
+        186
+        (x86-encode-modrm 3 opcode-extension (x86-low3 code))
+        bit-index))))
+
+(def x86-encode-bt-r64-imm8
+  (lambda (register bit-index)
+    (x86-encode-group8-r64-imm8 4 register bit-index)))
+
+(def x86-encode-bts-r64-imm8
+  (lambda (register bit-index)
+    (x86-encode-group8-r64-imm8 5 register bit-index)))
+
+(def x86-encode-btr-r64-imm8
+  (lambda (register bit-index)
+    (x86-encode-group8-r64-imm8 6 register bit-index)))
+
+(def x86-encode-btc-r64-imm8
+  (lambda (register bit-index)
+    (x86-encode-group8-r64-imm8 7 register bit-index)))
+
+; MOVSX r64, r/m8: opcode 0x0F 0xBE /r. Sign-extend 8-bit to 64-bit.
+(def x86-encode-movsx-r64-r8
+  (lambda (destination source)
+    (let ((dest-code (x86-reg-code destination))
+          (src-code (x86-reg-code source)))
+      (list
+        (x86-encode-rex 1 (x86-high1 dest-code) 0 (x86-high1 src-code))
+        15
+        190
+        (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
+
+; MOVSXD r64, r/m32: opcode 0x63 /r. Sign-extend 32-bit to 64-bit.
+(def x86-encode-movsxd-r64-r32
+  (lambda (destination source)
+    (let ((dest-code (x86-reg-code destination))
+          (src-code (x86-reg-code source)))
+      (list
+        (x86-encode-rex 1 (x86-high1 dest-code) 0 (x86-high1 src-code))
+        99
+        (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
+
+; POPCNT r64, r/m64: opcode 0xF3 0x0F 0xB8 /r. Count set bits (population count).
+(def x86-encode-popcnt-r64-r64
+  (lambda (destination source)
+    (let ((dest-code (x86-reg-code destination))
+          (src-code (x86-reg-code source)))
+      (list
+        243
+        (x86-encode-rex 1 (x86-high1 dest-code) 0 (x86-high1 src-code))
+        15
+        184
+        (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
+
+; TZCNT r64, r/m64: opcode 0xF3 0x0F 0xBC /r. Count trailing zeros.
+(def x86-encode-tzcnt-r64-r64
+  (lambda (destination source)
+    (let ((dest-code (x86-reg-code destination))
+          (src-code (x86-reg-code source)))
+      (list
+        243
+        (x86-encode-rex 1 (x86-high1 dest-code) 0 (x86-high1 src-code))
+        15
+        188
+        (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond

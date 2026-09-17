@@ -31,4 +31,18 @@
       (class bit-reset)
       (feature BMI1)
       (privilege user)
-      (encoding-authority intel-xed))))
+      (encoding-authority intel-xed))
+
+    (instruction TZCNT
+      (class bit-manipulation)
+      (feature BMI1)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form tzcnt-r64-r64
+          (operands r64 r/m64)
+          (legacy-prefix F3)
+          (rex W)
+          (opcode-map 0F)
+          (opcode BC)
+          (modrm required))))))

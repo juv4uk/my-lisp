@@ -80,6 +80,13 @@
           (operands r/m64 r64)
           (rex W)
           (opcode 85)
+          (modrm required))
+        (form test-r64-imm32
+          (operands r/m64 imm32)
+          (rex W)
+          (opcode F7)
+          (reg-opcode 0)
+          (immediate-width 32)
           (modrm required))))
 
     (instruction CALL
@@ -385,4 +392,103 @@
           (rex W)
           (opcode-map 0F)
           (opcode-range 40 4F)
+          (modrm required))))
+
+    (instruction NOP
+      (class no-operation)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form nop
+          (operands)
+          (opcode 90)
+          (modrm none))))
+
+    (instruction BT
+      (class bit-test)
+      (privilege user)
+      (mode64 valid)
+      (flags CF)
+      (forms
+        (form bt-r64-r64
+          (operands r/m64 r64)
+          (rex W)
+          (opcode-map 0F)
+          (opcode A3)
+          (modrm required))
+        (form bt-r64-imm8
+          (operands r/m64 imm8)
+          (rex W)
+          (opcode-map 0F)
+          (opcode BA)
+          (reg-opcode 4)
+          (immediate-width 8)
+          (modrm required))))
+
+    (instruction BTS
+      (class bit-test-and-set)
+      (privilege user)
+      (mode64 valid)
+      (flags CF)
+      (forms
+        (form bts-r64-imm8
+          (operands r/m64 imm8)
+          (rex W)
+          (opcode-map 0F)
+          (opcode BA)
+          (reg-opcode 5)
+          (immediate-width 8)
+          (modrm required))))
+
+    (instruction BTR
+      (class bit-test-and-reset)
+      (privilege user)
+      (mode64 valid)
+      (flags CF)
+      (forms
+        (form btr-r64-imm8
+          (operands r/m64 imm8)
+          (rex W)
+          (opcode-map 0F)
+          (opcode BA)
+          (reg-opcode 6)
+          (immediate-width 8)
+          (modrm required))))
+
+    (instruction BTC
+      (class bit-test-and-complement)
+      (privilege user)
+      (mode64 valid)
+      (flags CF)
+      (forms
+        (form btc-r64-imm8
+          (operands r/m64 imm8)
+          (rex W)
+          (opcode-map 0F)
+          (opcode BA)
+          (reg-opcode 7)
+          (immediate-width 8)
+          (modrm required))))
+
+    (instruction MOVSX
+      (class data-movement-sign-extend)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form movsx-r64-r8
+          (operands r64 r/m8)
+          (rex W)
+          (opcode-map 0F)
+          (opcode BE)
+          (modrm required))))
+
+    (instruction MOVSXD
+      (class data-movement-sign-extend)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form movsxd-r64-r32
+          (operands r64 r/m32)
+          (rex W)
+          (opcode 63)
           (modrm required))))))
