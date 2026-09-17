@@ -1,0 +1,16 @@
+name: Verify 369 symbol runtime RED
+
+on:
+  pull_request:
+    paths:
+      - 'tests/fixtures/structural-observation-v1.lisp'
+      - '.github/workflows/verify-369-symbol-runtime-red.yml'
+
+jobs:
+  structural-observation:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run Lisp-owned structural observation contract
+        run: cargo test -p my-lisp --test structural_observation_contract
