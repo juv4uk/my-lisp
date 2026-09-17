@@ -8,6 +8,10 @@ pub enum ErrorKind {
     Arity,
     Type,
     InvalidForm,
+    /// An evaluator-side mechanism needed to answer the question was observed
+    /// unavailable. This is not semantic absence: callers must not rewrite it
+    /// as `UnknownSymbol`, false, or Canon 0.
+    MechanismUnavailable,
     /// A resource limit was hit, not a logic error — S3's own example
     /// ("4096 cons cells on an FPGA") named this category before it
     /// existed in code (found during a 2026-08-09 pre-ratification axiom
@@ -71,7 +75,8 @@ pub enum Classification {
     /// A resource/magnitude boundary, not a logic error (`OutOfMemory`,
     /// `NumericOverflow` already argued this in their own doc comments).
     Limit,
-    /// The program did something the evaluator can't make sense of.
+    /// The program did something the evaluator can't make sense of, or a
+    /// required evaluator mechanism was positively observed unavailable.
     Fault,
 }
 
@@ -94,6 +99,7 @@ impl ErrorKind {
             | ErrorKind::Arity
             | ErrorKind::Type
             | ErrorKind::InvalidForm
+            | ErrorKind::MechanismUnavailable
             | ErrorKind::DivisionByZero => Classification::Fault,
         }
     }
@@ -136,7 +142,7 @@ impl LanguageError {
     /// bytes) so multi-byte UTF-8 source — Cyrillic identifiers included —
     /// still lines up visually with the caret in `render`.
     /// 1-indeksovani (riadok, stovpets) pochatku diapazonu, porakhovani v
-    /// symvolakh (ne baitakh), shchob bahatobaitovyi UTF-8-kod — vkliuchno z
+    /// symvolakh (ne baitakh) tak, shchob bahatobaitovyi UTF-8-kod — vkliuchno z
     /// kyrylychnymy identyfikatoramy — vse odno zbihavsia z "^" u `render`.
     /// 1-indizierte (Zeile, Spalte) des Span-Starts, gezählt in Zeichen
     /// (nicht Bytes), damit mehrbyteiger UTF-8-Quellcode — auch kyrillische
