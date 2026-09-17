@@ -110,7 +110,7 @@ fn lisp_owned_exact_q_binary_contract_is_self_consistent() {
 #[test]
 fn exact_q_runtime_targets_are_active_after_control_and_canon_migration() {
     let rows = rows();
-    assert_eq!(rows.len(), 7, "#216 current slice must retain seven executable targets");
+    assert_eq!(rows.len(), 9, "#216 current slice must retain nine executable targets");
     assert!(
         rows.iter().any(|row| row.expected == "0"),
         "#216 corpus must retain an exact mathematical NO (0/1)"
