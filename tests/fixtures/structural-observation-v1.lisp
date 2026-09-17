@@ -79,3 +79,27 @@
  (active . t)
  (identity . "0003")
  (case . vector-nested-structure-same))
+
+; Typed numeric buffers are also atoms at the PRIM_EQ boundary. Their
+; representation-specific equality is mechanism, but the meaning of the
+; observation is still the Lisp-owned identity-relation algebra.
+((expr . "(eq (i32-buffer 1 2) (i32-buffer 1 2))")
+ (expected . "(identity-relation same)")
+ (active . t)
+ (identity . "0003")
+ (case . numeric-buffer-i32-same-values))
+
+((expr . "(eq (i32-buffer 1) (f32-buffer 1))")
+ (expected . "(identity-relation distinct)")
+ (active . t)
+ (identity . "0003")
+ (case . numeric-buffer-distinct-types))
+
+; F32 buffer equality is bitwise at the mechanism boundary. Signed zeroes have
+; different binary32 encodings, so EQ reports the ordinary explicit distinct
+; identity relation rather than a truth sentinel.
+((expr . "(eq #f32(-0.0) #f32(0.0))")
+ (expected . "(identity-relation distinct)")
+ (active . t)
+ (identity . "0003")
+ (case . numeric-buffer-f32-signed-zero-distinct))
