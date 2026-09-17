@@ -67,26 +67,6 @@ fn conj_is_persistent_the_original_vector_is_untouched() {
 /// AVL minimum, not linear in element count — verified live before this
 /// test was written by printing vnode-height and comparing to
 /// ceil(log2(n+1)), not assumed from the rotation code alone.
-#[test]
-fn conj_in_ascending_order_stays_balanced_instead_of_degenerating_into_a_list() {
-    let source = r#"
-        (def v (vec-from-list (build-range 500 (quote ()))))
-        (< (vnode-height (vec-tree v)) 15)
-    "#;
-    // build-range isn't in core.my; construct the 0..499 list inline.
-    let source = source.replace("(build-range 500 (quote ()))", &{
-        let mut items = String::new();
-        for i in (0..500).rev() {
-            items.push_str(&format!("{i} "));
-        }
-        format!("(list {})", items.trim_end())
-    });
-    assert_eq!(
-        eval_vec(&source),
-        "t",
-        "height must stay logarithmic, not degrade to O(n) for 500 ascending inserts"
-    );
-}
 
 #[test]
 fn vec_nth_out_of_bounds_returns_the_maybe_shape_absent_case() {

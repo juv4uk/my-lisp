@@ -66,3 +66,11 @@ if [[ "$numeric_buffer_identity_status" != "(numeric-buffer-identity-witness (st
   printf 'numeric-buffer identity Lisp witness failed: %s\n' "$numeric_buffer_identity_status" >&2
   exit 1
 fi
+
+# #305: persistent-vector AVL balance is witnessed by Lisp before retiring the
+# stale Rust `== "t"` assertion. The shell observes only the named pass envelope.
+vector_balance_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/persistent-vector-balance-witness.lisp)"
+if [[ "$vector_balance_status" != "(persistent-vector-balance-witness (status pass))" ]]; then
+  printf 'persistent vector balance Lisp witness failed: %s\n' "$vector_balance_status" >&2
+  exit 1
+fi
