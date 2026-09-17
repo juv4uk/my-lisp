@@ -173,5 +173,5 @@ Regenerate: `cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function
 | `1148` | — | прочитати-текст-з-з'єднання-протоколу-керування-передаванням | candidate | tcp-read | — | stable | — |
 | `1149` | — | записати-текст-у-з'єднання-протоколу-керування-передаванням | candidate | tcp-write | — | stable | — |
 | `1150` | — | слухати-порт-протоколу-керування-передаванням | candidate | tcp-listen | — | stable | — |
-| `1151` | — | прочитати-файл | candidate | read-file | — | stable | — |
-| `1152` | — | записати-файл | candidate | write-file | — | stable | — |
+| `1151` | прочитати-файл | прочитати-файл | stable | read-file | — | stable | — |
+| `1152` | записати-файл | записати-файл | stable | write-file | — | stable | — |
