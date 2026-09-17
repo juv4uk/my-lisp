@@ -8,7 +8,7 @@
 ; This file is Lisp-owned policy data. Host tooling may transport and enforce
 ; it, but the authority direction and prohibitions are stated here.
 
-(machine-authority-boundary/2
+(machine-authority-boundary/1
   (semantic-authority lib/surface/semantic-registry.lisp)
   (machine-root lib/machine)
   (public-api-excluded-root lib/machine)
