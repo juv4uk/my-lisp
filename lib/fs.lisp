@@ -1,3 +1,4 @@
+; Verification-only trigger for #318 full my-lisp package proof; never merge.
 ; File text policy owned by Lisp.
 ; Політика текстового читання/запису файлів, якою володіє Lisp.
 ;
