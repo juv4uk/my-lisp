@@ -16,122 +16,146 @@ jobs:
         with:
           ref: fix/115-deletion-only-authority
           fetch-depth: 0
-      - name: Apply GREEN patch
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Apply and verify GREEN patch
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           guard = '''; #115 — Lisp owns the authority verdict.
-          ; Usage: my-lisp scripts/authority-guard.lisp after CI writes change facts as
-          ; Lisp data to tests/changed-host-tests.lisp. Host code transports only diff
-          ; direction; this Lisp program owns the semantic allow/deny verdict.
+; Usage: my-lisp scripts/authority-guard.lisp after CI writes change facts as
+; Lisp data to tests/changed-host-tests.lisp. Host code transports only diff
+; direction; this Lisp program owns the semantic allow/deny verdict.
 
-          (def second (lambda (x) (car (cdr x))))
-          (def third (lambda (x) (car (cdr (cdr x)))))
+(def second (lambda (x) (car (cdr x))))
+(def third (lambda (x) (car (cdr (cdr x)))))
 
-          (def authority-rows (read-all (read-file "tests/authority-inventory.lisp")))
-          (def changed-host-tests (read-all (read-file "tests/changed-host-tests.lisp")))
+(def authority-rows (read-all (read-file "tests/authority-inventory.lisp")))
+(def changed-host-tests (read-all (read-file "tests/changed-host-tests.lisp")))
 
-          (def find-authority
-            (lambda (path rows)
-              (cond
-                ((atom rows) (structural-kind empty-list) ())
-                ((equal? path (second (car rows))) (structural-relation same)
-                 (third (car rows)))
-                (t t (find-authority path (cdr rows))))))
+(def find-authority
+  (lambda (path rows)
+    (cond
+      ((atom rows) (structural-kind empty-list) ())
+      ((equal? path (second (car rows))) (structural-relation same)
+       (third (car rows)))
+      (t t (find-authority path (cdr rows))))))
 
-          (def allowed-authority?
-            (lambda (class)
-              (cond
-                ((eq class (quote observer)) (identity-relation same) t)
-                ((eq class (quote mechanism)) (identity-relation same) t)
-                (t t ()))))
+(def allowed-authority?
+  (lambda (class)
+    (cond
+      ((eq class (quote observer)) (identity-relation same) t)
+      ((eq class (quote mechanism)) (identity-relation same) t)
+      (t t ()))))
 
-          (def authority-violation
-            (lambda (path class change-kind)
-              (list (quote semantic-authority-violation)
-                    path class change-kind
-                    "Host tests may observe mechanism; Lisp owns meaning. See #112/#113.")))
+(def authority-violation
+  (lambda (path class change-kind)
+    (list (quote semantic-authority-violation)
+          path class change-kind
+          "Host tests may observe mechanism; Lisp owns meaning. See #112/#113.")))
 
-          (def check-changes
-            (lambda (changes)
-              (cond
-                ((atom changes) (structural-kind empty-list)
-                 (quote (authority-ok)))
-                ((atom changes) (structural-kind pair)
-                 (let ((change (car changes)))
-                   (let ((path (second change))
-                         (change-kind (third change)))
-                     (let ((class (find-authority path authority-rows)))
-                       (cond
-                         ((eq change-kind (quote deletion-only)) (identity-relation same)
-                          (check-changes (cdr changes)))
-                         ((allowed-authority? class) t
-                          (check-changes (cdr changes)))
-                         (t t
-                          (authority-violation path class change-kind)))))))
-                (t t
-                 (authority-violation (quote invalid-change-data)
-                                      (quote unknown)
-                                      (quote modified)))))))
+(def check-changes
+  (lambda (changes)
+    (cond
+      ((atom changes) (structural-kind empty-list)
+       (quote (authority-ok)))
+      ((atom changes) (structural-kind pair)
+       (let ((change (car changes)))
+         (let ((path (second change))
+               (change-kind (third change)))
+           (let ((class (find-authority path authority-rows)))
+             (cond
+               ((eq change-kind (quote deletion-only)) (identity-relation same)
+                (check-changes (cdr changes)))
+               ((allowed-authority? class) t
+                (check-changes (cdr changes)))
+               (t t
+                (authority-violation path class change-kind)))))))
+      (t t
+       (authority-violation (quote invalid-change-data)
+                            (quote unknown)
+                            (quote modified)))))))
 
-          (def authority-verdict (check-changes changed-host-tests))
+(def authority-verdict (check-changes changed-host-tests))
 
-          ; Keep diagnostic output in a successful top-level form. The following
-          ; top-level form may intentionally fail; transcript atomicity must not erase
-          ; the already-completed diagnostic form.
-          (print authority-verdict)
+; Keep diagnostic output in a successful top-level form. The following
+; top-level form may intentionally fail; transcript atomicity must not erase
+; the already-completed diagnostic form.
+(print authority-verdict)
 
-          (cond
-            ((eq (car authority-verdict) (quote semantic-authority-violation))
-             (identity-relation same)
-             (car ()))
-            (t t t))
-          '''
-          guard = '\n'.join(line[10:] if line.startswith('          ') else line for line in guard.splitlines()) + '\n'
+(cond
+  ((eq (car authority-verdict) (quote semantic-authority-violation))
+   (identity-relation same)
+   (car ()))
+  (t t t))
+'''
           Path('scripts/authority-guard.lisp').write_text(guard, encoding='utf-8')
 
           ci_path = Path('.github/workflows/ci.yml')
           ci = ci_path.read_text(encoding='utf-8')
-          old = '''          : > tests/changed-host-tests.lisp
-          while IFS= read -r path; do
-            case "$path" in
-              crates/*/tests/*.rs) printf '\"%s\"\\n' "$path" >> tests/changed-host-tests.lisp ;;
-            esac
-          done < /tmp/changed.txt
-          ./target/debug/my-lisp scripts/authority-guard.lisp'''
-          new = '''          : > tests/changed-host-tests.lisp
-          git diff --numstat "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" -- 'crates/*/tests/*.rs' |
+          needle = '          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt\n          cat /tmp/changed.txt'
+          replacement = '          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt\n          git diff --numstat "$BASE_SHA" "$HEAD_SHA" > /tmp/changed-numstat.txt\n          cat /tmp/changed.txt'
+          if needle not in ci:
+              raise SystemExit('classify diff block not found')
+          ci = ci.replace(needle, replacement, 1)
+
+          pattern = re.compile(
+              r'          : > tests/changed-host-tests\.lisp\n.*?          \./target/debug/my-lisp scripts/authority-guard\.lisp',
+              re.S,
+          )
+          new_block = '''          : > tests/changed-host-tests.lisp
           while IFS=$'\\t' read -r additions deletions path; do
-            [[ -z "$path" ]] && continue
-            change_kind=modified
-            if [[ "$additions" == "0" && "$deletions" != "0" && "$deletions" != "-" ]]; then
-              change_kind=deletion-only
-            fi
-            printf '(change \"%s\" %s)\\n' "$path" "$change_kind" >> tests/changed-host-tests.lisp
-          done
+            case "$path" in
+              crates/*/tests/*.rs)
+                change_kind=modified
+                if [[ "$additions" == "0" && "$deletions" != "0" && "$deletions" != "-" ]]; then
+                  change_kind=deletion-only
+                fi
+                printf '(change "%s" %s)\\n' "$path" "$change_kind" >> tests/changed-host-tests.lisp
+                ;;
+            esac
+          done < /tmp/changed-numstat.txt
           ./target/debug/my-lisp scripts/authority-guard.lisp'''
-          if old not in ci:
-              raise SystemExit('authority guard CI block not found')
-          ci_path.write_text(ci.replace(old, new), encoding='utf-8')
+          ci, count = pattern.subn(new_block, ci, count=1)
+          if count != 1:
+              raise SystemExit(f'authority guard block replacements: {count}')
+          ci_path.write_text(ci, encoding='utf-8')
 
           contract_path = Path('crates/my-lisp/tests/authority_guard_contract.rs')
           contract = contract_path.read_text(encoding='utf-8')
-          contract = contract.replace(
-              '    assert!(guard.contains("allowed-authority?") && guard.contains("observer") && guard.contains("mechanism"));\n'
-              '    assert!(guard.contains("semantic-authority-violation") && guard.contains("#112/#113"));\n'
-              '    assert!(guard.contains("(t ())"), "unknown/forbidden authority must fail closed");',
-              '    assert!(guard.contains("allowed-authority?") && guard.contains("observer") && guard.contains("mechanism"));\n'
-              '    assert!(guard.contains("semantic-authority-violation") && guard.contains("#112/#113"));\n'
-              '    assert!(guard.contains("authority-verdict") && guard.contains("(car ())"),\n'
-              '        "unknown/forbidden authority must still fail closed after a separate diagnostic form");'
-          )
-          contract_path.write_text(contract, encoding='utf-8')
+          old = '    assert!(guard.contains("(t ())"), "unknown/forbidden authority must fail closed");'
+          new = '    assert!(guard.contains("authority-verdict") && guard.contains("(car ())"),\n        "unknown/forbidden authority must still fail closed after a separate diagnostic form");'
+          if old not in contract:
+              raise SystemExit('old fail-closed assertion not found')
+          contract_path.write_text(contract.replace(old, new, 1), encoding='utf-8')
           PY
-          rm .github/workflows/apply-115-green.yml
+
+          ruby -e 'require "psych"; Psych.parse_file(".github/workflows/ci.yml")'
+          cargo test -p my-lisp --test authority_guard_contract
+          cargo build -p my-lisp-cli --bin my-lisp
+
+          printf '(change "crates/my-lisp/tests/mccarthy.rs" deletion-only)\n' > tests/changed-host-tests.lisp
+          ./target/debug/my-lisp scripts/authority-guard.lisp > /tmp/authority-deletion.log 2>&1
+          cat /tmp/authority-deletion.log
+          grep -q 'authority-ok' /tmp/authority-deletion.log
+
+          printf '(change "crates/my-lisp/tests/mccarthy.rs" modified)\n' > tests/changed-host-tests.lisp
+          if ./target/debug/my-lisp scripts/authority-guard.lisp > /tmp/authority-modified.log 2>&1; then
+            echo 'ERROR: modified semantic-authority unexpectedly passed'
+            exit 1
+          fi
+          cat /tmp/authority-modified.log
+          grep -q 'semantic-authority-violation' /tmp/authority-modified.log
+
+          rm -f tests/changed-host-tests.lisp
+          rm -f .github/workflows/apply-115-green.yml
+          rm -f .github/workflows/apply-authority-green.yml
+          rm -f .github/workflows/targeted-authority-red.yml
           git add -A
+          git diff --cached --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'fix(#115): allow one-way retirement of host semantic authority'
