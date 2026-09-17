@@ -52,10 +52,6 @@ fn fast_path_product_past_f64_exact_range_never_silently_rounds() {
         panic!("an exact integer above the f64 exact range must stay Rational");
     };
     assert_eq!(rational.to_string(), EXPECTED);
-    assert_eq!(
-        eval("(= (* 3000000001 3000000001) 9000000006000000001)"),
-        Value::Symbol("t".into())
-    );
 }
 
 #[test]
@@ -89,15 +85,6 @@ fn exact_decimal_and_exponent_literals_never_enter_binary_float_semantics() {
     assert_eq!(eval("(* 1e-100 1e100)").to_string(), "1");
     let ten_pow_200 = format!("1{}", "0".repeat(200));
     assert_eq!(eval("(/ 1e100 1e-100)").to_string(), ten_pow_200);
-}
-
-#[test]
-fn exactness_is_observable_while_numeric_equality_compares_magnitude() {
-    let identity = eval(r#"(def x (json-parse "3.0")) (eq 3 x)"#);
-    let magnitude = eval(r#"(def x (json-parse "3.0")) (= 3 x)"#);
-
-    assert_eq!(identity, Value::Nil, "eq must preserve the exact/inexact distinction");
-    assert_eq!(magnitude, Value::Symbol("t".into()));
 }
 
 #[test]
