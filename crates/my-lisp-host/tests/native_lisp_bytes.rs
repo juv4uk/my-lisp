@@ -327,6 +327,49 @@ fn lisp_owned_add_bytes_execute_natively_through_semantics_blind_host() {
     assert_eq!(result.value.to_string(), "5");
 }
 
+/// #176 continued: MOV r64,r64 is proven on this session's own i5-6400 by
+/// actually copying a value between two real registers, not by disassembling
+/// the bytes. This witness deliberately restricts both operands to
+/// caller-saved GPRs (RAX, RCX, RDX) -- a real, separately-reported gap
+/// (see knowledge/guard-reference-inbox.mylog) means native-call-u64-raw's
+/// guest calling convention does not save/restore the SysV64 callee-saved
+/// registers (RBX, RBP, R12-R15) around the generated guest bytes, so any
+/// admitted form writing into one of those 6 registers currently crashes
+/// the host process on return; this is a host-mechanism gap outside #176's
+/// own encoder/admission authority, not something this test works around
+/// by pretending it doesn't exist.
+#[test]
+fn mov_r64_r64_actually_copies_between_real_registers_on_real_hardware() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before native witness");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    let copied = eval_program(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rcx 42) (mov-r64-imm64 rax 0) (mov-r64-r64 rax rcx) (ret))) 0)",
+        &mut session,
+    )
+    .expect("host must execute the admitted MOV r64,r64 bytes");
+    assert_eq!(
+        copied.value.to_string(),
+        "42",
+        "MOV must copy rcx's value into rax on real hardware, overwriting rax's prior value"
+    );
+
+    let overwritten_by_source_not_kept = eval_program(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax 99) (mov-r64-imm64 rdx 7) (mov-r64-r64 rax rdx) (ret))) 0)",
+        &mut session,
+    )
+    .expect("host must execute the admitted MOV r64,r64 bytes");
+    assert_eq!(
+        overwritten_by_source_not_kept.value.to_string(),
+        "7",
+        "MOV must overwrite the destination with the source's value, not preserve the destination's prior value"
+    );
+}
+
 #[test]
 fn native_execution_mechanism_is_not_a_language_semantic_identity() {
     let _serial = test_lock();

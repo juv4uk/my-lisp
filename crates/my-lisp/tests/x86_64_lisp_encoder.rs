@@ -123,6 +123,77 @@ fn lisp_encodes_the_alu_register_family_with_pinned_opcodes() {
     }
 }
 
+fn decode_mov_r64_r64(bytes: &[u8]) -> Option<(u8, u8)> {
+    let [rex, opcode, modrm] = bytes else { return None };
+    if *opcode != 0x89 {
+        return None;
+    }
+    let rex_w = (rex & 0x08) != 0;
+    let rex_r = (rex & 0x04) != 0;
+    let rex_b = (rex & 0x01) != 0;
+    if !rex_w || (rex & 0xF0) != 0x40 {
+        return None;
+    }
+    let mod_bits = modrm >> 6;
+    if mod_bits != 0b11 {
+        return None;
+    }
+    let source = ((modrm >> 3) & 0b111) | if rex_r { 0b1000 } else { 0 };
+    let destination = (modrm & 0b111) | if rex_b { 0b1000 } else { 0 };
+    Some((destination, source))
+}
+
+/// #176 continued: MOV r/m64, r64 (opcode 0x89 /r) was the most basic data-
+/// movement form still missing -- every other admitted form could only load
+/// an immediate or a memory operand into a register, never copy register to
+/// register. Reuses x86-encode-alu-r64-r64's exact REX.W+opcode+ModRM shape
+/// (confirmed against #175's pinned XED evidence: the reg field is the
+/// source being read, the rm field is the destination being written, the
+/// identical assignment the group-1 ALU family already uses), verified here
+/// with an independent from-scratch decoder across all 16x16
+/// destination/source GPR combinations.
+#[test]
+fn lisp_encodes_mov_r64_r64_for_every_destination_and_source_gpr_pair() {
+    let mut session = encoder_session();
+    const ALL_GPRS: [&str; 16] = [
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12",
+        "r13", "r14", "r15",
+    ];
+    for (destination_name, destination_code) in ALL_GPRS.iter().zip(0u8..) {
+        for (source_name, source_code) in ALL_GPRS.iter().zip(0u8..) {
+            let form = format!("(x86-encode-mov-r64-r64 (quote {destination_name}) (quote {source_name}))");
+            let rendered = eval_bytes(&form, &mut session);
+            let bytes: Vec<u8> = rendered
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+                .split_whitespace()
+                .map(|token| token.parse().expect("byte must be a small integer"))
+                .collect();
+
+            assert_eq!(bytes.len(), 3, "{form} must always be REX+0x89+ModRM, 3 bytes");
+            assert_eq!(bytes[1], 137, "{form} must use opcode 0x89");
+
+            let decoded = decode_mov_r64_r64(&bytes)
+                .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+            assert_eq!(
+                decoded,
+                (destination_code, source_code),
+                "{form} round-tripped to (destination {}, source {}) via independent decode, from bytes {bytes:?}",
+                decoded.0,
+                decoded.1
+            );
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("PATTERN   : 0x89 MOD[0b11] MOD=3 REG[rrr] RM[nnn]"),
+        "pinned XED evidence must contain the exact MOV register/register pattern this encoder was checked against"
+    );
+}
+
 /// Independent decoder for exactly the PUSH r64 / POP r64 byte shapes this
 /// encoder emits: an optional REX prefix (0x40-0x4F, bit 0 = REX.B) followed
 /// by a single opcode byte in 0x50-0x5F. This is deliberately a *second*,

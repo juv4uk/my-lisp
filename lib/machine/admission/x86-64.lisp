@@ -15,6 +15,7 @@
   (quote
     ((ret)
      (mov-r64-imm64 register immediate)
+     (mov-r64-r64 register register)
      (add-r64-r64 register register)
      (or-r64-r64 register register)
      (and-r64-r64 register register)
@@ -154,6 +155,8 @@
        (x86-encode-ret))
       ((x86-admission-pattern-match? (quote (mov-r64-imm64 register immediate)) form)
        (x86-encode-mov-r64-imm64 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (mov-r64-r64 register register)) form)
+       (x86-encode-mov-r64-r64 (second form) (third form)))
       ((x86-admission-pattern-match? (quote (add-r64-r64 register register)) form)
        (x86-encode-add-r64-r64 (second form) (third form)))
       ((x86-admission-pattern-match? (quote (or-r64-r64 register register)) form)

@@ -177,6 +177,20 @@
   (lambda (destination source)
     (x86-encode-alu-r64-r64 133 destination source)))
 
+; MOV r/m64, r64 (opcode 0x89 /r, mod=3 register/register): copies source
+; into destination with no flags touched -- per #175's pinned XED evidence
+; (`PATTERN : 0x89 MOD[0b11] MOD=3 REG[rrr] RM[nnn]`, `OPERANDS : REG0=
+; GPRv_B():w REG1=GPRv_R():r`, i.e. the reg field is the source being read
+; and the rm field is the destination being written, the identical
+; source/destination assignment the group-1 ALU family already uses). Same
+; REX.W+opcode+ModRM shape, so it reuses x86-encode-alu-r64-r64 directly.
+; This is the most elementary data-movement form still missing until now:
+; every other admitted form can only load an immediate or a memory operand
+; into a register, never copy register-to-register.
+(def x86-encode-mov-r64-r64
+  (lambda (destination source)
+    (x86-encode-alu-r64-r64 137 destination source)))
+
 ; PUSH r64 (opcode 0x50+rd, ICLASS PUSH: `0b0101_0 SRM[rrr] ... DF64()`) and
 ; POP r64 (opcode 0x58+rd, ICLASS POP: `0b0101_1 SRM[rrr] ... DF64()`), per
 ; #175's pinned XED evidence. Both default to 64-bit operand size in long

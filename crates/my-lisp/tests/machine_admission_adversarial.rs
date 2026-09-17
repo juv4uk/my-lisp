@@ -62,6 +62,17 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(rejected unadmitted-machine-form (add-r64-r64 rax notareg))",
         ),
         (
+            // MOV r64,r64's destination slot fails closed the same way
+            // every other register slot does.
+            "(x86-call-admitted-u64 (quote ((mov-r64-r64 notareg rax))) 0)",
+            "(rejected unadmitted-machine-form (mov-r64-r64 notareg rax))",
+        ),
+        (
+            // MOV r64,r64's source slot fails closed the same way.
+            "(x86-call-admitted-u64 (quote ((mov-r64-r64 rax notareg))) 0)",
+            "(rejected unadmitted-machine-form (mov-r64-r64 rax notareg))",
+        ),
+        (
             // #176's generalized mov-mem-disp8 admission: 128 is one past
             // the signed disp8 maximum (127) and must fail closed, not be
             // silently truncated or wrapped into something encodable.
