@@ -15,6 +15,7 @@
   (quote
     ((ret)
      (mov-r64-imm64 register immediate)
+     (mov-r64-r64 register register)
      (add-r64-r64 register register)
      (or-r64-r64 register register)
      (and-r64-r64 register register)
@@ -46,7 +47,19 @@
      (jnl-rel8 disp8)
      (jle-rel8 disp8)
      (jnle-rel8 disp8)
-     (jmp-rel8 disp8))))
+     (jmp-rel8 disp8)
+     (add-r64-imm32 register imm32)
+     (or-r64-imm32 register imm32)
+     (and-r64-imm32 register imm32)
+     (sub-r64-imm32 register imm32)
+     (xor-r64-imm32 register imm32)
+     (cmp-r64-imm32 register imm32)
+     (shl-r64-imm8 register uimm8)
+     (shr-r64-imm8 register uimm8)
+     (sar-r64-imm8 register uimm8)
+     (call-rel32 rel32)
+     (call-r64 register)
+     (jmp-r64 register))))
 
 ; A disp8 slot only admits an exact integer in [-128,127]. Comparison
 ; operators like `>=` error on a non-number rather than returning () (a
@@ -90,6 +103,27 @@
        (and (>= value -128) (<= value 127)))
       (t (quote ())))))
 
+(def x86-admission-imm32?
+  (lambda (value)
+    (cond
+      ((x86-admission-exact-integer? value)
+       (and (>= value -2147483648) (<= value 2147483647)))
+      (t (quote ())))))
+
+(def x86-admission-uimm8?
+  (lambda (value)
+    (cond
+      ((x86-admission-exact-integer? value)
+       (and (>= value 0) (<= value 255)))
+      (t (quote ())))))
+
+(def x86-admission-rel32?
+  (lambda (value)
+    (cond
+      ((x86-admission-exact-integer? value)
+       (and (>= value -2147483648) (<= value 2147483647)))
+      (t (quote ())))))
+
 ; `immediate`, `register`, and `disp8` are operand-slot wildcards, not
 ; opcode wildcards. `register` only admits the 16 GPR names x86-reg-code
 ; knows about -- any other atom (a number, a made-up symbol) fails the
@@ -109,6 +143,18 @@
          ((eq pattern (quote disp8))
           (cond
             ((atom form) (x86-admission-disp8? form))
+            (t (quote ()))))
+         ((eq pattern (quote imm32))
+          (cond
+            ((atom form) (x86-admission-imm32? form))
+            (t (quote ()))))
+         ((eq pattern (quote uimm8))
+          (cond
+            ((atom form) (x86-admission-uimm8? form))
+            (t (quote ()))))
+         ((eq pattern (quote rel32))
+          (cond
+            ((atom form) (x86-admission-rel32? form))
             (t (quote ()))))
          ((atom form) (eq pattern form))
          (t (quote ()))))
@@ -154,6 +200,8 @@
        (x86-encode-ret))
       ((x86-admission-pattern-match? (quote (mov-r64-imm64 register immediate)) form)
        (x86-encode-mov-r64-imm64 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (mov-r64-r64 register register)) form)
+       (x86-encode-mov-r64-r64 (second form) (third form)))
       ((x86-admission-pattern-match? (quote (add-r64-r64 register register)) form)
        (x86-encode-add-r64-r64 (second form) (third form)))
       ((x86-admission-pattern-match? (quote (or-r64-r64 register register)) form)
@@ -218,6 +266,30 @@
        (x86-encode-jnle-rel8 (second form)))
       ((x86-admission-pattern-match? (quote (jmp-rel8 disp8)) form)
        (x86-encode-jmp-rel8 (second form)))
+      ((x86-admission-pattern-match? (quote (add-r64-imm32 register imm32)) form)
+       (x86-encode-add-r64-imm32 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (or-r64-imm32 register imm32)) form)
+       (x86-encode-or-r64-imm32 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (and-r64-imm32 register imm32)) form)
+       (x86-encode-and-r64-imm32 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (sub-r64-imm32 register imm32)) form)
+       (x86-encode-sub-r64-imm32 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (xor-r64-imm32 register imm32)) form)
+       (x86-encode-xor-r64-imm32 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (cmp-r64-imm32 register imm32)) form)
+       (x86-encode-cmp-r64-imm32 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (shl-r64-imm8 register uimm8)) form)
+       (x86-encode-shl-r64-imm8 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (shr-r64-imm8 register uimm8)) form)
+       (x86-encode-shr-r64-imm8 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (sar-r64-imm8 register uimm8)) form)
+       (x86-encode-sar-r64-imm8 (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (call-rel32 rel32)) form)
+       (x86-encode-call-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (call-r64 register)) form)
+       (x86-encode-call-r64 (second form)))
+      ((x86-admission-pattern-match? (quote (jmp-r64 register)) form)
+       (x86-encode-jmp-r64 (second form)))
       ; Unreachable after admission. Keep fail-closed data instead of inventing
       ; a fallback encoder.
       (t (quote ())))))

@@ -168,6 +168,72 @@
   (lambda (destination source)
     (x86-encode-alu-r64-r64 57 destination source)))
 
+; MOV r/m64, r64 (opcode 0x89 /r, mod=3 register/register): copies source
+; into destination with no flags touched -- per #175's pinned XED evidence
+; (`PATTERN : 0x89 MOD[0b11] MOD=3 REG[rrr] RM[nnn]`, `OPERANDS : REG0=
+; GPRv_B():w REG1=GPRv_R():r`, i.e. the reg field is the source being read
+; and the rm field is the destination being written, the identical
+; source/destination assignment the group-1 ALU family already uses). Same
+; REX.W+opcode+ModRM shape, so it reuses x86-encode-alu-r64-r64 directly.
+; This is the most elementary data-movement form still missing until now:
+; every other admitted form can only load an immediate or a memory operand
+; into a register, never copy register-to-register.
+(def x86-encode-mov-r64-r64
+  (lambda (destination source)
+    (x86-encode-alu-r64-r64 137 destination source)))
+
+; Two's-complement little-endian bytes for a sign-extended imm32 value
+; already known to be in [-2147483648,2147483647]. Same wrap-before-split
+; discipline #199 proved for disp8 (x86-disp8-byte) -- `mod` in this Lisp
+; does not wrap negative operands, so adding 2^32 before reducing mod 2^32
+; is exact for the whole imm32 domain.
+(def x86-imm32-bytes
+  (lambda (immediate)
+    (x86-u32-bytes (mod (+ immediate 4294967296) 4294967296))))
+
+; ALU r/m64, imm32 (mod=3, sign-extended to 64 bits): opcode 0x81, ModRM reg
+; field selects the operation (ADD=0, OR=1, AND=4, SUB=5, XOR=6, CMP=7,
+; matching the same fixed group-1 numbering the register/register family's
+; own opcodes already encode), rm field is the destination register -- per
+; #175's pinned XED evidence (`PATTERN : 0x81 MOD[0b11] MOD=3 REG[rrr]
+; RM[nnn] SIMMz()`). Lets a comparison/arithmetic-against-a-constant (the
+; #196 COND base-case shape: compare a variable to a literal) skip loading
+; the constant into a scratch register first.
+(def x86-encode-alu-r64-imm32
+  (lambda (opcode-extension destination immediate)
+    (let ((dst (x86-reg-code destination)))
+      (cons
+        (x86-encode-rex 1 0 0 (x86-high1 dst))
+        (cons
+          129
+          (cons
+            (x86-encode-modrm 3 opcode-extension (x86-low3 dst))
+            (x86-imm32-bytes immediate)))))))
+
+(def x86-encode-add-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 0 destination immediate)))
+
+(def x86-encode-or-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 1 destination immediate)))
+
+(def x86-encode-and-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 4 destination immediate)))
+
+(def x86-encode-sub-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 5 destination immediate)))
+
+(def x86-encode-xor-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 6 destination immediate)))
+
+(def x86-encode-cmp-r64-imm32
+  (lambda (destination immediate)
+    (x86-encode-alu-r64-imm32 7 destination immediate)))
+
 ; TEST r/m64, r64 (opcode 0x85 /r, mod=3 register/register): destination AND
 ; source, result discarded, flags set only -- per #175's pinned XED evidence
 ; (`PATTERN : 0x85 MOD[0b11] MOD=3 REG[rrr] RM[nnn]`). Same REX.W+opcode+
@@ -245,6 +311,35 @@
         247
         (x86-encode-modrm 3 3 (x86-low3 code))))))
 
+; SHL/SHR/SAR r64, imm8: group-2 opcode 0xC1, /reg extension selects the
+; operation -- SHL is /4, SHR is /5, SAR is /7 (/6 duplicates SHL under an
+; undocumented encoding and is intentionally not admitted) -- per #175's pinned XED
+; evidence (`PATTERN : 0xC1 MOD[0b11] MOD=3 REG[0b100] RM[nnn] UIMM8()`
+; for SHL, `REG[0b101]` for SHR, `REG[0b111]` for SAR). Unlike disp8/
+; rel8/rel32/imm32, UIMM8 is an *unsigned* byte in [0,255], so no
+; two's-complement wrap-before-split is needed -- the admitted count
+; becomes the raw trailing byte directly.
+(def x86-encode-shift-r64-imm8
+  (lambda (opcode-extension register count)
+    (let ((code (x86-reg-code register)))
+      (list
+        (x86-encode-rex 1 0 0 (x86-high1 code))
+        193
+        (x86-encode-modrm 3 opcode-extension (x86-low3 code))
+        count))))
+
+(def x86-encode-shl-r64-imm8
+  (lambda (register count)
+    (x86-encode-shift-r64-imm8 4 register count)))
+
+(def x86-encode-shr-r64-imm8
+  (lambda (register count)
+    (x86-encode-shift-r64-imm8 5 register count)))
+
+(def x86-encode-sar-r64-imm8
+  (lambda (register count)
+    (x86-encode-shift-r64-imm8 7 register count)))
+
 ; Jcc rel8: opcode 0x70+cc followed by a signed 8-bit relative displacement
 ; (from the address of the *next* instruction). No REX prefix -- this is a
 ; control-transfer, not a GPR operation. The 16 condition codes and their
@@ -286,6 +381,65 @@
     (list
       235
       (x86-disp8-byte displacement))))
+
+; Two's-complement little-endian bytes for a rel32 value already known to be
+; in [-2147483648,2147483647]. Same wrap-before-split fix #199 proved for
+; disp8 (x86-disp8-byte) and this file's own x86-u64-bytes lack for
+; mov-r64-imm64 (#220's truth-sentinel audit documented this being an
+; existing, out-of-scope gap) -- `mod` in this Lisp does not wrap negative operands, so
+; adding 2^32 before reducing mod 2^32 is exact for the whole rel32 domain.
+(def x86-rel32-bytes
+  (lambda (displacement)
+    (x86-u32-bytes (mod (+ displacement 4294967296) 4294967296))))
+
+; CALL rel32: opcode 0xE8 followed by a signed 32-bit relative displacement
+; (from the address of the *next* instruction), confirmed against #175's
+; pinned XED evidence (`PATTERN : 0xE8 mode64 norex2_prefix BRDISP32()
+; DF64() FORCE64()`). No REX, no ModRM -- like JMP rel8/Jcc rel8, this is a
+; control-transfer, not a GPR operation. Unlike JMP, CALL also pushes the
+; return address (XED_REG_STACKPUSH) -- on real hardware this is the actual
+; RSP-based machine stack, so a CALL executed through native-call-u64-raw
+; pushes/pops for real; nothing in the arena model needs to know about it,
+; the same "guest ABI is Lisp's, host mechanism is the CPU's" split #204
+; already established for the Windows/Linux execution adapters.
+(def x86-encode-call-rel32
+  (lambda (displacement)
+    (cons 232 (x86-rel32-bytes displacement))))
+
+; CALL r64 / JMP r64 (indirect through a register): group-5 opcode 0xFF,
+; /reg extension selects the operation -- CALL is /2, JMP is /4 -- per
+; #175's pinned XED evidence (`PATTERN : 0xFF MOD[0b11] MOD=3 REG[0b010]
+; RM[nnn] DF64() ...` for CALL, `REG[0b100]` for JMP). Both are `DF64()`
+; (default 64-bit operand size in long mode), matching PUSH/POP's own
+; default-64-bit shape, so no REX.W is emitted -- only REX.B, and only for
+; r8-r15. Unlike CALL rel32,
+; the target here is whatever absolute address the admitted register holds
+; at runtime, not a displacement fixed at encode time; CALL still pushes a
+; real return address via XED_REG_STACKPUSH, onto the same real machine
+; stack #204 already established. This is the first indirect (register-
+; target) control transfer the encoder admits: the destination is
+; genuinely a runtime value, not something knowable from the bytes alone.
+(def x86-encode-group5-indirect-r64
+  (lambda (opcode-extension register)
+    (let ((code (x86-reg-code register)))
+      (cond
+        ((eq (x86-high1 code) 1)
+          (list
+            (x86-encode-rex 0 0 0 1)
+            255
+            (x86-encode-modrm 3 opcode-extension (x86-low3 code))))
+        (t
+          (list
+            255
+            (x86-encode-modrm 3 opcode-extension (x86-low3 code))))))))
+
+(def x86-encode-call-r64
+  (lambda (register)
+    (x86-encode-group5-indirect-r64 2 register)))
+
+(def x86-encode-jmp-r64
+  (lambda (register)
+    (x86-encode-group5-indirect-r64 4 register)))
 
 (def x86-encode-program
   (lambda (instructions)
