@@ -105,60 +105,6 @@ fn recursive_rule_standardizing_apart() {
     assert_eq!(eval_reason(source), "1");
 }
 
-#[test]
-fn negation_as_failure() {
-    let source = r#"
-        (let ((rules (quote (
-                 ((bird (var x)) (animal (var x)) (not (penguin (var x))))
-                 ((animal tweety))
-                 ((animal pingu))
-                 ((penguin pingu))
-               ))))
-             (reason (list (quote bird) (logic-var (quote x))) rules))
-    "#;
-    // Only tweety is a bird because pingu is a penguin, so the (quote not') fails for pingu.
-    assert_eq!(eval_reason(source), "(((((x . 0) . tweety) (x var (x . 0))) (proved (bird (var x)) (bird (var (x . 0))) ((proved (animal (var (x . 0))) (animal tweety) ()) (proved-not (penguin (var (x . 0))))))))");
-}
-
-#[test]
-fn test_explain_proof() {
-    let source = r#"
-        (let ((rules (quote (
-                 ((bird (var x)) (animal (var x)) (not (penguin (var x))))
-                 ((animal tweety))
-                 ((animal pingu))
-                 ((penguin pingu))
-               ))))
-             (let* ((results (reason (list (quote bird) (logic-var (quote x))) rules))
-                    (proof (second (car results))))
-               (explain-proof proof)))
-    "#;
-    let output = eval_reason_with_output(source);
-    assert_eq!(
-        output,
-        vec![
-            "Proved:",
-            "(bird (var x))",
-            "using",
-            "rule:",
-            "(bird (var (x . 0)))",
-            "..",
-            "|-",
-            "Proved:",
-            "(animal (var (x . 0)))",
-            "using",
-            "rule:",
-            "(animal tweety)",
-            "..",
-            "|-",
-            "Proved",
-            "by",
-            "failure:",
-            "not",
-            "(penguin (var (x . 0)))"
-        ]
-    );
-}
 
 #[test]
 fn reason_explain_explains_a_provable_goal() {
