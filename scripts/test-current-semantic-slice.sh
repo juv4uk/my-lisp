@@ -83,3 +83,12 @@ if [[ "$explicit_negative_status" != "(explicit-negative-reason-observe-witness 
   printf 'explicit-negative reasoning Lisp witness failed: %s\n' "$explicit_negative_status" >&2
   exit 1
 fi
+
+# #176: admitted x86-64 instructions (LEA, JMP rel32, Jcc rel32) encode
+# deterministically and enforce admission bounds in Lisp. The shell observes
+# only the named pass envelope.
+x86_instruction_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/x86-64-instruction-set-witness.lisp)"
+if [[ "$x86_instruction_status" != "(x86-64-instruction-set-witness (status pass))" ]]; then
+  printf 'x86-64 instruction set Lisp witness failed: %s\n' "$x86_instruction_status" >&2
+  exit 1
+fi
