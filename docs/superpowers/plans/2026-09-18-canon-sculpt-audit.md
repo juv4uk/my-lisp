@@ -37,7 +37,7 @@ Run:
 ```bash
 git diff --name-only main...audit/419-canon-sculpt-integrated
 ```
-Expected: only `docs/research/canon-sculpt-audit.lisp`, `docs/research/canon-sculpt-probes/*`, and this plan until a separately approved research-only file is added.
+Expected: only `docs/research/canon-sculpt-audit.lisp`, `docs/research/canon-sculpt-structural-basis.lisp`, `docs/research/canon-sculpt-probes/*`, and this plan until a separately approved research-only file is added.
 
 - [ ] **Step 2: Verify no production authority file changed**
 
@@ -50,7 +50,7 @@ Expected: exit 0.
 - [ ] **Step 3: Commit only research-map reconciliation**
 
 ```bash
-git add docs/research/canon-sculpt-audit.lisp
+git add docs/research/canon-sculpt-audit.lisp docs/research/canon-sculpt-structural-basis.lisp
 git commit -m "audit(#419): reconcile Canon research map"
 ```
 
@@ -66,7 +66,7 @@ git commit -m "audit(#419): reconcile Canon research map"
 - [ ] **Step 1: Run the research probe with the normal CLI/evaluator**
 
 ```bash
-cargo run -q -p my-lisp-cli -- docs/research/canon-sculpt-probes/quote-ordinary-function-red.lisp
+cargo run -q -p my-lisp-cli --bin my-lisp -- docs/research/canon-sculpt-probes/quote-ordinary-function-red.lisp
 ```
 Expected: failure before the function body because `canon-sculpt-unbound-symbol` is evaluated as an unbound symbol.
 
@@ -91,14 +91,14 @@ A valid follow-up must explicitly name a strictly lower evaluation-control mecha
 - [ ] **Step 1: Run the ordinary-function selective-evaluation probe**
 
 ```bash
-cargo run -q -p my-lisp-cli -- docs/research/canon-sculpt-probes/selective-evaluation-ordinary-function-red.lisp
+cargo run -q -p my-lisp-cli --bin my-lisp -- docs/research/canon-sculpt-probes/selective-evaluation-ordinary-function-red.lisp
 ```
 Expected: failure while evaluating `canon-sculpt-unbound-branch` before `choose-first-eager` can return `selected`.
 
 - [ ] **Step 2: Run the canonical control witness**
 
 ```bash
-cargo test -p my-lisp control_dispatch -- --nocapture
+cargo test -p my-lisp --test control_dispatch_contract -- --nocapture
 ```
 Expected: canonical three-part rows in `tests/fixtures/control-dispatch-v1.lisp` pass, including explicit matching of `()`, non-truthiness of arbitrary data, and `()` on no match.
 
