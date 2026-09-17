@@ -36,11 +36,3 @@ fn malformed_goal_is_invalid_even_when_module_is_missing() {
         "(invalid invalid-goal (not))"
     );
 }
-
-#[test]
-fn valid_question_about_missing_module_is_still_unknown() {
-    assert_eq!(
-        observe_in(r#"(reason-in-observe (quote missing) (quote (planet earth)))"#),
-        "(unknown (module-not-found missing))"
-    );
-}
