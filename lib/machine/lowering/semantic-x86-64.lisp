@@ -115,6 +115,52 @@
       (list (quote mov-r64-imm64) (quote rax) else-value)
       (list (quote ret)))))
 
+; #196 conditional+structural composition helper. Each branch constructs one
+; bounded pair in the same native-call arena and returns its CAR. The caller
+; selects distinct caller-saved extended GPRs so #207's widened MOV imm64
+; admission is exercised by semantic composition rather than by an ISA-only
+; witness. RAX remains the guest ABI result register.
+(def x86-lower-bounded-car-cons-u64-arm-forms
+  (lambda (left right left-register right-register)
+    (list
+      (list (quote mov-r64-imm64) left-register left)
+      (list
+        (quote mov-mem-disp8-r64)
+        (quote rdi)
+        x86-pair-car-offset
+        left-register)
+      (list (quote mov-r64-imm64) right-register right)
+      (list
+        (quote mov-mem-disp8-r64)
+        (quote rdi)
+        x86-pair-cdr-offset
+        right-register)
+      (list
+        (quote mov-r64-mem-disp8)
+        (quote rax)
+        (quote rdi)
+        x86-pair-car-offset)
+      (list (quote ret)))))
+
+; Third bounded #196 slice: compose runtime COND/EQ choice with structural
+; CAR(CONS ...) branch bodies. This remains deliberately finite: JNZ +33 skips
+; exactly one six-form CAR(CONS) arm (10+4+10+4+4+1 bytes with base RDI), and
+; each arm returns directly. No label resolver, register allocator, GC, or
+; general recursive expression lowering is claimed here.
+(def x86-lower-eq-cond-car-cons-u64-forms
+  (lambda (left right then-car then-cdr else-car else-cdr)
+    (append
+      (list
+        (list (quote mov-r64-imm64) (quote rax) left)
+        (list (quote mov-r64-imm64) (quote rcx) right)
+        (list (quote cmp-r64-r64) (quote rax) (quote rcx))
+        (list (quote jnz-rel8) 33))
+      (append
+        (x86-lower-bounded-car-cons-u64-arm-forms
+          then-car then-cdr (quote r8) (quote r9))
+        (x86-lower-bounded-car-cons-u64-arm-forms
+          else-car else-cdr (quote r10) (quote r11))))))
+
 ; Bounded structural witness for semantic identities 0004/0005/0006.
 ; The host contributes only a raw writable arena pointer in RDI. Lisp owns
 ; the fact that one admitted pair cell has head at x86-pair-car-offset and
