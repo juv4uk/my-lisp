@@ -4,6 +4,8 @@
 ; - every classification row must carry the required provenance fields;
 ; - directory placement is never an authority source;
 ; - registry rows must still exist in the observed knowledge tree.
+; RED slice:
+; - artifact classes must come from the bounded institutional vocabulary.
 
 (def knowledge-authority-required-fields
   (quote (path class scope authority-source lifecycle consumers)))
@@ -263,6 +265,16 @@
       (lifecycle active)
       (consumers ()))))
 
+(def knowledge-authority-sample-invalid-class
+  (quote
+    (artifact
+      (path "knowledge/a.lisp")
+      (class semantic-authority)
+      (scope invalid-class-sample)
+      (authority-source (issue 383))
+      (lifecycle active)
+      (consumers ()))))
+
 (def knowledge-authority-selftest-unclassified
   (lambda ()
     (knowledge-authority-verdict
@@ -285,6 +297,13 @@
   (lambda ()
     (knowledge-authority-verdict
       (list knowledge-authority-sample-row knowledge-authority-sample-stale-row)
+      (quote ("a.lisp")))))
+
+; Intentionally RED: class admission is not implemented yet.
+(def knowledge-authority-selftest-invalid-class
+  (lambda ()
+    (knowledge-authority-verdict
+      (list knowledge-authority-sample-invalid-class)
       (quote ("a.lisp")))))
 
 (def knowledge-authority-assert-verdict
@@ -321,10 +340,18 @@
       stale-path
       "knowledge/c.lisp")))
 
+(knowledge-authority-assert-verdict
+  (knowledge-authority-selftest-invalid-class)
+  (quote
+    (knowledge-authority-violation
+      invalid-class
+      semantic-authority)))
+
 (print
   (quote
     (knowledge-authority-selftests-ok
       unclassified-artifact
       missing-field
       directory-derived-authority
-      stale-path)))
+      stale-path
+      invalid-class)))
