@@ -12,6 +12,8 @@ head=$2
 git rev-parse --verify "${base}^{commit}" >/dev/null
 git rev-parse --verify "${head}^{commit}" >/dev/null
 
+merge_base=$(git merge-base "$base" "$head")
+
 declare -A seen=()
 declare -A is_new=()
 declare -A additions=()
@@ -22,7 +24,7 @@ while IFS=$'\t' read -r status path; do
   if [[ "$status" == "A" ]]; then
     is_new["$path"]=yes
   fi
-done < <(git diff --no-renames --name-status "$base" "$head" -- '*.rs')
+done < <(git diff --no-renames --name-status "$merge_base" "$head" -- '*.rs')
 
 while IFS=$'\t' read -r added deleted path; do
   [[ -n "${path:-}" ]] || continue
@@ -32,7 +34,7 @@ while IFS=$'\t' read -r added deleted path; do
   else
     additions["$path"]=$added
   fi
-done < <(git diff --no-renames --numstat "$base" "$head" -- '*.rs')
+done < <(git diff --no-renames --numstat "$merge_base" "$head" -- '*.rs')
 
 violations=0
 for path in "${!seen[@]}"; do
