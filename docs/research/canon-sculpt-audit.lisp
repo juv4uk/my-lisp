@@ -3,7 +3,7 @@
 ; Research data only. This file is NOT semantic authority and does not change language behavior.
 
 (canon-sculpt-audit
-  (schema-version 3)
+  (schema-version 4)
   (base-main 04084f1003ebd78c946a4b135b8a9febfc7e040e)
   (freeze-status pre-1.0-unfrozen)
   (role research-only)
@@ -55,6 +55,59 @@
       (or derives-through-cond)
       (assoc derives-through-cond)))
 
+  ; Current evaluator inventory: every path that sees source Expr before
+  ; ordinary eager argument evaluation. This is a dependency map, not proof
+  ; that the list is globally minimal.
+  (evaluation-delay-mechanism-inventory
+    (quote
+      (mechanism canonical-special-form)
+      (raw-source-access yes)
+      (status candidate-under-test))
+    (cond
+      (mechanism canonical-special-form)
+      (raw-source-access yes)
+      (status candidate-under-test))
+    (lambda
+      (mechanism necessary-form)
+      (raw-source-access body-only)
+      (ordinary-arguments eager)
+      (closure-body-introspection no-language-operation)
+      (status not-general-source-to-data-or-runtime-selector))
+    (define
+      (mechanism necessary-form)
+      (rhs evaluated)
+      (status not-delay-candidate))
+    (macro-application
+      (mechanism macro-dispatch)
+      (raw-source-access yes)
+      (implementation-dependency "apply_macro calls quoted(argument) directly")
+      (bootstrap-dependency "lib/macro.lisp itself uses quote and cond")
+      (status circular-for-quote-or-cond-reduction-today))
+    (eval
+      (mechanism value-level-callable)
+      (ordinary-argument eager)
+      (then data-to-code yes)
+      (status stronger-evaluator-not-source-delay))
+    (read
+      (mechanism value-level-callable)
+      (input string)
+      (implementation-dependency "reader result converted to data with quoted helper")
+      (status representation-conversion-not-source-delay))
+    (read-all
+      (mechanism value-level-callable)
+      (input string)
+      (implementation-dependency "parsed expressions converted with quoted helper")
+      (status representation-conversion-not-source-delay))
+    (host-capability-dispatch
+      (mechanism external-host-special-form-registry)
+      (raw-source-access yes)
+      (core-installed-capabilities zero)
+      (status rejected-as-lower-language-semantics))
+    (ordinary-callable
+      (mechanism eager-application)
+      (raw-source-access no)
+      (status falsification-target)))
+
   (candidate
     (identity CANON_EMPTY_LIST)
     (category ground-value)
@@ -78,8 +131,14 @@
       (fixture docs/research/canon-sculpt-probes/quote-ordinary-function-red.lisp)
       (predicted-result red)
       (meaning "ordinary eager function application cannot explain suppression of argument evaluation"))
+    (current-reduction-rejections
+      (macro "macro application already receives arguments through the same quoted source-to-data mechanism")
+      (read "requires explicit string representation and itself uses quoted conversion")
+      (eval "receives an already evaluated datum and is at least evaluator-strength, not source capture")
+      (host-capability "external optional host mechanism; capability-free core installs none")
+      (lambda "can delay a body but cannot expose that body as data through a language operation"))
     (remaining-question
-      "Is quote irreducible, or derivable from a smaller explicitly declared evaluation-control mechanism that does not already contain quote-equivalent power?"))
+      "Is source-form capture without evaluation an irreducible concept, or can it be obtained from a strictly smaller mechanism that does not already contain quote-equivalent power?"))
 
   (candidate
     (identity PRIM_COND)
@@ -100,10 +159,15 @@
       (fixture docs/research/canon-sculpt-probes/selective-evaluation-ordinary-function-red.lisp)
       (predicted-result red)
       (meaning "ordinary eager application evaluates an ignored branch before entering the function body"))
+    (current-reduction-rejections
+      (macro "current macro bootstrap and expansion machinery already depend on quote/cond-strength non-evaluation; no smaller runtime selector identified")
+      (eval "using the full evaluator as branch machinery is a stronger-hidden-primitive unless eval is independently reduced below cond")
+      (host-capability "external optional raw-Expr hook cannot define capability-free core semantics")
+      (lambda "thunks can delay branch bodies, but current arbitrary-data query matching still needs a selector to choose which thunk to invoke"))
     (lower-bound-hypothesis
       "Some runtime selective-evaluation power must remain unless a non-eager lower mechanism is exhibited; replacing cond with if/select/branch without reducing that power is renaming, not sculpture."))
     (remaining-question
-      "Can canonical three-part cond be macro-derived from a strictly smaller declared selective-evaluation mechanism while preserving runtime query matching and skipped-branch non-evaluation?"))
+      "Can canonical three-part cond be derived from a strictly smaller declared selector while preserving arbitrary-value result matching and skipped-branch non-evaluation?"))
 
   (candidate
     (identity PRIM_ATOM)
@@ -196,6 +260,9 @@
   (audit-law
     (name no-historical-privilege)
     (statement "Earlier primitive status is evidence to inspect, not proof of irreducibility."))
+  (audit-law
+    (name no-computational-universality-cheat)
+    (statement "A richer library feature that can simulate control does not count as a reduction unless its own semantics are independently lower and non-circular."))
   (audit-law
     (name uncertainty-wins)
     (statement "If derivability or circularity cannot be demonstrated mechanically, retain insufficient-evidence."))
