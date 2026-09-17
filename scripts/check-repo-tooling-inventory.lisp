@@ -1,5 +1,64 @@
-; #382 — RED-first witness for the Lisp-owned repository tooling inventory.
-; Production validation deliberately does not exist in this commit.
+; #382 — Lisp-owned repository tooling inventory validator.
+; Цей перший GREEN-зріз доводить лише fail-closed coverage для
+; незареєстрованого immediate scripts/* entry. Наступні правила додаються
+; окремими RED->GREEN кроками.
+
+(def repo-tooling-field-from
+  (lambda (name fields)
+    (cond
+      ((atom fields) (structural-kind empty-list) (quote missing))
+      ((atom fields) (structural-kind atom) (quote missing))
+      ((atom fields) (structural-kind pair)
+       (let ((field (car fields)))
+         (cond
+           ((eq (car field) name) (identity-relation same) (second field))
+           ((eq (car field) name) (identity-relation distinct)
+            (repo-tooling-field-from name (cdr fields)))))))))
+
+(def repo-tooling-field
+  (lambda (name row)
+    (repo-tooling-field-from name (cdr row))))
+
+(def repo-tooling-find-row-by-path
+  (lambda (path rows)
+    (cond
+      ((atom rows) (structural-kind empty-list) (quote ()))
+      ((atom rows) (structural-kind atom) (quote ()))
+      ((atom rows) (structural-kind pair)
+       (let ((row (car rows)))
+         (cond
+           ((equal? path (repo-tooling-field (quote path) row))
+            (structural-relation same)
+            row)
+           ((equal? path (repo-tooling-field (quote path) row))
+            (structural-relation distinct)
+            (repo-tooling-find-row-by-path path (cdr rows)))))))))
+
+(def repo-tooling-violation
+  (lambda (kind detail)
+    (list (quote repo-tooling-violation) kind detail)))
+
+(def repo-tooling-observed-coverage-verdict
+  (lambda (rows observed)
+    (cond
+      ((atom observed) (structural-kind empty-list) (list (quote repo-tooling-ok)))
+      ((atom observed) (structural-kind atom)
+       (repo-tooling-violation (quote malformed-observed-list) observed))
+      ((atom observed) (structural-kind pair)
+       (let* ((name (car observed))
+              (path (string-append "scripts/" name))
+              (found (repo-tooling-find-row-by-path path rows)))
+         (cond
+           ((atom found) (structural-kind empty-list)
+            (repo-tooling-violation (quote unregistered-tool) path))
+           ((atom found) (structural-kind atom)
+            (repo-tooling-violation (quote malformed-row) path))
+           ((atom found) (structural-kind pair)
+            (repo-tooling-observed-coverage-verdict rows (cdr observed)))))))))
+
+(def repo-tooling-verdict
+  (lambda (rows observed)
+    (repo-tooling-observed-coverage-verdict rows observed)))
 
 (def repo-tooling-selftest-unregistered
   (lambda ()
@@ -18,4 +77,17 @@
            (removal-condition ())))))
       (quote ("a.lisp" "b.lisp")))))
 
-(print (repo-tooling-selftest-unregistered))
+(def repo-tooling-assert-verdict
+  (lambda (actual expected)
+    (cond
+      ((equal? actual expected) (structural-relation same)
+       (list (quote repo-tooling-selftest-ok)))
+      ((equal? actual expected) (structural-relation distinct)
+       (let ((shown (print actual)))
+         (car (quote ())))))))
+
+(repo-tooling-assert-verdict
+  (repo-tooling-selftest-unregistered)
+  (quote (repo-tooling-violation unregistered-tool "scripts/b.lisp")))
+
+(print (quote (repo-tooling-selftests-ok unregistered-tool)))
