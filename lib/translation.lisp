@@ -214,7 +214,7 @@
 (def translation-review
   (lambda (module-name proposal)
     (cond
-      ((eq (symbol? module-name) (quote ()))
+      ((symbol? module-name) (class-membership symbol nonmember)
        (make-translation-review
          (quote rejected) (quote invalid-module) proposal module-name))
       ((eq (translation-envelope-valid? proposal) (quote ()))
@@ -235,7 +235,7 @@
             proposal (translation-payload proposal)))))
       ((eq (translation-status proposal) (quote rejected))
        (cond
-         ((symbol? (translation-payload proposal))
+         ((symbol? (translation-payload proposal)) (class-membership symbol member)
           (make-translation-review
             (quote rejected) (quote translator-rejected)
             proposal (translation-payload proposal)))
