@@ -2,9 +2,8 @@
 ; GREEN slices:
 ; - newly observed artifacts require explicit classification rows;
 ; - every classification row must carry the required provenance fields;
-; - directory placement is never an authority source.
-; RED slice:
-; - a registry row whose artifact disappeared from the observed tree must fail.
+; - directory placement is never an authority source;
+; - registry rows must still exist in the observed knowledge tree.
 
 (def knowledge-authority-required-fields
   (quote (path class scope authority-source lifecycle consumers)))
@@ -142,6 +141,37 @@
             (identity-relation same)
             row-verdict)))))))
 
+(def knowledge-authority-observed-path-state
+  (lambda (path observed)
+    (cond
+      ((atom observed) (structural-kind empty-list) (quote missing))
+      ((atom observed) (structural-kind atom) (quote malformed))
+      ((atom observed) (structural-kind pair)
+       (let ((observed-path (string-append "knowledge/" (car observed))))
+         (cond
+           ((equal? path observed-path) (structural-relation same) (quote present))
+           ((equal? path observed-path) (structural-relation distinct)
+            (knowledge-authority-observed-path-state path (cdr observed)))))))))
+
+(def knowledge-authority-stale-path-verdict
+  (lambda (rows observed)
+    (cond
+      ((atom rows) (structural-kind empty-list)
+       (list (quote knowledge-authority-ok)))
+      ((atom rows) (structural-kind atom)
+       (knowledge-authority-violation (quote malformed-inventory-list) rows))
+      ((atom rows) (structural-kind pair)
+       (let* ((row (car rows))
+              (path (knowledge-authority-field (quote path) row))
+              (path-state (knowledge-authority-observed-path-state path observed)))
+         (cond
+           ((eq path-state (quote present)) (identity-relation same)
+            (knowledge-authority-stale-path-verdict (cdr rows) observed))
+           ((eq path-state (quote missing)) (identity-relation same)
+            (knowledge-authority-violation (quote stale-path) path))
+           ((eq path-state (quote malformed)) (identity-relation same)
+            (knowledge-authority-violation (quote malformed-observed-list) observed))))))))
+
 (def knowledge-authority-observed-coverage-verdict
   (lambda (rows observed)
     (cond
@@ -161,13 +191,24 @@
            ((atom found) (structural-kind pair)
             (knowledge-authority-observed-coverage-verdict rows (cdr observed)))))))))
 
+(def knowledge-authority-verdict-after-source
+  (lambda (rows observed)
+    (let ((stale-verdict (knowledge-authority-stale-path-verdict rows observed)))
+      (cond
+        ((eq (knowledge-authority-verdict-ok-state stale-verdict) (quote yes))
+         (identity-relation same)
+         (knowledge-authority-observed-coverage-verdict rows observed))
+        ((eq (knowledge-authority-verdict-ok-state stale-verdict) (quote no))
+         (identity-relation same)
+         stale-verdict)))))
+
 (def knowledge-authority-verdict-after-required
   (lambda (rows observed)
     (let ((source-verdict (knowledge-authority-source-verdict rows)))
       (cond
         ((eq (knowledge-authority-verdict-ok-state source-verdict) (quote yes))
          (identity-relation same)
-         (knowledge-authority-observed-coverage-verdict rows observed))
+         (knowledge-authority-verdict-after-source rows observed))
         ((eq (knowledge-authority-verdict-ok-state source-verdict) (quote no))
          (identity-relation same)
          source-verdict)))))
@@ -240,7 +281,6 @@
       (list knowledge-authority-sample-directory-authority)
       (quote ("a.lisp")))))
 
-; Intentionally RED: coverage catches missing rows, not rows for vanished artifacts.
 (def knowledge-authority-selftest-stale-path
   (lambda ()
     (knowledge-authority-verdict
