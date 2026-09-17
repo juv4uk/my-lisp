@@ -48,3 +48,12 @@ if [[ "$meta_registry_status" != "(meta-semantic-registry-witness (status pass))
   printf 'meta semantic-registry Lisp witness failed: %s\n' "$meta_registry_status" >&2
   exit 1
 fi
+
+# #305: `unknown` presentation is meaningful only for an explicitly
+# established unknown outcome. No-evidence honesty remains a separate Lisp law
+# and returns Canon 0; the shell observes only this witness's named envelope.
+narrate_outcome_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/narrate-outcome-authority-witness.lisp)"
+if [[ "$narrate_outcome_status" != "(narrate-outcome-authority-witness (status pass))" ]]; then
+  printf 'narrate outcome Lisp witness failed: %s\n' "$narrate_outcome_status" >&2
+  exit 1
+fi
