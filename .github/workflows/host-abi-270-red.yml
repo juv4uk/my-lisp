@@ -1,0 +1,18 @@
+name: HOST-ABI-270 RED
+
+on:
+  pull_request:
+
+jobs:
+  host-abi-red:
+    if: github.head_ref == 'fix/270-host-abi-callee-saved'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: host-abi-270-red
+      - name: Reproduce SysV64 callee-saved corruption
+        run: cargo test -p my-lisp-host --test native_guest_abi -- --nocapture
