@@ -1,5 +1,6 @@
 ; #382 — Lisp-owned repository tooling inventory validator.
-; GREEN slices so far: unregistered-tool + duplicate-path.
+; GREEN slices: unregistered-tool + duplicate-path.
+; RED-first: stale-path is intentionally not implemented yet.
 
 (def repo-tooling-field-from
   (lambda (name fields)
@@ -97,6 +98,20 @@
       (replacement ())
       (removal-condition ()))))
 
+(def repo-tooling-sample-row-c
+  (quote
+    (tool
+      (path "scripts/c.lisp")
+      (kind helper)
+      (language lisp)
+      (role stale-sample)
+      (lifecycle active)
+      (callers ())
+      (authority-source (issue 382))
+      (migration-issue ())
+      (replacement ())
+      (removal-condition ()))))
+
 (def repo-tooling-selftest-unregistered
   (lambda ()
     (repo-tooling-verdict
@@ -107,6 +122,12 @@
   (lambda ()
     (repo-tooling-verdict
       (list repo-tooling-sample-row-a repo-tooling-sample-row-a)
+      (quote ("a.lisp")))))
+
+(def repo-tooling-selftest-stale-path
+  (lambda ()
+    (repo-tooling-verdict
+      (list repo-tooling-sample-row-a repo-tooling-sample-row-c)
       (quote ("a.lisp")))))
 
 (def repo-tooling-assert-verdict
@@ -126,4 +147,9 @@
   (repo-tooling-selftest-duplicate-path)
   (quote (repo-tooling-violation duplicate-path "scripts/a.lisp")))
 
-(print (quote (repo-tooling-selftests-ok unregistered-tool duplicate-path)))
+; RED: a registered path absent from observed scripts must not be accepted.
+(repo-tooling-assert-verdict
+  (repo-tooling-selftest-stale-path)
+  (quote (repo-tooling-violation stale-path "scripts/c.lisp")))
+
+(print (quote (repo-tooling-selftests-ok unregistered-tool duplicate-path stale-path)))
