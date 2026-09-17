@@ -116,7 +116,7 @@
 ;; Рядки
 ;; ═══════════════════════════════════════════════════════════════
 
-(define зчепити string-append)
+; 1043: `string-append` / `зчепити` встановлюються як registry-driven direct peers.
 (define довжина-тексту string-length)
 (define текст-порожній? string-empty?)
 (define префікс-тексту? string-prefix?)
