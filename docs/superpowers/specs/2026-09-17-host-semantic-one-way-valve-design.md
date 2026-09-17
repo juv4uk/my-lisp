@@ -1,4 +1,4 @@
-# Host Semantic One-Way Valve Design
+# Rust One-Way Retirement Valve Design
 
 **Date:** 2026-09-17
 
@@ -6,156 +6,192 @@
 
 ## Purpose
 
-`my-lisp` is the semantic authority. Rust remains a strong and comfortable substrate for mechanism, transport, resources, ABI, safety and observation, but it may not gain new authority over what Lisp programs mean.
+This document records the current owner directive for the active host-retirement phase.
 
-The core invariant is monotonic:
-
-```text
-Rust semantic authority at commit N+1 <= Rust semantic authority at commit N
-```
-
-This is intentionally analogous to the existing one-way retirement of host-authored semantic tests, but it applies to production/runtime/host implementation code.
-
-## Constitutional rule
+The earlier semantic-only valve was too weak because it left `mechanism`, `boundary-data`, `observer`, ABI and machine work as possible routes for new Rust growth. The current rule is intentionally simpler:
 
 ```text
-Rust may report a mechanism fact.
-Lisp decides what that fact means in the language.
+Lisp may grow.
+Existing Rust may remain where still necessary.
+Rust may only get smaller.
 ```
 
-Increasing host capability is allowed. Increasing host-owned language meaning is not.
+This text supersedes the earlier version of this document wherever it allowed new Rust mechanism or boundary additions.
 
-## Authority classes
+## Outer invariant
 
-Every Rust site capable of affecting Lisp-visible results is classified as one of:
+For every repository change:
 
-- `semantic-producer` — manufactures a language-domain result/answer/policy;
-- `semantic-converter` — converts host/internal values into a language semantic interpretation;
-- `compatibility-bridge` — explicitly named temporary legacy behavior;
-- `boundary-data` — preserves externally-defined protocol data without interpreting it as Lisp meaning;
-- `mechanism` — memory, parser/bootstrap mechanics, OS/ABI/resource/bytes operations;
-- `observer` — launches or observes Lisp-owned contracts/witnesses;
-- `dead/stale` — unreachable or superseded semantic mechanism awaiting deletion.
+```text
+if path ends with .rs:
+    added lines must equal 0
+    new .rs paths must equal 0
+```
 
-The inventory is descriptive evidence. It is not a second semantic registry and may not define Lisp meaning.
+Therefore:
 
-## Monotonic movement
+```text
+Rust N+1 ⊆ Rust N
+```
 
-Allowed:
+Operationally this is a source-diff valve, not merely a semantic-authority metric.
+
+## What is allowed
+
+Current Rust may be left unchanged when it is still required.
+
+Rust may be reduced by:
+
+- deleting stale assertions;
+- deleting dead tests;
+- deleting obsolete semantic producers/converters;
+- deleting an entire `.rs` file when its remaining value has moved elsewhere;
+- removing Rust-owned cardinality/shape authority after Lisp-owned evidence exists.
+
+Lisp-owned code/data, contracts, witness corpora, documentation and non-Rust launch/policy infrastructure may grow as needed, subject to their own authority rules.
+
+## What is forbidden during this phase
+
+No Rust classification is an exemption. The following are all RED if they add Rust lines:
+
+- semantic code;
+- mechanism helpers;
+- ABI/resource code;
+- transport or external-boundary code;
+- machine decoders/executors;
+- Rust test observers;
+- Rust comments added to an existing file;
+- new Rust tests;
+- new `.rs` files;
+- replacement Rust introduced while deleting old Rust elsewhere.
+
+A valuable Rust-growing branch is preserved, not discarded, but it does not merge as-is while this valve is active.
+
+## Classification still matters
+
+#304 classifies existing Rust as:
 
 ```text
 semantic-producer
-   -> semantic-converter removed / Lisp-owned interpretation
-   -> compatibility-bridge or boundary-data
-   -> mechanism
-   -> deleted
+semantic-converter
+compatibility-bridge
+boundary-data
+mechanism
+observer
+dead/stale
 ```
 
-Forbidden:
+The classification answers one question: **what must be understood or preserved before deletion?**
 
-```text
-mechanism/boundary/deleted
-   -> new semantic-producer
-```
-
-Also forbidden:
-
-- replacing one Rust semantic token with another Rust semantic token;
-- adding a new unnamed `Value -> bool`, `bool -> Lisp`, `t/()`, truthy, answer-shape or domain-classification bridge;
-- adding host-side semantic tables/counts that constrain Lisp-owned contracts or witness corpora;
-- adding a new Rust-only public builtin whose language meaning does not exist in Lisp-owned authority.
-
-## Boundary data
-
-External JSON/API/FFI booleans, integers and status codes may remain represented faithfully in Rust when the external protocol itself defines them.
-
-That does not grant them Lisp truth semantics.
-
-Example:
-
-```text
-external bool/status
-      -> Rust boundary data
-      -> explicit mechanism fact
-      -> Lisp-owned wrapper/contract
-      -> public Lisp result
-```
-
-The host reports what happened; Lisp decides what that fact means.
-
-## Errors and mechanism failures
-
-Mechanism failures remain explicit mechanism facts/failures. They must not silently collapse into semantic absence, `()`, false, `UnknownSymbol`, or a domain answer.
-
-#250 is the first concrete honesty case: `Present`, `Absent`, and `Unreadable` must remain distinguishable at the mechanism boundary. Any language-domain interpretation belongs above that boundary.
+It does not answer whether new Rust may be added. Under the outer valve, the answer to that second question is always no.
 
 ## Deletion safety
 
-The valve encourages deletion but must not destroy the last executable copy of a useful semantic law.
+The valve must not erase the last executable copy of a useful semantic or scientific law.
 
-For every live Rust semantic site being removed:
+For a live Rust site selected for retirement:
 
-1. determine whether it carries a unique law;
-2. if yes, preserve that law in a Lisp-owned contract/witness first;
-3. keep useful host/mechanism diagnostics;
-4. delete or narrow the Rust semantic site;
-5. prove the Lisp-owned witness remains green.
+1. establish whether the site is reachable/current;
+2. identify any unique useful law it carries;
+3. if a unique law exists, preserve it first in Lisp-owned evidence;
+4. use an already-existing mechanism or non-Rust launch path to observe the Lisp-owned named verdict;
+5. delete the Rust copy without adding replacement Rust;
+6. verify the relevant current semantic and mechanism lanes.
 
-A dead/stale unreachable site may be deleted after reachability evidence without inventing a replacement law.
+A dead/stale unreachable site may be deleted directly after sufficient reachability evidence.
+
+## Boundary and mechanism Rust
+
+Existing boundary/mechanism Rust may remain unchanged while needed. This design does not demand a flag-day evaluator rewrite.
+
+However, `boundary-data`, `mechanism`, `observer`, `ABI`, `machine`, or `resource` labels do not permit growth during this phase. If new capability requires new Rust, that work is deferred or expressed through existing lower mechanism plus Lisp/data where possible.
 
 ## CI structure
 
-Two independent one-way valves compose:
+#300 owns the executable outer valve.
+
+It runs before semantic classification and must fail closed:
 
 ```text
-#115 test-authority valve
-  host tests may become less semantic, never more semantic
-
-#300 runtime-authority valve
-  Rust runtime/host implementation may become less semantic, never more semantic
+new .rs file                 -> RED
+any added line in *.rs       -> RED
+Rust deletion-only diff      -> eligible for GREEN
+no Rust touched              -> continue normal CI
 ```
 
-They should reuse classification data where practical, but remain separately testable.
+This outer rule composes with existing inner guards:
 
-The #300 guard must be fail-closed and evidence-based rather than a blanket grep. Required behavior:
+```text
+#115 host-test semantic-authority valve
+#112 Lisp-owned expected meaning
+#300 all-Rust subtraction valve
+#304 deletion-safety inventory
+```
 
-- deletion/reduction of an inventoried semantic site -> GREEN;
-- new/expanded semantic producer or converter -> RED;
-- unclassified new Rust path capable of shaping Lisp-visible values -> RED;
-- genuine boundary-data addition -> GREEN;
-- mechanism/ABI/bytes/resource change -> GREEN;
-- error names the exact site and violated authority class.
+The #300 implementation itself must not add Rust.
 
-The policy verdict should remain Lisp-owned, following #115's precedent.
+## Current canonical examples
 
-## First migration queue
+`main@f5ff9240...`:
 
-1. #304 — inventory/freeze current Rust semantic authority as a ceiling;
-2. #300 — implement the CI monotonicity valve;
-3. #301 — migrate `tcp-close` away from Rust-owned `Value::Bool(true)` public meaning;
-4. #305 — retire dead `atom` path and unnamed truth/semantic converters in `closures.rs` and `value.rs`;
-5. continue small preservation-first retirement slices from #304 findings.
+```text
+crates/my-lisp/tests/unify.rs   +0 / -14
+```
+
+The obsolete host test was cut; no replacement Rust was written.
+
+PR #303:
+
+```text
+Rust                               +0 / -20
+Lisp witness corpora               grow
+```
+
+Host-side corpus cardinality authority is deleted while useful laws move into Lisp-owned corpora.
+
+PR #308:
+
+```text
+exact_quantity_arithmetic.rs       deleted
+Lisp exact-quantity witness         added
+```
+
+The Planck×Cs exact-energy law and the speed-of-light product/quotient inverse are preserved above the valve before the Rust semantic oracle disappears.
+
+## Machine/backend work
+
+Machine/backend branches may contain valuable Lisp encoders, evidence and research alongside Rust additions. Such branches belong to the preservation set.
+
+During this phase:
+
+```text
+preserve branch/value
+freeze Rust-growing merge
+harvest Lisp-only value where safe
+resume/decompose later under an explicit future policy
+```
+
+Do not discard valuable work merely because the current valve blocks its Rust-growing form.
 
 ## Agent ownership
 
-To avoid write races:
-
-- local agent: exhaustive code inventory, reachability checks, broad grep, deep/full-package verification, mechanical deletion-only retirements after authority is settled;
-- web/integration agent: contract interpretation, issue dependency updates, CI/authority review, preservation decisions, exact-head merge readiness;
-- machine/backend agents: may continue expanding mechanism capability, but must not introduce new Lisp meaning in host/backend code.
+- **Local agent:** broad reachability inventory, grep, deletion-only Rust cleanup, long local verification.
+- **Web/integration agent:** preservation decisions, issue/contract synchronization, Lisp-owned witness migration, exact-head integration review.
+- **Machine/backend agents:** preserve branches and continue non-Rust analysis where useful; do not merge new Rust while the valve is active.
 
 ## Acceptance
 
-The architecture is established when all are true:
+The active design is correctly implemented when:
 
-- new Rust semantic authority cannot be added silently;
-- current semantic authority is machine-readably inventoried as a ceiling;
-- semantic authority can only shrink or move to explicit compatibility/boundary/mechanism roles;
-- unique semantic laws survive in Lisp-owned authority before Rust copies disappear;
-- mechanism, ABI, transport, parser/bootstrap and resource work remain comfortable and low-friction;
-- external booleans/data remain representable without becoming Lisp truth;
-- #115 and #300 both pass without duplicating Lisp semantics in host policy code.
+- no PR can add a Rust line;
+- no PR can add a new `.rs` path;
+- deletion-only Rust changes remain possible;
+- unique laws survive in Lisp before their Rust copies are cut;
+- existing necessary Rust can remain unchanged;
+- machine/backend Rust-growing work is preserved but frozen;
+- #300 enforces the outer invariant mechanically;
+- no lower-level classification can act as an exemption.
 
 ## Governing sentence
 
-**Rust is the comfortable throne cushion: strong mechanism underneath, zero right to crown itself semantic authority. Lisp is the king.**
+**Lisp may grow. Rust may remain where necessary. While the host is being sculpted, Rust only gets smaller.**
