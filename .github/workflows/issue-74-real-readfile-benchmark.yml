@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - lib/utf8.lisp
+      - lib/fs.lisp
       - scripts/benchmark-semantic-registry-read.lisp
       - .github/workflows/issue-74-real-readfile-benchmark.yml
 
