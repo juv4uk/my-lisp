@@ -1,0 +1,14 @@
+name: Targeted authority two-process RED
+
+on:
+  push:
+    branches: [fix/115-deletion-only-authority]
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run two-process authority RED
+        run: cargo test -p my-lisp --test authority_guard_contract authority_diagnostic_and_failure_are_separate_lisp_processes -- --exact --nocapture
