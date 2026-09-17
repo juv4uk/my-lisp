@@ -1,5 +1,6 @@
 ; #382 — Lisp-owned repository tooling inventory validator.
 ; GREEN slices: unregistered-tool + duplicate-path + stale-path.
+; RED-first: closed kind/language/lifecycle enums are intentionally not validated yet.
 
 (def repo-tooling-field-from
   (lambda (name fields)
@@ -148,23 +149,71 @@
       (replacement ())
       (removal-condition ()))))
 
+(def repo-tooling-sample-bad-kind
+  (quote
+    (tool
+      (path "scripts/a.lisp")
+      (kind mystery-kind)
+      (language lisp)
+      (role sample)
+      (lifecycle active)
+      (callers ())
+      (authority-source (issue 382))
+      (migration-issue ())
+      (replacement ())
+      (removal-condition ()))))
+
+(def repo-tooling-sample-bad-language
+  (quote
+    (tool
+      (path "scripts/a.lisp")
+      (kind check)
+      (language mystery-language)
+      (role sample)
+      (lifecycle active)
+      (callers ())
+      (authority-source (issue 382))
+      (migration-issue ())
+      (replacement ())
+      (removal-condition ()))))
+
+(def repo-tooling-sample-bad-lifecycle
+  (quote
+    (tool
+      (path "scripts/a.lisp")
+      (kind check)
+      (language lisp)
+      (role sample)
+      (lifecycle parity-green)
+      (callers ())
+      (authority-source (issue 382))
+      (migration-issue ())
+      (replacement ())
+      (removal-condition ()))))
+
 (def repo-tooling-selftest-unregistered
   (lambda ()
-    (repo-tooling-verdict
-      (list repo-tooling-sample-row-a)
-      (quote ("a.lisp" "b.lisp")))))
+    (repo-tooling-verdict (list repo-tooling-sample-row-a) (quote ("a.lisp" "b.lisp")))))
 
 (def repo-tooling-selftest-duplicate-path
   (lambda ()
-    (repo-tooling-verdict
-      (list repo-tooling-sample-row-a repo-tooling-sample-row-a)
-      (quote ("a.lisp")))))
+    (repo-tooling-verdict (list repo-tooling-sample-row-a repo-tooling-sample-row-a) (quote ("a.lisp")))))
 
 (def repo-tooling-selftest-stale-path
   (lambda ()
-    (repo-tooling-verdict
-      (list repo-tooling-sample-row-a repo-tooling-sample-row-c)
-      (quote ("a.lisp")))))
+    (repo-tooling-verdict (list repo-tooling-sample-row-a repo-tooling-sample-row-c) (quote ("a.lisp")))))
+
+(def repo-tooling-selftest-invalid-kind
+  (lambda ()
+    (repo-tooling-verdict (list repo-tooling-sample-bad-kind) (quote ("a.lisp")))))
+
+(def repo-tooling-selftest-invalid-language
+  (lambda ()
+    (repo-tooling-verdict (list repo-tooling-sample-bad-language) (quote ("a.lisp")))))
+
+(def repo-tooling-selftest-invalid-lifecycle
+  (lambda ()
+    (repo-tooling-verdict (list repo-tooling-sample-bad-lifecycle) (quote ("a.lisp")))))
 
 (def repo-tooling-assert-verdict
   (lambda (actual expected)
@@ -187,4 +236,17 @@
   (repo-tooling-selftest-stale-path)
   (quote (repo-tooling-violation stale-path "scripts/c.lisp")))
 
-(print (quote (repo-tooling-selftests-ok unregistered-tool duplicate-path stale-path)))
+; RED: schema enums are closed; these values must be rejected.
+(repo-tooling-assert-verdict
+  (repo-tooling-selftest-invalid-kind)
+  (quote (repo-tooling-violation invalid-kind mystery-kind)))
+
+(repo-tooling-assert-verdict
+  (repo-tooling-selftest-invalid-language)
+  (quote (repo-tooling-violation invalid-language mystery-language)))
+
+(repo-tooling-assert-verdict
+  (repo-tooling-selftest-invalid-lifecycle)
+  (quote (repo-tooling-violation invalid-lifecycle parity-green)))
+
+(print (quote (repo-tooling-selftests-ok unregistered-tool duplicate-path stale-path closed-enums)))
