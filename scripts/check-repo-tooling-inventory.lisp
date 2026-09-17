@@ -1,6 +1,5 @@
 ; #382 — Lisp-owned repository tooling inventory validator.
-; GREEN slices: unregistered-tool + duplicate-path.
-; RED-first: stale-path is intentionally not implemented yet.
+; GREEN slices: unregistered-tool + duplicate-path + stale-path.
 
 (def repo-tooling-field-from
   (lambda (name fields)
@@ -73,13 +72,50 @@
            ((atom found) (structural-kind pair)
             (repo-tooling-violation (quote duplicate-path) path))))))))
 
+(def repo-tooling-observed-path-state
+  (lambda (path observed)
+    (cond
+      ((atom observed) (structural-kind empty-list) (quote absent))
+      ((atom observed) (structural-kind atom) (quote malformed))
+      ((atom observed) (structural-kind pair)
+       (let ((observed-path (string-append "scripts/" (car observed))))
+         (cond
+           ((equal? path observed-path) (structural-relation same) (quote present))
+           ((equal? path observed-path) (structural-relation distinct)
+            (repo-tooling-observed-path-state path (cdr observed)))))))))
+
+(def repo-tooling-stale-path-verdict
+  (lambda (rows observed)
+    (cond
+      ((atom rows) (structural-kind empty-list) (list (quote repo-tooling-ok)))
+      ((atom rows) (structural-kind atom)
+       (repo-tooling-violation (quote malformed-inventory-list) rows))
+      ((atom rows) (structural-kind pair)
+       (let* ((row (car rows))
+              (path (repo-tooling-field (quote path) row))
+              (state (repo-tooling-observed-path-state path observed)))
+         (cond
+           ((eq state (quote present)) (identity-relation same)
+            (repo-tooling-stale-path-verdict (cdr rows) observed))
+           ((eq state (quote absent)) (identity-relation same)
+            (repo-tooling-violation (quote stale-path) path))
+           ((eq state (quote malformed)) (identity-relation same)
+            (repo-tooling-violation (quote malformed-observed-list) observed))))))))
+
 (def repo-tooling-verdict
   (lambda (rows observed)
     (let ((duplicate-verdict (repo-tooling-duplicate-path-verdict rows)))
       (cond
         ((equal? duplicate-verdict (list (quote repo-tooling-ok)))
          (structural-relation same)
-         (repo-tooling-observed-coverage-verdict rows observed))
+         (let ((stale-verdict (repo-tooling-stale-path-verdict rows observed)))
+           (cond
+             ((equal? stale-verdict (list (quote repo-tooling-ok)))
+              (structural-relation same)
+              (repo-tooling-observed-coverage-verdict rows observed))
+             ((equal? stale-verdict (list (quote repo-tooling-ok)))
+              (structural-relation distinct)
+              stale-verdict))))
         ((equal? duplicate-verdict (list (quote repo-tooling-ok)))
          (structural-relation distinct)
          duplicate-verdict)))))
@@ -147,7 +183,6 @@
   (repo-tooling-selftest-duplicate-path)
   (quote (repo-tooling-violation duplicate-path "scripts/a.lisp")))
 
-; RED: a registered path absent from observed scripts must not be accepted.
 (repo-tooling-assert-verdict
   (repo-tooling-selftest-stale-path)
   (quote (repo-tooling-violation stale-path "scripts/c.lisp")))
