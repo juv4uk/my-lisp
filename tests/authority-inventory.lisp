@@ -13,6 +13,7 @@
 (authority "crates/my-lisp/tests/canon_laws_v2_contract.rs" observer)
 (authority "crates/my-lisp/tests/reason_honesty_contract.rs" observer)
 (authority "crates/my-lisp/tests/unification_outcome_contract.rs" observer)
+(authority "crates/my-lisp/tests/knowledge_clause_kind_contract.rs" observer)
 (authority "crates/my-lisp/tests/authority_guard_contract.rs" observer)
 (authority "crates/my-lisp/tests/mccarthy.rs" semantic-authority)
 (authority "crates/my-lisp/tests/ukrainian_api_docs.rs" semantic-authority)
