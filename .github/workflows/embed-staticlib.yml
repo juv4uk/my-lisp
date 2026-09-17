@@ -58,9 +58,6 @@ jobs:
           $filenames = @($artifacts | ForEach-Object { $_.filenames } | Sort-Object -Unique)
           $filenames | ForEach-Object { Write-Output "artifact=$_" }
 
-          # On MSVC the cdylib import library is `*.dll.lib`; the Rust
-          # staticlib is the plain `.lib`. Select from Cargo-reported outputs
-          # rather than scanning the directory or guessing a fixed path.
           $static = @($filenames | Where-Object {
             $_ -match '\.lib$' -and $_ -notmatch '\.dll\.lib$'
           })
@@ -76,3 +73,21 @@ jobs:
             throw "Cargo-reported staticlib does not exist: $env:MY_LISP_EMBED_STATIC"
           }
           Write-Output "staticlib=$env:MY_LISP_EMBED_STATIC"
+
+      - name: Configure native static C consumer
+        shell: pwsh
+        run: |
+          cmake -S crates/my-lisp-embed/tests/static-consumer -B target/static-consumer -DMY_LISP_EMBED_STATIC="$env:MY_LISP_EMBED_STATIC"
+          if ($LASTEXITCODE -ne 0) { throw 'static consumer configure failed' }
+
+      - name: Link native static C consumer
+        shell: pwsh
+        run: |
+          cmake --build target/static-consumer --config Release --parallel 4
+          if ($LASTEXITCODE -ne 0) { throw 'static consumer link failed' }
+
+      - name: Run native static C consumer
+        shell: pwsh
+        run: |
+          & .\target\static-consumer\Release\my-lisp-embed-static-consumer.exe
+          if ($LASTEXITCODE -ne 0) { throw "static consumer exited $LASTEXITCODE" }
