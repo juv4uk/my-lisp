@@ -1,0 +1,156 @@
+name: Apply authority guard GREEN
+
+on:
+  push:
+    branches: [fix/115-deletion-only-authority]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/115-deletion-only-authority
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Apply and verify GREEN
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > scripts/authority-guard.lisp <<'LISP'
+          ; #115 — Lisp owns the authority verdict.
+          ; Usage: CI writes change facts to tests/changed-host-tests.lisp as
+          ;   (change "path" deletion-only|modified)
+          ; Host code transports diff direction only; Lisp owns allow/deny.
+
+          (def second (lambda (x) (car (cdr x))))
+          (def third (lambda (x) (car (cdr (cdr x)))))
+
+          (def authority-rows (read-all (read-file "tests/authority-inventory.lisp")))
+          (def changed-host-tests (read-all (read-file "tests/changed-host-tests.lisp")))
+
+          (def find-authority
+            (lambda (path rows)
+              (cond
+                ((atom rows) (structural-kind empty-list) ())
+                ((equal? path (second (car rows))) (structural-relation same)
+                 (third (car rows)))
+                ((quote continue) continue
+                 (find-authority path (cdr rows))))))
+
+          (def allowed-authority?
+            (lambda (class)
+              (cond
+                ((eq class (quote observer)) (identity-relation same) (quote allowed))
+                ((eq class (quote mechanism)) (identity-relation same) (quote allowed))
+                ((quote blocked) blocked (quote blocked)))))
+
+          (def deletion-only?
+            (lambda (change)
+              (cond
+                ((eq (third change) (quote deletion-only)) (identity-relation same)
+                 (quote deletion-only))
+                ((quote modified) modified (quote modified)))))
+
+          (def check-changes
+            (lambda (changes)
+              (cond
+                ((atom changes) (structural-kind empty-list) ())
+                ((deletion-only? (car changes)) deletion-only
+                 (check-changes (cdr changes)))
+                ((allowed-authority?
+                   (find-authority (second (car changes)) authority-rows)) allowed
+                 (check-changes (cdr changes)))
+                ((quote violation) violation
+                 (list (quote semantic-authority-violation)
+                       (second (car changes))
+                       (find-authority (second (car changes)) authority-rows)
+                       "Host tests may observe mechanism; Lisp owns meaning. See #112/#113.")))))
+
+          (def authority-verdict (check-changes changed-host-tests))
+
+          ; Emit diagnostics in a successful top-level form so transcript output is
+          ; committed before the separate form below intentionally fails.
+          (cond
+            ((atom authority-verdict) (structural-kind empty-list)
+             (quote authority-guard-pass))
+            ((quote report) report (print authority-verdict)))
+
+          (cond
+            ((atom authority-verdict) (structural-kind empty-list) t)
+            ((quote authority-guard-failure) authority-guard-failure (car ())))
+          LISP
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/ci.yml')
+          text = path.read_text()
+          start = text.index('      - name: Lisp-owned semantic authority guard\n')
+          end = text.index('      - name: Lisp-owned machine non-interference guard\n', start)
+          replacement = '''      - name: Lisp-owned semantic authority guard
+            env:
+              BASE_SHA: ${{ github.event.pull_request.base.sha }}
+              HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+            shell: bash
+            run: |
+              set -euo pipefail
+              cargo build -p my-lisp-cli --bin my-lisp
+              : > tests/changed-host-tests.lisp
+              while IFS= read -r path; do
+                case "$path" in
+                  crates/*/tests/*.rs)
+                    read -r additions deletions _ < <(git diff --numstat "$BASE_SHA" "$HEAD_SHA" -- "$path")
+                    direction=modified
+                    if [[ "$additions" == "0" && "$deletions" != "0" ]]; then
+                      direction=deletion-only
+                    fi
+                    printf '(change "%s" %s)\\n' "$path" "$direction" >> tests/changed-host-tests.lisp
+                    ;;
+                esac
+              done < /tmp/changed.txt
+              ./target/debug/my-lisp scripts/authority-guard.lisp
+
+'''
+          path.write_text(text[:start] + replacement + text[end:])
+
+          contract = Path('crates/my-lisp/tests/authority_guard_contract.rs')
+          body = contract.read_text()
+          old = '    assert!(guard.contains("(t ())"), "unknown/forbidden authority must fail closed");\n'
+          new = '''    assert!(
+              guard.contains("authority-guard-pass") && guard.contains("authority-guard-failure"),
+              "guard control must use named outcomes rather than universal t/() truthiness"
+          );
+          '''
+          if old not in body:
+              raise SystemExit('stale authority contract marker not found')
+          contract.write_text(body.replace(old, new))
+          PY
+
+          cargo test -p my-lisp --test authority_guard_contract -- --nocapture
+          cargo build -p my-lisp-cli --bin my-lisp
+
+          : > tests/changed-host-tests.lisp
+          printf '(change "crates/my-lisp/tests/mccarthy.rs" deletion-only)\n' > tests/changed-host-tests.lisp
+          ./target/debug/my-lisp scripts/authority-guard.lisp
+
+          printf '(change "crates/my-lisp/tests/mccarthy.rs" modified)\n' > tests/changed-host-tests.lisp
+          if ./target/debug/my-lisp scripts/authority-guard.lisp > /tmp/authority-denied.log 2>&1; then
+            echo 'ERROR: modified semantic-authority unexpectedly passed'
+            exit 1
+          fi
+          cat /tmp/authority-denied.log
+          grep -q 'semantic-authority-violation' /tmp/authority-denied.log
+          rm -f tests/changed-host-tests.lisp
+
+          rm -f .github/workflows/targeted-authority-red.yml .github/workflows/apply-authority-green.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/ci.yml scripts/authority-guard.lisp crates/my-lisp/tests/authority_guard_contract.rs .github/workflows/targeted-authority-red.yml .github/workflows/apply-authority-green.yml
+          git commit -m 'fix(#115): allow one-way host authority deletion'
+          git push origin HEAD:fix/115-deletion-only-authority
