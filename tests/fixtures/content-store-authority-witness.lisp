@@ -46,7 +46,7 @@
                   (quote
                     (content-store-authority-witness
                       (status fail)
-                      (law equal-current-projection)))))
+                      (law equal-current-projection))))))
             (object-relation (structural-relation distinct)
               (quote
                 (content-store-authority-witness
@@ -56,4 +56,4 @@
           (quote
             (content-store-authority-witness
               (status fail)
-              (law root-image-deterministic)))))))))
+              (law root-image-deterministic))))))))
