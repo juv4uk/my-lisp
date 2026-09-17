@@ -52,6 +52,10 @@ jobs:
             echo '1045 regression: stable UK текст-порожній? must be a registry-driven peer, not an EN bridge' >&2
             exit 1
           fi
+          if grep -Fqx '(define префікс-тексту? string-prefix?)' lib/surface/uk.lisp; then
+            echo '1046 regression: stable UK префікс-тексту? must be a registry-driven peer, not an EN bridge' >&2
+            exit 1
+          fi
 
   workspace-clippy:
     name: full workspace clippy

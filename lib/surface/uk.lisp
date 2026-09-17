@@ -119,7 +119,7 @@
 ; 1043: `string-append` / `зчепити` встановлюються як registry-driven direct peers.
 ; 1044: `string-length` / `довжина-тексту` встановлюються як registry-driven direct peers.
 ; 1045: `string-empty?` / `текст-порожній?` / `порожній-текст?` встановлюються як registry-driven direct peers.
-(define префікс-тексту? string-prefix?)
+; 1046: `string-prefix?` / `префікс-тексту?` встановлюються як registry-driven direct peers.
 (define фрагмент-у-тексті? string-contains?)
 (define перший-символ-тексту string-first)
 (define решта-символів-тексту string-rest)
