@@ -126,4 +126,4 @@
     "Do not invent stronger resource observables. Further equivalence work needs either a concrete candidate implementation or an already-ratified language-visible resource/effect mechanism; until then generic host allocation differences remain mechanism, not semantic evidence.")
 
   (claim-boundary
-    "Suppressing evaluation of the selector expression on non-pair input is not a free implementation detail, and consuming observable CONS budget merely to eliminate a pair is not free either; both would differ from the executed reverse derivation.")) 
+    "Suppressing evaluation of the selector expression on non-pair input is not a free implementation detail, and consuming observable CONS budget merely to eliminate a pair is not free either; both would differ from the executed reverse derivation."))
