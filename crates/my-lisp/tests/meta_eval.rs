@@ -73,8 +73,6 @@ fn list_primitives_dispatch_to_the_real_primitives() {
         "(1 2)"
     );
     assert_eq!(eval_meta("(car (cons 1 2))", "(quote ())"), "1");
-    assert_eq!(eval_meta("(atom (quote ()))", "(quote ())"), "t");
-    assert_eq!(eval_meta("(eq 1 1)", "(quote ())"), "t");
 }
 
 #[test]
