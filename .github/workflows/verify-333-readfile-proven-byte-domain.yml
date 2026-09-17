@@ -1,0 +1,18 @@
+name: Verify 333 read-file proven byte domain
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-333-readfile-proven-byte-domain.yml'
+
+jobs:
+  fs-text:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-333-readfile-proven-byte-domain
+      - name: Existing FS text semantics
+        run: cargo test -p my-lisp-host --test fs_text
