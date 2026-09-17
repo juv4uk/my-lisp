@@ -6,8 +6,8 @@
 
 Цей Markdown є лише людською проєкцією machine-readable evidence matrix. Він не створює нової семантичної влади: змінювати статуси треба в `.lisp`, після чого перегенерувати цей файл.
 
-**Стан на:** `2026-09-17`  
-**Required rows:** 34 · **confirmed:** 34 · **unresolved:** 0  
+**Стан на:** `2026-09-17`
+**Required rows:** 34 · **confirmed:** 34 · **unresolved:** 0
 **Усі статуси:** `confirmed`=34, `partial`=0, `broken`=0, `unknown`=0
 
 **Нерозв'язані required rows:** немає.
