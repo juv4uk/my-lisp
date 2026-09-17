@@ -2,6 +2,8 @@
 ; GREEN slices:
 ; - newly observed artifacts require explicit classification rows;
 ; - every classification row must carry the required provenance fields.
+; RED slice:
+; - directory placement must never be accepted as an authority source.
 
 (def knowledge-authority-required-fields
   (quote (path class scope authority-source lifecycle consumers)))
@@ -149,6 +151,16 @@
       (lifecycle active)
       (consumers ()))))
 
+(def knowledge-authority-sample-directory-authority
+  (quote
+    (artifact
+      (path "knowledge/a.lisp")
+      (class operational-reference)
+      (scope sample)
+      (authority-source (directory "knowledge/"))
+      (lifecycle active)
+      (consumers ()))))
+
 (def knowledge-authority-selftest-unclassified
   (lambda ()
     (knowledge-authority-verdict
@@ -159,6 +171,13 @@
   (lambda ()
     (knowledge-authority-verdict
       (list knowledge-authority-sample-missing-class)
+      (quote ("a.lisp")))))
+
+; Intentionally RED: required-fields + coverage do not yet reject folder-derived authority.
+(def knowledge-authority-selftest-directory-authority
+  (lambda ()
+    (knowledge-authority-verdict
+      (list knowledge-authority-sample-directory-authority)
       (quote ("a.lisp")))))
 
 (def knowledge-authority-assert-verdict
@@ -181,4 +200,16 @@
   (knowledge-authority-selftest-missing-class)
   (quote (knowledge-authority-violation missing-field class)))
 
-(print (quote (knowledge-authority-selftests-ok unclassified-artifact missing-field)))
+(knowledge-authority-assert-verdict
+  (knowledge-authority-selftest-directory-authority)
+  (quote
+    (knowledge-authority-violation
+      directory-derived-authority
+      "knowledge/a.lisp")))
+
+(print
+  (quote
+    (knowledge-authority-selftests-ok
+      unclassified-artifact
+      missing-field
+      directory-derived-authority)))
