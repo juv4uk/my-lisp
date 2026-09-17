@@ -1,0 +1,46 @@
+name: Canonical embed staticlib
+
+on:
+  pull_request:
+    paths:
+      - "crates/my-lisp-embed/**"
+      - ".github/workflows/embed-staticlib.yml"
+  push:
+    branches: [main]
+    paths:
+      - "crates/my-lisp-embed/**"
+      - ".github/workflows/embed-staticlib.yml"
+  workflow_dispatch:
+
+jobs:
+  windows-static-embed:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Require canonical staticlib artifact contract
+        shell: pwsh
+        run: |
+          $manifest = Get-Content crates/my-lisp-embed/Cargo.toml -Raw
+          if ($manifest -notmatch 'crate-type\s*=\s*\["cdylib",\s*"staticlib",\s*"rlib"\]') {
+            throw 'my-lisp-embed does not yet emit staticlib alongside cdylib/rlib'
+          }
+
+      - name: Preserve canonical embed tests
+        run: cargo test --release -p my-lisp-embed
+
+      - name: Build canonical embed artifacts
+        run: cargo build --release -p my-lisp-embed
+
+      - name: Require Windows static library artifact
+        shell: pwsh
+        run: |
+          $candidate = Get-ChildItem target/release -File | Where-Object {
+            $_.Extension -eq '.lib' -and $_.Name -match '^my[_-]lisp[_-]embed'
+          }
+          if ($candidate.Count -ne 1) {
+            throw "expected exactly one my-lisp-embed static .lib, found $($candidate.Count)"
+          }
+          Write-Output "staticlib=$($candidate.FullName)"
