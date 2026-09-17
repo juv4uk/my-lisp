@@ -85,72 +85,89 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
         ),
         (
             "JO",
-            "x86-encode-jo-rel8 covers the rel8 form (0x70) only; the rel32 form is pending",
+            "x86-encode-jo-rel8 covers the rel8 form (0x70), and x86-encode-jo-rel32 covers the \
+             rel32 form (0x0F 0x80)",
         ),
         (
             "JNO",
-            "x86-encode-jno-rel8 covers the rel8 form (0x71) only; the rel32 form is pending",
+            "x86-encode-jno-rel8 covers the rel8 form (0x71), and x86-encode-jno-rel32 covers the \
+             rel32 form (0x0F 0x81)",
         ),
         (
             "JB",
-            "x86-encode-jb-rel8 covers the rel8 form (0x72) only; the rel32 form is pending",
+            "x86-encode-jb-rel8 covers the rel8 form (0x72), and x86-encode-jb-rel32 covers the \
+             rel32 form (0x0F 0x82)",
         ),
         (
             "JNB",
-            "x86-encode-jnb-rel8 covers the rel8 form (0x73) only; the rel32 form is pending",
+            "x86-encode-jnb-rel8 covers the rel8 form (0x73), and x86-encode-jnb-rel32 covers the \
+             rel32 form (0x0F 0x83)",
         ),
         (
             "JZ",
-            "x86-encode-jz-rel8 covers the rel8 form (0x74) only; the rel32 form is pending",
+            "x86-encode-jz-rel8 covers the rel8 form (0x74), and x86-encode-jz-rel32 covers the \
+             rel32 form (0x0F 0x84)",
         ),
         (
             "JNZ",
-            "x86-encode-jnz-rel8 covers the rel8 form (0x75) only; the rel32 form is pending",
+            "x86-encode-jnz-rel8 covers the rel8 form (0x75), and x86-encode-jnz-rel32 covers the \
+             rel32 form (0x0F 0x85)",
         ),
         (
             "JBE",
-            "x86-encode-jbe-rel8 covers the rel8 form (0x76) only; the rel32 form is pending",
+            "x86-encode-jbe-rel8 covers the rel8 form (0x76), and x86-encode-jbe-rel32 covers the \
+             rel32 form (0x0F 0x86)",
         ),
         (
             "JNBE",
-            "x86-encode-jnbe-rel8 covers the rel8 form (0x77) only; the rel32 form is pending",
+            "x86-encode-jnbe-rel8 covers the rel8 form (0x77), and x86-encode-jnbe-rel32 covers \
+             the rel32 form (0x0F 0x87)",
         ),
         (
             "JS",
-            "x86-encode-js-rel8 covers the rel8 form (0x78) only; the rel32 form is pending",
+            "x86-encode-js-rel8 covers the rel8 form (0x78), and x86-encode-js-rel32 covers the \
+             rel32 form (0x0F 0x88)",
         ),
         (
             "JNS",
-            "x86-encode-jns-rel8 covers the rel8 form (0x79) only; the rel32 form is pending",
+            "x86-encode-jns-rel8 covers the rel8 form (0x79), and x86-encode-jns-rel32 covers the \
+             rel32 form (0x0F 0x89)",
         ),
         (
             "JP",
-            "x86-encode-jp-rel8 covers the rel8 form (0x7A) only; the rel32 form is pending",
+            "x86-encode-jp-rel8 covers the rel8 form (0x7A), and x86-encode-jp-rel32 covers the \
+             rel32 form (0x0F 0x8A)",
         ),
         (
             "JNP",
-            "x86-encode-jnp-rel8 covers the rel8 form (0x7B) only; the rel32 form is pending",
+            "x86-encode-jnp-rel8 covers the rel8 form (0x7B), and x86-encode-jnp-rel32 covers the \
+             rel32 form (0x0F 0x8B)",
         ),
         (
             "JL",
-            "x86-encode-jl-rel8 covers the rel8 form (0x7C) only; the rel32 form is pending",
+            "x86-encode-jl-rel8 covers the rel8 form (0x7C), and x86-encode-jl-rel32 covers the \
+             rel32 form (0x0F 0x8C)",
         ),
         (
             "JNL",
-            "x86-encode-jnl-rel8 covers the rel8 form (0x7D) only; the rel32 form is pending",
+            "x86-encode-jnl-rel8 covers the rel8 form (0x7D), and x86-encode-jnl-rel32 covers the \
+             rel32 form (0x0F 0x8D)",
         ),
         (
             "JLE",
-            "x86-encode-jle-rel8 covers the rel8 form (0x7E) only; the rel32 form is pending",
+            "x86-encode-jle-rel8 covers the rel8 form (0x7E), and x86-encode-jle-rel32 covers the \
+             rel32 form (0x0F 0x8E)",
         ),
         (
             "JNLE",
-            "x86-encode-jnle-rel8 covers the rel8 form (0x7F) only; the rel32 form is pending",
+            "x86-encode-jnle-rel8 covers the rel8 form (0x7F), and x86-encode-jnle-rel32 covers \
+             the rel32 form (0x0F 0x8F)",
         ),
         (
             "JMP",
-            "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB) only; the rel32 \
-             (0xE9) and indirect register/memory (0xFF /4) forms are pending",
+            "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB), and \
+             x86-encode-jmp-rel32 covers the unconditional rel32 form (0xE9); the indirect \
+             register/memory (0xFF /4) form is pending",
         ),
     ]
     .into_iter()

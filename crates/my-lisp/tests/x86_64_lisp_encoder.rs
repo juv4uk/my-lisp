@@ -590,6 +590,84 @@ fn lisp_encodes_the_full_jcc_rel8_family_with_correct_condition_codes_and_displa
     }
 }
 
+/// Independent decoder for the Jcc rel32 family: two fixed opcode bytes
+/// (0x0F, then 0x80-0x8F where the low nibble is the condition code), no
+/// REX, followed by four little-endian bytes forming a signed 32-bit
+/// relative displacement. From scratch, independent of the encoder's own
+/// construction arithmetic.
+fn decode_jcc_rel32(bytes: &[u8]) -> Option<(u8, i32)> {
+    let [first, second, b0, b1, b2, b3] = bytes else { return None };
+    if *first != 0x0F || (second & 0xF0) != 0x80 {
+        return None;
+    }
+    let condition_code = second & 0x0F;
+    let raw = u32::from_le_bytes([*b0, *b1, *b2, *b3]);
+    Some((condition_code, raw as i32))
+}
+
+/// #176 continued: the 16-condition Jcc rel32 family (opcode 0x0F, 0x80+cc)
+/// -- the conditional counterpart to JMP rel32, needed for the same reason:
+/// #196's own growth-v0 witnesses lean on CMP+Jcc far more than
+/// unconditional JMP, and their hand-derived disp8 offsets will not
+/// survive much further composition. Per #175's pinned XED evidence, the
+/// ICLASS-to-opcode-offset order is identical to the already-admitted Jcc
+/// rel8 family: JO,JNO,JB,JNB,JZ,JNZ,JBE,JNBE,JS,JNS,JP,JNP,JL,JNL,JLE,
+/// JNLE; each is verified against its own condition-code offset and the
+/// full signed 32-bit boundary.
+#[test]
+fn lisp_encodes_the_full_jcc_rel32_family_with_correct_condition_codes_and_displacement() {
+    let mut session = encoder_session();
+    let mnemonics = [
+        ("jo", 0u8),
+        ("jno", 1),
+        ("jb", 2),
+        ("jnb", 3),
+        ("jz", 4),
+        ("jnz", 5),
+        ("jbe", 6),
+        ("jnbe", 7),
+        ("js", 8),
+        ("jns", 9),
+        ("jp", 10),
+        ("jnp", 11),
+        ("jl", 12),
+        ("jnl", 13),
+        ("jle", 14),
+        ("jnle", 15),
+    ];
+
+    for (mnemonic, expected_cc) in mnemonics {
+        for displacement in [i32::MIN, -1000000, -1, 0, 1, 1000000, i32::MAX] {
+            let form = format!("(x86-encode-{mnemonic}-rel32 {displacement})");
+            let rendered = eval_bytes(&form, &mut session);
+            let bytes: Vec<u8> = rendered
+                .trim_start_matches('(')
+                .trim_end_matches(')')
+                .split_whitespace()
+                .map(|token| token.parse().expect("byte must be a small integer"))
+                .collect();
+
+            assert_eq!(bytes.len(), 6, "{form} must always be 0x0F+opcode+rel32, 6 bytes");
+            assert_eq!(bytes[0], 0x0F, "{form}: {bytes:?}");
+            let (condition_code, decoded_disp) = decode_jcc_rel32(&bytes)
+                .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+            assert_eq!(condition_code, expected_cc, "{form}: {bytes:?}");
+            assert_eq!(
+                decoded_disp, displacement,
+                "{form} round-tripped to disp {decoded_disp}, from bytes {bytes:?}"
+            );
+        }
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("PATTERN   : 0x0F 0x84 mode64 norex2_prefix FORCE64() BRANCH_HINT() BRDISP32()"),
+        "pinned XED evidence must contain the exact JZ rel32 pattern this encoder was checked against"
+    );
+}
+
 /// Independent decoder for MOV r64,imm64: REX.W (+REX.B for r8-r15) followed
 /// by opcode 0xB8+r (register in the low 3 opcode bits) and an 8-byte
 /// little-endian immediate. From scratch, independent of the encoder's own

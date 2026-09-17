@@ -287,6 +287,58 @@
       235
       (x86-disp8-byte displacement))))
 
+; Two's-complement 4-byte little-endian encoding for a signed 32-bit
+; displacement, the same "add the modulus before reducing" pattern
+; x86-disp8-byte already proved correct for the 1-byte case.
+(def x86-rel32-bytes
+  (lambda (displacement)
+    (x86-u32-bytes (mod (+ displacement 4294967296) 4294967296))))
+
+; Jcc rel32: opcode 0x0F, then 0x80+cc, then a signed 32-bit relative
+; displacement -- the conditional counterpart to JMP rel32, needed for the
+; same reason: #196's own growth-v0 witnesses lean on CMP+Jcc far more than
+; unconditional JMP (an arena-bounds check is inherently a Jcc), and their
+; hand-derived disp8 offsets (e.g. "JNZ +11", "JNZ +33") will not survive
+; much further composition. Confirmed against #175's pinned XED evidence
+; (`PATTERN : 0x0F 0x8<cc> mode64 norex2_prefix FORCE64() BRANCH_HINT()
+; BRDISP32()` for each ICLASS in the identical order the rel8 family
+; already uses: JO,JNO,JB,JNB,JZ,JNZ,JBE,JNBE,JS,JNS,JP,JNP,JL,JNL,JLE,
+; JNLE) -- reuses that same condition-code-to-opcode-offset mapping, just
+; with a 2-byte opcode and a 4-byte displacement instead of 1+1.
+(def x86-encode-jcc-rel32
+  (lambda (condition-code displacement)
+    (cons
+      15
+      (cons
+        (+ 128 condition-code)
+        (x86-rel32-bytes displacement)))))
+
+(def x86-encode-jo-rel32 (lambda (displacement) (x86-encode-jcc-rel32 0 displacement)))
+(def x86-encode-jno-rel32 (lambda (displacement) (x86-encode-jcc-rel32 1 displacement)))
+(def x86-encode-jb-rel32 (lambda (displacement) (x86-encode-jcc-rel32 2 displacement)))
+(def x86-encode-jnb-rel32 (lambda (displacement) (x86-encode-jcc-rel32 3 displacement)))
+(def x86-encode-jz-rel32 (lambda (displacement) (x86-encode-jcc-rel32 4 displacement)))
+(def x86-encode-jnz-rel32 (lambda (displacement) (x86-encode-jcc-rel32 5 displacement)))
+(def x86-encode-jbe-rel32 (lambda (displacement) (x86-encode-jcc-rel32 6 displacement)))
+(def x86-encode-jnbe-rel32 (lambda (displacement) (x86-encode-jcc-rel32 7 displacement)))
+(def x86-encode-js-rel32 (lambda (displacement) (x86-encode-jcc-rel32 8 displacement)))
+(def x86-encode-jns-rel32 (lambda (displacement) (x86-encode-jcc-rel32 9 displacement)))
+(def x86-encode-jp-rel32 (lambda (displacement) (x86-encode-jcc-rel32 10 displacement)))
+(def x86-encode-jnp-rel32 (lambda (displacement) (x86-encode-jcc-rel32 11 displacement)))
+(def x86-encode-jl-rel32 (lambda (displacement) (x86-encode-jcc-rel32 12 displacement)))
+(def x86-encode-jnl-rel32 (lambda (displacement) (x86-encode-jcc-rel32 13 displacement)))
+(def x86-encode-jle-rel32 (lambda (displacement) (x86-encode-jcc-rel32 14 displacement)))
+(def x86-encode-jnle-rel32 (lambda (displacement) (x86-encode-jcc-rel32 15 displacement)))
+
+; JMP rel32: opcode 0xE9 followed by a signed 32-bit relative displacement,
+; confirmed against #175's pinned XED evidence (`PATTERN : 0xE9 mode64
+; norex2_prefix FORCE64() BRDISP32()`). Matches JMP rel8's own
+; unconditional, no-ModRM, no-REX shape -- only the opcode byte and
+; displacement width differ.
+(def x86-encode-jmp-rel32
+  (lambda (displacement)
+    (cons 233 (x86-rel32-bytes displacement))))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond

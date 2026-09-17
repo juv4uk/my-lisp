@@ -479,3 +479,51 @@ fn jmp_actually_branches_unconditionally_on_real_hardware_regardless_of_flags() 
         "JMP must branch even when the prior CMP cleared ZF -- unlike JZ, it does not consult flags"
     );
 }
+
+/// #196's own growth-v0 witnesses hand-derive exact disp8 byte offsets for
+/// their Jcc branches (e.g. PR #205's `JNZ +11`, PR #208's `JNZ +33`), and
+/// that signed +-127 window is fixed no matter how far those compositions
+/// grow. This proves, by actually executing on the i5-6400 rather than by
+/// decoding, that JZ rel32 correctly skips a body of 200 bytes of dead
+/// filler code in the not-taken direction, and that JNZ rel32 correctly
+/// takes the same distance in the taken direction -- both distances JZ/JNZ
+/// rel8 could not physically encode at all (disp8 tops out at 127).
+#[test]
+fn jcc_rel32_actually_branches_past_a_body_too_large_for_disp8_on_real_hardware() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    // 20 * 10-byte mov-r64-imm64 filler instructions + a 1-byte ret = 201
+    // bytes, well past disp8's +-127 range. Falling through executes the
+    // filler and returns 999 from its own trailing ret; taking the branch
+    // skips straight to the "mov rax,42; ret" that follows.
+    let filler: String = (0..20)
+        .map(|_| "(mov-r64-imm64 rax 999) ".to_string())
+        .collect();
+
+    let taken = format!(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax 5) (mov-r64-imm64 rcx 5) (cmp-r64-r64 rax rcx) (jz-rel32 201) {filler}(ret) (mov-r64-imm64 rax 42) (ret))) 0)"
+    );
+    let taken_result = eval_program(&taken, &mut session)
+        .expect("real hardware must execute the admitted JZ rel32 bytes");
+    assert_eq!(
+        taken_result.value.to_string(),
+        "42",
+        "JZ rel32 must land exactly past the 201-byte filler+ret body when ZF is set"
+    );
+
+    let not_taken = format!(
+        "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax 5) (mov-r64-imm64 rcx 6) (cmp-r64-r64 rax rcx) (jz-rel32 201) {filler}(ret) (mov-r64-imm64 rax 42) (ret))) 0)"
+    );
+    let not_taken_result = eval_program(&not_taken, &mut session)
+        .expect("real hardware must execute the admitted JZ rel32 bytes");
+    assert_eq!(
+        not_taken_result.value.to_string(),
+        "999",
+        "JZ rel32 must NOT branch when ZF is clear, falling through into the filler and returning via its own ret"
+    );
+}

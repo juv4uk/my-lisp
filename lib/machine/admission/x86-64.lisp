@@ -46,7 +46,24 @@
      (jnl-rel8 disp8)
      (jle-rel8 disp8)
      (jnle-rel8 disp8)
-     (jmp-rel8 disp8))))
+     (jmp-rel8 disp8)
+     (jo-rel32 rel32)
+     (jno-rel32 rel32)
+     (jb-rel32 rel32)
+     (jnb-rel32 rel32)
+     (jz-rel32 rel32)
+     (jnz-rel32 rel32)
+     (jbe-rel32 rel32)
+     (jnbe-rel32 rel32)
+     (js-rel32 rel32)
+     (jns-rel32 rel32)
+     (jp-rel32 rel32)
+     (jnp-rel32 rel32)
+     (jl-rel32 rel32)
+     (jnl-rel32 rel32)
+     (jle-rel32 rel32)
+     (jnle-rel32 rel32)
+     (jmp-rel32 rel32))))
 
 ; A disp8 slot only admits an exact integer in [-128,127]. Comparison
 ; operators like `>=` error on a non-number rather than returning () (a
@@ -90,6 +107,14 @@
        (and (>= value -128) (<= value 127)))
       (t (quote ())))))
 
+; A rel32 slot only admits an exact integer in the signed 32-bit range.
+(def x86-admission-rel32?
+  (lambda (value)
+    (cond
+      ((x86-admission-exact-integer? value)
+       (and (>= value -2147483648) (<= value 2147483647)))
+      (t (quote ())))))
+
 ; `immediate`, `register`, and `disp8` are operand-slot wildcards, not
 ; opcode wildcards. `register` only admits the 16 GPR names x86-reg-code
 ; knows about -- any other atom (a number, a made-up symbol) fails the
@@ -109,6 +134,10 @@
          ((eq pattern (quote disp8))
           (cond
             ((atom form) (x86-admission-disp8? form))
+            (t (quote ()))))
+         ((eq pattern (quote rel32))
+          (cond
+            ((atom form) (x86-admission-rel32? form))
             (t (quote ()))))
          ((atom form) (eq pattern form))
          (t (quote ()))))
@@ -218,6 +247,40 @@
        (x86-encode-jnle-rel8 (second form)))
       ((x86-admission-pattern-match? (quote (jmp-rel8 disp8)) form)
        (x86-encode-jmp-rel8 (second form)))
+      ((x86-admission-pattern-match? (quote (jo-rel32 rel32)) form)
+       (x86-encode-jo-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jno-rel32 rel32)) form)
+       (x86-encode-jno-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jb-rel32 rel32)) form)
+       (x86-encode-jb-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jnb-rel32 rel32)) form)
+       (x86-encode-jnb-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jz-rel32 rel32)) form)
+       (x86-encode-jz-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jnz-rel32 rel32)) form)
+       (x86-encode-jnz-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jbe-rel32 rel32)) form)
+       (x86-encode-jbe-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jnbe-rel32 rel32)) form)
+       (x86-encode-jnbe-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (js-rel32 rel32)) form)
+       (x86-encode-js-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jns-rel32 rel32)) form)
+       (x86-encode-jns-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jp-rel32 rel32)) form)
+       (x86-encode-jp-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jnp-rel32 rel32)) form)
+       (x86-encode-jnp-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jl-rel32 rel32)) form)
+       (x86-encode-jl-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jnl-rel32 rel32)) form)
+       (x86-encode-jnl-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jle-rel32 rel32)) form)
+       (x86-encode-jle-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jnle-rel32 rel32)) form)
+       (x86-encode-jnle-rel32 (second form)))
+      ((x86-admission-pattern-match? (quote (jmp-rel32 rel32)) form)
+       (x86-encode-jmp-rel32 (second form)))
       ; Unreachable after admission. Keep fail-closed data instead of inventing
       ; a fallback encoder.
       (t (quote ())))))
