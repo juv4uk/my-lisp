@@ -1,0 +1,24 @@
+name: Verify #343 xtask evidence map
+
+on:
+  pull_request:
+    paths:
+      - 'knowledge/meta-eval-evidence.lisp'
+      - 'knowledge/semantic-ownership.lisp'
+      - '.github/workflows/verify-343-xtask.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate deterministic human projection
+        run: python3 scripts/generate-meta-eval-evidence.py
+      - name: Upload generated projection
+        uses: actions/upload-artifact@v4
+        with:
+          name: meta-eval-evidence-generated
+          path: docs/meta-eval-evidence.md
+          if-no-files-found: error
+      - run: cargo run -p xtask -- verify
