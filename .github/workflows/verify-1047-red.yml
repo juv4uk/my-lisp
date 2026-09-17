@@ -1,0 +1,30 @@
+name: Verify 1047 RED
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  uk-direct-peer-1047:
+    if: github.event.pull_request.head.ref == 'work/chatgpt-uk-peer-1047'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Require 1047 UK peer to have no EN bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Fqx '(define фрагмент-у-тексті? string-contains?)' lib/surface/uk.lisp; then
+            echo 'RED 1047: stable UK фрагмент-у-тексті? still routes through EN string-contains? in uk.lisp' >&2
+            exit 1
+          fi
+          echo 'GREEN 1047: no UK->EN surface bridge remains'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-1047-peer
+      - name: Verify stable EN/UK runtime peers
+        run: cargo test -p my-lisp --test uk_surface_equivalence every_stable_uk_surface_entry_resolves_to_its_declared_operation -- --nocapture
