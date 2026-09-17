@@ -13,6 +13,9 @@
 ; pre-migration artifact. The cutover commit changes that one provenance line
 ; together with the generated file and removes the Python generator.
 
+; Temporary #74 profiling witness. Removed after the dominant stage is proven.
+(def profile-script-start (mono-ns))
+
 (def fail-closed
   (lambda (message)
     (cons (print message) (car (quote ())))))
@@ -72,10 +75,24 @@
        (quote excluded))
       (t t (quote included)))))
 
-; State is (reversed-output-rows seen-map). The persistent map is already part
-; of the normal CLI Lisp profile. It is keyed by spelling text and stores the
-; first admitted semantic ID. Output order remains owned by the separate row
-; list, so changing lookup structure cannot reorder the generated projection.
+; Seen rows are (spelling semantic-id). equal? is consumed through its explicit
+; structural-relation result, never through the temporary boolean bridge.
+(def find-seen
+  (lambda (word seen)
+    (cond
+      ((atom seen) (structural-kind empty-list)
+       (quote ()))
+      ((atom seen) (structural-kind pair)
+       (cond
+         ((equal? word (car (car seen))) (structural-relation same)
+          (car seen))
+         ((equal? word (car (car seen))) (structural-relation distinct)
+          (find-seen word (cdr seen)))))
+      ((atom seen) (structural-kind atom)
+       (fail-closed "meta semantic registry generation failed: malformed seen table")))))
+
+; State is (reversed-output-rows seen-spellings).
+; An output row is (spelling semantic-id namespace).
 (def collect-surface
   (lambda (sid raw-surface state)
     (let* ((surface (normalize-surface raw-surface))
@@ -96,20 +113,19 @@
              ((eq (symbol? word) t) (identity-relation distinct)
               (fail-closed "meta semantic registry generation failed: admitted surface is not one symbol"))
              ((eq (symbol? word) t) (identity-relation same)
-              (let* ((key (symbol->string word))
-                     (previous (map-get key seen)))
+              (let ((previous (find-seen word seen)))
                 (cond
                   ((atom previous) (structural-kind empty-list)
                    (list (cons (list word sid namespace) rows)
-                         (map-insert key sid seen)))
+                         (cons (list word sid) seen)))
                   ((atom previous) (structural-kind pair)
                    (cond
-                     ((eq (car previous) sid) (identity-relation same)
+                     ((eq (second previous) sid) (identity-relation same)
                       state)
-                     ((eq (car previous) sid) (identity-relation distinct)
+                     ((eq (second previous) sid) (identity-relation distinct)
                       (fail-closed "meta semantic registry generation failed: ambiguous admitted surface"))))
                   ((atom previous) (structural-kind atom)
-                   (fail-closed "meta semantic registry generation failed: malformed seen-map result"))))))))))))
+                   (fail-closed "meta semantic registry generation failed: malformed seen row"))))))))))))
 
 (def collect-surfaces
   (lambda (sid surfaces state)
@@ -181,8 +197,10 @@
       "        ((atom entry) (quote ()))\n"
       "        (t (second entry))))))\n")))
 
+(def profile-before-registry-read (mono-ns))
 (def registry-form
   (car (read-all (read-file "lib/surface/semantic-registry.lisp"))))
+(def profile-after-registry-read (mono-ns))
 
 (cond
   ((eq (car registry-form) (quote sr/1)) (identity-relation same)
@@ -191,7 +209,8 @@
    (fail-closed "meta semantic registry generation failed: expected sr/1 registry")))
 
 (def collected
-  (collect-entries (cdr registry-form) (list (quote ()) map-empty)))
+  (collect-entries (cdr registry-form) (list (quote ()) (quote ()))))
+(def profile-after-collect (mono-ns))
 (def projection-rows (reverse (car collected)))
 
 (cond
@@ -203,6 +222,7 @@
    (fail-closed "meta semantic registry generation failed: malformed projection rows")))
 
 (def generated (render-projection projection-rows))
+(def profile-after-render (mono-ns))
 (def output-path "lib/generated/meta-semantic-registry.lisp")
 (def mode
   (cond
@@ -210,6 +230,19 @@
     ((atom *argv*) (structural-kind pair) (car *argv*))
     ((atom *argv*) (structural-kind atom)
      (fail-closed "meta semantic registry generation failed: malformed argv"))))
+
+(print
+  (list (quote meta-registry-profile-ns)
+        (list (quote definitions)
+              (- profile-before-registry-read profile-script-start))
+        (list (quote registry-read)
+              (- profile-after-registry-read profile-before-registry-read))
+        (list (quote collect)
+              (- profile-after-collect profile-after-registry-read))
+        (list (quote render)
+              (- profile-after-render profile-after-collect))
+        (list (quote total-to-render)
+              (- profile-after-render profile-script-start))))
 
 (cond
   ((equal? mode "--check") (structural-relation same)
