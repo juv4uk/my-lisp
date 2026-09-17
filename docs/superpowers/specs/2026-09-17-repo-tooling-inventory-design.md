@@ -1,7 +1,7 @@
 # Repo Tooling Inventory Design
 
 **Issue:** #382  
-**Status:** approved direction, implementation design  
+**Status:** implementation design  
 **Date:** 2026-09-17
 
 ## Goal
@@ -104,6 +104,14 @@ minus the explicit out-of-scope directory entry "tests"
 
 A new immediate entry under `scripts/` is therefore fail-closed until it is either inventoried as tooling or the scope rule is deliberately amended. Nested `scripts/tests/*` helpers are left to a later slice and are not silently guessed to be production tooling.
 
+The checker must expose its core validation as a pure Lisp function over:
+
+```text
+inventory rows + observed immediate script-entry names
+```
+
+The filesystem-backed top-level runner only obtains the real observations and feeds them into that pure validator. Negative tests therefore do not need to mutate the working tree.
+
 First-slice checks:
 
 - every in-scope immediate `scripts/*` entry is represented exactly once;
@@ -112,7 +120,7 @@ First-slice checks:
 - unknown `kind`, `language`, or `lifecycle` values fail closed;
 - an active/transitional repo-owned Python tool has a migration issue or an explicit `bootstrap-exception` lifecycle;
 - `bootstrap-exception` must carry an explicit removal condition;
-- a `removable`/retired-style row cannot silently contradict live repository state;
+- a `removable` row must have a concrete removal condition and may not silently masquerade as active-without-explanation;
 - declared repository-relative caller/authority paths are checked for existence only where the checker can do so without guessing their meaning;
 - vendored dependencies, archives, immutable historical evidence, and `scripts/tests/*` are not automatically treated as active tooling.
 
@@ -120,7 +128,7 @@ The checker emits a small machine-readable final verdict and precise human diagn
 
 ### Existing CI workflow
 
-Add one step to an existing cheap CI lane, using the canonical CLI execution pattern, for example:
+Add one step to an existing cheap CI lane, using the canonical CLI execution pattern:
 
 ```sh
 cargo run -p my-lisp-cli --bin my-lisp -- scripts/check-repo-tooling-inventory.lisp
@@ -160,14 +168,6 @@ The inventory may reference those tasks but must not absorb them.
 ### Phase 1 — RED witness
 
 Create focused Lisp-owned negative fixtures/witnesses for schema/policy behavior, including an intentionally unregistered observed tool.
-
-The checker should expose its core validation as a pure function over:
-
-```text
-inventory rows + observed script entry names
-```
-
-so negative cases do not need to mutate the real working tree.
 
 ### Phase 2 — current inventory GREEN
 
