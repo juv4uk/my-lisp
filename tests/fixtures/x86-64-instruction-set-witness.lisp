@@ -115,7 +115,68 @@
           ((lea-r64-mem-disp8 rax rbx 10)
            (jz-rel32 1000)
            (jmp-rel32 -100))))
-      (72 141 67 10 15 132 232 3 0 0 233 156 255 255 255)))))
+      (72 141 67 10 15 132 232 3 0 0 233 156 255 255 255))
+     ((native sete-equal)
+      (x86-call-admitted-u64
+        (quote
+          ((mov-r64-imm64 rax 10)
+           (mov-r64-imm64 rbx 10)
+           (cmp-r64-r64 rax rbx)
+           (sete-r8 al)
+           (movzx-r64-r8 rax al)
+           (ret)))
+        0)
+      1)
+     ((native sete-not-equal)
+      (x86-call-admitted-u64
+        (quote
+          ((mov-r64-imm64 rax 10)
+           (mov-r64-imm64 rbx 20)
+           (cmp-r64-r64 rax rbx)
+           (sete-r8 al)
+           (movzx-r64-r8 rax al)
+           (ret)))
+        0)
+      0)
+     ((native imul-product)
+      (x86-call-admitted-u64
+        (quote
+          ((mov-r64-imm64 rax 7)
+           (mov-r64-imm64 rbx 6)
+           (imul-r64-r64 rax rbx)
+           (ret)))
+        0)
+      42)
+     ((native idiv-quotient)
+      (x86-call-admitted-u64
+        (quote
+          ((mov-r64-imm64 rax 100)
+           (cqo)
+           (mov-r64-imm64 rbx 7)
+           (idiv-r64 rbx)
+           (ret)))
+        0)
+      14)
+     ((native cmove-taken)
+      (x86-call-admitted-u64
+        (quote
+          ((mov-r64-imm64 rax 10)
+           (mov-r64-imm64 rbx 99)
+           (cmp-r64-r64 rax rax)
+           (cmove-r64-r64 rax rbx)
+           (ret)))
+        0)
+      99)
+     ((native cmove-not-taken)
+      (x86-call-admitted-u64
+        (quote
+          ((mov-r64-imm64 rax 10)
+           (mov-r64-imm64 rbx 99)
+           (cmp-r64-r64 rax rbx)
+           (cmove-r64-r64 rax rbx)
+           (ret)))
+        0)
+      10))))
 
 (def x86-instruction-eval-row
   (lambda (row)
