@@ -6,22 +6,15 @@ if [[ $# -ne 1 ]]; then
   exit 2
 fi
 
-case "$1" in
-  tests/fixtures/canon-zero-v[0-9]*.lisp|
-  tests/fixtures/control-dispatch-v[0-9]*.lisp|
-  tests/fixtures/deep-structural-relation-v[0-9]*.lisp|
-  tests/fixtures/exact-q-binary-v[0-9]*.lisp|
-  tests/fixtures/knowledge-clause-kind-v[0-9]*.lisp|
-  tests/fixtures/mathematical-result-v[0-9]*.lisp|
-  tests/fixtures/reason-honesty-v[0-9]*.lisp|
-  tests/fixtures/reason-module-honesty-v[0-9]*.lisp|
-  tests/fixtures/reason-observe-honesty-v[0-9]*.lisp|
-  tests/fixtures/structural-observation-v[0-9]*.lisp|
-  tests/fixtures/structure-core-v[0-9]*.lisp|
-  tests/fixtures/unification-outcome-v[0-9]*.lisp)
-    exit 0
-    ;;
-  *)
-    exit 1
-    ;;
+path="$1"
+case "$path" in
+  tests/fixtures/*) ;;
+  *) exit 1 ;;
 esac
+
+name="${path#tests/fixtures/}"
+if [[ "$name" =~ ^(canon-zero|control-dispatch|deep-structural-relation|exact-q-binary|knowledge-clause-kind|mathematical-result|reason-honesty|reason-module-honesty|reason-observe-honesty|structural-observation|structure-core|unification-outcome)-v[0-9]+\.lisp$ ]]; then
+  exit 0
+fi
+
+exit 1
