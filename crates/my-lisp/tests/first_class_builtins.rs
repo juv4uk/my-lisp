@@ -48,6 +48,12 @@ fn map_over_builtin_car() {
 
 #[test]
 
+fn peer_surfaces_compare_by_semantic_identity() {
+    assert_eq!(eval_source("(eq car перше)"), "(identity-relation same)");
+}
+
+#[test]
+
 fn builtin_as_higher_order_argument() {
     assert_eq!(eval_source("((lambda (f) (f 2 3)) +)"), "5");
 }
@@ -87,4 +93,3 @@ fn lexical_shadowing_of_builtin_name() {
         "6"
     );
 }
-
