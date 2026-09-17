@@ -57,3 +57,12 @@ if [[ "$narrate_outcome_status" != "(narrate-outcome-authority-witness (status p
   printf 'narrate outcome Lisp witness failed: %s\n' "$narrate_outcome_status" >&2
   exit 1
 fi
+
+# #370: typed numeric-buffer identity is owned by Lisp.  The shell observes
+# only the named pass envelope; the historical numeric-buffer? T/NIL shape is
+# intentionally not preserved because #344 owns its explicit result algebra.
+numeric_buffer_identity_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/numeric-buffer-identity-authority-witness.lisp)"
+if [[ "$numeric_buffer_identity_status" != "(numeric-buffer-identity-authority-witness (status pass))" ]]; then
+  printf 'numeric-buffer identity Lisp witness failed: %s\n' "$numeric_buffer_identity_status" >&2
+  exit 1
+fi
