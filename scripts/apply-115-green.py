@@ -53,7 +53,7 @@ GUARD = '''; #115 — Lisp owns the authority verdict.
       (t t
        (authority-violation (quote invalid-change-data)
                             (quote unknown)
-                            (quote modified)))))))
+                            (quote modified))))))
 
 (def authority-verdict (check-changes changed-host-tests))
 
