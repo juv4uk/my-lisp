@@ -104,6 +104,12 @@ fn canonical_machine_gateway_rejects_raw_bytes_register_bypass_and_truncation_be
             "(x86-call-admitted-u64 (quote ((jmp-rel8 -129))) 0)",
             "(rejected unadmitted-machine-form (jmp-rel8 -129))",
         ),
+        (
+            // CALL rel32's rel32 slot fails closed the same way disp8 does:
+            // one past the signed max.
+            "(x86-call-admitted-u64 (quote ((call-rel32 2147483648))) 0)",
+            "(rejected unadmitted-machine-form (call-rel32 2147483648))",
+        ),
     ] {
         EXECUTOR_CALLS.store(0, Ordering::SeqCst);
         let result = eval_program(request, &mut session)

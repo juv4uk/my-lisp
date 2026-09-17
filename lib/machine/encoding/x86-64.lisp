@@ -287,6 +287,30 @@
       235
       (x86-disp8-byte displacement))))
 
+; Two's-complement little-endian bytes for a rel32 value already known to be
+; in [-2147483648,2147483647]. Same wrap-before-split fix #199 proved for
+; disp8 (x86-disp8-byte) and this file's own x86-u64-bytes lack for
+; mov-r64-imm64 (#220's truth-sentinel audit documented this being an
+; existing, out-of-scope gap) -- `mod` in this Lisp does not wrap negative operands, so
+; adding 2^32 before reducing mod 2^32 is exact for the whole rel32 domain.
+(def x86-rel32-bytes
+  (lambda (displacement)
+    (x86-u32-bytes (mod (+ displacement 4294967296) 4294967296))))
+
+; CALL rel32: opcode 0xE8 followed by a signed 32-bit relative displacement
+; (from the address of the *next* instruction), confirmed against #175's
+; pinned XED evidence (`PATTERN : 0xE8 mode64 norex2_prefix BRDISP32()
+; DF64() FORCE64()`). No REX, no ModRM -- like JMP rel8/Jcc rel8, this is a
+; control-transfer, not a GPR operation. Unlike JMP, CALL also pushes the
+; return address (XED_REG_STACKPUSH) -- on real hardware this is the actual
+; RSP-based machine stack, so a CALL executed through native-call-u64-raw
+; pushes/pops for real; nothing in the arena model needs to know about it,
+; the same "guest ABI is Lisp's, host mechanism is the CPU's" split #204
+; already established for the Windows/Linux execution adapters.
+(def x86-encode-call-rel32
+  (lambda (displacement)
+    (cons 232 (x86-rel32-bytes displacement))))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond
