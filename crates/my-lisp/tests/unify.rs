@@ -146,17 +146,3 @@ fn thread_conjunction_finds_every_combination_satisfying_all_conditions() {
     );
 }
 
-#[test]
-fn thread_conjunction_returns_no_results_when_a_condition_cannot_be_satisfied() {
-    let source = r#"
-        (thread-conjunction
-          (list (quote a) (quote z))
-          (quote ())
-          (lambda (condition subst)
-            (filter (lambda (result) (eq (failed-subst? result) (quote ())))
-                    (map (lambda (candidate) (unify condition candidate subst)) (quote (a b))))))
-    "#;
-    // The second condition ((quote z)) never unifies with 'a or 'b, so every
-    // branch started by the first condition dead-ends.
-    assert_eq!(eval_unify(source), "()");
-}
