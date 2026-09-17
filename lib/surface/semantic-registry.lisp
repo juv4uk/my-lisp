@@ -172,6 +172,6 @@
   (1148 (en tcp-read stable) (uk — missing) (ukr прочитати-текст-з-з'єднання-протоколу-керування-передаванням candidate) (sa — missing))
   (1149 (en tcp-write stable) (uk — missing) (ukr записати-текст-у-з'єднання-протоколу-керування-передаванням candidate) (sa — missing))
   (1150 (en tcp-listen stable) (uk — missing) (ukr слухати-порт-протоколу-керування-передаванням candidate) (sa — missing))
-  (1151 (en read-file stable) (uk — missing) (ukr прочитати-файл candidate) (sa — missing))
-  (1152 (en write-file stable) (uk — missing) (ukr записати-файл candidate) (sa — missing))
+  (1151 (en read-file stable) (uk прочитати-файл stable) (ukr прочитати-файл stable) (sa — missing))
+  (1152 (en write-file stable) (uk записати-файл stable) (ukr записати-файл stable) (sa — missing))
 )
