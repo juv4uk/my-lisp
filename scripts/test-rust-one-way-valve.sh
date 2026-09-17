@@ -151,4 +151,25 @@ printf '(quote non-rust-only)\n' >> lib/core.lisp
 commit_case green-non-rust-only
 expect_green green-non-rust-only
 
+# GREEN: newer main may delete Rust after a feature branch diverges.
+# The feature branch itself changes only Lisp; the valve must judge the
+# feature contribution from the merge-base, not treat main-only deletion as
+# an addition on the stale feature head.
+reset_case
+printf '(quote stale-feature-non-rust-change)\n' >> lib/core.lisp
+commit_case stale-feature-non-rust
+stale_head=$case_head
+
+git reset --hard -q "$base"
+sed -i '/removable/d' src/existing.rs
+git add -A
+git commit -qm advanced-base-rust-deletion
+advanced_base=$(git rev-parse HEAD)
+
+saved_base=$base
+base=$advanced_base
+case_head=$stale_head
+expect_green green-stale-feature-after-base-rust-deletion
+base=$saved_base
+
 echo "rust-one-way-valve self-test: PASS"
