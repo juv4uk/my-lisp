@@ -1,5 +1,6 @@
 ; #218 — Lisp-owned verifier for contracts/structural-observation-contract.lisp.
 ; The host transports the contract document into `structural-observation-document`.
+; Verification-only trigger for #377; never merge this branch.
 ;
 ; Case tables are verified one case at a time. This avoids asking the historical
 ; macro expander to reconstruct a nested dotted-alist literal merely to compare
