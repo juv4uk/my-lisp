@@ -101,7 +101,10 @@ jobs:
         run: |
           set -euo pipefail
           cargo build -p my-lisp-cli --bin my-lisp
+
+          # #150: the admitted authority graph is one-way.
           ./target/debug/my-lisp scripts/machine-authority-guard.lisp
+
           cp tests/machine-authority-edges.lisp /tmp/machine-authority-edges.lisp
           cp tests/fixtures/machine-authority/reverse-edge.lisp tests/machine-authority-edges.lisp
           if ./target/debug/my-lisp scripts/machine-authority-guard.lisp > /tmp/machine-reverse-edge.log 2>&1; then
@@ -110,6 +113,42 @@ jobs:
           fi
           grep -q 'machine-authority-boundary-violation' /tmp/machine-reverse-edge.log
           cp /tmp/machine-authority-edges.lisp tests/machine-authority-edges.lisp
+
+          # #211: a native result may not become its own semantic authority
+          # or the only semantic answer key.
+          cp lib/machine/capability-provenance.lisp /tmp/machine-capability-provenance.lisp
+          cp tests/fixtures/machine-authority/hybrid-capability.lisp lib/machine/capability-provenance.lisp
+          if ./target/debug/my-lisp scripts/machine-authority-guard.lisp > /tmp/machine-hybrid.log 2>&1; then
+            echo "ERROR: #211 machine/native semantic answer key was accepted"
+            exit 1
+          fi
+          grep -q 'machine-semantic-hybrid-violation' /tmp/machine-hybrid.log
+          cp /tmp/machine-capability-provenance.lisp lib/machine/capability-provenance.lisp
+
+          # Same Lisp addition, two admitted register realizations.
+          representation_status="$(./target/debug/my-lisp tests/fixtures/machine-representation-independence-witness.lisp)"
+          if [[ "$representation_status" != "(machine-representation-independence-witness (status pass))" ]]; then
+            printf 'machine representation-independence witness failed: %s\n' "$representation_status" >&2
+            exit 1
+          fi
+
+          # Meaning must remain executable when the whole target-specific
+          # machine layer is physically absent from the checkout.
+          restore_machine_layer() {
+            if [[ -d /tmp/my-lisp-machine-211 ]]; then
+              mv /tmp/my-lisp-machine-211 lib/machine
+            fi
+          }
+          trap restore_machine_layer EXIT
+          rm -rf /tmp/my-lisp-machine-211
+          mv lib/machine /tmp/my-lisp-machine-211
+          replaceability_status="$(./target/debug/my-lisp tests/fixtures/machine-replaceability-witness.lisp)"
+          restore_machine_layer
+          trap - EXIT
+          if [[ "$replaceability_status" != "(machine-replaceability-witness (status pass))" ]]; then
+            printf 'machine replaceability witness failed: %s\n' "$replaceability_status" >&2
+            exit 1
+          fi
 
       - name: Diff hygiene
         env:
@@ -238,6 +277,28 @@ jobs:
           set -euo pipefail
           cargo build -p my-lisp-cli --bin my-lisp
           ./target/debug/my-lisp scripts/machine-authority-guard.lisp
+
+          representation_status="$(./target/debug/my-lisp tests/fixtures/machine-representation-independence-witness.lisp)"
+          if [[ "$representation_status" != "(machine-representation-independence-witness (status pass))" ]]; then
+            printf 'machine representation-independence witness failed: %s\n' "$representation_status" >&2
+            exit 1
+          fi
+
+          restore_machine_layer() {
+            if [[ -d /tmp/my-lisp-machine-211 ]]; then
+              mv /tmp/my-lisp-machine-211 lib/machine
+            fi
+          }
+          trap restore_machine_layer EXIT
+          rm -rf /tmp/my-lisp-machine-211
+          mv lib/machine /tmp/my-lisp-machine-211
+          replaceability_status="$(./target/debug/my-lisp tests/fixtures/machine-replaceability-witness.lisp)"
+          restore_machine_layer
+          trap - EXIT
+          if [[ "$replaceability_status" != "(machine-replaceability-witness (status pass))" ]]; then
+            printf 'machine replaceability witness failed: %s\n' "$replaceability_status" >&2
+            exit 1
+          fi
       - name: Current Lisp-owned semantic witnesses
         run: bash scripts/test-current-semantic-slice.sh
       - name: Critical machine and surface witnesses
