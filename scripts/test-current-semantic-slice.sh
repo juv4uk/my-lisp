@@ -57,3 +57,12 @@ if [[ "$narrate_outcome_status" != "(narrate-outcome-authority-witness (status p
   printf 'narrate outcome Lisp witness failed: %s\n' "$narrate_outcome_status" >&2
   exit 1
 fi
+
+# #305: buffer-specific EQ behavior is semantic data owned in Lisp before the
+# historical Rust t/() assertions are retired. The shell observes only the
+# named envelope; the identity-relation expectations stay in the Lisp witness.
+numeric_buffer_identity_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/numeric-buffer-identity-witness.lisp)"
+if [[ "$numeric_buffer_identity_status" != "(numeric-buffer-identity-witness (status pass))" ]]; then
+  printf 'numeric-buffer identity Lisp witness failed: %s\n' "$numeric_buffer_identity_status" >&2
+  exit 1
+fi
