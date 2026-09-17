@@ -172,6 +172,6 @@
   (1148 identity:1148/surface:tcp-read (uk — missing) (ukr прочитати-текст-з-з'єднання-протоколу-керування-передаванням candidate) (en tcp-read stable) (sa — missing) (sym — missing) stable my-lisp)
   (1149 identity:1149/surface:tcp-write (uk — missing) (ukr записати-текст-у-з'єднання-протоколу-керування-передаванням candidate) (en tcp-write stable) (sa — missing) (sym — missing) stable my-lisp)
   (1150 identity:1150/surface:tcp-listen (uk — missing) (ukr слухати-порт-протоколу-керування-передаванням candidate) (en tcp-listen stable) (sa — missing) (sym — missing) stable my-lisp)
-  (1151 identity:1151/surface:read-file (uk — missing) (ukr прочитати-файл candidate) (en read-file stable) (sa — missing) (sym — missing) stable my-lisp)
-  (1152 identity:1152/surface:write-file (uk — missing) (ukr записати-файл candidate) (en write-file stable) (sa — missing) (sym — missing) stable my-lisp)
+  (1151 identity:1151/surface:read-file (uk прочитати-файл stable) (ukr прочитати-файл stable) (en read-file stable) (sa — missing) (sym — missing) stable my-lisp)
+  (1152 identity:1152/surface:write-file (uk записати-файл stable) (ukr записати-файл stable) (en write-file stable) (sa — missing) (sym — missing) stable my-lisp)
 )
