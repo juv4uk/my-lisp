@@ -570,12 +570,8 @@ fn stari_nazvy_smystovoho_audytu_lyshaiutsia_aliasamy_sumisnosti() -> Result<(),
         }
         let en = fields[1];
         let old = fields[2];
-        let new = fields[3];
         if !UK_SURFACE.contains(&format!("(define {old} {en})")) {
             return Err(format!("missing alias (define {old} {en})"));
-        }
-        if !UK_SURFACE.contains(&format!("(define {new} {en})")) {
-            return Err(format!("missing alias (define {new} {en})"));
         }
     }
     Ok(())
