@@ -17,12 +17,54 @@
       ((eq (car value) (quote rejected)) t)
       (t (quote ())))))
 
+(def x86-gpr8-name?
+  (lambda (name)
+    (cond
+      ((symbol? name)
+       (member?
+         name
+         (quote
+           (al cl dl bl spl bpl sil dil
+               r8b r9b r10b r11b r12b r13b r14b r15b))))
+      (t (quote ())))))
+
 (def x86-gpr64-name?
   (lambda (name)
     (cond
       ((symbol? name)
-       (not (eq (x86-reg-code name) (quote ()))))
+       (and
+         (not (eq (x86-reg-code name) (quote ())))
+         (not (x86-gpr8-name? name))))
       (t (quote ())))))
+
+(def x86-gpr8?
+  (lambda (operand)
+    (cond
+      ((atom operand) (quote ()))
+      ((eq (car operand) (quote gpr8))
+       (cond
+         ((atom (cdr operand)) (quote ()))
+         ((equal? (cdr (cdr operand)) (quote ()))
+          (x86-gpr8-name? (second operand)))
+         (t (quote ()))))
+      (t (quote ())))))
+
+(def x86-gpr8
+  (lambda (name)
+    (cond
+      ((x86-gpr8-name? name) (list (quote gpr8) name))
+      (t (x86-machine-operand-rejection (quote gpr8) name)))))
+
+(def x86-as-gpr8
+  (lambda (operand)
+    (cond
+      ((x86-machine-rejected? operand) operand)
+      ((x86-gpr8? operand) operand)
+      (t (x86-gpr8 operand)))))
+
+(def x86-gpr8-value
+  (lambda (operand)
+    (second operand)))
 
 (def x86-gpr64?
   (lambda (operand)

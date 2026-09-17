@@ -92,3 +92,12 @@ if [[ "$x86_instruction_status" != "(x86-64-instruction-set-witness (status pass
   printf 'x86-64 instruction set Lisp witness failed: %s\n' "$x86_instruction_status" >&2
   exit 1
 fi
+
+
+# #491: encoder aliases may share register codes, but typed machine operands
+# must preserve byte-vs-64-bit width discipline.
+machine_register_width_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/machine-register-width-witness.lisp)"
+if [[ "$machine_register_width_status" != "(machine-register-width-witness (status pass))" ]]; then
+  printf 'machine register-width witness failed: %s\n' "$machine_register_width_status" >&2
+  exit 1
+fi
