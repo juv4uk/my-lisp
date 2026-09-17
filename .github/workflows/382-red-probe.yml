@@ -1,0 +1,19 @@
+name: 382 RED probe
+
+on:
+  pull_request:
+
+jobs:
+  repo-tooling-red:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: repo-tooling-red
+      - name: Build canonical CLI
+        run: cargo build -p my-lisp-cli --bin my-lisp
+      - name: Expected RED until #382 checker exists
+        run: ./target/debug/my-lisp scripts/check-repo-tooling-inventory.lisp
