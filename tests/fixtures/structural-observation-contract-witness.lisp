@@ -103,7 +103,54 @@
                   (quote (identity-relation distinct)))
                 (so-expect "0003" (quote outside-domain) (quote type-error))
                 (so-expect "0003" (quote generic-truth-coercion) (quote forbidden))
-                (so-expect "0003" (quote control-dispatch) (quote explicit-result-equality))))))
+                (so-expect "0003" (quote control-dispatch) (quote explicit-result-equality))
+
+                ; #218 broader type/text queries: first make the witness demand
+                ; explicit domain-owned result records. The contract update that
+                ; satisfies these checks lands only after this witness is seen RED.
+                (so-expect "1024" (quote result-form) (quote class-membership))
+                (so-expect "1024" (quote target-class) (quote string))
+                (so-expect-case
+                  "1024"
+                  (quote string)
+                  (quote (class-membership string member)))
+                (so-expect-case
+                  "1024"
+                  (quote non-string)
+                  (quote (class-membership string nonmember)))
+                (so-expect "1024" (quote generic-truth-coercion) (quote forbidden))
+                (so-expect "1024" (quote control-dispatch) (quote explicit-result-equality))
+
+                (so-expect "1025" (quote input-domain) (quote (string string)))
+                (so-expect "1025" (quote result-form) (quote text-order))
+                (so-expect-case
+                  "1025"
+                  (quote left-before-right)
+                  (quote (text-order before)))
+                (so-expect-case
+                  "1025"
+                  (quote same-text)
+                  (quote (text-order same)))
+                (so-expect-case
+                  "1025"
+                  (quote left-after-right)
+                  (quote (text-order after)))
+                (so-expect "1025" (quote outside-domain) (quote type-error))
+                (so-expect "1025" (quote generic-truth-coercion) (quote forbidden))
+                (so-expect "1025" (quote control-dispatch) (quote explicit-result-equality))
+
+                (so-expect "1026" (quote result-form) (quote class-membership))
+                (so-expect "1026" (quote target-class) (quote numeric-buffer))
+                (so-expect-case
+                  "1026"
+                  (quote numeric-buffer)
+                  (quote (class-membership numeric-buffer member)))
+                (so-expect-case
+                  "1026"
+                  (quote non-numeric-buffer)
+                  (quote (class-membership numeric-buffer nonmember)))
+                (so-expect "1026" (quote generic-truth-coercion) (quote forbidden))
+                (so-expect "1026" (quote control-dispatch) (quote explicit-result-equality))))))
       (cond
         ((not (eq (car structural-observation-document)
                   (quote structural-observation-contract/1)))
@@ -113,7 +160,7 @@
         ((atom failure)
          (list (quote structural-observation-contract-witness)
                (list (quote status) (quote pass))
-               (list (quote detail) (quote atom-eq-domain-results))))
+               (list (quote detail) (quote explicit-domain-results))))
         (t
          (list (quote structural-observation-contract-witness)
                (list (quote status) (quote fail))
