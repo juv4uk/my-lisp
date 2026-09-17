@@ -1,6 +1,6 @@
 //! Contract for #115: the semantic allow/deny rule itself is Lisp-owned.
 //! Rust verifies the boundary shape; CI is responsible only for transporting
-//! changed paths and observing the Lisp program's exit status.
+//! change facts and observing the Lisp program's exit status.
 
 use std::fs;
 use std::path::PathBuf;
@@ -24,4 +24,26 @@ fn authority_policy_is_lisp_owned_and_fail_closed() {
     assert!(inventory.contains("allowed-mechanism.rs\" mechanism"));
     assert!(!root.join("scripts/semantic_authority_guard.py").exists(),
         "Python must not own the semantic authority verdict");
+}
+
+#[test]
+fn authority_migration_allows_only_deletion_only_host_test_changes() {
+    let root = repo_root();
+    let guard = fs::read_to_string(root.join("scripts/authority-guard.lisp"))
+        .expect("#115 Lisp authority guard must exist");
+    let ci = fs::read_to_string(root.join(".github/workflows/ci.yml"))
+        .expect("CI workflow must exist");
+
+    assert!(
+        guard.contains("deletion-only"),
+        "Lisp guard must explicitly own the one-way authority-reduction rule"
+    );
+    assert!(
+        ci.contains("deletion-only") && ci.contains("git diff --numstat"),
+        "host CI may transport diff direction, but may not decide authority"
+    );
+    assert!(
+        !guard.contains("(cons\n      (print"),
+        "diagnostic print must not be wrapped in the same expression that intentionally fails"
+    );
 }
