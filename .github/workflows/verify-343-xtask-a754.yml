@@ -1,0 +1,21 @@
+name: Verify #343 exact hygiene head
+
+on:
+  pull_request:
+    paths:
+      - 'knowledge/meta-eval-evidence.lisp'
+      - 'knowledge/semantic-ownership.lisp'
+      - 'docs/meta-eval-evidence.md'
+      - 'scripts/generate-meta-eval-evidence.py'
+      - '.github/workflows/verify-343-xtask-a754.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check committed deterministic projection
+        run: python3 scripts/generate-meta-eval-evidence.py --check
+      - name: Verify all repository evidence contracts
+        run: cargo run -p xtask -- verify
