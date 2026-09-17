@@ -30,3 +30,12 @@ if [[ "$quantity_status" != "(exact-quantity-arithmetic-witness (status pass))" 
   printf 'exact quantity Lisp witness failed: %s\n' "$quantity_status" >&2
   exit 1
 fi
+
+# #305 / TASK-001: empty meta-program semantics are owned by Lisp. The shell
+# observes only the named pass envelope; environment/result meaning stays in
+# the witness and no replacement Rust semantic assertion is introduced.
+meta_empty_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/meta-eval-empty-program-witness.lisp)"
+if [[ "$meta_empty_status" != "(meta-eval-empty-program-witness (status pass))" ]]; then
+  printf 'empty meta-program Lisp witness failed: %s\n' "$meta_empty_status" >&2
+  exit 1
+fi
