@@ -42,6 +42,30 @@ fn execute_clobbering_guest(register: &str) {
 }
 
 #[test]
+fn raw_executor_has_explicit_sysv64_nonvolatile_isolation_boundary() {
+    let path = repo_root().join("crates/my-lisp-host/src/native_exec.rs");
+    let source = fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("{} must be readable: {error}", path.display()));
+
+    assert!(
+        source.contains("naked_asm!"),
+        "raw guest execution needs an explicit ABI-isolation trampoline; a direct extern sysv64 function-pointer call silently assumes the guest preserves host nonvolatile registers"
+    );
+    for register in ["rbx", "rbp", "r12", "r13", "r14", "r15"] {
+        assert!(
+            source.contains(&format!("push {register}"))
+                && source.contains(&format!("pop {register}")),
+            "host ABI-isolation trampoline must save and restore SysV64 callee-saved {register}"
+        );
+    }
+    assert!(
+        !source.contains("let function: GuestNoArena")
+            && !source.contains("let function: GuestWithArena"),
+        "raw executor must not call arbitrary guest bytes directly through an extern sysv64 function pointer"
+    );
+}
+
+#[test]
 fn guest_clobber_of_sysv64_callee_saved_gpr_does_not_corrupt_host() {
     if let Ok(register) = std::env::var(CHILD_REGISTER_ENV) {
         execute_clobbering_guest(&register);
