@@ -562,6 +562,33 @@ fn seredovyshche_ne_maie_povtornoho_surface_binding() -> Result<(), String> {
     }
 }
 
+fn registry_has_stable_en_uk_pair(en: &str, uk: &str) -> bool {
+    REGISTRY.lines().any(|line| {
+        let fields = line.split_whitespace().collect::<Vec<_>>();
+        let mut has_en = false;
+        let mut has_uk = false;
+
+        for triple in fields.get(1..).unwrap_or_default().chunks(3) {
+            if triple.len() != 3 {
+                break;
+            }
+            let namespace = triple[0].trim_start_matches('(');
+            let name = triple[1];
+            let status = triple[2].trim_end_matches(')');
+            if status != "stable" {
+                continue;
+            }
+            match namespace {
+                "en" if name == en => has_en = true,
+                "uk" if name == uk => has_uk = true,
+                _ => {}
+            }
+        }
+
+        has_en && has_uk
+    })
+}
+
 fn stari_nazvy_smystovoho_audytu_lyshaiutsia_aliasamy_sumisnosti() -> Result<(), String> {
     for line in NAME_AUDIT.lines() {
         let fields = line.split_whitespace().collect::<Vec<_>>();
@@ -571,11 +598,17 @@ fn stari_nazvy_smystovoho_audytu_lyshaiutsia_aliasamy_sumisnosti() -> Result<(),
         let en = fields[1];
         let old = fields[2];
         let new = fields[3];
+
         if !UK_SURFACE.contains(&format!("(define {old} {en})")) {
-            return Err(format!("missing alias (define {old} {en})"));
+            return Err(format!("missing compatibility alias (define {old} {en})"));
         }
-        if !UK_SURFACE.contains(&format!("(define {new} {en})")) {
-            return Err(format!("missing alias (define {new} {en})"));
+
+        let explicit_bridge = UK_SURFACE.contains(&format!("(define {new} {en})"));
+        let stable_registry_peer = registry_has_stable_en_uk_pair(en, new);
+        if !explicit_bridge && !stable_registry_peer {
+            return Err(format!(
+                "preferred Ukrainian name {new} is neither an explicit migration bridge nor a stable registry peer of {en}"
+            ));
         }
     }
     Ok(())
