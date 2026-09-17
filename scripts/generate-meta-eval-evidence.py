@@ -102,8 +102,8 @@ def render(as_of: str, rows: list[Row], claims: list[Claim]) -> str:
         "",
         "Цей Markdown є лише людською проєкцією machine-readable evidence matrix. Він не створює нової семантичної влади: змінювати статуси треба в `.lisp`, після чого перегенерувати цей файл.",
         "",
-        f"**Стан на:** `{as_of}`  ",
-        f"**Required rows:** {len(required)} · **confirmed:** {sum(row.status == 'confirmed' for row in required)} · **unresolved:** {len(unresolved)}  ",
+        f"**Стан на:** `{as_of}`",
+        f"**Required rows:** {len(required)} · **confirmed:** {sum(row.status == 'confirmed' for row in required)} · **unresolved:** {len(unresolved)}",
         "**Усі статуси:** " + ", ".join(f"`{name}`={counts[name]}" for name in ("confirmed", "partial", "broken", "unknown")),
         "",
     ]
