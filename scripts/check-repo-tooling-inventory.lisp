@@ -1,7 +1,6 @@
 ; #382 — Lisp-owned repository tooling inventory validator.
-; Цей перший GREEN-зріз доводить лише fail-closed coverage для
-; незареєстрованого immediate scripts/* entry. Наступні правила додаються
-; окремими RED->GREEN кроками.
+; RED-first: unregistered-tool coverage already has a minimal implementation;
+; duplicate-path is the next intentionally missing rule and must fail below.
 
 (def repo-tooling-field-from
   (lambda (name fields)
@@ -56,26 +55,36 @@
            ((atom found) (structural-kind pair)
             (repo-tooling-observed-coverage-verdict rows (cdr observed)))))))))
 
+; duplicate-path validation is intentionally absent in this RED commit.
 (def repo-tooling-verdict
   (lambda (rows observed)
     (repo-tooling-observed-coverage-verdict rows observed)))
 
+(def repo-tooling-sample-row-a
+  (quote
+    (tool
+      (path "scripts/a.lisp")
+      (kind check)
+      (language lisp)
+      (role sample)
+      (lifecycle active)
+      (callers ())
+      (authority-source (issue 382))
+      (migration-issue ())
+      (replacement ())
+      (removal-condition ()))))
+
 (def repo-tooling-selftest-unregistered
   (lambda ()
     (repo-tooling-verdict
-      (quote
-        ((tool
-           (path "scripts/a.lisp")
-           (kind check)
-           (language lisp)
-           (role sample)
-           (lifecycle active)
-           (callers ())
-           (authority-source (issue 382))
-           (migration-issue ())
-           (replacement ())
-           (removal-condition ())))))
+      (list repo-tooling-sample-row-a)
       (quote ("a.lisp" "b.lisp")))))
+
+(def repo-tooling-selftest-duplicate-path
+  (lambda ()
+    (repo-tooling-verdict
+      (list repo-tooling-sample-row-a repo-tooling-sample-row-a)
+      (quote ("a.lisp")))))
 
 (def repo-tooling-assert-verdict
   (lambda (actual expected)
@@ -86,8 +95,14 @@
        (let ((shown (print actual)))
          (car (quote ())))))))
 
+; Existing implemented behavior must remain GREEN.
 (repo-tooling-assert-verdict
   (repo-tooling-selftest-unregistered)
   (quote (repo-tooling-violation unregistered-tool "scripts/b.lisp")))
 
-(print (quote (repo-tooling-selftests-ok unregistered-tool)))
+; RED: current validator returns (repo-tooling-ok); it must learn duplicate paths.
+(repo-tooling-assert-verdict
+  (repo-tooling-selftest-duplicate-path)
+  (quote (repo-tooling-violation duplicate-path "scripts/a.lisp")))
+
+(print (quote (repo-tooling-selftests-ok unregistered-tool duplicate-path)))
