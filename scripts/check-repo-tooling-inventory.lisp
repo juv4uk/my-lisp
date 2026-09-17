@@ -64,9 +64,9 @@
        (let* ((name (car required))
               (value (repo-tooling-field name row)))
          (cond
-           ((eq value (quote missing)) (identity-relation same)
+           ((equal? value (quote missing)) (structural-relation same)
             (repo-tooling-violation (quote missing-field) name))
-           ((eq value (quote missing)) (identity-relation distinct)
+           ((equal? value (quote missing)) (structural-relation distinct)
             (repo-tooling-required-fields-verdict (cdr required) row))))))))
 
 (def repo-tooling-row-required-verdict
