@@ -1,6 +1,14 @@
 ; #382 — Lisp-owned repository tooling inventory validator.
-; GREEN slices: unregistered-tool + duplicate-path + stale-path.
-; RED-first: closed kind/language/lifecycle enums are intentionally not validated yet.
+; GREEN slices: unregistered-tool + duplicate-path + stale-path + closed enums.
+
+(def repo-tooling-kinds
+  (quote (check generator migration benchmark deploy release helper other)))
+
+(def repo-tooling-languages
+  (quote (lisp python shell javascript powershell other)))
+
+(def repo-tooling-lifecycles
+  (quote (active transitional legacy generated-helper archive-candidate)))
 
 (def repo-tooling-field-from
   (lambda (name fields)
@@ -36,6 +44,69 @@
 (def repo-tooling-violation
   (lambda (kind detail)
     (list (quote repo-tooling-violation) kind detail)))
+
+(def repo-tooling-symbol-admission
+  (lambda (value admitted)
+    (cond
+      ((atom admitted) (structural-kind empty-list) (quote rejected))
+      ((atom admitted) (structural-kind atom) (quote malformed-admitted-set))
+      ((atom admitted) (structural-kind pair)
+       (cond
+         ((eq value (car admitted)) (identity-relation same) (quote admitted))
+         ((eq value (car admitted)) (identity-relation distinct)
+          (repo-tooling-symbol-admission value (cdr admitted))))))))
+
+(def repo-tooling-row-enum-verdict
+  (lambda (row)
+    (let* ((kind (repo-tooling-field (quote kind) row))
+           (language (repo-tooling-field (quote language) row))
+           (lifecycle (repo-tooling-field (quote lifecycle) row))
+           (kind-state (repo-tooling-symbol-admission kind repo-tooling-kinds)))
+      (cond
+        ((eq kind-state (quote admitted)) (identity-relation same)
+         (let ((language-state
+                 (repo-tooling-symbol-admission language repo-tooling-languages)))
+           (cond
+             ((eq language-state (quote admitted)) (identity-relation same)
+              (let ((lifecycle-state
+                      (repo-tooling-symbol-admission lifecycle repo-tooling-lifecycles)))
+                (cond
+                  ((eq lifecycle-state (quote admitted)) (identity-relation same)
+                   (list (quote repo-tooling-ok)))
+                  ((eq lifecycle-state (quote rejected)) (identity-relation same)
+                   (repo-tooling-violation (quote invalid-lifecycle) lifecycle))
+                  ((eq lifecycle-state (quote malformed-admitted-set))
+                   (identity-relation same)
+                   (repo-tooling-violation
+                     (quote malformed-lifecycle-vocabulary)
+                     lifecycle)))))
+             ((eq language-state (quote rejected)) (identity-relation same)
+              (repo-tooling-violation (quote invalid-language) language))
+             ((eq language-state (quote malformed-admitted-set))
+              (identity-relation same)
+              (repo-tooling-violation
+                (quote malformed-language-vocabulary)
+                language)))))
+        ((eq kind-state (quote rejected)) (identity-relation same)
+         (repo-tooling-violation (quote invalid-kind) kind))
+        ((eq kind-state (quote malformed-admitted-set)) (identity-relation same)
+         (repo-tooling-violation (quote malformed-kind-vocabulary) kind))))))
+
+(def repo-tooling-enum-verdict
+  (lambda (rows)
+    (cond
+      ((atom rows) (structural-kind empty-list) (list (quote repo-tooling-ok)))
+      ((atom rows) (structural-kind atom)
+       (repo-tooling-violation (quote malformed-inventory-list) rows))
+      ((atom rows) (structural-kind pair)
+       (let ((row-verdict (repo-tooling-row-enum-verdict (car rows))))
+         (cond
+           ((equal? row-verdict (list (quote repo-tooling-ok)))
+            (structural-relation same)
+            (repo-tooling-enum-verdict (cdr rows)))
+           ((equal? row-verdict (list (quote repo-tooling-ok)))
+            (structural-relation distinct)
+            row-verdict)))))))
 
 (def repo-tooling-observed-coverage-verdict
   (lambda (rows observed)
@@ -103,7 +174,7 @@
            ((eq state (quote malformed)) (identity-relation same)
             (repo-tooling-violation (quote malformed-observed-list) observed))))))))
 
-(def repo-tooling-verdict
+(def repo-tooling-verdict-after-enums
   (lambda (rows observed)
     (let ((duplicate-verdict (repo-tooling-duplicate-path-verdict rows)))
       (cond
@@ -120,6 +191,17 @@
         ((equal? duplicate-verdict (list (quote repo-tooling-ok)))
          (structural-relation distinct)
          duplicate-verdict)))))
+
+(def repo-tooling-verdict
+  (lambda (rows observed)
+    (let ((enum-verdict (repo-tooling-enum-verdict rows)))
+      (cond
+        ((equal? enum-verdict (list (quote repo-tooling-ok)))
+         (structural-relation same)
+         (repo-tooling-verdict-after-enums rows observed))
+        ((equal? enum-verdict (list (quote repo-tooling-ok)))
+         (structural-relation distinct)
+         enum-verdict)))))
 
 (def repo-tooling-sample-row-a
   (quote
@@ -236,7 +318,6 @@
   (repo-tooling-selftest-stale-path)
   (quote (repo-tooling-violation stale-path "scripts/c.lisp")))
 
-; RED: schema enums are closed; these values must be rejected.
 (repo-tooling-assert-verdict
   (repo-tooling-selftest-invalid-kind)
   (quote (repo-tooling-violation invalid-kind mystery-kind)))
