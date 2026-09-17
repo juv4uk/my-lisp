@@ -96,7 +96,7 @@ new_block = '''          : > tests/changed-host-tests.lisp
             esac
           done < /tmp/changed-numstat.txt
           ./target/debug/my-lisp scripts/authority-guard.lisp'''
-ci, count = pattern.subn(new_block, ci, count=1)
+ci, count = pattern.subn(lambda _: new_block, ci, count=1)
 if count != 1:
     raise SystemExit(f'authority guard block replacements: {count}')
 ci_path.write_text(ci, encoding='utf-8')
