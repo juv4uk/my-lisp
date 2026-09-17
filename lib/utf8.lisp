@@ -351,11 +351,11 @@
                              ((* second-ok
                                  (* (>= b3 128) (<= b3 191))
                                  (* (>= b4 128) (<= b4 191))) 0
-                              (utf8-fused-invalid-rest r4))))))))))))
+                              (utf8-fused-invalid-rest r4)))))))))))))
 
            ; b1 is a byte, but not a valid UTF-8 leading byte.
            ((= b1 b1) 1
-            (utf8-fused-invalid-rest r1)))))))))
+            (utf8-fused-invalid-rest r1))))))))
 
 (def utf8-decode-fused
   (lambda (bytes)
