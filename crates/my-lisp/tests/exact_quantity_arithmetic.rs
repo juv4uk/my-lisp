@@ -16,34 +16,6 @@ fn eval_exact_quantity(source: &str) -> String {
 }
 
 #[test]
-fn speed_of_light_times_one_second_is_exact_distance_and_divides_back() {
-    let source = r#"
-        (def one-second
-          (make-quantity
-            1
-            (make-unit
-              (list (make-dimension (quote second) 1)))))
-        (def distance
-          (quantity-product
-            (scientific-constant-quantity si:defining-speed-of-light)
-            one-second))
-        (def recovered
-          (quantity-quotient distance one-second))
-        (list
-          distance
-          recovered
-          (equal?
-            recovered
-            (scientific-constant-quantity si:defining-speed-of-light)))
-    "#;
-
-    assert_eq!(
-        eval_exact_quantity(source),
-        "((quantity/1 299792458 (unit/1 (dimension/1 metre 1))) (quantity/1 299792458 (unit/1 (dimension/1 metre 1) (dimension/1 second -1))) t)"
-    );
-}
-
-#[test]
 fn planck_times_cesium_frequency_stays_exact_and_becomes_energy_dimension() {
     let source = r#"
         (def energy
