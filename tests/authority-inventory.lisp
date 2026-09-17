@@ -34,6 +34,7 @@
 (authority "crates/my-lisp/tests/machine_lowering_boundary.rs" observer)
 (authority "crates/my-lisp-host/tests/native_lisp_bytes.rs" mechanism)
 (authority "crates/my-lisp-host/tests/windows_native_exec_abi.rs" mechanism)
+(authority "crates/my-lisp-host/tests/native_guest_abi.rs" mechanism)
 (authority "crates/my-lisp/tests/machine_minimal_profile.rs" observer)
 (authority "crates/my-lisp-host/tests/native_cond_profile.rs" mechanism)
 (authority "crates/xtask/tests/license_policy.rs" observer)

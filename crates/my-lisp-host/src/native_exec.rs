@@ -9,14 +9,47 @@ const MAX_NATIVE_ARENA_BYTES: usize = 1_048_576;
 // fixes arena pointer = RDI, result = RAX -- the SysV64 convention. On Linux
 // `extern "C"` happens to mean SysV64, so the two coincided by accident. On
 // Windows `extern "C"` means the Win64 convention (arg1 = RCX), which does
-// NOT match the guest ABI: calling guest bytes that read RDI through a
-// Win64-convention function pointer reads whatever RDI held from the
-// caller's frame, not the arena pointer. `extern "sysv64"` is used
-// explicitly here on every platform so one Lisp-owned guest ABI holds
-// regardless of host OS -- the host adapter (platform module) changes,
-// not the guest meaning.
-type GuestNoArena = unsafe extern "sysv64" fn() -> u64;
-type GuestWithArena = unsafe extern "sysv64" fn(*mut u8) -> u64;
+// NOT match the guest ABI. Keep one explicit SysV64 guest boundary on every
+// host OS, but isolate arbitrary admitted guest register writes from the Rust
+// caller: guest code is not required to preserve host nonvolatile registers.
+//
+// This trampoline is host mechanism only. It neither decodes guest bytes nor
+// owns any Lisp/machine semantic fact. The Lisp-owned machine layer still
+// chooses forms/encoding; this adapter only preserves the calling frame while
+// entering and leaving those bytes.
+#[unsafe(naked)]
+unsafe extern "sysv64" fn call_guest_preserving_sysv64_nonvolatile(
+    _entry: *const u8,
+    _arena: *mut u8,
+) -> u64 {
+    core::arch::naked_asm!(
+        // Wrapper SysV64 args: RDI = guest entry, RSI = arena pointer.
+        "mov r11, rdi",
+        // Guest ABI: RDI = arena pointer (null for the no-arena shape).
+        "mov rdi, rsi",
+        // Arbitrary admitted guest code may write every GPR. Preserve the
+        // registers that this SysV64 wrapper owes to its Rust caller.
+        "push rbx",
+        "push rbp",
+        "push r12",
+        "push r13",
+        "push r14",
+        "push r15",
+        // Six pushes leave RSP == 8 (mod 16). Align before CALL so the guest
+        // sees the standard SysV64 entry alignment RSP == 8 (mod 16).
+        "sub rsp, 8",
+        "call r11",
+        "add rsp, 8",
+        // RAX is deliberately untouched: it is the Lisp-owned guest result.
+        "pop r15",
+        "pop r14",
+        "pop r13",
+        "pop r12",
+        "pop rbp",
+        "pop rbx",
+        "ret",
+    );
+}
 
 use crate::platform::{self, ExecutableMemory};
 
@@ -124,8 +157,12 @@ fn prepare_executable(
 fn execute_u64(bytes: &[u8], span: Span) -> Result<u64, LanguageError> {
     let operation = "native-call-u64-raw";
     let memory = prepare_executable(bytes, operation, span)?;
-    let function: GuestNoArena = unsafe { std::mem::transmute(memory.as_ptr()) };
-    let result = unsafe { function() };
+    let result = unsafe {
+        call_guest_preserving_sysv64_nonvolatile(
+            memory.as_ptr().cast::<u8>(),
+            std::ptr::null_mut(),
+        )
+    };
 
     platform::release(&memory)
         .map_err(|detail| mechanism_error(operation, "release code", &detail, span))?;
@@ -145,8 +182,12 @@ fn execute_u64_with_arena(
         mechanism_error(operation, "allocate arena", &detail, span)
     })?;
 
-    let function: GuestWithArena = unsafe { std::mem::transmute(code.as_ptr()) };
-    let result = unsafe { function(arena.as_ptr().cast::<u8>()) };
+    let result = unsafe {
+        call_guest_preserving_sysv64_nonvolatile(
+            code.as_ptr().cast::<u8>(),
+            arena.as_ptr().cast::<u8>(),
+        )
+    };
 
     let code_release = platform::release(&code);
     let arena_release = platform::release(&arena);
