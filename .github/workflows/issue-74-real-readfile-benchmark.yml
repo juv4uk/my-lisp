@@ -1,0 +1,23 @@
+name: Issue 74 real read-file benchmark
+
+on:
+  push:
+    branches:
+      - perf/74-balanced-unicode-string-materialization
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: issue-74-real-readfile
+      - name: Build my-lisp CLI
+        run: cargo build -p my-lisp-cli --bin my-lisp
+      - name: Measure real semantic-registry read workload
+        run: |
+          /usr/bin/time -f 'wall_seconds=%e' \
+            ./target/debug/my-lisp scripts/benchmark-semantic-registry-read.lisp
