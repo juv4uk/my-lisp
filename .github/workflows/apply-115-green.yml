@@ -1,0 +1,138 @@
+name: Apply #115 GREEN
+
+on:
+  push:
+    branches: [fix/115-deletion-only-authority]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/115-deletion-only-authority
+          fetch-depth: 0
+      - name: Apply GREEN patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          guard = '''; #115 — Lisp owns the authority verdict.
+          ; Usage: my-lisp scripts/authority-guard.lisp after CI writes change facts as
+          ; Lisp data to tests/changed-host-tests.lisp. Host code transports only diff
+          ; direction; this Lisp program owns the semantic allow/deny verdict.
+
+          (def second (lambda (x) (car (cdr x))))
+          (def third (lambda (x) (car (cdr (cdr x)))))
+
+          (def authority-rows (read-all (read-file "tests/authority-inventory.lisp")))
+          (def changed-host-tests (read-all (read-file "tests/changed-host-tests.lisp")))
+
+          (def find-authority
+            (lambda (path rows)
+              (cond
+                ((atom rows) (structural-kind empty-list) ())
+                ((equal? path (second (car rows))) (structural-relation same)
+                 (third (car rows)))
+                (t t (find-authority path (cdr rows))))))
+
+          (def allowed-authority?
+            (lambda (class)
+              (cond
+                ((eq class (quote observer)) (identity-relation same) t)
+                ((eq class (quote mechanism)) (identity-relation same) t)
+                (t t ()))))
+
+          (def authority-violation
+            (lambda (path class change-kind)
+              (list (quote semantic-authority-violation)
+                    path class change-kind
+                    "Host tests may observe mechanism; Lisp owns meaning. See #112/#113.")))
+
+          (def check-changes
+            (lambda (changes)
+              (cond
+                ((atom changes) (structural-kind empty-list)
+                 (quote (authority-ok)))
+                ((atom changes) (structural-kind pair)
+                 (let ((change (car changes)))
+                   (let ((path (second change))
+                         (change-kind (third change)))
+                     (let ((class (find-authority path authority-rows)))
+                       (cond
+                         ((eq change-kind (quote deletion-only)) (identity-relation same)
+                          (check-changes (cdr changes)))
+                         ((allowed-authority? class) t
+                          (check-changes (cdr changes)))
+                         (t t
+                          (authority-violation path class change-kind)))))))
+                (t t
+                 (authority-violation (quote invalid-change-data)
+                                      (quote unknown)
+                                      (quote modified)))))))
+
+          (def authority-verdict (check-changes changed-host-tests))
+
+          ; Keep diagnostic output in a successful top-level form. The following
+          ; top-level form may intentionally fail; transcript atomicity must not erase
+          ; the already-completed diagnostic form.
+          (print authority-verdict)
+
+          (cond
+            ((eq (car authority-verdict) (quote semantic-authority-violation))
+             (identity-relation same)
+             (car ()))
+            (t t t))
+          '''
+          guard = '\n'.join(line[10:] if line.startswith('          ') else line for line in guard.splitlines()) + '\n'
+          Path('scripts/authority-guard.lisp').write_text(guard, encoding='utf-8')
+
+          ci_path = Path('.github/workflows/ci.yml')
+          ci = ci_path.read_text(encoding='utf-8')
+          old = '''          : > tests/changed-host-tests.lisp
+          while IFS= read -r path; do
+            case "$path" in
+              crates/*/tests/*.rs) printf '\"%s\"\\n' "$path" >> tests/changed-host-tests.lisp ;;
+            esac
+          done < /tmp/changed.txt
+          ./target/debug/my-lisp scripts/authority-guard.lisp'''
+          new = '''          : > tests/changed-host-tests.lisp
+          git diff --numstat "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" -- 'crates/*/tests/*.rs' |
+          while IFS=$'\\t' read -r additions deletions path; do
+            [[ -z "$path" ]] && continue
+            change_kind=modified
+            if [[ "$additions" == "0" && "$deletions" != "0" && "$deletions" != "-" ]]; then
+              change_kind=deletion-only
+            fi
+            printf '(change \"%s\" %s)\\n' "$path" "$change_kind" >> tests/changed-host-tests.lisp
+          done
+          ./target/debug/my-lisp scripts/authority-guard.lisp'''
+          if old not in ci:
+              raise SystemExit('authority guard CI block not found')
+          ci_path.write_text(ci.replace(old, new), encoding='utf-8')
+
+          contract_path = Path('crates/my-lisp/tests/authority_guard_contract.rs')
+          contract = contract_path.read_text(encoding='utf-8')
+          contract = contract.replace(
+              '    assert!(guard.contains("allowed-authority?") && guard.contains("observer") && guard.contains("mechanism"));\n'
+              '    assert!(guard.contains("semantic-authority-violation") && guard.contains("#112/#113"));\n'
+              '    assert!(guard.contains("(t ())"), "unknown/forbidden authority must fail closed");',
+              '    assert!(guard.contains("allowed-authority?") && guard.contains("observer") && guard.contains("mechanism"));\n'
+              '    assert!(guard.contains("semantic-authority-violation") && guard.contains("#112/#113"));\n'
+              '    assert!(guard.contains("authority-verdict") && guard.contains("(car ())"),\n'
+              '        "unknown/forbidden authority must still fail closed after a separate diagnostic form");'
+          )
+          contract_path.write_text(contract, encoding='utf-8')
+          PY
+          rm .github/workflows/apply-115-green.yml
+          git add -A
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(#115): allow one-way retirement of host semantic authority'
+          git push origin HEAD:fix/115-deletion-only-authority
