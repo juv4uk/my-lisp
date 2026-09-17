@@ -1,0 +1,12 @@
+name: Verify 376 semantic path RED
+
+on:
+  pull_request:
+
+jobs:
+  red:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Require current semantic fixture classifier
+        run: bash scripts/test-ci-semantic-path-classifier.sh
