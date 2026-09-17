@@ -1,4 +1,5 @@
 ; exact-q-binary-contract.lisp — Lisp-owned mathematical binary domain for #216.
+; Runtime activation is now admitted after #217 explicit dispatch and #229 Canon V2.
 ;
 ; This is not universal truth. It is the answer algebra of one narrow domain:
 ; comparisons whose required operands are all established exactly in Q.

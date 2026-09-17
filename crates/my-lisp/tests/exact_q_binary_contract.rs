@@ -1,5 +1,5 @@
 //! #216 observer for the Lisp-owned exact-Q binary contract.
-//! Rust transports contract bytes and checks migration bookkeeping only.
+//! Rust transports/evaluates rows; expected language results live in Lisp data.
 
 use std::fs;
 use std::path::PathBuf;
@@ -10,7 +10,6 @@ use my_lisp::{eval_program, load_core_library, parse, Expr, ExprKind, Session};
 struct Row {
     expr: String,
     expected: String,
-    blocked_by: Option<String>,
 }
 
 fn repo_file(relative: &str) -> PathBuf {
@@ -37,24 +36,6 @@ fn alist_str<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
     })
 }
 
-fn alist_symbol<'a>(entries: &'a [Expr], key: &str) -> Option<&'a str> {
-    entries.iter().find_map(|entry| {
-        let ExprKind::Pair(k, v) = &entry.kind else {
-            return None;
-        };
-        let ExprKind::Symbol(name) = &k.kind else {
-            return None;
-        };
-        if &**name != key {
-            return None;
-        }
-        match &v.kind {
-            ExprKind::Symbol(value) => Some(value.as_ref()),
-            _ => None,
-        }
-    })
-}
-
 fn rows() -> Vec<Row> {
     let source = include_str!("../../../tests/fixtures/exact-q-binary-v1.lisp");
     parse(source)
@@ -67,7 +48,6 @@ fn rows() -> Vec<Row> {
             Some(Row {
                 expr: alist_str(entries, "expr")?.to_string(),
                 expected: alist_str(entries, "expected")?.to_string(),
-                blocked_by: alist_symbol(entries, "blocked-by").map(str::to_string),
             })
         })
         .collect()
@@ -108,24 +88,25 @@ fn lisp_owned_exact_q_binary_contract_is_self_consistent() {
 }
 
 #[test]
-fn proven_exact_q_runtime_targets_stay_blocked_only_by_control_migration() {
+fn exact_q_runtime_matches_lisp_owned_rows() {
     let rows = rows();
-    assert_eq!(rows.len(), 5, "#216 first slice must retain all five exact-Q targets");
-    assert!(
-        rows.iter()
-            .all(|row| row.blocked_by.as_deref() == Some("control-logic-217")),
-        "every exact-Q result target must name #217 as its sole current blocker"
-    );
-    assert!(
-        rows.iter().any(|row| row.expected == "0"),
-        "#216 blocked target corpus must retain an exact mathematical NO (0/1)"
-    );
-    assert!(
-        rows.iter().any(|row| row.expected == "1"),
-        "#216 blocked target corpus must retain an exact mathematical YES (1/1)"
-    );
-    assert!(
-        rows.iter().all(|row| !row.expr.trim().is_empty()),
-        "#216 blocked targets must remain executable expressions, not prose-only debt"
-    );
+    assert_eq!(rows.len(), 5, "#216 first active runtime slice must retain five targets");
+    assert!(rows.iter().any(|row| row.expected == "0"));
+    assert!(rows.iter().any(|row| row.expected == "1"));
+    assert!(rows.iter().any(|row| row.expected == "()"));
+
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core library");
+
+    for row in rows {
+        let actual = eval_program(&row.expr, &mut session)
+            .unwrap_or_else(|error| panic!("#216 expression {} failed: {error}", row.expr))
+            .value
+            .to_string();
+        assert_eq!(
+            actual, row.expected,
+            "#216 runtime disagrees with Lisp-owned exact-Q row for {}",
+            row.expr
+        );
+    }
 }

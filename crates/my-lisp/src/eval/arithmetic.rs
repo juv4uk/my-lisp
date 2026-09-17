@@ -317,21 +317,21 @@ pub(super) fn comparison_on_values(
         .map(|value| numeric_value(value.clone(), span))
         .collect::<Result<Vec<_>, _>>()?;
 
-    let holds = if numerics
+    // #216 absolute binary authority is deliberately narrower than numeric
+    // comparability in the host. If any required operand is inexact, this
+    // layer has no answer; `()` is Canon 0 / no specialization, never NO.
+    if numerics
         .iter()
         .any(|value| matches!(value, Numeric::Inexact(_)))
     {
-        numerics
-            .windows(2)
-            .all(|pair| compare(operator, pair[0].as_f64(), pair[1].as_f64()))
-    } else {
-        numerics
-            .windows(2)
-            .all(|pair| compare(operator, pair[0].to_exact(), pair[1].to_exact()))
-    };
-    // CORE predicate result: canonical WSM t/() (Value::truth), not a
-    // hidden Rust-only Bool. `<`/`=`/`>` are registered directly on this
-    // function's return value (eval/builtins.rs), so this is the actual
-    // Lisp-visible result of a comparison, not an internal detail.
-    Ok(Value::truth(holds))
+        return Ok(Value::Nil);
+    }
+
+    let holds = numerics
+        .windows(2)
+        .all(|pair| compare(operator, pair[0].to_exact(), pair[1].to_exact()));
+
+    // The exact-Q decision domain owns exactly two outcomes. They are
+    // ordinary exact rational values, not host Bool and not universal truth.
+    Ok(exact_value(Rational::integer(if holds { 1 } else { 0 })))
 }
