@@ -1,9 +1,8 @@
 ; #383 — Lisp-owned knowledge artifact authority classification checker.
 ; GREEN slices:
 ; - newly observed artifacts require explicit classification rows;
-; - every classification row must carry the required provenance fields.
-; RED slice:
-; - directory placement must never be accepted as an authority source.
+; - every classification row must carry the required provenance fields;
+; - directory placement is never an authority source.
 
 (def knowledge-authority-required-fields
   (quote (path class scope authority-source lifecycle consumers)))
@@ -102,6 +101,45 @@
             (identity-relation same)
             row-verdict)))))))
 
+(def knowledge-authority-directory-source-state
+  (lambda (source)
+    (cond
+      ((atom source) (structural-kind empty-list) (quote no))
+      ((atom source) (structural-kind atom) (quote no))
+      ((atom source) (structural-kind pair)
+       (cond
+         ((eq (car source) (quote directory)) (identity-relation same) (quote yes))
+         ((eq (car source) (quote directory)) (identity-relation distinct) (quote no)))))))
+
+(def knowledge-authority-row-source-verdict
+  (lambda (row)
+    (let* ((source (knowledge-authority-field (quote authority-source) row))
+           (directory-state (knowledge-authority-directory-source-state source)))
+      (cond
+        ((eq directory-state (quote yes)) (identity-relation same)
+         (knowledge-authority-violation
+           (quote directory-derived-authority)
+           (knowledge-authority-field (quote path) row)))
+        ((eq directory-state (quote no)) (identity-relation same)
+         (list (quote knowledge-authority-ok)))))))
+
+(def knowledge-authority-source-verdict
+  (lambda (rows)
+    (cond
+      ((atom rows) (structural-kind empty-list)
+       (list (quote knowledge-authority-ok)))
+      ((atom rows) (structural-kind atom)
+       (knowledge-authority-violation (quote malformed-inventory-list) rows))
+      ((atom rows) (structural-kind pair)
+       (let ((row-verdict (knowledge-authority-row-source-verdict (car rows))))
+         (cond
+           ((eq (knowledge-authority-verdict-ok-state row-verdict) (quote yes))
+            (identity-relation same)
+            (knowledge-authority-source-verdict (cdr rows)))
+           ((eq (knowledge-authority-verdict-ok-state row-verdict) (quote no))
+            (identity-relation same)
+            row-verdict)))))))
+
 (def knowledge-authority-observed-coverage-verdict
   (lambda (rows observed)
     (cond
@@ -121,13 +159,24 @@
            ((atom found) (structural-kind pair)
             (knowledge-authority-observed-coverage-verdict rows (cdr observed)))))))))
 
+(def knowledge-authority-verdict-after-required
+  (lambda (rows observed)
+    (let ((source-verdict (knowledge-authority-source-verdict rows)))
+      (cond
+        ((eq (knowledge-authority-verdict-ok-state source-verdict) (quote yes))
+         (identity-relation same)
+         (knowledge-authority-observed-coverage-verdict rows observed))
+        ((eq (knowledge-authority-verdict-ok-state source-verdict) (quote no))
+         (identity-relation same)
+         source-verdict)))))
+
 (def knowledge-authority-verdict
   (lambda (rows observed)
     (let ((required-verdict (knowledge-authority-required-verdict rows)))
       (cond
         ((eq (knowledge-authority-verdict-ok-state required-verdict) (quote yes))
          (identity-relation same)
-         (knowledge-authority-observed-coverage-verdict rows observed))
+         (knowledge-authority-verdict-after-required rows observed))
         ((eq (knowledge-authority-verdict-ok-state required-verdict) (quote no))
          (identity-relation same)
          required-verdict)))))
@@ -173,7 +222,6 @@
       (list knowledge-authority-sample-missing-class)
       (quote ("a.lisp")))))
 
-; Intentionally RED: required-fields + coverage do not yet reject folder-derived authority.
 (def knowledge-authority-selftest-directory-authority
   (lambda ()
     (knowledge-authority-verdict
