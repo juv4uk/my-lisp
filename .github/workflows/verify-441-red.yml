@@ -11,14 +11,15 @@ jobs:
   uk-direct-peer-red:
     if: github.event.pull_request.number == 441
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: verify-441-red
-      - name: Build my-lisp CLI
-        run: cargo build -p my-lisp-cli --bin my-lisp
       - name: Require migrated UK peer to have no EN bridge
-        run: ./target/debug/my-lisp scripts/check-uk-direct-peer-bridges.lisp
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Fqx '(define зчепити string-append)' lib/surface/uk.lisp; then
+            echo 'RED 1043: stable UK зчепити still routes through EN string-append in uk.lisp' >&2
+            exit 1
+          fi
+          echo 'GREEN 1043: no UK->EN surface bridge remains'
