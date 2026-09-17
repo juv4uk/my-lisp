@@ -355,7 +355,9 @@
     (tcp-write "1149") ; en
     (tcp-listen "1150") ; en
     (read-file "1151") ; en
+    (прочитати-файл "1151") ; uk
     (write-file "1152") ; en
+    (записати-файл "1152") ; uk
   )))
 
 (def my-semantic-id-for-surface
