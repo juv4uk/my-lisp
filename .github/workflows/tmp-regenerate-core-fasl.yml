@@ -1,0 +1,34 @@
+name: Temporary core FASL regeneration
+
+on:
+  push:
+    branches:
+      - fix/core-fasl-current-main
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/core-fasl-current-main
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Regenerate core FASL
+        run: cargo run --release -p my-lisp-cli --bin gen-fasl -- lib/core.lisp lib/core.lisp.fasl
+      - name: Commit regenerated FASL
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/core.lisp.fasl
+          if git diff --cached --quiet; then
+            echo "FASL already current"
+            exit 0
+          fi
+          git commit -m "chore(fasl): refresh core snapshot after exact-Q migration"
+          git push origin HEAD:fix/core-fasl-current-main
