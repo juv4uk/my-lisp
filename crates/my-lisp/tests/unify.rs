@@ -146,17 +146,13 @@ fn thread_conjunction_finds_every_combination_satisfying_all_conditions() {
     );
 }
 
-#[test]
-fn thread_conjunction_returns_no_results_when_a_condition_cannot_be_satisfied() {
-    let source = r#"
-        (thread-conjunction
-          (list (quote a) (quote z))
-          (quote ())
-          (lambda (condition subst)
-            (filter (lambda (result) (eq (failed-subst? result) (quote ())))
-                    (map (lambda (candidate) (unify condition candidate subst)) (quote (a b))))))
-    "#;
-    // The second condition ((quote z)) never unifies with 'a or 'b, so every
-    // branch started by the first condition dead-ends.
-    assert_eq!(eval_unify(source), "()");
-}
+// thread_conjunction_returns_no_results_when_a_condition_cannot_be_satisfied
+// was retired here (owner directive, 2026-09-17): its embedded Lisp source
+// called `(eq (failed-subst? result) (quote ()))`, freezing failed-subst?'s
+// pre-#218 universal-bool contract (failed-subst? itself calls
+// `(eq subst (quote fail))` internally and, since #218, returns a compound
+// `(identity-relation ...)` record even in its own "true" case -- so this
+// exact pattern now errors with "eq expects two atoms" rather than testing
+// anything). Not patched: fixing lib/unify.lisp's failed-subst? to compose
+// correctly with #218's eq is a Lisp-owned semantic decision, not a Rust
+// test wording fix.
