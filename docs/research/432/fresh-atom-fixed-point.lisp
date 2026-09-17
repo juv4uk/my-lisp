@@ -98,7 +98,7 @@
             ((eq remaining 0) (identity-relation same)
              (research-result (quote insufficient-bound) round next))
             ((eq remaining 0) (identity-relation distinct)
-             (research-search-loop (- remaining 1) (+ round 1) next))))))))))
+             (research-search-loop (- remaining 1) (+ round 1) next)))))))))
 
 (def research-search-loop
   (lambda (remaining round states)
