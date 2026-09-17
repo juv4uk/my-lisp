@@ -53,6 +53,17 @@ jobs:
           done < /tmp/changed.txt
           { echo "surface=$surface"; echo "core=$core"; echo "semantic=$semantic"; echo "host=$host"; echo "cli=$cli"; echo "xtask=$xtask"; echo "meta=$meta"; echo "rust=$rust"; echo "workspace=$workspace"; echo "workflow=$workflow"; } | tee -a "$GITHUB_OUTPUT"
 
+      - name: Rust one-way valve self-test
+        shell: bash
+        run: bash scripts/test-rust-one-way-valve.sh
+
+      - name: Rust one-way subtraction valve
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: bash scripts/rust-one-way-valve.sh "$BASE_SHA" "$HEAD_SHA"
+
       - name: Lisp-owned semantic authority guard
         shell: bash
         run: |
