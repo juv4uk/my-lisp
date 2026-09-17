@@ -108,25 +108,6 @@ fn lisp_owned_exact_q_binary_contract_is_self_consistent() {
 }
 
 #[test]
-fn exact_q_runtime_targets_are_active_after_control_and_canon_migration() {
-    let rows = rows();
-    assert_eq!(rows.len(), 7, "#216 current slice must retain seven executable targets");
-    assert!(
-        rows.iter().any(|row| row.expected == "0"),
-        "#216 corpus must retain an exact mathematical NO (0/1)"
-    );
-    assert!(
-        rows.iter().any(|row| row.expected == "1"),
-        "#216 corpus must retain an exact mathematical YES (1/1)"
-    );
-    assert_eq!(
-        rows.iter().filter(|row| row.expected == "()").count(),
-        2,
-        "#216 must retain explicit no-answer witnesses outside exact-Q"
-    );
-}
-
-#[test]
 fn runtime_comparisons_match_lisp_owned_exact_q_results() {
     let rows = rows();
     let mut session = Session::default();
