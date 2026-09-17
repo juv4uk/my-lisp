@@ -57,3 +57,5 @@ if [[ "$narrate_outcome_status" != "(narrate-outcome-authority-witness (status p
   printf 'narrate outcome Lisp witness failed: %s\n' "$narrate_outcome_status" >&2
   exit 1
 fi
+
+# Verification-only trigger for #374; never merge this branch.
