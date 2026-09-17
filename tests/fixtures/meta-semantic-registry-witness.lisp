@@ -10,6 +10,10 @@
 ; Rust/shell may observe only the final named pass envelope.  Expected values
 ; and the comparison logic stay here in Lisp.
 
+; The host helper load_meta_evaluator_library loads this generated projection
+; before lib/meta-eval.lisp.  A standalone Lisp witness must make that same
+; dependency explicit rather than relying on host bootstrap order.
+(load "lib/generated/meta-semantic-registry.lisp")
 (load "lib/meta-eval.lisp")
 
 (def registry-native-value
