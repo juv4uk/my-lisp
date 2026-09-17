@@ -48,3 +48,12 @@ if [[ "$meta_registry_status" != "(meta-semantic-registry-witness (status pass))
   printf 'meta semantic-registry Lisp witness failed: %s\n' "$meta_registry_status" >&2
   exit 1
 fi
+
+# #305/#219: an exhausted ordinary reasoning attempt is not automatically
+# `unknown`; the Lisp witness also proves presentation does not manufacture
+# that stronger epistemic claim from Canon 0.
+narrate_honesty_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/narrate-outcome-honesty-witness.lisp)"
+if [[ "$narrate_honesty_status" != "(narrate-outcome-honesty-witness (status pass))" ]]; then
+  printf 'narration honesty Lisp witness failed: %s\n' "$narrate_honesty_status" >&2
+  exit 1
+fi
