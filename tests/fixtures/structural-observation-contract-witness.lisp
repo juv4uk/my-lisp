@@ -1,4 +1,5 @@
 ; #218 — Lisp-owned verifier for contracts/structural-observation-contract.lisp.
+; RED trigger: expanded structural corpus must be accepted without Rust row-count authority.
 ; The host transports the contract document into `structural-observation-document`.
 ;
 ; Case tables are verified one case at a time. This avoids asking the historical
