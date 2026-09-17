@@ -287,6 +287,27 @@
       235
       (x86-disp8-byte displacement))))
 
+; Two's-complement 4-byte little-endian encoding for a signed 32-bit
+; displacement, the same "add the modulus before reducing" pattern
+; x86-disp8-byte already proved correct for the 1-byte case (`mod` in this
+; Lisp does not wrap negative operands). Needed once a forward or backward
+; skip no longer fits inside signed disp8's +-127 byte window -- #196's own
+; growth-v0 witnesses already hand-derive exact disp8 offsets for their
+; Jcc branches (e.g. PR #205's `JNZ +11`, PR #208's `JNZ +33`), and that
+; window is fixed regardless of how much further those witnesses compose.
+(def x86-rel32-bytes
+  (lambda (displacement)
+    (x86-u32-bytes (mod (+ displacement 4294967296) 4294967296))))
+
+; JMP rel32: opcode 0xE9 followed by a signed 32-bit relative displacement,
+; confirmed against #175's pinned XED evidence (`PATTERN : 0xE9 mode64
+; norex2_prefix FORCE64() BRDISP32()`). Matches JMP rel8's own
+; unconditional, no-ModRM, no-REX shape -- only the opcode byte and
+; displacement width differ.
+(def x86-encode-jmp-rel32
+  (lambda (displacement)
+    (cons 233 (x86-rel32-bytes displacement))))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond

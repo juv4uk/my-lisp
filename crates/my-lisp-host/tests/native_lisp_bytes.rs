@@ -479,3 +479,39 @@ fn jmp_actually_branches_unconditionally_on_real_hardware_regardless_of_flags() 
         "JMP must branch even when the prior CMP cleared ZF -- unlike JZ, it does not consult flags"
     );
 }
+
+/// #196's own growth-v0 witnesses hand-derive exact disp8 byte offsets for
+/// their branches (e.g. PR #205's `JNZ +11`, PR #208's `JNZ +33`), and that
+/// signed +-127 window is fixed no matter how far those compositions grow.
+/// This proves, by actually executing on the i5-6400 rather than by
+/// decoding, that JMP rel32 correctly skips a body of 200 bytes of dead
+/// filler code -- a distance JMP rel8 could not physically encode at all
+/// (its disp8 byte tops out at 127) -- landing exactly on the intended
+/// target rather than mid-instruction in the filler.
+#[test]
+fn jmp_rel32_actually_skips_a_body_too_large_for_disp8_on_real_hardware() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    // 20 * 10-byte mov-r64-imm64 filler instructions = 200 bytes, well
+    // past disp8's +-127 range. Each filler sets rax to a sentinel that
+    // must never be the final observed result if JMP rel32 lands correctly
+    // past all of them.
+    let filler: String = (0..20)
+        .map(|_| "(mov-r64-imm64 rax 999) ".to_string())
+        .collect();
+    let source = format!(
+        "(x86-call-admitted-u64 (quote ((jmp-rel32 200) {filler}(mov-r64-imm64 rax 42) (ret))) 0)"
+    );
+    let result = eval_program(&source, &mut session)
+        .expect("real hardware must execute the admitted JMP rel32 bytes");
+    assert_eq!(
+        result.value.to_string(),
+        "42",
+        "JMP rel32 must land exactly past the 200-byte filler body, never inside or short of it"
+    );
+}

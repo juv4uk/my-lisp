@@ -1347,7 +1347,7 @@
     (iclass "JMP")
     (extension X86-BASE)
     (status partial)
-    (reason "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB) only; the rel32 (0xE9) and indirect register/memory (0xFF /4) forms are pending"))
+    (reason "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB), and x86-encode-jmp-rel32 covers the unconditional rel32 form (0xE9); the indirect register/memory (0xFF /4) form is pending"))
   (coverage
     (iclass "JMP_FAR")
     (extension X86-BASE)

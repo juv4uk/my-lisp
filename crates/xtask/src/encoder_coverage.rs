@@ -149,8 +149,9 @@ fn partially_implemented_iclasses() -> BTreeMap<&'static str, &'static str> {
         ),
         (
             "JMP",
-            "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB) only; the rel32 \
-             (0xE9) and indirect register/memory (0xFF /4) forms are pending",
+            "x86-encode-jmp-rel8 covers the unconditional rel8 form (0xEB), and \
+             x86-encode-jmp-rel32 covers the unconditional rel32 form (0xE9); the indirect \
+             register/memory (0xFF /4) form is pending",
         ),
     ]
     .into_iter()
