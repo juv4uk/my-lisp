@@ -117,7 +117,7 @@
 ;; ═══════════════════════════════════════════════════════════════
 
 ; 1043: `string-append` / `зчепити` встановлюються як registry-driven direct peers.
-(define довжина-тексту string-length)
+; 1044: `string-length` / `довжина-тексту` встановлюються як registry-driven direct peers.
 (define текст-порожній? string-empty?)
 (define префікс-тексту? string-prefix?)
 (define фрагмент-у-тексті? string-contains?)
