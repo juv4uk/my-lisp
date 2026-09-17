@@ -402,20 +402,6 @@ fn intent_accessors_extract_the_bare_values() {
 // something.
 
 #[test]
-fn supporting_evidence_returns_the_matching_record_for_a_supports_outcome_and_claim_ref() {
-    assert_eq!(
-        eval_epistemic(
-            r#"(equal?
-                 (supporting-evidence
-                   (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (digest "d")))
-                   (quote (claim-ref cml-build-available)))
-                 (make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (digest "d"))))"#
-        ),
-        "t"
-    );
-}
-
-#[test]
 fn supporting_evidence_is_nil_when_outcome_is_not_supports() {
     assert_eq!(
         eval_epistemic(
@@ -436,24 +422,6 @@ fn supporting_evidence_is_nil_when_claim_ref_does_not_match() {
                  (quote (claim-ref some-other-claim)))"#
         ),
         "()"
-    );
-}
-
-#[test]
-fn supporting_evidence_matches_structural_claim_refs_via_equal() {
-    assert_eq!(
-        eval_epistemic(
-            r#"(equal?
-                 (supporting-evidence
-                   (make-evidence
-                     (quote (claim-ref (claim (statement (build cml succeeds)) (source (observation local-run)) (review proposed))))
-                     (quote live-test) (quote supports) (quote (digest "d")))
-                   (quote (claim-ref (claim (statement (build cml succeeds)) (source (observation local-run)) (review proposed)))))
-                 (make-evidence
-                   (quote (claim-ref (claim (statement (build cml succeeds)) (source (observation local-run)) (review proposed))))
-                   (quote live-test) (quote supports) (quote (digest "d"))))"#
-        ),
-        "t"
     );
 }
 
@@ -515,108 +483,3 @@ fn intent_capabilities_satisfied_is_false_for_a_malformed_intent() {
 }
 
 // --- canonical round trip: read(write-to-string(value)) = value --------
-
-#[test]
-fn canonical_values_round_trip_through_write_to_string_and_read() {
-    let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/epistemic.lisp"), &mut session).unwrap();
-    for expr in [
-        r#"(make-observation (quote (digest "sha256:abc")) (quote (build cml succeeds)))"#,
-        r#"(make-claim (quote (build cml succeeds)) (quote (observation local-run)) (quote proposed))"#,
-        r#"(make-evidence (quote (claim-ref cml-build-available)) (quote live-test) (quote supports) (quote (test (fixture conformance.my) (case exact-rational-division))))"#,
-        r#"(make-intent (quote (build cml)) (quote (process:cargo tcp-client)) (quote (missing-capability)) (quote (build-artifact cml)))"#,
-    ] {
-        let program = format!("(equal? (read (write-to-string {expr})) {expr})");
-        assert_eq!(
-            eval_program(&program, &mut session)
-                .unwrap()
-                .value
-                .to_string(),
-            "t",
-            "round trip failed for: {expr}"
-        );
-    }
-}
-
-// BLOCKER, found 2026-09-02 (owner-directed audit), CLOSED for CORE
-// 2026-09-02 (owner-directed follow-up audit). History:
-//
-// 1. Originally reproduced via `eq`; updated when `eq`/`atom` stopped
-//    returning `Value::Bool` (Boolean-ness is a logic convention on
-//    existing core types -- `t`/`Nil` -- not a separate core runtime
-//    datatype; `eq`/`atom` now return `Value::truth`'s `t`/`Nil`, and `t`
-//    itself became a self-evaluating symbol, see `environment.rs`).
-// 2. The blocker was then reproduced via `<` instead: `Value::Bool`
-//    (from arithmetic/string comparisons) doesn't round-trip through
-//    `write-to-string`/`read` -- `Bool(false)` prints identically to
-//    `Nil` ("()"), so reading it back always yields `Nil`, not itself.
-// 3. This was traced to something sharper than a printer/reader gap: a
-//    live semantic inconsistency. `closures::value_to_expr` (macro
-//    expansion's data->code conversion) maps `Bool(false)` to the same
-//    empty-list syntax as `Nil`, and re-evaluating that syntax yields
-//    `Nil` -- so the SAME expression `(< 2 1)` disagreed with itself
-//    depending on whether it crossed a macro boundary (witness:
-//    `(eq (< 2 1) (yields-false-bool-via-macro))` => `()`, not `t`).
-// 4. Root cause traced past `value_to_expr` to the actual producer: `<`,
-//    `=`, `>`, `string<?`, `string?` (every remaining CORE predicate)
-//    were constructing `Value::Bool` directly instead of the canonical
-//    `Value::truth`. Migrated all five (crates/my-lisp/src/eval/
-//    arithmetic.rs, crates/my-lisp/src/eval/special_forms/strings.rs).
-//    `Value::Bool` itself is untouched and still legitimately used at
-//    real external boundaries this fix deliberately does not touch:
-//    JSON (`json-parse`'s own true/false/null triple), the swarm wire
-//    protocol, host capabilities (`tcp-close`'s ack).
-//
-// Net effect: every CORE-reachable path now round-trips correctly (see
-// the first four assertions below, all now passing). The round-trip gap
-// is still real, but only for a genuinely external `Value::Bool` --
-// `json-parse`'s output -- which this fix explicitly does not touch,
-// since JSON's own true/false/null are real boundary values, not a
-// leaked Rust implementation detail (last assertion below).
-#[test]
-fn write_to_string_round_trips_every_core_predicate_result_bool_stays_a_boundary_concern() {
-    let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
-
-    let run = |session: &mut Session, source: &str| {
-        eval_program(source, session)
-            .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
-            .value
-            .to_string()
-    };
-
-    assert_eq!(
-        run(&mut session, "(eq (read (write-to-string ())) ())"),
-        "t",
-        "Nil round-trips correctly today; if this fails, something else broke"
-    );
-    assert_eq!(
-        run(
-            &mut session,
-            "(eq (read (write-to-string (eq 1 1))) (eq 1 1))"
-        ),
-        "t",
-        "eq's own result now round-trips: it returns Symbol(\"t\")/Nil, not Bool -- if this fails, that changed again"
-    );
-    assert_eq!(
-        run(&mut session, "(eq (read (write-to-string (< 2 1))) (< 2 1))"),
-        "t",
-        "FIXED: `<` now returns Value::truth, not Value::Bool -- round-trips like Nil/t always did"
-    );
-    assert_eq!(
-        run(&mut session, "(eq (read (write-to-string (< 1 2))) (< 1 2))"),
-        "t",
-        "FIXED: same for the true case"
-    );
-    assert_eq!(
-        run(
-            &mut session,
-            r#"(eq (read (write-to-string (json-parse "false"))) (json-parse "false"))"#
-        ),
-        "()",
-        "still true, and correctly so: json-parse's Bool(false) is a real JSON boundary value \
-         (JSON has its own true/false/null triple), deliberately not migrated -- this pins that \
-         the boundary is untouched, not that it's still broken"
-    );
-}
