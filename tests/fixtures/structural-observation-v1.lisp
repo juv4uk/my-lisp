@@ -79,3 +79,26 @@
  (active . t)
  (identity . "0003")
  (case . vector-nested-structure-same))
+
+; Typed numeric buffers are atoms at the same PRIM_EQ boundary. The storage
+; comparison remains runtime mechanism; the semantic observation is the
+; existing Lisp-owned identity-relation algebra.
+((expr . "(eq (i32-buffer 1 2) (i32-buffer 1 2))")
+ (expected . "(identity-relation same)")
+ (active . t)
+ (identity . "0003")
+ (case . numeric-buffer-i32-same-values))
+
+((expr . "(eq (i32-buffer 1) (f32-buffer 1))")
+ (expected . "(identity-relation distinct)")
+ (active . t)
+ (identity . "0003")
+ (case . numeric-buffer-distinct-types))
+
+; F32-buffer equality is bitwise at the mechanism boundary, so -0.0 and +0.0
+; are distinct binary32 values. Lisp owns the identity-relation meaning.
+((expr . "(eq #f32(-0.0) #f32(0.0))")
+ (expected . "(identity-relation distinct)")
+ (active . t)
+ (identity . "0003")
+ (case . numeric-buffer-f32-signed-zero-distinct))
