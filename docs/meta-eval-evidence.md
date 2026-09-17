@@ -6,7 +6,7 @@
 
 Цей Markdown є лише людською проєкцією machine-readable evidence matrix. Він не створює нової семантичної влади: змінювати статуси треба в `.lisp`, після чого перегенерувати цей файл.
 
-**Стан на:** `2026-09-10`  
+**Стан на:** `2026-09-17`  
 **Required rows:** 34 · **confirmed:** 34 · **unresolved:** 0  
 **Усі статуси:** `confirmed`=34, `partial`=0, `broken`=0, `unknown`=0
 
@@ -18,8 +18,8 @@
 |---|:---:|:---:|---|---|---|---|
 | `canon-resolution-precedence` | yes | **confirmed** | `crates/my-lisp/src/eval/canon.rs`<br>`crates/my-lisp/tests/canon_immutability_meta.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/canon_immutability_meta.rs` | немає в аудитованому scope | немає |
 | `canon-binding-rejection` | yes | **confirmed** | `crates/my-lisp/tests/canon_immutability_meta.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/canon_immutability_meta.rs` | немає для lambda binder і top-level def | немає |
-| `quote` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval_corpus.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_corpus.rs` | значення збігаються | немає |
-| `cond-short-circuit` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval_corpus.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_corpus.rs` | значення збігаються на conformance fixtures | немає |
+| `quote` | yes | **confirmed** | `crates/my-lisp/tests/witness_authority.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/witness_authority.rs` | значення збігаються | немає |
+| `cond-short-circuit` | yes | **confirmed** | `crates/my-lisp/tests/witness_authority.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/witness_authority.rs` | значення збігаються на conformance fixtures | немає |
 | `symbol-lookup-unknown-symbol` | yes | **confirmed** | `crates/my-lisp/src/error.rs`<br>`crates/my-lisp/tests/meta_eval_errors.rs`<br>`crates/my-lisp/tests/meta_eval_evidence.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_errors.rs`<br>`crates/my-lisp/tests/meta_eval_evidence.rs` | callable і bare unresolved names мають explicit UnknownSymbol ↔ unbound-symbol correspondence; quoted symbol data лишається data | немає |
 | `noncallable-type-error` | yes | **confirmed** | `crates/my-lisp/src/error.rs`<br>`crates/my-lisp/tests/meta_eval_errors.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_errors.rs` | native Type явно відповідає data-level not-callable для non-callable operator values | немає |
 | `lambda-construction` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval.rs` | closure application parity підтверджена | немає |
@@ -29,11 +29,11 @@
 | `lexical-capture` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval.rs` | captured free variable працює | немає |
 | `ordinary-noncanon-shadowing` | yes | **confirmed** | `crates/my-lisp/tests/canon_immutability_meta.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/canon_immutability_meta.rs` | звичайний + затінюється, Canon ні | немає |
 | `function-application-order` | yes | **confirmed** | `crates/my-lisp/src/eval/mod.rs`<br>`crates/my-lisp/tests/meta_eval_evidence.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_evidence.rs`<br>`crates/my-lisp/tests/meta_eval_error_provenance.rs` | operator evaluation precedes arguments; ordinary arguments evaluate left-to-right and stop at the first failure; private outcome-token identity preserves failure provenance without misclassifying quoted error/fail-shaped user data | немає |
-| `primitive-identity-bridge` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval_corpus.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_corpus.rs` | Canon/list primitive values дають parity | немає |
-| `arithmetic-comparison-bridge` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval_corpus.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_corpus.rs` | арифметичні й binary comparison substrate результати збігаються | немає |
-| `chained-comparisons` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval_corpus.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_corpus.rs` | < = > chains збігаються на selected conformance fixtures | немає |
+| `primitive-identity-bridge` | yes | **confirmed** | `crates/my-lisp/tests/witness_authority.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/witness_authority.rs` | Canon/list primitive values дають parity | немає |
+| `arithmetic-comparison-bridge` | yes | **confirmed** | `crates/my-lisp/tests/witness_authority.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/witness_authority.rs` | арифметичні й binary comparison substrate результати збігаються | немає |
+| `chained-comparisons` | yes | **confirmed** | `crates/my-lisp/tests/witness_authority.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/witness_authority.rs` | < = > chains збігаються на selected conformance fixtures | немає |
 | `def-compatibility` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval.rs` | top-level def threading і recursive def підтверджені | немає |
-| `define-form` | yes | **confirmed** | `crates/my-lisp/src/eval/necessary_forms.rs`<br>`crates/my-lisp/tests/meta_eval_semantic_registry.rs` | `lib/generated/meta-semantic-registry.lisp`<br>`lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_semantic_registry.rs` | 0011 define/визначити route through the same registry-derived semantic identity and reproduce native definition behavior; compatibility def remains identity 1000 | немає |
+| `define-form` | yes | **confirmed** | `crates/my-lisp/src/eval/necessary_forms.rs`<br>`tests/fixtures/meta-semantic-registry-witness.lisp` | `lib/generated/meta-semantic-registry.lisp`<br>`lib/meta-eval.lisp`<br>`tests/fixtures/meta-semantic-registry-witness.lisp` | 0011 define/визначити route through the same registry-derived semantic identity and reproduce native definition behavior; compatibility def remains identity 1000 | немає |
 | `macro-recognition-expansion` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval.rs` | raw argument forms expand then evaluate | немає |
 | `macro-arity-error` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval_evidence.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval_evidence.rs` | reference Arity ↔ meta arity; macro boundary rejects wrong arity before evaluating any expansion value | немає |
 | `self-recursive-definitions` | yes | **confirmed** | `crates/my-lisp/tests/meta_eval.rs` | `lib/meta-eval.lisp`<br>`crates/my-lisp/tests/meta_eval.rs` | factorial/count-down parity підтверджена | немає |
