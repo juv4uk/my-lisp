@@ -21,3 +21,12 @@ cargo test -p my-lisp \
   --test decimal_comma_authority \
   --test authority_guard_contract \
   --test semantic_ref_fail_closed
+
+# #291: quantity semantics live in Lisp. The shell observes only the named
+# pass envelope; expected scientific quantities and relations stay in the
+# Lisp witness itself. No replacement Rust observer is introduced.
+quantity_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/exact-quantity-arithmetic-witness.lisp)"
+if [[ "$quantity_status" != "(exact-quantity-arithmetic-witness (status pass))" ]]; then
+  printf 'exact quantity Lisp witness failed: %s\n' "$quantity_status" >&2
+  exit 1
+fi
