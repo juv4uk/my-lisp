@@ -21,5 +21,6 @@ cargo test -p my-lisp \
   --test decimal_comma_authority \
   --test epistemic_authority \
   --test exact_quantity_round_trip_authority \
+  --test retired_mccarthy_boundary_authority \
   --test authority_guard_contract \
   --test semantic_ref_fail_closed

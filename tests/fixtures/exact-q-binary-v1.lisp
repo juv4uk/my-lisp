@@ -36,6 +36,23 @@
  (identity . "1018")
  (case . rational-nonincreasing-yes))
 
+; #295 preserves useful strict-comparison mechanics retired from the legacy
+; host test while keeping the result algebra owned by this existing domain.
+((expr . "(< 1 2 3)")
+ (expected . "1")
+ (identity . "1014")
+ (case . strict-chain-yes))
+
+((expr . "(< 1 3 2)")
+ (expected . "0")
+ (identity . "1014")
+ (case . strict-chain-no))
+
+((expr . "(< 5)")
+ (expected . "1")
+ (identity . "1014")
+ (case . strict-single-argument-vacuous-yes))
+
 ((expr . "(= (json-parse \"3.0\") (json-parse \"3.0\"))")
  (expected . "()")
  (identity . "1016")
