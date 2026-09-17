@@ -31,16 +31,48 @@ jobs:
       - name: Preserve canonical embed tests
         run: cargo test --release -p my-lisp-embed
 
-      - name: Build canonical embed artifacts
-        run: cargo build --release -p my-lisp-embed
+      - name: Build canonical embed artifacts and capture Cargo metadata
+        shell: pwsh
+        run: |
+          $lines = & cargo build --release -p my-lisp-embed --message-format=json-render-diagnostics
+          if ($LASTEXITCODE -ne 0) {
+            throw 'cargo build failed for my-lisp-embed'
+          }
+
+          $artifacts = @()
+          foreach ($line in $lines) {
+            try {
+              $row = $line | ConvertFrom-Json -ErrorAction Stop
+            }
+            catch {
+              continue
+            }
+            if ($row.reason -eq 'compiler-artifact' -and $row.target.name -eq 'my_lisp_embed') {
+              $artifacts += $row
+            }
+          }
+          if ($artifacts.Count -eq 0) {
+            throw 'Cargo emitted no compiler-artifact row for my_lisp_embed'
+          }
+
+          $filenames = @($artifacts | ForEach-Object { $_.filenames } | Sort-Object -Unique)
+          $filenames | ForEach-Object { Write-Output "artifact=$_" }
+
+          # On MSVC the cdylib import library is `*.dll.lib`; the Rust
+          # staticlib is the plain `.lib`. Select from Cargo-reported outputs
+          # rather than scanning the directory or guessing a fixed path.
+          $static = @($filenames | Where-Object {
+            $_ -match '\.lib$' -and $_ -notmatch '\.dll\.lib$'
+          })
+          if ($static.Count -ne 1) {
+            throw "expected exactly one Cargo-reported static .lib, found $($static.Count)"
+          }
+          "MY_LISP_EMBED_STATIC=$($static[0])" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Require Windows static library artifact
         shell: pwsh
         run: |
-          $candidate = Get-ChildItem target/release -File | Where-Object {
-            $_.Extension -eq '.lib' -and $_.Name -match '^my[_-]lisp[_-]embed'
+          if (-not (Test-Path $env:MY_LISP_EMBED_STATIC)) {
+            throw "Cargo-reported staticlib does not exist: $env:MY_LISP_EMBED_STATIC"
           }
-          if ($candidate.Count -ne 1) {
-            throw "expected exactly one my-lisp-embed static .lib, found $($candidate.Count)"
-          }
-          Write-Output "staticlib=$($candidate.FullName)"
+          Write-Output "staticlib=$env:MY_LISP_EMBED_STATIC"
