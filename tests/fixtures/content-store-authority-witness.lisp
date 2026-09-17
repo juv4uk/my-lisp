@@ -56,4 +56,4 @@
           (quote
             (content-store-authority-witness
               (status fail)
-              (law root-image-deterministic))))))))
+              (law root-image-deterministic)))))))))
