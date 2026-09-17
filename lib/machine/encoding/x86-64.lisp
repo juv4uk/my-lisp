@@ -764,6 +764,106 @@
         188
         (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
 
+; BSF r64, r/m64: opcode 0x0F 0xBC /r. Bit Scan Forward (first set bit).
+(def x86-encode-bsf-r64-r64
+  (lambda (destination source)
+    (let ((dest-code (x86-reg-code destination))
+          (src-code (x86-reg-code source)))
+      (list
+        (x86-encode-rex 1 (x86-high1 dest-code) 0 (x86-high1 src-code))
+        15
+        188
+        (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
+
+; BSR r64, r/m64: opcode 0x0F 0xBD /r. Bit Scan Reverse (last set bit).
+(def x86-encode-bsr-r64-r64
+  (lambda (destination source)
+    (let ((dest-code (x86-reg-code destination))
+          (src-code (x86-reg-code source)))
+      (list
+        (x86-encode-rex 1 (x86-high1 dest-code) 0 (x86-high1 src-code))
+        15
+        189
+        (x86-encode-modrm 3 (x86-low3 dest-code) (x86-low3 src-code))))))
+
+; BSWAP r64: opcode 0x0F (0xC8 + rd). Byte Swap (reverse byte order).
+(def x86-encode-bswap-r64
+  (lambda (register)
+    (let ((code (x86-reg-code register)))
+      (list
+        (x86-encode-rex 1 0 0 (x86-high1 code))
+        15
+        (+ 200 (x86-low3 code))))))
+
+; ROL / ROR r64, imm8: group-2 opcode 0xC1, /0 for ROL, /1 for ROR.
+(def x86-encode-rol-r64-imm8
+  (lambda (register count)
+    (x86-encode-shift-r64-imm8 0 register count)))
+
+(def x86-encode-ror-r64-imm8
+  (lambda (register count)
+    (x86-encode-shift-r64-imm8 1 register count)))
+
+; XCHG r64, r64: opcode 0x87 /r. Exchange register values.
+(def x86-encode-xchg-r64-r64
+  (lambda (dst src)
+    (let ((dst-code (x86-reg-code dst))
+          (src-code (x86-reg-code src)))
+      (list
+        (x86-encode-rex 1 (x86-high1 dst-code) 0 (x86-high1 src-code))
+        135
+        (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))))
+
+; CLD: opcode 0xFC (252). Clear direction flag (DF=0).
+(def x86-encode-cld
+  (lambda ()
+    (list 252)))
+
+; STD: opcode 0xFD (253). Set direction flag (DF=1).
+(def x86-encode-std
+  (lambda ()
+    (list 253)))
+
+; STOSQ: opcode 0x48 0xAB (72 171). Store RAX to [RDI], increment RDI by 8.
+(def x86-encode-stosq
+  (lambda ()
+    (list (x86-encode-rex 1 0 0 0) 171)))
+
+; REP STOSQ: opcode 0xF3 0x48 0xAB. Fill RCX qwords at [RDI] with RAX.
+(def x86-encode-rep-stosq
+  (lambda ()
+    (list 243 (x86-encode-rex 1 0 0 0) 171)))
+
+; STOSB: opcode 0xAA (170). Store AL to [RDI], increment RDI by 1.
+(def x86-encode-stosb
+  (lambda ()
+    (list 170)))
+
+; REP STOSB: opcode 0xF3 0xAA. Fill RCX bytes at [RDI] with AL.
+(def x86-encode-rep-stosb
+  (lambda ()
+    (list 243 170)))
+
+; MOVSQ: opcode 0x48 0xA5 (72 165). Move qword from [RSI] to [RDI].
+(def x86-encode-movsq
+  (lambda ()
+    (list (x86-encode-rex 1 0 0 0) 165)))
+
+; REP MOVSQ: opcode 0xF3 0x48 0xA5. Copy RCX qwords from [RSI] to [RDI].
+(def x86-encode-rep-movsq
+  (lambda ()
+    (list 243 (x86-encode-rex 1 0 0 0) 165)))
+
+; MOVSB: opcode 0xA4 (164). Move byte from [RSI] to [RDI].
+(def x86-encode-movsb
+  (lambda ()
+    (list 164)))
+
+; REP MOVSB: opcode 0xF3 0xA4. Copy RCX bytes from [RSI] to [RDI].
+(def x86-encode-rep-movsb
+  (lambda ()
+    (list 243 164)))
+
 (def x86-encode-program
   (lambda (instructions)
     (cond

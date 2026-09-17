@@ -491,4 +491,167 @@
           (operands r64 r/m32)
           (rex W)
           (opcode 63)
-          (modrm required))))))
+          (modrm required))))
+
+    (instruction BSF
+      (class bit-scan)
+      (privilege user)
+      (mode64 valid)
+      (flags ZF)
+      (forms
+        (form bsf-r64-r64
+          (operands r64 r/m64)
+          (rex W)
+          (opcode-map 0F)
+          (opcode BC)
+          (modrm required))))
+
+    (instruction BSR
+      (class bit-scan)
+      (privilege user)
+      (mode64 valid)
+      (flags ZF)
+      (forms
+        (form bsr-r64-r64
+          (operands r64 r/m64)
+          (rex W)
+          (opcode-map 0F)
+          (opcode BD)
+          (modrm required))))
+
+    (instruction BSWAP
+      (class data-movement-byte-swap)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form bswap-r64
+          (operands r64)
+          (rex W)
+          (opcode-map 0F)
+          (opcode-plus-register C8)
+          (modrm none))))
+
+    (instruction ROL
+      (class bit-shift-rotate)
+      (privilege user)
+      (mode64 valid)
+      (flags CF OF)
+      (forms
+        (form rol-r64-imm8
+          (operands r/m64 imm8)
+          (rex W)
+          (opcode C1)
+          (reg-opcode 0)
+          (immediate-width 8)
+          (modrm required))))
+
+    (instruction ROR
+      (class bit-shift-rotate)
+      (privilege user)
+      (mode64 valid)
+      (flags CF OF)
+      (forms
+        (form ror-r64-imm8
+          (operands r/m64 imm8)
+          (rex W)
+          (opcode C1)
+          (reg-opcode 1)
+          (immediate-width 8)
+          (modrm required))))
+
+    (instruction XCHG
+      (class data-movement-exchange)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form xchg-r64-r64
+          (operands r/m64 r64)
+          (rex W)
+          (opcode 87)
+          (modrm required))))
+
+    (instruction CLD
+      (class flag-control)
+      (privilege user)
+      (mode64 valid)
+      (flags DF)
+      (forms
+        (form cld
+          (operands)
+          (opcode FC)
+          (modrm none))))
+
+    (instruction STD
+      (class flag-control)
+      (privilege user)
+      (mode64 valid)
+      (flags DF)
+      (forms
+        (form std
+          (operands)
+          (opcode FD)
+          (modrm none))))
+
+    (instruction STOSQ
+      (class string-store)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form stosq
+          (operands)
+          (rex W)
+          (opcode AB)
+          (modrm none))
+        (form rep-stosq
+          (operands)
+          (legacy-prefix F3)
+          (rex W)
+          (opcode AB)
+          (modrm none))))
+
+    (instruction STOSB
+      (class string-store)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form stosb
+          (operands)
+          (opcode AA)
+          (modrm none))
+        (form rep-stosb
+          (operands)
+          (legacy-prefix F3)
+          (opcode AA)
+          (modrm none))))
+
+    (instruction MOVSQ
+      (class string-move)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form movsq
+          (operands)
+          (rex W)
+          (opcode A5)
+          (modrm none))
+        (form rep-movsq
+          (operands)
+          (legacy-prefix F3)
+          (rex W)
+          (opcode A5)
+          (modrm none))))
+
+    (instruction MOVSB
+      (class string-move)
+      (privilege user)
+      (mode64 valid)
+      (forms
+        (form movsb
+          (operands)
+          (opcode A4)
+          (modrm none))
+        (form rep-movsb
+          (operands)
+          (legacy-prefix F3)
+          (opcode A4)
+          (modrm none))))))
