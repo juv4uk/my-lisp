@@ -65,3 +65,8 @@ if [[ "$vector_balance_status" != "(persistent-vector-balance-witness (status pa
   printf 'persistent vector balance Lisp witness failed: %s\n' "$vector_balance_status" >&2
   exit 1
 fi
+
+# #333: the host byte boundary already establishes a proper exact u8 list.
+# This guard checks only the ownership/mechanism boundary; UTF-8 meaning stays
+# in Lisp and all semantic parity remains covered by the existing fs/utf8 tests.
+bash scripts/check-read-file-byte-provenance.sh
