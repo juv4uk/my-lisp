@@ -6,7 +6,7 @@ license-file = "../../LICENSE"
 description = "Canonical stateful my-lisp C ABI embedding boundary"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 my-lisp = { path = "../my-lisp" }
