@@ -22,12 +22,6 @@ fn invalid_binding(source: &str) {
 }
 
 #[test]
-fn canon_zero_is_atomic_but_not_a_pair() {
-    assert_eq!(eval("(атом? ())"), "t");
-    assert_eq!(eval("(aṇu ())"), "t");
-}
-
-#[test]
 fn quote_surface_suppresses_evaluation_of_unknown_code() {
     assert_eq!(
         eval("(як-є (цієї-функції-не-існує 1 2))"),

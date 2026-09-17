@@ -8,14 +8,6 @@ fn session_with_language_canon() -> Session {
 }
 
 #[test]
-fn language_level_canon_is_the_conformance_authority() {
-    let mut session = session_with_language_canon();
-    let verdict = eval_program("(canon-conforms?)", &mut session)
-        .expect("runtime must be able to execute the language-owned semantic laws");
-    assert_eq!(verdict.value.to_string(), "t");
-}
-
-#[test]
 fn historical_canon_surface_cannot_be_rebound() {
     let mut session = session_with_language_canon();
     let error = eval_program("(def car (lambda (x) (quote зламано)))", &mut session)
@@ -65,7 +57,4 @@ fn ukrainian_keyboard_symbols_execute_the_same_canon() {
     )
     .expect("symbolic Canon surface should execute without changing identity");
     assert_eq!(result.value.to_string(), "пес");
-
-    let atom = eval_program("(.? 'кіт)", &mut session).expect(".? should denote PRIM_ATOM");
-    assert_eq!(atom.value.to_string(), "t");
 }

@@ -36,6 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt
+          git diff --numstat "$BASE_SHA" "$HEAD_SHA" > /tmp/changed-numstat.txt
           cat /tmp/changed.txt
           surface=false; core=false; semantic=false; host=false; cli=false; xtask=false; meta=false; rust=false; workspace=false; workflow=false
           while IFS= read -r path; do
@@ -58,12 +59,21 @@ jobs:
           set -euo pipefail
           cargo build -p my-lisp-cli --bin my-lisp
           : > tests/changed-host-tests.lisp
-          while IFS= read -r path; do
+          while IFS=$'\t' read -r additions deletions path; do
             case "$path" in
-              crates/*/tests/*.rs) printf '"%s"\n' "$path" >> tests/changed-host-tests.lisp ;;
+              crates/*/tests/*.rs)
+                if [[ "$additions" == "0" && "$deletions" != "0" ]]; then
+                  direction=deletion-only
+                else
+                  direction=modified
+                fi
+                printf '(change "%s" %s)\n' "$path" "$direction" >> tests/changed-host-tests.lisp
+                ;;
             esac
-          done < /tmp/changed.txt
-          ./target/debug/my-lisp scripts/authority-guard.lisp
+          done < /tmp/changed-numstat.txt
+          ./target/debug/my-lisp scripts/authority-guard.lisp > tests/authority-verdict.lisp
+          cat tests/authority-verdict.lisp
+          ./target/debug/my-lisp scripts/authority-guard-enforce.lisp
 
       - name: Lisp-owned machine non-interference guard
         shell: bash

@@ -344,10 +344,10 @@ mod tests {
 
     #[test]
     fn ukrainian_value_presentation_changes_only_the_human_view() {
-        let mut session = Session::default();
-        let truth = eval_program("(atom 'мама)", &mut session)
-            .expect("predicate")
-            .value;
+        // Presentation owns only the human-facing rendering of a value.
+        // Do not manufacture a boolean through a Lisp semantic operation such
+        // as `atom`: #218 correctly returns a structural result there now.
+        let truth = Value::Bool(true);
         assert_eq!(truth.to_string(), "t", "canonical value must not change");
         assert_eq!(
             render_value_for_presentation(&truth, PresentationLanguage::Ukrainian),

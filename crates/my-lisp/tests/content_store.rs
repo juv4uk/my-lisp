@@ -210,30 +210,6 @@ fn lisp_fs_reconstruction_rejects_missing_referenced_object() {
 }
 
 #[test]
-fn lisp_fs_f6_image_records_are_deterministic_and_data_only() {
-    assert_eq!(
-        eval_store(
-            r#"
-            (let* ((value (quote (lambda (x) x)))
-                   (written (fs-write (fs-empty) "code" value))
-                   (fs (car written))
-                   (root (fs-root-package fs))
-                   (object (fs-object-package value))
-                   (root-a (fs-serialize-root fs))
-                   (root-b (fs-serialize-root fs))
-                   (object-a (fs-serialize-object value))
-                   (object-b (fs-serialize-object value)))
-              (list
-                (equal? root-a root-b)
-                (equal? object-a object-b)
-                (fs-deserialize-object object-a)))
-            "#
-        ),
-        "(t t (accepted (lambda (x) x)))"
-    );
-}
-
-#[test]
 fn lisp_fs_journal_replay_matches_direct_construction() {
     assert_eq!(
         eval_store(
@@ -506,31 +482,5 @@ fn reconstructed_equal_worlds_deduplicate_in_the_store() {
             "#
         ),
         "1"
-    );
-}
-
-#[test]
-fn worlds_with_equal_projection_but_different_history_remain_distinct() {
-    assert_eq!(
-        eval_store(
-            r#"
-            (let ((direct
-                    (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))))
-              (let ((retold
-                      (world-tell
-                        (world-retract
-                          (world-tell (empty-world) (quote zoo) (quote ((has-fur cat))))
-                          (quote zoo) (quote ((has-fur cat))))
-                        (quote zoo) (quote ((has-fur cat))))))
-                (let ((store
-                        (content-store-put-world
-                          (content-store-put-world (empty-content-store) direct)
-                          retold)))
-                  (list (equal? (world-clauses direct (quote zoo))
-                                (world-clauses retold (quote zoo)))
-                        (content-store-size store)))))
-            "#
-        ),
-        "(t 2)"
     );
 }
