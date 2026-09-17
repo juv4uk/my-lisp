@@ -479,3 +479,43 @@ fn jmp_actually_branches_unconditionally_on_real_hardware_regardless_of_flags() 
         "JMP must branch even when the prior CMP cleared ZF -- unlike JZ, it does not consult flags"
     );
 }
+
+/// #176 continued: CALL rel32's defining property, compared to JMP, is that
+/// it uses the real machine call stack (RSP) to push a return address and
+/// RET pops it -- both host-owned, not modeled by anything in the arena.
+/// This is a real, executed proof on the i5-6400 that a guest CALL/RET pair
+/// round-trips correctly through native-call-u64-raw's real stack: if CALL
+/// failed to actually push/jump, or RET failed to actually pop/return,
+/// execution would fall through to the bailout `ret` immediately after the
+/// call and return the pre-call sentinel value instead of the subroutine's.
+#[test]
+fn call_actually_invokes_a_subroutine_and_returns_via_the_real_stack() {
+    let _serial = test_lock();
+    install();
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap");
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+
+    // mov rax,999 (sentinel: proves the call path, not this fallback, ran);
+    // call +1 (rel32 relative to the address right after this 5-byte call --
+    //   the next instruction is the 1-byte bailout `ret`, so +1 lands
+    //   exactly on the subroutine start just past it);
+    // ret (bailout: only reached directly if CALL failed to jump; also
+    //   reached a second time, correctly, when the subroutine's own RET
+    //   pops CALL's pushed return address and control resumes right here);
+    // mov rax,42; ret (the subroutine: sets a value CALL's caller never
+    //   set, then returns).
+    let source = "(x86-call-admitted-u64 (quote ((mov-r64-imm64 rax 999) (call-rel32 1) (ret) (mov-r64-imm64 rax 42) (ret))) 0)";
+    let result = eval_program(source, &mut session)
+        .expect("real hardware must execute the admitted program")
+        .value
+        .to_string();
+
+    assert_eq!(
+        result, "42",
+        "CALL must actually invoke the subroutine and its RET must actually \
+         return control past the call site via the real machine stack -- \
+         999 would mean the call/return round-trip never happened"
+    );
+}

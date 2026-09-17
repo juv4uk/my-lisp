@@ -7,7 +7,7 @@
 
 (x86-encoder-coverage/1
   (form-count 1175)
-  (partial-count 32)
+  (partial-count 33)
   (coverage
     (iclass "AAA")
     (extension X86-BASE)
@@ -291,8 +291,8 @@
   (coverage
     (iclass "CALL_NEAR")
     (extension X86-BASE)
-    (status not-yet-implemented)
-    (reason "remaining BASE forms pending family-by-family rollout"))
+    (status partial)
+    (reason "x86-encode-call-rel32 covers the direct rel32 form (0xE8) only; the indirect register/memory (0xFF /2) form is pending"))
   (coverage
     (iclass "CBW")
     (extension X86-BASE)

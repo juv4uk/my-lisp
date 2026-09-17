@@ -709,6 +709,65 @@ fn lisp_encodes_jmp_rel8_with_the_pinned_opcode_and_correct_displacement() {
     );
 }
 
+/// Independent decoder for CALL rel32: a single fixed opcode byte (0xE8), no
+/// REX, no ModRM, followed by a signed 32-bit little-endian relative
+/// displacement. From scratch, independent of the encoder's own
+/// construction arithmetic.
+fn decode_call_rel32(bytes: &[u8]) -> Option<i64> {
+    let [opcode, b0, b1, b2, b3] = bytes else {
+        return None;
+    };
+    if *opcode != 0xE8 {
+        return None;
+    }
+    let raw = u32::from_le_bytes([*b0, *b1, *b2, *b3]);
+    Some(raw as i32 as i64)
+}
+
+/// #176 continued: CALL rel32 (opcode 0xE8) -- the return-address-pushing
+/// counterpart to JMP rel8, needed as soon as a bounded self-host subset
+/// needs to invoke a subroutine rather than only branch. Per #175's pinned
+/// XED evidence (`PATTERN : 0xE8 mode64 norex2_prefix BRDISP32() DF64()
+/// FORCE64()`), reuses the same two's-complement-byte-splitting discipline
+/// #199 (disp8) and #206 (rel8) already proved correct, generalized to
+/// rel32's wider domain via the new x86-rel32-bytes helper.
+#[test]
+fn lisp_encodes_call_rel32_with_the_pinned_opcode_and_correct_displacement() {
+    let mut session = encoder_session();
+
+    for displacement in [-2147483648i64, -1, 0, 1, 2147483647] {
+        let form = format!("(x86-encode-call-rel32 {displacement})");
+        let rendered = eval_bytes(&form, &mut session);
+        let bytes: Vec<u8> = rendered
+            .trim_start_matches('(')
+            .trim_end_matches(')')
+            .split_whitespace()
+            .map(|token| token.parse().expect("byte must be a small integer"))
+            .collect();
+
+        assert_eq!(bytes.len(), 5, "{form} must always be opcode+rel32, 5 bytes");
+        assert_eq!(bytes[0], 0xE8, "{form}: {bytes:?}");
+        let decoded_disp = decode_call_rel32(&bytes)
+            .unwrap_or_else(|| panic!("{form} produced undecodable bytes {bytes:?}"));
+        assert_eq!(
+            decoded_disp, displacement,
+            "{form} round-tripped to disp {decoded_disp}, from bytes {bytes:?}"
+        );
+    }
+
+    let vendor_path = repo_root().join("lib/machine/xed/vendor/base/xed-isa.txt");
+    let vendor_source = fs::read_to_string(&vendor_path)
+        .unwrap_or_else(|error| panic!("{} must exist: {error}", vendor_path.display()));
+    assert!(
+        vendor_source.contains("ICLASS    : CALL_NEAR"),
+        "pinned XED evidence must name ICLASS CALL_NEAR"
+    );
+    assert!(
+        vendor_source.contains("PATTERN   : 0xE8 mode64"),
+        "pinned XED evidence must contain the 0xE8 rel32 CALL_NEAR pattern"
+    );
+}
+
 #[test]
 fn encoder_source_contains_no_process_or_assembler_escape_hatch() {
     let path = repo_root().join("lib/machine/encoding/x86-64.lisp");
