@@ -5,6 +5,8 @@
 ; - artifact classes come from a bounded institutional vocabulary;
 ; - directory placement is never an authority source;
 ; - registry rows must still exist in the observed knowledge tree.
+; RED slice:
+; - repo-path authority sources must exist in the observed upstream tree.
 
 (def knowledge-authority-required-fields
   (quote (path class scope authority-source lifecycle consumers)))
@@ -194,6 +196,12 @@
             (identity-relation same)
             row-verdict)))))))
 
+; Intentionally incomplete for the RED witness below. This pass is orthogonal
+; to class/directory/stale coverage and will only inspect `(repo-path ...)` sources.
+(def knowledge-authority-upstream-verdict
+  (lambda (rows observed-upstream)
+    (list (quote knowledge-authority-ok))))
+
 (def knowledge-authority-observed-path-state
   (lambda (path observed)
     (cond
@@ -337,6 +345,16 @@
       (lifecycle active)
       (consumers ()))))
 
+(def knowledge-authority-sample-missing-upstream
+  (quote
+    (artifact
+      (path "knowledge/a.lisp")
+      (class operational-reference)
+      (scope missing-upstream-sample)
+      (authority-source (repo-path "docs/missing-authority-source.md"))
+      (lifecycle active)
+      (consumers ()))))
+
 (def knowledge-authority-selftest-unclassified
   (lambda ()
     (knowledge-authority-verdict
@@ -367,6 +385,12 @@
       (list knowledge-authority-sample-invalid-class)
       (quote ("a.lisp")))))
 
+(def knowledge-authority-selftest-missing-upstream
+  (lambda ()
+    (knowledge-authority-upstream-verdict
+      (list knowledge-authority-sample-missing-upstream)
+      (quote ("docs/semantic-authority-map.md")))))
+
 (def knowledge-authority-assert-verdict
   (lambda (actual expected)
     (cond
@@ -388,6 +412,13 @@
   (quote (knowledge-authority-violation missing-field class)))
 
 (knowledge-authority-assert-verdict
+  (knowledge-authority-selftest-invalid-class)
+  (quote
+    (knowledge-authority-violation
+      invalid-class
+      semantic-authority)))
+
+(knowledge-authority-assert-verdict
   (knowledge-authority-selftest-directory-authority)
   (quote
     (knowledge-authority-violation
@@ -402,11 +433,11 @@
       "knowledge/c.lisp")))
 
 (knowledge-authority-assert-verdict
-  (knowledge-authority-selftest-invalid-class)
+  (knowledge-authority-selftest-missing-upstream)
   (quote
     (knowledge-authority-violation
-      invalid-class
-      semantic-authority)))
+      missing-upstream-source
+      "docs/missing-authority-source.md")))
 
 (print
   (quote
@@ -415,4 +446,5 @@
       missing-field
       invalid-class
       directory-derived-authority
-      stale-path)))
+      stale-path
+      missing-upstream-source)))
