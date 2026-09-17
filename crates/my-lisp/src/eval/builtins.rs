@@ -160,10 +160,6 @@ pub(crate) fn install(environment: &Environment) {
         exact_args("eq", args, 2, span)?;
         eq_values(args[0].clone(), args[1].clone(), span)
     });
-    define!(environment, "atom", |args: &[Value], _env: &Environment, span: Span| {
-        exact_args("atom", args, 1, span)?;
-        Ok(Value::truth(args[0].is_atom()))
-    });
 
     // abs/min-list/max-list/min/max migrated to lib/core.my (owner
     // directive 2026-09-11: "Lisp owns meaning, Rust owns only
