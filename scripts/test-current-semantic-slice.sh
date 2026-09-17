@@ -41,8 +41,8 @@ if [[ "$meta_empty_status" != "(meta-eval-empty-program-witness (status pass))" 
 fi
 
 # #305: registry projection, peer-surface parity, and necessary-form routing
-# are now witnessed by Lisp itself. The shell observes only the named pass
-# envelope and does not encode any semantic expected values.
+# are now witnessed by Lisp itself. The shell observes only the named pass envelope
+# and does not encode any semantic expected values.
 meta_registry_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/meta-semantic-registry-witness.lisp)"
 if [[ "$meta_registry_status" != "(meta-semantic-registry-witness (status pass))" ]]; then
   printf 'meta semantic-registry Lisp witness failed: %s\n' "$meta_registry_status" >&2
@@ -71,5 +71,15 @@ fi
 reason_index_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/reason-index-authority-witness.lisp)"
 if [[ "$reason_index_status" != "(reason-index-authority-witness (status pass) (laws indexed-linear-parity immutable-prepared-snapshot recursion-negation-parity))" ]]; then
   printf 'reason-index Lisp witness failed: %s\n' "$reason_index_status" >&2
+  exit 1
+fi
+
+# #408 / #305: a well-formed explicit negative is a valid reasoning goal, and
+# no evidence for either side remains Canon 0 unless a named completeness
+# contract establishes a richer epistemic status. The shell observes only the
+# Lisp witness's pass envelope before the stale Rust `unknown` oracle retires.
+explicit_negative_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/explicit-negative-reason-observe-witness.lisp)"
+if [[ "$explicit_negative_status" != "(explicit-negative-reason-observe-witness (status pass))" ]]; then
+  printf 'explicit-negative reasoning Lisp witness failed: %s\n' "$explicit_negative_status" >&2
   exit 1
 fi
