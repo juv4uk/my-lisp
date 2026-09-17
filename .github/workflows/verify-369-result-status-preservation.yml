@@ -1,0 +1,17 @@
+name: Verify 369 result-status preservation
+
+on:
+  pull_request:
+    paths:
+      - 'tests/fixtures/reason-observe-honesty-v1.lisp'
+      - 'tests/fixtures/reason-module-honesty-v1.lisp'
+      - '.github/workflows/verify-369-result-status-preservation.yml'
+
+jobs:
+  reason-honesty:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run Lisp-owned reasoning honesty contract
+        run: cargo test -p my-lisp --test reason_honesty_contract
