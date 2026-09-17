@@ -3,7 +3,7 @@
 ; Evidence only. This file is NOT semantic authority and does not change language behavior.
 
 (canon-sculpt-audit
-  (schema-version 2)
+  (schema-version 3)
   (base-main 04084f1003ebd78c946a4b135b8a9febfc7e040e)
   (freeze-status pre-1.0-unfrozen)
   (role evidence-only)
@@ -37,11 +37,15 @@
       (cond 0007)
       (if absent))
     (cond-current-canonical-path
+      (source tests/fixtures/control-dispatch-v1.lisp)
       (clause-shape (query expected-result expression))
       (selection exact-value-equality)
       (expected-result quoted-data)
       (evaluation only-selected-consequent)
-      (truth-coercion none))
+      (truth-coercion none)
+      (empty-list may-be-explicit-match-data)
+      (arbitrary-nonempty-data not-implicit-yes)
+      (no-match canon-empty-list))
     (cond-migration-path
       (clause-shape (test expression))
       (status compatibility-only)
@@ -91,8 +95,15 @@
       (if-semantic-identity absent)
       (ordinary-library-and-or-depend-on-cond)
       (machine-lowering-is-not-semantic-derivation))
+    (experiment
+      (hypothesis ordinary-eager-function-can-supply-selective-evaluation)
+      (fixture evidence/canon-sculpt/selective-evaluation-ordinary-function-red.lisp)
+      (predicted-result red)
+      (meaning "ordinary eager application evaluates an ignored branch before entering the function body"))
+    (lower-bound-hypothesis
+      "Some runtime selective-evaluation power must remain unless a non-eager lower mechanism is exhibited; replacing cond with if/select/branch without reducing that power is renaming, not sculpture."))
     (remaining-question
-      "Can canonical three-part cond be macro-derived from a smaller declared selective-evaluation mechanism without merely renaming conditional control?"))
+      "Can canonical three-part cond be macro-derived from a strictly smaller declared selective-evaluation mechanism while preserving runtime query matching and skipped-branch non-evaluation?"))
 
   (candidate
     (identity PRIM_ATOM)
@@ -143,19 +154,23 @@
     backend-only-proof)
 
   (witness-navigation
+    (PRIM_QUOTE tests/fixtures/conformance.lisp)
+    (PRIM_QUOTE-CROSS-SUBSTRATE docs/cross-substrate-evidence-matrix.md)
     (PRIM_ATOM tests/fixtures/structural-observation-v1.lisp)
     (PRIM_EQ tests/fixtures/structural-observation-v1.lisp)
     (PRIM_CONS tests/fixtures/conformance.lisp)
     (PRIM_CAR tests/fixtures/conformance.lisp)
     (PRIM_CDR tests/fixtures/conformance.lisp)
-    (PRIM_COND tests/fixtures/conformance.lisp)
-    (PRIM_QUOTE evidence/canon-sculpt/quote-ordinary-function-red.lisp))
+    (PRIM_COND tests/fixtures/control-dispatch-v1.lisp)
+    (PRIM_QUOTE-RED evidence/canon-sculpt/quote-ordinary-function-red.lisp)
+    (SELECTIVE-EVALUATION-RED evidence/canon-sculpt/selective-evaluation-ordinary-function-red.lisp))
 
   (backend-discipline
     (law "lowering proves an implementation path, not semantic derivability")
-    (native execution-consumer)
-    (meta independent-lisp-evaluator-consumer)
-    (cml historical-candidate-needs-current-main-replay)
+    (native harness-covered)
+    (meta fixture-tagged-where-present)
+    (cml harness-coverage-not-fresh-run)
+    (fpga milestone-equivalent-not-current-hardware-proof)
     (x86-machine partial-mechanism-evidence))
 
   (coordination
