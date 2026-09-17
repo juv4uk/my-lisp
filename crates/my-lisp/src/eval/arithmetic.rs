@@ -8,7 +8,7 @@ use crate::{Environment, ErrorKind, Exactness, LanguageError, Rational, Span, Va
 // it isn't `Copy` — neither is `Numeric` anymore. Both accessor methods
 // below take `&self` and clone on the way out where an owned `Rational` is
 // needed, rather than moving out of borrowed slice/vec elements.
-// `Rational` ohortaie heap-allocated `BigRational` (dovilna tochnist), tozh
+// `Rational` ohortaie heap-allocated BigRational (dovilna tochnist), tozh
 // ne `Copy` — tak samo y `Numeric`. Obydva metody-aktsesory nyzhche berut
 // `&self` i klonuiut na vykhodi tam, de potriben vlasnyi `Rational`, zamist
 // peremishchennia z pozychenykh elementiv slice/vec.
@@ -317,21 +317,21 @@ pub(super) fn comparison_on_values(
         .map(|value| numeric_value(value.clone(), span))
         .collect::<Result<Vec<_>, _>>()?;
 
-    let holds = if numerics
+    if numerics
         .iter()
         .any(|value| matches!(value, Numeric::Inexact(_)))
     {
-        numerics
-            .windows(2)
-            .all(|pair| compare(operator, pair[0].as_f64(), pair[1].as_f64()))
-    } else {
-        numerics
-            .windows(2)
-            .all(|pair| compare(operator, pair[0].to_exact(), pair[1].to_exact()))
-    };
-    // CORE predicate result: canonical WSM t/() (Value::truth), not a
-    // hidden Rust-only Bool. `<`/`=`/`>` are registered directly on this
-    // function's return value (eval/builtins.rs), so this is the actual
-    // Lisp-visible result of a comparison, not an internal detail.
-    Ok(Value::truth(holds))
+        // #216 is deliberately narrower than generic numeric comparison:
+        // this exact-Q layer has no absolute answer once any operand is
+        // inexact, so Canon 0 is returned rather than manufacturing FALSE.
+        return Ok(Value::Nil);
+    }
+
+    let holds = numerics
+        .windows(2)
+        .all(|pair| compare(operator, pair[0].to_exact(), pair[1].to_exact()));
+
+    // #216 exact-rational decisions stay mathematical data: 1/1 for YES,
+    // 0/1 for NO. `exact_value` writes those canonically as exact 1 and 0.
+    Ok(exact_value(Rational::integer(if holds { 1 } else { 0 })))
 }
