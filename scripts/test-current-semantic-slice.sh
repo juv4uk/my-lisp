@@ -19,5 +19,6 @@ cargo test -p my-lisp \
   --test knowledge_clause_kind_contract \
   --test content_store_authority \
   --test decimal_comma_authority \
+  --test epistemic_authority \
   --test authority_guard_contract \
   --test semantic_ref_fail_closed
