@@ -1,5 +1,5 @@
 ; #383 — Lisp-owned knowledge artifact authority classification checker.
-; RED-first slice: a newly observed knowledge artifact must not pass without
+; GREEN slice: a newly observed knowledge artifact must not pass without
 ; an explicit classification row.
 
 (def knowledge-authority-field-from
@@ -37,11 +37,24 @@
   (lambda (kind detail)
     (list (quote knowledge-authority-violation) kind detail)))
 
-; Intentionally incomplete for the first RED witness.  This function will grow
-; the observed-tree coverage rule only after CI proves the missing behavior.
 (def knowledge-authority-observed-coverage-verdict
   (lambda (rows observed)
-    (list (quote knowledge-authority-ok))))
+    (cond
+      ((atom observed) (structural-kind empty-list)
+       (list (quote knowledge-authority-ok)))
+      ((atom observed) (structural-kind atom)
+       (knowledge-authority-violation (quote malformed-observed-list) observed))
+      ((atom observed) (structural-kind pair)
+       (let* ((name (car observed))
+              (path (string-append "knowledge/" name))
+              (found (knowledge-authority-find-row-by-path path rows)))
+         (cond
+           ((atom found) (structural-kind empty-list)
+            (knowledge-authority-violation (quote unclassified-artifact) path))
+           ((atom found) (structural-kind atom)
+            (knowledge-authority-violation (quote malformed-row) path))
+           ((atom found) (structural-kind pair)
+            (knowledge-authority-observed-coverage-verdict rows (cdr observed)))))))))
 
 (def knowledge-authority-sample-row
   (quote
@@ -74,3 +87,5 @@
     (knowledge-authority-violation
       unclassified-artifact
       "knowledge/b.lisp")))
+
+(print (quote (knowledge-authority-selftests-ok unclassified-artifact)))
