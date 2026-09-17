@@ -148,7 +148,7 @@
        (narrate-invalid-outcome-shape outcome))
       ((not (result-proper-list? outcome))
        (narrate-invalid-outcome-shape outcome))
-      ((not (symbol? (car outcome)))
+      ((symbol? (car outcome)) (class-membership symbol nonmember)
        (list (quote invalid) (quote outcome-tag) (car outcome)))
       ((eq (car outcome) (quote proved))
        (cond
