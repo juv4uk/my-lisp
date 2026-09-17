@@ -26,20 +26,8 @@ jobs:
           from pathlib import Path
           path = Path('crates/my-lisp/src/presentation.rs')
           text = path.read_text()
-          old = '''    fn ukrainian_value_presentation_changes_only_the_human_view() {
-        let mut session = Session::default();
-        let truth = eval_program("(atom 'мама)", &mut session)
-            .expect("predicate")
-            .value;
-        assert_eq!(truth.to_string(), "t", "canonical value must not change");
-'''
-          new = '''    fn ukrainian_value_presentation_changes_only_the_human_view() {
-        // Presentation owns only the human-facing rendering of a value. Do not
-        // manufacture a boolean through a Lisp semantic operation such as `atom`:
-        // #218 correctly returns a structural result there now.
-        let truth = Value::Bool(true);
-        assert_eq!(truth.to_string(), "t", "canonical value must not change");
-'''
+          old = "        let mut session = Session::default();\n        let truth = eval_program(\"(atom 'мама)\", &mut session)\n            .expect(\"predicate\")\n            .value;\n"
+          new = "        // Presentation owns only the human-facing rendering of a value. Do not\n        // manufacture a boolean through a Lisp semantic operation such as `atom`:\n        // #218 correctly returns a structural result there now.\n        let truth = Value::Bool(true);\n"
           if old not in text:
               raise SystemExit('expected stale presentation test block not found')
           path.write_text(text.replace(old, new, 1))
