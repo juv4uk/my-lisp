@@ -44,6 +44,10 @@ jobs:
             echo '1043 regression: stable UK зчепити must be a registry-driven peer, not an EN bridge' >&2
             exit 1
           fi
+          if grep -Fqx '(define довжина-тексту string-length)' lib/surface/uk.lisp; then
+            echo '1044 regression: stable UK довжина-тексту must be a registry-driven peer, not an EN bridge' >&2
+            exit 1
+          fi
 
   workspace-clippy:
     name: full workspace clippy
