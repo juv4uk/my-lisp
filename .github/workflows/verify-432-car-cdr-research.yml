@@ -1,3 +1,4 @@
+# Verification-only / never merge. Replayed after parent checker parse repair.
 name: Verify 432 CAR CDR research
 
 on:
