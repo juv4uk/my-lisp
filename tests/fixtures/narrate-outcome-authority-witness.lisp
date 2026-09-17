@@ -7,27 +7,56 @@
 ; Here the richer status is positively constructed with `make-unknown`; the
 ; presentation layer must keep that status visible rather than collapse it.
 ; Rust/shell observers see only the named pass envelope.
+;
+; #369 additionally preserves the public rejection of a non-symbol outcome tag
+; before `narrate-outcome` stops consuming the historical t/() shape of
+; `symbol?`. The law is the presentation result, not the predicate's old
+; sentinel representation.
 
 (load "lib/result-status.lisp")
 (load "lib/narrate.lisp")
 
+(def narrate-outcome-authority-rows
+  (lambda ()
+    (list
+      (list
+        (quote explicit-unknown-presentation)
+        (narrate-outcome
+          (make-unknown (quote (parent bob alice))))
+        (quote
+          (unknown because no-proof-found-for (parent bob alice))))
+      (list
+        (quote non-symbol-tag-is-invalid)
+        (narrate-outcome (quote (42 payload)))
+        (quote (invalid outcome-tag 42))))))
+
+(def narrate-outcome-authority-check-rows
+  (lambda (rows)
+    (cond
+      ((atom rows) (structural-kind empty-list)
+       (quote (narrate-outcome-authority-witness (status pass))))
+      ((atom rows) (structural-kind atom)
+       (list
+         (quote narrate-outcome-authority-witness)
+         (quote (status fail))
+         (quote (law malformed-row-tail))
+         (list (quote actual) rows)))
+      ((atom rows) (structural-kind pair)
+       (let ((row (car rows)))
+         (cond
+           ((equal? (second row) (third row)) (structural-relation same)
+            (narrate-outcome-authority-check-rows (cdr rows)))
+           ((equal? (second row) (third row)) (structural-relation distinct)
+            (list
+              (quote narrate-outcome-authority-witness)
+              (quote (status fail))
+              (list (quote law) (car row))
+              (list (quote expected) (third row))
+              (list (quote actual) (second row))))))))))
+
 (def narrate-outcome-authority-check
   (lambda ()
-    (let ((actual
-            (narrate-outcome
-              (make-unknown (quote (parent bob alice)))))
-          (expected
-            (quote
-              (unknown because no-proof-found-for (parent bob alice)))))
-      (cond
-        ((equal? actual expected) (structural-relation same)
-         (quote (narrate-outcome-authority-witness (status pass))))
-        ((equal? actual expected) (structural-relation distinct)
-         (list
-           (quote narrate-outcome-authority-witness)
-           (quote (status fail))
-           (quote (law explicit-unknown-presentation))
-           (list (quote expected) expected)
-           (list (quote actual) actual)))))))
+    (narrate-outcome-authority-check-rows
+      (narrate-outcome-authority-rows))))
 
 (narrate-outcome-authority-check)
