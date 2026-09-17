@@ -1,0 +1,24 @@
+name: VERIFY ONLY - #310 vector authority
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  vector-targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-310-vector
+      - name: Structural observation contract
+        run: cargo test -p my-lisp --test structural_observation_contract
+      - name: Vector integration tests
+        run: cargo test -p my-lisp --test vectors
+      - name: Changed Rust clippy
+        run: cargo clippy -p my-lisp --test structural_observation_contract --test vectors -- -D warnings
