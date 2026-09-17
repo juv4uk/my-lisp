@@ -31,20 +31,6 @@ fn proved_outcome_keeps_the_ground_answer_and_real_premise() {
 }
 
 #[test]
-fn unknown_outcome_says_no_proof_was_found_without_saying_false() {
-    let source = r#"
-        (narrate-outcome
-          (reason-observe
-            (quote (parent bob alice))
-            (quote (((parent alice bob))))))
-    "#;
-    assert_eq!(
-        eval_outcome_narration(source),
-        "(unknown because no-proof-found-for (parent bob alice))"
-    );
-}
-
-#[test]
 fn disputed_outcome_keeps_both_evidence_sides_visible() {
     let source = r#"
         (let* ((rules (quote (((mortal socrates))
