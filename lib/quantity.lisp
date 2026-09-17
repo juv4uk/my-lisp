@@ -50,7 +50,7 @@
       ((eq (= (length x) 3) (quote ())) (quote ()))
       ((eq (car x) *dimension-schema*)
        (cond
-         ((eq (symbol? (second x)) (quote ())) (quote ()))
+         ((symbol? (second x)) (class-membership symbol nonmember) (quote ()))
          ((atom (third x)) t)
          (t (quote ()))))
       (t (quote ())))))
@@ -192,7 +192,7 @@
       ((eq (= (length x) 3) (quote ())) (quote ()))
       ((eq (car x) *science-source-schema*)
        (cond
-         ((eq (symbol? (second x)) (quote ())) (quote ()))
+         ((symbol? (second x)) (class-membership symbol nonmember) (quote ()))
          ((atom (third x)) t)
          (t (quote ()))))
       (t (quote ())))))
@@ -233,11 +233,11 @@
       ((eq (= (length x) 7) (quote ())) (quote ()))
       ((eq (car x) *scientific-constant-schema*)
        (cond
-         ((eq (symbol? (second x)) (quote ())) (quote ()))
+         ((symbol? (second x)) (class-membership symbol nonmember) (quote ()))
          ((eq (quantity? (third x)) (quote ())) (quote ()))
          ((eq (scientific-constant-status-valid? (fourth x)) (quote ())) (quote ()))
          ((eq (scientific-constant-kind-valid? (fifth x)) (quote ())) (quote ()))
-         ((eq (symbol? (science-sixth x)) (quote ())) (quote ()))
+         ((symbol? (science-sixth x)) (class-membership symbol nonmember) (quote ()))
          ((eq (science-source? (science-seventh x)) (quote ())) (quote ()))
          (t t)))
       (t (quote ())))))
