@@ -228,3 +228,19 @@ jobs:
       - name: Governance and policy checks
         run: |
           cargo test -p xtask --test license_policy
+          cargo run -p xtask -- verify
+
+  main-fast-clippy:
+    name: main fast clippy
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: main-fast-clippy
+      - run: cargo clippy -p my-lisp -p my-lisp-host -p my-lisp-cli -p xtask --all-targets -- -D warnings
