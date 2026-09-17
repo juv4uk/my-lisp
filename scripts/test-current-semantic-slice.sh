@@ -17,5 +17,6 @@ cargo test -p my-lisp \
   --test reason_honesty_contract \
   --test unification_outcome_contract \
   --test knowledge_clause_kind_contract \
+  --test content_store_authority \
   --test authority_guard_contract \
   --test semantic_ref_fail_closed
