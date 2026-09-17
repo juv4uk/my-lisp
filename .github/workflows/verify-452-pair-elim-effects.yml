@@ -16,78 +16,75 @@ jobs:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Ordinary callable evaluates selector expression before body/domain failure
+      - name: Install temporary observer for output retained across errors
         shell: bash
         run: |
-          cat > /tmp/pair-elim-ordinary-effect.lisp <<'LISP'
-          (def pair-elim-shape
-            (lambda (p selector)
-              (car p)))
-          (pair-elim-shape
-            (quote atom-value)
-            ((lambda ()
-               (print (quote selector-expression-effect))
-               (lambda (left right) left))))
-          LISP
-          set +e
-          output=$(cargo run -q -p my-lisp-cli --bin my-lisp -- /tmp/pair-elim-ordinary-effect.lisp 2>&1)
-          status=$?
-          set -e
-          printf '%s\n' "$output"
-          test "$status" -ne 0
-          printf '%s\n' "$output" | grep -q 'selector-expression-effect'
-          printf '%s\n' "$output" | grep -Eqi 'car expects a non-empty list|car ochikuie neporozhnii spysok'
-          OUT="$output" python3 - <<'PY'
-          import os
-          out = os.environ['OUT']
-          marker = out.find('selector-expression-effect')
-          failure = out.find('car expects a non-empty list')
-          assert marker >= 0 and failure >= 0 and marker < failure, (marker, failure, out)
-          print('(ordinary-callable marker-before-domain-failure pass)')
-          PY
+          cat > crates/my-lisp/tests/verify_452_effect_order.rs <<'RS'
+          use my_lisp::{eval_program, ErrorKind, Session};
 
-      - name: Current reverse route evaluates selector operator before CAR failure
-        shell: bash
-        run: |
-          cat > /tmp/pair-elim-reverse-effect.lisp <<'LISP'
-          (((lambda ()
-              (print (quote selector-expression-effect))
-              (lambda (left right) left)))
-            (car (quote atom-value))
-            (cdr (quote atom-value)))
-          LISP
-          set +e
-          output=$(cargo run -q -p my-lisp-cli --bin my-lisp -- /tmp/pair-elim-reverse-effect.lisp 2>&1)
-          status=$?
-          set -e
-          printf '%s\n' "$output"
-          test "$status" -ne 0
-          printf '%s\n' "$output" | grep -q 'selector-expression-effect'
-          printf '%s\n' "$output" | grep -Eqi 'car expects a non-empty list|car ochikuie neporozhnii spysok'
-          OUT="$output" python3 - <<'PY'
-          import os
-          out = os.environ['OUT']
-          marker = out.find('selector-expression-effect')
-          failure = out.find('car expects a non-empty list')
-          assert marker >= 0 and failure >= 0 and marker < failure, (marker, failure, out)
-          print('(reverse-current marker-before-car-failure pass)')
-          PY
+          #[test]
+          fn ordinary_callable_evaluates_selector_expression_before_body_failure() {
+              let source = r#"
+                  (def pair-elim-shape
+                    (lambda (p selector)
+                      (car p)))
+                  (pair-elim-shape
+                    (quote atom-value)
+                    ((lambda ()
+                       (print (quote selector-expression-effect))
+                       (lambda (left right) left))))
+              "#;
+              let mut session = Session::default();
+              let error = eval_program(source, &mut session).expect_err("body CAR must reject atom");
+              assert_eq!(error.kind, ErrorKind::Type);
+              assert_eq!(
+                  session.environment.output_snapshot(),
+                  vec!["selector-expression-effect".to_string()],
+                  "selector expression effect must occur before ordinary closure body failure"
+              );
+          }
 
-      - name: Valid reverse route invokes selector body exactly once
-        shell: bash
-        run: |
-          cat > /tmp/pair-elim-selector-once.lisp <<'LISP'
-          ((lambda (left right)
-             (print (quote selector-body-effect))
-             left)
-           (car (quote (fresh-left . fresh-right)))
-           (cdr (quote (fresh-left . fresh-right))))
-          LISP
-          output=$(cargo run -q -p my-lisp-cli --bin my-lisp -- /tmp/pair-elim-selector-once.lisp 2>&1)
-          printf '%s\n' "$output"
-          count=$(printf '%s\n' "$output" | grep -o 'selector-body-effect' | wc -l)
-          test "$count" -eq 1
-          printf '%s\n' "$output" | grep -q 'fresh-left'
+          #[test]
+          fn reverse_current_route_evaluates_selector_operator_before_car_failure() {
+              let source = r#"
+                  (((lambda ()
+                      (print (quote selector-expression-effect))
+                      (lambda (left right) left)))
+                    (car (quote atom-value))
+                    (cdr (quote atom-value)))
+              "#;
+              let mut session = Session::default();
+              let error = eval_program(source, &mut session).expect_err("CAR must reject atom");
+              assert_eq!(error.kind, ErrorKind::Type);
+              assert_eq!(
+                  session.environment.output_snapshot(),
+                  vec!["selector-expression-effect".to_string()],
+                  "operator expression effect must occur before CAR argument failure"
+              );
+          }
+
+          #[test]
+          fn valid_reverse_route_invokes_selector_body_once() {
+              let source = r#"
+                  ((lambda (left right)
+                     (print (quote selector-body-effect))
+                     left)
+                   (car (quote (fresh-left . fresh-right)))
+                   (cdr (quote (fresh-left . fresh-right))))
+              "#;
+              let mut session = Session::default();
+              let result = eval_program(source, &mut session).expect("valid pair route");
+              assert_eq!(result.value.to_string(), "fresh-left");
+              assert_eq!(
+                  session.environment.output_snapshot(),
+                  vec!["selector-body-effect".to_string()],
+                  "selector body must run exactly once"
+              );
+          }
+          RS
+
+      - name: Execute live evaluator order observer
+        run: cargo test -p my-lisp --test verify_452_effect_order -- --nocapture
 
       - name: Classify delayed-selector interpretation as extra control power
         shell: bash
@@ -103,6 +100,9 @@ jobs:
           print('(ordinary-callable pure-basis-exchange-extends-to-selector-expression-effects)')
           print('(delayed-selector callback-candidate-observably-stronger)')
           PY
+
+      - name: Remove temporary observer before diff hygiene
+        run: rm crates/my-lisp/tests/verify_452_effect_order.rs
 
       - name: Verification-only diff is whitespace-clean
         run: git diff --check "origin/${{ github.base_ref }}...HEAD"
