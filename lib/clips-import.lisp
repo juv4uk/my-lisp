@@ -177,7 +177,7 @@
 (def clips-strip-module-prefix
   (lambda (sym)
     (cond
-      ((symbol? sym)
+      ((symbol? sym) (class-membership symbol member)
        (let ((after (clips-string-after-last-double-colon (symbol->string sym))))
          (cond
            ((eq after (quote ())) sym)
@@ -422,7 +422,8 @@
     (cond
       ((atom term)
        (cond
-         ((symbol? term) (clips-symbol-starts-with-? term))
+         ((symbol? term) (class-membership symbol member)
+          (clips-symbol-starts-with-? term))
          (t (quote ()))))
       (t (quote ())))))
 
