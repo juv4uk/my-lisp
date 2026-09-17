@@ -1,0 +1,20 @@
+name: Verify 369 translation symbol consumer cutover
+
+on:
+  pull_request:
+    paths:
+      - 'lib/translation.lisp'
+      - 'tests/fixtures/translation-symbol-boundary-witness.lisp'
+      - '.github/workflows/verify-369-translation-symbol-consumer-cutover.yml'
+
+jobs:
+  translation-symbol-boundary:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run Lisp-owned translation symbol-boundary witness
+        run: |
+          status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/translation-symbol-boundary-witness.lisp)"
+          printf '%s\n' "$status"
+          test "$status" = '(translation-symbol-boundary-witness (status pass))'
