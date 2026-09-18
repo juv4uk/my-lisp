@@ -1,4 +1,5 @@
 name: TEMP 655 Regenerate FASL
+# One-shot integration repair; removed before merge.
 
 on:
   push:
