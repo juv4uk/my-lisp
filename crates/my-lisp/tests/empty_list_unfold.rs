@@ -147,3 +147,19 @@ fn mismatched_evidence_does_not_assert_candidate_relation() {
 
     assert_eq!(result.value.to_string(), "(graph-result absent)");
 }
+
+
+const FUNCTION_GENEALOGY: &str = include_str!("../../../experiments/function-genealogy.lisp");
+
+#[test]
+fn registry_function_genealogy_reproduces_core_accessors_from_smaller_seeds() {
+    let mut session = Session::default();
+    let source = format!("{FUNCTION_GENEALOGY}\n(function-genealogy-observation)");
+    let result = eval_program(&source, &mut session)
+        .expect("function genealogy experiment must execute");
+
+    assert_eq!(
+        result.value.to_string(),
+        "((from-cons (00101110)) (from-car (00101111 00110000 00110001 00110010 00110011 00110100)) (from-cdr (00101111 00110000 00110001 00110010 00110100 00110101)) (reproductions ((00101110 reproduced) (00101111 reproduced) (00110000 reproduced) (00110001 reproduced) (00110010 reproduced) (00110011 reproduced) (00110100 reproduced) (00110101 reproduced))))"
+    );
+}
