@@ -1,16 +1,3 @@
-; Єдина машинна authority мовних поверхонь — numeric-only schema.
-; Значення первинне. Мови рівноправні.
-;
-; Кожен перший атом — непрозорий 8-бітний binary semantic ID: 00000000..11111111.
-; 00000000 належить Canon 0 — порожньому списку ().
-; Решта identity йдуть щільно й послідовно від 00000001.
-; uk/ukr/en/sa — людські поверхні. sym — спільна немовна нотація.
-; Маркер stable не дублюється: запис у цій authority-таблиці є достатнім фактом
-; наявності identity; candidate/missing/compatibility-only залишаються явними.
-; Порядок surface-форм не має семантичного значення.
-; Старий uk-sa-coverage.wsm більше НЕ є authority.
-
-(sr/1
   (00000000 (sym ()))
   (00000001 (en quote) (uk як-є) (ukr як-є) (sa svarūpa) (sym '))
   (00000010 (en atom) (uk атом?) (ukr атом?) (sa aṇu) (sym .?))
@@ -179,4 +166,3 @@
   (10100101 (en tcp-listen) (uk слухати-порт-протоколу-керування-передаванням candidate) (ukr слухати-порт-протоколу-керування-передаванням candidate) (sa — missing))
   (10100110 (en read-file) (uk прочитати-файл candidate) (ukr прочитати-файл candidate) (sa — missing))
   (10100111 (en write-file) (uk записати-файл candidate) (ukr записати-файл candidate) (sa — missing))
-)
