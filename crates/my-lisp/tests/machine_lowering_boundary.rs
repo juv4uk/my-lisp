@@ -25,7 +25,7 @@ fn portable_monotonic_time_keeps_language_semantic_identity() {
         .expect("byte SID 01011010 must remain the portable monotonic observation");
 
     assert!(
-        row.contains("(en mono-ns stable)"),
+        row.contains("(en mono-ns)"),
         "SID 01011010 must keep the portable mono-ns semantic surface"
     );
 }
