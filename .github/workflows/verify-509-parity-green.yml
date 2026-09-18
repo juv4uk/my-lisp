@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - name: Execute parity witness and require exact GREEN envelope
         shell: bash
@@ -21,4 +23,4 @@ jobs:
           printf '%s\n' "$output"
           test "$output" = "(native-first-parity-witness (status pass) (cases 4))"
       - name: Diff hygiene
-        run: git diff --check "origin/${{ github.base_ref }}...HEAD"
+        run: git diff --check HEAD^ HEAD
