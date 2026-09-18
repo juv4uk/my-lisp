@@ -158,27 +158,15 @@
 (def timezone-declarations->observation
   (lambda (tz-value etc-timezone-value)
     (cond
-      ((eq (string-membership-helper tz-value)
-           (quote (class-membership string member)))
+      ((eq (nonempty-string-membership-helper tz-value)
+           (quote (class-membership string nonempty-member)))
        (identity-relation same)
-       (cond
-         ((eq (string-empty? tz-value) (identity-relation distinct))
-          (identity-relation same)
-          (list (quote detected) tz-value (quote TZ)))
-         ((eq (string-empty? tz-value) (identity-relation same))
-          (identity-relation same)
-          (quote ())))
-      ((eq (string-membership-helper etc-timezone-value)
-           (quote (class-membership string member)))
+       (list (quote detected) tz-value (quote TZ)))
+      ((eq (nonempty-string-membership-helper etc-timezone-value)
+           (quote (class-membership string nonempty-member)))
        (identity-relation same)
-       (cond
-         ((eq (string-empty? etc-timezone-value) (identity-relation distinct))
-          (identity-relation same)
-          (list (quote detected) etc-timezone-value (quote etc-timezone)))
-         ((eq (string-empty? etc-timezone-value) (identity-relation same))
-          (identity-relation same)
-          (quote ())))
-      (t
+       (list (quote detected) etc-timezone-value (quote etc-timezone)))
+      ((identity-relation same) (identity-relation same)
        (list (quote unknown) (quote host-declaration-unavailable))))))
 
 ; Adapt the mechanism-only host observation to public timezone meaning.
