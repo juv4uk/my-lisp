@@ -63,6 +63,13 @@ fn surface_groups(line: &'static str) -> Vec<&'static str> {
     groups
 }
 
+fn registry_name_token(token: &'static str) -> &'static str {
+    token
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .unwrap_or(token)
+}
+
 fn registry_rows() -> Vec<(&'static str, Vec<Surface>)> {
     REGISTRY
         .lines()
@@ -83,7 +90,11 @@ fn registry_rows() -> Vec<(&'static str, Vec<Surface>)> {
                 .map(|group| {
                     let fields = group.split_whitespace().collect::<Vec<_>>();
                     let (namespace, name, admission) = match fields.as_slice() {
-                        [namespace, name] => (*namespace, *name, Admission::Stable),
+                        [namespace, name] => (
+                            *namespace,
+                            registry_name_token(name),
+                            Admission::Stable,
+                        ),
                         [namespace, name, exception_status] => {
                             let admission = match *exception_status {
                                 "compatibility-only" => Admission::CompatibilityOnly,
@@ -92,7 +103,7 @@ fn registry_rows() -> Vec<(&'static str, Vec<Surface>)> {
                                 "stable" => panic!("sr/2 must not spell stable explicitly"),
                                 other => panic!("unknown sr/2 status {other}"),
                             };
-                            (*namespace, *name, admission)
+                            (*namespace, registry_name_token(name), admission)
                         }
                         _ => panic!("malformed sr/2 surface group: ({group})"),
                     };
