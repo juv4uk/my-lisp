@@ -60,6 +60,10 @@ jobs:
             echo '1047 regression: stable UK фрагмент-у-тексті? must be a registry-driven peer, not an EN bridge' >&2
             exit 1
           fi
+          if grep -Fqx '(define відрізати string-slice)' lib/surface/uk.lisp; then
+            echo '1050 regression: stable UK відрізати must be a registry-driven peer, not an EN bridge' >&2
+            exit 1
+          fi
 
   workspace-clippy:
     name: full workspace clippy
