@@ -473,8 +473,8 @@ mod tests {
 
     #[test]
     fn registry_mutation_changes_discovered_surface_without_changing_metadata_key() {
-        const BEFORE: &str = "(00001000 (en comet stable))";
-        const AFTER: &str = "(00001000 (en meteor stable))";
+        const BEFORE: &str = "(\"00001000\" (en comet))";
+        const AFTER: &str = "(\"00001000\" (en meteor))";
         let discover = |source: &'static str| {
             semantic_language_items_with(
                 |semantic_id| {
