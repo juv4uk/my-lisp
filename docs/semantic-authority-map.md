@@ -25,25 +25,33 @@ When two sources disagree, use this order:
 
 If a lower item conflicts with a higher item, the lower item is stale until reconciled.
 
-## Knowledge artifacts are not an authority tier
+## Артефакти knowledge не є окремим рівнем авторитету
 
-The `knowledge/` directory is **not** a ninth authority level and directory
-placement never grants semantic authority. Each active artifact is classified
-in `knowledge/knowledge-authority-inventory.lisp` by its role, scope,
-authority source, lifecycle, and known consumers.
+Каталог `knowledge/` **не є дев'ятим рівнем авторитету**, а саме розміщення
+файла в цьому каталозі ніколи не надає йому семантичного авторитету. Кожний
+активний артефакт класифікується в
+`knowledge/knowledge-authority-inventory.lisp` за роллю, обсягом,
+джерелом авторитету, життєвим циклом і відомими споживачами.
 
-The registry is governance metadata: it may identify an executable policy,
+Registry є governance-метаданими: він може позначити executable policy,
 operational reference, coordination marker, derived reference, evidence
-ledger, or historical record, but those classes do not outrank the authority
-order above. A knowledge artifact can carry or project a claim only within its
-declared scope and provenance. Contract-level language meaning still comes
-from the contract, ratified decisions, and executable conformance evidence.
+ledger або historical record, але жоден із цих класів не стоїть вище за
+ієрархію авторитету, наведену вище. Артефакт знань може переносити або
+проєктувати твердження лише в межах явно вказаних scope і provenance.
+Контрактне значення мови й надалі походить із контракту, ратифікованих
+рішень та виконуваних conformance-доказів.
 
-`scripts/check-knowledge-authority.lisp` mechanically checks live
-`knowledge/` coverage, required provenance fields, stale paths, forbidden
-directory-derived authority, the closed artifact-class vocabulary, and
-declared `repo-path` upstream sources. These checks govern the metadata
-boundary; they do not add or alter language semantics.
+`scripts/check-knowledge-authority.lisp` механічно перевіряє live-покриття
+`knowledge/`, обов'язкові provenance-поля, застарілі шляхи, заборону
+directory-derived authority, закритий словник класів артефактів і заявлені
+upstream-джерела `repo-path`. Ці перевірки охороняють межу метаданих; вони
+не додають і не змінюють семантику мови.
+
+### English auxiliary
+
+The `knowledge/` directory is not an authority tier. Its registry classifies
+artifact role, scope, provenance, lifecycle, and consumers; semantic authority
+still follows the hierarchy above.
 
 ## Semantic identity vs surface spelling
 
