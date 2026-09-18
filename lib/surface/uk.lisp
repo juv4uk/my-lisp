@@ -127,7 +127,7 @@
 (define символ-у-текст symbol->string)
 (define текст-у-символ string->symbol)
 (define текст-у-кодову-точку string->codepoint)
-(define кодова-точка-у-текст codepoint->string)
+; 1053: `codepoint->string` / `кодова-точка-у-текст` встановлюються як registry-driven direct peers.
 (define число-у-текст number->string)
 
 ;; ═══════════════════════════════════════════════════════════════
