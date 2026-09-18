@@ -12,7 +12,7 @@ fn empty_list_ground_unfolds_one_table_row_as_plain_lisp_data() {
 
     assert_eq!(
         result.value.to_string(),
-        "((0 (en ()) (uk ()) (ukr ()) (sa ()) (sym ())))"
+        "((00000000 (en ()) (uk ()) (ukr ()) (sa ()) (sym ())))"
     );
 }
 
@@ -21,7 +21,7 @@ fn unfolding_is_structurally_idempotent() {
     let mut session = Session::default();
 
     let source = format!(
-        "{EXPERIMENT}\n(eq (quote ((0 (en ()) (uk ()) (ukr ()) (sa ()) (sym ())))) empty-list-unfold-result)"
+        "{EXPERIMENT}\n(eq (quote ((00000000 (en ()) (uk ()) (ukr ()) (sa ()) (sym ())))) empty-list-unfold-result)"
     );
     let result = eval_program(&source, &mut session)
         .expect("shape-preserving traversal must execute");
