@@ -78,6 +78,27 @@ jobs:
           echo "DEBUG-READFILE-EXIT=$?"
           set -e
 
+      - name: DEBUG — isolate utf8 arithmetic primitives
+        shell: bash
+        run: |
+          set +e
+          printf '%s\n' '(print (mod 97 1))' > tests/debug-mod.lisp
+          ./target/debug/my-lisp tests/debug-mod.lisp
+          echo "DEBUG-MOD-EXIT=$?"
+
+          printf '%s\n' '(print (quotient 97 1))' > tests/debug-quotient.lisp
+          ./target/debug/my-lisp tests/debug-quotient.lisp
+          echo "DEBUG-QUOTIENT-EXIT=$?"
+
+          printf '%s\n' '(print (= (mod 97 1) 0))' > tests/debug-eq.lisp
+          ./target/debug/my-lisp tests/debug-eq.lisp
+          echo "DEBUG-EQ-EXIT=$?"
+
+          printf '%s\n' '(print (utf8-byte? 97))' > tests/debug-utf8-byte.lisp
+          ./target/debug/my-lisp tests/debug-utf8-byte.lisp
+          echo "DEBUG-UTF8-BYTE-EXIT=$?"
+          set -e
+
       - name: Forbidden semantic fixture is diagnosed and rejected
         shell: bash
         run: |
