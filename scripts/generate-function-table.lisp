@@ -31,7 +31,7 @@
 ; Both are read directly from semantic-registry.lisp; this generator never
 ; invents names and never duplicates `ukr` under another full-UK column.
 
-; The registry spells identity 0001's `sym` surface as the literal
+; The registry spells SID 00000001's `sym` surface as the literal
 ; apostrophe character. The ordinary Lisp reader treats a bare `'` as
 ; its own quote-shorthand macro (reads the NEXT datum), not a plain
 ; 3-token symbol, so the source line "(sym ' stable)" parses as
@@ -53,7 +53,9 @@
   (lambda (entry) (cons (car entry) (map normalize-surface (cdr entry)))))
 
 (def registry-form (car (read-all (read-file "lib/surface/semantic-registry.lisp"))))
-(def entries (map normalize-entry (cdr registry-form)))
+; SID 00000000 is Canon 0 / (), a semantic ground value rather than a function.
+; The function table projects only callable/form identities, so skip that first row.
+(def entries (map normalize-entry (cdr (cdr registry-form))))
 
 ; Processor realization projection. Its rows never create an identity: they
 ; may only annotate IDs that already exist in `entries` above.
@@ -74,7 +76,7 @@
   (lambda (sid rows)
     (cond
       ((atom rows) (quote ()))
-      ((eq (car (car rows)) sid) (car rows))
+      ((equal? (car (car rows)) sid) (car rows))
       (t (find-machine-row sid (cdr rows))))))
 
 (def machine-path
@@ -112,17 +114,8 @@
 (def str+
   (lambda args (reduce (lambda (acc s) (string-append acc s)) "" args)))
 
-; --- zero-padded 4+ digit semantic ID text, since the my-lisp reader
-; parses "0001" as the plain number 1 and would otherwise lose the
-; leading zeros this table's own IDs are conventionally written with.
-(def pad4
-  (lambda (n)
-    (let ((s (number->string n)))
-      (cond
-        ((eq (string-length s) 1) (string-append "000" s))
-        ((eq (string-length s) 2) (string-append "00" s))
-        ((eq (string-length s) 3) (string-append "0" s))
-        (t s)))))
+; SID already arrives from sr/2 as an exact 8-bit string. This generator
+; must preserve it verbatim; formatting identity is owned by the registry.
 
 ; --- one entry's surfaces are a list of (lang word status) triples ---
 (def find-surface
@@ -157,12 +150,12 @@
            (sa (get-surface (quote sa) surfaces)))
       (cond
         ((surface-usable? en)
-         (str+ "identity:" (pad4 sid) "/surface:" (surface-word-text (car en))))
+         (str+ "identity:" sid "/surface:" (surface-word-text (car en))))
         ((surface-usable? uk)
-         (str+ "identity:" (pad4 sid) "/surface:" (surface-word-text (car uk))))
+         (str+ "identity:" sid "/surface:" (surface-word-text (car uk))))
         ((surface-usable? sa)
-         (str+ "identity:" (pad4 sid) "/surface:" (surface-word-text (car sa))))
-        (t (string-append "identity:" (pad4 sid)))))))
+         (str+ "identity:" sid "/surface:" (surface-word-text (car sa))))
+        (t (string-append "identity:" sid))))))
 
 ; --- primary row status: best of the statuses the row actually carries,
 ; ignoring languages the row has no entry for at all ---
@@ -213,7 +206,7 @@
            (formal (formal-stub sid surfaces))
            (primary (primary-status (raw-statuses surfaces))))
       (str+
-        "  (" (pad4 sid) " " formal
+        "  (" (write-to-string sid) " " formal
         " (uk " (surface-word-wsm-text (car uk)) " " (write-to-string (car (cdr uk))) ")"
         " (ukr " (surface-word-wsm-text (car ukr)) " " (write-to-string (car (cdr ukr))) ")"
         " (en " (surface-word-wsm-text (car en)) " " (write-to-string (car (cdr en))) ")"
@@ -231,7 +224,7 @@
            (sa (get-surface (quote sa) surfaces))
            (primary (primary-status (raw-statuses surfaces))))
       (str+
-        "| `" (pad4 sid) "` | " (surface-word-text (car uk))
+        "| `" sid "` | " (surface-word-text (car uk))
         " | " (surface-word-text (car ukr))
         " | " (write-to-string (car (cdr ukr)))
         " | " (surface-word-text (car en))
@@ -244,12 +237,12 @@
     "; GENERATED — DO NOT EDIT BY HAND"
     "; Authority: lib/surface/semantic-registry.lisp"
     "; Generator: scripts/generate-function-table.lisp (ECO-CANON-1 / my-lisp#75)"
-    "; Schema ft/1: (id formal uk ukr ukr-status en sa sym primary-status authority)"
+    "; Schema ft/2: (sid-bitstring formal uk ukr ukr-status en sa sym primary-status authority)"
     "; uk = current Ukrainian; ukr = full Ukrainian peer surface"
     "; Display order for humans: uk → ukr → English → Sanskrit"
     "; authority = my-lisp (semantic)"
     ""
-    "(ft/1"))
+    "(ft/2"))
 
 (def wsm-body (join-newline (append wsm-header (map render-wsm-row entries))))
 (def wsm-output (string-append wsm-body "
