@@ -46,7 +46,7 @@ jobs:
       - name: Regenerate post-core cache from semantic authority
         run: |
           set -euo pipefail
-          ./target/debug/my-lisp scripts/generate-postcore-peer-cache.lisp
+          timeout 30s ./target/debug/my-lisp scripts/generate-postcore-peer-cache.lisp
           git diff --exit-code -- lib/generated/postcore-stable-peer-projection.lisp
 
       - name: Require core block to equal Lisp-generated projection
