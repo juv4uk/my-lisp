@@ -110,3 +110,12 @@ if [[ "$machine_gpr_atoms_status" != "(machine-current-gpr-atoms-witness (status
   printf 'current machine-atoms Lisp witness failed: %s\n' "$machine_gpr_atoms_status" >&2
   exit 1
 fi
+
+
+# #178: typed immediate/relative-control atoms must compose only already-
+# admitted #176 forms and execute bounded CPU representatives.
+machine_imm_branch_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/machine-immediate-branch-atoms-witness.lisp)"
+if [[ "$machine_imm_branch_status" != "(machine-immediate-branch-atoms-witness (status pass))" ]]; then
+  printf 'immediate/branch machine-atoms Lisp witness failed: %s\n' "$machine_imm_branch_status" >&2
+  exit 1
+fi
