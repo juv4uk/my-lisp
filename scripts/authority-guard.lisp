@@ -18,8 +18,14 @@
 (def second (lambda (x) (car (cdr x))))
 (def third (lambda (x) (car (cdr (cdr x)))))
 
-(def authority-rows (read-all (read-file "tests/authority-inventory.lisp")))
-(def changed-host-tests (read-all (read-file "tests/changed-host-tests.lisp")))
+(def authority-text (read-file "tests/authority-inventory.lisp"))
+(print (quote DEBUG-AFTER-AUTHORITY-READ))
+(def authority-rows (read-all authority-text))
+(print (quote DEBUG-AFTER-AUTHORITY-PARSE))
+(def changed-host-text (read-file "tests/changed-host-tests.lisp"))
+(print (quote DEBUG-AFTER-CHANGES-READ))
+(def changed-host-tests (read-all changed-host-text))
+(print (quote DEBUG-AFTER-CHANGES-PARSE))
 
 (def find-authority
   (lambda (path rows)
