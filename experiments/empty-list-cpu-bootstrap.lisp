@@ -52,3 +52,58 @@
            (list (quote observed) bits)))))))
 
 (empty-list-cpu-bootstrap-witness)
+
+
+; Experimental reversible bit edge.
+; Forward: 00000000 -> 00000001 by setting physical bit 0.
+; Backward: 00000001 -> 00000000 by clearing physical bit 0.
+; These are not arithmetic successor/predecessor claims.
+
+(def ground-bit-forward-forms
+  (lambda ()
+    (list
+      (x86-xor-r64-r64 (quote rax) (quote rax))
+      (x86-bts-r64-imm8 (quote rax) 0)
+      (x86-ret))))
+
+(def ground-bit-backward-forms
+  (lambda ()
+    (list
+      (x86-xor-r64-r64 (quote rax) (quote rax))
+      (x86-bts-r64-imm8 (quote rax) 0)
+      (x86-btr-r64-imm8 (quote rax) 0)
+      (x86-ret))))
+
+(def ground-bit-forward
+  (lambda ()
+    (native-call-bit8-raw
+      (x86-encode-admitted-program
+        (ground-bit-forward-forms)))))
+
+(def ground-bit-backward
+  (lambda ()
+    (native-call-bit8-raw
+      (x86-encode-admitted-program
+        (ground-bit-backward-forms)))))
+
+(def ground-bit-reversible-witness
+  (lambda ()
+    (let ((forward (ground-bit-forward)))
+      (let ((backward (ground-bit-backward)))
+        (cond
+          ((eq forward 00000001) (identity-relation same)
+           (cond
+             ((eq backward 00000000) (identity-relation same)
+              (list
+                (quote ground-bit-reversible)
+                (quote (status pass))
+                (list (quote forward) forward)
+                (list (quote backward) backward)))
+             ((eq backward 00000000) (identity-relation distinct)
+              (list (quote ground-bit-reversible)
+                    (quote (status fail))
+                    (list (quote backward) backward)))))
+          ((eq forward 00000001) (identity-relation distinct)
+           (list (quote ground-bit-reversible)
+                 (quote (status fail))
+                 (list (quote forward) forward))))))))
