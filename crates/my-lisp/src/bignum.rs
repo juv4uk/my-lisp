@@ -68,9 +68,9 @@ impl Magnitude {
 
     /// In-place logical right shift by `bits` (< total bit length).
     /// Pobitovyi zsun vpravo na `bits` bil in-place.
-    fn shr_assign(&mut self, bits: u32) {
-        let limbs = (bits / 32) as usize;
-        let rem = bits % 32;
+    fn shr_assign(&mut self, bits: usize) {
+        let limbs = bits / 32;
+        let rem = (bits % 32) as u32;
         if limbs >= self.0.len() {
             self.0.clear();
             return;
@@ -93,12 +93,12 @@ impl Magnitude {
 
     /// In-place logical left shift by `bits`.
     /// Pobitovyi zsun vlivo na `bits` bil.
-    fn shl_assign(&mut self, bits: u32) {
+    fn shl_assign(&mut self, bits: usize) {
         if self.is_zero() {
             return;
         }
-        let limbs = (bits / 32) as usize;
-        let rem = bits % 32;
+        let limbs = bits / 32;
+        let rem = (bits % 32) as u32;
         if rem > 0 {
             let mut carry = 0u32;
             for limb in self.0.iter_mut() {
@@ -147,6 +147,42 @@ impl Magnitude {
             result.push(carry as u32);
         }
         Magnitude(result).trim()
+    }
+
+    fn bit_and(&self, other: &Self) -> Self {
+        let len = self.0.len().min(other.0.len());
+        Magnitude(
+            (0..len)
+                .map(|i| self.0[i] & other.0[i])
+                .collect(),
+        )
+        .trim()
+    }
+
+    fn bit_or(&self, other: &Self) -> Self {
+        let len = self.0.len().max(other.0.len());
+        Magnitude(
+            (0..len)
+                .map(|i| {
+                    self.0.get(i).copied().unwrap_or(0)
+                        | other.0.get(i).copied().unwrap_or(0)
+                })
+                .collect(),
+        )
+        .trim()
+    }
+
+    fn bit_xor(&self, other: &Self) -> Self {
+        let len = self.0.len().max(other.0.len());
+        Magnitude(
+            (0..len)
+                .map(|i| {
+                    self.0.get(i).copied().unwrap_or(0)
+                        ^ other.0.get(i).copied().unwrap_or(0)
+                })
+                .collect(),
+        )
+        .trim()
     }
 
     /// Assumes `self >= other`; panics otherwise (only called that way from `BigInt`).
@@ -459,6 +495,65 @@ impl BigInt {
         Self::normalized(false, self.magnitude.clone())
     }
 
+    /// Exact bitwise operations over non-negative arbitrary-precision integers.
+    /// Negative operands are deliberately excluded here: width/infinite
+    /// two's-complement semantics are a separate language decision.
+    pub fn bit_and_nonnegative(&self, other: &Self) -> Option<Self> {
+        if self.is_negative() || other.is_negative() {
+            return None;
+        }
+        Some(Self::normalized(
+            false,
+            self.magnitude.bit_and(&other.magnitude),
+        ))
+    }
+
+    pub fn bit_or_nonnegative(&self, other: &Self) -> Option<Self> {
+        if self.is_negative() || other.is_negative() {
+            return None;
+        }
+        Some(Self::normalized(
+            false,
+            self.magnitude.bit_or(&other.magnitude),
+        ))
+    }
+
+    pub fn bit_xor_nonnegative(&self, other: &Self) -> Option<Self> {
+        if self.is_negative() || other.is_negative() {
+            return None;
+        }
+        Some(Self::normalized(
+            false,
+            self.magnitude.bit_xor(&other.magnitude),
+        ))
+    }
+
+    pub fn shift_left_nonnegative(&self, bits: usize) -> Option<Self> {
+        if self.is_negative() {
+            return None;
+        }
+        let mut magnitude = self.magnitude.clone();
+        magnitude.shl_assign(bits);
+        Some(Self::normalized(false, magnitude))
+    }
+
+    pub fn shift_right_nonnegative(&self, bits: usize) -> Option<Self> {
+        if self.is_negative() {
+            return None;
+        }
+        let mut magnitude = self.magnitude.clone();
+        magnitude.shr_assign(bits);
+        Some(Self::normalized(false, magnitude))
+    }
+
+    pub fn to_nonnegative_usize(&self) -> Option<usize> {
+        if self.is_negative() {
+            return None;
+        }
+        let value = self.magnitude.to_u64()?;
+        usize::try_from(value).ok()
+    }
+
     pub fn add(&self, other: &Self) -> Self {
         if self.negative == other.negative {
             Self::normalized(self.negative, self.magnitude.add(&other.magnitude))
@@ -592,10 +687,10 @@ impl BigInt {
         let b_mag = other.abs().magnitude;
         let shared = a_mag.trailing_zeros().min(b_mag.trailing_zeros());
         let mut a = a_mag;
-        a.shr_assign(a.trailing_zeros());
+        a.shr_assign(a.trailing_zeros() as usize);
         let mut b = b_mag;
         loop {
-            b.shr_assign(b.trailing_zeros());
+            b.shr_assign(b.trailing_zeros() as usize);
             if a.cmp(&b) == Ordering::Greater {
                 std::mem::swap(&mut a, &mut b);
             }
@@ -604,7 +699,7 @@ impl BigInt {
                 break;
             }
         }
-        a.shl_assign(shared);
+        a.shl_assign(shared as usize);
         BigInt::normalized(false, a)
     }
 }
@@ -708,12 +803,59 @@ mod tests {
         // shared power-of-two factor must come back via the final SHL
         let two_pow_40 = BigInt::normalized(false, {
             let mut m = Magnitude::from_u64(1); // 1 << 40 — not the zero magnitude
-            m.shl_assign(40);
+            m.shl_assign(40usize);
             m
         });
         let twelve = BigInt::from_i64(12);
         assert_eq!(two_pow_40.gcd(&twelve).to_i64(), Some(4));
         assert_eq!(BigInt::from_i64(0).gcd(&BigInt::zero()).to_i64(), Some(0));
+    }
+
+    #[test]
+    fn nonnegative_bitwise_ops_cross_limb_boundaries() {
+        let one = BigInt::from_i64(1);
+        let mut high_mag = Magnitude::from_u64(1);
+        high_mag.shl_assign(80);
+        let high = BigInt::normalized(false, high_mag);
+
+        let with_low = high.bit_or_nonnegative(&BigInt::from_i64(3)).unwrap();
+        assert_eq!(
+            with_low.to_string(),
+            "1208925819614629174706179"
+        );
+        assert_eq!(
+            with_low
+                .bit_and_nonnegative(&BigInt::from_i64(7))
+                .unwrap()
+                .to_i64(),
+            Some(3)
+        );
+        assert_eq!(
+            with_low
+                .bit_xor_nonnegative(&high)
+                .unwrap()
+                .to_i64(),
+            Some(3)
+        );
+        assert_eq!(
+            one.shift_left_nonnegative(80).unwrap().to_string(),
+            "1208925819614629174706176"
+        );
+        assert_eq!(
+            high.shift_right_nonnegative(79).unwrap().to_i64(),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn nonnegative_bitwise_ops_reject_negative_operands() {
+        let negative = BigInt::from_i64(-1);
+        let one = BigInt::from_i64(1);
+        assert!(negative.bit_and_nonnegative(&one).is_none());
+        assert!(one.bit_or_nonnegative(&negative).is_none());
+        assert!(negative.bit_xor_nonnegative(&one).is_none());
+        assert!(negative.shift_left_nonnegative(1).is_none());
+        assert!(negative.shift_right_nonnegative(1).is_none());
     }
 
     #[test]
