@@ -781,6 +781,10 @@
 ; Keep only unique stable spellings from lib/surface/semantic-registry.lisp.
 ; Candidate spellings are deliberately absent and therefore cannot become
 ; executable merely by appearing in documentation.
+; The block below must byte-match the Lisp-generated projection from
+; semantic-registry + numeric post-core declarations. Do not edit rows by hand;
+; CI compares it with lib/generated/postcore-stable-peer-projection.lisp.
+; BEGIN GENERATED POSTCORE STABLE PEER PROJECTION — scripts/generate-postcore-peer-cache.lisp
 (def my-postcore-stable-peer-projection
   (quote (
     (1079 utc-now поточний-всч)
@@ -798,6 +802,7 @@
     (1091 deadline-after-ns дедлайн-через-нс)
     (1092 internet-time-sync запитати-інтернет-час)
   )))
+; END GENERATED POSTCORE STABLE PEER PROJECTION
 
 (def my-postcore-peer-group
   (lambda (semantic-id groups)

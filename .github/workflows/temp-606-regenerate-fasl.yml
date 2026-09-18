@@ -1,0 +1,42 @@
+name: TEMP 606 Regenerate FASL
+
+on:
+  push:
+    branches:
+      - work/chatgpt-606-generated-postcore-cache
+    paths:
+      - ".github/workflows/temp-606-regenerate-fasl.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: work/chatgpt-606-generated-postcore-cache
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Regenerate exact core FASL
+        run: |
+          set -euo pipefail
+          cargo build -p my-lisp-cli --bin gen-fasl
+          ./target/debug/gen-fasl lib/core.lisp lib/core.lisp.fasl
+          git diff --exit-code -- lib/core.lisp
+
+      - name: Commit only regenerated binary
+        run: |
+          set -euo pipefail
+          test -n "$(git status --porcelain -- lib/core.lisp.fasl)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/core.lisp.fasl
+          git diff --cached --name-only | grep -Fxq 'lib/core.lisp.fasl'
+          test "$(git diff --cached --name-only | wc -l)" -eq 1
+          git commit -m "chore(#606): regenerate core FASL"
+          git push origin HEAD:refs/heads/work/chatgpt-606-generated-postcore-cache

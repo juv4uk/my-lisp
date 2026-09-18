@@ -1,0 +1,17 @@
+(def my-postcore-stable-peer-projection
+  (quote (
+    (1079 utc-now поточний-всч)
+    (1080 utc-from-unix всч-із-юнікс)
+    (1081 unix-time-observation->utc юнікс-спостереження-у-всч)
+    (1082 milliseconds-from-nanoseconds мілісекунди-із-наносекунд)
+    (1083 mono-ms монотонний-мс)
+    (1084 timezone-name назва-часового-поясу)
+    (1085 timezone-detect визначити-часовий-пояс)
+    (1086 timezone-offset-seconds зміщення-часового-поясу-в-секундах)
+    (1087 deadline-reached? дедлайн-досягнуто?)
+    (1088 deadline-reached-at? дедлайн-досягнуто-на-момент?)
+    (1089 elapsed-ns минуло-нс)
+    (1090 deadline-from дедлайн-від)
+    (1091 deadline-after-ns дедлайн-через-нс)
+    (1092 internet-time-sync запитати-інтернет-час)
+  )))
