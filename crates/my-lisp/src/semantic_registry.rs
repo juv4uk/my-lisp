@@ -326,7 +326,7 @@ mod tests {
         assert_contiguous_byte_axis(&rows);
         assert_eq!(rows.len(), 168);
         assert_eq!(rows[0].semantic_id, 0);
-        assert!(rows[0].surfaces.iter().any(|surface| surface.name == "()"));
+        assert!(rows[0].surfaces.is_empty(), "Canon 0 is ground, not a surface spelling");
         assert_eq!(rows.last().map(|row| row.semantic_id), Some(167));
     }
 
