@@ -1,0 +1,28 @@
+name: Verify 506 native-first GREEN
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-506-native-first-green.yml'
+      - 'tests/fixtures/native-first-execution-witness.lisp'
+      - 'lib/machine/dispatch/**'
+
+jobs:
+  green:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build Lisp CLI transport
+        run: cargo build -p my-lisp-cli --bin my-lisp
+      - name: Execute native-first route witness
+        run: |
+          set -euo pipefail
+          actual="$(./target/debug/my-lisp tests/fixtures/native-first-execution-witness.lisp)"
+          printf 'native-first execution witness: %s\n' "$actual"
+          test "$actual" = "(pass pass pass pass)"
+      - name: Verification-only diff is whitespace-clean
+        run: git diff --check "origin/${{ github.base_ref }}...HEAD"
