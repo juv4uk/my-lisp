@@ -123,7 +123,7 @@
 ; 1047: `string-contains?` / `фрагмент-у-тексті?` встановлюються як registry-driven direct peers.
 (define перший-символ-тексту string-first)
 (define решта-символів-тексту string-rest)
-(define відрізати string-slice)
+; 1050: `string-slice` / `відрізати` встановлюються як registry-driven direct peers.
 (define символ-у-текст symbol->string)
 (define текст-у-символ string->symbol)
 (define текст-у-кодову-точку string->codepoint)
