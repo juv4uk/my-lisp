@@ -1,0 +1,24 @@
+name: Verify 509 parity GREEN
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-509-parity-green.yml'
+      - 'tests/fixtures/native-first-parity-witness.lisp'
+      - 'lib/machine/dispatch/native-first-parity.lisp'
+
+jobs:
+  parity-green:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Execute parity witness and require exact GREEN envelope
+        shell: bash
+        run: |
+          output="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/native-first-parity-witness.lisp)"
+          printf '%s\n' "$output"
+          test "$output" = "(native-first-parity-witness (status pass) (cases 4))"
+      - name: Diff hygiene
+        run: git diff --check "origin/${{ github.base_ref }}...HEAD"
