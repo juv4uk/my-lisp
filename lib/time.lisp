@@ -186,9 +186,8 @@
 (def timezone-config
   (lambda (name offset-seconds)
     (cond
-      ((eq (string-membership-helper name)
-           (quote (class-membership string nonmember)))
-       (identity-relation same)
+      ((string-membership-helper name)
+       (class-membership string nonmember)
        (list (quote rejected) (quote invalid-name)))
       ((not (and (= offset-seconds offset-seconds)
                  (>= offset-seconds -86400)
