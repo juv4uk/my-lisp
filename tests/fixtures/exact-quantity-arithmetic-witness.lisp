@@ -69,6 +69,24 @@
           (equal? recovered speed)
           (quote (structural-relation same)))
         (list
+          (quote si-numeric-views-match-authoritative-records)
+          (list
+            (= si:cesium-frequency
+               (scientific-constant-value si:defining-cesium-frequency))
+            (= si:speed-of-light
+               (scientific-constant-value si:defining-speed-of-light))
+            (= si:planck-constant
+               (scientific-constant-value si:defining-planck-constant))
+            (= si:elementary-charge
+               (scientific-constant-value si:defining-elementary-charge))
+            (= si:boltzmann-constant
+               (scientific-constant-value si:defining-boltzmann-constant))
+            (= si:avogadro-constant
+               (scientific-constant-value si:defining-avogadro-constant))
+            (= si:luminous-efficacy
+               (scientific-constant-value si:defining-luminous-efficacy)))
+          (quote (1 1 1 1 1 1 1)))
+        (list
           (quote speed-constant-knowledge-projection)
           (scientific-constant->clauses si:defining-speed-of-light)
           (quote
