@@ -6,16 +6,31 @@ on:
       - tmp/gen-fasl-core-655-current
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: true
       - uses: dtolnay/rust-toolchain@stable
       - name: Generate current core FASL
         run: cargo run -p my-lisp-cli --bin gen-fasl -- lib/core.lisp lib/core.lisp.fasl
+      - name: Commit generated FASL
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/core.lisp.fasl
+          if git diff --cached --quiet; then
+            echo "FASL unchanged"
+            exit 0
+          fi
+          git commit -m "chore: regenerate core FASL [skip ci]"
+          git push origin HEAD
       - uses: actions/upload-artifact@v4
         with:
           name: core-fasl-655-current
