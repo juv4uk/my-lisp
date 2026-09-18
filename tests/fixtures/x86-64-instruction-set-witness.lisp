@@ -514,15 +514,17 @@
       (x86-admitted-instruction?
         (quote (aeskeygenassist-xmm-xmm-imm8 xmm6 xmm7 27)))
       t)
-     ((admission aes-ni-register-family-valid)
-      (x86-admitted-program?
-        (quote
-          ((aesenc-xmm-xmm xmm0 xmm1)
-           (aesenclast-xmm-xmm xmm2 xmm3)
-           (aesdec-xmm-xmm xmm8 xmm9)
-           (aesdeclast-xmm-xmm xmm15 xmm14)
-           (aesimc-xmm-xmm xmm4 xmm5)
-           (aeskeygenassist-xmm-xmm-imm8 xmm6 xmm7 27))))
+     ((admission aesenclast-valid)
+      (x86-admitted-instruction? (quote (aesenclast-xmm-xmm xmm2 xmm3)))
+      t)
+     ((admission aesdec-valid)
+      (x86-admitted-instruction? (quote (aesdec-xmm-xmm xmm8 xmm9)))
+      t)
+     ((admission aesdeclast-valid)
+      (x86-admitted-instruction? (quote (aesdeclast-xmm-xmm xmm15 xmm14)))
+      t)
+     ((admission aesimc-valid)
+      (x86-admitted-instruction? (quote (aesimc-xmm-xmm xmm4 xmm5)))
       t)
      ((encode aes-ni-admitted-program)
       (x86-encode-admitted-program
