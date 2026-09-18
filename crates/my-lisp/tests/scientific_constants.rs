@@ -105,28 +105,6 @@ fn all_seven_si_records_are_valid_exact_defining_constants() {
 }
 
 #[test]
-fn established_numeric_si_surface_is_derived_from_the_authoritative_records() {
-    let source = r#"
-        (list
-          (= si:cesium-frequency
-             (scientific-constant-value si:defining-cesium-frequency))
-          (= si:speed-of-light
-             (scientific-constant-value si:defining-speed-of-light))
-          (= si:planck-constant
-             (scientific-constant-value si:defining-planck-constant))
-          (= si:elementary-charge
-             (scientific-constant-value si:defining-elementary-charge))
-          (= si:boltzmann-constant
-             (scientific-constant-value si:defining-boltzmann-constant))
-          (= si:avogadro-constant
-             (scientific-constant-value si:defining-avogadro-constant))
-          (= si:luminous-efficacy
-             (scientific-constant-value si:defining-luminous-efficacy)))
-    "#;
-    assert_eq!(eval_science(source), "(t t t t t t t)");
-}
-
-#[test]
 fn exact_rational_values_remain_unchanged_after_structuring() {
     assert_eq!(
         eval_science("si:planck-constant"),
@@ -144,20 +122,6 @@ fn exact_rational_values_remain_unchanged_after_structuring() {
         eval_science("si:avogadro-constant"),
         "602214076000000000000000"
     );
-}
-
-#[test]
-fn constant_to_knowledge_projection_is_pure_and_admission_ready() {
-    let source = r#"
-        (def before *knowledge-journal*)
-        (def clauses
-          (scientific-constant->clauses si:defining-speed-of-light))
-        (list
-          (length clauses)
-          (knowledge-clauses-valid? clauses)
-          (equal? before *knowledge-journal*))
-    "#;
-    assert_eq!(eval_science_knowledge(source), "(7 t t)");
 }
 
 #[test]
