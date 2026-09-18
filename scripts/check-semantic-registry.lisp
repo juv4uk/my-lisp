@@ -377,12 +377,15 @@
        (cond
          ((atom (cdr values)) (structural-kind empty-list) (car values))
          ((atom (cdr values)) (structural-kind atom)
-          (string-append (car values) " " (cdr values)))
+          (string-append
+            (car values)
+            (string-append " " (cdr values))))
          ((atom (cdr values)) (structural-kind pair)
           (string-append
             (car values)
-            " "
-            (sr-join-space (cdr values)))))))))
+            (string-append
+              " "
+              (sr-join-space (cdr values))))))))))
 
 (def sr-source
   (read-file "lib/surface/semantic-registry.lisp"))
