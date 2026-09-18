@@ -58,7 +58,10 @@ jobs:
           interpreted="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- /tmp/encoder-ret-interpreted.lisp)"
           printf 'INTERPRETED_ENCODER_RET=%s\n' "$interpreted"
 
-          cat lib/core.lisp lib/machine/encoding/x86-64.lisp > /tmp/encoder-ret-compiled.lisp
+          list_def_count="$(grep -Fxc '(def list (lambda args args))' lib/core.lisp)"
+          test "$list_def_count" = "1"
+          grep -Fx '(def list (lambda args args))' lib/core.lisp > /tmp/encoder-ret-compiled.lisp
+          cat lib/machine/encoding/x86-64.lisp >> /tmp/encoder-ret-compiled.lisp
           printf '\n(x86-encode-ret)\n' >> /tmp/encoder-ret-compiled.lisp
 
           (cd /tmp/cml-pinned && cargo run --quiet --bin cml -- build /tmp/encoder-ret-compiled.lisp -o /tmp/encoder-ret-host)
