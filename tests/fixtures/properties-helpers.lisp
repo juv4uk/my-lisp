@@ -9,8 +9,15 @@
     (cond
       ((atom l) t)
       ((atom (cdr l)) t)
-      ((string<? (car (car (cdr l))) (car (car l))) (quote ()))
-      (t (map-keys-sorted? (cdr l))))))
+      ((let ((order (string-order (car (car (cdr l))) (car (car l)))))
+         (cond
+           ((eq order (quote (text-order before))) (identity-relation same) (quote ()))
+           ((eq order (quote (text-order same))) (identity-relation same)
+            (map-keys-sorted? (cdr l)))
+           ((eq order (quote (text-order after))) (identity-relation same)
+            (map-keys-sorted? (cdr l)))))
+       (identity-relation same)
+       (quote ()))
 
 (def fib
   (lambda (n)
