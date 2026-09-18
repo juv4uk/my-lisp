@@ -1,0 +1,30 @@
+name: Verify 1061 RED
+
+on:
+  push:
+    branches:
+      - work/chatgpt-uk-peer-1061
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-1061-direct-peer:
+    name: Require 1061 UK peer to have no EN bridge
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Require registry-driven topology and compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Fqx '(define значення-у-текст write-to-string)' lib/surface/uk.lisp; then
+            echo '1061 RED: stable UK значення-у-текст still routes through EN write-to-string' >&2
+            exit 1
+          fi
+          grep -Fqx '(define у-текст write-to-string)' lib/surface/uk.lisp
+      - name: Prove stable UK runtime identity
+        run: cargo test -p my-lisp --test uk_surface_equivalence every_stable_uk_surface_entry_resolves_to_its_declared_operation -- --exact
