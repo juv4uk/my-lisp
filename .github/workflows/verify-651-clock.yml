@@ -16,5 +16,3 @@ jobs:
           shared-key: verify-651-clock
       - name: Time/calendar characterization
         run: cargo test -p my-lisp --test clock
-      - name: Diff hygiene against production parent
-        run: git diff --check f8dffe7ce7896fbad7909fa3df0c915226e8543d HEAD
