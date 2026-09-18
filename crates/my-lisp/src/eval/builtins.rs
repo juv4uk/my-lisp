@@ -477,7 +477,7 @@ pub(crate) fn install(environment: &Environment) {
     define_peer_builtin(
         environment,
         "<",
-        "1014",
+        26,
         std::rc::Rc::new(|args: &[Value], _env: &Environment, span: Span| {
             comparison_on_values("<", args, span)
         }),
@@ -485,7 +485,7 @@ pub(crate) fn install(environment: &Environment) {
     define_peer_builtin(
         environment,
         ">",
-        "1015",
+        27,
         std::rc::Rc::new(|args: &[Value], _env: &Environment, span: Span| {
             comparison_on_values(">", args, span)
         }),
@@ -493,7 +493,7 @@ pub(crate) fn install(environment: &Environment) {
     define_peer_builtin(
         environment,
         "=",
-        "1016",
+        28,
         std::rc::Rc::new(|args: &[Value], _env: &Environment, span: Span| {
             comparison_on_values("=", args, span)
         }),
