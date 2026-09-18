@@ -23,6 +23,8 @@ SURFACE = re.compile(
 def extract_registry_names(path: Path) -> set[str]:
     names: set[str] = set()
     for surface, name, _exception_status in SURFACE.findall(path.read_text(encoding="utf-8")):
+        if len(name) >= 2 and name[0] == name[-1] == '"':
+            name = name[1:-1]
         if name != "—":
             names.add(name)
     return names
