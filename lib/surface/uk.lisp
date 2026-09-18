@@ -122,7 +122,7 @@
 ; 1046: `string-prefix?` / `префікс-тексту?` встановлюються як registry-driven direct peers.
 ; 1047: `string-contains?` / `фрагмент-у-тексті?` встановлюються як registry-driven direct peers.
 ; 1048: `string-first` / `перший-символ-тексту` встановлюються як registry-driven direct peers.
-(define решта-символів-тексту string-rest)
+; 1049: `string-rest` / `решта-символів-тексту` встановлюються як registry-driven direct peers.
 (define відрізати string-slice)
 (define символ-у-текст symbol->string)
 (define текст-у-символ string->symbol)
