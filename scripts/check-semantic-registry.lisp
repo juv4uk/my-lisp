@@ -414,18 +414,21 @@
                (a (princ
                     (string-append
                       "semantic registry: "
-                      (number->string identity-count)
-                      " identities\n")))
+                      (string-append
+                        (number->string identity-count)
+                        " identities\n"))))
                (b (princ
                     (string-append
                       "surfaces: "
-                      (sr-join-space surface-names)
-                      "\n")))
+                      (string-append
+                        (sr-join-space surface-names)
+                        "\n"))))
                (c (princ
                     (string-append
                       "shared symbolic identities: "
-                      (number->string symbolic-count)
-                      "\n")))
+                      (string-append
+                        (number->string symbolic-count)
+                        "\n"))))
                (d (princ "numeric-only authority: CONFIRMED\n"))
                (e (princ "meaning-first shape: CONFIRMED\n")))
           (quote semantic-registry-ok)))))))
