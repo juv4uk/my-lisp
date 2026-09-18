@@ -49,6 +49,9 @@ pub enum ExprKind {
     Rational(Rational),
     NumericBuffer(NumericBuffer),
     String(Rc<str>),
+    /// Exactly eight source bits kept as an opaque byte-pattern identity.
+    /// The u8 is storage only: BitPattern8(0) is not the numeric value 0.
+    BitPattern8(u8),
     Symbol(Rc<str>),
     List(Rc<[Expr]>),
     /// A reader-level dotted pair, `(a . b)` — distinct from `List` because a
@@ -96,6 +99,7 @@ pub(crate) mod fasl {
     const TAG_SYMBOL: u8 = 4;
     const TAG_LIST: u8 = 5;
     const TAG_PAIR: u8 = 6;
+    const TAG_BIT_PATTERN_8: u8 = 7;
 
     fn put_u32(out: &mut Vec<u8>, v: u32) {
         out.extend_from_slice(&v.to_le_bytes());
@@ -138,6 +142,10 @@ pub(crate) mod fasl {
                 out.push(TAG_SYMBOL);
                 put_str(out, symbol);
             }
+            ExprKind::BitPattern8(bits) => {
+                out.push(TAG_BIT_PATTERN_8);
+                out.push(*bits);
+            }
             ExprKind::List(items) => {
                 out.push(TAG_LIST);
                 put_u32(out, items.len() as u32);
@@ -177,6 +185,11 @@ pub(crate) mod fasl {
             TAG_RATIONAL => ExprKind::Rational(Rational::read_fasl(bytes, pos)?),
             TAG_STRING => ExprKind::String(get_str(bytes, pos)?.into()),
             TAG_SYMBOL => ExprKind::Symbol(get_str(bytes, pos)?.into()),
+            TAG_BIT_PATTERN_8 => {
+                let bits = *bytes.get(*pos)?;
+                *pos += 1;
+                ExprKind::BitPattern8(bits)
+            },
             TAG_LIST => {
                 let count = get_u32(bytes, pos)? as usize;
                 let mut items = Vec::with_capacity(count.min(1 << 22));
