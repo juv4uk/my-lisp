@@ -38,13 +38,3 @@ fn non_symbol_predicate_head_is_invalid() {
         "(invalid invalid-goal (42 earth))"
     );
 }
-
-#[test]
-fn well_formed_explicit_negative_remains_a_valid_query() {
-    assert_eq!(
-        observe(
-            r#"(result-status (reason-observe (quote (not (planet earth))) (quote ())))"#
-        ),
-        "unknown"
-    );
-}

@@ -156,6 +156,502 @@
         ((x86-machine-rejected? memory) memory)
         (t (x86-mov-r64-mem64 destination memory))))))
 
+; #178 — composable atoms for register/implicit forms that #176 already
+; admits and encodes. These constructors reuse typed GPR/memory operands and
+; contain no opcode/REX/ModR/M facts. Byte operations use explicit gpr8;
+; MOVSXD uses an explicit gpr32 view; ordinary operations remain gpr64.
+
+(def x86-mov-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote mov-r64-r64) destination source)))
+
+(def x86-test-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote test-r64-r64) destination source)))
+
+(def x86-imul-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote imul-r64-r64) destination source)))
+
+(def x86-not-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote not-r64) register)))
+
+(def x86-neg-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote neg-r64) register)))
+
+(def x86-idiv-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote idiv-r64) register)))
+
+(def x86-call-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote call-r64) register)))
+
+(def x86-jmp-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote jmp-r64) register)))
+
+(def x86-cqo
+  (lambda ()
+    (quote (cqo))))
+
+(def x86-unary-gpr8-form
+  (lambda (mnemonic register)
+    (let ((typed-register (x86-as-gpr8 register)))
+      (cond
+        ((x86-machine-rejected? typed-register) typed-register)
+        (t
+         (list mnemonic (x86-gpr8-value typed-register)))))))
+
+(def x86-gpr64-gpr8-form
+  (lambda (mnemonic destination source)
+    (let ((typed-destination (x86-as-gpr64 destination)))
+      (cond
+        ((x86-machine-rejected? typed-destination) typed-destination)
+        (t
+         (let ((typed-source (x86-as-gpr8 source)))
+           (cond
+             ((x86-machine-rejected? typed-source) typed-source)
+             (t
+              (list mnemonic
+                    (x86-gpr64-value typed-destination)
+                    (x86-gpr8-value typed-source))))))))))
+
+(def x86-gpr64-gpr32-form
+  (lambda (mnemonic destination source)
+    (let ((typed-destination (x86-as-gpr64 destination)))
+      (cond
+        ((x86-machine-rejected? typed-destination) typed-destination)
+        (t
+         (let ((typed-source (x86-as-gpr32 source)))
+           (cond
+             ((x86-machine-rejected? typed-source) typed-source)
+             (t
+              (list mnemonic
+                    (x86-gpr64-value typed-destination)
+                    (x86-gpr32-value typed-source))))))))))
+
+(def x86-seto-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote seto-r8) register)))
+
+(def x86-setno-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setno-r8) register)))
+
+(def x86-setb-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setb-r8) register)))
+
+(def x86-setc-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setc-r8) register)))
+
+(def x86-setnb-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setnb-r8) register)))
+
+(def x86-setnc-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setnc-r8) register)))
+
+(def x86-setae-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setae-r8) register)))
+
+(def x86-setz-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setz-r8) register)))
+
+(def x86-sete-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote sete-r8) register)))
+
+(def x86-setnz-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setnz-r8) register)))
+
+(def x86-setne-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setne-r8) register)))
+
+(def x86-setbe-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setbe-r8) register)))
+
+(def x86-setna-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setna-r8) register)))
+
+(def x86-setnbe-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setnbe-r8) register)))
+
+(def x86-seta-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote seta-r8) register)))
+
+(def x86-sets-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote sets-r8) register)))
+
+(def x86-setns-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setns-r8) register)))
+
+(def x86-setp-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setp-r8) register)))
+
+(def x86-setpe-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setpe-r8) register)))
+
+(def x86-setnp-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setnp-r8) register)))
+
+(def x86-setpo-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setpo-r8) register)))
+
+(def x86-setl-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setl-r8) register)))
+
+(def x86-setnge-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setnge-r8) register)))
+
+(def x86-setnl-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setnl-r8) register)))
+
+(def x86-setge-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setge-r8) register)))
+
+(def x86-setle-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setle-r8) register)))
+
+(def x86-setng-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setng-r8) register)))
+
+(def x86-setnle-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setnle-r8) register)))
+
+(def x86-setg-r8
+  (lambda (register)
+    (x86-unary-gpr8-form (quote setg-r8) register)))
+
+(def x86-movzx-r64-r8
+  (lambda (destination source)
+    (x86-gpr64-gpr8-form (quote movzx-r64-r8) destination source)))
+
+(def x86-movsx-r64-r8
+  (lambda (destination source)
+    (x86-gpr64-gpr8-form (quote movsx-r64-r8) destination source)))
+
+(def x86-movsxd-r64-r32
+  (lambda (destination source)
+    (x86-gpr64-gpr32-form (quote movsxd-r64-r32) destination source)))
+
+(def x86-cmovo-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovo-r64-r64) destination source)))
+
+(def x86-cmovno-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovno-r64-r64) destination source)))
+
+(def x86-cmovb-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovb-r64-r64) destination source)))
+
+(def x86-cmovc-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovc-r64-r64) destination source)))
+
+(def x86-cmovnb-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovnb-r64-r64) destination source)))
+
+(def x86-cmovnc-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovnc-r64-r64) destination source)))
+
+(def x86-cmovae-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovae-r64-r64) destination source)))
+
+(def x86-cmovz-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovz-r64-r64) destination source)))
+
+(def x86-cmove-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmove-r64-r64) destination source)))
+
+(def x86-cmovnz-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovnz-r64-r64) destination source)))
+
+(def x86-cmovne-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovne-r64-r64) destination source)))
+
+(def x86-cmovbe-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovbe-r64-r64) destination source)))
+
+(def x86-cmovna-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovna-r64-r64) destination source)))
+
+(def x86-cmovnbe-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovnbe-r64-r64) destination source)))
+
+(def x86-cmova-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmova-r64-r64) destination source)))
+
+(def x86-cmovs-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovs-r64-r64) destination source)))
+
+(def x86-cmovns-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovns-r64-r64) destination source)))
+
+(def x86-cmovp-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovp-r64-r64) destination source)))
+
+(def x86-cmovpe-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovpe-r64-r64) destination source)))
+
+(def x86-cmovnp-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovnp-r64-r64) destination source)))
+
+(def x86-cmovpo-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovpo-r64-r64) destination source)))
+
+(def x86-cmovl-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovl-r64-r64) destination source)))
+
+(def x86-cmovnge-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovnge-r64-r64) destination source)))
+
+(def x86-cmovnl-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovnl-r64-r64) destination source)))
+
+(def x86-cmovge-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovge-r64-r64) destination source)))
+
+(def x86-cmovle-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovle-r64-r64) destination source)))
+
+(def x86-cmovng-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovng-r64-r64) destination source)))
+
+(def x86-cmovnle-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovnle-r64-r64) destination source)))
+
+(def x86-cmovg-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote cmovg-r64-r64) destination source)))
+
+(def x86-nop
+  (lambda ()
+    (quote (nop))))
+
+(def x86-bt-r64-r64
+  (lambda (base index)
+    (x86-binary-gpr64-form (quote bt-r64-r64) base index)))
+
+(def x86-popcnt-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote popcnt-r64-r64) destination source)))
+
+(def x86-tzcnt-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote tzcnt-r64-r64) destination source)))
+
+(def x86-bsf-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote bsf-r64-r64) destination source)))
+
+(def x86-bsr-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form (quote bsr-r64-r64) destination source)))
+
+(def x86-bswap-r64
+  (lambda (register)
+    (x86-unary-gpr64-form (quote bswap-r64) register)))
+
+(def x86-xchg-r64-r64
+  (lambda (left right)
+    (x86-binary-gpr64-form (quote xchg-r64-r64) left right)))
+
+(def x86-cld (lambda () (quote (cld))))
+(def x86-std (lambda () (quote (std))))
+(def x86-stosq (lambda () (quote (stosq))))
+(def x86-rep-stosq (lambda () (quote (rep-stosq))))
+(def x86-stosb (lambda () (quote (stosb))))
+(def x86-rep-stosb (lambda () (quote (rep-stosb))))
+(def x86-movsq (lambda () (quote (movsq))))
+(def x86-rep-movsq (lambda () (quote (rep-movsq))))
+(def x86-movsb (lambda () (quote (movsb))))
+(def x86-rep-movsb (lambda () (quote (rep-movsb))))
+
+(def x86-lea-r64-mem64
+  (lambda (destination memory)
+    (let ((typed-destination (x86-as-gpr64 destination)))
+      (cond
+        ((x86-machine-rejected? typed-destination) typed-destination)
+        (t
+         (let ((typed-memory (x86-as-mem64-disp8 memory)))
+           (cond
+             ((x86-machine-rejected? typed-memory) typed-memory)
+             (t
+              (list (quote lea-r64-mem-disp8)
+                    (x86-gpr64-value typed-destination)
+                    (x86-mem64-disp8-base typed-memory)
+                    (x86-mem64-disp8-displacement typed-memory))))))))))
+
+(def x86-lea-r64-mem-disp8
+  (lambda (destination base displacement)
+    (let ((memory (x86-mem64-disp8 base displacement)))
+      (cond
+        ((x86-machine-rejected? memory) memory)
+        (t (x86-lea-r64-mem64 destination memory))))))
+
+; Current admitted XMM and late #176 forms. These atoms own only typed
+; composition; prefix/opcode/ModR/M facts remain in encoding/x86-64.lisp.
+
+(def x86-binary-xmm-form
+  (lambda (mnemonic destination source)
+    (let ((typed-destination (x86-as-xmm destination)))
+      (cond
+        ((x86-machine-rejected? typed-destination) typed-destination)
+        (t
+         (let ((typed-source (x86-as-xmm source)))
+           (cond
+             ((x86-machine-rejected? typed-source) typed-source)
+             (t
+              (list mnemonic
+                    (x86-xmm-value typed-destination)
+                    (x86-xmm-value typed-source))))))))))
+
+(def x86-xmm-gpr64-form
+  (lambda (mnemonic destination source)
+    (let ((typed-destination (x86-as-xmm destination)))
+      (cond
+        ((x86-machine-rejected? typed-destination) typed-destination)
+        (t
+         (let ((typed-source (x86-as-gpr64 source)))
+           (cond
+             ((x86-machine-rejected? typed-source) typed-source)
+             (t
+              (list mnemonic
+                    (x86-xmm-value typed-destination)
+                    (x86-gpr64-value typed-source))))))))))
+
+(def x86-gpr64-xmm-form
+  (lambda (mnemonic destination source)
+    (let ((typed-destination (x86-as-gpr64 destination)))
+      (cond
+        ((x86-machine-rejected? typed-destination) typed-destination)
+        (t
+         (let ((typed-source (x86-as-xmm source)))
+           (cond
+             ((x86-machine-rejected? typed-source) typed-source)
+             (t
+              (list mnemonic
+                    (x86-gpr64-value typed-destination)
+                    (x86-xmm-value typed-source))))))))))
+
+(def x86-rdtsc (lambda () (quote (rdtsc))))
+
+(def x86-cmpxchg-r64-r64
+  (lambda (destination source)
+    (x86-binary-gpr64-form
+      (quote cmpxchg-r64-r64)
+      destination
+      source)))
+
+(def x86-movsd-xmm-xmm
+  (lambda (destination source)
+    (x86-binary-xmm-form (quote movsd-xmm-xmm) destination source)))
+(def x86-addsd-xmm-xmm
+  (lambda (destination source)
+    (x86-binary-xmm-form (quote addsd-xmm-xmm) destination source)))
+(def x86-subsd-xmm-xmm
+  (lambda (destination source)
+    (x86-binary-xmm-form (quote subsd-xmm-xmm) destination source)))
+(def x86-mulsd-xmm-xmm
+  (lambda (destination source)
+    (x86-binary-xmm-form (quote mulsd-xmm-xmm) destination source)))
+(def x86-divsd-xmm-xmm
+  (lambda (destination source)
+    (x86-binary-xmm-form (quote divsd-xmm-xmm) destination source)))
+(def x86-sqrtsd-xmm-xmm
+  (lambda (destination source)
+    (x86-binary-xmm-form (quote sqrtsd-xmm-xmm) destination source)))
+(def x86-maxsd-xmm-xmm
+  (lambda (destination source)
+    (x86-binary-xmm-form (quote maxsd-xmm-xmm) destination source)))
+(def x86-minsd-xmm-xmm
+  (lambda (destination source)
+    (x86-binary-xmm-form (quote minsd-xmm-xmm) destination source)))
+(def x86-ucomisd-xmm-xmm
+  (lambda (left right)
+    (x86-binary-xmm-form (quote ucomisd-xmm-xmm) left right)))
+(def x86-xorpd-xmm-xmm
+  (lambda (destination source)
+    (x86-binary-xmm-form (quote xorpd-xmm-xmm) destination source)))
+
+(def x86-cvtsi2sd-xmm-r64
+  (lambda (destination source)
+    (x86-xmm-gpr64-form
+      (quote cvtsi2sd-xmm-r64)
+      destination
+      source)))
+(def x86-cvttsd2si-r64-xmm
+  (lambda (destination source)
+    (x86-gpr64-xmm-form
+      (quote cvttsd2si-r64-xmm)
+      destination
+      source)))
+(def x86-movq-xmm-r64
+  (lambda (destination source)
+    (x86-xmm-gpr64-form
+      (quote movq-xmm-r64)
+      destination
+      source)))
+(def x86-movq-r64-xmm
+  (lambda (destination source)
+    (x86-gpr64-xmm-form
+      (quote movq-r64-xmm)
+      destination
+      source)))
+
 (def x86-encode-machine-block
   (lambda (block)
     (x86-encode-admitted-program-or-reject (machine-block-forms block))))

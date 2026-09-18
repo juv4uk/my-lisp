@@ -2,6 +2,12 @@
 ; This witness preserves both the surviving Planck×Cs exact-energy law and
 ; the retired speed-of-light product->quotient inverse law before the last
 ; Rust semantic test for this slice is deleted.
+;
+; #369 extends the same Lisp-owned witness with quantity-library behavior that
+; depends on symbol classification. The public projection is preserved rather
+; than ratifying the validators' historical t/() implementation detail:
+; a valid SI constant projects exactly, while a record whose NAME is a string
+; does not project at all.
 
 (load "lib/quantity.lisp")
 (load "lib/si.lisp")
@@ -61,7 +67,41 @@
         (list
           (quote quotient-inverse)
           (equal? recovered speed)
-          (quote (structural-relation same)))))))
+          (quote (structural-relation same)))
+        (list
+          (quote speed-constant-knowledge-projection)
+          (scientific-constant->clauses si:defining-speed-of-light)
+          (quote
+            (((scientific-constant si:speed-of-light))
+             ((constant-value si:speed-of-light 299792458))
+             ((constant-unit
+                si:speed-of-light
+                (unit/1
+                  (dimension/1 metre 1)
+                  (dimension/1 second -1))))
+             ((constant-status si:speed-of-light exact-by-definition))
+             ((constant-kind si:speed-of-light physical-defining))
+             ((constant-system si:speed-of-light si))
+             ((constant-source
+                si:speed-of-light
+                (science-source/1 bipm-si-brochure-9 2019))))))
+        (list
+          (quote malformed-short-constant-does-not-project)
+          (scientific-constant->clauses
+            (quote (scientific-constant/1 broken)))
+          (quote ()))
+        (list
+          (quote invalid-string-name-does-not-project)
+          (scientific-constant->clauses
+            (quote
+              (scientific-constant/1 "not-a-symbol"
+                (quantity/1 299792458
+                  (unit/1
+                    (dimension/1 metre 1)
+                    (dimension/1 second -1)))
+                exact-by-definition physical-defining si
+                (science-source/1 bipm-si-brochure-9 2019))))
+          (quote ()))))))
 
 (def exact-quantity-arithmetic-check
   (lambda (rows)

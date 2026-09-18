@@ -116,11 +116,11 @@
 ;; Рядки
 ;; ═══════════════════════════════════════════════════════════════
 
-(define зчепити string-append)
-(define довжина-тексту string-length)
-(define текст-порожній? string-empty?)
-(define префікс-тексту? string-prefix?)
-(define фрагмент-у-тексті? string-contains?)
+; 1043: `string-append` / `зчепити` встановлюються як registry-driven direct peers.
+; 1044: `string-length` / `довжина-тексту` встановлюються як registry-driven direct peers.
+; 1045: `string-empty?` / `текст-порожній?` / `порожній-текст?` встановлюються як registry-driven direct peers.
+; 1046: `string-prefix?` / `префікс-тексту?` встановлюються як registry-driven direct peers.
+; 1047: `string-contains?` / `фрагмент-у-тексті?` встановлюються як registry-driven direct peers.
 (define перший-символ-тексту string-first)
 (define решта-символів-тексту string-rest)
 (define відрізати string-slice)

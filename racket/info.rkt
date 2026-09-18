@@ -10,7 +10,10 @@
 (define pkg-desc
   "my-lisp — канонічний Lisp (примітиви Маккарті) як мова #lang для Racket/DrRacket")
 (define pkg-authors '(my-lisp))
-(define license 'MIT)
+
+;; Racket package metadata accepts SPDX license expressions only.
+;; ВОЛЬНІСТЬ is the repository's custom author license, so we deliberately
+;; do not invent an SPDX identifier here; the canonical text is ../LICENSE.
 
 ;; Залежності пакета. "base" — мінімальне ядро Racket;
 ;; у повному дистрибутиві (з DrRacket) усе решта вже є.

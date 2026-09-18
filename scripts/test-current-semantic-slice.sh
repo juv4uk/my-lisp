@@ -73,3 +73,60 @@ if [[ "$reason_index_status" != "(reason-index-authority-witness (status pass) (
   printf 'reason-index Lisp witness failed: %s\n' "$reason_index_status" >&2
   exit 1
 fi
+
+# #408 / #305: a well-formed explicit negative is a valid reasoning goal, and
+# no evidence for either side remains Canon 0 unless a named completeness
+# contract establishes a richer epistemic status. The shell observes only the
+# Lisp witness's pass envelope before the stale Rust `unknown` oracle retires.
+explicit_negative_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/explicit-negative-reason-observe-witness.lisp)"
+if [[ "$explicit_negative_status" != "(explicit-negative-reason-observe-witness (status pass))" ]]; then
+  printf 'explicit-negative reasoning Lisp witness failed: %s\n' "$explicit_negative_status" >&2
+  exit 1
+fi
+
+# #176: admitted x86-64 instructions (LEA, JMP rel32, Jcc rel32) encode
+# deterministically and enforce admission bounds in Lisp. The shell observes
+# only the named pass envelope.
+x86_instruction_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/x86-64-instruction-set-witness.lisp)"
+if [[ "$x86_instruction_status" != "(x86-64-instruction-set-witness (status pass))" ]]; then
+  printf 'x86-64 instruction set Lisp witness failed: %s\n' "$x86_instruction_status" >&2
+  exit 1
+fi
+
+
+# #491: encoder aliases may share register codes, but typed machine operands
+# must preserve byte-vs-64-bit width discipline.
+machine_register_width_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/machine-register-width-witness.lisp)"
+if [[ "$machine_register_width_status" != "(machine-register-width-witness (status pass))" ]]; then
+  printf 'machine register-width witness failed: %s\n' "$machine_register_width_status" >&2
+  exit 1
+fi
+
+
+# #178: typed machine atoms cover current admitted GPR/XMM composition and
+# execute representative integer/SSE2 paths on the physical CPU.
+machine_gpr_atoms_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/machine-current-gpr-atoms-witness.lisp)"
+if [[ "$machine_gpr_atoms_status" != "(machine-current-gpr-atoms-witness (status pass))" ]]; then
+  printf 'current machine-atoms Lisp witness failed: %s\n' "$machine_gpr_atoms_status" >&2
+  exit 1
+fi
+
+
+# #506: native-first execution bridge must expose route provenance, execute
+# admitted plans on the CPU, fall back before admission only, and never mask
+# a chosen native-plan rejection by re-running through the evaluator.
+native_first_execution_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/native-first-execution-witness.lisp)"
+if [[ "$native_first_execution_status" != "(pass pass pass pass pass)" ]]; then
+  printf 'native-first execution bridge witness failed: %s\n' "$native_first_execution_status" >&2
+  exit 1
+fi
+
+
+# #509: every admitted native-first island must agree with independent
+# Lisp-owned expected evidence AND the reference evaluator, while proving the
+# observed execution route is really native rather than a hidden fallback.
+native_first_parity_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/native-first-parity-witness.lisp)"
+if [[ "$native_first_parity_status" != "(native-first-parity-witness (status pass) (cases 4))" ]]; then
+  printf 'native/evaluator differential parity witness failed: %s\n' "$native_first_parity_status" >&2
+  exit 1
+fi
