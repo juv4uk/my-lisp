@@ -91,8 +91,12 @@
 (def surface-word-text
   (lambda (word)
     (cond
-      ((string? word) word)
-      (t (write-to-string word)))))
+      ((eq (string-membership-helper word)
+           (quote (class-membership string member)))
+       (identity-relation same)
+       word)
+      ((identity-relation same) (identity-relation same)
+       (write-to-string word)))))
 
 ; For the machine-readable .lisp output specifically, a bare apostrophe
 ; word must NOT be re-embedded unquoted: a future reader of this
