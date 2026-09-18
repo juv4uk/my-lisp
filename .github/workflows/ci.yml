@@ -14,8 +14,6 @@ jobs:
   pr-focused:
     name: focused PR verification
     if: github.event_name == 'pull_request'
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -28,30 +26,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: pr-focused
-
-      - name: TEMP #655 regenerate current core FASL on repair branch
-        if: github.event.pull_request.head.ref == 'repair/655-core-fasl-current-main'
-        env:
-          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin "$HEAD_BRANCH"
-          git checkout -B "$HEAD_BRANCH" "origin/$HEAD_BRANCH"
-          cargo build -p my-lisp-cli --bin gen-fasl
-          ./target/debug/gen-fasl lib/core.lisp lib/core.lisp.fasl
-          git diff --exit-code -- lib/core.lisp
-          if git diff --quiet -- lib/core.lisp.fasl; then
-            echo "core FASL already fresh"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/core.lisp.fasl
-          git diff --cached --name-only | grep -Fxq 'lib/core.lisp.fasl'
-          test "$(git diff --cached --name-only | wc -l)" -eq 1
-          git commit -m "chore(#655): regenerate core FASL"
-          git push origin HEAD:"refs/heads/$HEAD_BRANCH"
 
       - name: Classify changed paths
         id: changes
