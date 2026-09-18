@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Перекладає my-lisp між людськими поверхнями через numeric identities.
+"""Перекладає my-lisp між людськими поверхнями через byte SIDs.
 
 Джерело словника — `lib/surface/semantic-registry.lisp`. Жодна людська мова не
 є мостом до іншої. `sym` — спільна немовна нотація, а `compat` — службовий
@@ -29,14 +29,16 @@ def registry_rows() -> list[dict[str, tuple[str, str]]]:
         match = ENTRY.match(line)
         if not match:
             continue
-        _identity, body = match.groups()
+        identity, body = match.groups()
+        if identity == "00000000":
+            continue
         surfaces = {
             language: (name, status)
             for language, name, status in SURFACE.findall(body)
         }
         rows.append(surfaces)
     if not rows:
-        raise ValueError("numeric semantic registry has no entries")
+        raise ValueError("byte-SID semantic registry has no entries")
     return rows
 
 
