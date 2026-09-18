@@ -95,6 +95,7 @@ jobs:
         run: |
           set -euo pipefail
           ./target/debug/my-lisp scripts/check-repo-tooling-inventory.lisp
+          ./target/debug/my-lisp scripts/check-knowledge-authority.lisp
 
       - name: Lisp-owned machine non-interference guard
         shell: bash

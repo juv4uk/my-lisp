@@ -25,6 +25,34 @@ When two sources disagree, use this order:
 
 If a lower item conflicts with a higher item, the lower item is stale until reconciled.
 
+## Артефакти knowledge не є окремим рівнем авторитету
+
+Каталог `knowledge/` **не є дев'ятим рівнем авторитету**, а саме розміщення
+файла в цьому каталозі ніколи не надає йому семантичного авторитету. Кожний
+активний артефакт класифікується в
+`knowledge/knowledge-authority-inventory.lisp` за роллю, обсягом,
+джерелом авторитету, життєвим циклом і відомими споживачами.
+
+Registry є governance-метаданими: він може позначити executable policy,
+operational reference, coordination marker, derived reference, evidence
+ledger або historical record, але жоден із цих класів не стоїть вище за
+ієрархію авторитету, наведену вище. Артефакт знань може переносити або
+проєктувати твердження лише в межах явно вказаних scope і provenance.
+Контрактне значення мови й надалі походить із контракту, ратифікованих
+рішень та виконуваних conformance-доказів.
+
+`scripts/check-knowledge-authority.lisp` механічно перевіряє live-покриття
+`knowledge/`, обов'язкові provenance-поля, застарілі шляхи, заборону
+directory-derived authority, закритий словник класів артефактів і заявлені
+upstream-джерела `repo-path`. Ці перевірки охороняють межу метаданих; вони
+не додають і не змінюють семантику мови.
+
+### English auxiliary
+
+The `knowledge/` directory is not an authority tier. Its registry classifies
+artifact role, scope, provenance, lifecycle, and consumers; semantic authority
+still follows the hierarchy above.
+
 ## Semantic identity vs surface spelling
 
 A spelling is not a primitive identity. The closed semantic set remains exactly seven operations:
