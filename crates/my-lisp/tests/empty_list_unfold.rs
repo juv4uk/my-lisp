@@ -106,3 +106,17 @@ fn graph_supports_unresolved_late_binding_backlinks_and_bounded_observation() {
         "((resolution-evidence-before (graph-result absent)) (unresolved-before (graph-result found 00000100)) (resolved-after (graph-result found 00000101)) (asserted-edge-still (graph-result found 00000100)) (derived-backlink (graph-result found 00000001)) (bounded-one-hop (00001001 00001010)) (bounded-two-hop (00001001 00001010 00001011)))"
     );
 }
+
+
+#[test]
+fn eclass_can_hold_multiple_peers_and_graph_growth_preserves_prior_generation() {
+    let mut session = Session::default();
+    let source = format!("{GROUND_GRAPH}\n(graph-growth-witness)");
+    let result = eval_program(&source, &mut session)
+        .expect("expanded e-class and persistent graph growth must execute");
+
+    assert_eq!(
+        result.value.to_string(),
+        "((expanded-class-member (graph-result found (00001101))) (previous-generation ((() 00000010 00000000))) (previous-generation-preserved (identity-relation same)))"
+    );
+}
