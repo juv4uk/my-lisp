@@ -30,3 +30,14 @@ fn unfolding_is_structurally_idempotent() {
     // identity relation produced by EQ.
     assert_eq!(result.value.to_string(), "(identity-relation same)");
 }
+
+#[test]
+fn empty_list_recovers_its_opaque_identity_from_lisp_data() {
+    let mut session = Session::default();
+
+    let source = format!("{EXPERIMENT}\nempty-list-identity");
+    let result = eval_program(&source, &mut session)
+        .expect("empty list must recover its identity from the Lisp witness");
+
+    assert_eq!(result.value.to_string(), "00000000");
+}
