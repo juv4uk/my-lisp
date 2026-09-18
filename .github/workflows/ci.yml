@@ -326,3 +326,37 @@ jobs:
         with:
           shared-key: main-fast-clippy
       - run: cargo clippy -p my-lisp -p my-lisp-host -p my-lisp-cli -p xtask --all-targets -- -D warnings
+
+
+  tmp-generate-fasl-core-current:
+    name: temporary FASL generation for current core slice
+    if: github.ref == 'refs/heads/tmp/gen-fasl-core-current' || (github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'tmp/gen-fasl-core-current')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: tmp/gen-fasl-core-current
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: Generate core FASL
+        run: |
+          cargo run --release -p my-lisp-cli --bin gen-fasl -- lib/core.lisp lib/core.lisp.fasl
+          test -s lib/core.lisp.fasl
+      - name: Restore workflow and commit FASL
+        run: |
+          git checkout 853c8a18aec8b07c9f87ae0ce08ac3a6cbec3cb5 -- .github/workflows/ci.yml
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path(".github/workflows/ci.yml")
+          p.write_text(p.read_text().rstrip() + "\n")
+          PY
+          git add lib/core.lisp.fasl .github/workflows/ci.yml
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(fasl): regenerate core snapshot for current M1 slice"
+          git push origin HEAD:tmp/gen-fasl-core-current
