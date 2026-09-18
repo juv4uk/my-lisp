@@ -1,0 +1,23 @@
+name: Verify 505 native-first RED
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-505-native-first-red.yml'
+      - 'tests/fixtures/native-first-dispatch-witness.lisp'
+      - 'lib/machine/dispatch/**'
+
+jobs:
+  red:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build Lisp CLI transport
+        run: cargo build -p my-lisp-cli --bin my-lisp
+      - name: Execute native-first witness
+        run: |
+          set -euo pipefail
+          actual="$(./target/debug/my-lisp tests/fixtures/native-first-dispatch-witness.lisp)"
+          test "$actual" = "(pass pass pass pass pass pass)"
