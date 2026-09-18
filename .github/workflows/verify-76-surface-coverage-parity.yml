@@ -1,0 +1,57 @@
+name: Verify #76 surface coverage parity
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/check_surface_coverage.py'
+      - 'scripts/check-surface-coverage.lisp'
+      - '.github/workflows/verify-76-surface-coverage-parity.yml'
+  workflow_dispatch:
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build my-lisp
+        run: cargo build --release -p my-lisp-cli --bin my-lisp
+
+      - name: Positive parity on live repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check_surface_coverage.py > /tmp/python-positive.out
+          ./target/release/my-lisp scripts/check-surface-coverage.lisp > /tmp/lisp-positive.out
+          cat /tmp/python-positive.out
+          cat /tmp/lisp-positive.out
+          python_registry=$(sed -n 's/.*Registry surface names: \([0-9][0-9]*\).*/\1/p' /tmp/python-positive.out)
+          python_inventory=$(sed -n 's/.*Inventory names: \([0-9][0-9]*\).*/\1/p' /tmp/python-positive.out)
+          python_core=$(sed -n 's/.*Core public names: \([0-9][0-9]*\).*/\1/p' /tmp/python-positive.out)
+          python_total=$(sed -n 's/.*Total eligible: \([0-9][0-9]*\).*/\1/p' /tmp/python-positive.out)
+          test -n "$python_registry"
+          test -n "$python_inventory"
+          test -n "$python_core"
+          test -n "$python_total"
+          grep -Fq "(registry-surface-names $python_registry)" /tmp/lisp-positive.out
+          grep -Fq "(inventory-names $python_inventory)" /tmp/lisp-positive.out
+          grep -Fq "(core-public-names $python_core)" /tmp/lisp-positive.out
+          grep -Fq "(total-eligible $python_total)" /tmp/lisp-positive.out
+
+      - name: Negative parity on one unclassified public definition
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '\n(def parity-unclassified-name (lambda () ()))\n' >> lib/core.lisp
+          set +e
+          python3 scripts/check_surface_coverage.py > /tmp/python-negative.out 2>&1
+          python_status=$?
+          ./target/release/my-lisp scripts/check-surface-coverage.lisp > /tmp/lisp-negative.out 2>&1
+          lisp_status=$?
+          set -e
+          cat /tmp/python-negative.out
+          cat /tmp/lisp-negative.out
+          test "$python_status" -ne 0
+          test "$lisp_status" -ne 0
+          grep -Fq 'parity-unclassified-name' /tmp/python-negative.out
+          grep -Fq 'surface-coverage-unclassified-public-name' /tmp/lisp-negative.out
