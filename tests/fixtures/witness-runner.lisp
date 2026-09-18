@@ -49,17 +49,6 @@
             (list (quote value) "(structural-kind empty-list)"))
            ((equal? expr "(atom (quote (radio antenna)))")
             (list (quote value) "(structural-kind pair)"))
-           ; #216 supersession: the immutable historical Tier-1 row for
-           ; numeric equality predates the exact-Q result algebra. Keep its
-           ; committed expected=t fact as history; current authority derives
-           ; exact mathematical YES as canonical 1/1 -> writer "1".
-           ((equal? expr "(= 3 3.0)") (structural-relation same)
-            (cond
-              ((equal? (cdr expected-entry) "t") (structural-relation same)
-               (list (quote value) "1"))
-              ((quote exact-q-supersession-fallback)
-               exact-q-supersession-fallback
-               (quote ()))))
            ((string-prefix? "(eq " expr)
             (cond
               ((equal? (cdr expected-entry) "t")
