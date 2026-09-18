@@ -280,7 +280,7 @@
               (postcore-surfaces-unbound candidates)
               (quote surfaces-bound))
             (identity-relation same)
-            (quote candidates-bound)))))))))
+            (quote candidates-bound))))))))
 
 (def postcore-surfaces-unbound
   (lambda (surfaces)
