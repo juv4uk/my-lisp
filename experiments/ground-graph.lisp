@@ -356,3 +356,155 @@
         (quote previous-generation-preserved)
         (eq (cdr graph-generation-2) graph-generation-1)))))
 
+
+
+; ---------------------------------------------------------------------------
+; Basalt-inspired relation lifecycle.
+;
+; Candidate, evidence, assertion, and resolution are deliberately kept as
+; separate graph layers. None is a privileged host type. The BitPattern8 values
+; below are opaque relation identities used only by this experiment.
+
+(def lifecycle-candidate-relation 00001110)
+(def lifecycle-evidence-relation 00001111)
+(def lifecycle-asserted-relation 00010000)
+(def lifecycle-resolution-relation 00010001)
+
+(def lifecycle-source 00010010)
+(def lifecycle-handle 00010011)
+(def lifecycle-representation 00010100)
+
+; A candidate exists first. This alone is not enough to produce an assertion.
+(def lifecycle-candidate-graph
+  (list
+    (list
+      lifecycle-source
+      lifecycle-candidate-relation
+      lifecycle-handle)))
+
+; No evidence yet.
+(def lifecycle-evidence-before (quote ()))
+
+; Evidence may appear later without rewriting the candidate graph.
+(def lifecycle-evidence-after
+  (list
+    (list
+      lifecycle-source
+      lifecycle-evidence-relation
+      lifecycle-handle)))
+
+; Resolution is independent again: an asserted endpoint may still be unresolved.
+(def lifecycle-resolution-before (quote ()))
+
+(def lifecycle-resolution-after
+  (list
+    (list
+      lifecycle-handle
+      lifecycle-resolution-relation
+      lifecycle-representation)))
+
+; Derive one asserted edge only when candidate and evidence independently name
+; the same source/target pair. The candidate graph itself is never mutated.
+(def derive-asserted-edge
+  (lambda (candidate-graph evidence-graph source)
+    (let ((candidate
+            (graph-neighbor-result
+              candidate-graph
+              lifecycle-candidate-relation
+              source)))
+      (cond
+        ((graph-result-found? candidate) (identity-relation same)
+         (let ((evidence
+                 (graph-neighbor-result
+                   evidence-graph
+                   lifecycle-evidence-relation
+                   source)))
+           (cond
+             ((graph-result-found? evidence) (identity-relation same)
+              (cond
+                ((eq
+                   (graph-result-value candidate)
+                   (graph-result-value evidence))
+                 (identity-relation same)
+                 (graph-result-found
+                   (list
+                     source
+                     lifecycle-asserted-relation
+                     (graph-result-value candidate))))
+                ((eq
+                   (graph-result-value candidate)
+                   (graph-result-value evidence))
+                 (identity-relation distinct)
+                 (graph-result-absent))))
+             ((graph-result-found? evidence) (identity-relation distinct)
+              (graph-result-absent)))))
+        ((graph-result-found? candidate) (identity-relation distinct)
+         (graph-result-absent))))))
+
+; Resolve the target of a derived asserted edge, if independent resolution
+; evidence exists. Absence of resolution does not revoke the assertion.
+(def resolve-asserted-edge
+  (lambda (asserted-result resolution-graph)
+    (cond
+      ((graph-result-found? asserted-result) (identity-relation same)
+       (let ((edge (graph-result-value asserted-result)))
+         (let ((target (third edge)))
+           (let ((resolved
+                   (graph-neighbor-result
+                     resolution-graph
+                     lifecycle-resolution-relation
+                     target)))
+             (cond
+               ((graph-result-found? resolved) (identity-relation same)
+                (graph-result-found
+                  (list
+                    (car edge)
+                    (second edge)
+                    (graph-result-value resolved))))
+               ((graph-result-found? resolved) (identity-relation distinct)
+                asserted-result))))))
+      ((graph-result-found? asserted-result) (identity-relation distinct)
+       asserted-result))))
+
+(def relation-lifecycle-witness
+  (lambda ()
+    (let ((before
+            (derive-asserted-edge
+              lifecycle-candidate-graph
+              lifecycle-evidence-before
+              lifecycle-source)))
+      (let ((after
+              (derive-asserted-edge
+                lifecycle-candidate-graph
+                lifecycle-evidence-after
+                lifecycle-source)))
+        (list
+          (list
+            (quote candidate-visible)
+            (graph-neighbor-result
+              lifecycle-candidate-graph
+              lifecycle-candidate-relation
+              lifecycle-source))
+          (list
+            (quote assertion-before-evidence)
+            before)
+          (list
+            (quote assertion-after-evidence)
+            after)
+          (list
+            (quote unresolved-assertion)
+            (resolve-asserted-edge
+              after
+              lifecycle-resolution-before))
+          (list
+            (quote resolved-assertion)
+            (resolve-asserted-edge
+              after
+              lifecycle-resolution-after))
+          (list
+            (quote candidate-preserved)
+            (graph-neighbor-result
+              lifecycle-candidate-graph
+              lifecycle-candidate-relation
+              lifecycle-source)))))))
+
