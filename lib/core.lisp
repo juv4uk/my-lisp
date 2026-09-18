@@ -645,29 +645,45 @@
 ; Verschachtelung aus.
 (defmacro -> forms
   (cond
-    ((atom forms) (quote ()))
-    ((atom (cdr forms)) (car forms))
-    (t (let* ((x (car forms))
-              (next (car (cdr forms)))
-              (rest (cdr (cdr forms)))
-              (step (cond ((atom next) (list next x))
-                          (t (cons (car next) (cons x (cdr next)))))))
-         (cond
-           ((atom rest) step)
-           (t (cons (quote ->) (cons step rest))))))))
+    ((atom forms) (structural-kind empty-list) (quote ()))
+    ((atom forms) (structural-kind pair)
+     (cond
+       ((atom (cdr forms)) (structural-kind empty-list) (car forms))
+       ((atom (cdr forms)) (structural-kind pair)
+        (let* ((x (car forms))
+               (next (car (cdr forms)))
+               (rest (cdr (cdr forms)))
+               (step
+                 (cond
+                   ((atom next) (structural-kind empty-list) (list next x))
+                   ((atom next) (structural-kind atom) (list next x))
+                   ((atom next) (structural-kind pair)
+                    (cons (car next) (cons x (cdr next)))))))
+          (cond
+            ((atom rest) (structural-kind empty-list) step)
+            ((atom rest) (structural-kind pair)
+             (cons (quote ->) (cons step rest))))))))))
 
 (defmacro ->> forms
   (cond
-    ((atom forms) (quote ()))
-    ((atom (cdr forms)) (car forms))
-    (t (let* ((x (car forms))
-              (next (car (cdr forms)))
-              (rest (cdr (cdr forms)))
-              (step (cond ((atom next) (list next x))
-                          (t (append next (list x))))))
-         (cond
-           ((atom rest) step)
-           (t (cons (quote ->>) (cons step rest))))))))
+    ((atom forms) (structural-kind empty-list) (quote ()))
+    ((atom forms) (structural-kind pair)
+     (cond
+       ((atom (cdr forms)) (structural-kind empty-list) (car forms))
+       ((atom (cdr forms)) (structural-kind pair)
+        (let* ((x (car forms))
+               (next (car (cdr forms)))
+               (rest (cdr (cdr forms)))
+               (step
+                 (cond
+                   ((atom next) (structural-kind empty-list) (list next x))
+                   ((atom next) (structural-kind atom) (list next x))
+                   ((atom next) (structural-kind pair)
+                    (append next (list x))))))
+          (cond
+            ((atom rest) (structural-kind empty-list) step)
+            ((atom rest) (structural-kind pair)
+             (cons (quote ->>) (cons step rest))))))))))
 
 ;; ── Numeric library additions (M0, 2026-08-22) ─────────────────────
 ;; Додано для реальних задач (WSM-24 shape comparison): abs/min/max/
