@@ -81,8 +81,8 @@ pub use syntax::fasl::{
 /// no human surface name; `load_macro_library` installs peer spellings onto
 /// that same value after evaluation.
 pub const MACRO_LIBRARY_SOURCE: &str = include_str!("../../../lib/macro.lisp");
-const DEFMACRO_SEMANTIC_ID: &str = "0012";
-const LAMBDA_SEMANTIC_ID: &str = "0010";
+const DEFMACRO_SEMANTIC_ID: u8 = 10;
+const LAMBDA_SEMANTIC_ID: u8 = 8;
 
 /// The ordinary my-lisp bootstrap library, evaluated after the macro layer.
 pub const CORE_LIBRARY_SOURCE: &str = include_str!("../../../lib/core.lisp");
@@ -148,7 +148,7 @@ pub fn load_macro_library(session: &mut Session) -> Result<EvalResult, LanguageE
     if admitted.is_empty() {
         return Err(LanguageError::new(
             ErrorKind::InvalidForm,
-            "semantic registry must admit at least one macro-definition surface for 0012",
+            "semantic registry must admit at least one macro-definition surface for SID 10",
             Span { start: 0, end: 0 },
         ));
     }
