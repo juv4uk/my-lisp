@@ -1,0 +1,24 @@
+name: tmp-gen-fasl-core
+
+on:
+  push:
+    branches:
+      - tmp/gen-fasl-core-655-current
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate current core FASL
+        run: cargo run -p my-lisp-cli --bin gen-fasl -- lib/core.lisp lib/core.lisp.fasl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-fasl-655-current
+          path: lib/core.lisp.fasl
+          if-no-files-found: error
+          retention-days: 1
