@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Перевіряє рівноправність UK/EN/SA від numeric semantic authority.
+"""Перевіряє рівноправність UK/EN/SA від byte-SID semantic authority.
 
 Людські поверхні рахуються від semantic identities, а не від словника EN.
 `sym` є спільною немовною нотацією і не зараховується жодній людській мові.
@@ -37,6 +37,10 @@ def parse_entries(source: str) -> list[Entry]:
         if not match:
             continue
         identity, body = match.groups()
+        if identity == "00000000":
+            if body.strip() != "()":
+                raise ValueError("Canon 0 row must be exactly ground-only")
+            continue
         if identity in seen:
             raise ValueError(f"line {line_number}: duplicate semantic ID {identity}")
         seen.add(identity)
@@ -59,7 +63,7 @@ def parse_entries(source: str) -> list[Entry]:
         entries.append(Entry(identity, surfaces))
 
     if not entries:
-        raise ValueError("numeric semantic registry contains no entries")
+        raise ValueError("byte-SID semantic registry contains no entries")
     return entries
 
 
@@ -95,7 +99,7 @@ def render_report(entries: list[Entry]) -> str:
     symbolic = sum("sym" in entry.surfaces for entry in entries)
 
     lines = [
-        "Рівноправність людських поверхонь від numeric semantic authority",
+        "Рівноправність людських поверхонь від byte-SID semantic authority",
         f"public semantic identities: {denominator}",
         f"shared symbolic identities: {symbolic}",
         "",
