@@ -5,59 +5,12 @@
 //! джерела. Цей модуль змінює лише те, що інтерактивна поверхня показує людині.
 
 use crate::{semantic_registry, ErrorKind, Exactness, LanguageError, NumericBuffer, Value};
-use std::collections::HashMap;
-use std::sync::OnceLock;
-
-const SURFACE_REGISTRY: &str = include_str!("../../../lib/surface/semantic-registry.lisp");
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PresentationLanguage {
     Canonical,
     English,
     Ukrainian,
     Sanskrit,
-}
-
-fn uk_names() -> &'static HashMap<&'static str, &'static str> {
-    static NAMES: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
-    NAMES.get_or_init(|| {
-        let mut names = HashMap::new();
-        for line in SURFACE_REGISTRY.lines() {
-            let fields = line.split_whitespace().collect::<Vec<_>>();
-            let Some(identity_token) = fields.first() else {
-                continue;
-            };
-            let identity = identity_token.trim_start_matches('(');
-            if identity.len() < 4 || !identity.chars().all(|character| character.is_ascii_digit()) {
-                continue;
-            }
-
-            let mut uk = None;
-            let mut stable_spellings = Vec::new();
-            for row in fields[1..].chunks(3) {
-                if row.len() != 3 {
-                    continue;
-                }
-                let surface = row[0].trim_start_matches('(');
-                let name = row[1];
-                let status = row[2].trim_end_matches(')');
-                if status == "stable" && name != "—" {
-                    stable_spellings.push(name);
-                    if surface == "uk" {
-                        uk = Some(name);
-                    }
-                }
-            }
-
-            if let Some(uk) = uk {
-                names.insert(identity, uk);
-                for spelling in stable_spellings {
-                    names.insert(spelling, uk);
-                }
-            }
-        }
-        names
-    })
 }
 
 fn uk_operation_name(name: &str) -> String {
@@ -67,7 +20,9 @@ fn uk_operation_name(name: &str) -> String {
         "PRIM_CONS" => "сполучити".to_string(),
         "PRIM_CAR" => "перше".to_string(),
         "PRIM_CDR" => "решта".to_string(),
-        other => uk_names().get(other).copied().unwrap_or(other).to_string(),
+        other => semantic_registry::semantic_id_for_surface(other)
+            .map(uk_semantic_name)
+            .unwrap_or_else(|| other.to_string()),
     }
 }
 
