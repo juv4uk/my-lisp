@@ -125,7 +125,7 @@
 ; 1049: `string-rest` / `решта-символів-тексту` встановлюються як registry-driven direct peers.
 ; 1050: `string-slice` / `відрізати` встановлюються як registry-driven direct peers.
 ; 1051: `symbol->string` / `символ-у-текст` встановлюються як registry-driven direct peers.
-(define текст-у-символ string->symbol)
+; 1052: `string->symbol` / `текст-у-символ` встановлюються як registry-driven direct peers.
 (define текст-у-кодову-точку string->codepoint)
 (define кодова-точка-у-текст codepoint->string)
 (define число-у-текст number->string)
