@@ -1,0 +1,25 @@
+name: Issue 76 meta registry migration
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/issue-76-meta-registry-red.yml'
+      - 'scripts/generate-meta-semantic-registry.lisp'
+      - 'scripts/generate-meta-semantic-registry.py'
+      - 'lib/surface/semantic-registry.lisp'
+      - 'lib/generated/meta-semantic-registry.lisp'
+
+jobs:
+  lisp-generator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: issue-76-meta-registry
+      - name: Build my-lisp CLI
+        run: cargo build -p my-lisp-cli --bin my-lisp
+      - name: Require Lisp-owned generator
+        run: ./target/debug/my-lisp scripts/generate-meta-semantic-registry.lisp --check
