@@ -348,8 +348,10 @@ impl Parser<'_> {
         // function. In particular, 00000000 must remain distinct from numeric
         // 0 so Lisp data can establish any relation between them itself.
         if token.len() == 8 && token.as_bytes().iter().all(|byte| matches!(byte, b'0' | b'1')) {
+            let bits = u8::from_str_radix(token, 2)
+                .expect("validated 8-bit binary token must fit in one byte");
             return Ok(Expr {
-                kind: ExprKind::Symbol(token.into()),
+                kind: ExprKind::BitPattern8(bits),
                 span: Span {
                     start,
                     end: self.cursor,
@@ -475,16 +477,10 @@ mod tests {
     #[test]
     fn preserves_eight_bit_identity_atoms_distinct_from_numbers() {
         let zero_identity = parse_one("00000000");
-        assert!(matches!(
-            &zero_identity.kind,
-            ExprKind::Symbol(symbol) if &**symbol == "00000000"
-        ));
+        assert!(matches!(zero_identity.kind, ExprKind::BitPattern8(0)));
 
         let one_identity = parse_one("00000001");
-        assert!(matches!(
-            &one_identity.kind,
-            ExprKind::Symbol(symbol) if &**symbol == "00000001"
-        ));
+        assert!(matches!(one_identity.kind, ExprKind::BitPattern8(1)));
 
         assert!(matches!(
             parse_one("0").kind,
