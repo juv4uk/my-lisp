@@ -439,30 +439,6 @@
        (identity-relation same)
        (quote (text-order after))))))
 
-(def string-order-helper
-  (lambda (left right)
-    (cond
-      ((string-empty? left) (identity-relation same)
-       (cond
-         ((string-empty? right) (identity-relation same)
-          (quote (text-order same)))
-         ((string-empty? right) (identity-relation distinct)
-          (quote (text-order before)))))
-      ((string-empty? left) (identity-relation distinct)
-       (quote (text-order after)))
-      ((eq (string-first left) (string-first right)) (identity-relation same)
-       (string-order-helper (string-rest left) (string-rest right)))
-      ((eq (< (string->codepoint (string-first left))
-              (string->codepoint (string-first right)))
-           1)
-       (identity-relation same)
-       (quote (text-order before)))
-      ((eq (< (string->codepoint (string-first left))
-              (string->codepoint (string-first right)))
-           0)
-       (identity-relation same)
-       (quote (text-order after))))))
-
 (def string-length
   (lambda (s)
     (cond
