@@ -32,10 +32,13 @@
         (quote
           ((?:
              ((.? args)
+              (structural-kind empty-list)
               (make-macro))
              ((.? (cdr args))
+              (structural-kind empty-list)
               (make-macro))
              (t
+              t
               (cons (string->symbol "0011")
                 (cons (car args)
                   (cons
