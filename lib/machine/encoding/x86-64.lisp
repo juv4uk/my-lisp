@@ -907,6 +907,64 @@
          (list 102 (x86-encode-rex 0 (x86-high1 dst-code) 0 (x86-high1 src-code))
                15 opcode-byte (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))))))
 
+; AES-NI register-source форми з pinned #175 XED evidence мають спільну
+; будову: mandatory 0x66, optional REX.R/REX.B для XMM8-XMM15, далі
+; 0F 38 або 0F 3A, opcode і ModR/M з mode=3. Цей helper описує лише
+; машинне кодування; значення AES-операцій тут не визначається.
+(def x86-encode-sse-66-map-xmm-xmm
+  (lambda (map-byte opcode-byte dst src)
+    (let ((dst-code (x86-xmm-reg-code dst))
+          (src-code (x86-xmm-reg-code src)))
+      (cond
+        ((and (eq (x86-high1 dst-code) 0) (eq (x86-high1 src-code) 0))
+         (list
+           102
+           15
+           map-byte
+           opcode-byte
+           (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))
+        (t
+         (list
+           102
+           (x86-encode-rex 0 (x86-high1 dst-code) 0 (x86-high1 src-code))
+           15
+           map-byte
+           opcode-byte
+           (x86-encode-modrm 3 (x86-low3 dst-code) (x86-low3 src-code))))))))
+
+; AESENC xmm, xmm: 66 0F 38 DC /r.
+(def x86-encode-aesenc-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse-66-map-xmm-xmm 56 220 dst src)))
+
+; AESENCLAST xmm, xmm: 66 0F 38 DD /r.
+(def x86-encode-aesenclast-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse-66-map-xmm-xmm 56 221 dst src)))
+
+; AESDEC xmm, xmm: 66 0F 38 DE /r.
+(def x86-encode-aesdec-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse-66-map-xmm-xmm 56 222 dst src)))
+
+; AESDECLAST xmm, xmm: 66 0F 38 DF /r.
+(def x86-encode-aesdeclast-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse-66-map-xmm-xmm 56 223 dst src)))
+
+; AESIMC xmm, xmm: 66 0F 38 DB /r.
+(def x86-encode-aesimc-xmm-xmm
+  (lambda (dst src)
+    (x86-encode-sse-66-map-xmm-xmm 56 219 dst src)))
+
+; AESKEYGENASSIST xmm, xmm, imm8: 66 0F 3A DF /r ib.
+; Межа imm8 перевіряється admission-шаром до матеріалізації байтів.
+(def x86-encode-aeskeygenassist-xmm-xmm-imm8
+  (lambda (dst src immediate)
+    (append
+      (x86-encode-sse-66-map-xmm-xmm 58 223 dst src)
+      (list immediate))))
+
 ; MOVSD xmm, xmm: opcode 0xF2 0x0F 0x10 /r
 (def x86-encode-movsd-xmm-xmm
   (lambda (dst src)

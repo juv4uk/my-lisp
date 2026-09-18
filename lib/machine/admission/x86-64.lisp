@@ -182,7 +182,13 @@
      (cvtsi2sd-xmm-r64 xmm-register register)
      (cvttsd2si-r64-xmm register xmm-register)
      (movq-xmm-r64 xmm-register register)
-     (movq-r64-xmm register xmm-register))))
+     (movq-r64-xmm register xmm-register)
+     (aesenc-xmm-xmm xmm-register xmm-register)
+     (aesenclast-xmm-xmm xmm-register xmm-register)
+     (aesdec-xmm-xmm xmm-register xmm-register)
+     (aesdeclast-xmm-xmm xmm-register xmm-register)
+     (aesimc-xmm-xmm xmm-register xmm-register)
+     (aeskeygenassist-xmm-xmm-imm8 xmm-register xmm-register uimm8))))
 
 ; A disp8 slot only admits an exact integer in [-128,127]. Comparison
 ; operators like `>=` error on a non-number rather than returning () (a
@@ -663,6 +669,21 @@
        (x86-encode-movq-xmm-r64 (second form) (third form)))
       ((x86-admission-pattern-match? (quote (movq-r64-xmm register xmm-register)) form)
        (x86-encode-movq-r64-xmm (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (aesenc-xmm-xmm xmm-register xmm-register)) form)
+       (x86-encode-aesenc-xmm-xmm (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (aesenclast-xmm-xmm xmm-register xmm-register)) form)
+       (x86-encode-aesenclast-xmm-xmm (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (aesdec-xmm-xmm xmm-register xmm-register)) form)
+       (x86-encode-aesdec-xmm-xmm (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (aesdeclast-xmm-xmm xmm-register xmm-register)) form)
+       (x86-encode-aesdeclast-xmm-xmm (second form) (third form)))
+      ((x86-admission-pattern-match? (quote (aesimc-xmm-xmm xmm-register xmm-register)) form)
+       (x86-encode-aesimc-xmm-xmm (second form) (third form)))
+      ((x86-admission-pattern-match?
+         (quote (aeskeygenassist-xmm-xmm-imm8 xmm-register xmm-register uimm8))
+         form)
+       (x86-encode-aeskeygenassist-xmm-xmm-imm8
+         (second form) (third form) (fourth form)))
       ; Unreachable after admission. Keep fail-closed data instead of inventing
       ; a fallback encoder.
       (t (quote ())))))

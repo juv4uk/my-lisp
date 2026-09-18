@@ -485,6 +485,66 @@
      ((encode movq-r64-xmm)
       (x86-encode-movq-r64-xmm (quote rax) (quote xmm0))
       (102 72 15 126 192))
+     ; #176 AES-NI RED: pinned XED base/xed-isa.txt допускає регістрову
+     ; форму для кожного класу нижче. 0x66 є mandatory prefix; XMM8-XMM15
+     ; потребують REX.R/REX.B перед картою opcode 0F 38/3A.
+     ((encode aesenc-xmm-xmm)
+      (x86-encode-aesenc-xmm-xmm (quote xmm0) (quote xmm1))
+      (102 15 56 220 193))
+     ((encode aesenclast-xmm-xmm)
+      (x86-encode-aesenclast-xmm-xmm (quote xmm2) (quote xmm3))
+      (102 15 56 221 211))
+     ((encode aesdec-xmm-xmm-rex)
+      (x86-encode-aesdec-xmm-xmm (quote xmm8) (quote xmm9))
+      (102 69 15 56 222 193))
+     ((encode aesdeclast-xmm-xmm-rex)
+      (x86-encode-aesdeclast-xmm-xmm (quote xmm15) (quote xmm14))
+      (102 69 15 56 223 254))
+     ((encode aesimc-xmm-xmm)
+      (x86-encode-aesimc-xmm-xmm (quote xmm4) (quote xmm5))
+      (102 15 56 219 229))
+     ((encode aeskeygenassist-xmm-xmm-imm8)
+      (x86-encode-aeskeygenassist-xmm-xmm-imm8
+        (quote xmm6) (quote xmm7) 27)
+      (102 15 58 223 247 27))
+     ((admission aesenc-valid)
+      (x86-admitted-instruction? (quote (aesenc-xmm-xmm xmm0 xmm1)))
+      t)
+     ((admission aeskeygenassist-valid)
+      (x86-admitted-instruction?
+        (quote (aeskeygenassist-xmm-xmm-imm8 xmm6 xmm7 27)))
+      t)
+     ((admission aesenclast-valid)
+      (x86-admitted-instruction? (quote (aesenclast-xmm-xmm xmm2 xmm3)))
+      t)
+     ((admission aesdec-valid)
+      (x86-admitted-instruction? (quote (aesdec-xmm-xmm xmm8 xmm9)))
+      t)
+     ((admission aesdeclast-valid)
+      (x86-admitted-instruction? (quote (aesdeclast-xmm-xmm xmm15 xmm14)))
+      t)
+     ((admission aesimc-valid)
+      (x86-admitted-instruction? (quote (aesimc-xmm-xmm xmm4 xmm5)))
+      t)
+     ((encode aes-ni-admitted-program)
+      (x86-encode-admitted-program
+        (quote
+          ((aesenc-xmm-xmm xmm0 xmm1)
+           (aesenclast-xmm-xmm xmm2 xmm3)
+           (aesdec-xmm-xmm xmm8 xmm9)
+           (aesdeclast-xmm-xmm xmm15 xmm14)
+           (aesimc-xmm-xmm xmm4 xmm5)
+           (aeskeygenassist-xmm-xmm-imm8 xmm6 xmm7 27))))
+      (102 15 56 220 193
+       102 15 56 221 211
+       102 69 15 56 222 193
+       102 69 15 56 223 254
+       102 15 56 219 229
+       102 15 58 223 247 27))
+     ((admission aeskeygenassist-uimm8-overflow)
+      (x86-admitted-instruction?
+        (quote (aeskeygenassist-xmm-xmm-imm8 xmm6 xmm7 256)))
+      ())
      ((admission rdtsc-valid)
       (x86-admitted-instruction? (quote (rdtsc)))
       t)
