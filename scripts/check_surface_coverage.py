@@ -15,14 +15,14 @@ REGISTRY_FILE = REPO_ROOT / "lib" / "surface" / "semantic-registry.lisp"
 INVENTORY_FILE = REPO_ROOT / "lib" / "surface" / "uk-inventory.lisp"
 CORE_LIB = REPO_ROOT / "lib" / "core.lisp"
 SURFACE = re.compile(
-    r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)\s+"
-    r"(stable|candidate|missing|compatibility-only)\)"
+    r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)"
+    r"(?:\s+(candidate|missing|compatibility-only))?\)"
 )
 
 
 def extract_registry_names(path: Path) -> set[str]:
     names: set[str] = set()
-    for surface, name, _status in SURFACE.findall(path.read_text(encoding="utf-8")):
+    for surface, name, _exception_status in SURFACE.findall(path.read_text(encoding="utf-8")):
         if name != "—":
             names.add(name)
     return names
