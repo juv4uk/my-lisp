@@ -1,0 +1,60 @@
+name: Post-core Peer Cache
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lib/core.lisp"
+      - "lib/core.lisp.fasl"
+      - "lib/surface/semantic-registry.lisp"
+      - "lib/time.lisp"
+      - "lib/process.lisp"
+      - "lib/tcp.lisp"
+      - "lib/fs.lisp"
+      - "scripts/generate-postcore-peer-cache.lisp"
+      - ".github/workflows/postcore-peer-cache.yml"
+  pull_request:
+    paths:
+      - "lib/core.lisp"
+      - "lib/core.lisp.fasl"
+      - "lib/surface/semantic-registry.lisp"
+      - "lib/time.lisp"
+      - "lib/process.lisp"
+      - "lib/tcp.lisp"
+      - "lib/fs.lisp"
+      - "scripts/generate-postcore-peer-cache.lisp"
+      - ".github/workflows/postcore-peer-cache.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: registry-derived cache + FASL
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Lisp generator and FASL encoder
+        run: cargo build -p my-lisp-cli --bin my-lisp --bin gen-fasl
+
+      - name: Regenerate post-core cache from semantic authority
+        run: |
+          set -euo pipefail
+          ./target/debug/my-lisp scripts/generate-postcore-peer-cache.lisp
+          git diff --exit-code -- lib/core.lisp
+
+      - name: Require exact committed FASL
+        run: |
+          set -euo pipefail
+          ./target/debug/gen-fasl lib/core.lisp /tmp/core.lisp.fasl
+          cmp /tmp/core.lisp.fasl lib/core.lisp.fasl
+
+      - name: Execute post-core authority witness
+        run: |
+          set -euo pipefail
+          status="$(./target/debug/my-lisp tests/fixtures/postcore-peer-materialization-witness.lisp)"
+          test "$status" = "(postcore-peer-materialization-witness (status pass))"
