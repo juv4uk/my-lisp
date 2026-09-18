@@ -5,7 +5,7 @@
 ; - artifact classes come from a bounded institutional vocabulary;
 ; - directory placement is never an authority source;
 ; - registry rows must still exist in the observed knowledge tree.
-; RED slice:
+; GREEN slice:
 ; - repo-path authority sources must exist in the observed upstream tree.
 
 (def knowledge-authority-required-fields
@@ -196,11 +196,65 @@
             (identity-relation same)
             row-verdict)))))))
 
-; Intentionally incomplete for the RED witness below. This pass is orthogonal
-; to class/directory/stale coverage and will only inspect `(repo-path ...)` sources.
+; This pass is orthogonal to class/directory/stale coverage and only inspects
+; explicit `(repo-path "...")` authority sources. Other provenance forms are
+; deliberately not reinterpreted as filesystem paths.
+(def knowledge-authority-observed-upstream-state
+  (lambda (path observed-upstream)
+    (cond
+      ((atom observed-upstream) (structural-kind empty-list) (quote missing))
+      ((atom observed-upstream) (structural-kind atom) (quote malformed))
+      ((atom observed-upstream) (structural-kind pair)
+       (cond
+         ((equal? path (car observed-upstream))
+          (structural-relation same)
+          (quote present))
+         ((equal? path (car observed-upstream))
+          (structural-relation distinct)
+          (knowledge-authority-observed-upstream-state
+            path
+            (cdr observed-upstream))))))))
+
 (def knowledge-authority-upstream-verdict
   (lambda (rows observed-upstream)
-    (list (quote knowledge-authority-ok))))
+    (cond
+      ((atom rows) (structural-kind empty-list)
+       (list (quote knowledge-authority-ok)))
+      ((atom rows) (structural-kind atom)
+       (knowledge-authority-violation (quote malformed-inventory-list) rows))
+      ((atom rows) (structural-kind pair)
+       (let* ((row (car rows))
+              (source (knowledge-authority-field (quote authority-source) row)))
+         (cond
+           ((atom source) (structural-kind empty-list)
+            (knowledge-authority-upstream-verdict (cdr rows) observed-upstream))
+           ((atom source) (structural-kind atom)
+            (knowledge-authority-upstream-verdict (cdr rows) observed-upstream))
+           ((atom source) (structural-kind pair)
+            (cond
+              ((eq (car source) (quote repo-path)) (identity-relation same)
+               (let* ((path (second source))
+                      (path-state
+                        (knowledge-authority-observed-upstream-state
+                          path
+                          observed-upstream)))
+                 (cond
+                   ((eq path-state (quote present)) (identity-relation same)
+                    (knowledge-authority-upstream-verdict
+                      (cdr rows)
+                      observed-upstream))
+                   ((eq path-state (quote missing)) (identity-relation same)
+                    (knowledge-authority-violation
+                      (quote missing-upstream-source)
+                      path))
+                   ((eq path-state (quote malformed)) (identity-relation same)
+                    (knowledge-authority-violation
+                      (quote malformed-upstream-list)
+                      observed-upstream)))))
+              ((eq (car source) (quote repo-path)) (identity-relation distinct)
+               (knowledge-authority-upstream-verdict
+                 (cdr rows)
+                 observed-upstream))))))))))
 
 (def knowledge-authority-observed-path-state
   (lambda (path observed)
