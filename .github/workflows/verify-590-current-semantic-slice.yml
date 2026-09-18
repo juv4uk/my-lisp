@@ -1,0 +1,20 @@
+name: Verify 590 current semantic slice
+
+on:
+  pull_request:
+    branches:
+      - replay/575-scientific-constant-length-post-584
+  workflow_dispatch:
+
+jobs:
+  semantic-slice:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run current Lisp-owned semantic slice
+        run: bash scripts/test-current-semantic-slice.sh
+      - name: Child diff hygiene
+        run: git diff --check HEAD^ HEAD
