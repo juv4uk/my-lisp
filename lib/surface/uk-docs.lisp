@@ -2,8 +2,8 @@
 ; Це документаційний індекс, а не семантична влада.
 ; Ключ кожного запису — byte SID; uk/ukr написання та їхні статуси
 ; належать lib/surface/semantic-registry.lisp і звіряються через generated table.
-; Тут опис функції не дублюється між uk/ukr: один semantic ID має один опис поведінки.
-; Numeric ID↔UK мусить точно збігатися зі stable UK-рядками semantic-registry.lisp.
+; Тут опис функції не дублюється між uk/ukr: один byte SID має один опис поведінки.
+; Byte SID↔UK мусить точно збігатися зі stable UK-рядками semantic-registry.lisp.
 
 (uk-api-docs
   (schema uk-api-docs/3)
