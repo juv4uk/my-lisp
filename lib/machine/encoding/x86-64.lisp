@@ -965,6 +965,79 @@
       (x86-encode-sse-66-map-xmm-xmm 58 223 dst src)
       (list immediate))))
 
+; AES-NI memory-source bounded base+disp8 використовує ту саму x86
+; адресацію, що вже доведена для MOV/LEA: ModR/M mode=01, SIB для rsp/r12,
+; REX.R для xmm8-xmm15 і REX.B для r8-r15. Ширину пам'яті визначає сама
+; інструкція AES, тому цей helper не створює окремої семантики пам'яті.
+(def x86-encode-sse-66-map-xmm-mem-disp8
+  (lambda (map-byte opcode-byte dst base displacement)
+    (let ((dst-code (x86-xmm-reg-code dst))
+          (base-code (x86-reg-code base)))
+      (let ((modrm
+              (x86-encode-modrm
+                1
+                (x86-low3 dst-code)
+                (x86-low3 base-code)))
+            (disp-byte (x86-disp8-byte displacement)))
+        (let ((address-tail
+                (cond
+                  ((eq (x86-low3 base-code) 4)
+                   (list modrm (x86-encode-sib 0 4 4) disp-byte))
+                  (t
+                   (list modrm disp-byte)))))
+          (cond
+            ((and
+               (eq (x86-high1 dst-code) 0)
+               (eq (x86-high1 base-code) 0))
+             (append
+               (list 102 15 map-byte opcode-byte)
+               address-tail))
+            (t
+             (append
+               (list
+                 102
+                 (x86-encode-rex
+                   0
+                   (x86-high1 dst-code)
+                   0
+                   (x86-high1 base-code))
+                 15
+                 map-byte
+                 opcode-byte)
+               address-tail))))))))
+
+(def x86-encode-aesenc-xmm-mem-disp8
+  (lambda (dst base displacement)
+    (x86-encode-sse-66-map-xmm-mem-disp8
+      56 220 dst base displacement)))
+
+(def x86-encode-aesenclast-xmm-mem-disp8
+  (lambda (dst base displacement)
+    (x86-encode-sse-66-map-xmm-mem-disp8
+      56 221 dst base displacement)))
+
+(def x86-encode-aesdec-xmm-mem-disp8
+  (lambda (dst base displacement)
+    (x86-encode-sse-66-map-xmm-mem-disp8
+      56 222 dst base displacement)))
+
+(def x86-encode-aesdeclast-xmm-mem-disp8
+  (lambda (dst base displacement)
+    (x86-encode-sse-66-map-xmm-mem-disp8
+      56 223 dst base displacement)))
+
+(def x86-encode-aesimc-xmm-mem-disp8
+  (lambda (dst base displacement)
+    (x86-encode-sse-66-map-xmm-mem-disp8
+      56 219 dst base displacement)))
+
+(def x86-encode-aeskeygenassist-xmm-mem-disp8-imm8
+  (lambda (dst base displacement immediate)
+    (append
+      (x86-encode-sse-66-map-xmm-mem-disp8
+        58 223 dst base displacement)
+      (list immediate))))
+
 ; MOVSD xmm, xmm: opcode 0xF2 0x0F 0x10 /r
 (def x86-encode-movsd-xmm-xmm
   (lambda (dst src)
