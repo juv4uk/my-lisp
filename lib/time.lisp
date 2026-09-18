@@ -19,8 +19,8 @@
                            (- (quotient yoe 4) (quotient yoe 100)))))
            (mp (quotient (+ (* 5 doy) 2) 153))
            (day (+ (- doy (quotient (+ (* 153 mp) 2) 5)) 1))
-           (month (+ mp (cond ((< mp 10) 3) (t -9))))
-           (year (+ y (cond ((<= month 2) 1) (t 0)))))
+           (month (+ mp (cond ((< mp 10) 1 3) ((< mp 10) 0 -9))))
+           (year (+ y (cond ((<= month 2) 1 1) ((<= month 2) 0 0)))))
       (list year month day))))
 
 ; Pure language-level conversion from an exact Unix timestamp into UTC calendar
