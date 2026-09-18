@@ -43,6 +43,77 @@ pub(crate) fn semantic_id_bits(semantic_id: SemanticId) -> String {
     format!("{semantic_id:08b}")
 }
 
+fn surface_groups(line: &'static str) -> Vec<&'static str> {
+    let mut groups = Vec::new();
+    let mut depth = 0usize;
+    let mut start = None;
+
+    for (index, byte) in line.bytes().enumerate() {
+        match byte {
+            b'(' => {
+                depth += 1;
+                if depth == 2 {
+                    start = Some(index + 1);
+                }
+            }
+            b')' => {
+                if depth == 2 {
+                    if let Some(group_start) = start.take() {
+                        let group = line[group_start..index].trim();
+                        if !group.is_empty() {
+                            groups.push(group);
+                        }
+                    }
+                }
+                depth = depth.saturating_sub(1);
+            }
+            _ => {}
+        }
+    }
+
+    groups
+}
+
+fn parse_surface_group(group: &'static str) -> Option<SemanticSurface> {
+    let fields = group.split_whitespace().collect::<Vec<_>>();
+    match fields.as_slice() {
+        [namespace, name] => {
+            assert_ne!(
+                *name, "—",
+                "missing surface must carry explicit missing status"
+            );
+            Some(SemanticSurface {
+                namespace,
+                name,
+                admission: SurfaceAdmission::Stable,
+            })
+        }
+        [namespace, name, status] => {
+            assert_ne!(
+                *status, "stable",
+                "sr/2 admitted surfaces are implicit; do not spell stable"
+            );
+            if *name == "—" {
+                assert!(
+                    matches!(*status, "missing" | "compatibility-only"),
+                    "absent surface must be missing or compatibility-only"
+                );
+                return None;
+            }
+            match *status {
+                "compatibility-only" => Some(SemanticSurface {
+                    namespace,
+                    name,
+                    admission: SurfaceAdmission::CompatibilityOnly,
+                }),
+                "candidate" | "missing" => None,
+                other => panic!("unknown sr/2 surface status: {other}"),
+            }
+        }
+        _ => panic!("malformed sr/2 surface group: ({group})"),
+    }
+}
+
 fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
     source
         .lines()
@@ -51,28 +122,10 @@ fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
             let first = fields.first()?;
             let sid_token = first.strip_prefix("(\"")?.strip_suffix('\"')?;
             let semantic_id = parse_sid_bits(sid_token)?;
-
-            let mut surfaces = Vec::new();
-            for triple in fields[1..].chunks(3) {
-                if triple.len() != 3 {
-                    break;
-                }
-                let namespace = triple[0].trim_start_matches('(');
-                let surface = triple[1];
-                if surface == "—" {
-                    continue;
-                }
-                let admission = match triple[2].trim_end_matches(')') {
-                    "stable" => SurfaceAdmission::Stable,
-                    "compatibility-only" => SurfaceAdmission::CompatibilityOnly,
-                    _ => continue,
-                };
-                surfaces.push(SemanticSurface {
-                    namespace,
-                    name: surface,
-                    admission,
-                });
-            }
+            let surfaces = surface_groups(line)
+                .into_iter()
+                .filter_map(parse_surface_group)
+                .collect();
 
             Some(SemanticRow {
                 semantic_id,
@@ -256,7 +309,7 @@ mod tests {
     #[test]
     fn registry_projection_tracks_stable_and_compatibility_admission_only() {
         const SYNTHETIC: &str =
-            "(\"00101010\" (xx comet stable) (yy meteor compatibility-only) (zz asteroid candidate) (qq — missing))";
+            "(\"00101010\" (xx comet) (yy meteor compatibility-only) (zz asteroid candidate) (qq — missing))";
         let parsed = parse_rows(SYNTHETIC);
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].semantic_id, 42);
@@ -278,9 +331,15 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "do not spell stable")]
+    fn explicit_stable_status_is_rejected_by_sr2() {
+        let _ = parse_rows("(\"00101010\" (xx comet stable))");
+    }
+
+    #[test]
     fn machine_sid_bit_spelling_is_not_a_lisp_surface() {
         const SYNTHETIC: &str =
-            "(\"00101010\" (xx comet stable) (yy meteor compatibility-only))";
+            "(\"00101010\" (xx comet) (yy meteor compatibility-only))";
         let stable = build_surface_index(SYNTHETIC);
         let admitted = build_admitted_surface_index(SYNTHETIC);
         assert_eq!(stable.get("comet"), Some(&42));
@@ -291,7 +350,7 @@ mod tests {
     #[test]
     fn peer_namespaces_may_repeat_one_spelling_for_the_same_identity() {
         const SYNTHETIC: &str =
-            "(\"00101010\" (uk comet stable) (ukr comet stable) (compat comet compatibility-only))";
+            "(\"00101010\" (uk comet) (ukr comet) (compat comet compatibility-only))";
         let stable = build_surface_index(SYNTHETIC);
         let admitted = build_admitted_surface_index(SYNTHETIC);
         assert_eq!(stable.get("comet"), Some(&42));
@@ -301,7 +360,7 @@ mod tests {
     #[test]
     fn stable_surfaces_are_constructively_selected_by_semantic_id() {
         const SYNTHETIC: &str =
-            "(\"00101010\" (uk comet stable) (sa asteroid candidate) (sym + stable))";
+            "(\"00101010\" (uk comet) (sa asteroid candidate) (sym +))";
         let index = build_surface_index(SYNTHETIC);
         assert_eq!(stable_surfaces_from_index(&index, 42), vec!["+", "comet"]);
         assert!(stable_surfaces_from_index(&index, 99).is_empty());
@@ -310,7 +369,7 @@ mod tests {
     #[test]
     fn admitted_surfaces_include_compatibility_without_promoting_it_to_stable() {
         const SYNTHETIC: &str =
-            "(\"00101010\" (en comet stable) (uk asteroid candidate) (compat meteor compatibility-only) (sa — missing))";
+            "(\"00101010\" (en comet) (uk asteroid candidate) (compat meteor compatibility-only) (sa — missing))";
         let rows = parse_rows(SYNTHETIC);
         assert_eq!(
             admitted_surfaces_from_rows(&rows, 42),
@@ -350,7 +409,7 @@ mod tests {
     #[should_panic(expected = "semantic registry surface must be unique")]
     fn duplicate_stable_surface_is_rejected_deterministically() {
         const CONFLICTING: &str =
-            "(\"00000001\" (xx collision stable))\n(\"00000010\" (yy collision stable))";
+            "(\"00000001\" (xx collision))\n(\"00000010\" (yy collision))";
         let _ = build_surface_index(CONFLICTING);
     }
 
