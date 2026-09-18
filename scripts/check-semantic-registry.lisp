@@ -237,9 +237,16 @@
     (let ((a (princ "semantic registry error: "))
           (b (princ (write-to-string detail)))
           (c (princ "\n")))
-      ; Deliberately cross a failing boundary after printing the machine-readable
-      ; diagnostic. CI needs a non-zero process status on a rejected registry.
-      (semantic-registry-check-failed detail))))
+      ; Deliberately cross a real UnknownSymbol boundary after printing the
+      ; diagnostic. The dynamically constructed missing symbol carries the
+      ; rejection payload in the error itself, so redirected stdout buffering
+      ; cannot erase the useful detail before the non-zero process exit.
+      (eval
+        (list
+          (string->symbol
+            (string-append
+              "semantic-registry-check-failed:"
+              (write-to-string detail))))))))
 
 ; Result: ("ok" updated-all-surfaces has-sym), or sr-fail.
 (def sr-validate-surfaces
