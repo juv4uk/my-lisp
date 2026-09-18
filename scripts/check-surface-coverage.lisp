@@ -16,7 +16,7 @@
           root-builtins core-library)))
 
 (def surface-coverage-internal-markers
-  (quote ("-onto" "-iter" "-step" "make-" "-helper" "-aux")))
+  (quote ("-onto" "-iter" "-step" "make-" "-helper" "-aux" "my-postcore-")))
 
 (def surface-coverage-member-state
   (lambda (value values)
