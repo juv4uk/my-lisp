@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Перевіряє, що runtime public names класифіковані numeric registry.
+"""Перевіряє, що runtime public names класифіковані byte-SID registry.
 
 Сире runtime inventory може містити історичні/host-oriented spellings. Воно не
 є semantic authority. Єдина authority — `semantic-registry.lisp`; кожна видима
-публічна назва повинна бути surface name деякої numeric identity.
+публічна назва повинна бути surface name деякої byte SID.
 """
 
 import re
@@ -91,7 +91,7 @@ def main() -> int:
         print("Add them to lib/surface/semantic-registry.lisp with an explicit status.")
         return 1
 
-    print("OK: every eligible runtime name is classified by numeric semantic registry.")
+    print("OK: every eligible runtime name is classified by byte-SID semantic registry.")
     print(f"  Registry surface names: {len(registry_names)}")
     print(f"  Inventory names: {len(inventory_names)}")
     print(f"  Core public names: {len(core_names)}")
