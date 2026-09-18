@@ -230,7 +230,7 @@
     (cond
       ((atom x) (quote ()))
       ((eq (science-proper-list? x) (quote ())) (quote ()))
-      ((eq (= (length x) 7) (quote ())) (quote ()))
+      ((= (length x) 7) 0/1 (quote ()))
       ((eq (car x) *scientific-constant-schema*)
        (cond
          ((eq (symbol? (second x)) (quote ())) (quote ()))
