@@ -21,7 +21,7 @@ enum Admission {
     Missing,
 }
 
-/// One `(namespace name status)` triple from a semantic-registry row.
+/// One surface declaration from a semantic-registry row. Admitted/stable is implicit.
 struct Surface {
     namespace: &'static str,
     name: &'static str,
@@ -29,11 +29,40 @@ struct Surface {
 }
 
 /// Parse every row of the registry into its byte SID plus the raw
-/// `(namespace name status)` triples it declares. Mirrors
+/// surface declarations it carries. Mirrors
 /// `semantic_registry::parse_rows` (crate-internal, not reachable from an
 /// integration test), but keeps every admission kind instead of dropping
 /// `candidate`/`missing` at parse time, since this file needs those to
 /// report accurate status breakdowns.
+fn surface_groups(line: &'static str) -> Vec<&'static str> {
+    let mut groups = Vec::new();
+    let mut depth = 0usize;
+    let mut start = None;
+    for (index, byte) in line.bytes().enumerate() {
+        match byte {
+            b'(' => {
+                depth += 1;
+                if depth == 2 {
+                    start = Some(index + 1);
+                }
+            }
+            b')' => {
+                if depth == 2 {
+                    if let Some(group_start) = start.take() {
+                        let group = line[group_start..index].trim();
+                        if !group.is_empty() {
+                            groups.push(group);
+                        }
+                    }
+                }
+                depth = depth.saturating_sub(1);
+            }
+            _ => {}
+        }
+    }
+    groups
+}
+
 fn registry_rows() -> Vec<(&'static str, Vec<Surface>)> {
     REGISTRY
         .lines()
@@ -49,26 +78,31 @@ fn registry_rows() -> Vec<(&'static str, Vec<Surface>)> {
                 return None;
             }
 
-            let mut surfaces = Vec::new();
-            for triple in fields[1..].chunks(3) {
-                if triple.len() != 3 {
-                    break;
-                }
-                let namespace = triple[0].trim_start_matches('(');
-                let name = triple[1];
-                let admission = match triple[2].trim_end_matches(')') {
-                    "stable" => Admission::Stable,
-                    "compatibility-only" => Admission::CompatibilityOnly,
-                    "candidate" => Admission::Candidate,
-                    "missing" => Admission::Missing,
-                    _ => continue,
-                };
-                surfaces.push(Surface {
-                    namespace,
-                    name,
-                    admission,
-                });
-            }
+            let surfaces = surface_groups(line)
+                .into_iter()
+                .map(|group| {
+                    let fields = group.split_whitespace().collect::<Vec<_>>();
+                    let (namespace, name, admission) = match fields.as_slice() {
+                        [namespace, name] => (*namespace, *name, Admission::Stable),
+                        [namespace, name, exception_status] => {
+                            let admission = match *exception_status {
+                                "compatibility-only" => Admission::CompatibilityOnly,
+                                "candidate" => Admission::Candidate,
+                                "missing" => Admission::Missing,
+                                "stable" => panic!("sr/2 must not spell stable explicitly"),
+                                other => panic!("unknown sr/2 status {other}"),
+                            };
+                            (*namespace, *name, admission)
+                        }
+                        _ => panic!("malformed sr/2 surface group: ({group})"),
+                    };
+                    Surface {
+                        namespace,
+                        name,
+                        admission,
+                    }
+                })
+                .collect();
             Some((semantic_id, surfaces))
         })
         .collect()
