@@ -770,11 +770,12 @@
       ((atom items) (structural-kind pair)
        (let ((rest-min (min-list (cdr items))))
          (cond
-           ((equal? rest-min (quote ())) (structural-relation same) (car items))
+           ((equal? rest-min (quote ())) (structural-relation same)
+            (car items))
            ((equal? rest-min (quote ())) (structural-relation distinct)
             (cond
               ((< (car items) rest-min) 1/1 (car items))
-              ((< (car items) rest-min) 0/1 rest-min))))))))
+              ((< (car items) rest-min) 0/1 rest-min)))))))))
 
 (def max-list
   (lambda (items)
@@ -783,11 +784,12 @@
       ((atom items) (structural-kind pair)
        (let ((rest-max (max-list (cdr items))))
          (cond
-           ((equal? rest-max (quote ())) (structural-relation same) (car items))
+           ((equal? rest-max (quote ())) (structural-relation same)
+            (car items))
            ((equal? rest-max (quote ())) (structural-relation distinct)
             (cond
               ((> (car items) rest-max) 1/1 (car items))
-              ((> (car items) rest-max) 0/1 rest-max))))))))
+              ((> (car items) rest-max) 0/1 rest-max)))))))))
 
 ; #469 — post-core stable peer materialization.
 ;
