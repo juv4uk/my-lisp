@@ -26,4 +26,4 @@
   (native-first-totality-check
     (quote ((lambda (x) (+ x 1)) 41)))
   (native-first-totality-check
-    (quote ((car (cons a b)) radio))))
+    (quote (car ((lambda (x) x) 1)))))
