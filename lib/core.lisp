@@ -418,24 +418,27 @@
 (def string-length
   (lambda (s)
     (cond
-      ((string-empty? s) 0)
-      (t (+ 1 (string-length (string-rest s)))))))
+      ((string-empty? s) t 0)
+      (t t (+ 1 (string-length (string-rest s)))))))
 
 (def string-prefix?
   (lambda (prefix s)
     (cond
-      ((string-empty? prefix) t)
-      ((string-empty? s) (quote ()))
+      ((string-empty? prefix) t t)
+      ((string-empty? s) t (quote ()))
       ((eq (string-first prefix) (string-first s))
+       (identity-relation same)
        (string-prefix? (string-rest prefix) (string-rest s)))
-      (t (quote ())))))
+      (t t (quote ())))))
+
 
 (def string-contains?
   (lambda (needle s)
     (cond
-      ((string-prefix? needle s) t)
-      ((string-empty? s) (quote ()))
-      (t (string-contains? needle (string-rest s))))))
+      ((string-prefix? needle s) t t)
+      ((string-empty? s) t (quote ()))
+      (t t (string-contains? needle (string-rest s))))))
+
 
 ; `symbol?` moved out of Rust after `write-to-string` made the distinction
 ; expressible without exceptions: among atoms, exactly a Symbol is identical
@@ -449,11 +452,14 @@
 (def symbol?
   (lambda (value)
     (cond
-      ((atom value)
+      ((atom value) (structural-kind empty-list) (quote ()))
+      ((atom value) (structural-kind atom)
        (cond
-         ((eq value (string->symbol (write-to-string value))) t)
-         (t (quote ()))))
-      (t (quote ())))))
+         ((eq value (string->symbol (write-to-string value)))
+          (identity-relation same) t)
+         (t t (quote ()))))
+      ((atom value) (structural-kind pair) (quote ())))))
+
 
 ; quotient/mod (G5 test: already expressible via existing means?) — yes.
 ; Unlike bitwise operations (AND/OR/XOR/shift — no primitive exposes a
@@ -722,21 +728,14 @@
 (def sqrt
   (lambda (x)
     (cond
-      ;; negative -> nil (error handling stays with the caller for now)
-      ((< x 0) ())
-      ;; zero -> exact zero
-      ((= x 0) 0)
-      ;; integer input: exact answer when a perfect square...
-      ((= x (quotient x 1))
+      ((< x 0) t (quote ()))
+      ((= x 0) t 0)
+      ((= x (quotient x 1)) t
        (let ((r (isqrt x)))
-         (cond ((= (* r r) x) r)
-               ;; ... else bounded rational approximation (see below)
-               (t (sqrt-iter (/ x 2) x 8)))))
-      ;; rational/float input: bounded Newton. NOTE: this language is
-      ;; fully exact (float literals parse as rationals), so unbounded
-      ;; Newton explodes bignum denominators; 8 iterations give a
-      ;; usable approximation without the blow-up.
-      (t (sqrt-iter (/ x 2.0) x 5)))))
+         (cond
+           ((= (* r r) x) t r)
+           (t t (sqrt-iter (/ x 2) x 8)))))
+      (t t (sqrt-iter (/ x 2.0) x 5)))))
 
 ; abs/min/max/min-list/max-list — migrated from Rust builtins.rs to
 ; lib/core.lisp (owner directive 2026-09-11: "Lisp owns meaning, Rust owns
