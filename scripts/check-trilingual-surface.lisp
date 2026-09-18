@@ -119,7 +119,7 @@
              ((atom language) (structural-kind empty-list)
               (tri-fail (quote malformed-surface-name) field))
              ((atom language) (structural-kind pair)
-              (tri-fail (quote malformed-surface-name) field)))))))))
+              (tri-fail (quote malformed-surface-name) field))))))))))
 
 (def tri-require-human-surfaces
   (lambda (seen)
