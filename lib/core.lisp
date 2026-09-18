@@ -415,6 +415,40 @@
 (def string-empty?
   (lambda (s) (eq s "")))
 
+(def string-membership-helper
+  (lambda (value)
+    (cond
+      ((atom value) (structural-kind empty-list)
+       (quote (class-membership string nonmember)))
+      ((atom value) (structural-kind atom)
+       (cond
+         ((eq (string-first (write-to-string value))
+              (string-first (write-to-string "")))
+          (identity-relation same)
+          (quote (class-membership string member)))
+         ((eq (string-first (write-to-string value))
+              (string-first (write-to-string "")))
+          (identity-relation distinct)
+          (quote (class-membership string nonmember)))))
+      ((atom value) (structural-kind pair)
+       (quote (class-membership string nonmember))))))
+
+(def nonempty-string-membership-helper
+  (lambda (value)
+    (cond
+      ((string-membership-helper value)
+       (class-membership string member)
+       (cond
+         ((string-empty? value)
+          (identity-relation distinct)
+          (quote (class-membership string nonempty-member)))
+         ((string-empty? value)
+          (identity-relation same)
+          (quote (class-membership string member)))))
+      ((string-membership-helper value)
+       (class-membership string nonmember)
+       (quote (class-membership string nonmember))))))
+
 (def string-length
   (lambda (s)
     (cond

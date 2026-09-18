@@ -158,11 +158,13 @@
 (def timezone-declarations->observation
   (lambda (tz-value etc-timezone-value)
     (cond
-      ((and (string? tz-value) (not (string-empty? tz-value)))
+      ((nonempty-string-membership-helper tz-value)
+       (class-membership string nonempty-member)
        (list (quote detected) tz-value (quote TZ)))
-      ((and (string? etc-timezone-value) (not (string-empty? etc-timezone-value)))
+      ((nonempty-string-membership-helper etc-timezone-value)
+       (class-membership string nonempty-member)
        (list (quote detected) etc-timezone-value (quote etc-timezone)))
-      (t
+      ((identity-relation same) (identity-relation same)
        (list (quote unknown) (quote host-declaration-unavailable))))))
 
 ; Adapt the mechanism-only host observation to public timezone meaning.
@@ -184,7 +186,9 @@
 (def timezone-config
   (lambda (name offset-seconds)
     (cond
-      ((not (string? name)) (list (quote rejected) (quote invalid-name)))
+      ((string-membership-helper name)
+       (class-membership string nonmember)
+       (list (quote rejected) (quote invalid-name)))
       ((not (and (= offset-seconds offset-seconds)
                  (>= offset-seconds -86400)
                  (<= offset-seconds 86400)))
