@@ -367,8 +367,13 @@ fn stable_pairs() -> BTreeSet<(String, String)> {
         .lines()
         .filter_map(|line| {
             let fields = line.split_whitespace().collect::<Vec<_>>();
-            let identity = fields.first()?.strip_prefix('(')?;
-            if identity.len() < 4 || !identity.chars().all(|ch| ch.is_ascii_digit()) {
+            let identity = fields
+                .first()?
+                .strip_prefix("(\\\"")?
+                .strip_suffix('"')?;
+            if identity.len() != 8
+                || !identity.bytes().all(|byte| matches!(byte, b'0' | b'1'))
+            {
                 return None;
             }
             let uk_index = fields.iter().position(|field| *field == "(uk")?;
@@ -391,17 +396,22 @@ fn documented() -> Result<BTreeMap<String, String>, String> {
                 "рядок документації має містити category numeric-ID kind signature: {line}"
             ));
         }
-        let identity = fields[2];
-        if identity.len() < 4 || !identity.chars().all(|ch| ch.is_ascii_digit()) {
+        let identity = fields[2]
+            .strip_prefix('"')
+            .and_then(|value| value.strip_suffix('"'))
+            .ok_or_else(|| format!("документаційний join key має бути quoted byte SID: {}", fields[2]))?;
+        if identity.len() != 8
+            || !identity.bytes().all(|byte| matches!(byte, b'0' | b'1'))
+        {
             return Err(format!(
-                "документаційний join key має бути numeric semantic ID: {identity}"
+                "документаційний join key має бути 8-бітним SID: {identity}"
             ));
         }
         if result
             .insert(identity.to_string(), fields[3].to_string())
             .is_some()
         {
-            return Err(format!("дубльований документаційний semantic ID: {identity}"));
+            return Err(format!("дубльований документаційний byte SID: {identity}"));
         }
     }
     Ok(result)
@@ -431,7 +441,7 @@ fn vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku() -> Result<(), St
         ));
     }
     if coverage_ids != doc_ids {
-        return Err("numeric registry і український документаційний індекс розійшлися".to_string());
+        return Err("byte-SID registry і український документаційний індекс розійшлися".to_string());
     }
     for (_, uk) in &coverage {
         if !DOCS_MD.contains(&format!("| `{uk}` |")) {
@@ -445,9 +455,11 @@ fn vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku() -> Result<(), St
 
 fn dokumentatsiinyi_kliuch_ie_tilky_numeric() -> Result<(), String> {
     for identity in documented()?.keys() {
-        if !(identity.len() >= 4 && identity.chars().all(|ch| ch.is_ascii_digit())) {
+        if identity.len() != 8
+            || !identity.bytes().all(|byte| matches!(byte, b'0' | b'1'))
+        {
             return Err(format!(
-                "документаційний join key не може бути EN spelling: {identity}"
+                "документаційний join key мусить бути byte SID, не EN spelling: {identity}"
             ));
         }
     }
@@ -590,7 +602,7 @@ enum SurfaceAdmission {
     Other,
 }
 
-/// Every semantic ID whose EN spelling AND UK spelling are both `stable` --
+/// Every byte SID whose EN spelling AND UK spelling are both `stable` --
 /// mirrors `uk_surface_equivalence.rs::stable_en_uk_pairs` (crate-integration
 /// test, not reachable from here), kept in sync by hand since this and that
 /// file read the same `semantic-registry.wsm` but serve different purposes
@@ -600,8 +612,13 @@ fn stable_en_uk_names_needing_uk_layout_check() -> Vec<String> {
         .lines()
         .filter_map(|line| {
             let fields = line.split_whitespace().collect::<Vec<_>>();
-            let semantic_id = fields.first()?.strip_prefix('(')?;
-            if semantic_id.is_empty() || !semantic_id.bytes().all(|b| b.is_ascii_digit()) {
+            let semantic_id = fields
+                .first()?
+                .strip_prefix("(\\\"")?
+                .strip_suffix('"')?;
+            if semantic_id.len() != 8
+                || !semantic_id.bytes().all(|byte| matches!(byte, b'0' | b'1'))
+            {
                 return None;
             }
             let mut en = None;
