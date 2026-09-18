@@ -117,37 +117,69 @@
            (cdr row)
            (quote ())))))))
 
-; Re-load the small post-core libraries through host `load`, but temporarily
-; reinterpret only the numeric materialization macro as data capture. Regular
-; DEF forms still evaluate normally in this one-shot generator process.
-(def postcore-cache-captured-declarations (quote ()))
+; The semantic registry is large, so it uses fast host LOAD above. The post-core
+; source files are small; read them as ordinary Lisp data so declaration
+; discovery is pure and does not depend on mutation crossing a LOAD boundary.
+(def postcore-cache-materialization-declarations-onto
+  (lambda (forms acc)
+    (cond
+      ((atom forms) (structural-kind empty-list)
+       (reverse acc))
+      ((atom forms) (structural-kind pair)
+       (let ((form (car forms)))
+         (cond
+           ((atom form) (structural-kind pair)
+            (cond
+              ((eq
+                 (car form)
+                 (quote my-postcore-materialize-stable-peers))
+               (identity-relation same)
+               (postcore-cache-materialization-declarations-onto
+                 (cdr forms)
+                 (cons (list (second form) (third form)) acc)))
+              ((eq
+                 (car form)
+                 (quote my-postcore-materialize-stable-peers))
+               (identity-relation distinct)
+               (postcore-cache-materialization-declarations-onto
+                 (cdr forms)
+                 acc))))
+           ((atom form) (structural-kind atom)
+            (postcore-cache-materialization-declarations-onto
+              (cdr forms)
+              acc))
+           ((atom form) (structural-kind empty-list)
+            (postcore-cache-materialization-declarations-onto
+              (cdr forms)
+              acc))))))))
 
-(defmacro my-postcore-materialize-stable-peers args
-  (let* ((semantic-id (car args))
-         (source (second args)))
-    (list
-      (quote def)
-      (quote postcore-cache-captured-declarations)
-      (list
-        (quote cons)
-        (list (quote quote) (list semantic-id source))
-        (quote postcore-cache-captured-declarations)))))
+(def postcore-cache-materialization-declarations
+  (lambda (path)
+    (postcore-cache-materialization-declarations-onto
+      (read-all (read-file path))
+      (quote ()))))
 
-(def postcore-cache-load-sources
-  (lambda (paths)
+(def postcore-cache-collect-declarations
+  (lambda (paths acc)
     (cond
       ((atom paths) (structural-kind empty-list)
-       (quote loaded))
+       acc)
       ((atom paths) (structural-kind pair)
-       (let ((loaded (load (car paths))))
-         (postcore-cache-load-sources (cdr paths)))))))
-
-(def postcore-cache-source-load-status
-  (postcore-cache-load-sources postcore-cache-source-paths))
+       (postcore-cache-collect-declarations
+         (cdr paths)
+         (append
+           acc
+           (postcore-cache-materialization-declarations (car paths))))))))
 
 (def postcore-cache-declarations
-  (reverse postcore-cache-captured-declarations))
-(print (quote (postcore-cache-debug declarations-loaded)))
+  (postcore-cache-collect-declarations
+    postcore-cache-source-paths
+    (quote ())))
+(print
+  (list
+    (quote postcore-cache-debug)
+    (quote declarations-loaded)
+    (length postcore-cache-declarations)))
 
 (def postcore-cache-declarations-valid?
   (lambda (declarations)
