@@ -164,7 +164,8 @@
       ((nonempty-string-membership-helper etc-timezone-value)
        (class-membership string nonempty-member)
        (list (quote detected) etc-timezone-value (quote etc-timezone)))
-      ((identity-relation same) (identity-relation same)
+      ((eq (quote timezone-fallback) (quote timezone-fallback))
+       (identity-relation same)
        (list (quote unknown) (quote host-declaration-unavailable))))))
 
 ; Adapt the mechanism-only host observation to public timezone meaning.
