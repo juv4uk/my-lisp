@@ -63,3 +63,17 @@ fn eight_bit_pattern_survives_read_write_round_trip() {
 
     assert_eq!(result.value.to_string(), "\"00000000\"");
 }
+
+const GROUND_GRAPH: &str = include_str!("../../../experiments/ground-graph.lisp");
+
+#[test]
+fn ground_graph_supports_bidirectional_equivalence_and_transition() {
+    let mut session = Session::default();
+    let result = eval_program(GROUND_GRAPH, &mut session)
+        .expect("ground graph experiment must execute as ordinary Lisp data");
+
+    assert_eq!(
+        result.value.to_string(),
+        "((eclass-forward 00000000) (eclass-backward ()) (graph-equivalence-forward 00000000) (graph-equivalence-backward ()) (graph-transition-forward 00000001) (graph-transition-backward 00000000))"
+    );
+}
