@@ -56,13 +56,20 @@ fn admitted_ukr_registry_spellings_never_require_latin_layout() {
                 panic!("unterminated ukr surface entry: {line}");
             };
             let fields = rest[..end].split_whitespace().collect::<Vec<_>>();
-            assert_eq!(
-                fields.len(),
-                2,
-                "ukr surface entry must have spelling and status: {line}"
+            assert!(
+                matches!(fields.len(), 1 | 2),
+                "ukr surface entry must be (ukr spelling) or carry one exceptional status: {line}"
             );
             let name = fields[0];
-            let status = fields[1];
+            let status = if fields.len() == 1 {
+                "stable"
+            } else {
+                assert_ne!(
+                    fields[1], "stable",
+                    "sr/2 must not spell stable explicitly: {line}"
+                );
+                fields[1]
+            };
             if matches!(status, "stable" | "compatibility-only") && name != "—" {
                 admitted += 1;
                 assert!(
@@ -84,8 +91,8 @@ fn admitted_ukr_registry_spellings_never_require_latin_layout() {
 fn full_ukr_names_preserve_action_protocol_and_representation_semantics() {
     let source = include_str!("../../../lib/surface/semantic-registry.lisp");
     let expected = [
-        ("00001100", "(ukr додати stable)"),
-        ("00001101", "(ukr відняти stable)"),
+        ("00001100", "(ukr додати)"),
+        ("00001101", "(ukr відняти)"),
         ("01010100", "(ukr буфер-32-бітних-цілих-зі-знаком candidate)"),
         ("10100000", "(ukr розібрати-текст-формату-джейсон candidate)"),
         (
