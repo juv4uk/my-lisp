@@ -31,6 +31,7 @@
   (car (read-all (read-file "lib/surface/semantic-registry.lisp"))))
 
 (def postcore-cache-authority-rows (cdr postcore-cache-authority-form))
+(print (quote (postcore-cache-debug authority-loaded)))
 
 (def postcore-cache-member-status
   (lambda (needle items)
@@ -168,6 +169,7 @@
   (postcore-cache-collect-declarations
     postcore-cache-source-paths
     (quote ())))
+(print (quote (postcore-cache-debug declarations-loaded)))
 
 (def postcore-cache-declarations-valid?
   (lambda (declarations)
@@ -215,6 +217,7 @@
   (postcore-cache-expected-groups-onto
     postcore-cache-declarations
     (quote ())))
+(print (quote (postcore-cache-debug groups-derived)))
 
 (def postcore-cache-render-peers-onto
   (lambda (peers acc)
@@ -262,6 +265,8 @@
 
 (def postcore-cache-output-path
   "lib/generated/postcore-stable-peer-projection.lisp")
+
+(print (quote (postcore-cache-debug render-ready)))
 
 (cond
   ((eq
