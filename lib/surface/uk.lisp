@@ -128,7 +128,7 @@
 (define текст-у-символ string->symbol)
 (define текст-у-кодову-точку string->codepoint)
 (define кодова-точка-у-текст codepoint->string)
-(define число-у-текст number->string)
+; 1055: `number->string` / `число-у-текст` встановлюються як registry-driven direct peers.
 
 ;; ═══════════════════════════════════════════════════════════════
 ;; Batch 1 — I/O (status: stable)
