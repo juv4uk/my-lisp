@@ -27,10 +27,13 @@
     "lib/fs.lisp"
   )))
 
-(def postcore-cache-authority-form
-  (car (read-all (read-file "lib/surface/semantic-registry.lisp"))))
+; Host load owns only fast file transport/parsing. This temporary macro owns
+; the interpretation: the registry's sr/1 envelope becomes quoted data.
+(defmacro sr/1 rows
+  (list (quote quote) rows))
 
-(def postcore-cache-authority-rows (cdr postcore-cache-authority-form))
+(def postcore-cache-authority-rows
+  (load "lib/surface/semantic-registry.lisp"))
 (print (quote (postcore-cache-debug authority-loaded)))
 
 (def postcore-cache-member-status
@@ -114,61 +117,36 @@
            (cdr row)
            (quote ())))))))
 
-(def postcore-cache-materialization-declarations-onto
-  (lambda (forms acc)
-    (cond
-      ((atom forms) (structural-kind empty-list)
-       (reverse acc))
-      ((atom forms) (structural-kind pair)
-       (let ((form (car forms)))
-         (cond
-           ((atom form) (structural-kind pair)
-            (cond
-              ((eq
-                 (car form)
-                 (quote my-postcore-materialize-stable-peers))
-               (identity-relation same)
-               (postcore-cache-materialization-declarations-onto
-                 (cdr forms)
-                 (cons (list (second form) (third form)) acc)))
-              ((eq
-                 (car form)
-                 (quote my-postcore-materialize-stable-peers))
-               (identity-relation distinct)
-               (postcore-cache-materialization-declarations-onto
-                 (cdr forms)
-                 acc))))
-           ((atom form) (structural-kind atom)
-            (postcore-cache-materialization-declarations-onto
-              (cdr forms)
-              acc))
-           ((atom form) (structural-kind empty-list)
-            (postcore-cache-materialization-declarations-onto
-              (cdr forms)
-              acc))))))))
+; Re-load the small post-core libraries through host `load`, but temporarily
+; reinterpret only the numeric materialization macro as data capture. Regular
+; DEF forms still evaluate normally in this one-shot generator process.
+(def postcore-cache-captured-declarations (quote ()))
 
-(def postcore-cache-materialization-declarations
-  (lambda (path)
-    (postcore-cache-materialization-declarations-onto
-      (read-all (read-file path))
-      (quote ()))))
+(defmacro my-postcore-materialize-stable-peers args
+  (let* ((semantic-id (car args))
+         (source (second args)))
+    (list
+      (quote def)
+      (quote postcore-cache-captured-declarations)
+      (list
+        (quote cons)
+        (list (quote quote) (list semantic-id source))
+        (quote postcore-cache-captured-declarations)))))
 
-(def postcore-cache-collect-declarations
-  (lambda (paths acc)
+(def postcore-cache-load-sources
+  (lambda (paths)
     (cond
       ((atom paths) (structural-kind empty-list)
-       acc)
+       (quote loaded))
       ((atom paths) (structural-kind pair)
-       (postcore-cache-collect-declarations
-         (cdr paths)
-         (append
-           acc
-           (postcore-cache-materialization-declarations (car paths))))))))
+       (let ((loaded (load (car paths))))
+         (postcore-cache-load-sources (cdr paths)))))))
+
+(def postcore-cache-source-load-status
+  (postcore-cache-load-sources postcore-cache-source-paths))
 
 (def postcore-cache-declarations
-  (postcore-cache-collect-declarations
-    postcore-cache-source-paths
-    (quote ())))
+  (reverse postcore-cache-captured-declarations))
 (print (quote (postcore-cache-debug declarations-loaded)))
 
 (def postcore-cache-declarations-valid?
