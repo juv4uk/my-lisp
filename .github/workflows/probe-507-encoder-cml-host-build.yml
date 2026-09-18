@@ -1,0 +1,50 @@
+name: Probe 507 whole encoder CML host build
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/probe-507-encoder-cml-host-build.yml'
+      - 'docs/superpowers/plans/2026-09-18-compiled-encoder-bootstrap*'
+
+jobs:
+  encoder-cml-host-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout my-lisp
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Checkout pinned CML
+        uses: actions/checkout@v5
+        with:
+          repository: juv4uk/cml
+          ref: d12db3370180c4d155e21a61ab788d63e02010e9
+          path: _cml
+          submodules: recursive
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Move pinned CML outside my-lisp Cargo workspace
+        shell: bash
+        run: |
+          rm -rf /tmp/cml-pinned
+          cp -a _cml /tmp/cml-pinned
+
+      - name: Probe whole upstream encoder through host-native C backend
+        shell: bash
+        run: |
+          set +e
+          output="$(cd /tmp/cml-pinned && cargo run --quiet --bin cml -- build "$GITHUB_WORKSPACE/lib/machine/encoding/x86-64.lisp" -o /tmp/my-lisp-encoder-host 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          echo "CML_HOST_ENCODER_EXIT_STATUS=$status"
+          if [[ "$status" -eq 0 ]]; then
+            test -x /tmp/my-lisp-encoder-host
+            file /tmp/my-lisp-encoder-host
+          fi
+
+      - name: Child diff hygiene
+        run: git diff --check HEAD^ HEAD
