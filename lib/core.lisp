@@ -781,8 +781,9 @@
 ; Keep only unique stable spellings from lib/surface/semantic-registry.lisp.
 ; Candidate spellings are deliberately absent and therefore cannot become
 ; executable merely by appearing in documentation.
-; The block below is generated from semantic-registry + numeric post-core
-; declarations. Do not edit its rows by hand; run the #606 generator instead.
+; The block below must byte-match the Lisp-generated projection from
+; semantic-registry + numeric post-core declarations. Do not edit rows by hand;
+; CI compares it with lib/generated/postcore-stable-peer-projection.lisp.
 ; BEGIN GENERATED POSTCORE STABLE PEER PROJECTION — scripts/generate-postcore-peer-cache.lisp
 (def my-postcore-stable-peer-projection
   (quote (
