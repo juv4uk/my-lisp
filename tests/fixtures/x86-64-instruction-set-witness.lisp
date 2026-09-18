@@ -485,9 +485,9 @@
      ((encode movq-r64-xmm)
       (x86-encode-movq-r64-xmm (quote rax) (quote xmm0))
       (102 72 15 126 192))
-     ; #176 AES-NI RED: pinned XED base/xed-isa.txt admits a register
-     ; form for each class below. 0x66 is the mandatory prefix; XMM8-XMM15
-     ; require REX.R/REX.B before the 0F 38/3A opcode map.
+     ; #176 AES-NI RED: pinned XED base/xed-isa.txt допускає регістрову
+     ; форму для кожного класу нижче. 0x66 є mandatory prefix; XMM8-XMM15
+     ; потребують REX.R/REX.B перед картою opcode 0F 38/3A.
      ((encode aesenc-xmm-xmm)
       (x86-encode-aesenc-xmm-xmm (quote xmm0) (quote xmm1))
       (102 15 56 220 193))
