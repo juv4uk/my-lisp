@@ -137,6 +137,62 @@ fn ntp_query_raw_value(
     ]))
 }
 
+fn exact_nonnegative_integer(
+    name: &'static str,
+    value: &Value,
+    span: Span,
+) -> Result<Rational, crate::LanguageError> {
+    match value {
+        Value::Number(number, Exactness::Exact)
+            if *number >= 0.0 && number.fract() == 0.0 =>
+        {
+            Ok(Rational::integer(*number as i64))
+        }
+        Value::Rational(rational)
+            if rational.is_integer() && !rational.is_negative() =>
+        {
+            Ok(rational.clone())
+        }
+        _ => Err(crate::LanguageError::new(
+            crate::ErrorKind::Type,
+            format!("{name} expects exact non-negative integer arguments"),
+            span,
+        )),
+    }
+}
+
+fn exact_nonnegative_shift_count(
+    name: &'static str,
+    value: &Value,
+    span: Span,
+) -> Result<usize, crate::LanguageError> {
+    let exact = exact_nonnegative_integer(name, value, span)?;
+    exact.as_nonnegative_usize().ok_or_else(|| {
+        crate::LanguageError::new(
+            crate::ErrorKind::NumericOverflow,
+            format!("{name} shift count exceeds the addressable host range"),
+            span,
+        )
+    })
+}
+
+fn check_bitwise_numeric_limit(
+    environment: &Environment,
+    result: &Rational,
+    span: Span,
+) -> Result<(), crate::LanguageError> {
+    if let Some(limit) = environment.numeric_bit_limit() {
+        if result.bit_length() > limit {
+            return Err(crate::LanguageError::new(
+                crate::ErrorKind::NumericOverflow,
+                "exact bitwise result exceeds the configured bit-length limit",
+                span,
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub(crate) fn install(environment: &Environment) {
     macro_rules! define {
         ($env:expr, $name:expr, $f:expr) => {
@@ -169,6 +225,57 @@ pub(crate) fn install(environment: &Environment) {
     // found and fixed during migration, and
     // docs/BUILTIN-IDENTITY-MIGRATION-MAP-2026-09-11.md for the wider
     // migration this is the first vertical slice of.
+
+    define!(environment, "integer-bit-and-raw", |args: &[Value], env: &Environment, span: Span| {
+        exact_args("integer-bit-and-raw", args, 2, span)?;
+        let left = exact_nonnegative_integer("integer-bit-and-raw", &args[0], span)?;
+        let right = exact_nonnegative_integer("integer-bit-and-raw", &args[1], span)?;
+        let result = left
+            .bit_and_nonnegative_integer(&right)
+            .expect("validated non-negative exact integers");
+        check_bitwise_numeric_limit(env, &result, span)?;
+        Ok(exact_value(result))
+    });
+    define!(environment, "integer-bit-or-raw", |args: &[Value], env: &Environment, span: Span| {
+        exact_args("integer-bit-or-raw", args, 2, span)?;
+        let left = exact_nonnegative_integer("integer-bit-or-raw", &args[0], span)?;
+        let right = exact_nonnegative_integer("integer-bit-or-raw", &args[1], span)?;
+        let result = left
+            .bit_or_nonnegative_integer(&right)
+            .expect("validated non-negative exact integers");
+        check_bitwise_numeric_limit(env, &result, span)?;
+        Ok(exact_value(result))
+    });
+    define!(environment, "integer-bit-xor-raw", |args: &[Value], env: &Environment, span: Span| {
+        exact_args("integer-bit-xor-raw", args, 2, span)?;
+        let left = exact_nonnegative_integer("integer-bit-xor-raw", &args[0], span)?;
+        let right = exact_nonnegative_integer("integer-bit-xor-raw", &args[1], span)?;
+        let result = left
+            .bit_xor_nonnegative_integer(&right)
+            .expect("validated non-negative exact integers");
+        check_bitwise_numeric_limit(env, &result, span)?;
+        Ok(exact_value(result))
+    });
+    define!(environment, "integer-shift-left-raw", |args: &[Value], env: &Environment, span: Span| {
+        exact_args("integer-shift-left-raw", args, 2, span)?;
+        let value = exact_nonnegative_integer("integer-shift-left-raw", &args[0], span)?;
+        let bits = exact_nonnegative_shift_count("integer-shift-left-raw", &args[1], span)?;
+        let result = value
+            .shift_left_nonnegative_integer(bits)
+            .expect("validated non-negative exact integer");
+        check_bitwise_numeric_limit(env, &result, span)?;
+        Ok(exact_value(result))
+    });
+    define!(environment, "integer-shift-right-raw", |args: &[Value], env: &Environment, span: Span| {
+        exact_args("integer-shift-right-raw", args, 2, span)?;
+        let value = exact_nonnegative_integer("integer-shift-right-raw", &args[0], span)?;
+        let bits = exact_nonnegative_shift_count("integer-shift-right-raw", &args[1], span)?;
+        let result = value
+            .shift_right_nonnegative_integer(bits)
+            .expect("validated non-negative exact integer");
+        check_bitwise_numeric_limit(env, &result, span)?;
+        Ok(exact_value(result))
+    });
 
     define!(environment, "make-vector", |args: &[Value], _env: &Environment, span: Span| {
         exact_args("make-vector", args, 1, span)?;
