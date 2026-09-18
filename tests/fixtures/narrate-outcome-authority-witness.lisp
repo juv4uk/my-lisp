@@ -28,7 +28,15 @@
       (list
         (quote non-symbol-tag-is-invalid)
         (narrate-outcome (quote (42 payload)))
-        (quote (invalid outcome-tag 42))))))
+        (quote (invalid outcome-tag 42)))
+      (list
+        (quote pair-tag-is-invalid)
+        (narrate-outcome (quote ((bad-tag) payload)))
+        (quote (invalid outcome-tag (bad-tag))))
+      (list
+        (quote empty-list-tag-is-invalid)
+        (narrate-outcome (quote (() payload)))
+        (quote (invalid outcome-tag ()))))))
 
 (def narrate-outcome-authority-check-rows
   (lambda (rows)
