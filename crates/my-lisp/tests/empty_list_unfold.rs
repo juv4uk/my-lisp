@@ -134,3 +134,16 @@ fn relation_lifecycle_requires_evidence_before_assertion_and_resolves_late() {
         "((candidate-visible (graph-result found 00010011)) (assertion-before-evidence (graph-result absent)) (assertion-after-evidence (graph-result found (00010010 00010000 00010011))) (unresolved-assertion (graph-result found (00010010 00010000 00010011))) (resolved-assertion (graph-result found (00010010 00010000 00010100))) (candidate-preserved (graph-result found 00010011)))"
     );
 }
+
+
+#[test]
+fn mismatched_evidence_does_not_assert_candidate_relation() {
+    let mut session = Session::default();
+    let source = format!(
+        "{GROUND_GRAPH}\n(def mismatched-evidence (list (list lifecycle-source lifecycle-evidence-relation 00010101)))\n(derive-asserted-edge lifecycle-candidate-graph mismatched-evidence lifecycle-source)"
+    );
+    let result = eval_program(&source, &mut session)
+        .expect("mismatched evidence query must execute");
+
+    assert_eq!(result.value.to_string(), "(graph-result absent)");
+}
