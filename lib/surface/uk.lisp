@@ -136,7 +136,7 @@
 ;; ═══════════════════════════════════════════════════════════════
 
 (define друкувати print)
-(define показати princ)
+; 1058: `princ` / `показати` встановлюються як registry-driven direct peers.
 (define прочитати read)
 (define прочитати-усе read-all)
 (define значення-у-текст write-to-string)
