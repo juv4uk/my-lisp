@@ -41,3 +41,25 @@ fn empty_list_recovers_its_opaque_identity_from_lisp_data() {
 
     assert_eq!(result.value.to_string(), "00000000");
 }
+
+#[test]
+fn eight_bit_zero_is_not_numeric_zero() {
+    let mut session = Session::default();
+
+    let bits = eval_program("(quote 00000000)", &mut session)
+        .expect("8-bit pattern must survive quote as data");
+    assert_eq!(bits.value.to_string(), "00000000");
+
+    let relation = eval_program("(eq (quote 00000000) 0)", &mut session)
+        .expect("8-bit pattern and number are both atoms and may be compared");
+    assert_eq!(relation.value.to_string(), "(identity-relation distinct)");
+}
+
+#[test]
+fn eight_bit_pattern_survives_read_write_round_trip() {
+    let mut session = Session::default();
+    let result = eval_program("(write-to-string (read \"00000000\"))", &mut session)
+        .expect("8-bit pattern must survive reader and printer without decimal reinterpretation");
+
+    assert_eq!(result.value.to_string(), "\"00000000\"");
+}
