@@ -18,8 +18,8 @@ ALLOWED_STATUSES = {"stable", "candidate", "missing", "compatibility-only"}
 HUMAN_SURFACES = ("uk", "en", "sa")
 ENTRY = re.compile(r'^\\s*\\("([01]{8})"\\s+(.*)\\)\\s*$')
 SURFACE = re.compile(
-    r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)\s+"
-    r"(stable|candidate|missing|compatibility-only)\)"
+    r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)"
+    r"(?:\s+(candidate|missing|compatibility-only))?\)"
 )
 
 
@@ -51,7 +51,8 @@ def parse_entries(source: str) -> list[Entry]:
         if not matches or residue:
             raise ValueError(f"line {line_number}: malformed semantic entry {identity}")
         for item in matches:
-            language, name, status = item.groups()
+            language, name, exception_status = item.groups()
+            status = exception_status or "stable"
             if language in surfaces:
                 raise ValueError(f"line {line_number}: duplicate {language} in {identity}")
             if status not in ALLOWED_STATUSES:
