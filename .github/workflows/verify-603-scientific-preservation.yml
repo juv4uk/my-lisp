@@ -1,0 +1,27 @@
+name: Verify 603 scientific preservation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-603-scientific-preservation.yml'
+
+jobs:
+  scientific-preservation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Exact quantity preservation witness
+        run: |
+          actual="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/exact-quantity-arithmetic-witness.lisp)"
+          test "$actual" = "(exact-quantity-arithmetic-witness (status pass))"
+      - name: Scientific knowledge projection preservation witness
+        run: |
+          actual="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/scientific-constant-knowledge-projection-witness.lisp)"
+          test "$actual" = "(scientific-constant-knowledge-projection-witness (status pass))"
+      - name: Child diff hygiene
+        run: git diff --check HEAD^ HEAD
