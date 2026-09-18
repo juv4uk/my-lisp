@@ -49,6 +49,11 @@ pub mod semantic_registry_export {
     pub fn semantic_id_for_admitted_surface(name: &str) -> Option<u8> {
         super::semantic_registry::admitted_semantic_id_for_surface(name)
     }
+
+    /// Canonical 8-bit textual serialization for provenance/export.
+    pub fn semantic_id_bits(semantic_id: u8) -> String {
+        super::semantic_registry::semantic_id_bits(semantic_id)
+    }
 }
 pub mod syntax;
 mod value;
