@@ -101,3 +101,12 @@ if [[ "$machine_register_width_status" != "(machine-register-width-witness (stat
   printf 'machine register-width witness failed: %s\n' "$machine_register_width_status" >&2
   exit 1
 fi
+
+# #469: post-core Lisp libraries must materialize stable registry peers without
+# loading a language-specific alias surface. The shell observes only the named
+# Lisp verdict; identity, invocation and shadowing laws remain in Lisp.
+postcore_peer_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/postcore-peer-materialization-witness.lisp)"
+if [[ "$postcore_peer_status" != "(postcore-peer-materialization-witness (status pass))" ]]; then
+  printf 'post-core peer materialization witness failed: %s\n' "$postcore_peer_status" >&2
+  exit 1
+fi

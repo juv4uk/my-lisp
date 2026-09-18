@@ -770,3 +770,108 @@
              ((equal? rest-max (quote ())) (car items))
              ((> (car items) rest-max) (car items))
              (t rest-max)))))))
+
+; #469 — post-core stable peer materialization.
+;
+; Numeric semantic ID remains the authority. This table is only the runtime
+; projection needed by Lisp libraries loaded after the ordinary core bootstrap:
+; a library names the numeric ID and the binding it just defined; peer spellings
+; are never implemented as UK->EN or EN->UK aliases in that library.
+;
+; Keep only unique stable spellings from lib/surface/semantic-registry.lisp.
+; Candidate spellings are deliberately absent and therefore cannot become
+; executable merely by appearing in documentation.
+(def my-postcore-stable-peer-projection
+  (quote (
+    (1079 utc-now поточний-всч)
+    (1080 utc-from-unix всч-із-юнікс)
+    (1081 unix-time-observation->utc юнікс-спостереження-у-всч)
+    (1082 milliseconds-from-nanoseconds мілісекунди-із-наносекунд)
+    (1083 mono-ms монотонний-мс)
+    (1084 timezone-name назва-часового-поясу)
+    (1085 timezone-detect визначити-часовий-пояс)
+    (1086 timezone-offset-seconds зміщення-часового-поясу-в-секундах)
+    (1087 deadline-reached? дедлайн-досягнуто?)
+    (1088 deadline-reached-at? дедлайн-досягнуто-на-момент?)
+    (1089 elapsed-ns минуло-нс)
+    (1090 deadline-from дедлайн-від)
+    (1091 deadline-after-ns дедлайн-через-нс)
+    (1092 internet-time-sync запитати-інтернет-час)
+  )))
+
+(def my-postcore-peer-group
+  (lambda (semantic-id groups)
+    (cond
+      ((atom groups) (structural-kind empty-list)
+       (quote ()))
+      ((atom groups) (structural-kind pair)
+       (let ((group (car groups)))
+         (cond
+           ((eq semantic-id (car group)) (identity-relation same)
+            group)
+           ((eq semantic-id (car group)) (identity-relation distinct)
+            (my-postcore-peer-group semantic-id (cdr groups)))))))))
+
+(def my-postcore-binding-status
+  (lambda (surface bindings)
+    (cond
+      ((atom bindings) (structural-kind empty-list)
+       (quote absent))
+      ((atom bindings) (structural-kind pair)
+       (let ((binding (car bindings)))
+         (cond
+           ((eq (symbol->string surface) (car binding)) (identity-relation same)
+            (quote present))
+           ((eq (symbol->string surface) (car binding)) (identity-relation distinct)
+            (my-postcore-binding-status surface (cdr bindings)))))))))
+
+(def my-postcore-missing-peers
+  (lambda (source peers bindings)
+    (cond
+      ((atom peers) (structural-kind empty-list)
+       (quote ()))
+      ((atom peers) (structural-kind pair)
+       (let ((peer (car peers)))
+         (cond
+           ((eq source peer) (identity-relation same)
+            (my-postcore-missing-peers source (cdr peers) bindings))
+           ((eq source peer) (identity-relation distinct)
+            (cond
+              ((eq (my-postcore-binding-status peer bindings) (quote present))
+               (identity-relation same)
+               (my-postcore-missing-peers source (cdr peers) bindings))
+              ((eq (my-postcore-binding-status peer bindings) (quote absent))
+               (identity-relation same)
+               (cons peer
+                     (my-postcore-missing-peers
+                       source
+                       (cdr peers)
+                       bindings)))))))))))
+
+; Build one expression whose nested DEFINE forms all execute in the caller's
+; environment. This is why materialization is a macro rather than a function:
+; an ordinary function would define peers only in its temporary child frame.
+(def my-postcore-build-definitions
+  (lambda (source peers)
+    (cond
+      ((atom peers) (structural-kind empty-list)
+       source)
+      ((atom peers) (structural-kind pair)
+       (list (quote define)
+             (car peers)
+             (my-postcore-build-definitions source (cdr peers)))))))
+
+(defmacro my-postcore-materialize-stable-peers args
+  (let* ((semantic-id (car args))
+         (source (second args))
+         (group
+           (my-postcore-peer-group
+             semantic-id
+             my-postcore-stable-peer-projection)))
+    (cond
+      ((atom group) (structural-kind empty-list)
+       source)
+      ((atom group) (structural-kind pair)
+       (my-postcore-build-definitions
+         source
+         (my-postcore-missing-peers source (cdr group) (env)))))))
