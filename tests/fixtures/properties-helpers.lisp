@@ -10,7 +10,7 @@
       ((atom l) (structural-kind empty-list) t)
       ((atom (cdr l)) (structural-kind empty-list) t)
       ((identity-relation same) (identity-relation same)
-       (let ((order (string-order (car (car (cdr l))) (car (car l)))))
+       (let ((order (string-order-helper (car (car (cdr l))) (car (car l)))))
          (cond
            ((eq order (quote (text-order before)))
             (identity-relation same)
