@@ -1,4 +1,5 @@
 ; #76 — Lisp-owned replacement for scripts/check_surface_coverage.py.
+; Integration refresh after #536 is provenance-only; checker behavior is unchanged.
 ; Governance/tooling check only: semantic authority remains
 ; lib/surface/semantic-registry.lisp.
 ;
