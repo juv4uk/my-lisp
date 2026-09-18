@@ -40,6 +40,23 @@ jobs:
           printf '%s\n' '(print (quote DEBUG-STARTUP-OK))' > tests/debug-startup.lisp
           ./target/debug/my-lisp tests/debug-startup.lisp
 
+      - name: DEBUG — isolate read-file layers
+        shell: bash
+        run: |
+          set +e
+          printf '%s\n'             '(print (quote DEBUG-BEFORE-BYTES))'             '(print (car (read-file-bytes "tests/authority-inventory.lisp")))'             > tests/debug-read-bytes.lisp
+          ./target/debug/my-lisp tests/debug-read-bytes.lisp
+          echo "DEBUG-READ-BYTES-EXIT=$?"
+
+          printf '%s\n'             '(print (quote DEBUG-BEFORE-UTF8))'             '(print (car (utf8-decode (read-file-bytes "tests/authority-inventory.lisp"))))'             > tests/debug-read-utf8.lisp
+          ./target/debug/my-lisp tests/debug-read-utf8.lisp
+          echo "DEBUG-READ-UTF8-EXIT=$?"
+
+          printf '%s\n'             '(print (quote DEBUG-BEFORE-READ-FILE))'             '(print (read-file "tests/authority-inventory.lisp"))'             > tests/debug-read-file.lisp
+          ./target/debug/my-lisp tests/debug-read-file.lisp
+          echo "DEBUG-READ-FILE-EXIT=$?"
+          set -e
+
       - name: Forbidden semantic fixture is diagnosed and rejected
         shell: bash
         run: |
