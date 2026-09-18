@@ -1,0 +1,57 @@
+name: Verify #528 semantic registry parity
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/check_semantic_registry.py'
+      - 'scripts/check-semantic-registry.lisp'
+      - '.github/workflows/verify-528-semantic-registry-parity.yml'
+      - 'lib/surface/semantic-registry.lisp'
+  workflow_dispatch:
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build my-lisp
+        run: cargo build --release -p my-lisp-cli --bin my-lisp
+
+      - name: Require Lisp replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f scripts/check-semantic-registry.lisp
+
+      - name: Positive parity on live registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check_semantic_registry.py > /tmp/python-positive.out
+          ./target/release/my-lisp scripts/check-semantic-registry.lisp > /tmp/lisp-positive.out
+          cat /tmp/python-positive.out
+          cat /tmp/lisp-positive.out
+
+      - name: Negative parity on malformed numeric identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp lib/surface/semantic-registry.lisp /tmp/semantic-registry.original
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("lib/surface/semantic-registry.lisp")
+          text = path.read_text(encoding="utf-8")
+          path.write_text(text.replace("(0001 ", "(bad-id ", 1), encoding="utf-8")
+          PY
+          set +e
+          python3 scripts/check_semantic_registry.py > /tmp/python-negative.out 2>&1
+          python_status=$?
+          ./target/release/my-lisp scripts/check-semantic-registry.lisp > /tmp/lisp-negative.out 2>&1
+          lisp_status=$?
+          set -e
+          mv /tmp/semantic-registry.original lib/surface/semantic-registry.lisp
+          test "$python_status" -ne 0
+          test "$lisp_status" -ne 0
+          grep -Fq 'bad-id' /tmp/python-negative.out
+          grep -Fq 'bad-id' /tmp/lisp-negative.out
