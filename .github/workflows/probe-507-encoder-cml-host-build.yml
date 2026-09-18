@@ -46,5 +46,27 @@ jobs:
             file /tmp/my-lisp-encoder-host
           fi
 
+      - name: Compare interpreted and compiled x86-encode-ret bytes
+        shell: bash
+        run: |
+          cat > /tmp/encoder-ret-interpreted.lisp <<'LISP'
+          (load "lib/core.lisp")
+          (load "lib/machine/encoding/x86-64.lisp")
+          (x86-encode-ret)
+          LISP
+
+          interpreted="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- /tmp/encoder-ret-interpreted.lisp)"
+          printf 'INTERPRETED_ENCODER_RET=%s\n' "$interpreted"
+
+          cp lib/machine/encoding/x86-64.lisp /tmp/encoder-ret-compiled.lisp
+          printf '\n(x86-encode-ret)\n' >> /tmp/encoder-ret-compiled.lisp
+
+          (cd /tmp/cml-pinned && cargo run --quiet --bin cml -- build /tmp/encoder-ret-compiled.lisp -o /tmp/encoder-ret-host)
+          compiled="$(/tmp/encoder-ret-host)"
+          printf 'COMPILED_ENCODER_RET=%s\n' "$compiled"
+
+          test "$interpreted" = "(195)"
+          test "$compiled" = "$interpreted"
+
       - name: Child diff hygiene
         run: git diff --check HEAD^ HEAD
