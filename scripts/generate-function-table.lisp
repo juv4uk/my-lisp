@@ -31,31 +31,13 @@
 ; Both are read directly from semantic-registry.lisp; this generator never
 ; invents names and never duplicates `ukr` under another full-UK column.
 
-; The registry spells SID 00000001's `sym` surface as the literal
-; apostrophe character. The ordinary Lisp reader treats a bare `'` as
-; its own quote-shorthand macro (reads the NEXT datum), not a plain
-; 3-token symbol, so the source line "(sym ' stable)" parses as
-; "(sym (quote stable))" -- a 2-element list whose second element is
-; itself (quote stable), not the intended 3-element (lang word status)
-; shape every other row has. Reconstruct it, representing the
-; apostrophe word as the string "'" since it cannot round-trip as a
-; bare reader token in this position.
-(def normalize-surface
-  (lambda (raw)
-    (cond
-      ((eq (length raw) 3) raw)
-      ((and (eq (length raw) 2) (not (atom (car (cdr raw))))
-            (eq (car (car (cdr raw))) (quote quote)))
-       (list (car raw) "'" (car (cdr (car (cdr raw))))))
-      (t raw))))
-
-(def normalize-entry
-  (lambda (entry) (cons (car entry) (map normalize-surface (cdr entry)))))
-
+; sr/2 normal admitted surfaces are two-element rows: (namespace spelling).
+; Reader-sensitive spellings such as apostrophe are serialized as strings, so the
+; registry remains ordinary re-readable Lisp data without a special reconstruction path.
 (def registry-form (car (read-all (read-file "lib/surface/semantic-registry.lisp"))))
 ; SID 00000000 is Canon 0 / (), a semantic ground value rather than a function.
 ; The function table projects only callable/form identities, so skip that first row.
-(def entries (map normalize-entry (cdr (cdr registry-form))))
+(def entries (cdr (cdr registry-form)))
 
 ; Processor realization projection. Its rows never create an identity: they
 ; may only annotate IDs that already exist in `entries` above.
@@ -117,7 +99,7 @@
 ; SID already arrives from sr/2 as an exact 8-bit string. This generator
 ; must preserve it verbatim; formatting identity is owned by the registry.
 
-; --- one entry's surfaces are a list of (lang word status) triples ---
+; --- surfaces are (lang word) when admitted, or (lang word exception-status) ---
 (def find-surface
   (lambda (lang surfaces)
     (cond
@@ -126,7 +108,11 @@
       (t (find-surface lang (cdr surfaces))))))
 
 (def surface-word (lambda (surface-entry) (car (cdr surface-entry))))
-(def surface-status (lambda (surface-entry) (car (cdr (cdr surface-entry)))))
+(def surface-status
+  (lambda (surface-entry)
+    (cond
+      ((eq (length surface-entry) 2) (quote stable))
+      (t (car (cdr (cdr surface-entry)))))))
 
 ; --- (word status) for a language, defaulting to (— missing) when the
 ; registry row has no row for that language at all ---
