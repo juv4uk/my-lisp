@@ -602,6 +602,11 @@ pub fn install() {
         "native-call-u64-raw",
         native_exec::evaluate_native_call_u64_raw,
     );
+    #[cfg(all(any(target_os = "linux", target_os = "windows"), target_arch = "x86_64"))]
+    register_capability(
+        "native-call-bit8-raw",
+        native_exec::evaluate_native_call_bit8_raw,
+    );
 }
 
 #[cfg(test)]
