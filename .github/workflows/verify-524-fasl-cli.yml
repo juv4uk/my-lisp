@@ -1,0 +1,19 @@
+name: Verify #524 FASL + CLI
+
+on:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-524-fasl-cli-post-ece
+      - name: Verify committed core FASL matches current source
+        run: cargo test -p my-lisp --test core_fasl_freshness
+      - name: Verify CLI black-box baseline
+        run: cargo test -p my-lisp-cli --test cli
