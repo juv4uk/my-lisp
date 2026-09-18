@@ -1,0 +1,48 @@
+name: Verify 575 quantity root cause
+
+on:
+  pull_request:
+    branches:
+      - fix/220-scientific-constant-exactq-length
+  workflow_dispatch:
+
+jobs:
+  quantity-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Probe exact-Q and quantity consumers independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build -p my-lisp-cli --bin my-lisp
+
+          run_case() {
+            local name="$1"
+            local expr="$2"
+            cat > /tmp/quantity-case.lisp <<LISP
+          (load "lib/quantity.lisp")
+          (load "lib/si.lisp")
+          $expr
+          LISP
+            set +e
+            output="$(./target/debug/my-lisp /tmp/quantity-case.lisp 2>&1)"
+            status=$?
+            set -e
+            printf '\n=== CASE %s ===\n' "$name"
+            printf 'exit=%s\n%s\n' "$status" "$output"
+          }
+
+          run_case eq-no '(= 2 7)'
+          run_case short-validator "(scientific-constant? (quote (scientific-constant/1 broken)))"
+          run_case short-projection "(scientific-constant->clauses (quote (scientific-constant/1 broken)))"
+          run_case valid-dimension "(dimension? (quote (dimension/1 metre 1)))"
+          run_case valid-quantity "(quantity? (quote (quantity/1 1 (unit/1 (dimension/1 metre 1)))))"
+          run_case valid-projection '(scientific-constant->clauses si:defining-speed-of-light)'
+          run_case invalid-string-name "(scientific-constant->clauses (quote (scientific-constant/1 \"not-a-symbol\" (quantity/1 299792458 (unit/1 (dimension/1 metre 1) (dimension/1 second -1))) exact-by-definition physical-defining si (science-source/1 bipm-si-brochure-9 2019))))"
+          run_case distance-product "(let* ((speed (scientific-constant-quantity si:defining-speed-of-light)) (one-second (make-quantity 1 (make-unit (list (make-dimension (quote second) 1)))))) (quantity-product speed one-second))"
+          run_case recovered-speed "(let* ((speed (scientific-constant-quantity si:defining-speed-of-light)) (one-second (make-quantity 1 (make-unit (list (make-dimension (quote second) 1)))) (distance (quantity-product speed one-second))) (quantity-quotient distance one-second))"
+
+      - name: Child diff hygiene
+        run: git diff --check HEAD^ HEAD
