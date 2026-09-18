@@ -418,14 +418,14 @@
 (def string-length
   (lambda (s)
     (cond
-      ((string-empty? s) t 0)
+      ((string-empty? s) (identity-relation same) 0)
       (t t (+ 1 (string-length (string-rest s)))))))
 
 (def string-prefix?
   (lambda (prefix s)
     (cond
-      ((string-empty? prefix) t t)
-      ((string-empty? s) t (quote ()))
+      ((string-empty? prefix) (identity-relation same) t)
+      ((string-empty? s) (identity-relation same) (quote ()))
       ((eq (string-first prefix) (string-first s))
        (identity-relation same)
        (string-prefix? (string-rest prefix) (string-rest s)))
@@ -436,7 +436,7 @@
   (lambda (needle s)
     (cond
       ((string-prefix? needle s) t t)
-      ((string-empty? s) t (quote ()))
+      ((string-empty? s) (identity-relation same) (quote ()))
       (t t (string-contains? needle (string-rest s))))))
 
 
