@@ -112,6 +112,13 @@ fn surface_groups(line: &str) -> Vec<&str> {
     groups
 }
 
+fn registry_name_token(token: &str) -> &str {
+    token
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .unwrap_or(token)
+}
+
 fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
     let mut entries = Vec::new();
 
@@ -142,10 +149,14 @@ fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
         for group in surface_groups(line) {
             let fields = group.split_whitespace().collect::<Vec<_>>();
             let (surface, raw_name, status) = match fields.as_slice() {
-                [surface, raw_name] => ((*surface).to_string(), *raw_name, Status::Stable),
+                [surface, raw_name] => (
+                    (*surface).to_string(),
+                    registry_name_token(raw_name),
+                    Status::Stable,
+                ),
                 [surface, raw_name, exception_status] => (
                     (*surface).to_string(),
-                    *raw_name,
+                    registry_name_token(raw_name),
                     Status::parse_exception(exception_status)?,
                 ),
                 _ => {
