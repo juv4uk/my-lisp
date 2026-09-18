@@ -1,0 +1,26 @@
+name: Verify 509 parity RED
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-509-parity-red.yml'
+      - 'tests/fixtures/native-first-parity-witness.lisp'
+      - 'lib/machine/dispatch/native-first-parity.lisp'
+
+jobs:
+  parity-red:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Execute parity witness and require missing-runner RED
+        shell: bash
+        run: |
+          set +e
+          output="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/native-first-parity-witness.lisp 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -F 'lib/machine/dispatch/native-first-parity.lisp'
