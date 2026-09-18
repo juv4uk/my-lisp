@@ -13,4 +13,4 @@ jobs:
       - name: Run Lisp-owned comparison peer topology witness
         run: |
           output="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/runtime-peer-comparison-topology-witness.lisp)"
-          test "$output" = "(runtime-peer-comparison-topology-witness (status pass))"
+          printf 'actual: %s\\n' "$output"\n          test "$output" = "(runtime-peer-comparison-topology-witness (status pass))"
