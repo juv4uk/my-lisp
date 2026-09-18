@@ -55,7 +55,7 @@ def extract_inventory_names(path: Path) -> set[str]:
 def extract_core_public_names(path: Path) -> set[str]:
     text = path.read_text(encoding="utf-8")
     names = set()
-    internal_markers = {"-onto", "-iter", "-step", "make-", "-helper", "-aux"}
+    internal_markers = {"-onto", "-iter", "-step", "make-", "-helper", "-aux", "my-postcore-"}
     for pattern in (r"\(def\s+(\S+)\s+", r"\(defmacro\s+(\S+)\s+"):
         for match in re.finditer(pattern, text):
             name = match.group(1)
@@ -75,7 +75,7 @@ def main() -> int:
     core_names = extract_core_public_names(CORE_LIB)
     eligible = inventory_names | core_names
 
-    internal_markers = {"-onto", "-iter", "-step", "make-", "-helper", "-aux"}
+    internal_markers = {"-onto", "-iter", "-step", "make-", "-helper", "-aux", "my-postcore-"}
     unclassified = {
         name for name in eligible - registry_names
         if not any(marker in name for marker in internal_markers)
