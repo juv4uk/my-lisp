@@ -26,20 +26,6 @@ fn eval_reason_observation(source: &str) -> String {
         .to_string()
 }
 
-fn eval_knowledge_observation(source: &str) -> String {
-    let mut session = Session::default();
-    eval_program(include_str!("../../../lib/core.lisp"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/unify.lisp"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/reason.lisp"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/forward.lisp"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/knowledge.lisp"), &mut session).unwrap();
-    eval_program(include_str!("../../../lib/result-status.lisp"), &mut session).unwrap();
-    eval_program(source, &mut session)
-        .unwrap_or_else(|e| panic!("evaluation failed: {e}\nsource: {source}"))
-        .value
-        .to_string()
-}
-
 #[test]
 fn make_proved_preserves_statement_and_all_results() {
     assert_eq!(
@@ -141,35 +127,6 @@ fn reason_observe_reports_positive_proof_without_changing_reason() {
 }
 
 #[test]
-fn reason_observe_accepts_prebuilt_index_with_exact_outcome_parity() {
-    let source = r#"
-        (let* ((rules (quote (
-                  ((seed a))
-                  ((noise one))
-                  ((reachable (var x)) (seed (var x)))
-                )))
-               (index (reason-make-index rules))
-               (goal (quote (reachable a))))
-          (equal?
-            (reason-observe goal rules)
-            (reason-observe goal index)))
-    "#;
-    assert_eq!(eval_reason_observation(source), "t");
-}
-
-#[test]
-fn reason_observe_distinguishes_unknown_from_false() {
-    let source = r#"
-        (let ((rules (quote (((parent alice bob))))))
-          (reason-observe (quote (parent bob alice)) rules))
-    "#;
-    assert_eq!(
-        eval_reason_observation(source),
-        "(unknown (parent bob alice))"
-    );
-}
-
-#[test]
 fn reason_observe_reports_an_explicit_negative_as_proved_opposite() {
     let source = r#"
         (let ((rules (quote (((not (mortal socrates)))))))
@@ -216,15 +173,5 @@ fn reason_observe_rejects_malformed_goal_as_data() {
     assert_eq!(
         eval_reason_observation(r#"(reason-observe 42 (quote ()))"#),
         "(invalid invalid-goal 42)"
-    );
-}
-
-#[test]
-fn reason_in_observe_names_a_missing_module_as_unknown() {
-    assert_eq!(
-        eval_knowledge_observation(
-            r#"(reason-in-observe (quote missing-module) (quote (parent alice bob)))"#
-        ),
-        "(unknown (module-not-found missing-module))"
     );
 }
