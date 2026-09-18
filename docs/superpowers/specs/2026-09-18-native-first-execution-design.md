@@ -1,7 +1,7 @@
 # Native-First Execution Design
 
-**Status:** approved by owner request on 2026-09-18  
-**Parent:** #504  
+**Status:** approved by owner request on 2026-09-18
+**Parent:** #504
 **First implementation slice:** #505
 
 ## Purpose
