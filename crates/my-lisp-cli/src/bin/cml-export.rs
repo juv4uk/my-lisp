@@ -91,7 +91,7 @@ fn render_forms_block() -> String {
         let surfaces = admitted_surfaces_for_semantic_id(id);
         let id_bits = semantic_id_bits(id);
         lines.push(format!(
-            "    ({id_bits} (surfaces {}) (role {}) (callable {}))",
+            "    (\\\"{id_bits}\\\" (surfaces {}) (role {}) (callable {}))",
             render_surfaces(&surfaces),
             role.as_str(),
             if callable { "t" } else { "nil" }
