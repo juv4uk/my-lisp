@@ -1,7 +1,7 @@
 ; GENERATED FILE — DO NOT EDIT.
 ; Source authority: lib/surface/semantic-registry.lisp (sr/2)
 ; Generator: scripts/generate-meta-semantic-registry.py
-; stable + compatibility-only runtime surfaces only; exact ' is reader syntax.
+; implicit admitted + compatibility-only runtime surfaces; exact ' is reader syntax.
 
 (def my-semantic-surface-registry
   (quote (
