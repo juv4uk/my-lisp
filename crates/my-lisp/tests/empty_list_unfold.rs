@@ -120,3 +120,17 @@ fn eclass_can_hold_multiple_peers_and_graph_growth_preserves_prior_generation() 
         "((expanded-class-member (graph-result found (00001101))) (previous-generation ((() 00000010 00000000))) (previous-generation-preserved (identity-relation same)))"
     );
 }
+
+
+#[test]
+fn relation_lifecycle_requires_evidence_before_assertion_and_resolves_late() {
+    let mut session = Session::default();
+    let source = format!("{GROUND_GRAPH}\n(relation-lifecycle-witness)");
+    let result = eval_program(&source, &mut session)
+        .expect("relation lifecycle experiment must execute");
+
+    assert_eq!(
+        result.value.to_string(),
+        "((candidate-visible (graph-result found 00010011)) (assertion-before-evidence (graph-result absent)) (assertion-after-evidence (graph-result found (00010010 00010000 00010011))) (unresolved-assertion (graph-result found (00010010 00010000 00010011))) (resolved-assertion (graph-result found (00010010 00010000 00010100))) (candidate-preserved (graph-result found 00010011)))"
+    );
+}
