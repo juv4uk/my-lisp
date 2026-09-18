@@ -340,6 +340,23 @@ impl Parser<'_> {
             self.bump();
         }
         let token = &self.source[start..self.cursor];
+
+        // Empty-list unfolding experiment: preserve one byte written as eight
+        // literal bits as an opaque Lisp atom. This is deliberately a general
+        // reader rule, not registry knowledge: the reader does not know what
+        // the bits mean, which row they belong to, or whether they name a
+        // function. In particular, 00000000 must remain distinct from numeric
+        // 0 so Lisp data can establish any relation between them itself.
+        if token.len() == 8 && token.as_bytes().iter().all(|byte| matches!(byte, b'0' | b'1')) {
+            return Ok(Expr {
+                kind: ExprKind::Symbol(token.into()),
+                span: Span {
+                    start,
+                    end: self.cursor,
+                },
+            });
+        }
+
         let decimal_with_dot = if token.contains(',') && !token.contains('.') {
             Some(token.replace(',', "."))
         } else {
@@ -453,6 +470,26 @@ mod tests {
         let expressions = parse(source).expect("parsing should succeed");
         assert_eq!(expressions.len(), 1, "expected exactly one top-level form");
         expressions.into_iter().next().unwrap()
+    }
+
+    #[test]
+    fn preserves_eight_bit_identity_atoms_distinct_from_numbers() {
+        let zero_identity = parse_one("00000000");
+        assert!(matches!(
+            &zero_identity.kind,
+            ExprKind::Symbol(symbol) if &**symbol == "00000000"
+        ));
+
+        let one_identity = parse_one("00000001");
+        assert!(matches!(
+            &one_identity.kind,
+            ExprKind::Symbol(symbol) if &**symbol == "00000001"
+        ));
+
+        assert!(matches!(
+            parse_one("0").kind,
+            ExprKind::Number(n, Exactness::Exact) if n == 0.0
+        ));
     }
 
     #[test]
