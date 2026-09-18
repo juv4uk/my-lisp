@@ -415,7 +415,7 @@
 (def string-empty?
   (lambda (s) (eq s "")))
 
-(def string-order
+(def string-order-helper
   (lambda (left right)
     (cond
       ((string-empty? left) (identity-relation same)
@@ -427,7 +427,7 @@
       ((string-empty? left) (identity-relation distinct)
        (quote (text-order after)))
       ((eq (string-first left) (string-first right)) (identity-relation same)
-       (string-order (string-rest left) (string-rest right)))
+       (string-order-helper (string-rest left) (string-rest right)))
       ((eq (< (string->codepoint (string-first left))
               (string->codepoint (string-first right)))
            1)
@@ -439,7 +439,7 @@
        (identity-relation same)
        (quote (text-order after))))))
 
-(def string-order
+(def string-order-helper
   (lambda (left right)
     (cond
       ((string-empty? left) (identity-relation same)
@@ -451,7 +451,7 @@
       ((string-empty? left) (identity-relation distinct)
        (quote (text-order after)))
       ((eq (string-first left) (string-first right)) (identity-relation same)
-       (string-order (string-rest left) (string-rest right)))
+       (string-order-helper (string-rest left) (string-rest right)))
       ((eq (< (string->codepoint (string-first left))
               (string->codepoint (string-first right)))
            1)
