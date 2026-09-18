@@ -2,7 +2,7 @@ use my_lisp::semantic_registry_export::{
     admitted_surfaces_for_semantic_id, semantic_id_for_admitted_surface,
 };
 
-const STRING_EMPTY_ID: &str = "1045";
+const STRING_EMPTY_ID: u8 = 60;
 const CURRENT_UK_STRING_EMPTY: &str = "текст-порожній?";
 const UKR_STRING_EMPTY: &str = "порожній-текст?";
 
@@ -84,30 +84,30 @@ fn admitted_ukr_registry_spellings_never_require_latin_layout() {
 fn full_ukr_names_preserve_action_protocol_and_representation_semantics() {
     let source = include_str!("../../../lib/surface/semantic-registry.lisp");
     let expected = [
-        ("0104", "(ukr додати stable)"),
-        ("1001", "(ukr відняти stable)"),
-        ("1069", "(ukr буфер-32-бітних-цілих-зі-знаком candidate)"),
-        ("1145", "(ukr розібрати-текст-формату-джейсон candidate)"),
+        ("00001100", "(ukr додати stable)"),
+        ("00001101", "(ukr відняти stable)"),
+        ("01010100", "(ukr буфер-32-бітних-цілих-зі-знаком candidate)"),
+        ("10100000", "(ukr розібрати-текст-формату-джейсон candidate)"),
         (
-            "1146",
+            "10100001",
             "(ukr обчислити-хеш-ша-256-тексту-у-шістнадцятковому-записі candidate)",
         ),
         (
-            "1148",
+            "10100011",
             "(ukr прочитати-текст-з-з'єднання-протоколу-керування-передаванням candidate)",
         ),
         (
-            "1149",
+            "10100100",
             "(ukr записати-текст-у-з'єднання-протоколу-керування-передаванням candidate)",
         ),
         (
-            "1150",
+            "10100101",
             "(ukr слухати-порт-протоколу-керування-передаванням candidate)",
         ),
     ];
 
     for (semantic_id, expected_surface) in expected {
-        let prefix = format!("({semantic_id} ");
+        let prefix = format!("(\\\"{semantic_id}\\\" ");
         let row = source
             .lines()
             .map(str::trim_start)
@@ -115,7 +115,7 @@ fn full_ukr_names_preserve_action_protocol_and_representation_semantics() {
             .unwrap_or_else(|| panic!("semantic registry is missing ID {semantic_id}"));
         assert!(
             row.contains(expected_surface),
-            "semantic ID {semantic_id} must keep the explicit ukr meaning {expected_surface:?}; row: {row}"
+            "byte SID {semantic_id} must keep the explicit ukr meaning {expected_surface:?}; row: {row}"
         );
     }
 
@@ -141,8 +141,8 @@ fn generated_function_table_uses_uk_then_ukr_without_duplicate_full_uk_column() 
     let table = include_str!("../../../lib/generated/function-table.lisp");
     let row = table
         .lines()
-        .find(|line| line.trim_start().starts_with("(1045 "))
-        .expect("generated function table must contain semantic ID 1045");
+        .find(|line| line.trim_start().starts_with("(\\\"00111100\\\" "))
+        .expect("generated function table must contain byte SID 00111100");
 
     let uk = row
         .find("(uk текст-порожній? stable)")
@@ -169,7 +169,7 @@ fn generated_function_table_uses_uk_then_ukr_without_duplicate_full_uk_column() 
         "human function table must expose exactly uk and ukr Ukrainian columns"
     );
     assert!(
-        markdown.contains("| `1045` | текст-порожній? | порожній-текст? | stable | string-empty? |"),
+        markdown.contains("| `00111100` | текст-порожній? | порожній-текст? | stable | string-empty? |"),
         "human row 1045 must show uk followed by full Ukrainian ukr"
     );
     assert!(
