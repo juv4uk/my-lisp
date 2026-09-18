@@ -126,7 +126,7 @@
 (define відрізати string-slice)
 (define символ-у-текст symbol->string)
 (define текст-у-символ string->symbol)
-(define текст-у-кодову-точку string->codepoint)
+; 1054: `string->codepoint` / `текст-у-кодову-точку` встановлюються як registry-driven direct peers.
 (define кодова-точка-у-текст codepoint->string)
 (define число-у-текст number->string)
 
