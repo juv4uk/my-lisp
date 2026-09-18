@@ -56,7 +56,7 @@
                 ((atom rest2) (structural-kind empty-list) (quote no))
                 ((atom rest2) (structural-kind atom) (quote no)))))
            ((atom rest1) (structural-kind empty-list) (quote no))
-           ((atom rest1) (structural-kind atom) (quote no)))))))))
+           ((atom rest1) (structural-kind atom) (quote no))))))))
 
 (def tri-special-quote-sym-state
   (lambda (field)
