@@ -512,8 +512,8 @@
 (def largest-chunk
   (lambda (a b chunk mult)
     (cond
-      ((< a (+ chunk chunk)) 1/1 (cons chunk mult))
-      ((< a (+ chunk chunk)) 0/1
+      ((< a (+ chunk chunk)) t (cons chunk mult))
+      ((< a (+ chunk chunk)) (quote ())
        (largest-chunk a b (+ chunk chunk) (+ mult mult))))))
 
 ; `b = 0` used to hang forever: `largest-chunk` starts doubling from
@@ -539,8 +539,8 @@
       ((eq b 0) (identity-relation same) (/ a b))
       ((eq b 0) (identity-relation distinct)
        (cond
-         ((< a b) 1/1 0)
-         ((< a b) 0/1
+         ((< a b) t 0)
+         ((< a b) (quote ())
           (let ((chunk+mult (largest-chunk a b b 1)))
             (+ (cdr chunk+mult)
                (quotient (- a (car chunk+mult)) b)))))))))
@@ -700,24 +700,24 @@
 (def sqrt-iter
   (lambda (guess x n)
     (cond
-      ((= n 0) 1/1 guess)
-      ((= n 0) 0/1
+      ((= n 0) t guess)
+      ((= n 0) (quote ())
        (sqrt-iter (/ (+ guess (/ x guess)) 2) x (- n 1))))))
 
 ;; integer sqrt: Newton on quotients — provably terminating
 (def isqrt
   (lambda (n)
     (cond
-      ((< n 2) 1/1 n)
-      ((< n 2) 0/1
+      ((< n 2) t n)
+      ((< n 2) (quote ())
        (isqrt-step n (quotient n 2))))))
 
 (def isqrt-step
   (lambda (n g)
     (let ((next (quotient (+ g (quotient n g)) 2)))
       (cond
-        ((< next g) 1/1 (isqrt-step n next))
-        ((< next g) 0/1 g)))))
+        ((< next g) t (isqrt-step n next))
+        ((< next g) (quote ()) g)))))
 
 (def sqrt
   (lambda (x)
@@ -764,8 +764,8 @@
 (def abs
   (lambda (x)
     (cond
-      ((< x 0) 1/1 (- x))
-      ((< x 0) 0/1 x))))
+      ((< x 0) t (- x))
+      ((< x 0) (quote ()) x))))
 
 ; Required first parameter (dotted lambda-list, same pattern as
 ; `<=`/`>=` above) keeps zero arguments an Arity error via the
