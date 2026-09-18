@@ -77,3 +77,32 @@ fn ground_graph_supports_bidirectional_equivalence_and_transition() {
         "((eclass-forward 00000000) (eclass-backward ()) (graph-equivalence-forward 00000000) (graph-equivalence-backward ()) (graph-transition-forward 00000001) (graph-transition-backward 00000000))"
     );
 }
+
+
+#[test]
+fn graph_result_envelope_keeps_empty_list_distinct_from_absence() {
+    let mut session = Session::default();
+    let source = format!(
+        "{GROUND_GRAPH}\n(graph-neighbor-result ground-graph ground-equivalence-relation 00000000)"
+    );
+    let result = eval_program(&source, &mut session)
+        .expect("graph lookup must preserve () as a legitimate found endpoint");
+
+    assert_eq!(
+        result.value.to_string(),
+        "(graph-result found ())"
+    );
+}
+
+#[test]
+fn graph_supports_unresolved_late_binding_backlinks_and_bounded_observation() {
+    let mut session = Session::default();
+    let source = format!("{GROUND_GRAPH}\n(nodum-kernel-lessons-witness)");
+    let result = eval_program(&source, &mut session)
+        .expect("Nodum-inspired graph mechanisms must execute as ordinary Lisp apparatus");
+
+    assert_eq!(
+        result.value.to_string(),
+        "((resolution-evidence-before (graph-result absent)) (unresolved-before (graph-result found 00000100)) (resolved-after (graph-result found 00000101)) (asserted-edge-still (graph-result found 00000100)) (derived-backlink (graph-result found 00000001)) (bounded-one-hop (00001001 00001010)) (bounded-two-hop (00001001 00001010 00001011)))"
+    );
+}
