@@ -251,7 +251,7 @@ mod tests {
             identity_for_semantic_id(CAR_SEMANTIC_ID),
             Some(CanonicalIdentity::Car)
         );
-        assert_eq!(identity_for_semantic_id("0104"), None);
+        assert_eq!(identity_for_semantic_id(12), None);
     }
 
     #[test]
@@ -312,7 +312,8 @@ mod tests {
 
     #[test]
     fn synthetic_registry_constructively_controls_canon_routing() {
-        const SYNTHETIC: &str = "(0001 (xx comet stable))\n(0005 (xx asteroid stable))";
+        const SYNTHETIC: &str =
+            "(sr/2\n  (\"00000000\" ())\n  (\"00000001\" (xx comet))\n  (\"00000101\" (xx asteroid))\n)";
         let index = semantic_registry::build_surface_index(SYNTHETIC);
         let route = |surface: &str| {
             index
@@ -329,7 +330,7 @@ mod tests {
 
     #[test]
     fn registry_rows_without_canon_meaning_do_not_become_canon() {
-        assert_eq!(semantic_registry::semantic_id_for_surface("+"), Some("0104"));
+        assert_eq!(semantic_registry::semantic_id_for_surface("+"), Some(12));
         assert_eq!(identity_for_surface("+"), None);
     }
 
