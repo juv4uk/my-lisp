@@ -3,6 +3,10 @@
 ;   native-supported -> classifier native-plan + CPU native route + #509 parity
 ;   fallback/blocked -> classifier evaluator-fallback of the unchanged source
 ; Blocked rows must also name a concrete prerequisite.
+;
+; Post-#218 discipline: this witness never treats structural result records as
+; generic booleans and never feeds possibly-structural values to eq. Every
+; structural comparison is reduced explicitly to the atom states pass/fail.
 
 (load "lib/core.lisp")
 (load "lib/machine/encoding/x86-64.lisp")
@@ -15,11 +19,23 @@
 (load "lib/machine/dispatch/native-first-parity.lisp")
 (load "lib/machine/dispatch/native-first-coverage.lisp")
 
-(def native-first-coverage-same?
+(def native-first-coverage-check
   (lambda (left right)
     (cond
-      ((equal? left right) (structural-relation same) t)
-      ((equal? left right) (structural-relation distinct) (quote ())))))
+      ((equal? left right) (structural-relation same) (quote pass))
+      ((equal? left right) (structural-relation distinct) (quote fail)))))
+
+(def native-first-coverage-all-pass-state
+  (lambda (states)
+    (cond
+      ((atom states) (structural-kind empty-list) (quote pass))
+      ((atom states) (structural-kind atom) (quote fail))
+      ((atom states) (structural-kind pair)
+       (cond
+         ((eq (car states) (quote pass)) (identity-relation same)
+          (native-first-coverage-all-pass-state (cdr states)))
+         ((eq (car states) (quote pass)) (identity-relation distinct)
+          (quote fail)))))))
 
 (def native-first-coverage-field
   (lambda (name row)
@@ -29,19 +45,39 @@
         ((atom found) (structural-kind atom) (quote ()))
         ((atom found) (structural-kind pair) (second found))))))
 
-(def native-first-coverage-present?
+(def native-first-coverage-present-state
   (lambda (value)
     (cond
-      ((native-first-coverage-same? value (quote ())) (quote ()))
-      (t t))))
+      ((equal? value (quote ())) (structural-relation same) (quote fail))
+      ((equal? value (quote ())) (structural-relation distinct) (quote pass)))))
 
-(def native-first-coverage-fallback-plan-valid?
+(def native-first-coverage-fallback-plan-state
   (lambda (expression)
-    (native-first-coverage-same?
+    (native-first-coverage-check
       (native-first-plan expression)
       (list (quote evaluator-fallback) expression))))
 
-(def native-first-coverage-native-row-valid?
+(def native-first-coverage-native-plan-state
+  (lambda (plan)
+    (cond
+      ((atom plan) (structural-kind empty-list) (quote fail))
+      ((atom plan) (structural-kind atom) (quote fail))
+      ((atom plan) (structural-kind pair)
+       (native-first-coverage-check
+         (car plan)
+         (quote native-plan))))))
+
+(def native-first-coverage-parity-state
+  (lambda (parity)
+    (cond
+      ((atom parity) (structural-kind empty-list) (quote fail))
+      ((atom parity) (structural-kind atom) (quote fail))
+      ((atom parity) (structural-kind pair)
+       (native-first-coverage-check
+         (third parity)
+         (quote pass))))))
+
+(def native-first-coverage-native-row-state
   (lambda (row)
     (let* ((class (native-first-coverage-field (quote class) row))
            (expression
@@ -75,42 +111,24 @@
                  expected
                  effect
                  error-class))))
-      (and
-        (native-first-coverage-present? class)
-        (native-first-coverage-present? expected)
-        (native-first-coverage-same?
-          evidence
-          (quote native-first-parity-witness))
-        (cond
-          ((atom plan) (structural-kind empty-list) (quote ()))
-          ((atom plan) (structural-kind atom) (quote ()))
-          ((atom plan) (structural-kind pair)
-           (cond
-             ((eq (car plan) (quote native-plan))
-              (identity-relation same)
-              t)
-             ((eq (car plan) (quote native-plan))
-              (identity-relation distinct)
-              (quote ())))))
-        (native-first-coverage-same?
-          outcome
-          (list
-            (quote execution-route)
-            (quote native)
-            (quote (status completed))
-            (list (quote value) expected)))
-        (cond
-          ((atom parity) (structural-kind empty-list) (quote ()))
-          ((atom parity) (structural-kind atom) (quote ()))
-          ((atom parity) (structural-kind pair)
-           (cond
-             ((native-first-coverage-same?
-                (third parity)
-                (quote pass))
-              t)
-             (t (quote ())))))))))
+      (native-first-coverage-all-pass-state
+        (list
+          (native-first-coverage-present-state class)
+          (native-first-coverage-present-state expected)
+          (native-first-coverage-check
+            evidence
+            (quote native-first-parity-witness))
+          (native-first-coverage-native-plan-state plan)
+          (native-first-coverage-check
+            outcome
+            (list
+              (quote execution-route)
+              (quote native)
+              (quote (status completed))
+              (list (quote value) expected)))
+          (native-first-coverage-parity-state parity))))))
 
-(def native-first-coverage-fallback-row-valid?
+(def native-first-coverage-fallback-row-state
   (lambda (row)
     (let ((expression
             (native-first-coverage-field
@@ -124,61 +142,65 @@
             (native-first-coverage-field
               (quote evidence)
               row)))
-      (and
-        (native-first-coverage-present? reason)
-        (native-first-coverage-same?
-          evidence
-          (quote native-first-dispatch-witness))
-        (native-first-coverage-fallback-plan-valid?
-          expression)))))
+      (native-first-coverage-all-pass-state
+        (list
+          (native-first-coverage-present-state reason)
+          (native-first-coverage-check
+            evidence
+            (quote native-first-dispatch-witness))
+          (native-first-coverage-fallback-plan-state expression))))))
 
-(def native-first-coverage-blocked-row-valid?
+(def native-first-coverage-blocked-row-state
   (lambda (row)
-    (and
-      (native-first-coverage-fallback-row-valid? row)
-      (native-first-coverage-present?
-        (native-first-coverage-field
-          (quote prerequisite)
-          row)))))
+    (native-first-coverage-all-pass-state
+      (list
+        (native-first-coverage-fallback-row-state row)
+        (native-first-coverage-present-state
+          (native-first-coverage-field
+            (quote prerequisite)
+            row))))))
 
-(def native-first-coverage-row-valid?
+(def native-first-coverage-row-state
   (lambda (row)
     (cond
-      ((atom row) (structural-kind empty-list) (quote ()))
-      ((atom row) (structural-kind atom) (quote ()))
+      ((atom row) (structural-kind empty-list) (quote fail))
+      ((atom row) (structural-kind atom) (quote fail))
       ((atom row) (structural-kind pair)
        (cond
-         ((eq (car row) (quote native-coverage))
-          (identity-relation same)
-       (let ((status
-               (native-first-coverage-field
-                 (quote status)
-                 row)))
-         (cond
-           ((eq status (quote native-supported))
-            (identity-relation same)
-            (native-first-coverage-native-row-valid? row))
-           ((eq status (quote fallback-required))
-            (identity-relation same)
-            (native-first-coverage-fallback-row-valid? row))
-           ((eq status (quote blocked-runtime-prerequisite))
-            (identity-relation same)
-            (native-first-coverage-blocked-row-valid? row))
-           (t (quote ())))))
-         ((eq (car row) (quote native-coverage))
-          (identity-relation distinct)
-          (quote ())))))))
+         ((equal? (car row) (quote native-coverage))
+          (structural-relation same)
+          (let ((status
+                  (native-first-coverage-field
+                    (quote status)
+                    row)))
+            (cond
+              ((equal? status (quote native-supported))
+               (structural-relation same)
+               (native-first-coverage-native-row-state row))
+              ((equal? status (quote fallback-required))
+               (structural-relation same)
+               (native-first-coverage-fallback-row-state row))
+              ((equal? status (quote blocked-runtime-prerequisite))
+               (structural-relation same)
+               (native-first-coverage-blocked-row-state row))
+              (t (quote fail)))))
+         ((equal? (car row) (quote native-coverage))
+          (structural-relation distinct)
+          (quote fail)))))))
 
-(def native-first-coverage-all-valid?
+(def native-first-coverage-all-valid-state
   (lambda (rows)
     (cond
-      ((atom rows) (structural-kind empty-list) t)
-      ((atom rows) (structural-kind atom) (quote ()))
+      ((atom rows) (structural-kind empty-list) (quote pass))
+      ((atom rows) (structural-kind atom) (quote fail))
       ((atom rows) (structural-kind pair)
-       (cond
-         ((native-first-coverage-row-valid? (car rows))
-          (native-first-coverage-all-valid? (cdr rows)))
-         (t (quote ())))))))
+       (let ((row-state
+               (native-first-coverage-row-state (car rows))))
+         (cond
+           ((eq row-state (quote pass)) (identity-relation same)
+            (native-first-coverage-all-valid-state (cdr rows)))
+           ((eq row-state (quote pass)) (identity-relation distinct)
+            (quote fail))))))))
 
 (def native-first-coverage-count-status-onto
   (lambda (rows status count)
@@ -187,22 +209,22 @@
       ((atom rows) (structural-kind atom) count)
       ((atom rows) (structural-kind pair)
        (cond
-         ((eq
+         ((equal?
             (native-first-coverage-field
               (quote status)
               (car rows))
             status)
-          (identity-relation same)
+          (structural-relation same)
           (native-first-coverage-count-status-onto
             (cdr rows)
             status
             (+ count 1)))
-         ((eq
+         ((equal?
             (native-first-coverage-field
               (quote status)
               (car rows))
             status)
-          (identity-relation distinct)
+          (structural-relation distinct)
           (native-first-coverage-count-status-onto
             (cdr rows)
             status
@@ -215,20 +237,24 @@
       status
       0)))
 
-(def native-first-coverage-dispatch-independent?
-  (and
-    (not
-      (string-contains?
-        "native-first-coverage"
-        (read-file "lib/machine/dispatch/native-first.lisp")))
-    (not
-      (string-contains?
-        "native-first-coverage"
-        (read-file "lib/machine/dispatch/native-first-execute.lisp")))
-    (not
-      (string-contains?
-        "native-first-coverage"
-        (read-file "lib/machine/dispatch/native-first-parity.lisp")))))
+(def native-first-coverage-dispatch-independent-state
+  (native-first-coverage-all-pass-state
+    (list
+      (native-first-coverage-check
+        (string-contains?
+          "native-first-coverage"
+          (read-file "lib/machine/dispatch/native-first.lisp"))
+        (quote ()))
+      (native-first-coverage-check
+        (string-contains?
+          "native-first-coverage"
+          (read-file "lib/machine/dispatch/native-first-execute.lisp"))
+        (quote ()))
+      (native-first-coverage-check
+        (string-contains?
+          "native-first-coverage"
+          (read-file "lib/machine/dispatch/native-first-parity.lisp"))
+        (quote ())))))
 
 (def native-first-coverage-ledger-witness
   (lambda ()
@@ -241,38 +267,35 @@
           (blocked-count
             (native-first-coverage-count-status
               (quote blocked-runtime-prerequisite))))
-      (cond
-        ((and
-           native-first-coverage-dispatch-independent?
-           (native-first-coverage-all-valid?
-             native-first-coverage-ledger)
-           (native-first-coverage-same?
-             (length native-first-coverage-ledger)
-             6)
-           (native-first-coverage-same?
-             native-count
-             1)
-           (native-first-coverage-same?
-             fallback-count
-             2)
-           (native-first-coverage-same?
-             blocked-count
-             3))
-         (list
-           (quote native-first-coverage-ledger-witness)
-           (quote (status pass))
-           (list (quote rows) 6)
-           (list (quote native) native-count)
-           (list (quote fallback) fallback-count)
-           (list (quote blocked) blocked-count)))
-        (t
-         (list
-           (quote native-first-coverage-ledger-witness)
-           (quote (status fail))
-           (list (quote rows)
-                 (length native-first-coverage-ledger))
-           (list (quote native) native-count)
-           (list (quote fallback) fallback-count)
-           (list (quote blocked) blocked-count)))))))
+      (let ((verdict
+              (native-first-coverage-all-pass-state
+                (list
+                  native-first-coverage-dispatch-independent-state
+                  (native-first-coverage-all-valid-state
+                    native-first-coverage-ledger)
+                  (native-first-coverage-check
+                    (length native-first-coverage-ledger)
+                    6)
+                  (native-first-coverage-check native-count 1)
+                  (native-first-coverage-check fallback-count 2)
+                  (native-first-coverage-check blocked-count 3)))))
+        (cond
+          ((eq verdict (quote pass)) (identity-relation same)
+           (list
+             (quote native-first-coverage-ledger-witness)
+             (quote (status pass))
+             (list (quote rows) 6)
+             (list (quote native) native-count)
+             (list (quote fallback) fallback-count)
+             (list (quote blocked) blocked-count)))
+          ((eq verdict (quote pass)) (identity-relation distinct)
+           (list
+             (quote native-first-coverage-ledger-witness)
+             (quote (status fail))
+             (list (quote rows)
+                   (length native-first-coverage-ledger))
+             (list (quote native) native-count)
+             (list (quote fallback) fallback-count)
+             (list (quote blocked) blocked-count))))))))
 
 (native-first-coverage-ledger-witness)
