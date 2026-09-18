@@ -1,0 +1,18 @@
+name: Verify #524 refreshed FASL and CLI
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/verify-524-fasl-cli.yml"
+
+jobs:
+  fasl-and-cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Core FASL matches current source
+        run: cargo test -p my-lisp --test core_fasl_freshness
+      - name: CLI regression suite
+        run: cargo test -p my-lisp-cli --test cli -- --nocapture
