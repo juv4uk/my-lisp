@@ -1,4 +1,5 @@
 ; #178 — Lisp-owned composition witness for current admitted
+; Exact-head replay note: baseline-only FASL/surface movement must not alter typed machine evidence.
 ; register/implicit machine forms. Encoder/admission owns machine facts;
 ; atoms own typed composition only. Native results below are bounded
 ; mechanism observations, never semantic answer keys.
