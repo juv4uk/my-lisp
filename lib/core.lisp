@@ -431,6 +431,24 @@
       ((atom value) (structural-kind pair)
        (quote (class-membership string nonmember))))))
 
+(def nonempty-string-membership-helper
+  (lambda (value)
+    (cond
+      ((eq (string-membership-helper value)
+           (quote (class-membership string nonmember)))
+       (identity-relation same)
+       (quote (class-membership string nonmember)))
+      ((eq (string-membership-helper value)
+           (quote (class-membership string member)))
+       (identity-relation same)
+       (cond
+         ((eq (string-empty? value) (identity-relation distinct))
+          (identity-relation same)
+          (quote (class-membership string member)))
+         ((eq (string-empty? value) (identity-relation same))
+          (identity-relation same)
+          (quote (class-membership string nonempty-member))))))))
+
 (def string-length
   (lambda (s)
     (cond
