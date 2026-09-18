@@ -25,6 +25,26 @@ When two sources disagree, use this order:
 
 If a lower item conflicts with a higher item, the lower item is stale until reconciled.
 
+## Knowledge artifacts are not an authority tier
+
+The `knowledge/` directory is **not** a ninth authority level and directory
+placement never grants semantic authority. Each active artifact is classified
+in `knowledge/knowledge-authority-inventory.lisp` by its role, scope,
+authority source, lifecycle, and known consumers.
+
+The registry is governance metadata: it may identify an executable policy,
+operational reference, coordination marker, derived reference, evidence
+ledger, or historical record, but those classes do not outrank the authority
+order above. A knowledge artifact can carry or project a claim only within its
+declared scope and provenance. Contract-level language meaning still comes
+from the contract, ratified decisions, and executable conformance evidence.
+
+`scripts/check-knowledge-authority.lisp` mechanically checks live
+`knowledge/` coverage, required provenance fields, stale paths, forbidden
+directory-derived authority, the closed artifact-class vocabulary, and
+declared `repo-path` upstream sources. These checks govern the metadata
+boundary; they do not add or alter language semantics.
+
 ## Semantic identity vs surface spelling
 
 A spelling is not a primitive identity. The closed semantic set remains exactly seven operations:
