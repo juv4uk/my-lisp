@@ -502,3 +502,111 @@
       directory-derived-authority
       stale-path
       missing-upstream-source)))
+
+
+; ----- real repository observation -----
+
+(def knowledge-authority-artifact-rows
+  (lambda (forms)
+    (cond
+      ((atom forms) (structural-kind empty-list) (quote ()))
+      ((atom forms) (structural-kind atom) (quote ()))
+      ((atom forms) (structural-kind pair)
+       (let ((form (car forms)))
+         (cond
+           ((atom form) (structural-kind empty-list)
+            (knowledge-authority-artifact-rows (cdr forms)))
+           ((atom form) (structural-kind atom)
+            (knowledge-authority-artifact-rows (cdr forms)))
+           ((atom form) (structural-kind pair)
+            (cond
+              ((eq (car form) (quote artifact)) (identity-relation same)
+               (cons form (knowledge-authority-artifact-rows (cdr forms))))
+              ((eq (car form) (quote artifact)) (identity-relation distinct)
+               (knowledge-authority-artifact-rows (cdr forms)))))))))))
+
+(def knowledge-authority-list-append
+  (lambda (left right)
+    (cond
+      ((atom left) (structural-kind empty-list) right)
+      ((atom left) (structural-kind atom) (cons left right))
+      ((atom left) (structural-kind pair)
+       (cons
+         (car left)
+         (knowledge-authority-list-append (cdr left) right))))))
+
+(def knowledge-authority-prefix-names
+  (lambda (prefix names)
+    (cond
+      ((atom names) (structural-kind empty-list) (quote ()))
+      ((atom names) (structural-kind atom)
+       (list (string-append prefix names)))
+      ((atom names) (structural-kind pair)
+       (cons
+         (string-append prefix (car names))
+         (knowledge-authority-prefix-names prefix (cdr names)))))))
+
+(def knowledge-authority-observed-root
+  (lambda (entries)
+    (cond
+      ((atom entries) (structural-kind empty-list) (quote ()))
+      ((atom entries) (structural-kind atom) (list entries))
+      ((atom entries) (structural-kind pair)
+       (let ((name (car entries)))
+         (cond
+           ((equal? name "examples") (structural-relation same)
+            (knowledge-authority-observed-root (cdr entries)))
+           ((equal? name "examples") (structural-relation distinct)
+            (cons
+              name
+              (knowledge-authority-observed-root (cdr entries))))))))))
+
+(def knowledge-authority-live-forms
+  (read-all (read-file "knowledge/knowledge-authority-inventory.lisp")))
+
+(def knowledge-authority-live-rows
+  (knowledge-authority-artifact-rows knowledge-authority-live-forms))
+
+(def knowledge-authority-live-observed
+  (knowledge-authority-list-append
+    (knowledge-authority-observed-root (read-dir "knowledge"))
+    (knowledge-authority-prefix-names
+      "examples/"
+      (read-dir "knowledge/examples"))))
+
+(def knowledge-authority-live-upstream-observed
+  (knowledge-authority-list-append
+    (knowledge-authority-prefix-names
+      "knowledge/"
+      knowledge-authority-live-observed)
+    (knowledge-authority-prefix-names
+      "docs/"
+      (read-dir "docs"))))
+
+(def knowledge-authority-live-base-verdict
+  (knowledge-authority-verdict
+    knowledge-authority-live-rows
+    knowledge-authority-live-observed))
+
+(def knowledge-authority-live-verdict
+  (cond
+    ((eq
+       (knowledge-authority-verdict-ok-state
+         knowledge-authority-live-base-verdict)
+       (quote yes))
+     (identity-relation same)
+     (knowledge-authority-upstream-verdict
+       knowledge-authority-live-rows
+       knowledge-authority-live-upstream-observed))
+    ((eq
+       (knowledge-authority-verdict-ok-state
+         knowledge-authority-live-base-verdict)
+       (quote no))
+     (identity-relation same)
+     knowledge-authority-live-base-verdict)))
+
+(print knowledge-authority-live-verdict)
+
+(knowledge-authority-assert-verdict
+  knowledge-authority-live-verdict
+  (quote (knowledge-authority-ok)))
