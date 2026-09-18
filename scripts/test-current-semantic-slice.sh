@@ -110,3 +110,13 @@ if [[ "$postcore_peer_status" != "(postcore-peer-materialization-witness (status
   printf 'post-core peer materialization witness failed: %s\n' "$postcore_peer_status" >&2
   exit 1
 fi
+
+
+# #506: native-first execution bridge must expose route provenance, execute
+# admitted plans on the CPU, fall back before admission only, and never mask
+# a chosen native-plan rejection by re-running through the evaluator.
+native_first_execution_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/native-first-execution-witness.lisp)"
+if [[ "$native_first_execution_status" != "(pass pass pass pass pass)" ]]; then
+  printf 'native-first execution bridge witness failed: %s\n' "$native_first_execution_status" >&2
+  exit 1
+fi
