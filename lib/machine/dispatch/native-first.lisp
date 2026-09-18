@@ -61,12 +61,18 @@
   (lambda (expression argument)
     (cond
       ((atom argument) (structural-kind pair)
-       (cond
-         ((eq (car argument) (quote cons)) (identity-relation same)
-          (native-first-plan-car-cons-u64 expression argument))
-         ((quote native-first-fallback)
-          native-first-fallback
-          (native-first-fallback expression))))
+       (let ((head (car argument)))
+         (cond
+           ((atom head) (structural-kind empty-list)
+            (native-first-fallback expression))
+           ((atom head) (structural-kind pair)
+            (native-first-fallback expression))
+           ((atom head) (structural-kind atom)
+            (cond
+              ((eq head (quote cons)) (identity-relation same)
+               (native-first-plan-car-cons-u64 expression argument))
+              ((eq head (quote cons)) (identity-relation distinct)
+               (native-first-fallback expression)))))))
       ((quote native-first-fallback)
        native-first-fallback
        (native-first-fallback expression)))))
@@ -90,12 +96,18 @@
   (lambda (expression)
     (cond
       ((atom expression) (structural-kind pair)
-       (cond
-         ((eq (car expression) (quote car)) (identity-relation same)
-          (native-first-plan-car expression))
-         ((quote native-first-fallback)
-          native-first-fallback
-          (native-first-fallback expression))))
+       (let ((head (car expression)))
+         (cond
+           ((atom head) (structural-kind empty-list)
+            (native-first-fallback expression))
+           ((atom head) (structural-kind pair)
+            (native-first-fallback expression))
+           ((atom head) (structural-kind atom)
+            (cond
+              ((eq head (quote car)) (identity-relation same)
+               (native-first-plan-car expression))
+              ((eq head (quote car)) (identity-relation distinct)
+               (native-first-fallback expression)))))))
       ((quote native-first-fallback)
        native-first-fallback
        (native-first-fallback expression)))))
