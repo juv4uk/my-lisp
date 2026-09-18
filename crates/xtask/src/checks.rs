@@ -602,10 +602,10 @@ enum SurfaceAdmission {
     Other,
 }
 
-/// Every byte SID whose EN spelling AND UK spelling are both `stable` --
+/// Every byte SID whose EN and UK spellings are both implicitly admitted --
 /// mirrors `uk_surface_equivalence.rs::stable_en_uk_pairs` (crate-integration
 /// test, not reachable from here), kept in sync by hand since this and that
-/// file read the same `semantic-registry.wsm` but serve different purposes
+/// file read the same `semantic-registry.lisp` but serve different purposes
 /// (behavior vs. keyboard-layout lint).
 fn stable_en_uk_names_needing_uk_layout_check() -> Vec<String> {
     REGISTRY
@@ -623,21 +623,22 @@ fn stable_en_uk_names_needing_uk_layout_check() -> Vec<String> {
             }
             let mut en = None;
             let mut uk = None;
-            for triple in fields[1..].chunks(3) {
-                if triple.len() != 3 {
-                    break;
-                }
-                let namespace = triple[0].trim_start_matches('(');
-                let name = triple[1];
-                let admission = if triple[2].trim_end_matches(')') == "stable" {
-                    SurfaceAdmission::Stable
-                } else {
-                    SurfaceAdmission::Other
+            for group in line.split('(').skip(2) {
+                let Some(tuple) = group.split(')').next() else {
+                    continue;
+                };
+                let parts = tuple.split_whitespace().collect::<Vec<_>>();
+                let (namespace, name, admission) = match parts.as_slice() {
+                    [namespace, name] => (*namespace, *name, SurfaceAdmission::Stable),
+                    [namespace, name, _exception_status] => {
+                        (*namespace, *name, SurfaceAdmission::Other)
+                    }
+                    _ => continue,
                 };
                 if admission == SurfaceAdmission::Stable {
                     match namespace {
-                        "en" => en = Some(name.to_string()),
-                        "uk" => uk = Some(name.to_string()),
+                        "en" => en = Some(name.trim_matches('"').to_string()),
+                        "uk" => uk = Some(name.trim_matches('"').to_string()),
                         _ => {}
                     }
                 }
