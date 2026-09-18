@@ -364,6 +364,63 @@ impl Rational {
     pub fn is_negative(&self) -> bool {
         self.numerator.is_negative()
     }
+
+    pub(crate) fn bit_and_nonnegative_integer(&self, other: &Self) -> Option<Self> {
+        if !self.is_integer() || !other.is_integer() {
+            return None;
+        }
+        Self::from_big(
+            self.numerator.bit_and_nonnegative(&other.numerator)?,
+            BigInt::from_i64(1),
+        )
+    }
+
+    pub(crate) fn bit_or_nonnegative_integer(&self, other: &Self) -> Option<Self> {
+        if !self.is_integer() || !other.is_integer() {
+            return None;
+        }
+        Self::from_big(
+            self.numerator.bit_or_nonnegative(&other.numerator)?,
+            BigInt::from_i64(1),
+        )
+    }
+
+    pub(crate) fn bit_xor_nonnegative_integer(&self, other: &Self) -> Option<Self> {
+        if !self.is_integer() || !other.is_integer() {
+            return None;
+        }
+        Self::from_big(
+            self.numerator.bit_xor_nonnegative(&other.numerator)?,
+            BigInt::from_i64(1),
+        )
+    }
+
+    pub(crate) fn shift_left_nonnegative_integer(&self, bits: usize) -> Option<Self> {
+        if !self.is_integer() {
+            return None;
+        }
+        Self::from_big(
+            self.numerator.shift_left_nonnegative(bits)?,
+            BigInt::from_i64(1),
+        )
+    }
+
+    pub(crate) fn shift_right_nonnegative_integer(&self, bits: usize) -> Option<Self> {
+        if !self.is_integer() {
+            return None;
+        }
+        Self::from_big(
+            self.numerator.shift_right_nonnegative(bits)?,
+            BigInt::from_i64(1),
+        )
+    }
+
+    pub(crate) fn as_nonnegative_usize(&self) -> Option<usize> {
+        if !self.is_integer() {
+            return None;
+        }
+        self.numerator.to_nonnegative_usize()
+    }
 }
 
 impl fmt::Display for Rational {
