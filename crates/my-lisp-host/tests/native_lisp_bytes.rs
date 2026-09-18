@@ -517,3 +517,35 @@ fn experimental_cpu_bootstrap_returns_bitpattern8_not_number_zero() {
         "(empty-list-cpu-bootstrap (status pass) (ground ()) (representation 00000000) (machine-forms ((xor-r64-r64 rax rax) (ret))))"
     );
 }
+
+#[test]
+fn experimental_cpu_edge_is_reversible_at_the_bitpattern_level() {
+    let _serial = test_lock();
+    install();
+
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before reversible CPU witness");
+    load_lisp_file("lib/machine/block.lisp", &mut session);
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/operands/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/atoms/x86-64.lisp", &mut session);
+    load_lisp_file("experiments/empty-list-cpu-bootstrap.lisp", &mut session);
+
+    let forward = eval_program("(ground-bit-forward)", &mut session)
+        .expect("BTS edge must execute through admitted machine forms");
+    assert!(matches!(forward.value, Value::BitPattern8(1)));
+    assert_eq!(forward.value.to_string(), "00000001");
+
+    let backward = eval_program("(ground-bit-backward)", &mut session)
+        .expect("BTR inverse edge must execute through admitted machine forms");
+    assert!(matches!(backward.value, Value::BitPattern8(0)));
+    assert_eq!(backward.value.to_string(), "00000000");
+
+    let witness = eval_program("(ground-bit-reversible-witness)", &mut session)
+        .expect("reversible CPU witness must execute");
+    assert_eq!(
+        witness.value.to_string(),
+        "(ground-bit-reversible (status pass) (forward 00000001) (backward 00000000))"
+    );
+}
