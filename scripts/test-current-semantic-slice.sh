@@ -130,3 +130,13 @@ if [[ "$native_first_parity_status" != "(native-first-parity-witness (status pas
   printf 'native/evaluator differential parity witness failed: %s\n' "$native_first_parity_status" >&2
   exit 1
 fi
+
+
+# #508: the native coverage ledger is diagnostic only. Native-supported rows
+# must be independently backed by classifier + CPU route + #509 parity, while
+# fallback/blocked rows must remain explicit evaluator fallbacks with reasons.
+native_coverage_ledger_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/native-first-coverage-ledger-witness.lisp)"
+if [[ "$native_coverage_ledger_status" != "(native-first-coverage-ledger-witness (status pass) (rows 6) (native 1) (fallback 2) (blocked 3))" ]]; then
+  printf 'native-first coverage ledger witness failed: %s\n' "$native_coverage_ledger_status" >&2
+  exit 1
+fi
