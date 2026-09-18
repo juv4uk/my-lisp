@@ -137,7 +137,7 @@
 
 (define друкувати print)
 (define показати princ)
-(define прочитати read)
+; 1059: `read` / `прочитати` встановлюються як registry-driven direct peers.
 (define прочитати-усе read-all)
 (define значення-у-текст write-to-string)
 (define обчислити eval)
