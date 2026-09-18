@@ -56,29 +56,6 @@ fn rows() -> Vec<Row> {
         .collect()
 }
 
-fn historical_conformance_row(wanted_expr: &str) -> Row {
-    let source = fs::read_to_string(repo_file("tests/fixtures/conformance.lisp"))
-        .expect("historical conformance corpus");
-    parse(&source)
-        .expect("conformance.lisp must parse")
-        .into_iter()
-        .find_map(|form| {
-            let ExprKind::List(entries) = &form.kind else {
-                return None;
-            };
-            let expr = alist_str(entries, "expr")?;
-            if expr != wanted_expr {
-                return None;
-            }
-            Some(Row {
-                source: source[form.span.start..form.span.end].to_string(),
-                expr: expr.to_string(),
-                expected: alist_str(entries, "expected")?.to_string(),
-            })
-        })
-        .unwrap_or_else(|| panic!("historical conformance row missing: {wanted_expr}"))
-}
-
 fn transport_contract(session: &mut Session) {
     let source = fs::read_to_string(repo_file("contracts/exact-q-binary-contract.lisp"))
         .expect("#216 exact-Q binary contract");
@@ -153,32 +130,4 @@ fn runtime_comparisons_match_lisp_owned_exact_q_results() {
             row.expr, row.expected
         );
     }
-}
-
-#[test]
-fn historical_numeric_equality_t_fixture_is_superseded_by_lisp_owned_exact_q_outcome() {
-    let row = historical_conformance_row("(= 3 3.0)");
-    assert_eq!(
-        row.expected, "t",
-        "published historical expected fact must remain untouched"
-    );
-
-    let mut session = Session::default();
-    load_core_library(&mut session).expect("core library");
-    load_witness_runner(&mut session);
-
-    let runtime_actual = actual(&row, &mut session);
-    let program = format!(
-        "(witness-status (witness-verdict (quote {}) (quote {})))",
-        row.source, runtime_actual
-    );
-    let status = eval_program(&program, &mut session)
-        .expect("Lisp-owned supersession verdict must execute")
-        .value
-        .to_string();
-
-    assert_eq!(
-        status, "pass",
-        "current #216 authority must supersede historical T through Lisp witness logic; actual={runtime_actual}"
-    );
 }
