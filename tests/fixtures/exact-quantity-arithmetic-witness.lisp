@@ -86,6 +86,11 @@
                 si:speed-of-light
                 (science-source/1 bipm-si-brochure-9 2019))))))
         (list
+          (quote malformed-short-constant-does-not-project)
+          (scientific-constant->clauses
+            (quote (scientific-constant/1 broken)))
+          (quote ()))
+        (list
           (quote invalid-string-name-does-not-project)
           (scientific-constant->clauses
             (quote
