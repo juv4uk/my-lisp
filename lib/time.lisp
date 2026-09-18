@@ -158,10 +158,26 @@
 (def timezone-declarations->observation
   (lambda (tz-value etc-timezone-value)
     (cond
-      ((and (string? tz-value) (not (string-empty? tz-value)))
-       (list (quote detected) tz-value (quote TZ)))
-      ((and (string? etc-timezone-value) (not (string-empty? etc-timezone-value)))
-       (list (quote detected) etc-timezone-value (quote etc-timezone)))
+      ((eq (string-membership-helper tz-value)
+           (quote (class-membership string member)))
+       (identity-relation same)
+       (cond
+         ((eq (string-empty? tz-value) (identity-relation distinct))
+          (identity-relation same)
+          (list (quote detected) tz-value (quote TZ)))
+         ((eq (string-empty? tz-value) (identity-relation same))
+          (identity-relation same)
+          (quote ())))
+      ((eq (string-membership-helper etc-timezone-value)
+           (quote (class-membership string member)))
+       (identity-relation same)
+       (cond
+         ((eq (string-empty? etc-timezone-value) (identity-relation distinct))
+          (identity-relation same)
+          (list (quote detected) etc-timezone-value (quote etc-timezone)))
+         ((eq (string-empty? etc-timezone-value) (identity-relation same))
+          (identity-relation same)
+          (quote ())))
       (t
        (list (quote unknown) (quote host-declaration-unavailable))))))
 
@@ -184,7 +200,10 @@
 (def timezone-config
   (lambda (name offset-seconds)
     (cond
-      ((not (string? name)) (list (quote rejected) (quote invalid-name)))
+      ((eq (string-membership-helper name)
+           (quote (class-membership string nonmember)))
+       (identity-relation same)
+       (list (quote rejected) (quote invalid-name)))
       ((not (and (= offset-seconds offset-seconds)
                  (>= offset-seconds -86400)
                  (<= offset-seconds 86400)))
