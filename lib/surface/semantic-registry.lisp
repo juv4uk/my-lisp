@@ -12,7 +12,7 @@
 ; Старий decimal-ID простір 0001/0104/1000... superseded цією sr/2 authority.
 ;
 (sr/2
-  (00000000 (sym () stable))
+  (00000000 ())
   (00000001 (en quote stable) (uk як-є stable) (ukr як-є stable) (sa svarūpa stable) (sym ' stable))
   (00000010 (en atom stable) (uk атом? stable) (ukr атом? stable) (sa aṇu stable) (sym .? stable))
   (00000011 (en eq stable) (uk тотожне? stable) (ukr тотожне? stable) (sa abheda stable) (sym =? stable))
