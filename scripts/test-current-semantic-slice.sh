@@ -112,6 +112,15 @@ if [[ "$machine_gpr_atoms_status" != "(machine-current-gpr-atoms-witness (status
 fi
 
 
+# #626: native-first classification is total over pair-headed application data.
+# Unsupported pair-headed forms must fall back unchanged instead of reaching atom-only eq.
+native_first_totality_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/native-first-totality-witness.lisp)"
+if [[ "$native_first_totality_status" != "(pass pass)" ]]; then
+  printf 'native-first totality witness failed: %s\n' "$native_first_totality_status" >&2
+  exit 1
+fi
+
+
 # #506: native-first execution bridge must expose route provenance, execute
 # admitted plans on the CPU, fall back before admission only, and never mask
 # a chosen native-plan rejection by re-running through the evaluator.
