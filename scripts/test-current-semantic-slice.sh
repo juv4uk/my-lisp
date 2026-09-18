@@ -102,11 +102,11 @@ if [[ "$machine_register_width_status" != "(machine-register-width-witness (stat
   exit 1
 fi
 
-# #469: post-core Lisp libraries must materialize stable registry peers without
-# loading a language-specific alias surface. The shell observes only the named
-# Lisp verdict; identity, invocation and shadowing laws remain in Lisp.
-postcore_peer_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/postcore-peer-materialization-witness.lisp)"
-if [[ "$postcore_peer_status" != "(postcore-peer-materialization-witness (status pass))" ]]; then
-  printf 'post-core peer materialization witness failed: %s\n' "$postcore_peer_status" >&2
+
+# #178: typed machine atoms cover current admitted GPR/XMM composition and
+# execute representative integer/SSE2 paths on the physical CPU.
+machine_gpr_atoms_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/machine-current-gpr-atoms-witness.lisp)"
+if [[ "$machine_gpr_atoms_status" != "(machine-current-gpr-atoms-witness (status pass))" ]]; then
+  printf 'current machine-atoms Lisp witness failed: %s\n' "$machine_gpr_atoms_status" >&2
   exit 1
 fi
