@@ -177,7 +177,7 @@
                  (let ((c (string-rest b)))
                    (cond
                      ((string-empty? c) (quote ()))
-                     (t t))))))))))))))
+                     (t t)))))))))))))
 
 (def sr-valid-id?
   (lambda (text)
