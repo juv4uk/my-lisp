@@ -4,7 +4,7 @@
 
 **Мета:** прибрати залежність генерації x86-64 байтів від evaluator-а, скомпілювавши Lisp-owned encoder і зберігши byte-for-byte parity та семантичну владу Lisp.
 
-**Архітектура:** `lib/machine/encoding/x86-64.lisp` залишається джерелом істини. Спочатку реальний файл запускається через pinned CML, щоб знайти перший фактичний blocker. CML може додавати механізм компіляції, але не копіювати таблиці opcode/encoding. Фінальний доказ: interpreted encoder дає bytes A, compiled encoder дає bytes B, A == B, обидва фізично виконуються через той самий admitted host mechanism.
+**Архітектура:** `lib/machine/encoding/x86-64.lisp` залишається джерелом істини. Спочатку реальний файл запускається через ширший чинний шлях CML `cml x86-elf`, щоб знайти перший фактичний blocker. Окремий `cml-compile x86-elf` навмисно обмежений arithmetic slice і не є шляхом bootstrap encoder-а. CML може додавати механізм компіляції, але не копіювати таблиці opcode/encoding. Фінальний доказ: interpreted encoder дає bytes A, compiled encoder дає bytes B, A == B, обидва фізично виконуються через той самий admitted host mechanism.
 
 **Специфікація:** issue #507 та `docs/superpowers/specs/2026-09-18-native-first-execution-design.uk.md`.
 
@@ -24,7 +24,7 @@
 - checkout my-lisp;
 - checkout CML `d12db3370180c4d155e21a61ab788d63e02010e9`;
 - запустити:
-  `cargo run --manifest-path _cml/Cargo.toml --bin cml-compile -- x86-elf lib/machine/encoding/x86-64.lisp /tmp/my-lisp-encoder`;
+  `cd <pinned-cml> && cargo run --bin cml -- x86-elf <absolute-my-lisp>/lib/machine/encoding/x86-64.lisp /tmp/my-lisp-encoder`;
 - вимагати non-zero exit;
 - записати першу точну compiler diagnostic;
 - класифікувати blocker: admission / IR / machine selection / callable ABI / result representation;
