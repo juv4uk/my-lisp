@@ -22,3 +22,10 @@
  (meta-eval . t)
  (reason . universal-zero-truthiness-retired)
  (owner . "217/220/231"))
+
+((supersedes-expr . "(= 3 3.0)")
+ (expr . "(= 3 3.0)")
+ (expected . "1")
+ (compiler-corpus . t)
+ (reason . exact-q-result-algebra-supersedes-truth-sentinel)
+ (owner . "216/220/631"))
