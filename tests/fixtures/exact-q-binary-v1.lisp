@@ -63,3 +63,23 @@
  (expected . "()")
  (identity . "1014")
  (case . inexact-less-no-answer))
+
+
+; #216 acceptance — denominator-1 source spellings must agree with the
+; mathematical exact-Q value and with the canonical writer representation.
+; These rows distinguish source spelling from semantic value: 0/1 and 1/1
+; are admitted exact rationals, while the canonical writer compacts them to
+; 0 and 1 respectively.
+((expr . "(= 0 0/1)")
+ (expected . "1")
+ (identity . "1016")
+ (case . zero-and-zero-over-one-are-the-same-exact-q-value))
+
+((expr . "(= 1 1/1)")
+ (expected . "1")
+ (identity . "1016")
+ (case . one-and-one-over-one-are-the-same-exact-q-value))
+
+((expr . "(list 0 0/1 1 1/1)")
+ (expected . "(0 0 1 1)")
+ (case . denominator-one-source-spellings-write-canonically))
