@@ -73,4 +73,9 @@
                          class
                          "Host tests may observe mechanism; Lisp owns meaning. See #112/#113."))))))))))))))
 
-(authority-verdict-for changed-host-tests)
+(print (quote DEBUG-BEFORE-EMPTY))
+(print (authority-verdict-for (quote ())))
+(print (quote DEBUG-BEFORE-ONE))
+(print (car changed-host-tests))
+(print (authority-verdict-for (cons (car changed-host-tests) (quote ()))))
+(print (quote DEBUG-FINISH))
