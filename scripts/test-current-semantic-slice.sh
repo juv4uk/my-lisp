@@ -130,3 +130,13 @@ if [[ "$native_first_parity_status" != "(native-first-parity-witness (status pas
   printf 'native/evaluator differential parity witness failed: %s\n' "$native_first_parity_status" >&2
   exit 1
 fi
+
+
+# #305: scientific-constant knowledge projection remains a pure Lisp-owned
+# operation. The shell observes only the named pass envelope; clause count,
+# admission and journal-preservation expectations live in the Lisp witness.
+science_projection_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/scientific-constant-knowledge-projection-witness.lisp)"
+if [[ "$science_projection_status" != "(scientific-constant-knowledge-projection-witness (status pass))" ]]; then
+  printf 'scientific constant knowledge-projection witness failed: %s\n' "$science_projection_status" >&2
+  exit 1
+fi
