@@ -71,5 +71,48 @@ jobs:
           test "$interpreted" = "(195)"
           test "$compiled" = "$interpreted"
 
+      - name: Compare compiled MOV bytes and execute both byte streams
+        shell: bash
+        run: |
+          cat > /tmp/encoder-mov-interpreted.lisp <<'LISP'
+          (load "lib/core.lisp")
+          (load "lib/machine/encoding/x86-64.lisp")
+          (x86-encode-mov-r64-imm64 (quote rax) 42)
+          LISP
+
+          interpreted_mov="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- /tmp/encoder-mov-interpreted.lisp)"
+          printf 'INTERPRETED_ENCODER_MOV=%s\n' "$interpreted_mov"
+
+          list_def_count="$(grep -Fxc '(def list (lambda args args))' lib/core.lisp)"
+          test "$list_def_count" = "1"
+          grep -Fx '(def list (lambda args args))' lib/core.lisp > /tmp/encoder-mov-compiled.lisp
+          cat lib/machine/encoding/x86-64.lisp >> /tmp/encoder-mov-compiled.lisp
+          printf '\n(x86-encode-mov-r64-imm64 (quote rax) 42)\n' >> /tmp/encoder-mov-compiled.lisp
+
+          (cd /tmp/cml-pinned && cargo run --quiet --bin cml -- build /tmp/encoder-mov-compiled.lisp -o /tmp/encoder-mov-host)
+          compiled_mov="$(/tmp/encoder-mov-host)"
+          printf 'COMPILED_ENCODER_MOV=%s\n' "$compiled_mov"
+
+          expected_mov='(72 184 42 0 0 0 0 0 0 0)'
+          test "$interpreted_mov" = "$expected_mov"
+          test "$compiled_mov" = "$expected_mov"
+
+          interpreted_program="$(printf '%s\n' "$interpreted_mov" | sed 's/)$/ 195)/')"
+          compiled_program="$(printf '%s\n' "$compiled_mov" | sed 's/)$/ 195)/')"
+          expected_program='(72 184 42 0 0 0 0 0 0 0 195)'
+          test "$interpreted_program" = "$expected_program"
+          test "$compiled_program" = "$expected_program"
+
+          printf '(native-call-u64-raw (quote %s))\n' "$interpreted_program" > /tmp/run-interpreted-bytes.lisp
+          printf '(native-call-u64-raw (quote %s))\n' "$compiled_program" > /tmp/run-compiled-bytes.lisp
+
+          result_a="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- /tmp/run-interpreted-bytes.lisp)"
+          result_b="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- /tmp/run-compiled-bytes.lisp)"
+          printf 'CPU_FROM_INTERPRETED_BYTES=%s\n' "$result_a"
+          printf 'CPU_FROM_COMPILED_BYTES=%s\n' "$result_b"
+
+          test "$result_a" = "42"
+          test "$result_b" = "42"
+
       - name: Child diff hygiene
         run: git diff --check HEAD^ HEAD
