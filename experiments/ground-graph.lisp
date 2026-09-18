@@ -249,12 +249,18 @@
 (def observation-relation 00001000)
 (def observation-graph
   (list
-    (list 00001001 observation-relation 00001010)
-    (list 00001010 observation-relation 00001011)))
+    (list 00001010 observation-relation 00001011)
+    (list 00001001 observation-relation 00001010)))
 
 (def nodum-kernel-lessons-witness
   (lambda ()
     (list
+      (list
+        (quote resolution-evidence-before)
+        (graph-neighbor-result
+          resolution-before
+          resolution-relation
+          late-endpoint))
       (list
         (quote unresolved-before)
         (graph-neighbor-resolved
