@@ -25,6 +25,12 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Move pinned CML outside my-lisp Cargo workspace
+        shell: bash
+        run: |
+          rm -rf /tmp/cml-pinned
+          cp -a _cml /tmp/cml-pinned
+
       - name: Execute whole upstream encoder and require fail-closed RED
         shell: bash
         run: |
