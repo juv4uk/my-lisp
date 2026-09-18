@@ -652,6 +652,256 @@
       destination
       source)))
 
+; #178 preparation — immediate and relative-control atoms over forms already
+; admitted/encoded by #176. Operand bounds come exclusively from the typed
+; operand layer; these helpers contain no opcode or branch-condition tables.
+
+(def x86-gpr64-imm32-form
+  (lambda (mnemonic register immediate)
+    (let ((typed-register (x86-as-gpr64 register)))
+      (cond
+        ((x86-machine-rejected? typed-register) typed-register)
+        (t
+         (let ((typed-immediate (x86-as-imm32 immediate)))
+           (cond
+             ((x86-machine-rejected? typed-immediate) typed-immediate)
+             (t
+              (list mnemonic
+                    (x86-gpr64-value typed-register)
+                    (x86-imm32-value typed-immediate))))))))))
+
+(def x86-add-r64-imm32
+  (lambda (register immediate)
+    (x86-gpr64-imm32-form (quote add-r64-imm32) register immediate)))
+
+(def x86-or-r64-imm32
+  (lambda (register immediate)
+    (x86-gpr64-imm32-form (quote or-r64-imm32) register immediate)))
+
+(def x86-and-r64-imm32
+  (lambda (register immediate)
+    (x86-gpr64-imm32-form (quote and-r64-imm32) register immediate)))
+
+(def x86-sub-r64-imm32
+  (lambda (register immediate)
+    (x86-gpr64-imm32-form (quote sub-r64-imm32) register immediate)))
+
+(def x86-xor-r64-imm32
+  (lambda (register immediate)
+    (x86-gpr64-imm32-form (quote xor-r64-imm32) register immediate)))
+
+(def x86-cmp-r64-imm32
+  (lambda (register immediate)
+    (x86-gpr64-imm32-form (quote cmp-r64-imm32) register immediate)))
+
+(def x86-gpr64-uimm8-form
+  (lambda (mnemonic register immediate)
+    (let ((typed-register (x86-as-gpr64 register)))
+      (cond
+        ((x86-machine-rejected? typed-register) typed-register)
+        (t
+         (let ((typed-immediate (x86-as-uimm8 immediate)))
+           (cond
+             ((x86-machine-rejected? typed-immediate) typed-immediate)
+             (t
+              (list mnemonic
+                    (x86-gpr64-value typed-register)
+                    (x86-uimm8-value typed-immediate))))))))))
+
+(def x86-shl-r64-imm8
+  (lambda (register immediate)
+    (x86-gpr64-uimm8-form (quote shl-r64-imm8) register immediate)))
+
+(def x86-shr-r64-imm8
+  (lambda (register immediate)
+    (x86-gpr64-uimm8-form (quote shr-r64-imm8) register immediate)))
+
+(def x86-sar-r64-imm8
+  (lambda (register immediate)
+    (x86-gpr64-uimm8-form (quote sar-r64-imm8) register immediate)))
+
+(def x86-rel8-form
+  (lambda (mnemonic displacement)
+    (let ((typed-displacement (x86-as-disp8 displacement)))
+      (cond
+        ((x86-machine-rejected? typed-displacement) typed-displacement)
+        (t
+         (list mnemonic (x86-disp8-value typed-displacement)))))))
+
+(def x86-jo-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jo-rel8) displacement)))
+
+(def x86-jno-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jno-rel8) displacement)))
+
+(def x86-jb-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jb-rel8) displacement)))
+
+(def x86-jnb-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jnb-rel8) displacement)))
+
+(def x86-jz-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jz-rel8) displacement)))
+
+(def x86-jbe-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jbe-rel8) displacement)))
+
+(def x86-jnbe-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jnbe-rel8) displacement)))
+
+(def x86-js-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote js-rel8) displacement)))
+
+(def x86-jns-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jns-rel8) displacement)))
+
+(def x86-jp-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jp-rel8) displacement)))
+
+(def x86-jnp-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jnp-rel8) displacement)))
+
+(def x86-jl-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jl-rel8) displacement)))
+
+(def x86-jnl-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jnl-rel8) displacement)))
+
+(def x86-jle-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jle-rel8) displacement)))
+
+(def x86-jnle-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jnle-rel8) displacement)))
+
+(def x86-jmp-rel8
+  (lambda (displacement)
+    (x86-rel8-form (quote jmp-rel8) displacement)))
+
+(def x86-rel32-form
+  (lambda (mnemonic displacement)
+    (let ((typed-displacement (x86-as-rel32 displacement)))
+      (cond
+        ((x86-machine-rejected? typed-displacement) typed-displacement)
+        (t
+         (list mnemonic (x86-rel32-value typed-displacement)))))))
+
+(def x86-jo-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jo-rel32) displacement)))
+
+(def x86-jno-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jno-rel32) displacement)))
+
+(def x86-jb-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jb-rel32) displacement)))
+
+(def x86-jnb-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jnb-rel32) displacement)))
+
+(def x86-jz-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jz-rel32) displacement)))
+
+(def x86-jnz-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jnz-rel32) displacement)))
+
+(def x86-jbe-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jbe-rel32) displacement)))
+
+(def x86-jnbe-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jnbe-rel32) displacement)))
+
+(def x86-js-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote js-rel32) displacement)))
+
+(def x86-jns-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jns-rel32) displacement)))
+
+(def x86-jp-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jp-rel32) displacement)))
+
+(def x86-jnp-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jnp-rel32) displacement)))
+
+(def x86-jl-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jl-rel32) displacement)))
+
+(def x86-jnl-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jnl-rel32) displacement)))
+
+(def x86-jle-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jle-rel32) displacement)))
+
+(def x86-jnle-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jnle-rel32) displacement)))
+
+(def x86-jmp-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote jmp-rel32) displacement)))
+
+(def x86-call-rel32
+  (lambda (displacement)
+    (x86-rel32-form (quote call-rel32) displacement)))
+
+; Forms admitted by later #176 slices reuse the same typed imm32/uimm8
+; constructors. These atoms only choose the already-canonical form tag.
+(def x86-test-r64-imm32
+  (lambda (register immediate)
+    (x86-gpr64-imm32-form (quote test-r64-imm32) register immediate)))
+
+(def x86-bt-r64-imm8
+  (lambda (register immediate)
+    (x86-gpr64-uimm8-form (quote bt-r64-imm8) register immediate)))
+
+(def x86-bts-r64-imm8
+  (lambda (register immediate)
+    (x86-gpr64-uimm8-form (quote bts-r64-imm8) register immediate)))
+
+(def x86-btr-r64-imm8
+  (lambda (register immediate)
+    (x86-gpr64-uimm8-form (quote btr-r64-imm8) register immediate)))
+
+(def x86-btc-r64-imm8
+  (lambda (register immediate)
+    (x86-gpr64-uimm8-form (quote btc-r64-imm8) register immediate)))
+
+(def x86-rol-r64-imm8
+  (lambda (register immediate)
+    (x86-gpr64-uimm8-form (quote rol-r64-imm8) register immediate)))
+
+(def x86-ror-r64-imm8
+  (lambda (register immediate)
+    (x86-gpr64-uimm8-form (quote ror-r64-imm8) register immediate)))
+
 (def x86-encode-machine-block
   (lambda (block)
     (x86-encode-admitted-program-or-reject (machine-block-forms block))))
