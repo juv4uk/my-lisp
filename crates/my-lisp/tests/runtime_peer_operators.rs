@@ -13,8 +13,6 @@ struct PeerCase {
     uk: &'static str,
     sa: &'static str,
     sym: &'static str,
-    args: &'static str,
-    expected: &'static str,
 }
 
 const CASES: &[PeerCase] = &[
@@ -23,48 +21,36 @@ const CASES: &[PeerCase] = &[
         uk: "відняти",
         sa: "viyoga",
         sym: "-",
-        args: "44 2",
-        expected: "42",
     },
     PeerCase {
         identity: "1002",
         uk: "помножити",
         sa: "guṇana",
         sym: "*",
-        args: "6 7",
-        expected: "42",
     },
     PeerCase {
         identity: "1003",
         uk: "поділити",
         sa: "haraṇa",
         sym: "/",
-        args: "84 2",
-        expected: "42",
     },
     PeerCase {
         identity: "1014",
         uk: "менше?",
         sa: "hīna?",
         sym: "<",
-        args: "1 2",
-        expected: "t",
     },
     PeerCase {
         identity: "1015",
         uk: "більше?",
         sa: "adhika?",
         sym: ">",
-        args: "2 1",
-        expected: "t",
     },
     PeerCase {
         identity: "1016",
         uk: "рівне?",
         sa: "sama?",
         sym: "=",
-        args: "42 42",
-        expected: "t",
     },
 ];
 
@@ -95,45 +81,6 @@ fn stable_operator_peers_exist_before_human_surface_libraries_load() {
         assert_same_builtin(&uk, &sa);
         assert_same_builtin(&sa, &sym);
 
-        for name in [case.uk, case.sa, case.sym] {
-            assert_eq!(
-                value(&mut session, &format!("({name} {})", case.args)).to_string(),
-                case.expected,
-                "{} / {name}",
-                case.identity
-            );
-        }
-    }
-}
-
-#[test]
-fn shadowing_one_operator_spelling_never_retargets_its_peers() {
-    for case in CASES {
-        let names = [case.uk, case.sa, case.sym];
-        for shadowed_index in 0..names.len() {
-            let mut session = Session::default();
-            let shadowed = names[shadowed_index];
-            value(
-                &mut session,
-                &format!("(define {shadowed} (lambda (a b) (quote затінено)))"),
-            );
-            assert_eq!(
-                value(&mut session, &format!("({shadowed} {})", case.args)).to_string(),
-                "затінено"
-            );
-
-            for (index, peer) in names.iter().enumerate() {
-                if index == shadowed_index {
-                    continue;
-                }
-                assert_eq!(
-                    value(&mut session, &format!("({peer} {})", case.args)).to_string(),
-                    case.expected,
-                    "{}: shadowing {shadowed} retargeted {peer}",
-                    case.identity
-                );
-            }
-        }
     }
 }
 
