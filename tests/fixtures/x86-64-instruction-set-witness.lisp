@@ -545,6 +545,57 @@
       (x86-admitted-instruction?
         (quote (aeskeygenassist-xmm-xmm-imm8 xmm6 xmm7 256)))
       ())
+     ; #176 AES-NI memory RED: bounded base+disp8 projection of the
+     ; pinned XED memory-source forms. rsp/r12 exercise SIB, extended XMM/base
+     ; registers exercise REX.R/REX.B, and displacement edges stay fail-closed.
+     ((encode aesenc-xmm-mem-disp8)
+      (x86-encode-aesenc-xmm-mem-disp8 (quote xmm0) (quote rax) 8)
+      (102 15 56 220 64 8))
+     ((encode aesenclast-xmm-mem-disp8-sib)
+      (x86-encode-aesenclast-xmm-mem-disp8 (quote xmm2) (quote rsp) 0)
+      (102 15 56 221 84 36 0))
+     ((encode aesdec-xmm-mem-disp8-rex-sib)
+      (x86-encode-aesdec-xmm-mem-disp8 (quote xmm8) (quote r12) -16)
+      (102 69 15 56 222 68 36 240))
+     ((encode aesdeclast-xmm-mem-disp8-rex)
+      (x86-encode-aesdeclast-xmm-mem-disp8 (quote xmm15) (quote r14) 127)
+      (102 69 15 56 223 126 127))
+     ((encode aesimc-xmm-mem-disp8-edge)
+      (x86-encode-aesimc-xmm-mem-disp8 (quote xmm4) (quote rbp) -128)
+      (102 15 56 219 101 128))
+     ((encode aeskeygenassist-xmm-mem-disp8-imm8)
+      (x86-encode-aeskeygenassist-xmm-mem-disp8-imm8
+        (quote xmm6) (quote r13) 1 27)
+      (102 65 15 58 223 117 1 27))
+     ((admission aesenc-memory-valid)
+      (x86-admitted-instruction? (quote (aesenc-xmm-mem-disp8 xmm0 rax 8)))
+      t)
+     ((admission aesdec-memory-valid)
+      (x86-admitted-instruction? (quote (aesdec-xmm-mem-disp8 xmm8 r12 -16)))
+      t)
+     ((admission aeskeygenassist-memory-valid)
+      (x86-admitted-instruction?
+        (quote (aeskeygenassist-xmm-mem-disp8-imm8 xmm6 r13 1 27)))
+      t)
+     ((admission aes-memory-disp8-overflow)
+      (x86-admitted-instruction?
+        (quote (aesenc-xmm-mem-disp8 xmm0 rax 128)))
+      ())
+     ((encode aes-ni-memory-admitted-program)
+      (x86-encode-admitted-program
+        (quote
+          ((aesenc-xmm-mem-disp8 xmm0 rax 8)
+           (aesenclast-xmm-mem-disp8 xmm2 rsp 0)
+           (aesdec-xmm-mem-disp8 xmm8 r12 -16)
+           (aesdeclast-xmm-mem-disp8 xmm15 r14 127)
+           (aesimc-xmm-mem-disp8 xmm4 rbp -128)
+           (aeskeygenassist-xmm-mem-disp8-imm8 xmm6 r13 1 27))))
+      (102 15 56 220 64 8
+       102 15 56 221 84 36 0
+       102 69 15 56 222 68 36 240
+       102 69 15 56 223 126 127
+       102 15 56 219 101 128
+       102 65 15 58 223 117 1 27))
      ((admission rdtsc-valid)
       (x86-admitted-instruction? (quote (rdtsc)))
       t)
