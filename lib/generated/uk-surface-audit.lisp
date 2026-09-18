@@ -4,7 +4,7 @@
 ; Generator: scripts/generate-uk-surface-audit.lisp (my-lisp#85)
 ; candidate-full-uk is NOT automatically promoted into authoritative full-uk
 
-(uk-surface-audit/1
+(uk-surface-audit/2
   (summary (total 167) (full 123) (already-compact 0) (ambiguous 0) (needs-research 23) (compatibility-only 21) (staging-evidence 167))
   (rows
   (row "00000001" (current-uk як-є stable) (authoritative-full-uk як-є stable) (en quote stable) (sa svarūpa stable) (sym "'" stable) (primary-status stable) (class full) (candidate-full-uk "як-є") (candidate-full-status чинна) (candidate-compact-uk —) (ambiguity not-yet-assessed) (evidence generated-function-table staging-profile))
