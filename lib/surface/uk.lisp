@@ -138,7 +138,7 @@
 (define друкувати print)
 (define показати princ)
 (define прочитати read)
-(define прочитати-усе read-all)
+; 1060: `read-all` / `прочитати-усе` встановлюються як registry-driven direct peers.
 (define значення-у-текст write-to-string)
 (define обчислити eval)
 (define середовище env)

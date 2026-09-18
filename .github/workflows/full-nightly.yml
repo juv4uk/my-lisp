@@ -60,6 +60,10 @@ jobs:
             echo '1047 regression: stable UK фрагмент-у-тексті? must be a registry-driven peer, not an EN bridge' >&2
             exit 1
           fi
+          if grep -Fqx '(define прочитати-усе read-all)' lib/surface/uk.lisp; then
+            echo '1060 regression: stable UK прочитати-усе must be a registry-driven peer, not an EN bridge' >&2
+            exit 1
+          fi
 
   workspace-clippy:
     name: full workspace clippy
