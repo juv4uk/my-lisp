@@ -43,6 +43,29 @@ Lisp-визначення / виконуваний доказ
 
 Поточний машинний семантичний контракт — [`language-contract.lisp`](language-contract.lisp), версія **6.0**.
 
+
+### Один Lisp, різні субстрати
+
+Поточний напрям substrate switch фіксує ще жорсткішу межу:
+
+> **`my-lisp` лишається семантичною владою; субстрат змінюється без міграції значення.**
+
+Тобто перенесення виконання на GraalVM, WASM, C, FPGA чи інший host не повинно породжувати другу реалізацію мови. Новий субстрат має виконувати той самий pinned Lisp source і доводити це незалежним witness-шаром.
+
+```text
+pinned my-lisp source
+        ↓
+semantic contract + executable laws
+        ↓
+      substrate
+   ↙      ↓      ↘
+ Rust   GraalVM   WASM / C / FPGA
+```
+
+Особливо це стосується bootstrap: `lib/macro.lisp` і `lib/core.lisp` є Lisp-owned behavior. Якщо для запуску на іншому субстраті потрібен новий host-механізм, він має бути вузьким, незвідним і semantics-blind; переписування `COND`, `defmacro`, `let`, `equal?` чи іншої Lisp-поведінки в Java/Rust не є еквівалентним substrate switch.
+
+Поточний bootstrap рухається до канонічного **тричленного `COND`** — `(query expected-result expression)`: структурні та identity-рішення порівнюються з явним результатом, а не через загальну truthiness. Перший upstream-крок для `lib/macro.lisp` проходить через PR [`#615`](https://github.com/juv4uk/my-lisp/pull/615); це ще не є оголошенням зеленого CI.
+
 ---
 
 ## Що вже доведено
