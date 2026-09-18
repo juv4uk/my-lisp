@@ -512,8 +512,9 @@
 (def largest-chunk
   (lambda (a b chunk mult)
     (cond
-      ((< a (+ chunk chunk)) (cons chunk mult))
-      (t (largest-chunk a b (+ chunk chunk) (+ mult mult))))))
+      ((< a (+ chunk chunk)) 1/1 (cons chunk mult))
+      ((< a (+ chunk chunk)) 0/1
+       (largest-chunk a b (+ chunk chunk) (+ mult mult))))))
 
 ; `b = 0` used to hang forever: `largest-chunk` starts doubling from
 ; `chunk = b`, and `0 + 0 = 0` never grows, so its "does chunk still
@@ -535,10 +536,14 @@
 (def quotient
   (lambda (a b)
     (cond
-      ((eq b 0) (/ a b))
-      ((< a b) 0)
-      (t (let ((chunk+mult (largest-chunk a b b 1)))
-           (+ (cdr chunk+mult) (quotient (- a (car chunk+mult)) b)))))))
+      ((eq b 0) (identity-relation same) (/ a b))
+      ((eq b 0) (identity-relation distinct)
+       (cond
+         ((< a b) 1/1 0)
+         ((< a b) 0/1
+          (let ((chunk+mult (largest-chunk a b b 1)))
+            (+ (cdr chunk+mult)
+               (quotient (- a (car chunk+mult)) b)))))))))
 
 (def mod
   (lambda (a b)
@@ -606,8 +611,11 @@
 (def number->string-onto
   (lambda (n acc)
     (cond
-      ((eq n 0) acc)
-      (t (number->string-onto (quotient n 10) (string-append (digit->string (mod n 10)) acc))))))
+      ((eq n 0) (identity-relation same) acc)
+      ((eq n 0) (identity-relation distinct)
+       (number->string-onto
+         (quotient n 10)
+         (string-append (digit->string (mod n 10)) acc))))))
 
 (def number->string
   (lambda (n)
@@ -675,20 +683,25 @@
 
 (def sqrt-iter
   (lambda (guess x n)
-    (cond ((= n 0) guess)
-          (t (sqrt-iter (/ (+ guess (/ x guess)) 2) x (- n 1))))))
+    (cond
+      ((= n 0) 1/1 guess)
+      ((= n 0) 0/1
+       (sqrt-iter (/ (+ guess (/ x guess)) 2) x (- n 1))))))
 
 ;; integer sqrt: Newton on quotients — provably terminating
 (def isqrt
   (lambda (n)
-    (cond ((< n 2) n)
-          (t (isqrt-step n (quotient n 2))))))
+    (cond
+      ((< n 2) 1/1 n)
+      ((< n 2) 0/1
+       (isqrt-step n (quotient n 2))))))
 
 (def isqrt-step
   (lambda (n g)
     (let ((next (quotient (+ g (quotient n g)) 2)))
-      (cond ((< next g) (isqrt-step n next))
-            (t g)))))
+      (cond
+        ((< next g) 1/1 (isqrt-step n next))
+        ((< next g) 0/1 g)))))
 
 (def sqrt
   (lambda (x)
@@ -735,8 +748,8 @@
 (def abs
   (lambda (x)
     (cond
-      ((< x 0) (- x))
-      (t x))))
+      ((< x 0) 1/1 (- x))
+      ((< x 0) 0/1 x))))
 
 ; Required first parameter (dotted lambda-list, same pattern as
 ; `<=`/`>=` above) keeps zero arguments an Arity error via the
