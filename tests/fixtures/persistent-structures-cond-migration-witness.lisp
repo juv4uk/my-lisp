@@ -118,17 +118,16 @@
 
 (def persistent-cond-migration-fail
   (lambda ()
-    (let ((shown
-            (print
-              (list
-                (quote persistent-structures-cond-migration-witness)
-                (list (quote status) (quote fail))
-                (list (quote persistent-map-two-part)
-                      persistent-map-two-part-count)
-                (list (quote persistent-vector-two-part)
-                      persistent-vector-two-part-count)))))
-      ; Deliberately unbound: a failed migration witness must make CI non-zero.
-      (persistent-exact-q-two-part-cond-remains shown))))
+    ; Print the Lisp-owned failure envelope. The shell transport turns any
+    ; non-pass envelope into process failure without owning the counts.
+    (print
+      (list
+        (quote persistent-structures-cond-migration-witness)
+        (list (quote status) (quote fail))
+        (list (quote persistent-map-two-part)
+              persistent-map-two-part-count)
+        (list (quote persistent-vector-two-part)
+              persistent-vector-two-part-count)))))
 
 (cond
   ((= persistent-map-two-part-count 0) 1
