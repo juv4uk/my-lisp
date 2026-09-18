@@ -453,6 +453,9 @@ pub enum Value {
     Number(f64, Exactness),
     Rational(Rational),
     String(Rc<str>),
+    /// Opaque eight-bit pattern. The payload is one physical byte, but this
+    /// variant is semantically disjoint from Number: BitPattern8(0) != 0.
+    BitPattern8(u8),
     Symbol(Rc<str>),
     Pair(Rc<Value>, Rc<Value>),
     Closure(Rc<Closure>),
@@ -525,6 +528,7 @@ impl PartialEq for Value {
             }
             (Value::Rational(left), Value::Rational(right)) => left == right,
             (Value::String(left), Value::String(right)) => left == right,
+            (Value::BitPattern8(left), Value::BitPattern8(right)) => left == right,
             (Value::Symbol(left), Value::Symbol(right)) => left == right,
             (Value::Pair(left_head, left_tail), Value::Pair(right_head, right_tail)) => {
                 left_head == right_head && left_tail == right_tail
@@ -734,6 +738,7 @@ fn render(value: &Value, quote_strings: bool) -> String {
             }
         }
         Value::Rational(number) => number.to_string(),
+        Value::BitPattern8(bits) => format!("{bits:08b}"),
         Value::String(text) => {
             if quote_strings {
                 let mut escaped = String::with_capacity(text.len() + 2);
