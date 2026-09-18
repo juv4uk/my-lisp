@@ -70,22 +70,22 @@
   (lambda (row)
     (cond
       ((atom (cdr row)) (structural-kind empty-list)
-       (identity-relation same))
+       (eq (quote ()) (quote ())))
       ((atom (car (cdr (car (cdr row))))) (structural-kind empty-list)
        (ground-row? (cons (car row) (cdr (cdr row)))))
       ((atom (car (cdr (car (cdr row))))) (structural-kind atom)
-       (identity-relation distinct))
+       (eq (quote ()) (quote not-empty)))
       ((atom (car (cdr (car (cdr row))))) (structural-kind pair)
-       (identity-relation distinct)))))
+       (eq (quote ()) (quote not-empty))))))
 
 (def identify-ground
   (lambda (rows)
     (cond
       ((atom rows) (structural-kind empty-list)
        (quote ()))
-      ((ground-row? (car rows)) (identity-relation same)
+      ((ground-row? (car rows)) (eq (quote ()) (quote ()))
        (car (car rows)))
-      ((ground-row? (car rows)) (identity-relation distinct)
+      ((ground-row? (car rows)) (eq (quote ()) (quote not-empty))
        (identify-ground (cdr rows))))))
 
 (def empty-list-identity
