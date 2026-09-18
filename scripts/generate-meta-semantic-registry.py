@@ -43,6 +43,8 @@ def admitted_entries() -> list[tuple[str, str, str]]:
             raise ValueError(f"{REGISTRY}:{line_number}: malformed sr/2 surface row")
         for surface in matches:
             namespace, spelling, exception_status = surface.groups()
+            if len(spelling) >= 2 and spelling[0] == spelling[-1] == '"':
+                spelling = spelling[1:-1]
             status = exception_status or "stable"
             if status not in ADMITTED or spelling == "—" or spelling in READER_ONLY:
                 continue
