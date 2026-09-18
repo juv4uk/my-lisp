@@ -14,12 +14,12 @@ enum Status {
 }
 
 impl Status {
-    fn parse(value: &str) -> Result<Self, String> {
+    fn parse_exception(value: &str) -> Result<Self, String> {
         match value {
-            "stable" => Ok(Self::Stable),
             "candidate" => Ok(Self::Candidate),
             "missing" => Ok(Self::Missing),
             "compatibility-only" => Ok(Self::CompatibilityOnly),
+            "stable" => Err("sr/2 не записує stable явно".to_string()),
             other => Err(format!("невідомий статус поверхні: {other}")),
         }
     }
@@ -82,6 +82,36 @@ fn normalize_surface(surface: &str) -> &str {
     }
 }
 
+fn surface_groups(line: &str) -> Vec<&str> {
+    let mut groups = Vec::new();
+    let mut depth = 0usize;
+    let mut start = None;
+
+    for (index, byte) in line.bytes().enumerate() {
+        match byte {
+            b'(' => {
+                depth += 1;
+                if depth == 2 {
+                    start = Some(index + 1);
+                }
+            }
+            b')' => {
+                if depth == 2 {
+                    if let Some(group_start) = start.take() {
+                        let group = line[group_start..index].trim();
+                        if !group.is_empty() {
+                            groups.push(group);
+                        }
+                    }
+                }
+                depth = depth.saturating_sub(1);
+            }
+            _ => {}
+        }
+    }
+    groups
+}
+
 fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
     let mut entries = Vec::new();
 
@@ -105,17 +135,27 @@ fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
             return Err(format!("registry line {}: invalid byte SID", index + 1));
         }
         if identity == "00000000" {
-            continue; // Canon 0 is ground, not a human/symbolic surface row.
-        }
-        if (fields.len() - 1) % 3 != 0 {
-            return Err(format!("registry line {}: malformed surface triples", index + 1));
+            continue;
         }
 
         let mut names = Vec::new();
-        for triple in fields[1..].as_chunks::<3>().0 {
-            let surface = triple[0].trim_start_matches('(').to_string();
-            let raw_name = triple[1];
-            let status = Status::parse(triple[2].trim_end_matches(')'))?;
+        for group in surface_groups(line) {
+            let fields = group.split_whitespace().collect::<Vec<_>>();
+            let (surface, raw_name, status) = match fields.as_slice() {
+                [surface, raw_name] => ((*surface).to_string(), *raw_name, Status::Stable),
+                [surface, raw_name, exception_status] => (
+                    (*surface).to_string(),
+                    *raw_name,
+                    Status::parse_exception(exception_status)?,
+                ),
+                _ => {
+                    return Err(format!(
+                        "registry line {}: malformed sr/2 surface ({group})",
+                        index + 1
+                    ));
+                }
+            };
+
             if names.iter().any(|name: &SurfaceName| name.surface == surface) {
                 return Err(format!(
                     "registry line {}: duplicate surface {surface}",
@@ -428,12 +468,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn numeric_identity_is_the_only_machine_key() {
-        let entries = registry_entries().expect("numeric registry");
-        for requested in ["0101", "map", "відобразити", "āvartana"] {
+    fn byte_sid_is_the_only_machine_key() {
+        let entries = registry_entries().expect("byte registry");
+        for requested in ["00110111", "map", "відобразити", "āvartana"] {
             assert_eq!(
                 find_entry(&entries, requested).map(|entry| entry.identity.as_str()),
-                Some("0101")
+                Some("00110111")
             );
         }
     }
@@ -442,7 +482,7 @@ mod tests {
     fn plus_is_shared_symbol_not_english() {
         let entries = registry_entries().expect("numeric registry");
         let entry = find_entry(&entries, "+").expect("+ identity");
-        assert_eq!(entry.identity, "0104");
+        assert_eq!(entry.identity, "00001100");
         assert_eq!(surface_name(entry, "en").and_then(|item| item.name.as_deref()), None);
         assert_eq!(surface_name(entry, "uk").and_then(|item| item.name.as_deref()), Some("додати"));
         assert_eq!(surface_name(entry, "sa").and_then(|item| item.name.as_deref()), Some("yoga"));
@@ -462,10 +502,10 @@ mod tests {
     }
 
     #[test]
-    fn core_catalog_is_numeric() {
+    fn core_catalog_is_byte_sid() {
         let output = render_names("core").expect("core catalog");
-        assert!(output.contains("0101"));
-        assert!(output.contains("0104"));
+        assert!(output.contains("00110111"));
+        assert!(output.contains("00001100"));
         assert!(!output.contains(" · map"));
     }
 
