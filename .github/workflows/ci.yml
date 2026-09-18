@@ -96,6 +96,16 @@ jobs:
           set -euo pipefail
           ./target/debug/my-lisp scripts/check-repo-tooling-inventory.lisp
 
+      - name: Lisp-owned encoder coverage parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(./target/debug/my-lisp scripts/check-encoder-coverage.lisp)"
+          if [[ "$status" != "(encoder-coverage-check (status pass))" ]]; then
+            printf 'Lisp encoder coverage parity failed: %s\n' "$status" >&2
+            exit 1
+          fi
+
       - name: Lisp-owned machine non-interference guard
         shell: bash
         run: |
@@ -226,6 +236,11 @@ jobs:
           cargo run -p xtask -- verify
           cargo run -p xtask -- import-xed-evidence --check
           cargo run -p xtask -- generate-encoder-coverage --check
+          coverage_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- scripts/check-encoder-coverage.lisp)"
+          if [[ "$coverage_status" != "(encoder-coverage-check (status pass))" ]]; then
+            printf 'Lisp encoder coverage parity failed: %s\n' "$coverage_status" >&2
+            exit 1
+          fi
 
       - name: Focused Advice Taker witness
         if: steps.changes.outputs.meta == 'true' && steps.changes.outputs.workspace != 'true'
