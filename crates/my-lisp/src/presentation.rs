@@ -4,7 +4,7 @@
 //! користуються conformance-перевірки, машинні протоколи й точне відтворення
 //! джерела. Цей модуль змінює лише те, що інтерактивна поверхня показує людині.
 
-use crate::{ErrorKind, Exactness, LanguageError, NumericBuffer, Value};
+use crate::{semantic_registry, ErrorKind, Exactness, LanguageError, NumericBuffer, Value};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -71,6 +71,13 @@ fn uk_operation_name(name: &str) -> String {
     }
 }
 
+fn uk_semantic_name(semantic_id: u8) -> String {
+    semantic_registry::admitted_surfaces_with_namespace_for_semantic_id(semantic_id)
+        .into_iter()
+        .find_map(|(namespace, name)| (namespace == "uk").then_some(name.to_string()))
+        .unwrap_or_else(|| format!("SID {}", semantic_registry::semantic_id_bits(semantic_id)))
+}
+
 fn canonical_inexact(number: f64) -> String {
     if number.fract() == 0.0 && number.is_finite() {
         format!("{number:.1}")
@@ -86,7 +93,7 @@ fn uk_decimal(text: String) -> String {
 fn render_uk(value: &Value) -> String {
     match value {
         Value::SemanticRef(semantic_id) => {
-            format!("#<вбудована {}>", uk_operation_name(semantic_id))
+            format!("#<вбудована {}>", uk_semantic_name(*semantic_id))
         }
         Value::Builtin(builtin) => {
             format!("#<вбудована {}>", uk_operation_name(builtin.name))
