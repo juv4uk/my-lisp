@@ -517,12 +517,12 @@
         (unknown-route ask-agent))
       (reference
         (topic swarm-time-perception)
-        (summary "Five complementary instruments for agents to measure and feel time: git commit rhythm, Guard inbox backlog age, physical Oracle clock offset, swarm comms pulse, and task incubation lifecycles | П'ять взаємодоповнюючих інструментів для відчуття часу агентами: ритм комітів, вік беклогу Guard, зсув годинників Oracle, пульс спілкування та інкубація задач")
-        (authority (../ecosystem/memory/agent-time-perception-tools.md ../ecosystem/memory/ukrainian-legal-tradition-and-time-tools.md))
-        (how-to (run-repo-time-rhythm run-guard-inbox-latency run-compare-oracle-time run-swarm-comms-pulse run-task-incubation-pulse))
-        (verify (exit-0-readout median-latency-reported active-dormant-classified))
+        (summary "Six complementary instruments for agents to measure and feel time: git commit rhythm, Guard inbox backlog age, physical Oracle clock offset, swarm comms pulse, task incubation lifecycles, and substrate-authority migration direction | Шість взаємодоповнюючих інструментів для відчуття часу агентами: ритм комітів, вік беклогу Guard, зсув годинників Oracle, пульс спілкування, інкубація задач і напрямок міграції авторитету між субстратами")
+        (authority (../ecosystem/memory/agent-time-perception-tools.md ../ecosystem/memory/ukrainian-legal-tradition-and-time-tools.md ../ecosystem/scripts/substrate-migration-pulse.py))
+        (how-to (run-repo-time-rhythm run-guard-inbox-latency run-compare-oracle-time run-swarm-comms-pulse run-task-incubation-pulse run-substrate-migration-pulse-before-trusting-recent-memory))
+        (verify (exit-0-readout median-latency-reported active-dormant-classified witness-before-retirement-share-reported))
         (lifecycle current-contract)
-        (provenance "ecosystem 2026-09-04: Darshana / Antigravity with project owner, expanded toolsuite from 3 to 5 real time perception instruments")
+        (provenance "ecosystem 2026-09-04: Darshana / Antigravity with project owner, toolsuite 3 -> 5 real time perception instruments; 2026-09-18: anviksiki adds substrate-migration-pulse.py (RETIRE/WITNESS/MACHINE/SURFACE/VALVE classification, weekly waves, 90% witness-first measured on my-lisp live), owner directive: recommended to all agents in cold-start toolkit")
         (unknown-route ask-agent))
       (reference
         (topic automated-bulk-edit-paren-safety)
