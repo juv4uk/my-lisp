@@ -134,7 +134,7 @@
                   ((eq right value) (identity-relation distinct)
                    (graph-result-absent))))))
             ((eq edge-relation relation) (identity-relation distinct)
-             (graph-result-absent)))))))))
+             (graph-result-absent))))))))
 
 (def graph-neighbor-result
   (lambda (graph relation value)
