@@ -302,3 +302,57 @@
           00001001
           (quote (step step)))))))
 
+
+
+; Generic e-class membership: no fixed language/surface columns and no
+; two-member limit. A class is ordinary Lisp data containing peer
+; representations.
+(def eclass-member-result
+  (lambda (class value)
+    (cond
+      ((atom class) (structural-kind empty-list)
+       (graph-result-absent))
+      ((atom class) (structural-kind pair)
+       (cond
+         ((eq (car class) value) (identity-relation same)
+          (graph-result-found class))
+         ((eq (car class) value) (identity-relation distinct)
+          (eclass-member-result (cdr class) value))))
+      ((atom class) (structural-kind atom)
+       (graph-result-absent)))))
+
+(def expanded-ground-eclass
+  (list
+    (quote ())
+    00000000
+    00001100
+    00001101))
+
+; Persistent graph growth: each generation adds relation evidence without
+; destroying the previous graph value. The earlier generation is recoverable
+; structurally as the tail of the new one.
+(def graph-generation-0 (quote ()))
+
+(def graph-generation-1
+  (cons
+    (list (quote ()) ground-equivalence-relation 00000000)
+    graph-generation-0))
+
+(def graph-generation-2
+  (cons
+    (list 00000000 ground-transition-relation 00000001)
+    graph-generation-1))
+
+(def graph-growth-witness
+  (lambda ()
+    (list
+      (list
+        (quote expanded-class-member)
+        (eclass-member-result expanded-ground-eclass 00001101))
+      (list
+        (quote previous-generation)
+        (cdr graph-generation-2))
+      (list
+        (quote previous-generation-preserved)
+        (eq (cdr graph-generation-2) graph-generation-1)))))
+
