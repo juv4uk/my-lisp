@@ -198,14 +198,6 @@
            ((= semantic-id (car group)) 0
             (postcore-find-group semantic-id (cdr groups)))))))))
 
-(def postcore-peer-sets-match
-  (lambda (expected actual)
-    (cond
-      ((= (length expected) (length actual)) 0
-       (quote registry-drift))
-      ((= (length expected) (length actual)) 1
-       (postcore-peer-members-match expected actual)))))
-
 (def postcore-peer-members-match
   (lambda (expected actual)
     (cond
@@ -220,13 +212,13 @@
           (identity-relation same)
           (quote registry-drift)))))))
 
-(def postcore-projection-matches-authority
+(def postcore-peer-sets-match
   (lambda (expected actual)
     (cond
       ((= (length expected) (length actual)) 0
        (quote registry-drift))
       ((= (length expected) (length actual)) 1
-       (postcore-projection-groups-match expected actual)))))
+       (postcore-peer-members-match expected actual)))))
 
 (def postcore-projection-groups-match
   (lambda (expected actual)
@@ -257,6 +249,32 @@
                (identity-relation same)
                (quote registry-drift))))))))))
 
+(def postcore-projection-matches-authority
+  (lambda (expected actual)
+    (cond
+      ((= (length expected) (length actual)) 0
+       (quote registry-drift))
+      ((= (length expected) (length actual)) 1
+       (postcore-projection-groups-match expected actual)))))
+
+(def postcore-surfaces-unbound
+  (lambda (surfaces)
+    (cond
+      ((atom surfaces) (structural-kind empty-list)
+       (quote surfaces-unbound))
+      ((atom surfaces) (structural-kind pair)
+       (cond
+         ((eq
+            (my-postcore-binding-status (car surfaces) (env))
+            (quote absent))
+          (identity-relation same)
+          (postcore-surfaces-unbound (cdr surfaces)))
+         ((eq
+            (my-postcore-binding-status (car surfaces) (env))
+            (quote present))
+          (identity-relation same)
+          (quote surfaces-bound)))))))
+
 (def postcore-candidate-surfaces-unbound
   (lambda (declarations)
     (cond
@@ -281,24 +299,6 @@
               (quote surfaces-bound))
             (identity-relation same)
             (quote candidates-bound))))))))
-
-(def postcore-surfaces-unbound
-  (lambda (surfaces)
-    (cond
-      ((atom surfaces) (structural-kind empty-list)
-       (quote surfaces-unbound))
-      ((atom surfaces) (structural-kind pair)
-       (cond
-         ((eq
-            (my-postcore-binding-status (car surfaces) (env))
-            (quote absent))
-          (identity-relation same)
-          (postcore-surfaces-unbound (cdr surfaces)))
-         ((eq
-            (my-postcore-binding-status (car surfaces) (env))
-            (quote present))
-          (identity-relation same)
-          (quote surfaces-bound)))))))
 
 (def postcore-registry-surface-count
   (lambda (semantic-id-text entries)
