@@ -56,3 +56,37 @@
 ; traverse the witness without any registry-specific reader/row/column logic.
 (def empty-list-unfold-result
   (table-shape empty-list-unfold-witness))
+
+;
+; Phase 4: the first self-identification probe.
+; No host code is allowed to state that () means 00000000.  The relation is
+; present only in the Lisp witness: the first field is the opaque identity and
+; every remaining field in this experimental row points to table-ground.
+;
+; For the one-row experiment, ask the structure for the identity associated
+; with the ground value.  This deliberately knows only list structure, not the
+; words en/uk/ukr/sa/sym and not the meaning of 00000000.
+(def ground-row?
+  (lambda (row)
+    (cond
+      ((atom (cdr row)) (structural-kind empty-list)
+       (identity-relation same))
+      ((atom (car (cdr (car (cdr row))))) (structural-kind empty-list)
+       (ground-row? (cons (car row) (cdr (cdr row)))))
+      ((atom (car (cdr (car (cdr row))))) (structural-kind atom)
+       (identity-relation distinct))
+      ((atom (car (cdr (car (cdr row))))) (structural-kind pair)
+       (identity-relation distinct)))))
+
+(def identify-ground
+  (lambda (rows)
+    (cond
+      ((atom rows) (structural-kind empty-list)
+       (quote ()))
+      ((ground-row? (car rows)) (identity-relation same)
+       (car (car rows)))
+      ((ground-row? (car rows)) (identity-relation distinct)
+       (identify-ground (cdr rows))))))
+
+(def empty-list-identity
+  (identify-ground empty-list-unfold-witness))
