@@ -202,6 +202,35 @@
            ((eq row-state (quote pass)) (identity-relation distinct)
             (quote fail))))))))
 
+(def native-first-coverage-no-expected-authority-row-state
+  (lambda (row)
+    (cond
+      ((equal?
+         (native-first-coverage-field (quote expected) row)
+         (quote ()))
+       (structural-relation same)
+       (quote pass))
+      ((equal?
+         (native-first-coverage-field (quote expected) row)
+         (quote ()))
+       (structural-relation distinct)
+       (quote fail)))))
+
+(def native-first-coverage-no-expected-authority-state
+  (lambda (rows)
+    (cond
+      ((atom rows) (structural-kind empty-list) (quote pass))
+      ((atom rows) (structural-kind atom) (quote fail))
+      ((atom rows) (structural-kind pair)
+       (let ((row-state
+               (native-first-coverage-no-expected-authority-row-state
+                 (car rows))))
+         (cond
+           ((eq row-state (quote pass)) (identity-relation same)
+            (native-first-coverage-no-expected-authority-state (cdr rows)))
+           ((eq row-state (quote pass)) (identity-relation distinct)
+            (quote fail))))))))
+
 (def native-first-coverage-count-status-onto
   (lambda (rows status count)
     (cond
@@ -272,6 +301,8 @@
                 (list
                   native-first-coverage-dispatch-independent-state
                   (native-first-coverage-all-valid-state
+                    native-first-coverage-ledger)
+                  (native-first-coverage-no-expected-authority-state
                     native-first-coverage-ledger)
                   (native-first-coverage-check
                     (length native-first-coverage-ledger)
