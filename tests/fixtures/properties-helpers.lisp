@@ -12,15 +12,12 @@
       ((identity-relation same) (identity-relation same)
        (let ((order (string-order-helper (car (car (cdr l))) (car (car l)))))
          (cond
-           ((eq order (quote (text-order before)))
-            (identity-relation same)
+           (order (text-order before)
             (quote ()))
-           ((eq order (quote (text-order same)))
-            (identity-relation same)
+           (order (text-order same)
             (map-keys-sorted? (cdr l)))
-           ((eq order (quote (text-order after)))
-            (identity-relation same)
-            (quote ()))))))))
+           (order (text-order after)
+            (map-keys-sorted? (cdr l)))))))))
 
 (def fib
   (lambda (n)
