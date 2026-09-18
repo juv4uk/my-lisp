@@ -35,6 +35,8 @@ def registry_rows() -> list[dict[str, tuple[str, str]]]:
         surfaces = {}
         for surface in matches:
             language, name, exception_status = surface.groups()
+            if len(name) >= 2 and name[0] == name[-1] == '"':
+                name = name[1:-1]
             surfaces[language] = (name, exception_status or "stable")
         rows.append(surfaces)
     if not rows:
