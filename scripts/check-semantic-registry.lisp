@@ -428,4 +428,4 @@
                       "\n")))
                (d (princ "numeric-only authority: CONFIRMED\n"))
                (e (princ "meaning-first shape: CONFIRMED\n")))
-          (quote semantic-registry-ok))))))))
+          (quote semantic-registry-ok)))))))
