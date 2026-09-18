@@ -172,8 +172,10 @@
 (def length-onto
   (lambda (values acc)
     (cond
-      ((atom values) acc)
-      (t (length-onto (cdr values) (+ acc 1))))))
+      ((atom values) (structural-kind empty-list) acc)
+      ((atom values) (structural-kind pair)
+       (length-onto (cdr values) (+ acc 1))))))
+
 
 (def length
   (lambda (values)
@@ -182,8 +184,9 @@
 (def reverse-onto
   (lambda (values acc)
     (cond
-      ((atom values) acc)
-      (t (reverse-onto (cdr values) (cons (car values) acc))))))
+      ((atom values) (structural-kind empty-list) acc)
+      ((atom values) (structural-kind pair)
+       (reverse-onto (cdr values) (cons (car values) acc))))))
 
 (def reverse
   (lambda (values)
@@ -210,8 +213,9 @@
 (def map-onto
   (lambda (f values acc)
     (cond
-      ((atom values) (reverse acc))
-      (t (map-onto f (cdr values) (cons (f (car values)) acc))))))
+      ((atom values) (structural-kind empty-list) (reverse acc))
+      ((atom values) (structural-kind pair)
+       (map-onto f (cdr values) (cons (f (car values)) acc))))))
 
 (def map
   (lambda (f values)
@@ -231,8 +235,9 @@
 (def reduce
   (lambda (f acc values)
     (cond
-      ((atom values) acc)
-      (t (reduce f (f acc (car values)) (cdr values))))))
+      ((atom values) (structural-kind empty-list) acc)
+      ((atom values) (structural-kind pair)
+       (reduce f (f acc (car values)) (cdr values))))))
 
 ; `let` desugars to an immediately-invoked `lambda`: `(let ((x 1) (y 2)) body)`
 ; expands to `((lambda (x y) body) 1 2)` — the classic trick, same shape as
@@ -349,27 +354,34 @@
 (def nth
   (lambda (i lst)
     (cond
-      ((eq i 0) (car lst))
-      (t (nth (- i 1) (cdr lst))))))
+      ((eq i 0) (identity-relation same) (car lst))
+      ((eq i 0) (identity-relation distinct)
+       (nth (- i 1) (cdr lst))))))
 
 (def member?
   (lambda (item lst)
     (cond
-      ((atom lst) (quote ()))
-      ((equal? item (car lst)) t)
-      (t (member? item (cdr lst))))))
+      ((atom lst) (structural-kind empty-list) (quote ()))
+      ((atom lst) (structural-kind pair)
+       (cond
+         ((equal? item (car lst)) (structural-relation same) t)
+         ((equal? item (car lst)) (structural-relation distinct)
+          (member? item (cdr lst))))))))
 
 (def assoc
   (lambda (key alist)
     (cond
-      ((atom alist) (quote ()))
-      ((equal? key (car (car alist))) (car alist))
-      (t (assoc key (cdr alist))))))
+      ((atom alist) (structural-kind empty-list) (quote ()))
+      ((atom alist) (structural-kind pair)
+       (cond
+         ((equal? key (car (car alist))) (structural-relation same) (car alist))
+         ((equal? key (car (car alist))) (structural-relation distinct)
+          (assoc key (cdr alist))))))))
 
 (defmacro let* (bindings body)
   (cond
-    ((atom bindings) body)
-    (t
+    ((atom bindings) (structural-kind empty-list) body)
+    ((atom bindings) (structural-kind pair)
      ; Build the recursive expansion from the primitive tree substrate only.
      ; This keeps let* semantics in Lisp while allowing generic macro
      ; frontends to execute the law without importing the higher-level list
@@ -406,24 +418,27 @@
 (def string-length
   (lambda (s)
     (cond
-      ((string-empty? s) 0)
-      (t (+ 1 (string-length (string-rest s)))))))
+      ((string-empty? s) (identity-relation same) 0)
+      (t t (+ 1 (string-length (string-rest s)))))))
 
 (def string-prefix?
   (lambda (prefix s)
     (cond
-      ((string-empty? prefix) t)
-      ((string-empty? s) (quote ()))
+      ((string-empty? prefix) (identity-relation same) t)
+      ((string-empty? s) (identity-relation same) (quote ()))
       ((eq (string-first prefix) (string-first s))
+       (identity-relation same)
        (string-prefix? (string-rest prefix) (string-rest s)))
-      (t (quote ())))))
+      (t t (quote ())))))
+
 
 (def string-contains?
   (lambda (needle s)
     (cond
-      ((string-prefix? needle s) t)
-      ((string-empty? s) (quote ()))
-      (t (string-contains? needle (string-rest s))))))
+      ((string-prefix? needle s) t t)
+      ((string-empty? s) (identity-relation same) (quote ()))
+      (t t (string-contains? needle (string-rest s))))))
+
 
 ; `symbol?` moved out of Rust after `write-to-string` made the distinction
 ; expressible without exceptions: among atoms, exactly a Symbol is identical
@@ -437,11 +452,14 @@
 (def symbol?
   (lambda (value)
     (cond
-      ((atom value)
+      ((atom value) (structural-kind empty-list) (quote ()))
+      ((atom value) (structural-kind atom)
        (cond
-         ((eq value (string->symbol (write-to-string value))) t)
-         (t (quote ()))))
-      (t (quote ())))))
+         ((eq value (string->symbol (write-to-string value)))
+          (identity-relation same) t)
+         (t t (quote ()))))
+      ((atom value) (structural-kind pair) (quote ())))))
+
 
 ; quotient/mod (G5 test: already expressible via existing means?) — yes.
 ; Unlike bitwise operations (AND/OR/XOR/shift — no primitive exposes a
@@ -500,8 +518,9 @@
 (def largest-chunk
   (lambda (a b chunk mult)
     (cond
-      ((< a (+ chunk chunk)) (cons chunk mult))
-      (t (largest-chunk a b (+ chunk chunk) (+ mult mult))))))
+      ((< a (+ chunk chunk)) 1 (cons chunk mult))
+      ((< a (+ chunk chunk)) 0
+       (largest-chunk a b (+ chunk chunk) (+ mult mult))))))
 
 ; `b = 0` used to hang forever: `largest-chunk` starts doubling from
 ; `chunk = b`, and `0 + 0 = 0` never grows, so its "does chunk still
@@ -523,10 +542,14 @@
 (def quotient
   (lambda (a b)
     (cond
-      ((eq b 0) (/ a b))
-      ((< a b) 0)
-      (t (let ((chunk+mult (largest-chunk a b b 1)))
-           (+ (cdr chunk+mult) (quotient (- a (car chunk+mult)) b)))))))
+      ((eq b 0) (identity-relation same) (/ a b))
+      ((eq b 0) (identity-relation distinct)
+       (cond
+         ((< a b) 1 0)
+         ((< a b) 0
+          (let ((chunk+mult (largest-chunk a b b 1)))
+            (+ (cdr chunk+mult)
+               (quotient (- a (car chunk+mult)) b)))))))))
 
 (def mod
   (lambda (a b)
@@ -594,8 +617,11 @@
 (def number->string-onto
   (lambda (n acc)
     (cond
-      ((eq n 0) acc)
-      (t (number->string-onto (quotient n 10) (string-append (digit->string (mod n 10)) acc))))))
+      ((eq n 0) (identity-relation same) acc)
+      ((eq n 0) (identity-relation distinct)
+       (number->string-onto
+         (quotient n 10)
+         (string-append (digit->string (mod n 10)) acc))))))
 
 (def number->string
   (lambda (n)
@@ -625,29 +651,45 @@
 ; Verschachtelung aus.
 (defmacro -> forms
   (cond
-    ((atom forms) (quote ()))
-    ((atom (cdr forms)) (car forms))
-    (t (let* ((x (car forms))
-              (next (car (cdr forms)))
-              (rest (cdr (cdr forms)))
-              (step (cond ((atom next) (list next x))
-                          (t (cons (car next) (cons x (cdr next)))))))
-         (cond
-           ((atom rest) step)
-           (t (cons (quote ->) (cons step rest))))))))
+    ((atom forms) (structural-kind empty-list) (quote ()))
+    ((atom forms) (structural-kind pair)
+     (cond
+       ((atom (cdr forms)) (structural-kind empty-list) (car forms))
+       ((atom (cdr forms)) (structural-kind pair)
+        (let* ((x (car forms))
+               (next (car (cdr forms)))
+               (rest (cdr (cdr forms)))
+               (step
+                 (cond
+                   ((atom next) (structural-kind empty-list) (list next x))
+                   ((atom next) (structural-kind atom) (list next x))
+                   ((atom next) (structural-kind pair)
+                    (cons (car next) (cons x (cdr next)))))))
+          (cond
+            ((atom rest) (structural-kind empty-list) step)
+            ((atom rest) (structural-kind pair)
+             (cons (quote ->) (cons step rest))))))))))
 
 (defmacro ->> forms
   (cond
-    ((atom forms) (quote ()))
-    ((atom (cdr forms)) (car forms))
-    (t (let* ((x (car forms))
-              (next (car (cdr forms)))
-              (rest (cdr (cdr forms)))
-              (step (cond ((atom next) (list next x))
-                          (t (append next (list x))))))
-         (cond
-           ((atom rest) step)
-           (t (cons (quote ->>) (cons step rest))))))))
+    ((atom forms) (structural-kind empty-list) (quote ()))
+    ((atom forms) (structural-kind pair)
+     (cond
+       ((atom (cdr forms)) (structural-kind empty-list) (car forms))
+       ((atom (cdr forms)) (structural-kind pair)
+        (let* ((x (car forms))
+               (next (car (cdr forms)))
+               (rest (cdr (cdr forms)))
+               (step
+                 (cond
+                   ((atom next) (structural-kind empty-list) (list next x))
+                   ((atom next) (structural-kind atom) (list next x))
+                   ((atom next) (structural-kind pair)
+                    (append next (list x))))))
+          (cond
+            ((atom rest) (structural-kind empty-list) step)
+            ((atom rest) (structural-kind pair)
+             (cons (quote ->>) (cons step rest))))))))))
 
 ;; ── Numeric library additions (M0, 2026-08-22) ─────────────────────
 ;; Додано для реальних задач (WSM-24 shape comparison): abs/min/max/
@@ -663,39 +705,37 @@
 
 (def sqrt-iter
   (lambda (guess x n)
-    (cond ((= n 0) guess)
-          (t (sqrt-iter (/ (+ guess (/ x guess)) 2) x (- n 1))))))
+    (cond
+      ((= n 0) 1 guess)
+      ((= n 0) 0
+       (sqrt-iter (/ (+ guess (/ x guess)) 2) x (- n 1))))))
 
 ;; integer sqrt: Newton on quotients — provably terminating
 (def isqrt
   (lambda (n)
-    (cond ((< n 2) n)
-          (t (isqrt-step n (quotient n 2))))))
+    (cond
+      ((< n 2) 1 n)
+      ((< n 2) 0
+       (isqrt-step n (quotient n 2))))))
 
 (def isqrt-step
   (lambda (n g)
     (let ((next (quotient (+ g (quotient n g)) 2)))
-      (cond ((< next g) (isqrt-step n next))
-            (t g)))))
+      (cond
+        ((< next g) 1 (isqrt-step n next))
+        ((< next g) 0 g)))))
 
 (def sqrt
   (lambda (x)
     (cond
-      ;; negative -> nil (error handling stays with the caller for now)
-      ((< x 0) ())
-      ;; zero -> exact zero
-      ((= x 0) 0)
-      ;; integer input: exact answer when a perfect square...
-      ((= x (quotient x 1))
+      ((< x 0) 1 (quote ()))
+      ((= x 0) 1 0)
+      ((= x (quotient x 1)) 1
        (let ((r (isqrt x)))
-         (cond ((= (* r r) x) r)
-               ;; ... else bounded rational approximation (see below)
-               (t (sqrt-iter (/ x 2) x 8)))))
-      ;; rational/float input: bounded Newton. NOTE: this language is
-      ;; fully exact (float literals parse as rationals), so unbounded
-      ;; Newton explodes bignum denominators; 8 iterations give a
-      ;; usable approximation without the blow-up.
-      (t (sqrt-iter (/ x 2.0) x 5)))))
+         (cond
+           ((= (* r r) x) t r)
+           (t t (sqrt-iter (/ x 2) x 8)))))
+      (t t (sqrt-iter (/ x 2.0) x 5)))))
 
 ; abs/min/max/min-list/max-list — migrated from Rust builtins.rs to
 ; lib/core.lisp (owner directive 2026-09-11: "Lisp owns meaning, Rust owns
@@ -723,8 +763,8 @@
 (def abs
   (lambda (x)
     (cond
-      ((< x 0) (- x))
-      (t x))))
+      ((< x 0) 1 (- x))
+      ((< x 0) 0 x))))
 
 ; Required first parameter (dotted lambda-list, same pattern as
 ; `<=`/`>=` above) keeps zero arguments an Arity error via the
@@ -754,22 +794,30 @@
 (def min-list
   (lambda (items)
     (cond
-      ((atom items) (quote ()))
-      (t (let ((rest-min (min-list (cdr items))))
-           (cond
-             ((equal? rest-min (quote ())) (car items))
-             ((< (car items) rest-min) (car items))
-             (t rest-min)))))))
+      ((atom items) (structural-kind empty-list) (quote ()))
+      ((atom items) (structural-kind pair)
+       (let ((rest-min (min-list (cdr items))))
+         (cond
+           ((equal? rest-min (quote ())) (structural-relation same)
+            (car items))
+           ((equal? rest-min (quote ())) (structural-relation distinct)
+            (cond
+              ((< (car items) rest-min) 1 (car items))
+              ((< (car items) rest-min) 0 rest-min)))))))))
 
 (def max-list
   (lambda (items)
     (cond
-      ((atom items) (quote ()))
-      (t (let ((rest-max (max-list (cdr items))))
-           (cond
-             ((equal? rest-max (quote ())) (car items))
-             ((> (car items) rest-max) (car items))
-             (t rest-max)))))))
+      ((atom items) (structural-kind empty-list) (quote ()))
+      ((atom items) (structural-kind pair)
+       (let ((rest-max (max-list (cdr items))))
+         (cond
+           ((equal? rest-max (quote ())) (structural-relation same)
+            (car items))
+           ((equal? rest-max (quote ())) (structural-relation distinct)
+            (cond
+              ((> (car items) rest-max) 1 (car items))
+              ((> (car items) rest-max) 0 rest-max)))))))))
 
 ; #469 — post-core stable peer materialization.
 ;
