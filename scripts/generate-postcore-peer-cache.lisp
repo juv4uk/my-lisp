@@ -278,12 +278,14 @@
              (postcore-cache-render-definition
                postcore-cache-expected-groups)
              "\n")))
-     (write-file postcore-cache-output-path output)
-     (print
-       (list
-         (quote postcore-peer-cache-generator)
-         (list (quote groups) (length postcore-cache-expected-groups))
-         (quote (status written))))))
+     (let ((written
+             (write-file postcore-cache-output-path output)))
+       (print
+         (list
+           (quote postcore-peer-cache-generator)
+           (list (quote groups) (length postcore-cache-expected-groups))
+           (list (quote write-result) written)
+           (quote (status written)))))))
   ((eq
      (postcore-cache-declarations-valid? postcore-cache-declarations)
      (quote invalid))
