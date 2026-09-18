@@ -8,8 +8,9 @@
 ; they just defined through (my-postcore-materialize-stable-peers ID SOURCE).
 ; They never contribute peer spellings. Candidate surfaces are ignored.
 ;
-; The generated block lives between explicit BEGIN/END markers in core.lisp so
-; bare-core/WASM bootstraps need no filesystem capability at runtime.
+; The generator writes lib/generated/postcore-stable-peer-projection.lisp.
+; CI requires the marked block in core.lisp to byte-match that projection, so
+; bare-core/WASM bootstraps still need no filesystem capability at runtime.
 ;
 ; Usage from repository root:
 ;   cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-postcore-peer-cache.lisp
@@ -259,74 +260,20 @@
         (postcore-cache-render-groups-onto groups "")
         "  )))"))))
 
-(def postcore-cache-begin-marker
-  "; BEGIN GENERATED POSTCORE STABLE PEER PROJECTION — scripts/generate-postcore-peer-cache.lisp")
-
-(def postcore-cache-end-marker
-  "; END GENERATED POSTCORE STABLE PEER PROJECTION")
-
-(def postcore-cache-find-marker-from
-  (lambda (text marker index)
-    (let ((end (+ index (string-length marker))))
-      (cond
-        ((> end (string-length text)) 1
-         -1)
-        ((> end (string-length text)) 0
-         (let ((candidate (string-slice text index end)))
-           (cond
-             ((equal? candidate marker) (structural-relation same)
-              index)
-             ((equal? candidate marker) (structural-relation distinct)
-              (postcore-cache-find-marker-from
-                text
-                marker
-                (+ index 1))))))))))
-
-(def postcore-cache-rewrite-core
-  (lambda (core-text)
-    (let ((begin
-            (postcore-cache-find-marker-from
-              core-text
-              postcore-cache-begin-marker
-              0)))
-      (cond
-        ((= begin -1) 1
-         (postcore-cache-generator-missing-begin-marker))
-        ((= begin -1) 0
-         (let* ((body-start
-                  (+ begin (string-length postcore-cache-begin-marker)))
-                (end
-                  (postcore-cache-find-marker-from
-                    core-text
-                    postcore-cache-end-marker
-                    body-start)))
-           (cond
-             ((= end -1) 1
-              (postcore-cache-generator-missing-end-marker))
-             ((= end -1) 0
-              (string-append
-                (string-slice core-text 0 body-start)
-                (string-append
-                  "\n"
-                  (string-append
-                    (postcore-cache-render-definition
-                      postcore-cache-expected-groups)
-                    (string-append
-                      "\n"
-                      (string-slice
-                        core-text
-                        end
-                        (string-length core-text))))))))))))))
+(def postcore-cache-output-path
+  "lib/generated/postcore-stable-peer-projection.lisp")
 
 (cond
   ((eq
      (postcore-cache-declarations-valid? postcore-cache-declarations)
      (quote valid))
    (identity-relation same)
-   (let* ((core-path "lib/core.lisp")
-          (core-text (read-file core-path))
-          (rewritten (postcore-cache-rewrite-core core-text)))
-     (write-file core-path rewritten)
+   (let ((output
+           (string-append
+             (postcore-cache-render-definition
+               postcore-cache-expected-groups)
+             "\n")))
+     (write-file postcore-cache-output-path output)
      (print
        (list
          (quote postcore-peer-cache-generator)
