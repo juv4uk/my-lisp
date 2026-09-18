@@ -91,11 +91,11 @@
 (def surface-word-text
   (lambda (word)
     (cond
-      ((eq (string-membership-helper word)
-           (quote (class-membership string member)))
-       (identity-relation same)
+      ((string-membership-helper word)
+       (class-membership string member)
        word)
-      ((identity-relation same) (identity-relation same)
+      ((string-membership-helper word)
+       (class-membership string nonmember)
        (write-to-string word)))))
 
 ; For the machine-readable .lisp output specifically, a bare apostrophe
