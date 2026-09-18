@@ -7,6 +7,8 @@ on:
       - "lib/core.lisp"
       - "lib/core.lisp.fasl"
       - "lib/surface/semantic-registry.lisp"
+      - "lib/generated/postcore-stable-peer-projection.lisp"
+      - "lib/generated/postcore-stable-peer-projection.lisp"
       - "lib/time.lisp"
       - "lib/process.lisp"
       - "lib/tcp.lisp"
@@ -45,7 +47,17 @@ jobs:
         run: |
           set -euo pipefail
           ./target/debug/my-lisp scripts/generate-postcore-peer-cache.lisp
-          git diff --exit-code -- lib/core.lisp
+          git diff --exit-code -- lib/generated/postcore-stable-peer-projection.lisp
+
+      - name: Require core block to equal Lisp-generated projection
+        run: |
+          set -euo pipefail
+          awk '
+            /^; BEGIN GENERATED POSTCORE STABLE PEER PROJECTION/ { inside=1; next }
+            /^; END GENERATED POSTCORE STABLE PEER PROJECTION/ { inside=0 }
+            inside { print }
+          ' lib/core.lisp > /tmp/postcore-stable-peer-projection.lisp
+          cmp /tmp/postcore-stable-peer-projection.lisp lib/generated/postcore-stable-peer-projection.lisp
 
       - name: Require exact committed FASL
         run: |
