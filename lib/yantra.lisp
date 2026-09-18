@@ -110,7 +110,10 @@
        (cond
          ((eq v t) "true")
          ((eq v (quote ())) "null")
-         ((string? v) (json-encode-string v))
+         ((eq (string-membership-helper v)
+              (quote (class-membership string member)))
+          (identity-relation same)
+          (json-encode-string v))
          (t (write-to-string v))))
       ((json-object? v) (json-encode-object v))
       (t (json-encode-array v)))))
