@@ -117,64 +117,48 @@
            (cdr row)
            (quote ())))))))
 
-; The semantic registry is large, so it uses fast host LOAD above. The post-core
-; source files are small; read them as ordinary Lisp data so declaration
-; discovery is pure and does not depend on mutation crossing a LOAD boundary.
-(def postcore-cache-materialization-declarations-onto
-  (lambda (forms acc)
-    (cond
-      ((atom forms) (structural-kind empty-list)
-       (reverse acc))
-      ((atom forms) (structural-kind pair)
-       (let ((form (car forms)))
-         (cond
-           ((atom form) (structural-kind pair)
-            (cond
-              ((eq
-                 (car form)
-                 (quote my-postcore-materialize-stable-peers))
-               (identity-relation same)
-               (postcore-cache-materialization-declarations-onto
-                 (cdr forms)
-                 (cons (list (second form) (third form)) acc)))
-              ((eq
-                 (car form)
-                 (quote my-postcore-materialize-stable-peers))
-               (identity-relation distinct)
-               (postcore-cache-materialization-declarations-onto
-                 (cdr forms)
-                 acc))))
-           ((atom form) (structural-kind atom)
-            (postcore-cache-materialization-declarations-onto
-              (cdr forms)
-              acc))
-           ((atom form) (structural-kind empty-list)
-            (postcore-cache-materialization-declarations-onto
-              (cdr forms)
-              acc))))))))
+; Collect numeric declarations through a tiny filesystem manifest. LOAD is the
+; fast host mechanism; this Lisp macro owns the declaration shape. The manifest
+; is reset on every generator run, so removed declarations cannot survive as
+; stale data between local runs.
+(def postcore-cache-declaration-manifest
+  "/tmp/my-lisp-postcore-cache-declarations.lisp")
 
-(def postcore-cache-materialization-declarations
-  (lambda (path)
-    (postcore-cache-materialization-declarations-onto
-      (read-all (read-file path))
-      (quote ()))))
+(def postcore-cache-manifest-reset
+  (write-file postcore-cache-declaration-manifest "(quote ())"))
 
-(def postcore-cache-collect-declarations
-  (lambda (paths acc)
+(defmacro my-postcore-materialize-stable-peers args
+  (let* ((semantic-id (car args))
+         (source (second args))
+         (declaration (list semantic-id source)))
+    (list
+      (quote write-file)
+      postcore-cache-declaration-manifest
+      (list
+        (quote write-to-string)
+        (list
+          (quote list)
+          (list (quote quote) (quote quote))
+          (list
+            (quote cons)
+            (list (quote quote) declaration)
+            (list (quote load) postcore-cache-declaration-manifest)))))))
+
+(def postcore-cache-load-sources
+  (lambda (paths)
     (cond
       ((atom paths) (structural-kind empty-list)
-       acc)
+       (quote loaded))
       ((atom paths) (structural-kind pair)
-       (postcore-cache-collect-declarations
-         (cdr paths)
-         (append
-           acc
-           (postcore-cache-materialization-declarations (car paths))))))))
+       (let ((loaded (load (car paths))))
+         (postcore-cache-load-sources (cdr paths)))))))
+
+(def postcore-cache-source-load-status
+  (postcore-cache-load-sources postcore-cache-source-paths))
 
 (def postcore-cache-declarations
-  (postcore-cache-collect-declarations
-    postcore-cache-source-paths
-    (quote ())))
+  (reverse (load postcore-cache-declaration-manifest)))
+
 (print
   (list
     (quote postcore-cache-debug)
