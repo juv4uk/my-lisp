@@ -328,3 +328,109 @@
 (def x86-mem64-disp8-displacement
   (lambda (operand)
     (x86-disp8-value (third operand))))
+
+; #178 preparation — typed immediate/displacement domains for forms already
+; admitted by #176. These are operand-shape facts only; no instruction opcode,
+; semantic identity, or CPU feature is introduced here.
+
+(def x86-signed32-value?
+  (lambda (value)
+    (cond
+      ((x86-exact-integer? value)
+       (and (>= value -2147483648) (<= value 2147483647)))
+      (t (quote ())))))
+
+(def x86-imm32?
+  (lambda (operand)
+    (cond
+      ((atom operand) (quote ()))
+      ((eq (car operand) (quote imm32))
+       (cond
+         ((atom (cdr operand)) (quote ()))
+         ((equal? (cdr (cdr operand)) (quote ()))
+          (x86-signed32-value? (second operand)))
+         (t (quote ()))))
+      (t (quote ())))))
+
+(def x86-imm32
+  (lambda (value)
+    (cond
+      ((x86-signed32-value? value) (list (quote imm32) value))
+      (t (x86-machine-operand-rejection (quote imm32) value)))))
+
+(def x86-as-imm32
+  (lambda (operand)
+    (cond
+      ((x86-machine-rejected? operand) operand)
+      ((x86-imm32? operand) operand)
+      (t (x86-imm32 operand)))))
+
+(def x86-imm32-value
+  (lambda (operand)
+    (second operand)))
+
+(def x86-uimm8?
+  (lambda (operand)
+    (cond
+      ((atom operand) (quote ()))
+      ((eq (car operand) (quote uimm8))
+       (cond
+         ((atom (cdr operand)) (quote ()))
+         ((equal? (cdr (cdr operand)) (quote ()))
+          (let ((value (second operand)))
+            (cond
+              ((x86-exact-integer? value)
+               (and (>= value 0) (<= value 255)))
+              (t (quote ())))))
+         (t (quote ()))))
+      (t (quote ())))))
+
+(def x86-uimm8
+  (lambda (value)
+    (cond
+      ((x86-exact-integer? value)
+       (cond
+         ((and (>= value 0) (<= value 255))
+          (list (quote uimm8) value))
+         (t (x86-machine-operand-rejection (quote uimm8) value))))
+      (t (x86-machine-operand-rejection (quote uimm8) value)))))
+
+(def x86-as-uimm8
+  (lambda (operand)
+    (cond
+      ((x86-machine-rejected? operand) operand)
+      ((x86-uimm8? operand) operand)
+      (t (x86-uimm8 operand)))))
+
+(def x86-uimm8-value
+  (lambda (operand)
+    (second operand)))
+
+(def x86-rel32?
+  (lambda (operand)
+    (cond
+      ((atom operand) (quote ()))
+      ((eq (car operand) (quote rel32))
+       (cond
+         ((atom (cdr operand)) (quote ()))
+         ((equal? (cdr (cdr operand)) (quote ()))
+          (x86-signed32-value? (second operand)))
+         (t (quote ()))))
+      (t (quote ())))))
+
+(def x86-rel32
+  (lambda (value)
+    (cond
+      ((x86-signed32-value? value) (list (quote rel32) value))
+      (t (x86-machine-operand-rejection (quote rel32) value)))))
+
+(def x86-as-rel32
+  (lambda (operand)
+    (cond
+      ((x86-machine-rejected? operand) operand)
+      ((x86-rel32? operand) operand)
+      (t (x86-rel32 operand)))))
+
+(def x86-rel32-value
+  (lambda (operand)
+    (second operand)))
