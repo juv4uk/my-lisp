@@ -422,12 +422,14 @@
        (quote (class-membership string nonmember)))
       ((atom value) (structural-kind atom)
        (cond
-         ((eq (string-first (write-to-string value)) """)
+         ((eq (string-first (write-to-string value))
+              (string-first (write-to-string "")))
           (identity-relation same)
           (quote (class-membership string member)))
-         ((eq (string-first (write-to-string value)) """)
+         ((eq (string-first (write-to-string value))
+              (string-first (write-to-string "")))
           (identity-relation distinct)
-          (quote (class-membership string nonmember))))
+          (quote (class-membership string nonmember)))))
       ((atom value) (structural-kind pair)
        (quote (class-membership string nonmember))))))
 
