@@ -158,13 +158,11 @@
 (def timezone-declarations->observation
   (lambda (tz-value etc-timezone-value)
     (cond
-      ((eq (nonempty-string-membership-helper tz-value)
-           (quote (class-membership string nonempty-member)))
-       (identity-relation same)
+      ((nonempty-string-membership-helper tz-value)
+       (class-membership string nonempty-member)
        (list (quote detected) tz-value (quote TZ)))
-      ((eq (nonempty-string-membership-helper etc-timezone-value)
-           (quote (class-membership string nonempty-member)))
-       (identity-relation same)
+      ((nonempty-string-membership-helper etc-timezone-value)
+       (class-membership string nonempty-member)
        (list (quote detected) etc-timezone-value (quote etc-timezone)))
       ((identity-relation same) (identity-relation same)
        (list (quote unknown) (quote host-declaration-unavailable))))))
