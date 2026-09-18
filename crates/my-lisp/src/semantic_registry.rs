@@ -74,12 +74,20 @@ fn surface_groups(line: &'static str) -> Vec<&'static str> {
     groups
 }
 
+fn surface_name_token(token: &'static str) -> &'static str {
+    token
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .unwrap_or(token)
+}
+
 fn parse_surface_group(group: &'static str) -> Option<SemanticSurface> {
     let fields = group.split_whitespace().collect::<Vec<_>>();
     match fields.as_slice() {
         [namespace, name] => {
+            let name = surface_name_token(name);
             assert_ne!(
-                *name, "—",
+                name, "—",
                 "missing surface must carry explicit missing status"
             );
             Some(SemanticSurface {
@@ -89,11 +97,12 @@ fn parse_surface_group(group: &'static str) -> Option<SemanticSurface> {
             })
         }
         [namespace, name, status] => {
+            let name = surface_name_token(name);
             assert_ne!(
                 *status, "stable",
                 "sr/2 admitted surfaces are implicit; do not spell stable"
             );
-            if *name == "—" {
+            if name == "—" {
                 assert!(
                     matches!(*status, "missing" | "compatibility-only"),
                     "absent surface must be missing or compatibility-only"
