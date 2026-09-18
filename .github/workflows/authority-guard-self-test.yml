@@ -33,6 +33,13 @@ jobs:
       - name: Build my-lisp transport
         run: cargo build -p my-lisp-cli --bin my-lisp
 
+      - name: DEBUG — isolate CLI startup from authority guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' '(print (quote DEBUG-STARTUP-OK))' > tests/debug-startup.lisp
+          ./target/debug/my-lisp tests/debug-startup.lisp
+
       - name: Forbidden semantic fixture is diagnosed and rejected
         shell: bash
         run: |
