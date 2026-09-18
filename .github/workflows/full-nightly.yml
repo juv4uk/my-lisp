@@ -60,6 +60,11 @@ jobs:
             echo '1047 regression: stable UK фрагмент-у-тексті? must be a registry-driven peer, not an EN bridge' >&2
             exit 1
           fi
+          if grep -Fqx '(define значення-у-текст write-to-string)' lib/surface/uk.lisp; then
+            echo '1061 regression: stable UK значення-у-текст must be a registry-driven peer, not an EN bridge' >&2
+            exit 1
+          fi
+          grep -Fqx '(define у-текст write-to-string)' lib/surface/uk.lisp
 
   workspace-clippy:
     name: full workspace clippy

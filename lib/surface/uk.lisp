@@ -139,7 +139,7 @@
 (define показати princ)
 (define прочитати read)
 (define прочитати-усе read-all)
-(define значення-у-текст write-to-string)
+; 1061: `write-to-string` / `значення-у-текст` встановлюються як registry-driven direct peers.
 (define обчислити eval)
 (define середовище env)
 
