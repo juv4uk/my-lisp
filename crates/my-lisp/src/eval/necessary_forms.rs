@@ -109,7 +109,8 @@ mod tests {
 
     #[test]
     fn synthetic_registry_constructively_controls_necessary_form_routing() {
-        const SYNTHETIC: &str = "(00001000 (xx comet stable))\n(00001001 (xx asteroid stable))";
+        const SYNTHETIC: &str =
+            "(sr/2\n  (\"00000000\" ())\n  (\"00001000\" (xx comet))\n  (\"00001001\" (xx asteroid))\n)";
         let index = semantic_registry::build_surface_index(SYNTHETIC);
 
         let route = |surface: &str| {
