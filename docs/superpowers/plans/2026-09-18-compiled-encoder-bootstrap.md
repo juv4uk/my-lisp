@@ -4,7 +4,7 @@
 
 **Goal:** Remove evaluator dependence from x86-64 byte generation by compiling the Lisp-owned encoder while preserving byte-for-byte parity and Lisp semantic authority.
 
-**Architecture:** Treat `lib/machine/encoding/x86-64.lisp` as upstream source authority. First run the exact file through a pinned CML compiler to discover the first real blocker. CML may add compiler mechanism, but must not copy encoder truth into Rust/CML tables. The final path must compare interpreted encoder bytes A with compiled encoder bytes B and execute both through the same admitted host mechanism.
+**Architecture:** Treat `lib/machine/encoding/x86-64.lisp` as upstream source authority. First run the exact file through CML's broader existing `cml x86-elf` freestanding compiler path to discover the first real blocker. The dedicated `cml-compile x86-elf` process bridge is intentionally arithmetic-slice-only and is not the encoder bootstrap path. CML may add compiler mechanism, but must not copy encoder truth into Rust/CML tables. The final path must compare interpreted encoder bytes A with compiled encoder bytes B and execute both through the same admitted host mechanism.
 
 **Tech Stack:** my-lisp, CML pinned at an exact commit, x86-64 Lisp encoder, GitHub Actions, existing native execution host mechanism.
 
@@ -31,10 +31,10 @@
 - [ ] Check out my-lisp at the #507 branch.
 - [ ] Check out CML at pinned master `d12db3370180c4d155e21a61ab788d63e02010e9`.
 - [ ] Run the real command:
-  `cargo run --manifest-path _cml/Cargo.toml --bin cml-compile -- x86-elf lib/machine/encoding/x86-64.lisp /tmp/my-lisp-encoder`.
+  `cd <pinned-cml> && cargo run --bin cml -- x86-elf <absolute-my-lisp>/lib/machine/encoding/x86-64.lisp /tmp/my-lisp-encoder`.
 - [ ] Require non-zero exit.
 - [ ] Capture the first compiler diagnostic verbatim.
-- [ ] Classify the blocker: source admission, IR lowering, machine selection, callable/export ABI, or result representation.
+- [ ] Classify the blocker: source admission, IR lowering, freestanding backend admission, linking/runtime ABI, callable/export ABI, or result representation.
 - [ ] Create a CML issue for exactly that blocker, not a generic “compile encoder” request.
 
 ### Task 2: Minimal CML capability for the first blocker
