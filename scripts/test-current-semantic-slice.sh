@@ -110,3 +110,12 @@ if [[ "$postcore_peer_status" != "(postcore-peer-materialization-witness (status
   printf 'post-core peer materialization witness failed: %s\n' "$postcore_peer_status" >&2
   exit 1
 fi
+
+
+# #536: preserve comparison-peer topology before retiring stale Rust t-oracles.
+# RED phase intentionally requires a not-yet-added Lisp-owned witness.
+runtime_peer_topology_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/runtime-peer-comparison-topology-witness.lisp)"
+if [[ "$runtime_peer_topology_status" != "(runtime-peer-comparison-topology-witness (status pass))" ]]; then
+  printf 'runtime comparison peer topology witness failed: %s\n' "$runtime_peer_topology_status" >&2
+  exit 1
+fi
