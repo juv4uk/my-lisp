@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          output="$(cargo run --quiet --manifest-path _cml/Cargo.toml --bin cml-compile --             x86-elf lib/machine/encoding/x86-64.lisp /tmp/my-lisp-encoder 2>&1)"
+          output="$(cargo run --quiet --manifest-path /tmp/cml-pinned/Cargo.toml --bin cml-compile --             x86-elf lib/machine/encoding/x86-64.lisp /tmp/my-lisp-encoder 2>&1)"
           status=$?
           set -e
           printf '%s\n' "$output"
