@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the Lisp surface→semantic-ID projection used by meta-eval.
+"""Generate the Lisp surface→byte-SID projection used by meta-eval.
 
 The only spelling authority is lib/surface/semantic-registry.lisp. This script
 owns projection mechanics only. It admits exactly stable and
@@ -58,7 +58,7 @@ def admitted_entries() -> list[tuple[str, str, str]]:
                 entries.append((semantic_id, namespace, spelling))
 
     if not entries:
-        raise ValueError("numeric semantic registry has no admitted runtime surfaces")
+        raise ValueError("byte semantic registry has no admitted runtime surfaces")
     return entries
 
 
