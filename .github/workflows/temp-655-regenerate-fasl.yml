@@ -1,0 +1,41 @@
+name: TEMP 655 Regenerate FASL
+
+on:
+  push:
+    branches:
+      - repair/655-core-fasl-current-main
+    paths:
+      - ".github/workflows/temp-655-regenerate-fasl.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: repair/655-core-fasl-current-main
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Regenerate exact core FASL
+        run: |
+          set -euo pipefail
+          cargo build -p my-lisp-cli --bin gen-fasl
+          ./target/debug/gen-fasl lib/core.lisp lib/core.lisp.fasl
+          git diff --exit-code -- lib/core.lisp
+
+      - name: Commit only regenerated binary
+        run: |
+          set -euo pipefail
+          test -n "$(git status --porcelain -- lib/core.lisp.fasl)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/core.lisp.fasl
+          git diff --cached --name-only | grep -Fxq 'lib/core.lisp.fasl'
+          test "$(git diff --cached --name-only | wc -l)" -eq 1
+          git commit -m "chore(#655): regenerate core FASL"
+          git push origin HEAD:refs/heads/repair/655-core-fasl-current-main
