@@ -17,5 +17,28 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: verify-524-d295-cli
+      - name: Build CLI
+        run: cargo build -p my-lisp-cli
+      - name: Capture startup diagnostics
+        shell: bash
+        run: |
+          set -u
+          printf '(1 2' > /tmp/my-lisp-524-bad.lisp
+          set +e
+          ./target/debug/my-lisp /tmp/my-lisp-524-bad.lisp >/tmp/parse.out 2>/tmp/parse.err
+          parse_code=$?
+          timeout 3s ./target/debug/my-lisp --tcp=0 --protocol=sexpr >/tmp/tcp.out 2>/tmp/tcp.err
+          tcp_code=$?
+          set -e
+          echo "PARSE_EXIT=$parse_code"
+          echo "--- parse stderr ---"
+          sed -n '1,20p' /tmp/parse.err
+          echo "--- parse stdout ---"
+          sed -n '1,20p' /tmp/parse.out
+          echo "TCP_EXIT=$tcp_code"
+          echo "--- tcp stderr ---"
+          sed -n '1,20p' /tmp/tcp.err
+          echo "--- tcp stdout ---"
+          sed -n '1,20p' /tmp/tcp.out
       - name: Exact CLI smoke
         run: cargo test -p my-lisp-cli --test cli -- --nocapture
