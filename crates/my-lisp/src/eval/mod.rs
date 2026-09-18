@@ -143,6 +143,7 @@ pub(crate) fn evaluate_step(
         ExprKind::Rational(rational) => Ok(EvalStep::Value(Value::Rational(rational.clone()))),
         ExprKind::NumericBuffer(buffer) => Ok(EvalStep::Value(Value::NumericBuffer(buffer.clone()))),
         ExprKind::String(value) => Ok(EvalStep::Value(Value::String(value.clone()))),
+        ExprKind::BitPattern8(bits) => Ok(EvalStep::Value(Value::BitPattern8(*bits))),
         ExprKind::Symbol(symbol) => {
             if let Some(value) = canon::value_for_surface(symbol) {
                 return Ok(EvalStep::Value(value));
