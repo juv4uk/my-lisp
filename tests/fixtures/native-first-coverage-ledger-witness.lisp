@@ -202,32 +202,36 @@
            ((eq row-state (quote pass)) (identity-relation distinct)
             (quote fail))))))))
 
-(def native-first-coverage-no-expected-authority-row-state
+(def native-first-coverage-expected-authority-row-state
   (lambda (row)
-    (cond
-      ((equal?
-         (native-first-coverage-field (quote expected) row)
-         (quote ()))
-       (structural-relation same)
-       (quote pass))
-      ((equal?
-         (native-first-coverage-field (quote expected) row)
-         (quote ()))
-       (structural-relation distinct)
-       (quote fail)))))
+    (let ((status
+            (native-first-coverage-field (quote status) row))
+          (expected
+            (native-first-coverage-field (quote expected) row)))
+      (cond
+        ((equal? status (quote native-supported))
+         (structural-relation same)
+         (native-first-coverage-present-state expected))
+        ((equal? status (quote fallback-required))
+         (structural-relation same)
+         (native-first-coverage-check expected (quote ())))
+        ((equal? status (quote blocked-runtime-prerequisite))
+         (structural-relation same)
+         (native-first-coverage-check expected (quote ())))
+        (t (quote fail))))))
 
-(def native-first-coverage-no-expected-authority-state
+(def native-first-coverage-expected-authority-state
   (lambda (rows)
     (cond
       ((atom rows) (structural-kind empty-list) (quote pass))
       ((atom rows) (structural-kind atom) (quote fail))
       ((atom rows) (structural-kind pair)
        (let ((row-state
-               (native-first-coverage-no-expected-authority-row-state
+               (native-first-coverage-expected-authority-row-state
                  (car rows))))
          (cond
            ((eq row-state (quote pass)) (identity-relation same)
-            (native-first-coverage-no-expected-authority-state (cdr rows)))
+            (native-first-coverage-expected-authority-state (cdr rows)))
            ((eq row-state (quote pass)) (identity-relation distinct)
             (quote fail))))))))
 
@@ -302,7 +306,7 @@
                   native-first-coverage-dispatch-independent-state
                   (native-first-coverage-all-valid-state
                     native-first-coverage-ledger)
-                  (native-first-coverage-no-expected-authority-state
+                  (native-first-coverage-expected-authority-state
                     native-first-coverage-ledger)
                   (native-first-coverage-check
                     (length native-first-coverage-ledger)
