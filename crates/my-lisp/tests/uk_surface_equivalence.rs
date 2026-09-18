@@ -1,9 +1,9 @@
 //! Registry-driven UK/EN surface equivalence sweep.
 //!
-//! Data source: `lib/surface/semantic-registry.wsm`, the numeric-ID surface
+//! Data source: `lib/surface/semantic-registry.wsm`, the byte-SID surface
 //! authority (see `semantic_registry.rs` for the runtime parser this test
 //! mirrors, and `peer_surface_identity.rs` for the same pattern applied to
-//! one semantic ID). This file used to read the legacy EN-shaped
+//! one byte SID). This file used to read the legacy EN-shaped
 //! `lib/surface/uk-sa-coverage.wsm`, which `rivnopravnist_mov.rs` and
 //! `runtime_peer_operators.rs` already assert is no longer executable
 //! authority (TEST-ARCHITECTURE-1 step 2 migration, 2026-09-12).
@@ -28,7 +28,7 @@ struct Surface {
     admission: Admission,
 }
 
-/// Parse every row of the registry into its semantic ID plus the raw
+/// Parse every row of the registry into its byte SID plus the raw
 /// `(namespace name status)` triples it declares. Mirrors
 /// `semantic_registry::parse_rows` (crate-internal, not reachable from an
 /// integration test), but keeps every admission kind instead of dropping
@@ -39,8 +39,13 @@ fn registry_rows() -> Vec<(&'static str, Vec<Surface>)> {
         .lines()
         .filter_map(|line| {
             let fields = line.split_whitespace().collect::<Vec<_>>();
-            let semantic_id = fields.first()?.strip_prefix('(')?;
-            if semantic_id.is_empty() || !semantic_id.bytes().all(|b| b.is_ascii_digit()) {
+            let semantic_id = fields
+                .first()?
+                .strip_prefix("(\\\"")?
+                .strip_suffix('"')?;
+            if semantic_id.len() != 8
+                || !semantic_id.bytes().all(|byte| matches!(byte, b'0' | b'1'))
+            {
                 return None;
             }
 
@@ -73,7 +78,7 @@ fn surface<'a>(surfaces: &'a [Surface], namespace: &str) -> Option<&'a Surface> 
     surfaces.iter().find(|surface| surface.namespace == namespace)
 }
 
-/// Every semantic ID whose EN spelling AND UK spelling are both `stable` --
+/// Every byte SID whose EN spelling AND UK spelling are both `stable` --
 /// exactly the set for which "does the UK spelling resolve to the same
 /// runtime operation as the EN spelling" is a meaningful question. IDs that
 /// are UK-only (e.g. `додати`/`+`, which has no spelled-out EN name, only a
@@ -98,6 +103,10 @@ fn stable_en_uk_pairs() -> Vec<(&'static str, &'static str, &'static str)> {
 /// one can't hide behind agreement with the other.
 fn uk_admission_counts() -> (usize, usize, usize, usize, usize) {
     let rows = registry_rows();
+    let total = rows
+        .iter()
+        .filter(|(_, surfaces)| surface(surfaces, "uk").is_some())
+        .count();
     let mut stable = 0;
     let mut compatibility = 0;
     let mut candidate = 0;
@@ -111,7 +120,7 @@ fn uk_admission_counts() -> (usize, usize, usize, usize, usize) {
             None => {}
         }
     }
-    (rows.len(), stable, compatibility, candidate, missing)
+    (total, stable, compatibility, candidate, missing)
 }
 
 fn uk_session() -> Session {
