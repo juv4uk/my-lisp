@@ -19,7 +19,7 @@ fn ukrainian_api_distinguishes_surface_names_from_function_meaning() {
     for required in [
         "`uk` — коротке ім'я",
         "`ukr` — повне ім'я",
-        "semantic ID",
+        "byte SID",
         "stable",
         "candidate",
         "generated/function-table.md",
@@ -34,7 +34,7 @@ fn ukrainian_api_distinguishes_surface_names_from_function_meaning() {
 #[test]
 fn machine_docs_index_states_that_registry_owns_surface_spellings() {
     for required in [
-        "numeric semantic ID",
+        "byte SID",
         "uk/ukr",
         "semantic-registry.lisp",
         "опис функції не дублюється",
@@ -55,7 +55,9 @@ fn documented_ids() -> Vec<String> {
             let mut fields = rest.split_whitespace();
             fields.next()?;
             let id = fields.next()?;
-            id.chars().all(|character| character.is_ascii_digit()).then(|| id.to_string())
+            let bits = id.strip_prefix('"')?.strip_suffix('"')?;
+            (bits.len() == 8 && bits.bytes().all(|byte| matches!(byte, b'0' | b'1')))
+                .then(|| bits.to_string())
         })
         .collect()
 }
@@ -70,7 +72,7 @@ fn every_documented_identity_shows_uk_ukr_status_and_one_behavior_description() 
         .expect("Ukrainian API detailed reference must end before the boundary section");
 
     assert!(
-        reference.contains("| semantic ID | `uk` | `ukr` | статус `ukr` | Виклик | Тип | Що робить | Основа |"),
+        reference.contains("| byte SID | `uk` | `ukr` | статус `ukr` | Виклик | Тип | Що робить | Основа |"),
         "detailed Ukrainian API must expose uk and ukr side by side"
     );
 
@@ -84,7 +86,7 @@ fn every_documented_identity_shows_uk_ukr_status_and_one_behavior_description() 
     assert_eq!(
         rows.len(),
         ids.len(),
-        "detailed reference must contain exactly one eight-column row per documented semantic ID"
+        "detailed reference must contain exactly one eight-column row per documented byte SID"
     );
 
     for id in ids {
@@ -92,13 +94,13 @@ fn every_documented_identity_shows_uk_ukr_status_and_one_behavior_description() 
         let count = rows.iter().filter(|row| row.starts_with(&marker)).count();
         assert_eq!(
             count, 1,
-            "semantic ID {id} must appear exactly once in the detailed uk/ukr reference"
+            "byte SID {id} must appear exactly once in the detailed uk/ukr reference"
         );
     }
 
     for required_row_fragment in [
-        "| `1045` | `текст-порожній?` | `порожній-текст?` | stable |",
-        "| `1075` | `монотонний-нс` | `монотонний-час-у-наносекундах` | candidate |",
+        "| `00111100` | `текст-порожній?` | `порожній-текст?` | stable |",
+        "| `01011010` | `монотонний-нс` | `монотонний-час-у-наносекундах` | candidate |",
     ] {
         assert!(
             reference.contains(required_row_fragment),
