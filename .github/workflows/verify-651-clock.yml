@@ -1,0 +1,20 @@
+name: Verify 651 Clock
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  clock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-651-clock
+      - name: Time/calendar characterization
+        run: cargo test -p my-lisp --test clock
+      - name: Diff hygiene against production parent
+        run: git diff --check f8dffe7ce7896fbad7909fa3df0c915226e8543d HEAD
