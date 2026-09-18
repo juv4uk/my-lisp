@@ -16,7 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = REPO_ROOT / "lib" / "surface" / "semantic-registry.lisp"
 ALLOWED_STATUSES = {"stable", "candidate", "missing", "compatibility-only"}
 HUMAN_SURFACES = ("uk", "en", "sa")
-ENTRY = re.compile(r'^\s*\("([01]{8})"\s+(.*)\)\s*
+ENTRY = re.compile(r'^\s*\("([01]{8})"\s+(.*)\)\s*$')
 SURFACE = re.compile(
     r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)"
     r"(?:\s+(candidate|missing|compatibility-only))?\)"
@@ -137,7 +137,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--require-complete",
         action="store_true",
-        help="fail until UK, EN and SA are stable for every public numeric identity",
+        help="fail until UK, EN and SA are stable for every public byte SID",
     )
     return parser.parse_args()
 
