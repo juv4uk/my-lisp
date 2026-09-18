@@ -188,7 +188,14 @@
      (aesdec-xmm-xmm xmm-register xmm-register)
      (aesdeclast-xmm-xmm xmm-register xmm-register)
      (aesimc-xmm-xmm xmm-register xmm-register)
-     (aeskeygenassist-xmm-xmm-imm8 xmm-register xmm-register uimm8))))
+     (aeskeygenassist-xmm-xmm-imm8 xmm-register xmm-register uimm8)
+     (aesenc-xmm-mem-disp8 xmm-register register disp8)
+     (aesenclast-xmm-mem-disp8 xmm-register register disp8)
+     (aesdec-xmm-mem-disp8 xmm-register register disp8)
+     (aesdeclast-xmm-mem-disp8 xmm-register register disp8)
+     (aesimc-xmm-mem-disp8 xmm-register register disp8)
+     (aeskeygenassist-xmm-mem-disp8-imm8
+       xmm-register register disp8 uimm8))))
 
 ; A disp8 slot only admits an exact integer in [-128,127]. Comparison
 ; operators like `>=` error on a non-number rather than returning () (a
@@ -684,6 +691,38 @@
          form)
        (x86-encode-aeskeygenassist-xmm-xmm-imm8
          (second form) (third form) (fourth form)))
+      ((x86-admission-pattern-match?
+         (quote (aesenc-xmm-mem-disp8 xmm-register register disp8))
+         form)
+       (x86-encode-aesenc-xmm-mem-disp8
+         (second form) (third form) (fourth form)))
+      ((x86-admission-pattern-match?
+         (quote (aesenclast-xmm-mem-disp8 xmm-register register disp8))
+         form)
+       (x86-encode-aesenclast-xmm-mem-disp8
+         (second form) (third form) (fourth form)))
+      ((x86-admission-pattern-match?
+         (quote (aesdec-xmm-mem-disp8 xmm-register register disp8))
+         form)
+       (x86-encode-aesdec-xmm-mem-disp8
+         (second form) (third form) (fourth form)))
+      ((x86-admission-pattern-match?
+         (quote (aesdeclast-xmm-mem-disp8 xmm-register register disp8))
+         form)
+       (x86-encode-aesdeclast-xmm-mem-disp8
+         (second form) (third form) (fourth form)))
+      ((x86-admission-pattern-match?
+         (quote (aesimc-xmm-mem-disp8 xmm-register register disp8))
+         form)
+       (x86-encode-aesimc-xmm-mem-disp8
+         (second form) (third form) (fourth form)))
+      ((x86-admission-pattern-match?
+         (quote
+           (aeskeygenassist-xmm-mem-disp8-imm8
+             xmm-register register disp8 uimm8))
+         form)
+       (x86-encode-aeskeygenassist-xmm-mem-disp8-imm8
+         (second form) (third form) (fourth form) (fifth form)))
       ; Unreachable after admission. Keep fail-closed data instead of inventing
       ; a fallback encoder.
       (t (quote ())))))
