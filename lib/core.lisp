@@ -44,17 +44,33 @@
   (cond
     ((atom rest) t)
     ((atom (cdr rest)) (car rest))
-    (t (list (quote cond)
-             (list (car rest) (cons (quote and) (cdr rest)))
-             (list t (quote ()))))))
+    (t
+     ; Build the short-circuit cond AST from the primitive tree substrate.
+     ; AND remains Lisp-owned; generic macro frontends need no private LIST
+     ; semantic just to execute this law.
+     (cons (quote cond)
+           (cons (cons (car rest)
+                       (cons (cons (quote and) (cdr rest))
+                             (quote ())))
+                 (cons (cons t
+                             (cons (quote ())
+                                   (quote ())))
+                       (quote ())))))))
 
 (defmacro or rest
   (cond
     ((atom rest) (quote ()))
     ((atom (cdr rest)) (car rest))
-    (t (list (quote cond)
-             (list (car rest) t)
-             (list t (cons (quote or) (cdr rest)))))))
+    (t
+     ; Same primitive constructor discipline as AND above: preserve lazy
+     ; short-circuit expansion without importing LIST into compiler authority.
+     (cons (quote cond)
+           (cons (cons (car rest)
+                       (cons t (quote ())))
+                 (cons (cons t
+                             (cons (cons (quote or) (cdr rest))
+                                   (quote ())))
+                       (quote ())))))))
 
 ; gensym — my-lisp's defmacro is unhygienic by default (no automatic
 ; protection against accidental variable capture; verified live
