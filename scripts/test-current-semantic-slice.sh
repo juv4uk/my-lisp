@@ -158,3 +158,13 @@ if [[ "$science_projection_status" != "(scientific-constant-knowledge-projection
   printf 'scientific constant knowledge-projection witness failed: %s\n' "$science_projection_status" >&2
   exit 1
 fi
+
+
+# #613: persistent-map/vector exact-Q comparisons must no longer depend on
+# historical two-part COND. The Lisp witness reads those libraries as data and
+# owns the source-shape verdict; shell observes only the named pass envelope.
+persistent_cond_status="$(cargo run --quiet -p my-lisp-cli --bin my-lisp -- tests/fixtures/persistent-structures-cond-migration-witness.lisp)"
+if [[ "$persistent_cond_status" != "(persistent-structures-cond-migration-witness (status pass))" ]]; then
+  printf 'persistent-structures COND migration witness failed: %s\n' "$persistent_cond_status" >&2
+  exit 1
+fi
