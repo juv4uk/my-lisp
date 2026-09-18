@@ -172,8 +172,10 @@
 (def length-onto
   (lambda (values acc)
     (cond
-      ((atom values) acc)
-      (t (length-onto (cdr values) (+ acc 1))))))
+      ((atom values) (structural-kind empty-list) acc)
+      ((atom values) (structural-kind pair)
+       (length-onto (cdr values) (+ acc 1))))))
+
 
 (def length
   (lambda (values)
@@ -182,8 +184,9 @@
 (def reverse-onto
   (lambda (values acc)
     (cond
-      ((atom values) acc)
-      (t (reverse-onto (cdr values) (cons (car values) acc))))))
+      ((atom values) (structural-kind empty-list) acc)
+      ((atom values) (structural-kind pair)
+       (reverse-onto (cdr values) (cons (car values) acc))))))
 
 (def reverse
   (lambda (values)
@@ -210,8 +213,9 @@
 (def map-onto
   (lambda (f values acc)
     (cond
-      ((atom values) (reverse acc))
-      (t (map-onto f (cdr values) (cons (f (car values)) acc))))))
+      ((atom values) (structural-kind empty-list) (reverse acc))
+      ((atom values) (structural-kind pair)
+       (map-onto f (cdr values) (cons (f (car values)) acc))))))
 
 (def map
   (lambda (f values)
@@ -231,8 +235,9 @@
 (def reduce
   (lambda (f acc values)
     (cond
-      ((atom values) acc)
-      (t (reduce f (f acc (car values)) (cdr values))))))
+      ((atom values) (structural-kind empty-list) acc)
+      ((atom values) (structural-kind pair)
+       (reduce f (f acc (car values)) (cdr values))))))
 
 ; `let` desugars to an immediately-invoked `lambda`: `(let ((x 1) (y 2)) body)`
 ; expands to `((lambda (x y) body) 1 2)` — the classic trick, same shape as
@@ -349,27 +354,34 @@
 (def nth
   (lambda (i lst)
     (cond
-      ((eq i 0) (car lst))
-      (t (nth (- i 1) (cdr lst))))))
+      ((eq i 0) (identity-relation same) (car lst))
+      ((eq i 0) (identity-relation distinct)
+       (nth (- i 1) (cdr lst))))))
 
 (def member?
   (lambda (item lst)
     (cond
-      ((atom lst) (quote ()))
-      ((equal? item (car lst)) t)
-      (t (member? item (cdr lst))))))
+      ((atom lst) (structural-kind empty-list) (quote ()))
+      ((atom lst) (structural-kind pair)
+       (cond
+         ((equal? item (car lst)) (structural-relation same) t)
+         ((equal? item (car lst)) (structural-relation distinct)
+          (member? item (cdr lst))))))))
 
 (def assoc
   (lambda (key alist)
     (cond
-      ((atom alist) (quote ()))
-      ((equal? key (car (car alist))) (car alist))
-      (t (assoc key (cdr alist))))))
+      ((atom alist) (structural-kind empty-list) (quote ()))
+      ((atom alist) (structural-kind pair)
+       (cond
+         ((equal? key (car (car alist))) (structural-relation same) (car alist))
+         ((equal? key (car (car alist))) (structural-relation distinct)
+          (assoc key (cdr alist))))))))
 
 (defmacro let* (bindings body)
   (cond
-    ((atom bindings) body)
-    (t
+    ((atom bindings) (structural-kind empty-list) body)
+    ((atom bindings) (structural-kind pair)
      ; Build the recursive expansion from the primitive tree substrate only.
      ; This keeps let* semantics in Lisp while allowing generic macro
      ; frontends to execute the law without importing the higher-level list
@@ -754,22 +766,28 @@
 (def min-list
   (lambda (items)
     (cond
-      ((atom items) (quote ()))
-      (t (let ((rest-min (min-list (cdr items))))
-           (cond
-             ((equal? rest-min (quote ())) (car items))
-             ((< (car items) rest-min) (car items))
-             (t rest-min)))))))
+      ((atom items) (structural-kind empty-list) (quote ()))
+      ((atom items) (structural-kind pair)
+       (let ((rest-min (min-list (cdr items))))
+         (cond
+           ((equal? rest-min (quote ())) (structural-relation same) (car items))
+           ((equal? rest-min (quote ())) (structural-relation distinct)
+            (cond
+              ((< (car items) rest-min) 1/1 (car items))
+              ((< (car items) rest-min) 0/1 rest-min))))))))
 
 (def max-list
   (lambda (items)
     (cond
-      ((atom items) (quote ()))
-      (t (let ((rest-max (max-list (cdr items))))
-           (cond
-             ((equal? rest-max (quote ())) (car items))
-             ((> (car items) rest-max) (car items))
-             (t rest-max)))))))
+      ((atom items) (structural-kind empty-list) (quote ()))
+      ((atom items) (structural-kind pair)
+       (let ((rest-max (max-list (cdr items))))
+         (cond
+           ((equal? rest-max (quote ())) (structural-relation same) (car items))
+           ((equal? rest-max (quote ())) (structural-relation distinct)
+            (cond
+              ((> (car items) rest-max) 1/1 (car items))
+              ((> (car items) rest-max) 0/1 rest-max))))))))
 
 ; #469 — post-core stable peer materialization.
 ;
