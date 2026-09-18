@@ -57,6 +57,27 @@ jobs:
           echo "DEBUG-READ-FILE-EXIT=$?"
           set -e
 
+      - name: DEBUG — four-level read path
+        shell: bash
+        run: |
+          set +e
+          printf '%s\n' '(print (reverse (quote (1 2 3))))' > tests/debug-reverse.lisp
+          ./target/debug/my-lisp tests/debug-reverse.lisp
+          echo "DEBUG-REVERSE-EXIT=$?"
+
+          printf '%s\n'             '(print (quote DEBUG-BEFORE-UTF8-LITERAL))'             '(print (car (utf8-decode (quote (97 98 99)))))'             > tests/debug-utf8-literal.lisp
+          ./target/debug/my-lisp tests/debug-utf8-literal.lisp
+          echo "DEBUG-UTF8-LITERAL-EXIT=$?"
+
+          printf '%s\n'             '(print (quote DEBUG-BEFORE-BYTES))'             '(print (car (read-file-bytes "tests/authority-inventory.lisp")))'             > tests/debug-bytes.lisp
+          ./target/debug/my-lisp tests/debug-bytes.lisp
+          echo "DEBUG-BYTES-EXIT=$?"
+
+          printf '%s\n'             '(print (quote DEBUG-BEFORE-READFILE))'             '(print (read-file "tests/authority-inventory.lisp"))'             > tests/debug-readfile.lisp
+          ./target/debug/my-lisp tests/debug-readfile.lisp
+          echo "DEBUG-READFILE-EXIT=$?"
+          set -e
+
       - name: Forbidden semantic fixture is diagnosed and rejected
         shell: bash
         run: |
