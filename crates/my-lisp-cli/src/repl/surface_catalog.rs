@@ -93,12 +93,19 @@ fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
         if !first.starts_with('(') {
             continue;
         }
-        let identity = first.trim_start_matches('(');
-        if identity == "sr/1" || !identity.chars().all(|character| character.is_ascii_digit()) {
+        let Some(identity) = first
+            .strip_prefix("(\\\"")
+            .and_then(|value| value.strip_suffix('"'))
+        else {
             continue;
+        };
+        if identity.len() != 8
+            || !identity.bytes().all(|byte| matches!(byte, b'0' | b'1'))
+        {
+            return Err(format!("registry line {}: invalid byte SID", index + 1));
         }
-        if identity.len() < 4 {
-            return Err(format!("registry line {}: semantic ID is too short", index + 1));
+        if identity == "00000000" {
+            continue; // Canon 0 is ground, not a human/symbolic surface row.
         }
         if (fields.len() - 1) % 3 != 0 {
             return Err(format!("registry line {}: malformed surface triples", index + 1));
@@ -137,7 +144,7 @@ fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
     }
 
     if entries.is_empty() {
-        return Err("numeric semantic registry contains no entries".to_string());
+        return Err("byte-SID semantic registry contains no surface entries".to_string());
     }
     Ok(entries)
 }
@@ -209,9 +216,10 @@ fn expr_string(expr: &Expr) -> Option<&str> {
     }
 }
 
-fn expr_numeric_identity(expr: &Expr) -> Option<&str> {
-    let raw = UK_API_DOCS.get(expr.span.start..expr.span.end)?;
-    (!raw.is_empty() && raw.bytes().all(|byte| byte.is_ascii_digit())).then_some(raw)
+fn expr_byte_sid(expr: &Expr) -> Option<&str> {
+    let bits = expr_string(expr)?;
+    (bits.len() == 8 && bits.bytes().all(|byte| matches!(byte, b'0' | b'1')))
+        .then_some(bits)
 }
 
 fn ukrainian_docs() -> Result<Vec<SurfaceDoc>, String> {
@@ -243,8 +251,8 @@ fn ukrainian_docs() -> Result<Vec<SurfaceDoc>, String> {
                 category: expr_symbol(&fields[1])
                     .ok_or_else(|| "uk-docs.wsm: category має бути символом".to_string())?
                     .to_string(),
-                identity: expr_numeric_identity(&fields[2])
-                    .ok_or_else(|| "uk-docs.wsm: numeric ID має бути десятковим атомом".to_string())?
+                identity: expr_byte_sid(&fields[2])
+                    .ok_or_else(|| "uk-docs.wsm: byte SID має бути 8-бітним рядком".to_string())?
                     .to_string(),
                 kind: expr_symbol(&fields[3])
                     .ok_or_else(|| "uk-docs.wsm: kind має бути символом".to_string())?
@@ -282,7 +290,7 @@ pub(crate) fn render_status() -> Result<String, String> {
         .count();
 
     Ok(format!(
-        "Рівноправні людські поверхні · numeric identities: {denominator}\n\
+        "Рівноправні людські поверхні · byte identities: {denominator}\n\
          UK  stable {:>3} · candidate {:>3} · missing {:>3} · compatibility {:>3}\n\
          EN  stable {:>3} · candidate {:>3} · missing {:>3} · compatibility {:>3}\n\
          SA  stable {:>3} · candidate {:>3} · missing {:>3} · compatibility {:>3}\n\
@@ -314,7 +322,7 @@ pub(crate) fn render_names(surface: &str) -> Result<String, String> {
     if surface == "core" {
         let public = entries.iter().filter(|entry| is_public(entry));
         let mut output = format!(
-            "core: numeric semantic identities · public {}\n",
+            "core: byte semantic identities · public {}\n",
             public_denominator(&entries)
         );
         for (index, entry) in public.enumerate() {
@@ -370,7 +378,7 @@ pub(crate) fn render_names(surface: &str) -> Result<String, String> {
         output.push_str("\n\n~name = candidate, ще не ратифіковане");
     }
     if counts.missing > 0 {
-        output.push_str("\n—{ID} = numeric semantic identity без людського імені цієї surface");
+        output.push_str("\n—{ID} = byte semantic identity без людського імені цієї surface");
     }
     Ok(output)
 }
@@ -379,7 +387,7 @@ pub(crate) fn render_name(surface: &str, requested: &str) -> Result<String, Stri
     let entries = registry_entries()?;
     let Some(entry) = find_entry(&entries, requested) else {
         return Ok(format!(
-            "«{requested}» не знайдено у numeric semantic registry; сире середовище перевіряється через (env)/(середовище)."
+            "«{requested}» не знайдено у byte-SID semantic registry; сире середовище перевіряється через (env)/(середовище)."
         ));
     };
 
