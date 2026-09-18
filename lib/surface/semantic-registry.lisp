@@ -10,12 +10,13 @@
 ; Далі всі identities йдуть щільно та послідовно без дірок у semantic/group order.
 ; Нормальна admitted surface має коротку форму (namespace spelling) — без шумового stable.
 ; Третє поле існує лише для виняткового стану: candidate, compatibility-only або missing.
+; Surface spelling, що конфліктує з reader syntax (зокрема апостроф), серіалізується string-ом.
 ; Порядок surface-форм усередині identity не має семантичного значення.
 ; Старий decimal-ID простір 0001/0104/1000... superseded цією sr/2 authority.
 ;
 (sr/2
   ("00000000" ())
-  ("00000001" (en quote) (uk як-є) (ukr як-є) (sa svarūpa) (sym '))
+  ("00000001" (en quote) (uk як-є) (ukr як-є) (sa svarūpa) (sym "'"))
   ("00000010" (en atom) (uk атом?) (ukr атом?) (sa aṇu) (sym .?))
   ("00000011" (en eq) (uk тотожне?) (ukr тотожне?) (sa abheda) (sym =?))
   ("00000100" (en cons) (uk сполучити) (ukr сполучити) (sa saṃyuj) (sym :))
