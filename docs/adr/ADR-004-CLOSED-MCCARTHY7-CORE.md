@@ -1,16 +1,18 @@
 # ADR-004: Closed McCarthy-7 Core and Stratified Semantic Taxonomy
 # ADR-004: Замкнене McCarthy-7 ядро та стратифікована семантична таксономія
 
-**Status:** Partially superseded by ADR-005 / Частково замінено ADR-005  
-**Date:** 2026-09-05  
-**Author / Authority:** Volodymyr / Vova (Owner directive) & Antigravity  
-**Scope:** Historical normative decision. The permanent seven-primitive closure is superseded by ADR-005; the stable identity of Canon 0 + McCarthy-7 and the distinction between semantics and implementation remain in force.
+**Статус:** Частково замінено ADR-005 / Partially superseded by ADR-005
+**Дата / Date:** 2026-09-05
+**Автор / Authority:** Volodymyr / Vova (Owner directive) & Antigravity
+**Обсяг / Scope:** Історичне нормативне рішення. Постійне замикання множини примітивів на семи замінене ADR-005; стабільна тотожність Canon 0 + McCarthy-7 та розрізнення семантики й реалізації лишаються чинними. / Historical normative decision. The permanent seven-primitive closure is superseded by ADR-005; the stable identity of Canon 0 + McCarthy-7 and the distinction between semantics and implementation remain in force.
 
 ---
 
-## Supersession note / Примітка про заміну
+## Примітка про заміну / Supersession note
 
-ADR-005 supersedes only the permanent closure rules of this ADR: the prohibition on an eighth primitive, the claim that only seven identities may ever be primitive, and the corresponding `PRIMITIVE_SET_VIOLATION` rule based solely on count > 7. The McCarthy-7 identities remain a stable historical/minimal root.
+ADR-005 замінює лише правила постійного замикання з цього ADR: заборону восьмого примітива, твердження, що лише сім identities можуть будь-коли мати primitive status, і відповідне правило `PRIMITIVE_SET_VIOLATION`, засноване лише на кількості > 7. McCarthy-7 identities лишаються стабільним історичним/мінімальним коренем.
+
+English auxiliary: ADR-005 supersedes only the permanent closure rules of this ADR: the prohibition on an eighth primitive, the claim that only seven identities may ever be primitive, and the corresponding `PRIMITIVE_SET_VIOLATION` rule based solely on count > 7. The McCarthy-7 identities remain a stable historical/minimal root.
 
 ---
 
@@ -191,8 +193,8 @@ Meaning: The list containing zero elements. The recursive origin of all proper l
 
 > **A surface name is not a definition of the canonical identity it represents.**
 >
-> `atom` ≠ definition of `PRIM_ATOM`  
-> `атом` ≠ definition of `PRIM_ATOM`  
+> `atom` ≠ definition of `PRIM_ATOM`
+> `атом` ≠ definition of `PRIM_ATOM`
 > `aṇu`  ≠ definition of `PRIM_ATOM`
 >
 > All admitted surface signs point to the same canonical identity. None of them *defines* it. A surface name is admitted when:
@@ -293,7 +295,7 @@ We do not disguise the current state of `crates/my-lisp` by asserting that every
 
 ## 6. The Evidence Requirement for "Derived" / Вимога доказу для статусу «Derived»
 
-**"Derived is a claim requiring evidence."**  
+**"Derived is a claim requiring evidence."**
 An operation or syntactic form cannot be declared `L2 DERIVED` simply because it is desirable or conceptually elegant. A valid derivation requires an executable witness:
 1. **Explicit Transformation / Definition:** The form must be expressed solely in terms of admitted lower layers (L0 primitives and L1 admitted domains).
 2. **Behavioral & Semantic Parity:** An automated conformance test must prove that the derived expression satisfies all contract obligations identically to any reference engine.
