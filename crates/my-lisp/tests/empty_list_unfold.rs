@@ -150,6 +150,7 @@ fn mismatched_evidence_does_not_assert_candidate_relation() {
 
 
 const FUNCTION_GENEALOGY: &str = include_str!("../../../experiments/function-genealogy.lisp");
+const UNIFY_LIBRARY: &str = include_str!("../../../lib/unify.lisp");
 
 #[test]
 fn registry_function_genealogy_reproduces_core_accessors_from_smaller_seeds() {
@@ -169,7 +170,7 @@ fn registry_function_genealogy_reproduces_core_accessors_from_smaller_seeds() {
 fn function_laboratory_finds_overlap_candidates_and_unification_dependencies() {
     let mut session = Session::default();
     let source = format!(
-        "{FUNCTION_GENEALOGY}\n(load \"lib/unify.lisp\")\n(function-laboratory-witness)"
+        "{UNIFY_LIBRARY}\n{FUNCTION_GENEALOGY}\n(function-laboratory-witness)"
     );
     let result = eval_program(&source, &mut session)
         .expect("function laboratory witness must execute");
