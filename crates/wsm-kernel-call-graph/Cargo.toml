@@ -1,0 +1,9 @@
+[package]
+name = "wsm-kernel-call-graph"
+version = "0.1.0"
+edition = "2021"
+license-file = "../../LICENSE"
+description = "Namespaced callable graph for the WSM four-kernel experiment"
+
+[dependencies]
+wsm-kernel-c-abi = { path = "../wsm-kernel-c-abi" }

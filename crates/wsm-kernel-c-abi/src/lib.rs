@@ -8,7 +8,7 @@ use core::ffi::c_void;
 pub const WSM_KERNEL_ABI_VERSION: u32 = 1;
 
 #[repr(u32)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum WsmKernelKind {
     Lisp = 1,
     Prolog = 2,
@@ -117,7 +117,7 @@ mod tests {
     ) -> WsmStatus {
         if written.is_null() { return WsmStatus::InvalidArgument; }
         let input = unsafe { core::slice::from_raw_parts(request.ptr, request.len) };
-        if response.len < input.len {
+        if response.len < input.len() {
             unsafe { *written = input.len(); }
             return WsmStatus::BufferTooSmall;
         }
