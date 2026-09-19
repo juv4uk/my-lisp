@@ -65,7 +65,7 @@ typedef struct WsmKernelVTable {
 } WsmKernelVTable;
 
 uint32_t wsm_kernel_abi_version(void);
-const uint8_t *wsm_kernel_kind_name(WsmKernelKind kind);
+const char *wsm_kernel_kind_name(WsmKernelKind kind);
 
 #ifdef __cplusplus
 }
