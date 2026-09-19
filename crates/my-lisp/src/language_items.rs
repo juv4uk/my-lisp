@@ -465,6 +465,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::absurd_extreme_comparisons)]
     fn semantic_tooling_keys_are_byte_identities_only() {
         assert!(SEMANTIC_TOOLING.iter().all(|metadata| {
             metadata.semantic_id <= u8::MAX
