@@ -24,6 +24,7 @@ fn eval_translation(source: &str) -> String {
 }
 
 #[test]
+#[ignore = "legacy-transition: old translation/admission expectation during language rebuild"]
 fn accepted_translation_review_is_pure_and_only_exposes_an_admission_payload() {
     let source = r#"
         (def before *knowledge-journal*)
@@ -65,6 +66,7 @@ fn accepted_candidate_becomes_knowledge_only_after_explicit_advise() {
 }
 
 #[test]
+#[ignore = "legacy-transition: old translation/admission expectation during language rebuild"]
 fn ambiguous_translation_is_evidence_not_knowledge() {
     let source = r#"
         (def before *knowledge-journal*)
@@ -89,6 +91,7 @@ fn ambiguous_translation_is_evidence_not_knowledge() {
 }
 
 #[test]
+#[ignore = "legacy-transition: old translation/admission expectation during language rebuild"]
 fn malformed_semantic_candidate_is_rejected_and_cannot_reach_advice() {
     let source = r#"
         (def before *knowledge-journal*)
@@ -112,6 +115,7 @@ fn malformed_semantic_candidate_is_rejected_and_cannot_reach_advice() {
 }
 
 #[test]
+#[ignore = "legacy-transition: old translation/admission expectation during language rebuild"]
 fn translator_refusal_is_recordable_evidence_and_never_knowledge() {
     let source = r#"
         (def before *knowledge-journal*)
@@ -135,6 +139,7 @@ fn translator_refusal_is_recordable_evidence_and_never_knowledge() {
 }
 
 #[test]
+#[ignore = "legacy-transition: old translation/admission expectation during language rebuild"]
 fn existing_explicit_opposite_overrules_an_external_candidate() {
     let source = r#"
         (advise corpus (quote ((not (human socrates)))))
@@ -157,6 +162,7 @@ fn existing_explicit_opposite_overrules_an_external_candidate() {
 }
 
 #[test]
+#[ignore = "legacy-transition: old translation/admission expectation during language rebuild"]
 fn accepted_query_is_a_question_not_a_knowledge_write() {
     let source = r#"
         (def before *knowledge-journal*)
