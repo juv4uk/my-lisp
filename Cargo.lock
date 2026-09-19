@@ -790,6 +790,13 @@ name = "wsm-kernel-host"
 version = "0.1.0"
 
 [[package]]
+name = "wsm-prolog-kernel"
+version = "0.1.0"
+dependencies = [
+ "wsm-kernel-c-abi",
+]
+
+[[package]]
 name = "wsm-kernel-c-abi"
 version = "0.1.0"
 
