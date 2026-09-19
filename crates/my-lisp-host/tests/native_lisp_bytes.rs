@@ -479,3 +479,73 @@ fn jmp_actually_branches_unconditionally_on_real_hardware_regardless_of_flags() 
         "JMP must branch even when the prior CMP cleared ZF -- unlike JZ, it does not consult flags"
     );
 }
+
+#[test]
+fn experimental_cpu_bootstrap_returns_bitpattern8_not_number_zero() {
+    let _serial = test_lock();
+    install();
+
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before experimental CPU witness");
+    load_lisp_file("lib/machine/block.lisp", &mut session);
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/operands/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/atoms/x86-64.lisp", &mut session);
+
+    let forms = eval_program("(empty-list-cpu-zero-forms)", &mut session);
+    assert!(
+        forms.is_err(),
+        "experiment definitions must not appear before their experimental source is loaded"
+    );
+
+    load_lisp_file("experiments/empty-list-cpu-bootstrap.lisp", &mut session);
+
+    let bits = eval_program("(empty-list-cpu-bit-pattern)", &mut session)
+        .expect("admitted XOR+RET CPU witness must return an opaque 8-bit pattern");
+    assert_eq!(bits.value.to_string(), "00000000");
+    assert!(matches!(bits.value, Value::BitPattern8(0)));
+
+    let relation = eval_program("(eq (empty-list-cpu-bit-pattern) 0)", &mut session)
+        .expect("CPU-produced bit pattern and numeric zero are both atoms and must compare distinctly");
+    assert_eq!(relation.value.to_string(), "(identity-relation distinct)");
+
+    let witness = eval_program("(empty-list-cpu-bootstrap-witness)", &mut session)
+        .expect("empty-list CPU bootstrap witness must execute");
+    assert_eq!(
+        witness.value.to_string(),
+        "(empty-list-cpu-bootstrap (status pass) (ground ()) (representation 00000000) (machine-forms ((xor-r64-r64 rax rax) (ret))))"
+    );
+}
+
+#[test]
+fn experimental_cpu_edge_is_reversible_at_the_bitpattern_level() {
+    let _serial = test_lock();
+    install();
+
+    let mut session = Session::default();
+    load_core_library(&mut session).expect("core must bootstrap before reversible CPU witness");
+    load_lisp_file("lib/machine/block.lisp", &mut session);
+    load_lisp_file("lib/machine/encoding/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/operands/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/admission/x86-64.lisp", &mut session);
+    load_lisp_file("lib/machine/atoms/x86-64.lisp", &mut session);
+    load_lisp_file("experiments/empty-list-cpu-bootstrap.lisp", &mut session);
+
+    let forward = eval_program("(ground-bit-forward)", &mut session)
+        .expect("BTS edge must execute through admitted machine forms");
+    assert!(matches!(forward.value, Value::BitPattern8(1)));
+    assert_eq!(forward.value.to_string(), "00000001");
+
+    let backward = eval_program("(ground-bit-backward)", &mut session)
+        .expect("BTR inverse edge must execute through admitted machine forms");
+    assert!(matches!(backward.value, Value::BitPattern8(0)));
+    assert_eq!(backward.value.to_string(), "00000000");
+
+    let witness = eval_program("(ground-bit-reversible-witness)", &mut session)
+        .expect("reversible CPU witness must execute");
+    assert_eq!(
+        witness.value.to_string(),
+        "(ground-bit-reversible (status pass) (forward 00000001) (backward 00000000))"
+    );
+}

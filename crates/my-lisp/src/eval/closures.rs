@@ -343,6 +343,7 @@ pub(super) fn value_to_expr(value: Value, span: Span) -> Result<Expr, LanguageEr
         Value::Rational(rational) => ExprKind::Rational(rational.clone()),
         Value::NumericBuffer(buffer) => ExprKind::NumericBuffer(buffer.clone()),
         Value::String(val) => ExprKind::String(val.clone()),
+        Value::BitPattern8(bits) => ExprKind::BitPattern8(*bits),
         // A semantic callable is a runtime identity, not source syntax. It
         // cannot round-trip through eval/macro expansion by inventing a spelling.
         Value::SemanticRef(semantic_id) => {

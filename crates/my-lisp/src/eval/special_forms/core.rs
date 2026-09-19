@@ -176,6 +176,7 @@ pub(crate) fn quoted(expression: &Expr) -> Result<Value, LanguageError> {
             ExprKind::Rational(rational) => Value::Rational(rational.clone()),
             ExprKind::NumericBuffer(buffer) => Value::NumericBuffer(buffer.clone()),
             ExprKind::String(value) => Value::String(value.clone()),
+            ExprKind::BitPattern8(bits) => Value::BitPattern8(*bits),
             ExprKind::Symbol(symbol) => Value::Symbol(symbol.clone()),
             ExprKind::List(items) => {
                 let mut out = Vec::with_capacity(items.len());

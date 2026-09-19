@@ -213,6 +213,28 @@ fn result_value(result: u64, operation: &str, span: Span) -> Result<Value, Langu
     Ok(Value::Number(result as f64, Exactness::Exact))
 }
 
+
+pub(crate) fn evaluate_native_call_bit8_raw(
+    arguments: &[Expr],
+    environment: &Environment,
+    span: Span,
+) -> Result<Value, LanguageError> {
+    let operation = "native-call-bit8-raw";
+    if arguments.len() != 1 {
+        return Err(LanguageError::new(
+            ErrorKind::Arity,
+            format!("{operation}: expected 1 argument; received {}", arguments.len()),
+            span,
+        ));
+    }
+
+    let byte_value = eval_expr(&arguments[0], environment)?;
+    let bytes = expect_machine_bytes(&byte_value, operation, arguments[0].span)?;
+    let result = execute_u64(&bytes, span)?;
+
+    Ok(Value::BitPattern8((result & 0xff) as u8))
+}
+
 pub(crate) fn evaluate_native_call_u64_raw(
     arguments: &[Expr],
     environment: &Environment,
