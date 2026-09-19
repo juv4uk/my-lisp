@@ -17,18 +17,18 @@
 
 ; Opaque kernel endpoint identities for the graph itself.
 ; These do not replace per-kernel local function IDs.
-(def kernel-lisp 10111110)
-(def kernel-prolog 10111111)
-(def kernel-clips 11000000)
-(def kernel-datalog 11000001)
+(def kernel-lisp 10111101)
+(def kernel-prolog 10111110)
+(def kernel-clips 10111111)
+(def kernel-datalog 11000000)
 
 ; Opaque relation identities. Meaning is experimental evidence, not encoded
 ; in the bits. These values are intentionally outside the current registry
 ; population and can be revised while this remains an experiment.
-(def relation-kernel-has-callable 11000010)
-(def relation-can-call 11000011)
-(def relation-can-observe 11000100)
-(def relation-has-transport 11000101)
+(def relation-kernel-has-callable 11000001)
+(def relation-can-call 11000010)
+(def relation-can-observe 11000011)
+(def relation-has-transport 11000100)
 
 ; Endpoint form:
 ;   (kernel-id local-function-id)
