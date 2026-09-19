@@ -14,51 +14,13 @@ git rev-parse --verify "${head}^{commit}" >/dev/null
 
 merge_base=$(git merge-base "$base" "$head")
 
-declare -A seen=()
-declare -A is_new=()
-declare -A additions=()
+changed=$(git diff --no-renames --numstat "$merge_base" "$head" -- '*.rs' || true)
 
-while IFS=$'\t' read -r status path; do
-  [[ -n "${path:-}" ]] || continue
-  seen["$path"]=1
-  if [[ "$status" == "A" ]]; then
-    is_new["$path"]=yes
-  fi
-done < <(git diff --no-renames --name-status "$merge_base" "$head" -- '*.rs')
-
-while IFS=$'\t' read -r added deleted path; do
-  [[ -n "${path:-}" ]] || continue
-  seen["$path"]=1
-  if [[ "$added" == "-" ]]; then
-    additions["$path"]=binary
-  else
-    additions["$path"]=$added
-  fi
-done < <(git diff --no-renames --numstat "$merge_base" "$head" -- '*.rs')
-
-violations=0
-for path in "${!seen[@]}"; do
-  added=${additions[$path]:-0}
-  new=${is_new[$path]:-no}
-  bad=0
-
-  if [[ "$new" == "yes" ]]; then
-    bad=1
-  elif [[ "$added" == "binary" ]]; then
-    bad=1
-  elif [[ "$added" =~ ^[0-9]+$ ]] && ((added > 0)); then
-    bad=1
-  fi
-
-  if ((bad)); then
-    printf 'RUST-ONE-WAY-VALVE RED: %s added=%s new=%s. Rust may only shrink. See #299.\n' \
-      "$path" "$added" "$new" >&2
-    violations=1
-  fi
-done
-
-if ((violations)); then
-  exit 1
+if [[ -n "$changed" ]]; then
+  echo 'RUST-GROWTH-ALLOWED: Rust source changed.'
+  echo "$changed"
+else
+  echo 'RUST-GROWTH-ALLOWED: no Rust source changes.'
 fi
 
-echo 'RUST-ONE-WAY-VALVE OK: Rust did not grow (#299).'
+echo 'Rust growth is permitted for substrate/mechanism work. Semantic authority remains subject to architecture/conformance review. See #299, #695, #706.'
