@@ -110,3 +110,104 @@
         (quote result-label-proves-its-own-semantic-truth)))))
 
 (atom-reality-ledger)
+
+
+; ---------------------------------------------------------------------------
+; Surface / "semantic identity" reality ledger.
+;
+; Goal: distinguish what is actually observed from the stronger interpretation
+; "these spellings ARE one semantic identity".
+;
+; For Canon CAR surfaces, the current apparatus gives us several independent
+; observations:
+;   - registry row groups spellings under one opaque BitPattern8;
+;   - evaluating the spellings yields behavior compatible with CAR;
+;   - the host currently materializes one SemanticRef for those spellings.
+;
+; The first two can be probed from Lisp. The third is host-representation
+; evidence and must not silently become an ontological theorem.
+
+(def surface-behavior-observation
+  (lambda (surface-call expected)
+    (observed
+      surface-call
+      (list
+        (quote expected) expected))))
+
+; Execute three human/symbolic CAR surfaces over the same concrete sample.
+; We observe same output. We do NOT conclude that the names are literally one
+; thing in every possible implementation.
+(def car-surface-behavior-ledger
+  (lambda ()
+    (let ((sample (quote (radio antenna))))
+      (list
+        (observed
+          (quote en-car)
+          (list (quote output) (car sample)))
+        (observed
+          (quote uk-car)
+          (list (quote output) (перше sample)))
+        (observed
+          (quote sa-car)
+          (list (quote output) (ādi sample)))
+        (observed
+          (quote sym-car)
+          (list (quote output) (:п sample)))
+        (derived
+          (quote sampled-behavioral-agreement)
+          (list
+            (quote en-vs-uk) (equal? (car sample) (перше sample))
+            (quote en-vs-sa) (equal? (car sample) (ādi sample))
+            (quote en-vs-sym) (equal? (car sample) (:п sample))))
+        (introduced
+          (quote registry-grouping)
+          (quote (00000101 car перше ādi :п)))
+        (not-claimed
+          (quote ontology)
+          (quote grouped-spellings-are-literally-one-entity))
+        (not-claimed
+          (quote portability)
+          (quote shared-host-representation-is-required-by-reality))))))
+
+; Contrast case: two distinct registry IDs may currently agree behaviorally.
+; This guards against the inverse mistake "different ID => necessarily
+; different behavior".
+(def distinct-id-overlap-ledger
+  (lambda ()
+    (let ((sample (quote (a b c d))))
+      (list
+        (introduced
+          (quote registry-distinction)
+          (quote (00101111 second 00110100 cadr)))
+        (observed
+          (quote second-output)
+          (second sample))
+        (observed
+          (quote cadr-output)
+          (cadr sample))
+        (derived
+          (quote sampled-behavioral-agreement)
+          (equal? (second sample) (cadr sample)))
+        (not-claimed
+          (quote identity)
+          (quote different-registry-id-implies-different-behavior))
+        (not-claimed
+          (quote identity)
+          (quote same-behavior-implies-same-registry-id))))))
+
+(def semantic-identity-reality-ledger
+  (lambda ()
+    (list
+      (list
+        (quote grouped-surfaces)
+        (car-surface-behavior-ledger))
+      (list
+        (quote distinct-id-overlap)
+        (distinct-id-overlap-ledger))
+      (not-claimed
+        (quote ontology)
+        (quote semantic-identity-is-fundamental-kind-of-reality))
+      (not-claimed
+        (quote authority)
+        (quote registry-row-proves-meaning-by-itself)))))
+
