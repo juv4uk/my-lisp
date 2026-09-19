@@ -278,18 +278,18 @@ mod tests {
     #[test]
     fn numeric_canon_identity_is_the_runtime_value_identity() {
         assert_eq!(
-            identity_for_surface(CAR_SEMANTIC_ID),
+            identity_for_semantic_id(CAR_SEMANTIC_ID),
             Some(CanonicalIdentity::Car)
         );
         let human_surface = semantic_registry::admitted_surfaces_for_semantic_id(CAR_SEMANTIC_ID)
             .into_iter()
             .next()
-            .expect("0005 (car) should admit at least one human surface");
-        let numeric = value_for_surface(CAR_SEMANTIC_ID).expect("numeric Canon identity");
+            .expect("00000101 (car) should admit at least one human surface");
+        let direct = value(CanonicalIdentity::Car).expect("numeric Canon identity");
         let human = value_for_surface(human_surface).expect("registry-admitted Canon surface");
-        assert_eq!(numeric, Value::SemanticRef(CAR_SEMANTIC_ID));
+        assert_eq!(direct, Value::SemanticRef(CAR_SEMANTIC_ID));
         assert_eq!(human, Value::SemanticRef(CAR_SEMANTIC_ID));
-        assert_eq!(numeric, human);
+        assert_eq!(direct, human);
     }
 
     #[test]

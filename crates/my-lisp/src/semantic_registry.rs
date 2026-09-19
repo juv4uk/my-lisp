@@ -277,6 +277,7 @@ pub(crate) fn stable_surfaces_for_semantic_id_from_source(
     stable_surfaces_from_index(&build_surface_index(source), semantic_id)
 }
 
+#[cfg(test)]
 pub(crate) fn admitted_surfaces_for_semantic_id_from_source(
     source: &'static str,
     semantic_id: SemanticId,
