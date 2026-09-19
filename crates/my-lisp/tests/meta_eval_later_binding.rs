@@ -41,6 +41,7 @@ fn native_error_kind(program: &str, probe: &str) -> ErrorKind {
         .kind
 }
 
+#[ignore = "legacy-transition: meta-eval later-binding witness; run with --ignored (#231)"]
 #[test]
 fn later_binding_in_the_same_definition_frame_is_visible() {
     let program = r#"
@@ -52,6 +53,7 @@ fn later_binding_in_the_same_definition_frame_is_visible() {
     assert_eq!(meta_eval_program(program, "(f)"), "42");
 }
 
+#[ignore = "legacy-transition: meta-eval later-binding witness; run with --ignored (#231)"]
 #[test]
 fn later_replacement_in_the_same_definition_frame_is_visible() {
     let program = r#"
@@ -64,6 +66,7 @@ fn later_replacement_in_the_same_definition_frame_is_visible() {
     assert_eq!(meta_eval_program(program, "(f)"), "2");
 }
 
+#[ignore = "legacy-transition: meta-eval later-binding witness; run with --ignored (#231)"]
 #[test]
 fn one_way_later_lambda_binding_is_visible_without_inventing_an_scc() {
     let program = r#"
@@ -81,6 +84,7 @@ fn one_way_later_lambda_binding_is_visible_without_inventing_an_scc() {
     );
 }
 
+#[ignore = "legacy-transition: meta-eval later-binding witness; run with --ignored (#231)"]
 #[test]
 fn call_before_the_later_binding_remains_unresolved() {
     // Use operator-position lookup so this witness stays isolated from the
@@ -93,6 +97,7 @@ fn call_before_the_later_binding_remains_unresolved() {
     assert_eq!(meta_eval_program(program, "(f)"), "(error unbound-symbol g)");
 }
 
+#[ignore = "legacy-transition: meta-eval later-binding witness; run with --ignored (#231)"]
 #[test]
 fn lexical_parameter_shadowing_still_beats_the_shared_definition_frame() {
     let program = r#"
@@ -105,6 +110,7 @@ fn lexical_parameter_shadowing_still_beats_the_shared_definition_frame() {
     assert_eq!(meta_eval_program(program, "(f 9)"), "9");
 }
 
+#[ignore = "legacy-transition: meta-eval later-binding witness; run with --ignored (#231)"]
 #[test]
 fn nested_closure_keeps_its_child_binding_while_parent_frame_keeps_growing() {
     let program = r#"

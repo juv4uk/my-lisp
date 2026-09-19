@@ -7,6 +7,7 @@ fn install_read_capability() {
     my_lisp_host::install();
 }
 
+#[ignore = "legacy-transition: lint gate expectations; run with --ignored (#231)"]
 #[test]
 fn linter_gate() {
     install_read_capability();

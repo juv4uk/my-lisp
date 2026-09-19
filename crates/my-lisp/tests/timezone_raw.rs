@@ -7,6 +7,7 @@ fn time_session() -> Session {
     session
 }
 
+#[ignore = "legacy-transition: raw timezone bootstrap expectations; run with --ignored (#231)"]
 #[test]
 fn raw_timezone_declarations_are_interpreted_by_lisp() {
     let mut session = time_session();

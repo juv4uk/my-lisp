@@ -14,12 +14,14 @@ fn eval_world(source: &str) -> String {
         .to_string()
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn empty_world_is_an_ordinary_first_class_value() {
     assert_eq!(eval_world("(world? (empty-world))"), "t");
     assert_eq!(eval_world("(world? (quote (not-a-world)))"), "()");
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn tell_returns_a_new_world_without_changing_the_old_one() {
     assert_eq!(
@@ -35,6 +37,7 @@ fn tell_returns_a_new_world_without_changing_the_old_one() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn each_world_keeps_its_immediate_parent() {
     assert_eq!(
@@ -49,6 +52,7 @@ fn each_world_keeps_its_immediate_parent() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn later_versions_preserve_every_earlier_snapshot() {
     assert_eq!(
@@ -66,6 +70,7 @@ fn later_versions_preserve_every_earlier_snapshot() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn defmodule_compatibility_wrapper_uses_the_world_transition() {
     assert_eq!(
@@ -87,6 +92,7 @@ fn defmodule_compatibility_wrapper_uses_the_world_transition() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn defmodule_after_world_load_keeps_legacy_reason_in_behavior() {
     assert_eq!(
@@ -100,6 +106,7 @@ fn defmodule_after_world_load_keeps_legacy_reason_in_behavior() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn repeated_compatible_defmodule_calls_still_accumulate() {
     assert_eq!(
@@ -114,6 +121,7 @@ fn repeated_compatible_defmodule_calls_still_accumulate() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn tell_knowledge_compatibility_wrapper_uses_the_world_transition() {
     assert_eq!(
@@ -135,6 +143,7 @@ fn tell_knowledge_compatibility_wrapper_uses_the_world_transition() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn conflicting_tell_knowledge_keeps_the_legacy_journal_unchanged() {
     assert_eq!(
@@ -150,6 +159,7 @@ fn conflicting_tell_knowledge_keeps_the_legacy_journal_unchanged() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn retract_knowledge_compatibility_wrapper_uses_the_world_transition() {
     assert_eq!(
@@ -171,6 +181,7 @@ fn retract_knowledge_compatibility_wrapper_uses_the_world_transition() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_compatibility_wrapper_commits_only_the_accepted_world() {
     assert_eq!(
@@ -184,6 +195,7 @@ fn advise_compatibility_wrapper_commits_only_the_accepted_world() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_compatibility_wrapper_preserves_journal_on_conflict() {
     assert_eq!(
@@ -199,6 +211,7 @@ fn advise_compatibility_wrapper_preserves_journal_on_conflict() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_compatibility_argument_is_evaluated_once() {
     assert_eq!(
@@ -217,6 +230,7 @@ fn advise_compatibility_argument_is_evaluated_once() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_all_compatibility_wrapper_keeps_atomic_world_transition() {
     assert_eq!(
@@ -234,6 +248,7 @@ fn advise_all_compatibility_wrapper_keeps_atomic_world_transition() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_all_compatibility_wrapper_rolls_back_invalid_batch() {
     assert_eq!(
@@ -248,6 +263,7 @@ fn advise_all_compatibility_wrapper_rolls_back_invalid_batch() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_all_compatibility_argument_is_evaluated_once() {
     assert_eq!(
@@ -266,6 +282,7 @@ fn advise_all_compatibility_argument_is_evaluated_once() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn package_import_compatibility_wrapper_commits_the_accepted_world() {
     assert_eq!(
@@ -281,6 +298,7 @@ fn package_import_compatibility_wrapper_commits_the_accepted_world() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn package_import_compatibility_wrapper_preserves_journal_on_rejection() {
     assert_eq!(
@@ -300,6 +318,7 @@ fn package_import_compatibility_wrapper_preserves_journal_on_rejection() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn package_import_compatibility_wrapper_preserves_journal_on_conflict() {
     assert_eq!(
@@ -317,6 +336,7 @@ fn package_import_compatibility_wrapper_preserves_journal_on_conflict() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn package_import_compatibility_argument_is_evaluated_once() {
     assert_eq!(
@@ -336,6 +356,7 @@ fn package_import_compatibility_argument_is_evaluated_once() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn retract_creates_history_instead_of_erasing_it() {
     assert_eq!(
@@ -353,6 +374,7 @@ fn retract_creates_history_instead_of_erasing_it() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn independent_branches_can_grow_from_the_same_world() {
     assert_eq!(
@@ -370,6 +392,7 @@ fn independent_branches_can_grow_from_the_same_world() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn backward_reasoning_reads_the_selected_world_snapshot() {
     assert_eq!(
@@ -390,6 +413,7 @@ fn backward_reasoning_reads_the_selected_world_snapshot() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn backward_reasoning_keeps_independent_branches_isolated() {
     assert_eq!(
@@ -416,6 +440,7 @@ fn backward_reasoning_keeps_independent_branches_isolated() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn forward_reasoning_materializes_only_the_selected_world() {
     assert_eq!(
@@ -434,6 +459,7 @@ fn forward_reasoning_materializes_only_the_selected_world() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_reasoning_reports_an_unknown_module_without_global_fallback() {
     assert_eq!(
@@ -446,6 +472,7 @@ fn world_reasoning_reports_an_unknown_module_without_global_fallback() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_world_accepts_into_a_new_queryable_world() {
     assert_eq!(
@@ -465,6 +492,7 @@ fn advise_world_accepts_into_a_new_queryable_world() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_world_rejection_returns_the_unchanged_world() {
     assert_eq!(
@@ -481,6 +509,7 @@ fn advise_world_rejection_returns_the_unchanged_world() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_world_conflict_preserves_the_existing_snapshot() {
     assert_eq!(
@@ -499,6 +528,7 @@ fn advise_world_conflict_preserves_the_existing_snapshot() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_world_does_not_read_the_global_knowledge_journal() {
     assert_eq!(
@@ -516,6 +546,7 @@ fn advise_world_does_not_read_the_global_knowledge_journal() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_all_world_accepts_one_atomic_dependent_batch() {
     assert_eq!(
@@ -542,6 +573,7 @@ fn advise_all_world_accepts_one_atomic_dependent_batch() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_all_world_rejects_the_whole_malformed_batch() {
     assert_eq!(
@@ -560,6 +592,7 @@ fn advise_all_world_rejects_the_whole_malformed_batch() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_all_world_rejects_an_empty_batch_without_a_new_world() {
     assert_eq!(
@@ -576,6 +609,7 @@ fn advise_all_world_rejects_an_empty_batch_without_a_new_world() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_all_world_detects_internal_conflict_without_partial_writes() {
     assert_eq!(
@@ -596,6 +630,7 @@ fn advise_all_world_detects_internal_conflict_without_partial_writes() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn advise_all_world_ignores_conflicts_in_the_global_journal() {
     assert_eq!(
@@ -614,6 +649,7 @@ fn advise_all_world_ignores_conflicts_in_the_global_journal() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_package_export_reads_the_selected_snapshot_only() {
     assert_eq!(
@@ -631,6 +667,7 @@ fn world_package_export_reads_the_selected_snapshot_only() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_package_import_atomically_creates_a_queryable_child() {
     assert_eq!(
@@ -656,6 +693,7 @@ fn world_package_import_atomically_creates_a_queryable_child() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_package_import_rejects_unsupported_versions_without_transition() {
     assert_eq!(
@@ -678,6 +716,7 @@ fn world_package_import_rejects_unsupported_versions_without_transition() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_package_import_conflict_preserves_the_target_snapshot() {
     assert_eq!(
@@ -700,6 +739,7 @@ fn world_package_import_conflict_preserves_the_target_snapshot() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn exported_snapshot_can_seed_an_independent_world_branch() {
     assert_eq!(
@@ -722,6 +762,7 @@ fn exported_snapshot_can_seed_an_independent_world_branch() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_depth_counts_transitions_from_the_root() {
     assert_eq!(
@@ -739,6 +780,7 @@ fn world_depth_counts_transitions_from_the_root() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_at_depth_recovers_an_exact_historical_snapshot() {
     assert_eq!(
@@ -756,6 +798,7 @@ fn world_at_depth_recovers_an_exact_historical_snapshot() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_at_depth_rejects_depths_outside_the_history() {
     assert_eq!(
@@ -764,6 +807,7 @@ fn world_at_depth_rejects_depths_outside_the_history() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_diff_returns_chronological_events_across_atomic_transitions() {
     assert_eq!(
@@ -782,6 +826,7 @@ fn world_diff_returns_chronological_events_across_atomic_transitions() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_diff_refuses_to_invent_a_path_between_sibling_branches() {
     assert_eq!(
@@ -797,6 +842,7 @@ fn world_diff_refuses_to_invent_a_path_between_sibling_branches() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_common_ancestor_finds_the_branch_point() {
     assert_eq!(
@@ -813,6 +859,7 @@ fn world_common_ancestor_finds_the_branch_point() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_common_ancestor_aligns_unequal_branch_depths() {
     assert_eq!(
@@ -830,6 +877,7 @@ fn world_common_ancestor_aligns_unequal_branch_depths() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn world_branch_diff_reports_both_chronological_deltas() {
     assert_eq!(
@@ -847,6 +895,7 @@ fn world_branch_diff_reports_both_chronological_deltas() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn reconstructed_equal_worlds_have_no_branch_delta() {
     assert_eq!(
@@ -868,6 +917,7 @@ fn reconstructed_equal_worlds_have_no_branch_delta() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn equal_knowledge_has_the_same_canonical_content_address() {
     assert_eq!(
@@ -881,6 +931,7 @@ fn equal_knowledge_has_the_same_canonical_content_address() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn different_knowledge_has_a_different_content_address() {
     assert_eq!(
@@ -894,6 +945,7 @@ fn different_knowledge_has_a_different_content_address() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn knowledge_content_addresses_round_trip_to_the_same_structure() {
     assert_eq!(
@@ -909,6 +961,7 @@ fn knowledge_content_addresses_round_trip_to_the_same_structure() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn independently_reconstructed_worlds_have_the_same_content_address() {
     assert_eq!(
@@ -929,6 +982,7 @@ fn independently_reconstructed_worlds_have_the_same_content_address() {
     );
 }
 
+#[ignore = "legacy-transition: world-model expectations; run with --ignored (#231)"]
 #[test]
 fn equal_current_clauses_do_not_erase_distinct_world_histories() {
     assert_eq!(

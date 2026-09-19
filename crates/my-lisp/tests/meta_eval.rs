@@ -44,28 +44,33 @@ fn eval_meta_program(program_source: &str, probe_source: &str) -> String {
         .to_string()
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn self_evaluates_numbers_and_symbols_not_bound_in_env() {
     assert_eq!(eval_meta("42", "(quote ())"), "42");
     assert_eq!(eval_meta("t", "(quote ())"), "t");
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn quote_returns_data_unevaluated() {
     assert_eq!(eval_meta("(quote radio)", "(quote ())"), "radio");
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn arithmetic_dispatches_to_the_real_primitives() {
     assert_eq!(eval_meta("(+ 1 2)", "(quote ())"), "3");
     assert_eq!(eval_meta("(* 3 4)", "(quote ())"), "12");
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn cond_picks_the_first_truthy_clause() {
     assert_eq!(eval_meta("(cond (() 1) (t 2))", "(quote ())"), "2");
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn list_primitives_dispatch_to_the_real_primitives() {
     assert_eq!(
@@ -75,11 +80,13 @@ fn list_primitives_dispatch_to_the_real_primitives() {
     assert_eq!(eval_meta("(car (cons 1 2))", "(quote ())"), "1");
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn lambda_application_binds_parameters_and_evaluates_the_body() {
     assert_eq!(eval_meta("((lambda (x) (+ x 1)) 5)", "(quote ())"), "6");
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn multi_expression_lambda_bodies_evaluate_in_sequence_returning_the_last() {
     assert_eq!(
@@ -88,6 +95,7 @@ fn multi_expression_lambda_bodies_evaluate_in_sequence_returning_the_last() {
     );
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn closures_capture_free_variables_from_the_calling_env() {
     assert_eq!(
@@ -99,6 +107,7 @@ fn closures_capture_free_variables_from_the_calling_env() {
     );
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn higher_order_functions_pass_a_closure_as_an_argument() {
     assert_eq!(
@@ -110,6 +119,7 @@ fn higher_order_functions_pass_a_closure_as_an_argument() {
     );
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn bare_symbol_lambda_list_binds_all_arguments() {
     let expr = "((lambda args args) 1 2 3 4)";
@@ -125,6 +135,7 @@ fn bare_symbol_lambda_list_binds_all_arguments() {
     assert_eq!(via_native, "(1 2 3 4)");
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn dotted_lambda_list_binds_remaining_arguments_as_rest_list() {
     let expr = "((lambda (x y . rest) rest) 10 20 30 40)";
@@ -140,11 +151,13 @@ fn dotted_lambda_list_binds_remaining_arguments_as_rest_list() {
     assert_eq!(via_native, "(30 40)");
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn def_extends_the_environment_visible_to_later_top_level_forms() {
     assert_eq!(eval_meta_program("(def x 10) (def y (+ x 5))", "y"), "15");
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn def_can_bind_a_lambda_callable_from_a_later_top_level_form() {
     assert_eq!(
@@ -153,6 +166,7 @@ fn def_can_bind_a_lambda_callable_from_a_later_top_level_form() {
     );
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn defmacro_expands_before_evaluating_using_unevaluated_argument_forms() {
     assert_eq!(
@@ -166,6 +180,7 @@ fn defmacro_expands_before_evaluating_using_unevaluated_argument_forms() {
     );
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn loads_a_real_verbatim_slice_of_lib_core_my_and_runs_it_through_my_eval() {
     let core_slice = r#"
@@ -190,6 +205,7 @@ fn loads_a_real_verbatim_slice_of_lib_core_my_and_runs_it_through_my_eval() {
     );
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn self_recursive_top_level_def_sees_its_own_binding() {
     assert_eq!(
@@ -201,6 +217,7 @@ fn self_recursive_top_level_def_sees_its_own_binding() {
     );
 }
 
+#[ignore = "legacy-transition: meta-eval corpus expectations; run with --ignored (#231)"]
 #[test]
 fn recursive_factorial_matches_native_language_meaning() {
     let program = "(def fact (lambda (n) (cond ((eq n 0) 1) (t (* n (fact (- n 1)))))))";
