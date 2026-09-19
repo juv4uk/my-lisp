@@ -77,7 +77,7 @@ fn registry_rows() -> Vec<(&'static str, Vec<Surface>)> {
             let fields = line.split_whitespace().collect::<Vec<_>>();
             let semantic_id = fields
                 .first()?
-                .strip_prefix("(\\\"")?
+                .strip_prefix("(\"")?
                 .strip_suffix('"')?;
             if semantic_id.len() != 8
                 || !semantic_id.bytes().all(|byte| matches!(byte, b'0' | b'1'))

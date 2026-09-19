@@ -369,17 +369,25 @@ fn stable_pairs() -> BTreeSet<(String, String)> {
             let fields = line.split_whitespace().collect::<Vec<_>>();
             let identity = fields
                 .first()?
-                .strip_prefix("(\\\"")?
+                .strip_prefix("(\"")?
                 .strip_suffix('"')?;
             if identity.len() != 8
                 || !identity.bytes().all(|byte| matches!(byte, b'0' | b'1'))
             {
                 return None;
             }
-            let uk_index = fields.iter().position(|field| *field == "(uk")?;
-            let uk = *fields.get(uk_index + 1)?;
-            let status = fields.get(uk_index + 2)?.trim_end_matches(')');
-            (status == "stable").then(|| (identity.to_string(), uk.to_string()))
+            for group in line.split('(').skip(2) {
+                let Some(tuple) = group.split(')').next() else {
+                    continue;
+                };
+                let parts = tuple.split_whitespace().collect::<Vec<_>>();
+                if let [namespace, name] = parts.as_slice() {
+                    if *namespace == "uk" && *name != "—" {
+                        return Some((identity.to_string(), name.trim_matches('"').to_string()));
+                    }
+                }
+            }
+            None
         })
         .collect()
 }
@@ -614,7 +622,7 @@ fn stable_en_uk_names_needing_uk_layout_check() -> Vec<String> {
             let fields = line.split_whitespace().collect::<Vec<_>>();
             let semantic_id = fields
                 .first()?
-                .strip_prefix("(\\\"")?
+                .strip_prefix("(\"")?
                 .strip_suffix('"')?;
             if semantic_id.len() != 8
                 || !semantic_id.bytes().all(|byte| matches!(byte, b'0' | b'1'))

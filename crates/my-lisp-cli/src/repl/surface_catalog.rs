@@ -131,7 +131,7 @@ fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
             continue;
         }
         let Some(identity) = first
-            .strip_prefix("(\\\"")
+            .strip_prefix("(\"")
             .and_then(|value| value.strip_suffix('"'))
         else {
             continue;
