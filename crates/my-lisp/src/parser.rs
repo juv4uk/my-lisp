@@ -70,7 +70,7 @@ impl Parser<'_> {
 
     /// Reader sugar: `'form` is exactly `(quote form)` in the produced AST.
     /// The evaluator therefore sees the existing canonical QUOTE identity;
-    /// the apostrophe introduces no new semantic identity and no duplicate semantics.
+    /// the apostrophe introduces no eighth primitive and no duplicate semantics.
     fn quote_sugar(&mut self, start: usize) -> Result<Expr, LanguageError> {
         self.bump();
         self.skip_ignored();
