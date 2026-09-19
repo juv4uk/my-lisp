@@ -2,8 +2,9 @@
 
 static WsmStatus noop_start(void *ctx) { (void)ctx; return WSM_STATUS_OK; }
 static WsmStatus noop_stop(void *ctx) { (void)ctx; return WSM_STATUS_OK; }
-static WsmStatus noop_exchange(void *ctx, WsmByteSpan req, WsmMutableByteSpan out, size_t *written) {
-    (void)ctx; (void)req; (void)out;
+static WsmStatus noop_exchange(void *ctx, WsmKernelRequest req, WsmMutableByteSpan out, size_t *written) {
+    (void)ctx; (void)out;
+    if (req.semantic_id != 0u) return WSM_STATUS_INVALID_ARGUMENT;
     if (written) *written = 0;
     return WSM_STATUS_OK;
 }
