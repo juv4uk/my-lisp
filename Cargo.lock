@@ -758,6 +758,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
+name = "wsm-datalog-kernel"
+version = "0.1.0"
+
+[[package]]
 name = "wsm-guard-core"
 version = "0.1.0"
 dependencies = [
@@ -776,6 +780,14 @@ name = "wsm-guard-slice"
 version = "0.1.0"
 dependencies = [
  "wsm-guard-core",
+]
+
+[[package]]
+name = "wsm-native-result-types"
+version = "0.1.0"
+dependencies = [
+ "my-lisp",
+ "wsm-datalog-kernel",
 ]
 
 [[package]]
