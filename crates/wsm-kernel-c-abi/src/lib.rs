@@ -117,7 +117,7 @@ mod tests {
     ) -> WsmStatus {
         if written.is_null() { return WsmStatus::InvalidArgument; }
         let input = unsafe { core::slice::from_raw_parts(request.ptr, request.len) };
-        if response.len < input.len {
+        if response.len < input.len() {
             unsafe { *written = input.len(); }
             return WsmStatus::BufferTooSmall;
         }
