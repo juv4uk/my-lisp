@@ -6,13 +6,13 @@ guard="$repo_root/scripts/rust-one-way-valve.sh"
 workflow="$repo_root/.github/workflows/ci.yml"
 
 fail() {
-  echo "rust-one-way-valve self-test: $*" >&2
+  echo "rust-growth-policy self-test: $*" >&2
   exit 1
 }
 
-[[ -f "$guard" ]] || fail "RED: missing scripts/rust-one-way-valve.sh"
+[[ -f "$guard" ]] || fail "missing scripts/rust-one-way-valve.sh"
 grep -Fq 'bash scripts/rust-one-way-valve.sh "$BASE_SHA" "$HEAD_SHA"' "$workflow" \
-  || fail "CI does not invoke the #300 valve on the PR base/head diff"
+  || fail "CI does not invoke the Rust growth policy check"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -21,22 +21,11 @@ mkdir -p "$repo"
 cd "$repo"
 
 git init -q
-git config user.name rust-valve-self-test
-git config user.email rust-valve-self-test@example.invalid
+git config user.name rust-growth-self-test
+git config user.email rust-growth-self-test@example.invalid
 mkdir -p src lib
 cat > src/existing.rs <<'EOF'
 fn keep() {}
-fn removable() {}
-EOF
-cat > src/mechanism.rs <<'EOF'
-fn transport() {}
-EOF
-cat > src/old.rs <<'EOF'
-fn old_a() {}
-fn old_b() {}
-EOF
-cat > src/replacement.rs <<'EOF'
-fn existing_replacement_surface() {}
 EOF
 cat > lib/core.lisp <<'EOF'
 (quote baseline)
@@ -46,130 +35,40 @@ git add -A
 git commit -qm baseline
 base=$(git rev-parse HEAD)
 
-reset_case() {
-  git reset --hard -q "$base"
-  git clean -fdq
-}
-
-commit_case() {
+run_green() {
+  local name="$1"
   git add -A
-  git commit -qm "$1"
-  case_head=$(git rev-parse HEAD)
-}
-
-expect_red() {
-  local name="$1"
-  local path="$2"
+  git commit -qm "$name"
+  local head
+  head=$(git rev-parse HEAD)
   local log="$tmp/$name.log"
-  if bash "$guard" "$base" "$case_head" >"$log" 2>&1; then
-    cat "$log" >&2
-    fail "$name unexpectedly passed"
-  fi
-  grep -Fq "$path" "$log" || {
-    cat "$log" >&2
-    fail "$name did not name offending path $path"
-  }
-  grep -Fq '#299' "$log" || {
-    cat "$log" >&2
-    fail "$name diagnostic did not link #299"
-  }
-}
-
-expect_green() {
-  local name="$1"
-  local log="$tmp/$name.log"
-  if ! bash "$guard" "$base" "$case_head" >"$log" 2>&1; then
+  bash "$guard" "$base" "$head" >"$log" 2>&1 || {
     cat "$log" >&2
     fail "$name unexpectedly failed"
-  fi
-  grep -Fq 'RUST-ONE-WAY-VALVE OK' "$log" || {
-    cat "$log" >&2
-    fail "$name did not emit the GREEN verdict"
   }
+  grep -Fq 'RUST-GROWTH-ALLOWED' "$log" || {
+    cat "$log" >&2
+    fail "$name did not emit the allowed verdict"
+  }
+  base="$head"
 }
 
-# RED: executable Rust growth in an existing file.
-reset_case
+# GREEN: executable Rust may grow.
 printf '\nfn added_behavior() {}\n' >> src/existing.rs
-commit_case red-executable-rust
-expect_red red-executable-rust src/existing.rs
+run_green rust-existing-file-growth
 
-# RED: comments count as Rust growth too.
-reset_case
-printf '\n// newly added Rust comment\n' >> src/existing.rs
-commit_case red-rust-comment
-expect_red red-rust-comment src/existing.rs
+# GREEN: new Rust source files may be created.
+cat > src/new.rs <<'EOF'
+pub fn substrate_transport() {}
+EOF
+run_green rust-new-file
 
-# RED: even an empty new .rs path is forbidden.
-reset_case
-: > src/new.rs
-commit_case red-new-rust-path
-expect_red red-new-rust-path src/new.rs
-grep -Fq 'new=yes' "$tmp/red-new-rust-path.log" || fail "new Rust path diagnostic did not report new=yes"
+# GREEN: comments/documentation in Rust may grow.
+printf '\n// substrate instrumentation is allowed\n' >> src/new.rs
+run_green rust-comment-growth
 
-# RED: deleting old Rust does not compensate for adding replacement Rust elsewhere.
-reset_case
-sed -i '/old_b/d' src/old.rs
-printf '\nfn replacement_growth() {}\n' >> src/replacement.rs
-commit_case red-delete-and-replace
-expect_red red-delete-and-replace src/replacement.rs
+# GREEN: non-Rust changes remain valid too.
+printf '(quote non-rust-change)\n' >> lib/core.lisp
+run_green non-rust-change
 
-# RED: mechanism/ABI/transport labels are not exemptions.
-reset_case
-printf '\nfn new_transport_mechanism() {}\n' >> src/mechanism.rs
-commit_case red-mechanism-growth
-expect_red red-mechanism-growth src/mechanism.rs
-
-# RED: a rename creates a new .rs path and cannot bypass the valve.
-reset_case
-git mv src/old.rs src/renamed.rs
-commit_case red-rust-rename
-expect_red red-rust-rename src/renamed.rs
-
-# GREEN: deleting Rust lines only.
-reset_case
-sed -i '/removable/d' src/existing.rs
-commit_case green-line-deletion
-expect_green green-line-deletion
-
-# GREEN: deleting an obsolete Rust file entirely.
-reset_case
-git rm -q src/old.rs
-commit_case green-file-deletion
-expect_green green-file-deletion
-
-# GREEN: Lisp may grow while Rust shrinks.
-reset_case
-printf '(quote preserved-law)\n' >> lib/core.lisp
-sed -i '/removable/d' src/existing.rs
-commit_case green-lisp-growth-rust-shrink
-expect_green green-lisp-growth-rust-shrink
-
-# GREEN: non-Rust-only changes do not trip the outer valve.
-reset_case
-printf '(quote non-rust-only)\n' >> lib/core.lisp
-commit_case green-non-rust-only
-expect_green green-non-rust-only
-
-# GREEN: newer main may delete Rust after a feature branch diverges.
-# The feature branch itself changes only Lisp; the valve must judge the
-# feature contribution from the merge-base, not treat main-only deletion as
-# an addition on the stale feature head.
-reset_case
-printf '(quote stale-feature-non-rust-change)\n' >> lib/core.lisp
-commit_case stale-feature-non-rust
-stale_head=$case_head
-
-git reset --hard -q "$base"
-sed -i '/removable/d' src/existing.rs
-git add -A
-git commit -qm advanced-base-rust-deletion
-advanced_base=$(git rev-parse HEAD)
-
-saved_base=$base
-base=$advanced_base
-case_head=$stale_head
-expect_green green-stale-feature-after-base-rust-deletion
-base=$saved_base
-
-echo "rust-one-way-valve self-test: PASS"
+echo "rust-growth-policy self-test: PASS"

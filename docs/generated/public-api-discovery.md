@@ -4,9 +4,9 @@
 > top-level визначення, але **не** оголошує їх публічним API.
 
 - проскановано бібліотечних файлів: 33
-- top-level функцій: 834
+- top-level функцій: 836
 - top-level макросів: 34
-- усього визначень: 868
+- усього визначень: 870
 - класифікація: `unreviewed`
 
 | джерело | вид | ім'я | класифікація |
@@ -108,6 +108,8 @@
 | `lib/core.lisp` | function | `assoc` | unreviewed |
 | `lib/core.lisp` | macro | `let*` | unreviewed |
 | `lib/core.lisp` | function | `string-empty?` | unreviewed |
+| `lib/core.lisp` | function | `string-membership-helper` | unreviewed |
+| `lib/core.lisp` | function | `nonempty-string-membership-helper` | unreviewed |
 | `lib/core.lisp` | function | `string-length` | unreviewed |
 | `lib/core.lisp` | function | `string-prefix?` | unreviewed |
 | `lib/core.lisp` | function | `string-contains?` | unreviewed |
