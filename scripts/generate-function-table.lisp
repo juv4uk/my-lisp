@@ -19,7 +19,7 @@
 ;
 ; Writes two generated views directly (write-file is language-owned,
 ; lib/fs.lisp, over the host's read-file-bytes/write-file-bytes):
-;   lib/generated/function-table.lisp  (schema ft/1, machine-readable semantics)
+;   lib/generated/function-table.lisp  (schema ft/2, machine-readable projection)
 ;   docs/generated/function-table.md  (human table, column order
 ;     uk -> ukr -> English -> Sanskrit -> Intel Core i5-6400 / Skylake)
 ;
@@ -31,7 +31,7 @@
 ; Both are read directly from semantic-registry.lisp; this generator never
 ; invents names and never duplicates `ukr` under another full-UK column.
 
-; sr/2 normal admitted surfaces are two-element rows: (namespace spelling).
+; sr/2 surfaces are fixed two-element rows: (namespace spelling-or-()).
 ; Reader-sensitive spellings such as apostrophe are serialized as strings, so the
 ; registry remains ordinary re-readable Lisp data without a special reconstruction path.
 (def registry-form (car (read-all (read-file "lib/surface/semantic-registry.lisp"))))
@@ -65,7 +65,7 @@
   (lambda (sid)
     (let ((row (find-machine-row sid machine-rows)))
       (cond
-        ((atom row) "—")
+        ((atom row) "()")
         (t (third row))))))
 
 ; A surface word is usually a symbol (write-to-string strips the
@@ -75,6 +75,7 @@
 (def surface-word-text
   (lambda (word)
     (cond
+      ((equal? word (quote ())) "()")
       ((string-membership-helper word)
        (class-membership string member)
        word)
@@ -99,7 +100,7 @@
 ; SID already arrives from sr/2 as an exact 8-bit string. This generator
 ; must preserve it verbatim; formatting identity is owned by the registry.
 
-; --- surfaces are (lang word) when admitted, or (lang word exception-status) ---
+; --- surfaces are fixed (lang word) slots; word is spelling or () ---
 (def find-surface
   (lambda (lang surfaces)
     (cond
@@ -107,28 +108,21 @@
       ((eq (car (car surfaces)) lang) (car surfaces))
       (t (find-surface lang (cdr surfaces))))))
 
-(def surface-word (lambda (surface-entry) (car (cdr surface-entry))))
-(def surface-status
+(def surface-word
   (lambda (surface-entry)
     (cond
-      ((eq (length surface-entry) 2) (quote stable))
-      (t (car (cdr (cdr surface-entry)))))))
+      ((atom surface-entry) (quote ()))
+      (t (car (cdr surface-entry))))))
 
-; --- (word status) for a language, defaulting to (— missing) when the
-; registry row has no row for that language at all ---
 (def get-surface
   (lambda (lang surfaces)
-    (let ((found (find-surface lang surfaces)))
-      (cond
-        ((atom found) (list (quote —) (quote missing)))
-        (t (list (surface-word found) (surface-status found)))))))
+    (surface-word (find-surface lang surfaces))))
 
 (def surface-usable?
-  (lambda (word-status-pair)
-    (and (not (eq (car (cdr word-status-pair)) (quote missing)))
-         (not (eq (car word-status-pair) (quote —))))))
+  (lambda (word)
+    (not (equal? word (quote ())))))
 
-; --- formal identity stub: first usable name among en/uk/sa, else bare id ---
+; --- formal identity stub: first present name among en/uk/sa, else bare id ---
 (def formal-stub
   (lambda (sid surfaces)
     (let* ((en (get-surface (quote en) surfaces))
@@ -136,33 +130,12 @@
            (sa (get-surface (quote sa) surfaces)))
       (cond
         ((surface-usable? en)
-         (str+ "identity:" sid "/surface:" (surface-word-text (car en))))
+         (str+ "identity:" sid "/surface:" (surface-word-text en)))
         ((surface-usable? uk)
-         (str+ "identity:" sid "/surface:" (surface-word-text (car uk))))
+         (str+ "identity:" sid "/surface:" (surface-word-text uk)))
         ((surface-usable? sa)
-         (str+ "identity:" sid "/surface:" (surface-word-text (car sa))))
+         (str+ "identity:" sid "/surface:" (surface-word-text sa)))
         (t (string-append "identity:" sid))))))
-
-; --- primary row status: best of the statuses the row actually carries,
-; ignoring languages the row has no entry for at all ---
-(def any-status?
-  (lambda (status statuses)
-    (cond
-      ((atom statuses) (quote ()))
-      ((eq (car statuses) status) t)
-      (t (any-status? status (cdr statuses))))))
-
-(def primary-status
-  (lambda (statuses)
-    (cond
-      ((any-status? (quote stable) statuses) (quote stable))
-      ((any-status? (quote candidate) statuses) (quote candidate))
-      ((any-status? (quote compatibility-only) statuses) (quote compatibility-only))
-      (t (quote missing)))))
-
-(def raw-statuses
-  (lambda (surfaces)
-    (map (lambda (surface-entry) (surface-status surface-entry)) surfaces)))
 
 ; --- string-join with newline, since core.lisp has none yet. Accumulator-
 ; based (not "car + recurse-in-argument-position"), matching core.lisp's own
@@ -189,16 +162,15 @@
            (en (get-surface (quote en) surfaces))
            (sa (get-surface (quote sa) surfaces))
            (sym (get-surface (quote sym) surfaces))
-           (formal (formal-stub sid surfaces))
-           (primary (primary-status (raw-statuses surfaces))))
+           (formal (formal-stub sid surfaces)))
       (str+
         "  (" (write-to-string sid) " " formal
-        " (uk " (surface-word-wsm-text (car uk)) " " (write-to-string (car (cdr uk))) ")"
-        " (ukr " (surface-word-wsm-text (car ukr)) " " (write-to-string (car (cdr ukr))) ")"
-        " (en " (surface-word-wsm-text (car en)) " " (write-to-string (car (cdr en))) ")"
-        " (sa " (surface-word-wsm-text (car sa)) " " (write-to-string (car (cdr sa))) ")"
-        " (sym " (surface-word-wsm-text (car sym)) " " (write-to-string (car (cdr sym))) ")"
-        " " (write-to-string primary) " my-lisp)"))))
+        " (uk " (surface-word-wsm-text uk) ")"
+        " (ukr " (surface-word-wsm-text ukr) ")"
+        " (en " (surface-word-wsm-text en) ")"
+        " (sa " (surface-word-wsm-text sa) ")"
+        " (sym " (surface-word-wsm-text sym) ")"
+        " my-lisp)"))))
 
 (def render-md-row
   (lambda (entry)
@@ -208,14 +180,13 @@
            (ukr (get-surface (quote ukr) surfaces))
            (en (get-surface (quote en) surfaces))
            (sa (get-surface (quote sa) surfaces))
-           (primary (primary-status (raw-statuses surfaces))))
+           (sym (get-surface (quote sym) surfaces)))
       (str+
-        "| `" sid "` | " (surface-word-text (car uk))
-        " | " (surface-word-text (car ukr))
-        " | " (write-to-string (car (cdr ukr)))
-        " | " (surface-word-text (car en))
-        " | " (surface-word-text (car sa))
-        " | " (write-to-string primary)
+        "| `" sid "` | " (surface-word-text uk)
+        " | " (surface-word-text ukr)
+        " | " (surface-word-text en)
+        " | " (surface-word-text sa)
+        " | " (surface-word-text sym)
         " | " (machine-path sid) " |"))))
 
 (def wsm-header
@@ -223,7 +194,7 @@
     "; GENERATED — DO NOT EDIT BY HAND"
     "; Authority: lib/surface/semantic-registry.lisp"
     "; Generator: scripts/generate-function-table.lisp (ECO-CANON-1 / my-lisp#75)"
-    "; Schema ft/2: (sid-bitstring formal uk ukr ukr-status en sa sym primary-status authority)"
+    "; Schema ft/2: (sid-bitstring formal uk ukr en sa sym authority)"
     "; uk = current Ukrainian; ukr = full Ukrainian peer surface"
     "; Display order for humans: uk → ukr → English → Sanskrit"
     "; authority = my-lisp (semantic)"
@@ -245,8 +216,8 @@
     ""
     "Regenerate: `cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function-table.lisp`"
     ""
-    "| ID | uk | ukr | ukr status | English | Sanskrit | primary | Intel Core i5-6400 / Skylake |"
-    "|----|----|-----|------------|---------|----------|---------|------------------------------|"))
+    "| ID | uk | ukr | English | Sanskrit | Symbol | Intel Core i5-6400 / Skylake |"
+    "|----|----|-----|---------|----------|--------|------------------------------|"))
 
 (def md-body (join-newline (append md-header (map render-md-row entries))))
 (def md-output (string-append md-body "
