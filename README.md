@@ -4,9 +4,9 @@
 
 # my-lisp
 
-**Маленька Lisp-мова, що вирощує себе**
+**Проста Lisp-мова, що координує різні способи обчислення**
 
-*Дослідження того, наскільки малою може бути незвідна машина, якщо дедалі більше значення, правил і поведінки належить самій мові.*
+*Дослідження мови, яка зберігає власний Canon та semantic identities, але не намагається підмінити собою Prolog, Datalog, CLIPS, Common Lisp чи інші незалежні ядра.*
 
 <p><a href="https://github.com/juv4uk/my-lisp/releases/latest/download/my-lisp-cli-web.html"><strong>▶ Спробувати my-lisp у вебі</strong></a></p>
 <sub>Один автономний portable-файл <code>.html</code> · без встановлення · працює локально у браузері</sub>
@@ -23,23 +23,29 @@
 
 ## Що таке `my-lisp`
 
-`my-lisp` — дослідницька Lisp-мова з навмисно малим семантичним ядром, точною арифметикою, виконуваними законами та незалежними реалізаціями для перевірки припущень.
+`my-lisp` — дослідницька Lisp-мова з власним Canon, 8-бітним простором semantic identities, точною арифметикою, виконуваними законами та архіпелагом незалежних execution kernels.
 
 Головний архітектурний принцип:
 
-> **Механізм може належати хосту. Значення має належати мові.**
+> **Мова володіє значенням та ідентичністю. Ядра володіють своїм способом обчислення. Жоден механізм не має права вигадувати семантику за мову.**
 
-Rust тут є **референсною реалізацією**, але не джерелом семантичної істини. Якщо поведінку можна виразити й перевірити всередині Lisp, вона повинна обґрунтувати, чому досі живе в хості.
+Rust лишається важливим механічним substrate/reference implementation, але не джерелом семантичної істини. Так само Prolog, Datalog, CLIPS і Common Lisp не стають глобальною semantic authority лише тому, що вони краще виконують свій клас задач.
 
 ```text
-закон мови
-    ↓
-Lisp-визначення / виконуваний доказ
-    ↓
-референсна реалізація Rust
-    ↓
-незалежні субстрати: C / CML / FPGA / WASM / Racket
+                  my-lisp
+        Canon / SID / laws / data
+                     |
+       +-------------+-------------+
+       |             |             |
+   local Lisp      routing       observation
+       |             |             |
+       +------+------+------+------+
+              |      |      |
+          Common   Prolog  Datalog  CLIPS
+           Lisp
 ```
+
+Нова дисципліна проста: `my-lisp` має вміти **висловити, адресувати, передати, прийняти й композиційно використати** результат, але не зобов'язаний повторно реалізовувати всередині себе найкращий алгоритм кожного острова.
 
 Поточний машинний семантичний контракт — [`language-contract.lisp`](language-contract.lisp), версія **6.0**.
 
@@ -107,11 +113,13 @@ README лише показує вже зароблені докази; він н
 
 ---
 
-## Canon 0 + 7
+## Canon 0 і історичний корінь Маккарті
 
-Семантичне ядро замкнене. Є **Canon 0** — конкретний порожній правильний список `()` — і рівно сім канонічних операцій Маккарті.
+`()` лишається **Canon 0** — первинним порожнім правильним списком і базою індукції для спискової структури.
 
-| Канонічна тотожність | Українська поверхня | Символ з української розкладки | Історичне ім'я |
+Сім класичних операцій Маккарті лишаються важливим історичним і мінімальним коренем:
+
+| Канонічна тотожність | Українська поверхня | Символ | Історичне ім'я |
 |---|---|---:|---|
 | Canon 0 | `()` | `()` | `()` |
 | QUOTE | `як-є` | `'` | `quote` |
@@ -122,11 +130,15 @@ README лише показує вже зароблені докази; він н
 | CDR | `решта` | `:р` | `cdr` |
 | COND | `за-умовою` | `?:` | `cond` |
 
-`() ` — **не восьмий примітив**. Це первинний об'єкт і база індукції для правильних списків.
+Але проєкт **більше не обмежує мову сімома примітивами**.
 
-Символи також не створюють нових примітивів: `'`, `.?`, `=?`, `:`, `:п`, `:р`, `?:` — це компактні написання тих самих канонічних тотожностей. Виконуваний доказ лежить у [`lib/canon.lisp`](lib/canon.lisp).
+Новий критерій інший:
 
-`QUOTE` і `COND` керують обчисленням і не маскуються під звичайні callable values.
+> **Примітив має заслужити окрему identity тим, що він є реально окремою базовою операцією системи.**
+
+Тому нові first-class identities допустимі, якщо вони потрібні для чесної композиції мови, островів, даних або спостережень. Водночас ми не додаємо окремий SID лише тому, що якийсь kernel має багату внутрішню онтологію.
+
+Кількість примітивів не задається наперед як 7, 20 чи 40. Вона визначається експериментально всередині одного 8-бітного простору semantic identities.
 
 ### Апостроф
 
@@ -176,7 +188,18 @@ README лише показує вже зароблені докази; він н
 | `01011010` | `монотонний-нс` | `монотонний-час-у-наносекундах` |
 | `01011110` | `поточний-всч` | `поточний-всесвітній-координований-час` |
 
-Кожен слот у реєстрі містить ім'я або `()`. `()` означає лише відсутність surface. Якщо ім'я існує в реєстрі — воно маршрутизується до відповідного SID.
+У чинній моделі surface status-категорій немає. Кожен namespace slot містить або spelling, або `()`:
+
+```lisp
+("00001100"
+  (en ())
+  (uk додати)
+  (ukr додати)
+  (sa yoga)
+  (sym +))
+```
+
+Тобто немає прихованої третьої категорії між «ім'я є» і «імені немає». Якщо ім'я існує в реєстрі — воно маршрутизується до відповідного SID.
 
 Повна жива таблиця `uk | ukr | English | Sanskrit` генерується з authority: [`docs/generated/function-table.md`](docs/generated/function-table.md). Детальні пояснення поведінки: [`docs/ukrainian-api.md`](docs/ukrainian-api.md). Репрезентативний executable witness без перемикання на латинську розкладку: [`lib/surface/ukr-acceptance.lisp`](lib/surface/ukr-acceptance.lisp).
 
@@ -261,45 +284,71 @@ README / tutorials / історичні плани
 
 ---
 
-## Мова, що вирощує себе
+## Мова і архіпелаг ядер
 
-У `my-lisp` дедалі більше систем живе не в Rust, а в самій мові:
+Раніше центральним дослідницьким питанням було: скільки поведінки можна повернути всередину самого Lisp.
 
-| Шар | Де дивитися | Що там |
-|---|---|---|
-| Bootstrap | [`lib/core.lisp`](lib/core.lisp), [`lib/macro.lisp`](lib/macro.lisp) | базова бібліотека, макроси |
-| Canon | [`lib/canon.lisp`](lib/canon.lisp) | виконувані закони 0+7 |
-| Meta-eval | [`lib/meta-eval.lisp`](lib/meta-eval.lisp) | метациркулярне обчислення, finite mutual recursion |
-| Логіка | [`lib/unify.lisp`](lib/unify.lisp), [`lib/reason.lisp`](lib/reason.lisp) | уніфікація, backward reasoning |
-| Forward reasoning | [`lib/forward.lisp`](lib/forward.lisp) | forward chaining / JTMS |
-| Знання | [`lib/knowledge.lisp`](lib/knowledge.lisp), [`lib/world.lisp`](lib/world.lisp) | модулі знань, незмінні світи |
-| Епістеміка | [`lib/epistemic.lisp`](lib/epistemic.lisp) | явні стани знання й невизначеності |
-| Мова ↔ текст | [`lib/understand.lisp`](lib/understand.lisp), [`lib/narrate.lisp`](lib/narrate.lisp) | контрольовані мовні мости |
-| Час | [`lib/time.lisp`](lib/time.lisp) | дедалі більше language-owned time semantics |
-
-Головне питання не «скільки рядків уже переписано на Lisp?», а:
-
-> **Якою мінімальною може бути незвідна хост-машина, якщо корисна система продовжує вирощуватися всередині самої мови?**
-
----
-
-## Advice Taker і reasoning-напрям
-
-Один із центральних дослідницьких напрямів — не просто інтерпретувати S-вирази, а будувати систему, яка може працювати зі знанням, доказами, суперечностями й поясненнями.
+Цей напрям дав важливі результати, але тепер проєкт рухається далі: **не все корисне повинно жити всередині одного Lisp evaluator**.
 
 ```text
-факти / правила
-      ↓
-   unify.lisp
-      ↓
-  reason.lisp  ←→  forward.lisp
-      ↓
- knowledge.lisp / world.lisp
-      ↓
- advice / proof / provenance
+my-lisp
+  ├─ Canon / SID / surfaces / laws
+  ├─ локальна Lisp-поведінка
+  ├─ ordinary data
+  ├─ композиція
+  └─ kernel boundary
+       ├─ Common Lisp — Lisp runtime/execution
+       ├─ Prolog      — unification/backtracking/0..N answers
+       ├─ Datalog     — relational closure/fixpoint
+       └─ CLIPS       — production rules/working memory/agenda
 ```
 
-Саме тут маленьке Lisp-ядро перевіряється не «hello world», а реальною композицією рекурсії, символічного reasoning, immutable state та knowledge layers.
+Старі Lisp-owned реалізації `unify.lisp`, `reason.lisp`, `forward.lisp` та інші не оголошуються помилкою і не видаляються автоматично. Вони можуть залишатися:
+- reference implementations;
+- простими локальними механізмами;
+- compatibility paths;
+- експериментальними шарами;
+- witnesses для порівняння з незалежними kernels.
+
+Але вони більше не зобов'язані бути фундаментом усієї reasoning-архітектури.
+
+### Пірамідальна та множинна логіка
+
+Попередня пірамідальна модель була корисною як спосіб вийти з замкненої Lisp-бульбашки й перестати зводити всі відповіді до одного наперед заданого truth model.
+
+Тепер її роль спрощується.
+
+Вона може лишатися як:
+- опційна view/projection над evidence;
+- інструмент для incomplete/conflicting evidence;
+- compatibility/research layer.
+
+Але Prolog, Datalog і CLIPS отримують право лишатися собою. `my-lisp` не має перетворювати їхні native результати на одну універсальну логічну шкалу.
+
+Принцип:
+
+> **Не змушувати реальність ставати зручною для однієї внутрішньої моделі.**
+
+Якщо Prolog повертає багато substitutions — зберігаємо множинність.  
+Якщо Datalog не вивів факту — не домальовуємо його.  
+Якщо два kernels суперечать один одному — зберігаємо обидва результати та provenance.  
+Якщо bridge неповний — неповнота є допустимим результатом.
+
+### Король і свита
+
+Історична метафора проєкту тепер отримує точніший зміст:
+
+```text
+            my-lisp
+       identity / Canon
+          /   |   \
+         /    |    \
+   Prolog  Datalog  CLIPS  Common Lisp
+```
+
+`my-lisp` є центральною мовою не тому, що виконує все сам, а тому, що зберігає **цілісність identity, Canon, композицію й прямий контакт із різними execution models**.
+
+Кожен острів говорить із мовою прямо й повертає власний результат без обов'язкового переписування під одну універсальну семантику.
 
 ---
 
@@ -388,19 +437,20 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## English · auxiliary
 
-`my-lisp` is a Lisp research language built around a permanently closed McCarthy 0+7 semantic nucleus, exact arithmetic, executable conformance, language-owned semantics, and independent substrates used to falsify implementation-specific assumptions.
+`my-lisp` is a Lisp research language built around Canon 0, an experimental 8-bit semantic identity space, exact arithmetic, executable conformance, and an archipelago of autonomous execution kernels. The classical McCarthy primitives remain a historical/minimal root, but no longer form a permanent limit on what may become a primitive.
 
 Ukrainian is the project's primary human language. English and German are auxiliary. The Rust runtime is the reference implementation, not semantic authority; start with [`language-contract.lisp`](language-contract.lisp) and [`docs/semantic-authority-map.md`](docs/semantic-authority-map.md).
 
-The central research question is: **how small can the irreducible host remain while the useful system continues to grow inside the language?**
+The central research question is now: **how simple can the language remain while directly composing independent execution models without surrendering semantic identity to any of them?**
 
 ## Deutsch · ergänzend
 
-`my-lisp` ist eine Lisp-Forschungssprache mit einem dauerhaft geschlossenen semantischen McCarthy-Kern 0+7, exakter Arithmetik, ausführbarer Konformität und mehreren unabhängigen Substraten.
+`my-lisp` ist eine Lisp-Forschungssprache mit Canon 0, einem experimentellen 8-Bit-Raum semantischer Identitäten, exakter Arithmetik, ausführbarer Konformität und einem Archipel autonomer Ausführungskerne. Die klassischen McCarthy-Primitive bleiben ein historischer/minimaler Ursprung, sind aber keine dauerhafte Obergrenze mehr.
 
 Ukrainisch ist die primäre menschliche Sprache des Projekts; Englisch und Deutsch sind Hilfssprachen. Rust ist die Referenzimplementierung, aber nicht die semantische Autorität. Maßgeblich sind [`language-contract.lisp`](language-contract.lisp), ratifizierte Entscheidungen und ausführbare Konformitätsbelege.
 
-Die zentrale Forschungsfrage lautet: **Wie klein kann der irreduzible Host bleiben, während das nützliche System innerhalb der Sprache weiterwächst?**
+Die zentrale Forschungsfrage lautet: **Wie einfach kann die Sprache bleiben, während sie unabhängige Ausführungsmodelle direkt komponiert, ohne ihnen die semantische Identität zu überlassen?**
+
 
 ---
 
