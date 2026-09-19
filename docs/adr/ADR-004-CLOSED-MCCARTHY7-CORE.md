@@ -1,10 +1,16 @@
 # ADR-004: Closed McCarthy-7 Core and Stratified Semantic Taxonomy
 # ADR-004: Замкнене McCarthy-7 ядро та стратифікована семантична таксономія
 
-**Status:** Accepted / Прийнято  
+**Status:** Partially superseded by ADR-005 / Частково замінено ADR-005  
 **Date:** 2026-09-05  
 **Author / Authority:** Volodymyr / Vova (Owner directive) & Antigravity  
-**Scope:** Normative and documentary only. Zero evaluator/runtime code modifications in this decision.
+**Scope:** Historical normative decision. The permanent seven-primitive closure is superseded by ADR-005; the stable identity of Canon 0 + McCarthy-7 and the distinction between semantics and implementation remain in force.
+
+---
+
+## Supersession note / Примітка про заміну
+
+ADR-005 supersedes only the permanent closure rules of this ADR: the prohibition on an eighth primitive, the claim that only seven identities may ever be primitive, and the corresponding `PRIMITIVE_SET_VIOLATION` rule based solely on count > 7. The McCarthy-7 identities remain a stable historical/minimal root.
 
 ---
 
