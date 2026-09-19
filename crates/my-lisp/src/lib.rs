@@ -217,7 +217,7 @@ pub fn load_meta_evaluator_library(
 
 /// Load language-owned time semantics into a session that already has the
 /// ordinary core library. Keeping this separate from `load_core_library`
-/// preserves the closed language core while giving embedders one canonical
+/// preserves the small language core boundary while giving embedders one canonical
 /// time-layer loader instead of ad-hoc `include_str!` calls.
 pub fn load_time_library(session: &mut Session) -> Result<EvalResult, LanguageError> {
     eval_program(TIME_LIBRARY_SOURCE, session)
@@ -250,7 +250,7 @@ pub fn load_fs_library(session: &mut Session) -> Result<EvalResult, LanguageErro
     eval_program(FS_LIBRARY_SOURCE, session)
 }
 
-/// Public Contract 6.0 classification hook for tooling and embedders.
+/// Public Contract 7.0 classification hook for tooling and embedders.
 ///
 /// This does not expose or mutate the Canon registry. It only answers whether
 /// a source spelling belongs to the finite reserved Canon 0+7 name set, so
