@@ -1,114 +1,121 @@
-//! Namespaced callable graph for the four-kernel experiment.
+//! Mechanical index/traversal for the experimental Lisp ground graph.
 //!
-//! The graph records mechanical reachability and explicit bridge topology.
-//! It does not claim semantic equivalence between nodes.
+//! Source model: experiments/ground-graph.lisp
+//! Generic edge shape: (endpoint relation endpoint).
+//! Relation identities are opaque 8-bit patterns. Rust does not assign meaning.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use wsm_kernel_c_abi::WsmKernelKind;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct BitPattern8(pub u8);
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CallableId {
     pub kernel: WsmKernelKind,
-    pub local_id: String,
+    pub local_id: BitPattern8,
 }
 
 impl CallableId {
-    pub fn new(kernel: WsmKernelKind, local_id: impl Into<String>) -> Self {
-        Self { kernel, local_id: local_id.into() }
+    pub const fn new(kernel: WsmKernelKind, local_id: u8) -> Self {
+        Self { kernel, local_id: BitPattern8(local_id) }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum EdgeKind {
-    Call,
-    Bridge,
-    Observe,
-    Transport,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CallableNode {
-    pub id: CallableId,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Edge {
-    pub from: CallableId,
-    pub to: CallableId,
-    pub kind: EdgeKind,
+pub struct GraphEdge {
+    pub left: CallableId,
+    pub relation: BitPattern8,
+    pub right: CallableId,
 }
 
 #[derive(Default)]
 pub struct CallGraph {
-    nodes: HashMap<CallableId, CallableNode>,
-    edges: HashSet<Edge>,
+    nodes: HashSet<CallableId>,
+    edges: HashSet<GraphEdge>,
+    outgoing: HashMap<CallableId, Vec<GraphEdge>>,
 }
 
 impl CallGraph {
     pub fn new() -> Self { Self::default() }
 
     pub fn register(&mut self, id: CallableId) -> bool {
-        self.nodes.insert(id.clone(), CallableNode { id }).is_none()
+        self.nodes.insert(id)
     }
 
-    pub fn resolve(&self, id: &CallableId) -> Option<&CallableNode> {
+    pub fn resolve(&self, id: &CallableId) -> Option<&CallableId> {
         self.nodes.get(id)
     }
 
-    pub fn connect(&mut self, from: CallableId, to: CallableId, kind: EdgeKind) -> bool {
-        if !self.nodes.contains_key(&from) || !self.nodes.contains_key(&to) {
+    pub fn connect(&mut self, left: CallableId, relation: BitPattern8, right: CallableId) -> bool {
+        if !self.nodes.contains(&left) || !self.nodes.contains(&right) {
             return false;
         }
-        self.edges.insert(Edge { from, to, kind })
+        let edge = GraphEdge { left: left.clone(), relation, right };
+        if !self.edges.insert(edge.clone()) {
+            return false;
+        }
+        self.outgoing.entry(left).or_default().push(edge);
+        true
     }
 
-    pub fn disconnect(&mut self, from: &CallableId, to: &CallableId, kind: EdgeKind) -> bool {
-        self.edges.remove(&Edge { from: from.clone(), to: to.clone(), kind })
+    pub fn disconnect(&mut self, edge: &GraphEdge) -> bool {
+        if !self.edges.remove(edge) { return false; }
+        if let Some(list) = self.outgoing.get_mut(&edge.left) {
+            list.retain(|candidate| candidate != edge);
+        }
+        true
     }
 
-    pub fn has_direct_edge(&self, from: &CallableId, to: &CallableId, kind: EdgeKind) -> bool {
-        self.edges.contains(&Edge { from: from.clone(), to: to.clone(), kind })
+    pub fn neighbors(&self, left: &CallableId, relation: BitPattern8) -> Vec<&CallableId> {
+        self.outgoing
+            .get(left)
+            .into_iter()
+            .flat_map(|edges| edges.iter())
+            .filter(|edge| edge.relation == relation)
+            .map(|edge| &edge.right)
+            .collect()
     }
 
-    pub fn has_route(&self, from: &CallableId, to: &CallableId, kind: EdgeKind) -> bool {
-        if from == to { return self.nodes.contains_key(from); }
-        if !self.nodes.contains_key(from) || !self.nodes.contains_key(to) { return false; }
+    pub fn has_route(&self, from: &CallableId, to: &CallableId, relation: BitPattern8) -> bool {
+        if from == to { return self.nodes.contains(from); }
+        if !self.nodes.contains(from) || !self.nodes.contains(to) { return false; }
 
         let mut seen = HashSet::new();
         let mut queue = VecDeque::from([from.clone()]);
         seen.insert(from.clone());
 
         while let Some(current) = queue.pop_front() {
-            for edge in self.edges.iter().filter(|e| e.kind == kind && e.from == current) {
-                if &edge.to == to { return true; }
-                if seen.insert(edge.to.clone()) {
-                    queue.push_back(edge.to.clone());
-                }
+            for next in self.neighbors(&current, relation) {
+                if next == to { return true; }
+                if seen.insert(next.clone()) { queue.push_back(next.clone()); }
             }
         }
         false
     }
 
-    pub fn nodes(&self) -> impl Iterator<Item = &CallableNode> { self.nodes.values() }
-    pub fn edges(&self) -> impl Iterator<Item = &Edge> { self.edges.iter() }
+    pub fn nodes(&self) -> impl Iterator<Item = &CallableId> { self.nodes.iter() }
+    pub fn edges(&self) -> impl Iterator<Item = &GraphEdge> { self.edges.iter() }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn id(kernel: WsmKernelKind, local: &str) -> CallableId {
-        CallableId::new(kernel, local)
-    }
+    // Opaque experimental relation identities. Their meanings live in Lisp
+    // experiment data, never in the Rust type system.
+    const RELATION_A: BitPattern8 = BitPattern8(0b1111_0000);
+    const RELATION_B: BitPattern8 = BitPattern8(0b1111_0001);
+
+    fn id(kernel: WsmKernelKind, local: u8) -> CallableId { CallableId::new(kernel, local) }
 
     #[test]
     fn four_islands_resolve_through_one_index_without_one_root() {
         let mut g = CallGraph::new();
-        let lisp = id(WsmKernelKind::Lisp, "eval");
-        let prolog = id(WsmKernelKind::Prolog, "query");
-        let clips = id(WsmKernelKind::Clips, "run");
-        let datalog = id(WsmKernelKind::Datalog, "derive");
-
+        let lisp = id(WsmKernelKind::Lisp, 0b0100_1101);
+        let prolog = id(WsmKernelKind::Prolog, 0);
+        let clips = id(WsmKernelKind::Clips, 0);
+        let datalog = id(WsmKernelKind::Datalog, 0);
         for node in [&lisp, &prolog, &clips, &datalog] {
             assert!(g.register(node.clone()));
             assert!(g.resolve(node).is_some());
@@ -117,43 +124,53 @@ mod tests {
     }
 
     #[test]
-    fn removing_lisp_to_prolog_bridge_does_not_remove_either_callable() {
+    fn graph_uses_opaque_ternary_edges_like_ground_graph_lisp() {
         let mut g = CallGraph::new();
-        let lisp = id(WsmKernelKind::Lisp, "eval");
-        let prolog = id(WsmKernelKind::Prolog, "query");
+        let lisp = id(WsmKernelKind::Lisp, 0b0100_1101);
+        let prolog = id(WsmKernelKind::Prolog, 0);
         g.register(lisp.clone());
         g.register(prolog.clone());
-        assert!(g.connect(lisp.clone(), prolog.clone(), EdgeKind::Bridge));
-        assert!(g.has_direct_edge(&lisp, &prolog, EdgeKind::Bridge));
-        assert!(g.disconnect(&lisp, &prolog, EdgeKind::Bridge));
+        assert!(g.connect(lisp.clone(), RELATION_A, prolog.clone()));
+        assert_eq!(g.neighbors(&lisp, RELATION_A), vec![&prolog]);
+        assert!(g.neighbors(&lisp, RELATION_B).is_empty());
+    }
+
+    #[test]
+    fn removing_relation_evidence_does_not_remove_endpoint_identities() {
+        let mut g = CallGraph::new();
+        let lisp = id(WsmKernelKind::Lisp, 1);
+        let prolog = id(WsmKernelKind::Prolog, 1);
+        g.register(lisp.clone());
+        g.register(prolog.clone());
+        let edge = GraphEdge { left: lisp.clone(), relation: RELATION_A, right: prolog.clone() };
+        assert!(g.connect(edge.left.clone(), edge.relation, edge.right.clone()));
+        assert!(g.disconnect(&edge));
         assert!(g.resolve(&lisp).is_some());
         assert!(g.resolve(&prolog).is_some());
-        assert!(!g.has_route(&lisp, &prolog, EdgeKind::Bridge));
     }
 
     #[test]
-    fn cycles_are_allowed_and_missing_route_stays_missing() {
+    fn identical_local_bit_patterns_in_different_kernels_do_not_collide() {
         let mut g = CallGraph::new();
-        let lisp = id(WsmKernelKind::Lisp, "eval");
-        let prolog = id(WsmKernelKind::Prolog, "query");
-        let datalog = id(WsmKernelKind::Datalog, "derive");
-        for node in [&lisp, &prolog, &datalog] { g.register(node.clone()); }
-
-        g.connect(lisp.clone(), prolog.clone(), EdgeKind::Call);
-        g.connect(prolog.clone(), lisp.clone(), EdgeKind::Call);
-        assert!(g.has_route(&lisp, &prolog, EdgeKind::Call));
-        assert!(g.has_route(&prolog, &lisp, EdgeKind::Call));
-        assert!(!g.has_route(&lisp, &datalog, EdgeKind::Call));
-    }
-
-    #[test]
-    fn identical_local_ids_in_different_kernels_do_not_collide() {
-        let mut g = CallGraph::new();
-        let lisp = id(WsmKernelKind::Lisp, "0104");
-        let prolog = id(WsmKernelKind::Prolog, "0104");
+        let lisp = id(WsmKernelKind::Lisp, 0b0000_0100);
+        let prolog = id(WsmKernelKind::Prolog, 0b0000_0100);
         assert!(g.register(lisp.clone()));
         assert!(g.register(prolog.clone()));
         assert_ne!(lisp, prolog);
         assert_eq!(g.nodes().count(), 2);
+    }
+
+    #[test]
+    fn cycles_and_absent_routes_are_observations_not_errors() {
+        let mut g = CallGraph::new();
+        let lisp = id(WsmKernelKind::Lisp, 1);
+        let prolog = id(WsmKernelKind::Prolog, 1);
+        let datalog = id(WsmKernelKind::Datalog, 1);
+        for node in [&lisp, &prolog, &datalog] { g.register(node.clone()); }
+        g.connect(lisp.clone(), RELATION_A, prolog.clone());
+        g.connect(prolog.clone(), RELATION_A, lisp.clone());
+        assert!(g.has_route(&lisp, &prolog, RELATION_A));
+        assert!(g.has_route(&prolog, &lisp, RELATION_A));
+        assert!(!g.has_route(&lisp, &datalog, RELATION_A));
     }
 }
