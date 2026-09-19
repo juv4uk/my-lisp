@@ -82,7 +82,7 @@
     (cond
       ((atom goal) (quote ()))
       ((not (result-proper-list? goal)) (quote ()))
-      ((not (symbol? (car goal))) (quote ()))
+      ((symbol? (car goal)) (class-membership symbol nonmember) (quote ()))
       ((eq (car goal) (quote not))
        (cond
          ((= (length goal) 2) (result-goal? (second goal)))
@@ -161,7 +161,7 @@
 (def reason-in-observe
   (lambda (module-name goal)
     (cond
-      ((not (symbol? module-name))
+      ((symbol? module-name) (class-membership symbol nonmember)
        (make-invalid (quote invalid-module) module-name))
       ((not (result-goal? goal))
        (make-invalid (quote invalid-goal) goal))
