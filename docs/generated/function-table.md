@@ -8,7 +8,7 @@ Regenerate: `cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function
 
 | ID | uk | ukr | English | Sanskrit | Symbol | Intel Core i5-6400 / Skylake |
 |----|----|-----|---------|----------|--------|------------------------------|
-| `00000001` | як-є | як-є | quote | svarūpa | "'" | () |
+| `00000001` | як-є | як-є | quote | svarūpa | ' | () |
 | `00000010` | атом? | атом? | atom | aṇu | .? | tag-test: TEST/AND/CMP |
 | `00000011` | тотожне? | тотожне? | eq | abheda | =? | CMP/SETE |
 | `00000100` | сполучити | сполучити | cons | saṃyuj | : | allocate+STORE-pair |
@@ -18,7 +18,7 @@ Regenerate: `cargo run -p my-lisp-cli --bin my-lisp -- scripts/generate-function
 | `00001000` | функція | функція | lambda | () | () | () |
 | `00001001` | визначити | визначити | define | () | () | () |
 | `00001010` | визначити-макрос | визначити-макрос | defmacro | () | () | () |
-| `00001011` | () | визначити | def | () | () | () |
+| `00001011` | () | () | def | () | () | () |
 | `00001100` | додати | додати | () | yoga | + | ADD / ADDSD |
 | `00001101` | відняти | відняти | () | viyoga | - | SUB/NEG / SUBSD |
 | `00001110` | помножити | помножити | () | guṇana | * | IMUL / MULSD |

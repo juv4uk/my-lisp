@@ -57,8 +57,8 @@ fn macro_peer_admission_is_recorded_under_identity_00001010_without_binding_the_
         "(en defmacro)",
         "(uk визначити-макрос)",
         "(ukr визначити-макрос)",
-        "(sa — missing)",
-        "(compat defmacro-derived compatibility-only)",
+        "(sa ())",
+        "(sym ())",
     ] {
         assert!(
             row.contains(expected),

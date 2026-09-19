@@ -24,10 +24,8 @@ OUTPUT = ROOT / "lib" / "generated" / "meta-semantic-registry.lisp"
 
 ENTRY = re.compile(r'^\s*\("([01]{8})"\s+(.*)\)\s*$')
 SURFACE = re.compile(
-    r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)"
-    r"(?:\s+(candidate|missing|compatibility-only))?\)"
+    r'\(([A-Za-z][A-Za-z0-9-]*)\s+(\(\)|"(?:\\.|[^"\\])*"|[^\s()]+)\)'
 )
-ADMITTED = {"stable", "compatibility-only"}
 READER_ONLY = {"'"}
 
 
@@ -59,10 +57,11 @@ def admitted_entries() -> list[tuple[str, str, str]]:
             )
 
         for surface in matches:
-            namespace, raw_spelling, exception_status = surface.groups()
+            namespace, raw_spelling = surface.groups()
+            if raw_spelling == "()":
+                continue
             spelling = decode_surface_token(raw_spelling)
-            status = exception_status or "stable"
-            if status not in ADMITTED or spelling == "—" or spelling in READER_ONLY:
+            if spelling == "—" or spelling in READER_ONLY:
                 continue
             if any(ch.isspace() or ch in '();"'
                    for ch in spelling):

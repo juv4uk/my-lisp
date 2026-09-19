@@ -8,7 +8,6 @@ fn readme_explains_the_two_ukrainian_surfaces() {
         "`uk` — коротка, інтуїтивно зрозуміла українська поверхня",
         "`ukr` — повна українська поверхня",
         "docs/generated/function-table.md",
-        "candidate",
     ] {
         assert!(README.contains(required), "README missing Ukrainian surface contract: {required}");
     }
@@ -20,8 +19,6 @@ fn ukrainian_api_distinguishes_surface_names_from_function_meaning() {
         "`uk` — коротке ім'я",
         "`ukr` — повне ім'я",
         "byte SID",
-        "stable",
-        "candidate",
         "generated/function-table.md",
     ] {
         assert!(
@@ -63,7 +60,7 @@ fn documented_ids() -> Vec<String> {
 }
 
 #[test]
-fn every_documented_identity_shows_uk_ukr_status_and_one_behavior_description() {
+fn every_documented_identity_shows_uk_ukr_and_one_behavior_description() {
     let (_, reference_and_tail) = UKRAINIAN_API
         .split_once("## Повний довідник")
         .expect("Ukrainian API must contain the detailed reference section");
@@ -72,7 +69,7 @@ fn every_documented_identity_shows_uk_ukr_status_and_one_behavior_description() 
         .expect("Ukrainian API detailed reference must end before the boundary section");
 
     assert!(
-        reference.contains("| byte SID | `uk` | `ukr` | статус `ukr` | Виклик | Тип | Що робить | Основа |"),
+        reference.contains("| byte SID | `uk` | `ukr` | Виклик | Тип | Що робить | Основа |"),
         "detailed Ukrainian API must expose uk and ukr side by side"
     );
 
@@ -81,12 +78,12 @@ fn every_documented_identity_shows_uk_ukr_status_and_one_behavior_description() 
 
     let rows = reference
         .lines()
-        .filter(|line| line.starts_with("| `") && line.chars().filter(|character| *character == '|').count() == 9)
+        .filter(|line| line.starts_with("| `") && line.chars().filter(|character| *character == '|').count() == 8)
         .collect::<Vec<_>>();
     assert_eq!(
         rows.len(),
         ids.len(),
-        "detailed reference must contain exactly one eight-column row per documented byte SID"
+        "detailed reference must contain exactly one seven-column row per documented byte SID"
     );
 
     for id in ids {
@@ -99,8 +96,8 @@ fn every_documented_identity_shows_uk_ukr_status_and_one_behavior_description() 
     }
 
     for required_row_fragment in [
-        "| `00111100` | `текст-порожній?` | `порожній-текст?` | stable |",
-        "| `01011010` | `монотонний-нс` | `монотонний-час-у-наносекундах` | candidate |",
+        "| `00111100` | `текст-порожній?` | `порожній-текст?` |",
+        "| `01011010` | `монотонний-нс` | `монотонний-час-у-наносекундах` |",
     ] {
         assert!(
             reference.contains(required_row_fragment),

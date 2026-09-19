@@ -382,7 +382,7 @@ fn stable_pairs() -> BTreeSet<(String, String)> {
                 };
                 let parts = tuple.split_whitespace().collect::<Vec<_>>();
                 if let [namespace, name] = parts.as_slice() {
-                    if *namespace == "uk" && *name != "—" {
+                    if *namespace == "uk" && *name != "—" && *name != "()" {
                         return Some((identity.to_string(), name.trim_matches('"').to_string()));
                     }
                 }
@@ -448,11 +448,11 @@ fn vsi_stable_ukrainski_nazvy_maiut_numeric_zapys_u_dovidnyku() -> Result<(), St
             coverage.len()
         ));
     }
-    if coverage_ids != doc_ids {
-        return Err("byte-SID registry і український документаційний індекс розійшлися".to_string());
+    if !doc_ids.is_subset(&coverage_ids) {
+        return Err("український документаційний індекс містить ідентичності без UK-імені в registry".to_string());
     }
-    for (_, uk) in &coverage {
-        if !DOCS_MD.contains(&format!("| `{uk}` |")) {
+    for (id, uk) in &coverage {
+        if doc_ids.contains(id) && !DOCS_MD.contains(&format!("| `{uk}` |")) {
             return Err(format!(
                 "публічне українське ім'я відсутнє у Markdown-довіднику: {uk}"
             ));
@@ -563,10 +563,10 @@ fn smyslovyi_audyt_summary_zbihaietsia_z_faktychnymy_danymy() -> Result<(), Stri
             "(renamed {renamed}) розійшовся з фактичною кількістю (rename ...) рядків: {actual_rename_lines}"
         ));
     }
-    let stable = stable_pairs().len();
-    if reviewed != stable {
+    let documented_count = documented()?.len();
+    if reviewed != documented_count {
         return Err(format!(
-            "smyslovyi audit ({reviewed}) мусить покривати рівно stable UK-покриття реєстру ({stable})"
+            "smyslovyi audit ({reviewed}) мусить покривати рівно documented UK-покриття ({documented_count})"
         ));
     }
     Ok(())
@@ -604,18 +604,7 @@ fn stari_nazvy_smystovoho_audytu_lyshaiutsia_aliasamy_sumisnosti() -> Result<(),
 const UK_ACCEPTANCE: &str = include_str!("../../../lib/surface/uk-acceptance.lisp");
 const RIVNOPRAVNIST_UK: &str = include_str!("../../../tests/fixtures/rivnopravnist-uk.lisp");
 
-#[derive(PartialEq, Eq)]
-enum SurfaceAdmission {
-    Stable,
-    Other,
-}
-
-/// Every byte SID whose EN and UK spellings are both implicitly admitted --
-/// mirrors `uk_surface_equivalence.rs::stable_en_uk_pairs` (crate-integration
-/// test, not reachable from here), kept in sync by hand since this and that
-/// file read the same `semantic-registry.lisp` but serve different purposes
-/// (behavior vs. keyboard-layout lint).
-fn stable_en_uk_names_needing_uk_layout_check() -> Vec<String> {
+fn en_uk_names_needing_uk_layout_check() -> Vec<String> {
     REGISTRY
         .lines()
         .filter_map(|line| {
@@ -636,19 +625,14 @@ fn stable_en_uk_names_needing_uk_layout_check() -> Vec<String> {
                     continue;
                 };
                 let parts = tuple.split_whitespace().collect::<Vec<_>>();
-                let (namespace, name, admission) = match parts.as_slice() {
-                    [namespace, name] => (*namespace, *name, SurfaceAdmission::Stable),
-                    [namespace, name, _exception_status] => {
-                        (*namespace, *name, SurfaceAdmission::Other)
-                    }
+                let (namespace, name) = match parts.as_slice() {
+                    [namespace, name] if *name != "()" => (*namespace, *name),
                     _ => continue,
                 };
-                if admission == SurfaceAdmission::Stable {
-                    match namespace {
-                        "en" => en = Some(name.trim_matches('"').to_string()),
-                        "uk" => uk = Some(name.trim_matches('"').to_string()),
-                        _ => {}
-                    }
+                match namespace {
+                    "en" => en = Some(name.trim_matches('"').to_string()),
+                    "uk" => uk = Some(name.trim_matches('"').to_string()),
+                    _ => {}
                 }
             }
             match (en, uk) {
@@ -665,10 +649,10 @@ fn is_ukrainian_layout_identifier_char(character: char) -> bool {
 }
 
 fn every_stable_ukrainian_name_is_typeable_on_the_ukrainian_layout() -> Result<(), String> {
-    for ukrainian in stable_en_uk_names_needing_uk_layout_check() {
+    for ukrainian in en_uk_names_needing_uk_layout_check() {
         if !ukrainian.chars().all(is_ukrainian_layout_identifier_char) {
             return Err(format!(
-                "stable Ukrainian name needs another keyboard layout: {ukrainian}"
+                "Ukrainian name needs another keyboard layout: {ukrainian}"
             ));
         }
     }

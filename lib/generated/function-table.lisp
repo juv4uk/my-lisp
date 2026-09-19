@@ -3,7 +3,6 @@
 ; Generator: scripts/generate-function-table.lisp (ECO-CANON-1 / my-lisp#75)
 ; Schema ft/2: (sid-bitstring formal uk ukr en sa sym authority)
 ; uk = current Ukrainian; ukr = full Ukrainian peer surface
-; () = no surface for this namespace
 ; Display order for humans: uk → ukr → English → Sanskrit
 ; authority = my-lisp (semantic)
 
@@ -18,7 +17,7 @@
   ("00001000" identity:00001000/surface:lambda (uk функція) (ukr функція) (en lambda) (sa ()) (sym ()) my-lisp)
   ("00001001" identity:00001001/surface:define (uk визначити) (ukr визначити) (en define) (sa ()) (sym ()) my-lisp)
   ("00001010" identity:00001010/surface:defmacro (uk визначити-макрос) (ukr визначити-макрос) (en defmacro) (sa ()) (sym ()) my-lisp)
-  ("00001011" identity:00001011/surface:def (uk ()) (ukr визначити) (en def) (sa ()) (sym ()) my-lisp)
+  ("00001011" identity:00001011/surface:def (uk ()) (ukr ()) (en def) (sa ()) (sym ()) my-lisp)
   ("00001100" identity:00001100/surface:додати (uk додати) (ukr додати) (en ()) (sa yoga) (sym +) my-lisp)
   ("00001101" identity:00001101/surface:відняти (uk відняти) (ukr відняти) (en ()) (sa viyoga) (sym -) my-lisp)
   ("00001110" identity:00001110/surface:помножити (uk помножити) (ukr помножити) (en ()) (sa guṇana) (sym *) my-lisp)

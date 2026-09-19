@@ -16,10 +16,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = REPO_ROOT / "lib" / "surface" / "semantic-registry.lisp"
 ENTRY = re.compile(r'^\s*\("([01]{8})"\s+(.*)\)\s*$')
-SURFACE = re.compile(
-    r"\(([A-Za-z][A-Za-z0-9-]*)\s+([^\s()]+)"
-    r"(?:\s+(candidate|missing|compatibility-only))?\)"
-)
+SURFACE = re.compile(r"\(([A-Za-z][A-Za-z0-9-]*)\s+(\(\)|[^\s()]+)\)")
 NON_HUMAN = {"sym", "compat"}
 
 
@@ -29,7 +26,7 @@ def decode_surface_token(token: str) -> str:
     return token
 
 
-def registry_rows() -> list[dict[str, tuple[str, str]]]:
+def registry_rows() -> list[dict[str, str]]:
     rows = []
     for line_number, line in enumerate(
         REGISTRY.read_text(encoding="utf-8").splitlines(), 1
@@ -48,15 +45,16 @@ def registry_rows() -> list[dict[str, tuple[str, str]]]:
                 f"line {line_number}: malformed sr/2 row for SID {identity}"
             )
 
-        surfaces: dict[str, tuple[str, str]] = {}
+        surfaces: dict[str, str] = {}
         for surface in matches:
-            language, raw_name, exception_status = surface.groups()
+            language, raw_name = surface.groups()
             name = decode_surface_token(raw_name)
             if language in surfaces:
                 raise ValueError(
                     f"line {line_number}: duplicate {language} surface for {identity}"
                 )
-            surfaces[language] = (name, exception_status or "stable")
+            if name not in ("()", "—"):
+                surfaces[language] = name
         rows.append(surfaces)
 
     if not rows:
@@ -64,7 +62,7 @@ def registry_rows() -> list[dict[str, tuple[str, str]]]:
     return rows
 
 
-def human_languages(rows: list[dict[str, tuple[str, str]]]) -> set[str]:
+def human_languages(rows: list[dict[str, str]]) -> set[str]:
     return {
         language
         for row in rows
@@ -76,18 +74,9 @@ def human_languages(rows: list[dict[str, tuple[str, str]]]) -> set[str]:
 def translation_map(source_language: str, target_language: str) -> dict[str, str]:
     translations: dict[str, str] = {}
     for row in registry_rows():
-        source = row.get(source_language)
-        target = row.get(target_language)
-        if source is None or target is None:
-            continue
-        source_name, source_status = source
-        target_name, target_status = target
-        if (
-            source_name == "—"
-            or target_name == "—"
-            or source_status in {"missing", "compatibility-only"}
-            or target_status in {"missing", "compatibility-only"}
-        ):
+        source_name = row.get(source_language)
+        target_name = row.get(target_language)
+        if source_name is None or target_name is None:
             continue
         previous = translations.get(source_name)
         if previous is not None and previous != target_name:
