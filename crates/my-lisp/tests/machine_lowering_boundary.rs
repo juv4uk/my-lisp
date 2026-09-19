@@ -22,7 +22,7 @@ fn load_lisp_file(path: &str, session: &mut Session) {
 fn portable_monotonic_time_keeps_language_semantic_identity() {
     let row = REGISTRY
         .lines()
-        .find(|line| line.trim_start().starts_with("(\\\"01011010\\\" "))
+        .find(|line| line.trim_start().starts_with("(\"01011010\" "))
         .expect("byte SID 01011010 must remain the portable monotonic observation");
 
     assert!(
@@ -215,7 +215,7 @@ fn semantic_sid_00001100_lowers_through_structured_forms_without_legacy_byte_wra
     assert!(
         REGISTRY
             .lines()
-            .any(|line| line.trim_start().starts_with("(\\\"00001100\\\" ")),
+            .any(|line| line.trim_start().starts_with("(\"00001100\" ")),
         "semantic SID 00001100 must already exist before target lowering"
     );
 

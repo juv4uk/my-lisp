@@ -114,7 +114,7 @@ fn full_ukr_names_preserve_action_protocol_and_representation_semantics() {
     ];
 
     for (semantic_id, expected_surface) in expected {
-        let prefix = format!("(\\\"{semantic_id}\\\" ");
+        let prefix = format!("(\"{semantic_id}\" ");
         let row = source
             .lines()
             .map(str::trim_start)
@@ -148,7 +148,7 @@ fn generated_function_table_uses_uk_then_ukr_without_duplicate_full_uk_column() 
     let table = include_str!("../../../lib/generated/function-table.lisp");
     let row = table
         .lines()
-        .find(|line| line.trim_start().starts_with("(\\\"00111100\\\" "))
+        .find(|line| line.trim_start().starts_with("(\"00111100\" "))
         .expect("generated function table must contain byte SID 00111100");
 
     let uk = row

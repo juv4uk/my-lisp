@@ -47,28 +47,28 @@ fn default_session_binds_all_defmacro_peers_to_one_value() {
 }
 
 #[test]
-fn macro_peer_admission_is_recorded_under_identity_0012_without_binding_the_machine_id() {
+fn macro_peer_admission_is_recorded_under_identity_00001010_without_binding_the_machine_id() {
     let row = REGISTRY
         .lines()
-        .find(|line| line.trim_start().starts_with("(0012 "))
-        .expect("semantic identity 0012 must remain present");
+        .find(|line| line.trim_start().starts_with("(\"00001010\" "))
+        .expect("semantic identity 00001010 must remain present");
 
     for expected in [
-        "(en defmacro stable)",
-        "(uk визначити-макрос stable)",
-        "(ukr визначити-макрос stable)",
+        "(en defmacro)",
+        "(uk визначити-макрос)",
+        "(ukr визначити-макрос)",
         "(sa — missing)",
         "(compat defmacro-derived compatibility-only)",
     ] {
         assert!(
             row.contains(expected),
-            "identity 0012 must preserve peer admission component {expected}: {row}"
+            "identity 00001010 must preserve peer admission component {expected}: {row}"
         );
     }
 
     let session = Session::default();
     assert!(
-        session.environment.get("0012").is_none(),
+        session.environment.get("00001010").is_none(),
         "opaque semantic IDs must never become ordinary lexical bindings"
     );
 }
