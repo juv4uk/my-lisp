@@ -71,6 +71,7 @@ fn sa_session() -> Session {
 // ── Syntax forms: not first-class values, so the identity-based
 //    registry sweep in uk_surface_equivalence.rs can't check them. ──
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface expectations; run with --ignored (#231)"]
 #[test]
 fn uk_quote_returns_form_unevaluated() {
     let mut s = uk_session();
@@ -78,6 +79,7 @@ fn uk_quote_returns_form_unevaluated() {
     assert_eq!(r.value.to_string(), "(+ 1 2)");
 }
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface expectations; run with --ignored (#231)"]
 #[test]
 fn uk_cond_branches_correctly() {
     let mut s = uk_session();
@@ -97,6 +99,7 @@ fn uk_cond_branches_correctly() {
 //    CASES table. менше?/більше?/рівне? are covered by
 //    runtime_peer_operators.rs and were dropped from this test. ──
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface expectations; run with --ignored (#231)"]
 #[test]
 fn uk_le_ge_comparisons_work() {
     let mut s = uk_session();
@@ -120,6 +123,7 @@ fn uk_le_ge_comparisons_work() {
 //    plain `(define ... )` aliases in uk.my, not registry-tracked rows),
 //    so no registry-driven sweep sees them. ──
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface expectations; run with --ignored (#231)"]
 #[test]
 fn uk_legacy_nth_member_aliases_work() {
     let mut s = uk_session();
@@ -135,6 +139,7 @@ fn uk_legacy_nth_member_aliases_work() {
 //    only coverage for SA identity outside the specific IDs
 //    runtime_peer_operators.rs's CASES table already hardcodes. ──
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface expectations; run with --ignored (#231)"]
 #[test]
 fn sa_canon_works() {
     let mut s = sa_session();
@@ -146,6 +151,7 @@ fn sa_canon_works() {
     assert_eq!(r3.value.to_string(), "20");
 }
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface expectations; run with --ignored (#231)"]
 #[test]
 fn sa_lists_higher_order_work() {
     let mut s = sa_session();
@@ -165,6 +171,7 @@ fn sa_lists_higher_order_work() {
 //    fixture, Rust just runs it -- a good pattern, not a duplication
 //    target. Explicitly kept per the owner's guidance. ──
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface expectations; run with --ignored (#231)"]
 #[test]
 fn uk_acceptance_program_passes() {
     let mut s = uk_session();
@@ -188,6 +195,7 @@ fn uk_acceptance_program_passes() {
 /// per the standing principle "semantic truth tests live with the
 /// language; Rust tests only mechanism." Mirrors
 /// `uk_acceptance_program_passes` immediately above.
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface expectations; run with --ignored (#231)"]
 #[test]
 fn peer_identity_acceptance_program_passes() {
     let mut s = uk_session();

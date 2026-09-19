@@ -23,6 +23,7 @@ fn eval_translation(source: &str) -> String {
         .to_string()
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn accepted_translation_review_is_pure_and_only_exposes_an_admission_payload() {
     let source = r#"
@@ -45,6 +46,7 @@ fn accepted_translation_review_is_pure_and_only_exposes_an_admission_payload() {
     );
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn accepted_candidate_becomes_knowledge_only_after_explicit_advise() {
     let source = r#"
@@ -64,6 +66,7 @@ fn accepted_candidate_becomes_knowledge_only_after_explicit_advise() {
     assert_eq!(eval_translation(source), "(() accepted proved)");
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn ambiguous_translation_is_evidence_not_knowledge() {
     let source = r#"
@@ -88,6 +91,7 @@ fn ambiguous_translation_is_evidence_not_knowledge() {
     );
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn malformed_semantic_candidate_is_rejected_and_cannot_reach_advice() {
     let source = r#"
@@ -111,6 +115,7 @@ fn malformed_semantic_candidate_is_rejected_and_cannot_reach_advice() {
     );
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn translator_refusal_is_recordable_evidence_and_never_knowledge() {
     let source = r#"
@@ -134,6 +139,7 @@ fn translator_refusal_is_recordable_evidence_and_never_knowledge() {
     );
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn existing_explicit_opposite_overrules_an_external_candidate() {
     let source = r#"
@@ -156,6 +162,7 @@ fn existing_explicit_opposite_overrules_an_external_candidate() {
     );
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn accepted_query_is_a_question_not_a_knowledge_write() {
     let source = r#"
@@ -176,6 +183,7 @@ fn accepted_query_is_a_question_not_a_knowledge_write() {
     assert_eq!(eval_translation(source), "(accepted query () t unknown)");
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn one_alternative_is_not_allowed_to_masquerade_as_ambiguity() {
     let source = r#"
@@ -195,6 +203,7 @@ fn one_alternative_is_not_allowed_to_masquerade_as_ambiguity() {
     );
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn malformed_protocol_envelope_is_named_before_semantic_admission() {
     let source = r#"
@@ -209,6 +218,7 @@ fn malformed_protocol_envelope_is_named_before_semantic_admission() {
     assert_eq!(eval_translation(source), "(rejected invalid-translation)");
 }
 
+#[ignore = "legacy-transition: translation boundary expectations; run with --ignored (#231)"]
 #[test]
 fn versioned_translation_corpus_is_data_only_and_contains_all_b4_modes() {
     let corpus = include_str!("../../../tests/fixtures/translation-corpus-v1.lisp");

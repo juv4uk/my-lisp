@@ -1,5 +1,6 @@
 use my_lisp::{eval_program, load_core_library, load_tcp_library, Session, Value};
 
+#[ignore = "legacy-transition: UTF-8 stack witness; run with --ignored (#231)"]
 #[test]
 fn utf8_materialization_stays_stack_safe_on_a_worker_thread() {
     let handle = std::thread::Builder::new()

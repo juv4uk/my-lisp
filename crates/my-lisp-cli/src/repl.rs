@@ -361,7 +361,8 @@ mod tests {
             .to_string()
     }
 
-    #[test]
+    #[ignore = "legacy-transition: REPL surface expectations; run with --ignored (#231)"]
+#[test]
     fn ukrainian_surface_adds_derived_vocabulary_but_not_canon_bindings() {
         let mut state = core_state();
         assert!(state.session.environment.get("атом?").is_none());
@@ -433,7 +434,8 @@ mod tests {
         assert!(status.contains("release parity: OPEN"));
     }
 
-    #[test]
+    #[ignore = "legacy-transition: REPL surface expectations; run with --ignored (#231)"]
+#[test]
     fn raw_environment_distinguishes_bootstrap_bindings_from_canon_resolution() {
         let mut state = core_state();
         state.switch_surface(ReplSurface::Ukrainian).expect("uk");

@@ -27,6 +27,7 @@ fn eval_native(program_source: &str, probe_source: &str) -> String {
         .to_string()
 }
 
+#[ignore = "legacy-transition: meta-eval mutual recursion expectations; run with --ignored (#231)"]
 #[test]
 fn consecutive_top_level_functions_can_refer_to_each_other_in_main_meta_eval() {
     let program = r#"
@@ -64,6 +65,7 @@ fn consecutive_top_level_functions_can_refer_to_each_other_in_main_meta_eval() {
     }
 }
 
+#[ignore = "legacy-transition: meta-eval mutual recursion expectations; run with --ignored (#231)"]
 #[test]
 fn three_member_recursive_group_is_finite_lisp_data_in_main_meta_eval() {
     let program = r#"

@@ -31,6 +31,7 @@ fn eval_import(source: &str) -> String {
         .to_string()
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_deffacts_becomes_zero_condition_clauses() {
     // A real CLIPS `deffacts` block, read as data rather than evaluated.
@@ -43,6 +44,7 @@ fn clips_deffacts_becomes_zero_condition_clauses() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_import_skips_unsupported_forms_without_erroring() {
     // deffunction isn't supported (no step covers it) — a mixed file
@@ -56,6 +58,7 @@ fn clips_import_skips_unsupported_forms_without_erroring() {
     assert_eq!(eval_import(source), "(((planet earth)))");
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_converts_question_mark_variables_to_var_terms() {
     let source = r#"
@@ -67,6 +70,7 @@ fn clips_defrule_converts_question_mark_variables_to_var_terms() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_leaves_non_variable_arguments_untouched() {
     // A CLIPS fact argument can be a plain symbol or a number, not just a
@@ -77,6 +81,7 @@ fn clips_defrule_leaves_non_variable_arguments_untouched() {
     assert_eq!(eval_import(source), "(((alert critical) (temperature 98)))");
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_with_multiple_conditions_converts_all_of_them() {
     let source = r#"
@@ -90,6 +95,7 @@ fn clips_defrule_with_multiple_conditions_converts_all_of_them() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_with_no_asserts_imports_as_no_clauses() {
     let source = r#"
@@ -98,6 +104,7 @@ fn clips_defrule_with_no_asserts_imports_as_no_clauses() {
     assert_eq!(eval_import(source), "()");
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_strips_a_docstring_before_its_conditions() {
     // Regression: an empty docstring "" right after the rule name used to
@@ -113,6 +120,7 @@ fn clips_defrule_strips_a_docstring_before_its_conditions() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_strips_a_declare_salience_before_its_conditions() {
     let source = r#"
@@ -125,6 +133,7 @@ fn clips_defrule_strips_a_declare_salience_before_its_conditions() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_strips_both_docstring_and_declare_together() {
     let source = r#"
@@ -137,6 +146,7 @@ fn clips_defrule_strips_both_docstring_and_declare_together() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_with_a_multi_fact_assert_produces_one_clause_per_fact() {
     // Real CLIPS assert can take multiple facts in one call:
@@ -151,6 +161,7 @@ fn clips_defrule_with_a_multi_fact_assert_produces_one_clause_per_fact() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_with_multiple_asserts_produces_one_clause_per_assert() {
     // N assertions sharing one LHS become N clauses, each with the same
@@ -165,6 +176,7 @@ fn clips_defrule_with_multiple_asserts_produces_one_clause_per_assert() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_import_mixes_deffacts_and_defrule_into_one_usable_module() {
     let source = r#"
@@ -178,6 +190,7 @@ fn clips_import_mixes_deffacts_and_defrule_into_one_usable_module() {
     assert_eq!(eval_import(source), "((has-mass earth) (planet earth))");
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_with_a_not_condition_imports_and_runs_correctly() {
     // Was skipped entirely as of clips-import.my Step 5, back when
@@ -200,6 +213,7 @@ fn clips_defrule_with_a_not_condition_imports_and_runs_correctly() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_with_printout_alongside_assert_still_imports_the_assert() {
     // Regression: a rule mixing printout (debug output) with assert used
@@ -215,6 +229,7 @@ fn clips_defrule_with_printout_alongside_assert_still_imports_the_assert() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_with_retract_still_imports_as_no_clauses() {
     // retract refers to a fact by CLIPS fact-address, a concept this
@@ -226,6 +241,7 @@ fn clips_defrule_with_retract_still_imports_as_no_clauses() {
     assert_eq!(eval_import(source), "()");
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_deftemplate_converts_named_slots_to_positional_order() {
     let source = r#"
@@ -237,6 +253,7 @@ fn clips_deftemplate_converts_named_slots_to_positional_order() {
     assert_eq!(eval_import(source), "(((reading probe1 98)))");
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_deftemplate_slot_order_holds_regardless_of_slot_order_in_the_fact() {
     let source = r#"
@@ -248,6 +265,7 @@ fn clips_deftemplate_slot_order_holds_regardless_of_slot_order_in_the_fact() {
     assert_eq!(eval_import(source), "(((reading probe1 98)))");
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_deftemplate_applies_inside_defrule_conditions_and_conclusions() {
     let source = r#"
@@ -264,6 +282,7 @@ fn clips_deftemplate_applies_inside_defrule_conditions_and_conclusions() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_deftemplate_works_end_to_end_through_forward_in() {
     let source = r#"
@@ -278,6 +297,7 @@ fn clips_deftemplate_works_end_to_end_through_forward_in() {
     assert_eq!(eval_import(source), "((alert probe1) (reading probe1 98))");
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_deftemplate_converts_facts_nested_inside_or() {
     // Regression: clips-convert-template used to recurse through a `not`
@@ -300,6 +320,7 @@ fn clips_deftemplate_converts_facts_nested_inside_or() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_import_result_feeds_straight_into_defmodule() {
     // The whole point: no hand-editing step between import and use.
@@ -314,6 +335,7 @@ fn clips_import_result_feeds_straight_into_defmodule() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_deftemplate_name_is_matched_regardless_of_a_defmodule_qualifier() {
     // Regression: real CLIPS files namespace deftemplate names with a
@@ -332,6 +354,7 @@ fn clips_deftemplate_name_is_matched_regardless_of_a_defmodule_qualifier() {
     assert_eq!(eval_import(source), "(((question color \"what color?\")))");
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_condition_slot_with_no_value_does_not_crash_the_importer() {
     // Regression: a CLIPS condition can name a multislot with no value at
@@ -352,6 +375,7 @@ fn clips_condition_slot_with_no_value_does_not_crash_the_importer() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_import_stays_stack_safe_on_a_deffacts_block_with_many_facts() {
     // Regression: clips-facts->clauses/clips-import-forms used to build
@@ -377,6 +401,7 @@ fn clips_import_stays_stack_safe_on_a_deffacts_block_with_many_facts() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_with_an_exists_condition_imports_and_converts_its_template() {
     // Once lib/forward.my Step 15 gave `exists`/`forall` real dispatcher
@@ -400,6 +425,7 @@ fn clips_defrule_with_an_exists_condition_imports_and_converts_its_template() {
     );
 }
 
+#[ignore = "legacy-transition: CLIPS import path superseded by native CLIPS island #714; run with --ignored in nightly (#231)"]
 #[test]
 fn clips_defrule_with_a_forall_condition_imports_correctly() {
     let source = r#"

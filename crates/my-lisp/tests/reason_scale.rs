@@ -67,6 +67,7 @@ fn profile_sizes(sizes: &[usize]) {
     println!("\n{table}");
 }
 
+#[ignore = "legacy-transition: reason scale witness; run with --ignored (#231)"]
 #[test]
 fn reason_scale_profile_default_stack_100_500_1000() {
     // Regression against the historical stack failure: no custom stack is
@@ -75,6 +76,7 @@ fn reason_scale_profile_default_stack_100_500_1000() {
     profile_sizes(&[100, 500, 1000]);
 }
 
+#[ignore = "legacy-transition: reason scale witness; run with --ignored (#231)"]
 #[test]
 #[ignore = "manual extended profile before further indexing/representation changes"]
 fn reason_scale_profile_extended_5000_10000() {

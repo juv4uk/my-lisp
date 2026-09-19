@@ -2,6 +2,7 @@ use my_lisp::{eval_program, load_core_library, Session};
 
 const UKR_ACCEPTANCE: &str = include_str!("../../../lib/surface/ukr-acceptance.lisp");
 
+#[ignore = "legacy-transition: Ukrainian acceptance expectations; run with --ignored (#231)"]
 #[test]
 fn ukr_acceptance_program_needs_no_latin_keyboard_layout() {
     assert!(
@@ -12,6 +13,7 @@ fn ukr_acceptance_program_needs_no_latin_keyboard_layout() {
     );
 }
 
+#[ignore = "legacy-transition: Ukrainian acceptance expectations; run with --ignored (#231)"]
 #[test]
 fn ukr_acceptance_program_executes_through_real_runtime() {
     let mut session = Session::default();
@@ -21,6 +23,7 @@ fn ukr_acceptance_program_executes_through_real_runtime() {
     assert_eq!(result.value.to_string(), "успіх");
 }
 
+#[ignore = "legacy-transition: Ukrainian acceptance expectations; run with --ignored (#231)"]
 #[test]
 fn shadowing_ukr_peer_does_not_retarget_english_peer() {
     let mut session = Session::default();

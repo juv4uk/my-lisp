@@ -80,6 +80,7 @@ const FIRST_TOOL_RESULT: &str = r#"
 /// `run-agent` invocation the loop would already have completed on the
 /// intermediate (claim-free) reply; the guarantee matters when message
 /// histories are reused across invocations.
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn stale_tool_evidence_cannot_back_a_later_claim() {
     let source = r#"
@@ -118,6 +119,7 @@ fn stale_tool_evidence_cannot_back_a_later_claim() {
 }
 
 /// Test 1: a pure question finishes without any tool.
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn pure_question_finishes_without_a_tool() {
     let source = format!(
@@ -142,6 +144,7 @@ fn pure_question_finishes_without_a_tool() {
 /// `completed` -- it always carries `(epistemic-status . hypothesis)`,
 /// so nothing downstream can mistake the LLM's own text for something
 /// reason.my has proved, by the return shape alone.
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn completed_result_is_always_tagged_as_an_unproven_hypothesis() {
     let source = format!(
@@ -161,6 +164,7 @@ fn completed_result_is_always_tagged_as_an_unproven_hypothesis() {
 }
 
 /// Test 2: a filesystem question goes through the REAL bash process.
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn filesystem_question_invokes_real_bash() {
     let marker = "yantra-real-bash-marker";
@@ -191,6 +195,7 @@ fn filesystem_question_invokes_real_bash() {
 /// Test 3: "run pwd" answered with only a textual claim can NEVER finish.
 /// The validator rejects every turn; the loop runs to MAX_TURNS with no
 /// completion and no fabricated tool result.
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn textual_claim_without_tool_result_cannot_finish() {
     let source = format!(
@@ -214,6 +219,7 @@ fn textual_claim_without_tool_result_cannot_finish() {
 
 /// Test 4: tool results are correlated by tool_call_id, copied from the
 /// executed call object by construction.
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn tool_result_correlated_by_tool_call_id() {
     let source = format!(
@@ -239,6 +245,7 @@ fn tool_result_correlated_by_tool_call_id() {
 
 /// Test 5: the hard MAX_TURNS limit stops an endlessly tool-calling model
 /// after exactly max-turns turns.
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn hard_max_turns_limit_stops_endless_tool_calls() {
     let source = format!(
@@ -260,6 +267,7 @@ fn hard_max_turns_limit_stops_endless_tool_calls() {
 
 /// Bonus coverage: the wire path the live Ollama wiring uses — request-body
 /// JSON encoding (.my) round-trips through json-parse (the host primitive).
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn json_encode_and_parse_round_trip() {
     let source = r#"
@@ -284,6 +292,7 @@ fn json_encode_and_parse_round_trip() {
 // (exit-code stdout stderr) triple, and ollama-complete turns non-zero
 // exits into a BLOCKED result carrying the evidence — never an empty
 // body fed to json-parse.
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn http_transport_success_passes_body_through() {
     // Real curl against the real oracle's HTTP surface is out of scope
@@ -300,6 +309,7 @@ fn http_transport_success_passes_body_through() {
     );
 }
 
+#[ignore = "legacy-transition: Yantra expectations; run with --ignored (#231)"]
 #[test]
 fn transport_failure_becomes_blocked_result_with_evidence() {
     // curl to a port nothing listens on: fast refusal, exit != 0.

@@ -15,6 +15,7 @@ fn load_surface_prerequisites(session: &mut Session) {
     }
 }
 
+#[ignore = "legacy-transition: Ukrainian surface expectations; run with --ignored (#231)"]
 #[test]
 fn ukrainian_surface_defines_functions_without_rust_knowing_ukrainian_form_names() {
     let mut session = Session::default();
@@ -37,6 +38,7 @@ fn ukrainian_surface_defines_functions_without_rust_knowing_ukrainian_form_names
     assert_eq!(result.value.to_string(), "49");
 }
 
+#[ignore = "legacy-transition: Ukrainian surface expectations; run with --ignored (#231)"]
 #[test]
 fn canonical_ukrainian_syntax_and_batch_one_aliases_preserve_results() {
     let mut session = Session::default();
@@ -64,6 +66,7 @@ fn canonical_ukrainian_syntax_and_batch_one_aliases_preserve_results() {
     assert_eq!(aliases.value.to_string(), "(5 t t t 7)");
 }
 
+#[ignore = "legacy-transition: Ukrainian surface expectations; run with --ignored (#231)"]
 #[test]
 fn historical_def_remains_compatible_but_is_not_the_canonical_form_identity() {
     let mut session = Session::default();

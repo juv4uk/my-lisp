@@ -32,6 +32,8 @@ jobs:
         run: cargo test --workspace
       - name: Full workspace build
         run: cargo build --workspace
+      - name: Legacy-transition tests
+        run: cargo test --workspace -- --ignored
       - name: Governance and policy checks
         run: cargo run -p xtask -- verify
       - name: Ukrainian full-word source profile

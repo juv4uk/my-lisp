@@ -60,12 +60,14 @@ fn core_definition_names() -> BTreeSet<String> {
         .collect()
 }
 
+#[ignore = "legacy-transition: Ukrainian surface inventory expectations; run with --ignored (#231)"]
 #[test]
 fn inventory_is_valid_my_lisp_data() {
     let forms = parse(INVENTORY).expect("Ukrainian surface inventory must parse");
     assert_eq!(forms.len(), 1);
 }
 
+#[ignore = "legacy-transition: Ukrainian surface inventory expectations; run with --ignored (#231)"]
 #[test]
 fn every_discoverable_runtime_item_is_classified() {
     let root_builtins = names_after(INVENTORY, "(root-builtins");
@@ -109,6 +111,7 @@ fn every_discoverable_runtime_item_is_classified() {
     );
 }
 
+#[ignore = "legacy-transition: Ukrainian surface inventory expectations; run with --ignored (#231)"]
 #[test]
 fn every_core_definition_is_public_or_explicitly_internal() {
     let public = names_after(INVENTORY, "(core-library");
@@ -121,6 +124,7 @@ fn every_core_definition_is_public_or_explicitly_internal() {
     assert!(public.is_disjoint(&internal));
 }
 
+#[ignore = "legacy-transition: Ukrainian surface inventory expectations; run with --ignored (#231)"]
 #[test]
 fn every_question_mark_public_name_is_classified_as_a_predicate() {
     let predicates = names_after(INVENTORY, "(public-predicates");
@@ -134,6 +138,7 @@ fn every_question_mark_public_name_is_classified_as_a_predicate() {
     }
 }
 
+#[ignore = "legacy-transition: Ukrainian surface inventory expectations; run with --ignored (#231)"]
 #[test]
 fn symbolic_sugar_is_an_explicit_subset_of_the_public_surface() {
     let marker = INVENTORY

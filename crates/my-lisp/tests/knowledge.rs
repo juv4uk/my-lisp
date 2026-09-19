@@ -38,6 +38,7 @@ fn eval_knowledge(source: &str) -> String {
     }
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_defmodule_and_reason_in() {
     let source = r#"
@@ -49,6 +50,7 @@ fn test_defmodule_and_reason_in() {
     assert_eq!(eval_knowledge(source), "((x . bob))");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_defmodule_and_reason_in_physics() {
     let source = r#"
@@ -60,6 +62,7 @@ fn test_defmodule_and_reason_in_physics() {
     assert_eq!(eval_knowledge(source), "((x . apple))");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_reason_in_unknown_module() {
     let source = r#"
@@ -68,6 +71,7 @@ fn test_reason_in_unknown_module() {
     assert_eq!(eval_knowledge(source), "Module-not-found");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_forward_in_materializes_every_derivable_fact_in_a_module() {
     let source = r#"
@@ -85,6 +89,7 @@ fn test_forward_in_materializes_every_derivable_fact_in_a_module() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_forward_in_materializes_every_derivable_fact_in_astronomy() {
     let source = r#"
@@ -97,6 +102,7 @@ fn test_forward_in_materializes_every_derivable_fact_in_astronomy() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_forward_in_unknown_module() {
     let source = r#"
@@ -105,6 +111,7 @@ fn test_forward_in_unknown_module() {
     assert_eq!(eval_knowledge(source), "Module-not-found");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_forward_in_chains_a_recursive_rule_through_its_own_prior_output() {
     let source = r#"
@@ -119,6 +126,7 @@ fn test_forward_in_chains_a_recursive_rule_through_its_own_prior_output() {
     assert_ne!(eval_knowledge(source), "()");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_family_module() {
     let source = r#"
@@ -133,6 +141,7 @@ fn test_family_module() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_forward_in_chains_multiple_rules_in_physics() {
     let source = r#"
@@ -145,6 +154,7 @@ fn test_forward_in_chains_multiple_rules_in_physics() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_astronomy_module() {
     let source = r#"
@@ -159,6 +169,7 @@ fn test_astronomy_module() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_describe_collects_every_fact_about_a_symbol_astronomy() {
     let source = r#"
@@ -170,6 +181,7 @@ fn test_describe_collects_every_fact_about_a_symbol_astronomy() {
     assert_eq!(eval_knowledge(source), "((planet earth))");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_describe_symbol_with_no_facts_astronomy() {
     let source = r#"
@@ -179,6 +191,7 @@ fn test_describe_symbol_with_no_facts_astronomy() {
     assert_eq!(eval_knowledge(source), "()");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_describe_collects_every_fact_about_a_symbol() {
     let source = r#"
@@ -191,6 +204,7 @@ fn test_describe_collects_every_fact_about_a_symbol() {
     assert_eq!(eval_knowledge(source), "((parent pat jim))");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_describe_unknown_module() {
     let source = r#"
@@ -199,6 +213,7 @@ fn test_describe_unknown_module() {
     assert_eq!(eval_knowledge(source), "Module-not-found");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_describe_symbol_with_no_facts() {
     let source = r#"
@@ -208,6 +223,7 @@ fn test_describe_symbol_with_no_facts() {
     assert_eq!(eval_knowledge(source), "()");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_record_usage_accumulates_across_separate_queries() {
     // `record-usage!` must run directly at the top level (the global frame),
@@ -235,6 +251,7 @@ fn test_record_usage_accumulates_across_separate_queries() {
     assert_eq!(eval_knowledge(source), "2");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_record_usage_accumulates_across_separate_queries_astronomy() {
     let source = r#"
@@ -251,6 +268,7 @@ fn test_record_usage_accumulates_across_separate_queries_astronomy() {
     assert_eq!(eval_knowledge(source), "2");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn test_usage_of_unrecorded_rule_is_zero() {
     let source = r#"
@@ -265,6 +283,7 @@ fn test_usage_of_unrecorded_rule_is_zero() {
 // a flat, ever-growing list of `tell`/`retract` events, and a module's
 // clause list is a projection folded over it on demand.
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn retract_knowledge_removes_a_fact_the_module_can_no_longer_prove() {
     let source = r#"
@@ -275,6 +294,7 @@ fn retract_knowledge_removes_a_fact_the_module_can_no_longer_prove() {
     assert_eq!(eval_knowledge(source), "()");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn retract_knowledge_leaves_the_rest_of_the_module_intact() {
     let source = r#"
@@ -285,6 +305,7 @@ fn retract_knowledge_leaves_the_rest_of_the_module_intact() {
     assert_eq!(eval_knowledge(source), "()");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn a_module_retracted_down_to_nothing_is_still_a_known_module() {
     // This is exactly the distinction `module-known?` exists to preserve:
@@ -308,6 +329,7 @@ fn a_module_retracted_down_to_nothing_is_still_a_known_module() {
     assert_eq!(eval_knowledge(describe_source), "()");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn defmodule_called_twice_for_the_same_name_accumulates_instead_of_replacing() {
     // A deliberate behavior change from the old snapshot model, where a
@@ -323,6 +345,7 @@ fn defmodule_called_twice_for_the_same_name_accumulates_instead_of_replacing() {
     assert_eq!(eval_knowledge(source), "(() ())");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn tell_knowledge_and_defmodule_contributions_to_the_same_module_both_survive() {
     let source = r#"
@@ -342,6 +365,7 @@ fn tell_knowledge_and_defmodule_contributions_to_the_same_module_both_survive() 
 // Akzeptierte Eingabe ändert das Journal; abgelehnte und widersprüchliche
 // Eingabe nicht. Das Fehlen eines Fakts gilt nie als explizite Verneinung.
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_accepts_a_valid_fact_and_makes_it_queryable() {
     let source = r#"
@@ -355,6 +379,7 @@ fn advise_accepts_a_valid_fact_and_makes_it_queryable() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_accepts_a_valid_rule_and_reason_uses_it() {
     let source = r#"
@@ -365,6 +390,7 @@ fn advise_accepts_a_valid_rule_and_reason_uses_it() {
     assert_eq!(eval_knowledge(source), "(((x . 0) . earth))");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_rejects_malformed_clause_without_creating_a_module() {
     let source = r#"
@@ -378,6 +404,7 @@ fn advise_rejects_malformed_clause_without_creating_a_module() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_rejects_a_malformed_logic_variable() {
     assert_eq!(
@@ -386,6 +413,7 @@ fn advise_rejects_a_malformed_logic_variable() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_reports_an_explicit_conflict_without_recording_it() {
     let source = r#"
@@ -398,6 +426,7 @@ fn advise_reports_an_explicit_conflict_without_recording_it() {
     assert_eq!(eval_knowledge(source), "(conflict (not (planet pluto)) ())");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_does_not_confuse_absence_with_explicit_negation() {
     assert_eq!(
@@ -406,6 +435,7 @@ fn advise_does_not_confuse_absence_with_explicit_negation() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_all_accepts_a_batch_atomically_and_rules_use_the_whole_batch() {
     let source = r#"
@@ -421,6 +451,7 @@ fn advise_all_accepts_a_batch_atomically_and_rules_use_the_whole_batch() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_all_rejects_the_whole_batch_when_one_clause_is_malformed() {
     let source = r#"
@@ -431,6 +462,7 @@ fn advise_all_rejects_the_whole_batch_when_one_clause_is_malformed() {
     assert_eq!(eval_knowledge(source), "(rejected Module-not-found)");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_all_rejects_an_empty_batch_without_creating_a_module() {
     let source = r#"
@@ -443,6 +475,7 @@ fn advise_all_rejects_an_empty_batch_without_creating_a_module() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_all_detects_an_internal_explicit_conflict_without_writing() {
     let source = r#"
@@ -454,6 +487,7 @@ fn advise_all_detects_an_internal_explicit_conflict_without_writing() {
     assert_eq!(eval_knowledge(source), "(conflict Module-not-found)");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_all_detects_a_conflict_derived_by_the_proposed_rules() {
     let source = r#"
@@ -467,6 +501,7 @@ fn advise_all_detects_a_conflict_derived_by_the_proposed_rules() {
     assert_eq!(eval_knowledge(source), "(conflict Module-not-found)");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn advise_all_detects_a_conflict_activated_across_existing_and_new_knowledge() {
     let source = r#"
@@ -480,6 +515,7 @@ fn advise_all_detects_a_conflict_activated_across_existing_and_new_knowledge() {
     assert_eq!(eval_knowledge(source), "(conflict ())");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn knowledge_package_constructor_has_the_versioned_interchange_shape() {
     assert_eq!(
@@ -488,6 +524,7 @@ fn knowledge_package_constructor_has_the_versioned_interchange_shape() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn import_knowledge_package_atomically_installs_valid_data() {
     let source = r#"
@@ -503,6 +540,7 @@ fn import_knowledge_package_atomically_installs_valid_data() {
     assert_eq!(eval_knowledge(source), "(accepted (((x . 0) . earth)))");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn import_knowledge_package_rejects_an_unsupported_version_without_writing() {
     let source = r#"
@@ -520,6 +558,7 @@ fn import_knowledge_package_rejects_an_unsupported_version_without_writing() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn import_knowledge_package_rejects_a_malformed_envelope_without_writing() {
     let source = r#"
@@ -533,6 +572,7 @@ fn import_knowledge_package_rejects_a_malformed_envelope_without_writing() {
     );
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn import_knowledge_file_reads_the_data_only_example() {
     let source = r#"
@@ -543,6 +583,7 @@ fn import_knowledge_file_reads_the_data_only_example() {
     assert_eq!(eval_knowledge(source), "(accepted (((x . 0) . earth)))");
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn write_knowledge_package_round_trips_through_file_import() {
     let path = std::env::temp_dir().join("my-lisp-knowledge-package.lisp");
@@ -560,6 +601,7 @@ fn write_knowledge_package_round_trips_through_file_import() {
     std::fs::remove_file(path).ok();
 }
 
+#[ignore = "deep/nightly: knowledge-base corpus witness; run with --ignored (#231)"]
 #[test]
 fn write_knowledge_package_rejects_invalid_data_before_creating_a_file() {
     let path = std::env::temp_dir().join("my-lisp-invalid-package.lisp");

@@ -56,6 +56,7 @@ fn sa_session_full() -> Session {
 
 // ── Sanskrit Batch 2: I/O ──────────────────────────────────────
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface batch; run with --ignored (#231)"]
 #[test]
 fn sa_env_works() {
     let mut s = sa_session_full();
@@ -66,6 +67,7 @@ fn sa_env_works() {
 
 // ── Sanskrit Batch 2: Conversions ──────────────────────────────
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface batch; run with --ignored (#231)"]
 #[test]
 fn sa_conversions_work() {
     let mut s = sa_session_full();
@@ -77,6 +79,7 @@ fn sa_conversions_work() {
 
 // ── Sanskrit Batch 2: Vectors ──────────────────────────────────
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface batch; run with --ignored (#231)"]
 #[test]
 fn sa_vector_works() {
     let mut s = sa_session_full();
@@ -87,6 +90,7 @@ fn sa_vector_works() {
 
 // ── Sanskrit Batch 2: Time ─────────────────────────────────────
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface batch; run with --ignored (#231)"]
 #[test]
 fn sa_time_unix_works() {
     let mut s = sa_session_full();
@@ -96,6 +100,7 @@ fn sa_time_unix_works() {
 
 // ── Cross-surface: SA Batch 2 = EN ─────────────────────────────
 
+#[ignore = "legacy-transition: Ukrainian/Sanskrit surface batch; run with --ignored (#231)"]
 #[test]
 fn sa_batch2_en_equivalence() {
     let mut s = sa_session_full();
