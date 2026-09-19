@@ -83,8 +83,11 @@
       (list (quote def-compat-id)
             (my-semantic-id-for-surface (quote def))
             "00001011")
-      (list (quote unadmitted-rupa-fails-closed)
-            (atom (my-semantic-id-for-surface (quote rūpa)))
+      (list (quote rupa-id-sa)
+            (my-semantic-id-for-surface (quote rūpa))
+            "00010000")
+      (list (quote unmapped-surface-fails-closed)
+            (atom (my-semantic-id-for-surface (quote unmapped-surface)))
             (quote (structural-kind empty-list)))
 
       ; Canon ATOM peer surfaces: native evaluator.
