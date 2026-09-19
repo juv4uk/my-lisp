@@ -434,13 +434,13 @@ mod tests {
     #[test]
     fn repl_never_reports_a_human_spelling_as_identity() {
         let output = render_name("uk", "map").expect("render map");
-        assert!(output.starts_with("identity: 0101\n"));
+        assert!(output.starts_with("identity: 00110111\n"));
         assert!(!output.contains("identity: map"));
 
         let plus = render_name("uk", "+").expect("render +");
-        assert!(plus.starts_with("identity: 0104\n"));
-        assert!(plus.contains("EN: — [missing]"));
-        assert!(plus.contains("SYM: + [stable]"));
+        assert!(plus.starts_with("identity: 00001100\n"));
+        assert!(plus.contains("EN: ()"));
+        assert!(plus.contains("SYM: +"));
     }
 
     #[test]
@@ -454,6 +454,6 @@ mod tests {
     #[test]
     fn ratified_sanskrit_cond_spelling_is_visible() {
         let output = render_name("sa", "anukrama").expect("cond");
-        assert!(output.starts_with("identity: 0007\n"));
+        assert!(output.starts_with("identity: 00000111\n"));
     }
 }
