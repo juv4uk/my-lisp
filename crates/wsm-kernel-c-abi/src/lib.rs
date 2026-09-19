@@ -118,13 +118,13 @@ mod tests {
         if written.is_null() { return WsmStatus::InvalidArgument; }
         let input = unsafe { core::slice::from_raw_parts(request.ptr, request.len) };
         if response.len < input.len {
-            unsafe { *written = input.len; }
+            unsafe { *written = input.len(); }
             return WsmStatus::BufferTooSmall;
         }
-        if input.len != 0 && response.ptr.is_null() { return WsmStatus::InvalidArgument; }
+        if input.len() != 0 && response.ptr.is_null() { return WsmStatus::InvalidArgument; }
         unsafe {
-            core::ptr::copy_nonoverlapping(input.as_ptr(), response.ptr, input.len);
-            *written = input.len;
+            core::ptr::copy_nonoverlapping(input.as_ptr(), response.ptr, input.len());
+            *written = input.len();
         }
         WsmStatus::Ok
     }
