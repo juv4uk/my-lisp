@@ -5,40 +5,10 @@ const REGISTRY: &str = include_str!("../../../../lib/surface/semantic-registry.l
 const UK_API_DOCS: &str = include_str!("../../../../lib/surface/uk-docs.lisp");
 const HUMAN_SURFACES: [&str; 3] = ["uk", "en", "sa"];
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Status {
-    Stable,
-    Candidate,
-    Missing,
-    CompatibilityOnly,
-}
-
-impl Status {
-    fn parse_exception(value: &str) -> Result<Self, String> {
-        match value {
-            "candidate" => Ok(Self::Candidate),
-            "missing" => Ok(Self::Missing),
-            "compatibility-only" => Ok(Self::CompatibilityOnly),
-            "stable" => Err("sr/2 не записує stable явно".to_string()),
-            other => Err(format!("невідомий статус поверхні: {other}")),
-        }
-    }
-
-    fn machine_name(self) -> &'static str {
-        match self {
-            Self::Stable => "stable",
-            Self::Candidate => "candidate",
-            Self::Missing => "missing",
-            Self::CompatibilityOnly => "compatibility-only",
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct SurfaceName {
     surface: String,
     name: Option<String>,
-    status: Status,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -58,19 +28,16 @@ struct SurfaceDoc {
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 struct Counts {
-    stable: usize,
-    candidate: usize,
-    missing: usize,
-    compatibility: usize,
+    present: usize,
+    empty: usize,
 }
 
 impl Counts {
-    fn add(&mut self, status: Status) {
-        match status {
-            Status::Stable => self.stable += 1,
-            Status::Candidate => self.candidate += 1,
-            Status::Missing => self.missing += 1,
-            Status::CompatibilityOnly => self.compatibility += 1,
+    fn add(&mut self, present: bool) {
+        if present {
+            self.present += 1;
+        } else {
+            self.empty += 1;
         }
     }
 }
@@ -121,6 +88,7 @@ fn registry_name_token(token: &str) -> &str {
 
 fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
     let mut entries = Vec::new();
+    const FIXED_SURFACES: [&str; 5] = ["en", "uk", "ukr", "sa", "sym"];
 
     for (index, line) in REGISTRY.lines().enumerate() {
         let fields = line.split_whitespace().collect::<Vec<_>>();
@@ -132,7 +100,7 @@ fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
         }
         let Some(identity) = first
             .strip_prefix("(\"")
-            .and_then(|value| value.strip_suffix('"'))
+            .and_then(|value| value.strip_suffix('\"'))
         else {
             continue;
         };
@@ -148,46 +116,40 @@ fn registry_entries() -> Result<Vec<SurfaceEntry>, String> {
         let mut names = Vec::new();
         for group in surface_groups(line) {
             let fields = group.split_whitespace().collect::<Vec<_>>();
-            let (surface, raw_name, status) = match fields.as_slice() {
+            let (surface, name) = match fields.as_slice() {
+                [surface, "()"] => ((*surface).to_string(), None),
                 [surface, raw_name] => (
                     (*surface).to_string(),
-                    registry_name_token(raw_name),
-                    Status::Stable,
-                ),
-                [surface, raw_name, exception_status] => (
-                    (*surface).to_string(),
-                    registry_name_token(raw_name),
-                    Status::parse_exception(exception_status)?,
+                    Some(registry_name_token(raw_name).to_string()),
                 ),
                 _ => {
                     return Err(format!(
-                        "registry line {}: malformed sr/2 surface ({group})",
+                        "registry line {}: malformed status-free sr/2 surface ({group})",
                         index + 1
                     ));
                 }
             };
 
-            if names.iter().any(|name: &SurfaceName| name.surface == surface) {
+            if names.iter().any(|item: &SurfaceName| item.surface == surface) {
                 return Err(format!(
                     "registry line {}: duplicate surface {surface}",
                     index + 1
                 ));
             }
-            names.push(SurfaceName {
-                surface,
-                name: (raw_name != "—").then(|| raw_name.to_string()),
-                status,
-            });
+            names.push(SurfaceName { surface, name });
         }
 
-        for required in HUMAN_SURFACES {
-            if !names.iter().any(|name| name.surface == required) {
-                return Err(format!(
-                    "registry line {}: {identity} has no explicit {required} row",
-                    index + 1
-                ));
-            }
+        let actual = names
+            .iter()
+            .map(|item| item.surface.as_str())
+            .collect::<Vec<_>>();
+        if actual != FIXED_SURFACES {
+            return Err(format!(
+                "registry line {}: {identity} must contain fixed en/uk/ukr/sa/sym slots",
+                index + 1
+            ));
         }
+
         entries.push(SurfaceEntry {
             identity: identity.to_string(),
             names,
@@ -205,25 +167,23 @@ fn surface_name<'a>(entry: &'a SurfaceEntry, surface: &str) -> Option<&'a Surfac
     entry.names.iter().find(|name| name.surface == surface)
 }
 
-fn is_public(entry: &SurfaceEntry) -> bool {
-    !HUMAN_SURFACES.iter().all(|surface| {
-        surface_name(entry, surface)
-            .is_some_and(|name| name.status == Status::CompatibilityOnly)
-    })
+fn is_public(_entry: &SurfaceEntry) -> bool {
+    true
 }
 
 fn counts_for(entries: &[SurfaceEntry], surface: &str) -> Counts {
     let mut counts = Counts::default();
     for entry in entries {
-        if let Some(name) = surface_name(entry, surface) {
-            counts.add(name.status);
-        }
+        let present = surface_name(entry, surface)
+            .and_then(|name| name.name.as_deref())
+            .is_some();
+        counts.add(present);
     }
     counts
 }
 
 fn public_denominator(entries: &[SurfaceEntry]) -> usize {
-    entries.iter().filter(|entry| is_public(entry)).count()
+    entries.len()
 }
 
 fn find_entry<'a>(entries: &'a [SurfaceEntry], requested: &str) -> Option<&'a SurfaceEntry> {
@@ -237,13 +197,10 @@ fn find_entry<'a>(entries: &'a [SurfaceEntry], requested: &str) -> Option<&'a Su
 }
 
 fn rendered_name(surface: Option<&SurfaceName>) -> String {
-    match surface {
-        Some(surface) => match surface.name.as_deref() {
-            Some(name) => format!("{name} [{}]", surface.status.machine_name()),
-            None => format!("— [{}]", surface.status.machine_name()),
-        },
-        None => "— [not-defined]".to_string(),
-    }
+    surface
+        .and_then(|surface| surface.name.as_deref())
+        .unwrap_or("()")
+        .to_string()
 }
 
 fn expr_list(expr: &Expr) -> Option<&[Expr]> {
@@ -327,40 +284,34 @@ pub(crate) fn render_status() -> Result<String, String> {
     let sa = counts_for(&entries, "sa");
     let symbolic = entries
         .iter()
-        .filter(|entry| surface_name(entry, "sym").is_some())
+        .filter(|entry| surface_name(entry, "sym").and_then(|item| item.name.as_deref()).is_some())
         .count();
-    let trilingual_stable = entries
+    let trilingual_present = entries
         .iter()
-        .filter(|entry| is_public(entry))
         .filter(|entry| {
             HUMAN_SURFACES.iter().all(|surface| {
                 surface_name(entry, surface)
-                    .is_some_and(|name| name.status == Status::Stable)
+                    .and_then(|name| name.name.as_deref())
+                    .is_some()
             })
         })
         .count();
 
     Ok(format!(
         "Рівноправні людські поверхні · byte identities: {denominator}\n\
-         UK  stable {:>3} · candidate {:>3} · missing {:>3} · compatibility {:>3}\n\
-         EN  stable {:>3} · candidate {:>3} · missing {:>3} · compatibility {:>3}\n\
-         SA  stable {:>3} · candidate {:>3} · missing {:>3} · compatibility {:>3}\n\
+         UK  present {:>3} · empty {:>3}\n\
+         EN  present {:>3} · empty {:>3}\n\
+         SA  present {:>3} · empty {:>3}\n\
          shared sym identities: {symbolic}\n\
-         trilingual stable: {trilingual_stable}/{denominator}\n\
+         trilingual present: {trilingual_present}/{denominator}\n\
          release parity: {}",
-        uk.stable,
-        uk.candidate,
-        uk.missing,
-        uk.compatibility,
-        en.stable,
-        en.candidate,
-        en.missing,
-        en.compatibility,
-        sa.stable,
-        sa.candidate,
-        sa.missing,
-        sa.compatibility,
-        if trilingual_stable == denominator {
+        uk.present,
+        uk.empty,
+        en.present,
+        en.empty,
+        sa.present,
+        sa.empty,
+        if trilingual_present == denominator {
             "CONFIRMED"
         } else {
             "OPEN"
@@ -371,12 +322,11 @@ pub(crate) fn render_status() -> Result<String, String> {
 pub(crate) fn render_names(surface: &str) -> Result<String, String> {
     let entries = registry_entries()?;
     if surface == "core" {
-        let public = entries.iter().filter(|entry| is_public(entry));
         let mut output = format!(
-            "core: byte semantic identities · public {}\n",
+            "core: byte semantic identities · {}\n",
             public_denominator(&entries)
         );
-        for (index, entry) in public.enumerate() {
+        for (index, entry) in entries.iter().enumerate() {
             if index > 0 {
                 output.push_str(if index % 12 == 0 { "\n" } else { " · " });
             }
@@ -388,48 +338,29 @@ pub(crate) fn render_names(surface: &str) -> Result<String, String> {
 
     let surface = normalize_surface(surface);
     let counts = counts_for(&entries, surface);
-    let denominator = public_denominator(&entries);
     let mut output = format!(
-        "surface {surface}: stable {} · candidate {} · missing {} · public {denominator}\n  ",
-        counts.stable, counts.candidate, counts.missing
+        "surface {surface}: present {} · empty {} · total {}\n  ",
+        counts.present,
+        counts.empty,
+        entries.len()
     );
     let mut first = true;
-    for entry in entries.iter().filter(|entry| is_public(entry)) {
-        let Some(name) = surface_name(entry, surface) else {
+    for entry in &entries {
+        let Some(slot) = surface_name(entry, surface) else {
             continue;
         };
-        if name.status == Status::CompatibilityOnly {
-            continue;
-        }
         if !first {
             output.push_str(" · ");
         }
         first = false;
-        match (&name.name, name.status) {
-            (Some(name), Status::Candidate) => {
-                output.push('~');
-                output.push_str(name);
-            }
-            (Some(name), Status::Stable) => output.push_str(name),
-            (None, Status::Missing) => {
-                output.push_str("—{");
+        match slot.name.as_deref() {
+            Some(name) => output.push_str(name),
+            None => {
+                output.push_str("(){");
                 output.push_str(&entry.identity);
                 output.push('}');
-                if let Some(symbolic) = surface_name(entry, "sym").and_then(|item| item.name.as_deref()) {
-                    output.push_str("[sym ");
-                    output.push_str(symbolic);
-                    output.push(']');
-                }
             }
-            (Some(name), _) => output.push_str(name),
-            (None, _) => output.push('—'),
         }
-    }
-    if counts.candidate > 0 {
-        output.push_str("\n\n~name = candidate, ще не ратифіковане");
-    }
-    if counts.missing > 0 {
-        output.push_str("\n—{ID} = byte semantic identity без людського імені цієї surface");
     }
     Ok(output)
 }
