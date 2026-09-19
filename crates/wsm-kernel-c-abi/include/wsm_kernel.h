@@ -11,7 +11,7 @@ extern "C" {
 #define WSM_KERNEL_ABI_VERSION 1u
 
 typedef enum WsmKernelKind {
-    WSM_KERNEL_LISP = 1,
+    WSM_KERNEL_COMMON_LISP = 1,
     WSM_KERNEL_PROLOG = 2,
     WSM_KERNEL_CLIPS = 3,
     WSM_KERNEL_DATALOG = 4
