@@ -12,8 +12,13 @@ fn stdout_text(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).trim().to_string()
 }
 
+fn integration_enabled() -> bool {
+    std::env::var_os("WSM_COMMON_LISP_INTEGRATION").is_some()
+}
+
 #[test]
 fn common_lisp_car_witness_preserves_my_lisp_semantic_id() {
+    if !integration_enabled() { return; }
     let kernel = CommonLispKernel::default();
     let request = CommonLispRequest::new(CAR_ID, "(car '(left right))");
     let result = kernel.evaluate(&request).expect("SBCL must execute CAR witness");
@@ -24,6 +29,7 @@ fn common_lisp_car_witness_preserves_my_lisp_semantic_id() {
 
 #[test]
 fn common_lisp_cdr_witness_preserves_my_lisp_semantic_id() {
+    if !integration_enabled() { return; }
     let kernel = CommonLispKernel::default();
     let request = CommonLispRequest::new(CDR_ID, "(cdr '(left right))");
     let result = kernel.evaluate(&request).expect("SBCL must execute CDR witness");
@@ -34,6 +40,7 @@ fn common_lisp_cdr_witness_preserves_my_lisp_semantic_id() {
 
 #[test]
 fn common_lisp_cons_then_car_reproduces_the_car_cons_law_slice() {
+    if !integration_enabled() { return; }
     let kernel = CommonLispKernel::default();
 
     // The form exercises CL:CONS and CL:CAR while the externally observed
