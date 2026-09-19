@@ -195,3 +195,17 @@ fn reality_ledger_separates_observation_from_ontology_claims() {
         "((introduced apparatus atom-car-cdr-cons-equal) (introduced vocabulary (structural-kind atom pair empty-list)) (observations ((observed symbol-sample (input radio raw-result (structural-kind atom))) (observed empty-list-sample (input () raw-result (structural-kind empty-list))) (observed pair-sample (input (radio antenna) raw-result (structural-kind pair))))) (independent-pair-probes ((observed car-projection (input (radio . antenna) output radio)) (observed cdr-projection (input (radio . antenna) output antenna)) (derived reconstruction (observed-value (radio . antenna) comparison (structural-relation same))))) (callable-probe (observed application (argument probe output probe))) (not-claimed ontology atom-is-fundamental-kind-of-reality) (not-claimed ontology every-callable-is-a-fundamental-function-kind) (not-claimed identity result-label-proves-its-own-semantic-truth))"
     );
 }
+
+
+#[test]
+fn semantic_identity_ledger_separates_grouping_behavior_and_ontology() {
+    let mut session = Session::default();
+    let source = format!("{REALITY_LEDGER}\n(semantic-identity-reality-ledger)");
+    let result = eval_program(&source, &mut session)
+        .expect("semantic identity reality-ledger experiment must execute");
+
+    assert_eq!(
+        result.value.to_string(),
+        "((grouped-surfaces ((observed en-car (output radio)) (observed uk-car (output radio)) (observed sa-car (output radio)) (observed sym-car (output radio)) (derived sampled-behavioral-agreement (en-vs-uk (structural-relation same) en-vs-sa (structural-relation same) en-vs-sym (structural-relation same))) (introduced registry-grouping (00000101 car перше ādi :п)) (not-claimed ontology grouped-spellings-are-literally-one-entity) (not-claimed portability shared-host-representation-is-required-by-reality))) (distinct-id-overlap ((introduced registry-distinction (00101111 second 00110100 cadr)) (observed second-output b) (observed cadr-output b) (derived sampled-behavioral-agreement (structural-relation same)) (not-claimed identity different-registry-id-implies-different-behavior) (not-claimed identity same-behavior-implies-same-registry-id))) (not-claimed ontology semantic-identity-is-fundamental-kind-of-reality) (not-claimed authority registry-row-proves-meaning-by-itself))"
+    );
+}
