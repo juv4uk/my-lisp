@@ -163,3 +163,19 @@ fn registry_function_genealogy_reproduces_core_accessors_from_smaller_seeds() {
         "((from-cons (00101110)) (from-car (00101111 00110000 00110001 00110010 00110011 00110100)) (from-cdr (00101111 00110000 00110001 00110010 00110100 00110101)) (reproductions ((00101110 reproduced) (00101111 reproduced) (00110000 reproduced) (00110001 reproduced) (00110010 reproduced) (00110011 reproduced) (00110100 reproduced) (00110101 reproduced))))"
     );
 }
+
+
+#[test]
+fn function_laboratory_finds_overlap_candidates_and_unification_dependencies() {
+    let mut session = Session::default();
+    let source = format!(
+        "{FUNCTION_GENEALOGY}\n(load \"lib/unify.lisp\")\n(function-laboratory-witness)"
+    );
+    let result = eval_program(&source, &mut session)
+        .expect("function laboratory witness must execute");
+
+    assert_eq!(
+        result.value.to_string(),
+        "((structural-genealogy ((from-cons (00101110)) (from-car (00101111 00110000 00110001 00110010 00110011 00110100)) (from-cdr (00101111 00110000 00110001 00110010 00110100 00110101)) (reproductions ((00101110 reproduced) (00101111 reproduced) (00110000 reproduced) (00110001 reproduced) (00110010 reproduced) (00110011 reproduced) (00110100 reproduced) (00110101 reproduced))))) (overlap-candidates ((second-vs-cadr (structural-relation same)) (fourth-vs-cadddr (structural-relation same)) (pair-vs-list-two-args (structural-relation same)))) (unification-island ((walk-needs (10001001)) (occurs-check-needs (10001011 10001001 00100010 00101111 00000101 00000110)) (apply-subst-needs (10001011 00000100 00000101 00000110)) (unify-needs (10001011 10001001 10001100 00100010)) (unify-produces-for-apply-subst bob))))"
+    );
+}
