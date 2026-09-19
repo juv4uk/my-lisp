@@ -42,3 +42,4 @@
 (authority "crates/xtask/tests/license_policy.rs" observer)
 (authority "crates/wsm-common-lisp-kernel/tests/c_abi_semantic_witness.rs" observer)
 (authority "crates/wsm-prolog-kernel/tests/c_abi_semantic_witness.rs" observer)
+(authority "crates/wsm-prolog-kernel/tests/swi_integration.rs" observer)
