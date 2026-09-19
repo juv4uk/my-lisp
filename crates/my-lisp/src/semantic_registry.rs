@@ -1,7 +1,8 @@
 //! Shared projection from the language surface authority to compact byte SIDs.
 //!
-//! `lib/surface/semantic-registry.lisp` owns human/symbolic spellings and their
-//! admission status. Its sr/2 rows carry exactly eight binary digits.
+//! `lib/surface/semantic-registry.lisp` owns human/symbolic spellings. Its sr/2
+//! rows carry exactly eight binary digits plus fixed en/uk/ukr/sa/sym slots.
+//! A slot contains either one spelling or (); there are no admission statuses.
 //! Runtime code stores that identity as one `u8`; the textual bit spelling is
 //! provenance/serialization only and is never itself admitted as Lisp surface.
 //! Evaluator meaning remains in the modules that interpret each SID.
@@ -14,16 +15,9 @@ pub(crate) type SemanticId = u8;
 pub(crate) const EMPTY_LIST_SEMANTIC_ID: SemanticId = 0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum SurfaceAdmission {
-    Stable,
-    CompatibilityOnly,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct SemanticSurface {
     namespace: &'static str,
     name: &'static str,
-    admission: SurfaceAdmission,
 }
 
 #[derive(Debug)]
@@ -84,42 +78,12 @@ fn surface_name_token(token: &'static str) -> &'static str {
 fn parse_surface_group(group: &'static str) -> Option<SemanticSurface> {
     let fields = group.split_whitespace().collect::<Vec<_>>();
     match fields.as_slice() {
-        [namespace, name] => {
-            let name = surface_name_token(name);
-            assert_ne!(
-                name, "—",
-                "missing surface must carry explicit missing status"
-            );
-            Some(SemanticSurface {
-                namespace,
-                name,
-                admission: SurfaceAdmission::Stable,
-            })
-        }
-        [namespace, name, status] => {
-            let name = surface_name_token(name);
-            assert_ne!(
-                *status, "stable",
-                "sr/2 admitted surfaces are implicit; do not spell stable"
-            );
-            if name == "—" {
-                assert!(
-                    matches!(*status, "missing" | "compatibility-only"),
-                    "absent surface must be missing or compatibility-only"
-                );
-                return None;
-            }
-            match *status {
-                "compatibility-only" => Some(SemanticSurface {
-                    namespace,
-                    name,
-                    admission: SurfaceAdmission::CompatibilityOnly,
-                }),
-                "candidate" | "missing" => None,
-                other => panic!("unknown sr/2 surface status: {other}"),
-            }
-        }
-        _ => panic!("malformed sr/2 surface group: ({group})"),
+        [_, "()"] => None,
+        [namespace, name] => Some(SemanticSurface {
+            namespace,
+            name: surface_name_token(name),
+        }),
+        _ => panic!("malformed sr/2 surface group: ({group}); expected (namespace spelling) or (namespace ())"),
     }
 }
 
@@ -131,7 +95,21 @@ fn parse_rows(source: &'static str) -> Vec<SemanticRow> {
             let first = fields.first()?;
             let sid_token = first.strip_prefix("(\"")?.strip_suffix('\"')?;
             let semantic_id = parse_sid_bits(sid_token)?;
-            let surfaces = surface_groups(line)
+            let groups = surface_groups(line);
+
+            if semantic_id != EMPTY_LIST_SEMANTIC_ID {
+                let namespaces = groups
+                    .iter()
+                    .filter_map(|group| group.split_whitespace().next())
+                    .collect::<Vec<_>>();
+                assert_eq!(
+                    namespaces,
+                    vec!["en", "uk", "ukr", "sa", "sym"],
+                    "sr/2 rows must contain exactly en/uk/ukr/sa/sym in fixed order"
+                );
+            }
+
+            let surfaces = groups
                 .into_iter()
                 .filter_map(parse_surface_group)
                 .collect();
@@ -185,12 +163,7 @@ pub(crate) fn build_surface_index(
     let rows = parse_rows(source);
     let mut index = HashMap::new();
     for row in rows {
-        for surface in row
-            .surfaces
-            .iter()
-            .filter(|surface| surface.admission == SurfaceAdmission::Stable)
-            .map(|surface| surface.name)
-        {
+        for surface in row.surfaces.iter().map(|surface| surface.name) {
             insert_surface_mapping(&mut index, surface, row.semantic_id);
         }
     }
@@ -200,14 +173,9 @@ pub(crate) fn build_surface_index(
 pub(crate) fn build_admitted_surface_index(
     source: &'static str,
 ) -> HashMap<&'static str, SemanticId> {
-    let rows = parse_rows(source);
-    let mut index = HashMap::new();
-    for row in rows {
-        for surface in row.surfaces.iter().map(|surface| surface.name) {
-            insert_surface_mapping(&mut index, surface, row.semantic_id);
-        }
-    }
-    index
+    // Historical API name retained while callers migrate. In status-free sr/2,
+    // every non-empty surface is simply present and therefore routable.
+    build_surface_index(source)
 }
 
 fn live_rows() -> &'static [SemanticRow] {
@@ -291,8 +259,8 @@ pub(crate) fn stable_surfaces_for_semantic_id(
     stable_surfaces_from_index(surface_index(), semantic_id)
 }
 
-/// Stable and compatibility-only spellings admitted for direct runtime binding.
-/// Candidate/missing surfaces and the machine SID bit spelling itself are excluded.
+/// Historical API name retained while callers migrate.
+/// In status-free sr/2 every non-empty spelling is directly routable; () is absence.
 pub(crate) fn admitted_surfaces_for_semantic_id(
     semantic_id: SemanticId,
 ) -> Vec<&'static str> {
@@ -317,77 +285,60 @@ mod tests {
     use super::*;
 
     #[test]
-    fn registry_projection_tracks_stable_and_compatibility_admission_only() {
+    fn registry_projection_is_status_free_and_empty_list_means_absence() {
         const SYNTHETIC: &str =
-            "(\"00101010\" (xx comet) (yy meteor compatibility-only) (zz asteroid candidate) (qq — missing))";
+            "(\"00101010\" (en comet) (uk ()) (ukr meteor) (sa ()) (sym +))";
         let parsed = parse_rows(SYNTHETIC);
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].semantic_id, 42);
         assert_eq!(
             parsed[0].surfaces,
             vec![
-                SemanticSurface {
-                    namespace: "xx",
-                    name: "comet",
-                    admission: SurfaceAdmission::Stable,
-                },
-                SemanticSurface {
-                    namespace: "yy",
-                    name: "meteor",
-                    admission: SurfaceAdmission::CompatibilityOnly,
-                },
+                SemanticSurface { namespace: "en", name: "comet" },
+                SemanticSurface { namespace: "ukr", name: "meteor" },
+                SemanticSurface { namespace: "sym", name: "+" },
             ]
         );
     }
 
     #[test]
-    #[should_panic(expected = "do not spell stable")]
-    fn explicit_stable_status_is_rejected_by_sr2() {
-        let _ = parse_rows("(\"00101010\" (xx comet stable))");
+    #[should_panic(expected = "expected (namespace spelling) or (namespace ())")]
+    fn status_tokens_are_rejected_by_sr2() {
+        let _ = parse_rows(
+            "(\"00101010\" (en comet stable) (uk ()) (ukr ()) (sa ()) (sym ()))"
+        );
     }
 
     #[test]
     fn machine_sid_bit_spelling_is_not_a_lisp_surface() {
         const SYNTHETIC: &str =
-            "(\"00101010\" (xx comet) (yy meteor compatibility-only))";
-        let stable = build_surface_index(SYNTHETIC);
+            "(\"00101010\" (en comet) (uk ()) (ukr meteor) (sa ()) (sym ()))";
+        let direct = build_surface_index(SYNTHETIC);
         let admitted = build_admitted_surface_index(SYNTHETIC);
-        assert_eq!(stable.get("comet"), Some(&42));
-        assert_eq!(stable.get("00101010"), None);
+        assert_eq!(direct.get("comet"), Some(&42));
+        assert_eq!(direct.get("meteor"), Some(&42));
+        assert_eq!(direct.get("00101010"), None);
         assert_eq!(admitted.get("00101010"), None);
     }
 
     #[test]
     fn peer_namespaces_may_repeat_one_spelling_for_the_same_identity() {
         const SYNTHETIC: &str =
-            "(\"00101010\" (uk comet) (ukr comet) (compat comet compatibility-only))";
-        let stable = build_surface_index(SYNTHETIC);
-        let admitted = build_admitted_surface_index(SYNTHETIC);
-        assert_eq!(stable.get("comet"), Some(&42));
-        assert_eq!(admitted.get("comet"), Some(&42));
+            "(\"00101010\" (en comet) (uk comet) (ukr comet) (sa ()) (sym ()))";
+        let direct = build_surface_index(SYNTHETIC);
+        assert_eq!(direct.get("comet"), Some(&42));
     }
 
     #[test]
-    fn stable_surfaces_are_constructively_selected_by_semantic_id() {
+    fn every_present_surface_is_constructively_selected_by_semantic_id() {
         const SYNTHETIC: &str =
-            "(\"00101010\" (uk comet) (sa asteroid candidate) (sym +))";
+            "(\"00101010\" (en ()) (uk comet) (ukr ()) (sa asteroid) (sym +))";
         let index = build_surface_index(SYNTHETIC);
-        assert_eq!(stable_surfaces_from_index(&index, 42), vec!["+", "comet"]);
-        assert!(stable_surfaces_from_index(&index, 99).is_empty());
-    }
-
-    #[test]
-    fn admitted_surfaces_include_compatibility_without_promoting_it_to_stable() {
-        const SYNTHETIC: &str =
-            "(\"00101010\" (en comet) (uk asteroid candidate) (compat meteor compatibility-only) (sa — missing))";
-        let rows = parse_rows(SYNTHETIC);
         assert_eq!(
-            admitted_surfaces_from_rows(&rows, 42),
-            vec!["comet", "meteor"]
+            stable_surfaces_from_index(&index, 42),
+            vec!["+", "asteroid", "comet"]
         );
-        let stable = build_surface_index(SYNTHETIC);
-        assert_eq!(stable.get("comet"), Some(&42));
-        assert_eq!(stable.get("meteor"), None);
+        assert!(stable_surfaces_from_index(&index, 99).is_empty());
     }
 
     #[test]
@@ -401,8 +352,7 @@ mod tests {
     }
 
     #[test]
-    fn public_reverse_projection_preserves_identity_across_admitted_surfaces() {
-        // division is the 15th non-ground row in the compact axis.
+    fn public_reverse_projection_preserves_identity_across_present_surfaces() {
         for surface in admitted_surfaces_for_semantic_id(15) {
             assert_eq!(
                 crate::semantic_registry_export::semantic_id_for_admitted_surface(surface),
@@ -417,19 +367,20 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "semantic registry surface must be unique")]
-    fn duplicate_stable_surface_is_rejected_deterministically() {
+    fn duplicate_surface_is_rejected_deterministically() {
         const CONFLICTING: &str =
-            "(\"00000001\" (xx collision))\n(\"00000010\" (yy collision))";
+            "(\"00000001\" (en collision) (uk ()) (ukr ()) (sa ()) (sym ()))\n\
+             (\"00000010\" (en ()) (uk collision) (ukr ()) (sa ()) (sym ()))";
         let _ = build_surface_index(CONFLICTING);
     }
 
     #[test]
-    fn unrelated_stable_rows_are_projected_without_assigning_evaluator_meaning() {
+    fn unrelated_rows_are_projected_without_assigning_evaluator_meaning() {
         assert_eq!(semantic_id_for_surface("+"), Some(12));
     }
 
     #[test]
-    fn admitted_surfaces_with_namespace_matches_admitted_names_and_keeps_namespace() {
+    fn surfaces_with_namespace_match_present_names_and_keep_namespace() {
         let with_namespace = admitted_surfaces_with_namespace_for_semantic_id(1);
         let names_only = admitted_surfaces_for_semantic_id(1);
         assert_eq!(with_namespace.len(), names_only.len());
