@@ -1,9 +1,9 @@
 # ADR-005: Open Primitive Admission and Kernel Archipelago
 # ADR-005: Відкрите прийняття примітивів та архіпелаг ядер
 
-**Status:** Accepted / Прийнято  
-**Date:** 2026-09-19  
-**Authority:** Owner directive / пряма настанова власника  
+**Статус:** Прийнято / Accepted
+**Дата / Date:** 2026-09-19
+**Влада / Authority:** пряма настанова власника / Owner directive
 **Supersedes:** ADR-004 only where ADR-004 permanently closes the primitive set to McCarthy-7.
 
 ---
