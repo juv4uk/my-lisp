@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#define WSM_KERNEL_ABI_VERSION 1u
+#define WSM_KERNEL_ABI_VERSION 2u
 
 typedef enum WsmKernelKind {
     WSM_KERNEL_COMMON_LISP = 1,
@@ -27,6 +27,11 @@ typedef struct WsmMutableByteSpan {
     size_t len;
 } WsmMutableByteSpan;
 
+typedef struct WsmKernelRequest {
+    uint8_t semantic_id;
+    WsmByteSpan payload;
+} WsmKernelRequest;
+
 typedef enum WsmStatus {
     WSM_STATUS_OK = 0,
     WSM_STATUS_INVALID_ARGUMENT = 1,
@@ -39,7 +44,7 @@ typedef WsmStatus (*WsmStartFn)(void *context);
 typedef WsmStatus (*WsmStopFn)(void *context);
 typedef WsmStatus (*WsmExchangeFn)(
     void *context,
-    WsmByteSpan request,
+    WsmKernelRequest request,
     WsmMutableByteSpan response,
     size_t *written
 );
