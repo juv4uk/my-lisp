@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use wsm_kernel_c_abi::{
-    WsmByteSpan, WsmKernelKind, WsmKernelRequest, WsmKernelVTable, WsmMutableByteSpan, WsmStatus,
+    WsmKernelKind, WsmKernelRequest, WsmKernelVTable, WsmMutableByteSpan, WsmStatus,
     WSM_KERNEL_ABI_VERSION,
 };
 
@@ -391,7 +391,7 @@ mod tests {
                 vtable.context,
                 WsmKernelRequest {
                     semantic_id: 0b0000_0101,
-                    payload: WsmByteSpan {
+                    payload: wsm_kernel_c_abi::WsmByteSpan {
                         ptr: input.as_ptr(),
                         len: input.len(),
                     },
