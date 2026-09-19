@@ -146,3 +146,183 @@
       (list
         (quote reproductions)
         (function-genealogy-witness)))))
+
+
+; ---------------------------------------------------------------------------
+; Experimental identity-overlap probes.
+;
+; The registry can contain distinct identities whose current Lisp
+; implementations are observationally indistinguishable on a chosen domain.
+; That does NOT automatically collapse their semantic identities.  It produces
+; candidate-equivalence evidence for later experiments.
+
+(def genealogy-observes-like 11110001)
+
+(def observation-pair
+  (lambda (left right)
+    (list left right)))
+
+(def observation-same?
+  (lambda (left right)
+    (equal? left right)))
+
+(def sample-equivalent-two-unary?
+  (lambda (f g sample-a sample-b)
+    (cond
+      ((observation-same? (f sample-a) (g sample-a)) (structural-relation same)
+       (cond
+         ((observation-same? (f sample-b) (g sample-b)) (structural-relation same)
+          (quote (structural-relation same)))
+         ((observation-same? (f sample-b) (g sample-b)) (structural-relation distinct)
+          (quote (structural-relation distinct)))))
+      ((observation-same? (f sample-a) (g sample-a)) (structural-relation distinct)
+       (quote (structural-relation distinct))))))
+
+; Distinct registry identities:
+;   second  = 00101111
+;   cadr    = 00110100
+;   fourth  = 00110001
+;   cadddr  = 00110110
+;
+; Current core implementation:
+;   second and cadr have identical bodies;
+;   cadddr is literally defined as the same closure object as fourth.
+(def function-overlap-candidates
+  (list
+    (list 00101111 genealogy-observes-like 00110100)
+    (list 00110001 genealogy-observes-like 00110110)))
+
+(def function-overlap-witness
+  (lambda ()
+    (let ((sample-a (quote (a b c d e))))
+      (let ((sample-b (quote ((x y) (p q) r s t))))
+        (list
+          (list
+            (quote second-vs-cadr)
+            (sample-equivalent-two-unary?
+              second cadr sample-a sample-b))
+          (list
+            (quote fourth-vs-cadddr)
+            (sample-equivalent-two-unary?
+              fourth cadddr sample-a sample-b))
+          ; A deliberately weaker overlap: pair and list agree on exactly two
+          ; arguments, but LIST is variadic, so this is only overlap evidence,
+          ; never an equivalence claim.
+          (list
+            (quote pair-vs-list-two-args)
+            (observation-same?
+              (pair (quote left) (quote right))
+              (list (quote left) (quote right)))))))))
+
+; ---------------------------------------------------------------------------
+; Unification island.
+;
+; Here "generation" is a dependency hypergraph: a target may require several
+; registered identities together. Internal helpers stay apparatus and are not
+; assigned synthetic semantic identities.
+
+(def genealogy-requires 11110010)
+
+; Registry IDs:
+; logic-var   10001000
+; var?        10001001
+; apply-subst 10001010
+; walk        10001011
+; occurs-check 10001100
+; unify       10000111
+;
+; Core/list identities used by those implementations:
+; atom   00000010
+; eq     00000011
+; cons   00000100
+; car    00000101
+; cdr    00000110
+; cond   00000111
+; list   00100111
+; second 00101111
+; equal? 00100010
+
+(def unification-genealogy
+  (list
+    ; logic-var = list + quote/data construction
+    (list 00100111 genealogy-requires 10001000)
+
+    ; var? depends structurally on atom/car/eq/cond
+    (list 00000010 genealogy-requires 10001001)
+    (list 00000101 genealogy-requires 10001001)
+    (list 00000011 genealogy-requires 10001001)
+    (list 00000111 genealogy-requires 10001001)
+
+    ; walk uses var? plus structural substitution lookup
+    (list 10001001 genealogy-requires 10001011)
+
+    ; occurs-check recursively needs walk/var?/equal?/second/car/cdr
+    (list 10001011 genealogy-requires 10001100)
+    (list 10001001 genealogy-requires 10001100)
+    (list 00100010 genealogy-requires 10001100)
+    (list 00101111 genealogy-requires 10001100)
+    (list 00000101 genealogy-requires 10001100)
+    (list 00000110 genealogy-requires 10001100)
+
+    ; apply-subst dereferences via walk and reconstructs terms with cons/car/cdr
+    (list 10001011 genealogy-requires 10001010)
+    (list 00000100 genealogy-requires 10001010)
+    (list 00000101 genealogy-requires 10001010)
+    (list 00000110 genealogy-requires 10001010)
+
+    ; unify itself is centered around walk, var?, occurs-check, equal?
+    (list 10001011 genealogy-requires 10000111)
+    (list 10001001 genealogy-requires 10000111)
+    (list 10001100 genealogy-requires 10000111)
+    (list 00100010 genealogy-requires 10000111)))
+
+(def genealogy-sources-for
+  (lambda (graph target)
+    (cond
+      ((atom graph) (structural-kind empty-list)
+       (quote ()))
+      ((atom graph) (structural-kind pair)
+       (let ((edge (car graph)))
+         (cond
+           ((eq (third edge) target) (identity-relation same)
+            (cons
+              (car edge)
+              (genealogy-sources-for (cdr graph) target)))
+           ((eq (third edge) target) (identity-relation distinct)
+            (genealogy-sources-for (cdr graph) target)))))
+      ((atom graph) (structural-kind atom)
+       (quote ())))))
+
+(def unification-genealogy-witness
+  (lambda ()
+    (list
+      (list
+        (quote walk-needs)
+        (genealogy-sources-for unification-genealogy 10001011))
+      (list
+        (quote occurs-check-needs)
+        (genealogy-sources-for unification-genealogy 10001100))
+      (list
+        (quote apply-subst-needs)
+        (genealogy-sources-for unification-genealogy 10001010))
+      (list
+        (quote unify-needs)
+        (genealogy-sources-for unification-genealogy 10000111))
+      ; Executable behavioral probe showing UNIFY creates a substitution that
+      ; APPLY-SUBST can consume. This is a dynamic relation, not just static
+      ; dependency metadata.
+      (list
+        (quote unify-produces-for-apply-subst)
+        (let ((subst
+                (unify
+                  (list (quote parent) (quote alice) (logic-var (quote x)))
+                  (list (quote parent) (quote alice) (quote bob))
+                  (quote ()))))
+          (apply-subst (logic-var (quote x)) subst))))))
+
+(def function-laboratory-witness
+  (lambda ()
+    (list
+      (list (quote structural-genealogy) (function-genealogy-observation))
+      (list (quote overlap-candidates) (function-overlap-witness))
+      (list (quote unification-island) (unification-genealogy-witness)))))
