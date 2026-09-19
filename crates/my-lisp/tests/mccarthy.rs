@@ -640,9 +640,8 @@ fn non_strict_comparisons_are_my_lisp_functions_not_rust_builtins() {
 
 /// tests/fixtures/conformance.my is the implementation-independent contract
 /// (see CLAUDE.md): any future my-lisp implementation — C, HDL, whatever —
-/// should reproduce these results once it implements the stable Canon 0 +
-/// McCarthy-7 root plus the contracted language forms used by the fixture,
-/// since everything above that (lib/core.my
+/// should reproduce these results once it gets the seven primitives and
+/// lambda/def/defmacro right, since everything above that (lib/core.my
 /// included) is plain my-lisp source, not Rust. Preloading core.my here lets
 /// fixtures exercise it directly instead of duplicating stdlib coverage.
 /// Written as my-lisp data (2026-08-09, moved off JSON), so this test reads
