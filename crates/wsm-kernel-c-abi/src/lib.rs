@@ -3,7 +3,7 @@
 //! This crate defines only mechanical calling conventions. It does not define
 //! a shared semantic result type. Kernel payloads remain opaque bytes.
 
-use core::ffi::c_void;
+use core::ffi::{c_char, c_void};
 
 pub const WSM_KERNEL_ABI_VERSION: u32 = 2;
 
@@ -102,12 +102,12 @@ pub extern "C" fn wsm_kernel_abi_version() -> u32 {
 }
 
 #[no_mangle]
-pub extern "C" fn wsm_kernel_kind_name(kind: WsmKernelKind) -> *const u8 {
+pub extern "C" fn wsm_kernel_kind_name(kind: WsmKernelKind) -> *const c_char {
     match kind {
-        WsmKernelKind::CommonLisp => b"common-lisp\0".as_ptr(),
-        WsmKernelKind::Prolog => b"prolog\0".as_ptr(),
-        WsmKernelKind::Clips => b"clips\0".as_ptr(),
-        WsmKernelKind::Datalog => b"datalog\0".as_ptr(),
+        WsmKernelKind::CommonLisp => c"common-lisp".as_ptr(),
+        WsmKernelKind::Prolog => c"prolog".as_ptr(),
+        WsmKernelKind::Clips => c"clips".as_ptr(),
+        WsmKernelKind::Datalog => c"datalog".as_ptr(),
     }
 }
 
@@ -136,7 +136,7 @@ mod tests {
             unsafe { *written = input.len(); }
             return WsmStatus::BufferTooSmall;
         }
-        if input.len() != 0 && response.ptr.is_null() { return WsmStatus::InvalidArgument; }
+        if !input.is_empty() && response.ptr.is_null() { return WsmStatus::InvalidArgument; }
         unsafe {
             core::ptr::copy_nonoverlapping(input.as_ptr(), response.ptr, input.len());
             *written = input.len();
