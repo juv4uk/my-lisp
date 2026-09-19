@@ -180,3 +180,18 @@ fn function_laboratory_finds_overlap_candidates_and_unification_dependencies() {
         "((structural-genealogy ((from-cons (00101110)) (from-car (00101111 00110000 00110001 00110010 00110011 00110100)) (from-cdr (00101111 00110000 00110001 00110010 00110100 00110101)) (reproductions ((00101110 reproduced) (00101111 reproduced) (00110000 reproduced) (00110001 reproduced) (00110010 reproduced) (00110011 reproduced) (00110100 reproduced) (00110101 reproduced))))) (overlap-candidates ((second-vs-cadr (structural-relation same)) (fourth-vs-cadddr (structural-relation same)) (pair-vs-list-two-args (structural-relation same)))) (unification-island ((walk-needs (10001001)) (occurs-check-needs (10001011 10001001 00100010 00101111 00000101 00000110)) (apply-subst-needs (10001011 00000100 00000101 00000110)) (unify-needs (10001011 10001001 10001100 00100010)) (unify-produces-for-apply-subst bob))))"
     );
 }
+
+
+const REALITY_LEDGER: &str = include_str!("../../../experiments/reality-ledger.lisp");
+
+#[test]
+fn reality_ledger_separates_observation_from_ontology_claims() {
+    let mut session = Session::default();
+    let result = eval_program(REALITY_LEDGER, &mut session)
+        .expect("reality-ledger experiment must execute");
+
+    assert_eq!(
+        result.value.to_string(),
+        "((introduced apparatus atom-car-cdr-cons-equal) (introduced vocabulary (structural-kind atom pair empty-list)) (observations ((observed symbol-sample (input radio raw-result (structural-kind atom))) (observed empty-list-sample (input () raw-result (structural-kind empty-list))) (observed pair-sample (input (radio antenna) raw-result (structural-kind pair))))) (independent-pair-probes ((observed car-projection (input (radio . antenna) output radio)) (observed cdr-projection (input (radio . antenna) output antenna)) (derived reconstruction (observed-value (radio . antenna) comparison (structural-relation same))))) (callable-probe (observed application (argument probe output probe))) (not-claimed ontology atom-is-fundamental-kind-of-reality) (not-claimed ontology every-callable-is-a-fundamental-function-kind) (not-claimed identity result-label-proves-its-own-semantic-truth))"
+    );
+}
