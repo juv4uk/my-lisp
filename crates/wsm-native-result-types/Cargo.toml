@@ -1,0 +1,14 @@
+[package]
+name = "wsm-native-result-types"
+version = "0.1.0"
+edition = "2024"
+description = "Preserve four distinct observable result domains across autonomous reasoning kernels."
+license = "MIT"
+
+[dependencies]
+my-lisp = { path = "../my-lisp" }
+wsm-datalog-kernel = { path = "../wsm-datalog-kernel" }
+
+[dev-dependencies]
+my-lisp = { path = "../my-lisp" }
+wsm-datalog-kernel = { path = "../wsm-datalog-kernel" }

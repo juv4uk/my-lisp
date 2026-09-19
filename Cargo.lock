@@ -783,6 +783,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "wsm-native-result-types"
+version = "0.1.0"
+dependencies = [
+ "my-lisp",
+ "wsm-datalog-kernel",
+]
+
+[[package]]
 name = "xtask"
 version = "0.1.0"
 dependencies = [

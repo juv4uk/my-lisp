@@ -40,3 +40,4 @@
 (authority "crates/my-lisp/tests/machine_minimal_profile.rs" observer)
 (authority "crates/my-lisp-host/tests/native_cond_profile.rs" mechanism)
 (authority "crates/xtask/tests/license_policy.rs" observer)
+(authority "crates/wsm-native-result-types/tests/four_domain_artifact.rs" observer)
