@@ -787,6 +787,13 @@ name = "wsm-kernel-c-abi"
 version = "0.1.0"
 
 [[package]]
+name = "wsm-kernel-call-graph"
+version = "0.1.0"
+dependencies = [
+ "wsm-kernel-c-abi",
+]
+
+[[package]]
 name = "xtask"
 version = "0.1.0"
 dependencies = [
