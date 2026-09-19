@@ -5,7 +5,7 @@
 
 use core::ffi::c_void;
 
-pub const WSM_KERNEL_ABI_VERSION: u32 = 1;
+pub const WSM_KERNEL_ABI_VERSION: u32 = 2;
 
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,9 +54,17 @@ pub enum WsmStatus {
 
 pub type WsmStartFn = unsafe extern "C" fn(context: *mut c_void) -> WsmStatus;
 pub type WsmStopFn = unsafe extern "C" fn(context: *mut c_void) -> WsmStatus;
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WsmKernelRequest {
+    /// Opaque 8-bit semantic primitive identity owned by my-lisp.
+    pub semantic_id: u8,
+    pub payload: WsmByteSpan,
+}
+
 pub type WsmExchangeFn = unsafe extern "C" fn(
     context: *mut c_void,
-    request: WsmByteSpan,
+    request: WsmKernelRequest,
     response: WsmMutableByteSpan,
     written: *mut usize,
 ) -> WsmStatus;
@@ -111,12 +119,19 @@ mod tests {
     unsafe extern "C" fn ok_stop(_: *mut c_void) -> WsmStatus { WsmStatus::Ok }
     unsafe extern "C" fn echo_exchange(
         _: *mut c_void,
-        request: WsmByteSpan,
+        request: WsmKernelRequest,
         response: WsmMutableByteSpan,
         written: *mut usize,
     ) -> WsmStatus {
         if written.is_null() { return WsmStatus::InvalidArgument; }
-        let input = unsafe { core::slice::from_raw_parts(request.ptr, request.len) };
+        if request.payload.len != 0 && request.payload.ptr.is_null() {
+            return WsmStatus::InvalidArgument;
+        }
+        let input = if request.payload.len == 0 {
+            &[]
+        } else {
+            unsafe { core::slice::from_raw_parts(request.payload.ptr, request.payload.len) }
+        };
         if response.len < input.len() {
             unsafe { *written = input.len(); }
             return WsmStatus::BufferTooSmall;
@@ -163,6 +178,16 @@ mod tests {
     }
 
     #[test]
+    fn exchange_carries_semantic_id_as_opaque_u8() {
+        let request = WsmKernelRequest {
+            semantic_id: 0b0000_0101,
+            payload: WsmByteSpan::empty(),
+        };
+        assert_eq!(request.semantic_id, 0b0000_0101);
+        assert_eq!(request.payload.len, 0);
+    }
+
+    #[test]
     fn exchange_transports_bytes_without_interpreting_them() {
         let vt = table(WsmKernelKind::Prolog);
         let input = b"[alice,alice]";
@@ -171,7 +196,10 @@ mod tests {
         let status = unsafe {
             (vt.exchange.unwrap())(
                 vt.context,
-                WsmByteSpan { ptr: input.as_ptr(), len: input.len() },
+                WsmKernelRequest {
+                    semantic_id: 0b0000_0011,
+                    payload: WsmByteSpan { ptr: input.as_ptr(), len: input.len() },
+                },
                 WsmMutableByteSpan { ptr: output.as_mut_ptr(), len: output.len() },
                 &mut written,
             )
