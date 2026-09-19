@@ -1,57 +1,32 @@
 ; Four-kernel callable graph experiment.
-; Based directly on lib/surface/semantic-registry-experiment.lisp and
-; experiments/ground-graph.lisp from experiment/empty-list-unfold.
+; Addresses come from lib/surface/semantic-registry-archipelago-experiment.lisp.
+; Address shape: (namespace8 local-id8).
 ;
-; Every endpoint and relation identity is an opaque BitPattern8.
-; Rust/C may index and transport this graph but must not assign its meaning.
+; Shared graph relation addresses live in namespace 00000000.
+; Kernel-local callable addresses live in their owning namespace.
 
-; Reuse current experimental Lisp semantic IDs where they already exist.
-; eval = 01001101
-(def lisp-eval-id 01001101)
+(def address-lisp-eval (list 00000001 01001101))
+(def address-prolog-query (list 00000010 00000001))
+(def address-clips-run (list 00000011 00000111))
+(def address-datalog-derive (list 00000100 00001010))
 
-; Kernel-local entry points for the other islands begin as local opaque IDs.
-; Their bit patterns are local to their kernel namespaces.
-(def prolog-query-id 00000000)
-(def clips-run-id 00000000)
-(def datalog-derive-id 00000000)
+(def relation-owns-callable (list 00000000 00011010))
+(def relation-can-call (list 00000000 00011011))
+(def relation-can-observe (list 00000000 00011100))
+(def relation-has-transport (list 00000000 00011101))
 
-; Opaque kernel endpoint identities for the graph itself.
-; These do not replace per-kernel local function IDs.
-(def kernel-lisp 10111101)
-(def kernel-prolog 10111110)
-(def kernel-clips 10111111)
-(def kernel-datalog 11000000)
-
-; Opaque relation identities. Meaning is experimental evidence, not encoded
-; in the bits. These values are intentionally outside the current registry
-; population and can be revised while this remains an experiment.
-(def relation-kernel-has-callable 11000001)
-(def relation-can-call 11000010)
-(def relation-can-observe 11000011)
-(def relation-has-transport 11000100)
-
-; Endpoint form:
-;   (kernel-id local-function-id)
-; This keeps the same local function bit pattern valid in different kernels.
-(def lisp-eval-endpoint (list kernel-lisp lisp-eval-id))
-(def prolog-query-endpoint (list kernel-prolog prolog-query-id))
-(def clips-run-endpoint (list kernel-clips clips-run-id))
-(def datalog-derive-endpoint (list kernel-datalog datalog-derive-id))
-
-; Generic ternary graph shape inherited from ground-graph.lisp:
-;   (left relation right)
+; Generic ternary graph inherited from ground-graph.lisp:
+;   (left-address relation-address right-address)
 (def four-kernel-call-graph
   (list
-    (list kernel-lisp relation-kernel-has-callable lisp-eval-endpoint)
-    (list kernel-prolog relation-kernel-has-callable prolog-query-endpoint)
-    (list kernel-clips relation-kernel-has-callable clips-run-endpoint)
-    (list kernel-datalog relation-kernel-has-callable datalog-derive-endpoint)
+    ; First explicit cross-kernel experiment:
+    ; Lisp eval may call Prolog query through an explicit relation.
+    (list address-lisp-eval relation-can-call address-prolog-query)
 
-    ; First explicit experimental cross-kernel relationship.
-    ; This is relation evidence only; neither endpoint depends on the edge.
-    (list lisp-eval-endpoint relation-can-call prolog-query-endpoint)))
-
-; No global root and no universal result object are introduced here.
-; Additional edges must be added as experimental evidence, not assumed.
+    ; All four callables can later acquire transport edges independently.
+    (list address-lisp-eval relation-has-transport address-lisp-eval)
+    (list address-prolog-query relation-has-transport address-prolog-query)
+    (list address-clips-run relation-has-transport address-clips-run)
+    (list address-datalog-derive relation-has-transport address-datalog-derive)))
 
 four-kernel-call-graph
