@@ -448,9 +448,6 @@ Ukrainisch ist die primäre menschliche Sprache des Projekts; Englisch und Deuts
 
 Die zentrale Forschungsfrage lautet: **Wie einfach kann die Sprache bleiben, während sie unabhängige Ausführungsmodelle direkt komponiert, ohne ihnen die semantische Identität zu überlassen?**
 
-<!-- old trailing sentence replaced -->
-
-duzible Host bleiben, während das nützliche System innerhalb der Sprache weiterwächst?**
 
 ---
 
