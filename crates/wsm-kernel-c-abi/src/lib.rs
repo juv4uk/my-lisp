@@ -10,7 +10,7 @@ pub const WSM_KERNEL_ABI_VERSION: u32 = 1;
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WsmKernelKind {
-    Lisp = 1,
+    CommonLisp = 1,
     Prolog = 2,
     Clips = 3,
     Datalog = 4,
@@ -96,7 +96,7 @@ pub extern "C" fn wsm_kernel_abi_version() -> u32 {
 #[no_mangle]
 pub extern "C" fn wsm_kernel_kind_name(kind: WsmKernelKind) -> *const u8 {
     match kind {
-        WsmKernelKind::Lisp => b"lisp\0".as_ptr(),
+        WsmKernelKind::CommonLisp => b"common-lisp\0".as_ptr(),
         WsmKernelKind::Prolog => b"prolog\0".as_ptr(),
         WsmKernelKind::Clips => b"clips\0".as_ptr(),
         WsmKernelKind::Datalog => b"datalog\0".as_ptr(),
@@ -117,7 +117,7 @@ mod tests {
     ) -> WsmStatus {
         if written.is_null() { return WsmStatus::InvalidArgument; }
         let input = unsafe { core::slice::from_raw_parts(request.ptr, request.len) };
-        if response.len < input.len {
+        if response.len < input.len() {
             unsafe { *written = input.len(); }
             return WsmStatus::BufferTooSmall;
         }
@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn all_four_kernel_kinds_share_only_the_mechanical_contract() {
         for kind in [
-            WsmKernelKind::Lisp,
+            WsmKernelKind::CommonLisp,
             WsmKernelKind::Prolog,
             WsmKernelKind::Clips,
             WsmKernelKind::Datalog,
