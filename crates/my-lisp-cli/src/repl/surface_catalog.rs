@@ -167,10 +167,6 @@ fn surface_name<'a>(entry: &'a SurfaceEntry, surface: &str) -> Option<&'a Surfac
     entry.names.iter().find(|name| name.surface == surface)
 }
 
-fn is_public(_entry: &SurfaceEntry) -> bool {
-    true
-}
-
 fn counts_for(entries: &[SurfaceEntry], surface: &str) -> Counts {
     let mut counts = Counts::default();
     for entry in entries {

@@ -90,45 +90,36 @@ def check(root) -> tuple[int, set[str], int]:
 
         entry_surfaces: set[str] = set()
         for surface in entry[1:]:
-            if not isinstance(surface, list) or len(surface) not in {2, 3}:
+            if not isinstance(surface, list) or len(surface) != 2:
                 raise ValueError(
-                    f"{bits}: surface має форму (мова назва) або (мова назва винятковий-стан)"
+                    f"{bits}: surface має форму (мова назва-або-())"
                 )
-            if not all(isinstance(value, str) for value in surface):
-                raise ValueError(f"{bits}: surface-поля мають бути атомами")
-
-            language, name = surface[:2]
-            status = "stable" if len(surface) == 2 else surface[2]
-            if len(surface) == 3:
-                if status == "stable":
-                    raise ValueError(
-                        f"{bits}/{language}: sr/2 не записує stable явно; використай ({language} {name})"
-                    )
-                if status not in EXCEPTION_STATUSES:
-                    raise ValueError(f"{bits}/{language}: невідомий винятковий стан {status}")
+            language, name = surface
+            if not isinstance(language, str):
+                raise ValueError(f"{bits}: назва мови має бути атомом")
+            if name != [] and not isinstance(name, str):
+                raise ValueError(f"{bits}: назва surface має бути атомом або ()")
 
             if language in entry_surfaces:
                 raise ValueError(f"{bits}: дубль surface {language}")
             entry_surfaces.add(language)
             all_surfaces.add(language)
 
-            if status == "missing" and name != "—":
-                raise ValueError(f"{bits}/{language}: missing мусить використовувати —")
-            if status not in {"missing", "compatibility-only"} and name == "—":
-                raise ValueError(f"{bits}/{language}: {status} потребує назви")
-            if name == identity or name == bits:
-                raise ValueError(
-                    f"{bits}/{language}: surface name не може підміняти byte SID"
-                )
+            if isinstance(name, str):
+                if name == identity or name == bits:
+                    raise ValueError(
+                        f"{bits}/{language}: surface name не може підміняти byte SID"
+                    )
 
-            if (
-                language not in NON_HUMAN
-                and name != "—"
-                and not any(character.isalpha() for character in name)
-            ):
-                raise ValueError(
-                    f"{bits}/{language}: символічне написання {name!r} мусить жити під sym"
-                )
+                clean_name = name[1:-1] if name.startswith('"') and name.endswith('"') else name
+                if (
+                    language not in NON_HUMAN
+                    and clean_name != "—"
+                    and not any(character.isalpha() for character in clean_name)
+                ):
+                    raise ValueError(
+                        f"{bits}/{language}: символічне написання {name!r} мусить жити під sym"
+                    )
 
         missing_first_wave = FIRST_WAVE - entry_surfaces
         if missing_first_wave:
