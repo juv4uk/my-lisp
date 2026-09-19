@@ -8,7 +8,7 @@ use core::ffi::c_void;
 pub const WSM_KERNEL_ABI_VERSION: u32 = 1;
 
 #[repr(u32)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum WsmKernelKind {
     Lisp = 1,
     Prolog = 2,
