@@ -16,7 +16,7 @@ English auxiliary: ADR-005 supersedes only the permanent closure rules of this A
 
 ---
 
-## 1. Context / Контекст
+## 1. Контекст / Context
 
 `my-lisp` defines itself as a minimal, homoiconic Lisp that grows from within itself. Historically, dialects of Lisp have suffered semantic bloat when host runtime conveniences, specialized evaluator optimizations, or substrate capabilities silently leaked into the language's core axiomatic definition.
 
@@ -24,21 +24,7 @@ The current Rust implementation in `crates/my-lisp` provides a rich set of facil
 
 ---
 
-## 2. Normative Decision / Нормативне рішення
-
-### English:
-1. **The closed McCarthy-7 core consists of exactly seven canonical semantic identities:**
-   ```text
-   { PRIM_QUOTE, PRIM_ATOM, PRIM_EQ, PRIM_CAR, PRIM_CDR, PRIM_CONS, PRIM_COND }
-   ```
-   Historical McCarthy spellings (`quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond`) and all human-language spellings (e.g. Ukrainian `атом`, Sanskrit representations) are surface representations that resolve to these identities; no surface spelling is itself the semantic identity.
-2. **Canonical Identifiers as Ontological Descriptors:** Identifiers such as `PRIM_ATOM` are normative descriptors of semantic identity in documentation, architecture, and conformance manifests. An implementation is free to represent them as opcodes, machine integers, enums, symbols, or resolution tables — implementation representation does not define semantics.
-3. **No eighth primitive may be admitted.** No implementation, compiler backend, runtime substrate, standard library, or future architectural extension may enlarge this set of identities.
-4. **Canonical Conformance Formulation:**
-   > *“A conforming implementation may expose many language capabilities and surface spellings, but it shall classify exactly seven operations as semantic primitive identities: `PRIM_QUOTE`, `PRIM_ATOM`, `PRIM_EQ`, `PRIM_CAR`, `PRIM_CDR`, `PRIM_CONS`, and `PRIM_COND`. Verification tests conformance of these seven semantic identities, not textual ASCII spellings. No other capability may acquire primitive status.”*
-5. **Implementation convenience cannot create language ontology.** The presence of an instruction in hardware (e.g. FPGA `ADD`, x86 `lea`) or an execution helper in a substrate runtime (e.g. `wsm_add`, `wsm_pci_config_read16`) does not make that operation a semantic primitive of `my-lisp`.
-6. **No Self-Proving Introspection:** The language shall **not** define an internal introspection form (such as `primitive-names`). Verification of the closed set belongs exclusively to external conformance test manifests and testing harnesses.
-7. **Negative Invariant:** Any implementation manifest or conformance report that admits additional primitive identities (such as `add`, `eval`, `lambda`, or `read`) shall be rejected fail-closed as `PRIMITIVE_SET_VIOLATION`.
+## 2. Нормативне рішення / Normative Decision
 
 ### Українська:
 1. **Замкнене ядро McCarthy-7 складається рівно із семи канонічних семантичних тотожностей:**
@@ -54,9 +40,24 @@ The current Rust implementation in `crates/my-lisp` provides a rich set of facil
 6. **Без самостверджувальної інтроспекції:** Мова **не** повинна містити внутрішньої операції переліку примітивів (на кшталт `primitive-names`). Перевірка замкненості множини належить виключно зовнішньому маніфесту відповідності та тестовому harness.
 7. **Негативний інваріант:** Будь-який маніфест реалізації чи звіт конформності, який включає додаткові тотожності (наприклад, `add`, `eval`, `lambda`, `read`) до множини примітивів, бракується за правилом fail-closed із результатом `PRIMITIVE_SET_VIOLATION`.
 
+### English:
+1. **The closed McCarthy-7 core consists of exactly seven canonical semantic identities:**
+   ```text
+   { PRIM_QUOTE, PRIM_ATOM, PRIM_EQ, PRIM_CAR, PRIM_CDR, PRIM_CONS, PRIM_COND }
+   ```
+   Historical McCarthy spellings (`quote`, `atom`, `eq`, `car`, `cdr`, `cons`, `cond`) and all human-language spellings (e.g. Ukrainian `атом`, Sanskrit representations) are surface representations that resolve to these identities; no surface spelling is itself the semantic identity.
+2. **Canonical Identifiers as Ontological Descriptors:** Identifiers such as `PRIM_ATOM` are normative descriptors of semantic identity in documentation, architecture, and conformance manifests. An implementation is free to represent them as opcodes, machine integers, enums, symbols, or resolution tables — implementation representation does not define semantics.
+3. **No eighth primitive may be admitted.** No implementation, compiler backend, runtime substrate, standard library, or future architectural extension may enlarge this set of identities.
+4. **Canonical Conformance Formulation:**
+   > *“A conforming implementation may expose many language capabilities and surface spellings, but it shall classify exactly seven operations as semantic primitive identities: `PRIM_QUOTE`, `PRIM_ATOM`, `PRIM_EQ`, `PRIM_CAR`, `PRIM_CDR`, `PRIM_CONS`, and `PRIM_COND`. Verification tests conformance of these seven semantic identities, not textual ASCII spellings. No other capability may acquire primitive status.”*
+5. **Implementation convenience cannot create language ontology.** The presence of an instruction in hardware (e.g. FPGA `ADD`, x86 `lea`) or an execution helper in a substrate runtime (e.g. `wsm_add`, `wsm_pci_config_read16`) does not make that operation a semantic primitive of `my-lisp`.
+6. **No Self-Proving Introspection:** The language shall **not** define an internal introspection form (such as `primitive-names`). Verification of the closed set belongs exclusively to external conformance test manifests and testing harnesses.
+7. **Negative Invariant:** Any implementation manifest or conformance report that admits additional primitive identities (such as `add`, `eval`, `lambda`, or `read`) shall be rejected fail-closed as `PRIMITIVE_SET_VIOLATION`.
+
+
 ---
 
-## 3. Strict Non-Equivalence / Строге розрізнення понять
+## 3. Строге розрізнення понять / Strict Non-Equivalence
 
 To prevent semantic leakage, `my-lisp` strictly distinguishes the following categories:
 
@@ -82,7 +83,7 @@ SEMANTIC PRIMITIVE
 
 ---
 
-## 4. Stratified Architecture / Стратифікована архітектура
+## 4. Стратифікована архітектура / Stratified Architecture
 
 Substrates do not sit as a language layer. The language exists purely as semantics, observed across independent implementations:
 
