@@ -15,6 +15,7 @@ members = [
     "crates/wsm-guard-slice",
     "crates/wsm-guard-facts",
     "crates/wsm-kernel-host",
+    "crates/wsm-kernel-c-abi",
     "crates/xtask",
 ]
 
