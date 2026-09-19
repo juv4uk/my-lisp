@@ -530,7 +530,7 @@ mod tests {
     #[test]
     fn defmacro_tooling_matches_runtime_macro_identity() {
         let items = language_items();
-        for name in ["defmacro", "визначити-макрос", "defmacro-derived"] {
+        for name in ["defmacro", "визначити-макрос"] {
             let item = items
                 .iter()
                 .find(|item| item.name == name)
@@ -540,7 +540,7 @@ mod tests {
         }
 
         let session = crate::Session::default();
-        for name in ["defmacro", "визначити-макрос", "defmacro-derived"] {
+        for name in ["defmacro", "визначити-макрос"] {
             assert!(
                 matches!(session.environment.get(name), Some(Value::Macro(_))),
                 "runtime binding {name} must be Value::Macro"

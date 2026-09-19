@@ -11,8 +11,7 @@
 ; This source deliberately binds NO human surface name. It evaluates to one
 ; first-class Macro value; the bootstrap loader then exposes that same value
 ; directly under the ratified peer spellings `defmacro` and
-; `визначити-макрос` (plus the historical `defmacro-derived` compatibility
-; spelling). Thus no human surface is implemented as an alias of another.
+; `визначити-макрос`. Thus no human surface is implemented as an alias of another.
 ;
 ; Necessary forms are selected by semantic identity after ordinary source
 ; resolution. Byte SID text is metadata and is deliberately NOT executable

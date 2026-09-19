@@ -174,10 +174,20 @@ fn every_stable_uk_surface_entry_resolves_to_its_declared_operation() {
         ("lambda", "функція"),
         ("define", "визначити"),
     ];
+    // Host primitives (process, tcp, fs) belong to my-lisp-host substrate,
+    // not to the pure language session tested here.
+    let host_operations = [
+        "process-run",
+        "tcp-read",
+        "tcp-write",
+        "tcp-listen",
+        "read-file",
+        "write-file",
+    ];
     let mut checked_values = 0;
 
     for (semantic_id, english, ukrainian) in &pairs {
-        if syntax.contains(&(*english, *ukrainian)) {
+        if syntax.contains(&(*english, *ukrainian)) || host_operations.contains(english) {
             continue;
         }
         let english_value = eval_program(english, &mut session)
@@ -197,10 +207,13 @@ fn every_stable_uk_surface_entry_resolves_to_its_declared_operation() {
         checked_values += 1;
     }
 
-    // Derived, not restated: every pair except the syntax forms must have
-    // been checked above -- catches a silent early `continue`/`break` bug
-    // in the loop without hardcoding the pair count twice.
-    assert_eq!(checked_values, pairs.len() - syntax.len());
+    // Derived, not restated: every pair except the syntax forms and host
+    // operations must have been checked above -- catches a silent early
+    // `continue`/`break` bug in the loop without hardcoding the pair count twice.
+    assert_eq!(
+        checked_values,
+        pairs.len() - syntax.len() - host_operations.len()
+    );
 }
 
 #[test]
