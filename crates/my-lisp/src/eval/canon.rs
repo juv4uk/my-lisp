@@ -112,8 +112,8 @@ pub(crate) fn is_reserved_surface(name: &str) -> bool {
     identity_for_surface(name).is_some()
 }
 
-/// True for any admitted surface of `quote` specifically (semantic ID
-/// 1) — `quote`/`як-є`/`svarūpa`/`'`, not just the English spelling.
+/// True for any admitted surface of `quote` specifically (semantic ID 1) —
+/// `quote`/`як-є`/`svarūpa`/`'`, not just the English spelling.
 /// Exposed narrowly via `crate::is_quote_surface_name` for tooling that
 /// must distinguish "this list's head is quote" from "this list's head is
 /// some other Canon identity," per the same routing every surface already
